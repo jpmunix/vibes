@@ -20,8 +20,7 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_OPENROUTER_MODEL =
-  MODEL_OPTIONS.openrouter[0]?.name ?? "google/gemini-3-flash-preview";
+const DEFAULT_OPENROUTER_MODEL = "qwen/qwen3-coder-flash";
 
 interface TurboFileEditRequestBody {
   path: string;
@@ -48,10 +47,7 @@ function parseTurboFileEditBody(body: EngineFetchOptions["body"]) {
 }
 
 function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
-  const configuredKey =
-    settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-  const envKey = (getEnvVar(PROVIDER_TO_ENV_VAR.openrouter) ?? "").trim();
-  const apiKey = configuredKey || envKey;
+  const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
 
   if (!apiKey) {
     throw new Error(
@@ -60,17 +56,6 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   }
 
   return apiKey;
-}
-
-function getOpenRouterModel(settings: ReturnType<typeof readSettings>) {
-  if (
-    settings.selectedModel?.provider === "openrouter" &&
-    settings.selectedModel.name &&
-    settings.selectedModel.name !== "auto"
-  ) {
-    return settings.selectedModel.name;
-  }
-  return DEFAULT_OPENROUTER_MODEL;
 }
 
 function buildTurboEditMessages(body: TurboFileEditRequestBody) {
@@ -125,7 +110,7 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = getOpenRouterModel(settings);
+  const model = DEFAULT_OPENROUTER_MODEL;
   const body = parseTurboFileEditBody(options.body);
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -154,7 +139,7 @@ async function callTurboFileEditViaOpenRouter(
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
-
+  console.log(data.choices[0].message.content);
   const result = sanitizeTurboEditResponse(rawContent);
 
   return new Response(JSON.stringify({ result }), {
