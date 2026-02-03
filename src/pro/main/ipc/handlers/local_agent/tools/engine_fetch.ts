@@ -20,7 +20,7 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_OPENROUTER_MODEL = "x-ai/grok-3-mini";
+const DEFAULT_OPENROUTER_MODEL = "qwen/qwen3-coder-flash";
 
 interface TurboFileEditRequestBody {
   path: string;
