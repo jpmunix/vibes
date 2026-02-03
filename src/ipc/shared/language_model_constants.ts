@@ -2,7 +2,6 @@ import { LanguageModel } from "@/ipc/types";
 
 export const PROVIDERS_THAT_SUPPORT_THINKING: (keyof typeof MODEL_OPTIONS)[] = [
   "google",
-  "vertex",
 ];
 
 export interface ModelOption {
@@ -197,79 +196,85 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       dollarSigns: 2,
     },
   ],
-  vertex: [
-    // Vertex Gemini 2.5 Pro
-    {
-      name: "gemini-2.5-pro",
-      displayName: "Gemini 2.5 Pro",
-      description: "Vertex Gemini 2.5 Pro",
-      maxOutputTokens: 65_536 - 1,
-      contextWindow: 1_048_576,
-      temperature: 0,
-    },
-    // Vertex Gemini 2.5 Flash
-    {
-      name: "gemini-flash-latest",
-      displayName: "Gemini 2.5 Flash",
-      description: "Vertex Gemini 2.5 Flash",
-      maxOutputTokens: 65_536 - 1,
-      contextWindow: 1_048_576,
-      temperature: 0,
-    },
-  ],
   openrouter: [
     {
-      name: "qwen/qwen3-coder:free",
-      displayName: "Qwen3 Coder (free)",
-      description: "Use for free (data may be used for training)",
-      maxOutputTokens: 32_000,
-      contextWindow: 262_000,
-      temperature: 0,
-      dollarSigns: 0,
-    },
-    {
-      name: "mistralai/devstral-2512:free",
-      displayName: "Devstral 2 (free)",
-      description: "Use for free (data may be used for training)",
-      maxOutputTokens: 32_000,
-      contextWindow: 200_000,
-      temperature: 0,
-      dollarSigns: 0,
-    },
-    {
-      name: "z-ai/glm-4.7",
-      displayName: "GLM 4.7",
-      description: "Z-AI's best coding model",
-      maxOutputTokens: 32_000,
-      contextWindow: 200_000,
-      temperature: 0.7,
-      dollarSigns: 2,
-    },
-    {
-      name: "qwen/qwen3-coder",
-      displayName: "Qwen3 Coder",
-      description: "Qwen's best coding model",
-      maxOutputTokens: 32_000,
-      contextWindow: 262_000,
+      name: "google/gemini-3-flash-preview",
+      displayName: "Gemini 3 Flash",
+      description: "Ideal para el desarrollo diario",
+      maxOutputTokens: 365_000,
+      contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
     },
     {
-      name: "deepseek/deepseek-chat-v3.1",
-      displayName: "DeepSeek v3.1",
-      description: "Strong cost-effective model with optional thinking",
+      name: "google/gemini-3-pro-preview",
+      displayName: "Gemini 3 Pro",
+      description: "Ideal para resolver bugs o problemas más complejos",
       maxOutputTokens: 32_000,
       contextWindow: 128_000,
       temperature: 0,
+      dollarSigns: 3,
+    },
+    {
+      name: "google/gemini-2.5-pro",
+      displayName: "Gemini 2.5 Pro",
+      description: "Élite en razonamiento lógico y código complejo; costo medio-alto con velocidad moderada",
+      maxOutputTokens: 65_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 3,
+    },
+    {
+      name: "google/gemini-2.5-flash",
+      displayName: "Gemini 2.5 Flash",
+      description: "Equilibrio óptimo: código sólido, extremadamente rápido y el más económico de su clase.",
+      maxOutputTokens: 65_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 1,
+    },
+    {
+      name: "openai/gpt-5.1-codex-mini",
+      displayName: "GPT 5.1 Codex mini",
+      description: "Revolucionario en síntesis: código moderno, costo competitivo y gran rapidez",
+      maxOutputTokens: 32_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
       dollarSigns: 2,
     },
-    // https://openrouter.ai/moonshotai/kimi-k2
     {
-      name: "moonshotai/kimi-k2-0905",
-      displayName: "Kimi K2",
-      description: "Powerful cost-effective model (updated to 0905)",
+      name: "openai/gpt-4.1",
+      displayName: "GPT 4.1",
+      description: "El estándar de oro: código muy refinado y fiable, precio alto y velocidad constante.",
       maxOutputTokens: 32_000,
-      contextWindow: 256_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 3,
+    },
+    {
+      name: "openai/gpt-4.1-mini",
+      displayName: "GPT 4.1 mini",
+      description: "Eficiencia pura: ideal para scripts rápidos y tareas repetitivas, muy barato y veloz",
+      maxOutputTokens: 32_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 1,
+    },
+    {
+      name: "openai/gpt-4.1-nano",
+      displayName: "GPT 4.1 nano",
+      description: "Instantáneo y casi gratuito; perfecto para \"snippets\" simples o autocompletado básico.",
+      maxOutputTokens: 32_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 1,
+    },
+    {
+      name: "qwen/qwen-plus-2025-07-28",
+      displayName: "Qwen Plus",
+      description: "La alternativa potente: excelente en algoritmos, muy económico y velocidad estable.",
+      maxOutputTokens: 32_000,
+      contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
     },
@@ -283,18 +288,6 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // The following is reasonable defaults.
       maxOutputTokens: 32_000,
       contextWindow: 200_000,
-      temperature: 0,
-    },
-    {
-      name: "free",
-      displayName: "Free (OpenRouter)",
-      description: "Selects from one of the free OpenRouter models",
-      tag: "Free",
-      // These are below Gemini 2.5 Pro & Flash limits
-      // which are the ones defaulted to for both regular auto
-      // and smart auto.
-      maxOutputTokens: 32_000,
-      contextWindow: 128_000,
       temperature: 0,
     },
     {
@@ -490,6 +483,12 @@ export const CLOUD_PROVIDERS: Record<
     secondary?: boolean;
   }
 > = {
+  openrouter: {
+    displayName: "OpenRouter",
+    hasFreeTier: true,
+    websiteUrl: "https://openrouter.ai/settings/keys",
+    gatewayPrefix: "openrouter/",
+  },
   openai: {
     displayName: "OpenAI",
     hasFreeTier: false,
@@ -507,46 +506,6 @@ export const CLOUD_PROVIDERS: Record<
     hasFreeTier: true,
     websiteUrl: "https://aistudio.google.com/app/apikey",
     gatewayPrefix: "gemini/",
-  },
-  vertex: {
-    displayName: "Google Vertex AI",
-    hasFreeTier: false,
-    websiteUrl: "https://console.cloud.google.com/vertex-ai",
-    // Use the same gateway prefix as Google Gemini for Dyad Pro compatibility.
-    gatewayPrefix: "gemini/",
-    secondary: true,
-  },
-  openrouter: {
-    displayName: "OpenRouter",
-    hasFreeTier: true,
-    websiteUrl: "https://openrouter.ai/settings/keys",
-    gatewayPrefix: "openrouter/",
-  },
-  auto: {
-    displayName: "Dyad",
-    websiteUrl: "https://academy.dyad.sh/subscription",
-    gatewayPrefix: "dyad/",
-  },
-  azure: {
-    displayName: "Azure OpenAI",
-    hasFreeTier: false,
-    websiteUrl: "https://portal.azure.com/",
-    gatewayPrefix: "",
-    secondary: true,
-  },
-  xai: {
-    displayName: "xAI",
-    hasFreeTier: false,
-    websiteUrl: "https://console.x.ai/",
-    gatewayPrefix: "xai/",
-    secondary: true,
-  },
-  bedrock: {
-    displayName: "AWS Bedrock",
-    hasFreeTier: false,
-    websiteUrl: "https://console.aws.amazon.com/bedrock/",
-    gatewayPrefix: "bedrock/",
-    secondary: true,
   },
 };
 

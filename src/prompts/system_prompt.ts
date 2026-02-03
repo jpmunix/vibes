@@ -559,8 +559,7 @@ export const getSystemPromptForChatMode = ({
     return ASK_MODE_SYSTEM_PROMPT;
   }
   return (
-    BUILD_SYSTEM_PROMPT +
-    (enableTurboEditsV2 ? TURBO_EDITS_V2_SYSTEM_PROMPT : "")
+    BUILD_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT
   );
 };
 

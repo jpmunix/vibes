@@ -319,18 +319,6 @@ export function SetupBanner() {
               <div className="mt-2 flex gap-2">
                 <SetupProviderCard
                   className="flex-1"
-                  variant="google"
-                  onClick={handleGoogleSetupClick}
-                  tabIndex={isNodeSetupComplete ? 0 : -1}
-                  leadingIcon={
-                    <img src={googleIcon} alt="Google" className="w-4 h-4" />
-                  }
-                  title="Setup Google Gemini API Key"
-                  chip={<>Free</>}
-                />
-
-                <SetupProviderCard
-                  className="flex-1"
                   variant="openrouter"
                   onClick={handleOpenRouterSetupClick}
                   tabIndex={isNodeSetupComplete ? 0 : -1}
@@ -342,33 +330,11 @@ export function SetupBanner() {
                     />
                   }
                   title="Setup OpenRouter API Key"
-                  chip={<>Free</>}
+                  chip={<>Necesario</>}
                 />
               </div>
 
-              <div
-                className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/70 transition-colors"
-                onClick={handleOtherProvidersClick}
-                role="button"
-                tabIndex={isNodeSetupComplete ? 0 : -1}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-gray-100 dark:bg-gray-700 p-1.5 rounded-full">
-                      <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-[15px] text-gray-800 dark:text-gray-300">
-                        Setup other AI providers
-                      </h4>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        OpenAI, Anthropic and more
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </div>
-              </div>
+
             </AccordionContent>
           </AccordionItem>
         </Accordion>

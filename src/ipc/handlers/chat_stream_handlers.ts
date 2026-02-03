@@ -639,7 +639,7 @@ ${componentSnippet}
             settings.selectedChatMode === "agent"
               ? "build"
               : settings.selectedChatMode,
-          enableTurboEditsV2: isTurboEditsV2Enabled(settings),
+          enableTurboEditsV2: true,
           themePrompt,
           basicAgentMode: isBasicAgentMode(settings),
         });

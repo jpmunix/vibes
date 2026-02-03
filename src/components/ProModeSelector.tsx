@@ -108,8 +108,8 @@ export function ProModeSelector() {
           <div className="flex flex-col gap-5">
             <SelectorRow
               id="pro-enabled"
-              label="Enable Dyad Pro"
-              tooltip="Uses Dyad Pro AI credits for the main AI model and Pro modes."
+              label="Enable vibes Pro"
+              tooltip="Uses vibes Pro modes"
               isTogglable={hasProKey}
               settingEnabled={Boolean(settings?.enableDyadPro)}
               toggle={toggleProEnabled}
