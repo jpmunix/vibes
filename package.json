@@ -1,5 +1,5 @@
 {
-  "name": "dyad",
+  "name": "minube-vibes",
   "version": "0.36.0-beta.1",
   "description": "Free, local, open-source AI app builder",
   "keywords": [],
@@ -186,5 +186,5 @@
   "engines": {
     "node": ">=20"
   },
-  "productName": "dyad"
+  "productName": "minube-vibes"
 }

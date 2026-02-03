@@ -180,7 +180,7 @@ export function SetupBanner() {
   return (
     <>
       <p className="text-xl font-medium text-zinc-700 dark:text-zinc-300 p-4 pt-6">
-        Setup Dyad
+        Setup minube vibes
       </p>
       <OnboardingBanner
         isVisible={isOnboardingVisible}
@@ -314,21 +314,8 @@ export function SetupBanner() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pt-2 pb-4 bg-white dark:bg-zinc-900 border-t border-inherit">
-              <p className="text-[15px] mb-3">
-                Not sure what to do? Watch the Get Started video above ☝️
-              </p>
 
-              <SetupProviderCard
-                variant="dyad"
-                onClick={handleDyadProSetupClick}
-                tabIndex={isNodeSetupComplete ? 0 : -1}
-                leadingIcon={
-                  <img src={logo} alt="Dyad Logo" className="w-6 h-6 mr-0.5" />
-                }
-                title="Start with Dyad Pro free trial"
-                subtitle="Unlock the full power of Dyad"
-                chip={<>Recommended</>}
-              />
+
               <div className="mt-2 flex gap-2">
                 <SetupProviderCard
                   className="flex-1"
