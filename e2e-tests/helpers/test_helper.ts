@@ -1331,7 +1331,7 @@ export class PageObject {
 
   async goToAppsTab() {
     await this.page.getByRole("link", { name: "Apps" }).click();
-    await expect(this.page.getByText("Build a new app")).toBeVisible();
+    await expect(this.page.getByText("Hagamos magia")).toBeVisible();
   }
 
   async goToChatTab() {

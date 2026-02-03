@@ -131,6 +131,6 @@ testSetup.describe("Setup Flow", () => {
     await expect(
       po.page.getByText("Setup Dyad", { exact: true }),
     ).not.toBeVisible();
-    await expect(po.page.getByText("Build a new app")).toBeVisible();
+    await expect(po.page.getByText("Hagamos magia")).toBeVisible();
   });
 });

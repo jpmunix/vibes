@@ -139,7 +139,9 @@ async function callTurboFileEditViaOpenRouter(
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
-  console.log(data.choices[0].message.content);
+  console.error('##########################################################################')
+  console.warn(data.choices[0].message.content);
+  console.error('##########################################################################')
   const result = sanitizeTurboEditResponse(rawContent);
 
   return new Response(JSON.stringify({ result }), {

@@ -34,7 +34,7 @@ import { useTrialModelRestriction } from "@/hooks/useTrialModelRestriction";
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
   const queryClient = useQueryClient();
-  const { isTrial } = useTrialModelRestriction();
+  const isTrial = false;
   const onModelSelect = (model: LargeLanguageModel) => {
     updateSettings({ selectedModel: model });
     // Invalidate token count when model changes since different models have different context windows
@@ -115,32 +115,8 @@ export function ModelPicker() {
   };
 
   // Get auto provider models (if any)
-  const autoModels =
-    !loading && modelsByProviders && modelsByProviders["auto"]
-      ? modelsByProviders["auto"].filter((model) => {
-          if (
-            settings &&
-            !isDyadProEnabled(settings) &&
-            ["turbo", "value"].includes(model.apiName)
-          ) {
-            return false;
-          }
-          if (
-            settings &&
-            isDyadProEnabled(settings) &&
-            model.apiName === "free"
-          ) {
-            return false;
-          }
-          return true;
-        })
-      : [];
+  const autoModels = [];
 
-  // Determine availability of local models
-  const hasOllamaModels =
-    !ollamaLoading && !ollamaError && ollamaModels.length > 0;
-  const hasLMStudioModels =
-    !lmStudioLoading && !lmStudioError && lmStudioModels.length > 0;
 
   if (!settings) {
     return null;
@@ -159,9 +135,9 @@ export function ModelPicker() {
     const provider = providers?.find((p) => p.id === providerId);
     return !(provider && provider.secondary);
   });
-  if (settings && isDyadProEnabled(settings)) {
-    primaryProviders.unshift(["auto", TURBO_MODELS]);
-  }
+  // if (settings && isDyadProEnabled(settings)) {
+  //   primaryProviders.unshift(["auto", TURBO_MODELS]);
+  // }
   const secondaryProviders = providerEntries.filter(([providerId, models]) => {
     if (models.length === 0) return false;
     const provider = providers?.find((p) => p.id === providerId);
@@ -212,57 +188,6 @@ export function ModelPicker() {
           ) : (
             /* Cloud models loaded */
             <>
-              {/* Auto models at top level if any */}
-              {autoModels.length > 0 && (
-                <>
-                  {autoModels.map((model) => (
-                    <Tooltip key={`auto-${model.apiName}`}>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem
-                          className={
-                            selectedModel.provider === "auto" &&
-                            selectedModel.name === model.apiName
-                              ? "bg-secondary"
-                              : ""
-                          }
-                          onClick={() => {
-                            onModelSelect({
-                              name: model.apiName,
-                              provider: "auto",
-                            });
-                            setOpen(false);
-                          }}
-                        >
-                          <div className="flex justify-between items-start w-full">
-                            <span className="flex flex-col items-start">
-                              <span>{model.displayName}</span>
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              {model.tag && (
-                                <span
-                                  className={cn(
-                                    "text-[11px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium",
-                                    model.tagColor,
-                                  )}
-                                >
-                                  {model.tag}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {model.description}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                  {Object.keys(modelsByProviders).length > 1 && (
-                    <DropdownMenuSeparator />
-                  )}
-                </>
-              )}
-
               {/* Primary providers as submenus */}
               {primaryProviders.map(([providerId, models]) => {
                 models = models.filter((model) => {
@@ -288,13 +213,6 @@ export function ModelPicker() {
                       <div className="flex flex-col items-start w-full">
                         <div className="flex items-center gap-2">
                           <span>{providerDisplayName}</span>
-                          {provider?.type === "cloud" &&
-                            !provider?.secondary &&
-                            isDyadProEnabled(settings) && (
-                              <span className="text-[10px] bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 bg-[length:200%_100%] animate-[shimmer_5s_ease-in-out_infinite] text-white px-1.5 py-0.5 rounded-full font-medium">
-                                Pro
-                              </span>
-                            )}
                           {provider?.type === "custom" && (
                             <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
                               Custom
