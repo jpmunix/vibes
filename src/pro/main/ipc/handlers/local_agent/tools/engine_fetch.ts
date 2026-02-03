@@ -20,7 +20,7 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_OPENROUTER_MODEL = "qwen/qwen3-coder-flash";
+const DEFAULT_OPENROUTER_MODEL = "x-ai/grok-3-mini";
 
 interface TurboFileEditRequestBody {
   path: string;
@@ -139,6 +139,8 @@ async function callTurboFileEditViaOpenRouter(
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
+  console.error('##########################################################################')
+  console.log(buildTurboEditMessages(body));
   console.error('##########################################################################')
   console.warn(data.choices[0].message.content);
   console.error('##########################################################################')
