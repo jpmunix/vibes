@@ -27,9 +27,10 @@ export function registerChatHandlers() {
 
     let initialCommitHash = null;
     try {
-      // Get the current git revision of the currently checked-out branch
+      // Get the current git revision of main branch
       initialCommitHash = await getCurrentCommitHash({
         path: getDyadAppPath(app.path),
+        ref: "main",
       });
     } catch (error) {
       logger.error("Error getting git revision:", error);

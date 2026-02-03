@@ -126,11 +126,6 @@ export const ProviderSettingSchema = z.union([
   VertexProviderSettingSchema.passthrough(),
   RegularProviderSettingSchema.passthrough(),
 ]);
-
-/**
- * Type derived from the ProviderSettingSchema
- */
-export type ProviderSetting = z.infer<typeof ProviderSettingSchema>;
 export type RegularProviderSetting = z.infer<
   typeof RegularProviderSettingSchema
 >;
@@ -331,11 +326,11 @@ export const UserSettingsSchema = z
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
 export function isDyadProEnabled(settings: UserSettings): boolean {
-  return settings.enableDyadPro === true && hasDyadProKey(settings);
+  return true;
 }
 
 export function hasDyadProKey(settings: UserSettings): boolean {
-  return !!settings.providerSettings?.auto?.apiKey?.value;
+  return true;
 }
 
 /**

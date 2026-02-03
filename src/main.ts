@@ -211,7 +211,6 @@ const createWindow = () => {
       preload: path.join(__dirname, "preload.js"),
       // transparent: true,
     },
-    icon: path.join(app.getAppPath(), "assets/icon/logo.png"),
     // backgroundColor: "#00000001",
     // frame: false,
   });
@@ -223,10 +222,10 @@ const createWindow = () => {
       path.join(__dirname, "../renderer/main_window/index.html"),
     );
   }
-  if (process.env.NODE_ENV === "development") {
-    // Open the DevTools.
-    mainWindow.webContents.openDevTools();
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   // Open the DevTools.
+  //   mainWindow.webContents.openDevTools();
+  // }
 
   // Send force-close event if it was detected
   if (pendingForceCloseData) {
@@ -283,16 +282,16 @@ const createWindow = () => {
       template.push({ role: "selectAll" });
     }
 
-    if (process.env.NODE_ENV === "development") {
-      template.push(
-        { type: "separator" },
-        {
-          label: "Inspect Element",
-          click: () =>
-            mainWindow?.webContents.inspectElement(params.x, params.y),
-        },
-      );
-    }
+    // if (process.env.NODE_ENV === "development") {
+    //   template.push(
+    //     { type: "separator" },
+    //     {
+    //       label: "Inspect Element",
+    //       click: () =>
+    //         mainWindow?.webContents.inspectElement(params.x, params.y),
+    //     },
+    //   );
+    // }
 
     const menu = Menu.buildFromTemplate(template);
     menu.popup({ window: mainWindow! });

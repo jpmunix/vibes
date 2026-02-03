@@ -268,10 +268,7 @@ export function createStreamClient<
   const getIpcRenderer = () => (window as any).electron?.ipcRenderer;
 
   type Input = z.infer<TInput>;
-  // Use string | number for KeyValue to support common key types while
-  // maintaining better type safety than unknown. TypeScript cannot infer
-  // the exact key type from TInput[TKey] due to Zod v4 type system limitations.
-  type KeyValue = string | number;
+  type KeyValue = Input[TKey];
 
   const streams = new Map<
     KeyValue,
@@ -293,9 +290,7 @@ export function createStreamClient<
     ipcRenderer.on(contract.events.chunk.channel, (data: unknown) => {
       const parsed = contract.events.chunk.payload.safeParse(data);
       if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
+        const key = (parsed.data as any)[contract.keyField];
         streams.get(key)?.onChunk(parsed.data);
       }
     });
@@ -303,9 +298,7 @@ export function createStreamClient<
     ipcRenderer.on(contract.events.end.channel, (data: unknown) => {
       const parsed = contract.events.end.payload.safeParse(data);
       if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
+        const key = (parsed.data as any)[contract.keyField];
         streams.get(key)?.onEnd(parsed.data);
         streams.delete(key);
       }
@@ -314,9 +307,7 @@ export function createStreamClient<
     ipcRenderer.on(contract.events.error.channel, (data: unknown) => {
       const parsed = contract.events.error.payload.safeParse(data);
       if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
+        const key = (parsed.data as any)[contract.keyField];
         streams.get(key)?.onError(parsed.data);
         streams.delete(key);
       }
@@ -342,17 +333,13 @@ export function createStreamClient<
       const ipcRenderer = getIpcRenderer();
       if (!ipcRenderer) {
         callbacks.onError({
-          [contract.keyField]: (input as Record<string, unknown>)[
-            contract.keyField
-          ],
+          [contract.keyField]: input[contract.keyField as keyof Input],
           error: "IPC renderer not available",
         } as any);
         return;
       }
 
-      const key = (input as Record<string, unknown>)[
-        contract.keyField
-      ] as KeyValue;
+      const key = input[contract.keyField as keyof Input] as KeyValue;
       streams.set(key, callbacks);
 
       ipcRenderer.invoke(contract.channel, input).catch((err: Error) => {

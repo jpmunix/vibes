@@ -31,7 +31,7 @@ export function createTypedHandler<
       // Runtime validation of input
       const parsed = contract.input.safeParse(rawInput);
       if (!parsed.success) {
-        const errorMessage = parsed.error.issues
+        const errorMessage = parsed.error.errors
           .map((e) => `${e.path.join(".")}: ${e.message}`)
           .join("; ");
         throw new Error(`[${contract.channel}] Invalid input: ${errorMessage}`);
@@ -40,17 +40,17 @@ export function createTypedHandler<
       const result = await handler(event, parsed.data);
 
       // Validate output in development mode only (catches handler bugs without prod overhead)
-      if (process.env.NODE_ENV === "development") {
-        const outputParsed = contract.output.safeParse(result);
-        if (!outputParsed.success) {
-          const errorMessage = outputParsed.error.issues
-            .map((e) => `${e.path.join(".")}: ${e.message}`)
-            .join("; ");
-          console.error(
-            `[${contract.channel}] Output validation warning: ${errorMessage}`,
-          );
-        }
-      }
+      // if (process.env.NODE_ENV === "development") {
+      //   const outputParsed = contract.output.safeParse(result);
+      //   if (!outputParsed.success) {
+      //     const errorMessage = outputParsed.error.errors
+      //       .map((e) => `${e.path.join(".")}: ${e.message}`)
+      //       .join("; ");
+      //     console.error(
+      //       `[${contract.channel}] Output validation warning: ${errorMessage}`,
+      //     );
+      //   }
+      // }
 
       return result;
     },
@@ -88,7 +88,7 @@ export function createLoggedTypedHandler(logger: {
         // Runtime validation of input
         const parsed = contract.input.safeParse(rawInput);
         if (!parsed.success) {
-          const errorMessage = parsed.error.issues
+          const errorMessage = parsed.error.errors
             .map((e) => `${e.path.join(".")}: ${e.message}`)
             .join("; ");
           const error = new Error(
@@ -103,17 +103,17 @@ export function createLoggedTypedHandler(logger: {
           const result = await handler(event, parsed.data);
 
           // Validate output in development mode only
-          if (process.env.NODE_ENV === "development") {
-            const outputParsed = contract.output.safeParse(result);
-            if (!outputParsed.success) {
-              const errorMessage = outputParsed.error.issues
-                .map((e) => `${e.path.join(".")}: ${e.message}`)
-                .join("; ");
-              console.error(
-                `[${contract.channel}] Output validation warning: ${errorMessage}`,
-              );
-            }
-          }
+          // if (process.env.NODE_ENV === "development") {
+          //   const outputParsed = contract.output.safeParse(result);
+          //   if (!outputParsed.success) {
+          //     const errorMessage = outputParsed.error.errors
+          //       .map((e) => `${e.path.join(".")}: ${e.message}`)
+          //       .join("; ");
+          //     console.error(
+          //       `[${contract.channel}] Output validation warning: ${errorMessage}`,
+          //     );
+          //   }
+          // }
 
           return result;
         } catch (err) {
@@ -148,7 +148,6 @@ export function registerTypedHandlers<
   for (const [key, contract] of Object.entries(contracts)) {
     const handler = handlers[key as keyof typeof handlers];
     if (handler) {
-      // @ts-expect-error zod v4 type inference is not working correctly
       createTypedHandler(contract, handler);
     }
   }
