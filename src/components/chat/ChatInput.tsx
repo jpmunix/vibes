@@ -450,7 +450,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
               onChange={setInputValue}
               onSubmit={handleSubmit}
               onPaste={handlePaste}
-              placeholder="Ask vibes to build..."
+              placeholder="Pídele a vibes que haga..."
               excludeCurrentApp={true}
               disableSendButton={disableSendButton}
             />

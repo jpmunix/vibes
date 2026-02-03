@@ -250,7 +250,7 @@ export function LexicalChatInput({
   onSubmit,
   onPaste,
   excludeCurrentApp,
-  placeholder = "Ask vibes to build...",
+  placeholder = "Pídele a vibes que haga...",
   disabled = false,
   disableSendButton,
 }: LexicalChatInputProps) {

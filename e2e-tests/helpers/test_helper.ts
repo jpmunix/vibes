@@ -957,7 +957,7 @@ export class PageObject {
 
   getChatInput() {
     return this.page.locator(
-      '[data-lexical-editor="true"][aria-placeholder^="Ask vibes to build"]',
+      '[data-lexical-editor="true"][aria-placeholder^="Pídele a vibes"]',
     );
   }
 

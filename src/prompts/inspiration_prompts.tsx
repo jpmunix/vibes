@@ -21,7 +21,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "TODO list app",
+    label: "Aplicación de listas TODO",
   },
   {
     icon: (
@@ -39,7 +39,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Landing Page",
+    label: "Página de inicio moderna",
   },
   {
     icon: (
@@ -57,7 +57,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Sign Up Form",
+    label: "Formulario de registro",
   },
   {
     icon: (
@@ -81,7 +81,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Mood Journal & Tracker",
+    label: "Diario de estado de ánimo",
   },
   {
     icon: (
@@ -99,7 +99,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Interactive Story Game",
+    label: "Juego de historia interactivo",
   },
   {
     icon: (
@@ -117,7 +117,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Recipe Finder & Meal Planner",
+    label: "Buscador de recetas y planificador de comidas",
   },
   {
     icon: (
@@ -135,7 +135,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Personal Finance Dashboard",
+    label: "Panel de finanzas personales",
   },
   {
     icon: (
@@ -159,7 +159,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Travel Memory Map",
+    label: "Mapa de viaje",
   },
   {
     icon: (
@@ -177,7 +177,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "AI Writing Assistant",
+    label: "Asistente de escritura con IA",
   },
   {
     icon: (
@@ -195,7 +195,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Habit Streak Tracker",
+    label: "Rastreador de hábitos",
   },
   {
     icon: (
@@ -213,7 +213,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Newsletter Creator",
+    label: "Creador de newsletter",
   },
   {
     icon: (
@@ -231,43 +231,7 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Music Discovery App",
-  },
-  {
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-        />
-      </svg>
-    ),
-    label: "3D Portfolio Viewer",
-  },
-  {
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-        />
-      </svg>
-    ),
-    label: "AI Image Generator",
+    label: "App para descubrir música",
   },
   {
     icon: (
@@ -285,24 +249,6 @@ export const INSPIRATION_PROMPTS = [
         />
       </svg>
     ),
-    label: "Pomodoro Focus Timer",
-  },
-  {
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-        />
-      </svg>
-    ),
-    label: "Virtual Avatar Builder",
+    label: "Temporizador pomodoro",
   },
 ];

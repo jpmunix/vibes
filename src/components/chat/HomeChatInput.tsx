@@ -33,7 +33,7 @@ export function HomeChatInput({
     "an information page...",
     "a landing page...",
   ]);
-  const placeholder = `Ask vibes to build ${typingText ?? ""}`;
+  const placeholder = `Pídele a vibes que haga ${typingText ?? ""}`;
 
   // Use the attachments hook
   const {
