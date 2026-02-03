@@ -53,7 +53,7 @@ export function useFreeAgentQuota() {
     // Convenience properties for easier consumption
     isQuotaExceeded: quotaStatus?.isQuotaExceeded ?? false,
     messagesUsed: quotaStatus?.messagesUsed ?? 0,
-    messagesLimit: quotaStatus?.messagesLimit ?? 5,
+    messagesLimit: quotaStatus?.messagesLimit ?? 500,
     messagesRemaining: quotaStatus
       ? Math.max(0, quotaStatus.messagesLimit - quotaStatus.messagesUsed)
       : 5,

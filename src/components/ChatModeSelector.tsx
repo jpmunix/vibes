@@ -25,7 +25,7 @@ import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 function NewBadge() {
   return (
     <span className="inline-flex items-center rounded-full px-2 text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      New
+      minube pro
     </span>
   );
 }
@@ -38,7 +38,7 @@ export function ChatModeSelector() {
   const chatId = routerState.location.search.id as number | undefined;
   const currentChatMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
 
-  const selectedMode = settings?.selectedChatMode || "build";
+  const selectedMode = settings?.selectedChatMode || "local-agent";
   const isProEnabled = settings ? isDyadProEnabled(settings) : false;
   const { messagesRemaining, isQuotaExceeded } = useFreeAgentQuota();
 
@@ -84,7 +84,7 @@ export function ChatModeSelector() {
         return "Build (MCP)";
       case "local-agent":
         // Show "Basic Agent" for non-Pro users, "Agent" for Pro users
-        return isProEnabled ? "Agent" : "Basic Agent";
+        return isProEnabled ? "Pro Agent" : "Pro Agent";
       default:
         return "Build";
     }
@@ -110,7 +110,7 @@ export function ChatModeSelector() {
         </TooltipTrigger>
         <TooltipContent>
           <div className="flex flex-col">
-            <span>Open mode menu</span>
+            <span>Abrir el menú de modos</span>
             <span className="text-xs text-gray-200 dark:text-gray-500">
               {isMac ? "⌘ + ." : "Ctrl + ."} to toggle
             </span>
@@ -118,20 +118,20 @@ export function ChatModeSelector() {
         </TooltipContent>
       </Tooltip>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-        {isProEnabled && (
+        {(
           <SelectItem value="local-agent">
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium">Agent v2</span>
+                <span className="font-medium">Pro agent</span>
                 <NewBadge />
               </div>
               <span className="text-xs text-muted-foreground">
-                Better at bigger tasks and debugging
+                El mejor modo de trabajo para el día a día
               </span>
             </div>
           </SelectItem>
         )}
-        {!isProEnabled && (
+        {/*{!isProEnabled && (
           <SelectItem value="local-agent" disabled={isQuotaExceeded}>
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
@@ -148,12 +148,12 @@ export function ChatModeSelector() {
               </span>
             </div>
           </SelectItem>
-        )}
+        )}*/}
         <SelectItem value="build">
           <div className="flex flex-col items-start">
             <span className="font-medium">Build</span>
             <span className="text-xs text-muted-foreground">
-              Generate and edit code
+              Genera y edita con una gestion de contexto algo peor
             </span>
           </div>
         </SelectItem>
@@ -161,20 +161,20 @@ export function ChatModeSelector() {
           <div className="flex flex-col items-start">
             <span className="font-medium">Ask</span>
             <span className="text-xs text-muted-foreground">
-              Ask questions about the app
+              Pregunta sobre cosas de la app pero sin editar
             </span>
           </div>
         </SelectItem>
-        <SelectItem value="agent">
-          <div className="flex flex-col items-start">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium">Build with MCP</span>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              Like Build, but can use tools (MCP) to generate code
-            </span>
-          </div>
-        </SelectItem>
+        {/*<SelectItem value="agent">*/}
+        {/*  <div className="flex flex-col items-start">*/}
+        {/*    <div className="flex items-center gap-1.5">*/}
+        {/*      <span className="font-medium">Build with MCP</span>*/}
+        {/*    </div>*/}
+        {/*    <span className="text-xs text-muted-foreground">*/}
+        {/*      Like Build, but can use tools (MCP) to generate code*/}
+        {/*    </span>*/}
+        {/*  </div>*/}
+        {/*</SelectItem>*/}
       </SelectContent>
     </Select>
   );

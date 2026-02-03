@@ -42,7 +42,7 @@ export function AgentToolsSettings() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        Configure permissions for Agent built-in tools.
+        Configurar permisos para las herramientas integradas del agente.
       </p>
 
       {/* Requires approval tools */}
@@ -70,7 +70,7 @@ export function AgentToolsSettings() {
           <ChevronRight
             className={`size-4 transition-transform ${showAutoApproved ? "rotate-90" : ""}`}
           />
-          <span>Default allowed tools ({autoApprovedTools.length})</span>
+          <span>Herramientas permitidas por defecto ({autoApprovedTools.length})</span>
         </button>
         {showAutoApproved && (
           <div className="space-y-2 pl-6">

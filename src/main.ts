@@ -283,16 +283,16 @@ const createWindow = () => {
       template.push({ role: "selectAll" });
     }
 
-    // if (process.env.NODE_ENV === "development") {
-    //   template.push(
-    //     { type: "separator" },
-    //     {
-    //       label: "Inspect Element",
-    //       click: () =>
-    //         mainWindow?.webContents.inspectElement(params.x, params.y),
-    //     },
-    //   );
-    // }
+    //if (process.env.NODE_ENV === "development") {
+      template.push(
+        { type: "separator" },
+        {
+          label: "Inspect Element",
+          click: () =>
+            mainWindow?.webContents.inspectElement(params.x, params.y),
+        },
+      );
+    //}
 
     const menu = Menu.buildFromTemplate(template);
     menu.popup({ window: mainWindow! });

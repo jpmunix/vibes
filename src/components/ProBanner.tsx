@@ -39,23 +39,7 @@ export function ProBanner() {
 }
 
 export function ManageDyadProButton({ className }: { className?: string }) {
-  return (
-    <Button
-      variant="outline"
-      size="lg"
-      className={cn(
-        "cursor-pointer w-full mt-4 bg-(--background-lighter) text-primary",
-        className,
-      )}
-      onClick={() => {
-        ipc.system.openExternalUrl("https://academy.dyad.sh/subscription");
-      }}
-    >
-      <Wallet aria-hidden="true" className="w-5 h-5" />
-      Manage Dyad Pro
-      <ArrowUpRight aria-hidden="true" className="w-5 h-5" />
-    </Button>
-  );
+  return ( "" );
 }
 
 export function SetupDyadProButton() {

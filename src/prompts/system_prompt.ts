@@ -553,7 +553,7 @@ export const getSystemPromptForChatMode = ({
   enableTurboEditsV2: boolean;
 }) => {
   if (chatMode === "agent") {
-    return AGENT_MODE_SYSTEM_PROMPT;
+    return AGENT_MODE_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT;
   }
   if (chatMode === "ask") {
     return ASK_MODE_SYSTEM_PROMPT;

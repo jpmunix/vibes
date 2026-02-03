@@ -12,18 +12,14 @@ type SettingsSection = {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "General" },
-  { id: "workflow-settings", label: "Workflow" },
-  { id: "ai-settings", label: "AI" },
-  { id: "provider-settings", label: "Model Providers" },
-  { id: "telemetry", label: "Telemetry" },
-  { id: "integrations", label: "Integrations" },
-  {
-    id: "agent-permissions",
-    label: "Agent Permissions",
-  },
-  { id: "tools-mcp", label: "Tools (MCP)" },
-  { id: "experiments", label: "Experiments" },
-  { id: "danger-zone", label: "Danger Zone" },
+  { id: "workflow-settings", label: "Flujo de trabajo" },
+  { id: "ai-settings", label: "Ajustes IA" },
+  { id: "provider-settings", label: "Proveedores" },
+  { id: "integrations", label: "Integraciones" },
+  { id: "agent-permissions", label: "Permisos del agente" },
+  { id: "tools-mcp", label: "Herramientas MCP" },
+  { id: "experiments", label: "Experimentos" },
+  { id: "danger-zone", label: "Zona peligrosa" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {

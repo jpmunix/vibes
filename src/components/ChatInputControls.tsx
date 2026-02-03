@@ -24,7 +24,7 @@ export function ChatInputControls({
       <div className="w-1.5"></div>
       <ModelPicker />
       <div className="w-1.5"></div>
-      <ProModeSelector />
+      {/*<ProModeSelector />*/}
       <div className="w-1"></div>
       {showContextFilesPicker && (
         <>

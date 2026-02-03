@@ -198,9 +198,6 @@ export function ModelPicker() {
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <DropdownMenuLabel>Cloud Models</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-
         {/* Cloud models - only show for non-trial users */}
         {!isTrial &&
           (loading ? (

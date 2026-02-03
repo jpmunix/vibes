@@ -21,7 +21,7 @@ export function AutoApproveSwitch({
           }
         }}
       />
-      <Label htmlFor="auto-approve">Auto-approve</Label>
+      <Label htmlFor="auto-approve">Auto aprobar</Label>
     </div>
   );
 }

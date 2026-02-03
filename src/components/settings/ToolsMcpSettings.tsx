@@ -432,12 +432,12 @@ export function ToolsMcpSettings() {
           )}
           <div className="flex items-center gap-2">
             <Switch checked={enabled} onCheckedChange={setEnabled} />
-            <Label>Enabled</Label>
+            <Label>Habilitado</Label>
           </div>
         </div>
         <div>
           <Button onClick={onCreate} disabled={!name.trim()}>
-            Add Server
+            Añadir servidor
           </Button>
         </div>
       </div>

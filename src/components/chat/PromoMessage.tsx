@@ -22,33 +22,33 @@ export interface MessageConfig {
 
 // Generic Message component
 export function Message({ spans }: MessageConfig) {
-  return (
-    <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
-      <p className="text-sm text-blue-700">
-        {spans.map((span, index) => {
-          if (span.type === "text") {
-            return <span key={index}>{span.content}</span>;
-          } else if (span.type === "link") {
-            return (
-              <a
-                key={index}
-                onClick={() => {
-                  if (span.action) {
-                    span.action();
-                  } else if (span.url) {
-                    ipc.system.openExternalUrl(span.url);
-                  }
-                }}
-                className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
-              >
-                {span.content}
-              </a>
-            );
-          }
-          return null;
-        })}
-      </p>
-    </div>
+  return ( ""
+    // <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
+    //   <p className="text-sm text-blue-700">
+    //     {spans.map((span, index) => {
+    //       if (span.type === "text") {
+    //         return <span key={index}>{span.content}</span>;
+    //       } else if (span.type === "link") {
+    //         return (
+    //           <a
+    //             key={index}
+    //             onClick={() => {
+    //               if (span.action) {
+    //                 span.action();
+    //               } else if (span.url) {
+    //                 ipc.system.openExternalUrl(span.url);
+    //               }
+    //             }}
+    //             className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+    //           >
+    //             {span.content}
+    //           </a>
+    //         );
+    //       }
+    //       return null;
+    //     })}
+    //   </p>
+    // </div>
   );
 }
 

@@ -258,8 +258,8 @@ export function constructLocalAgentPrompt(
   let basePrompt: string;
   if (options?.readOnly) {
     basePrompt = LOCAL_AGENT_ASK_SYSTEM_PROMPT;
-  } else if (options?.basicAgentMode) {
-    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
+//  } else if (options?.basicAgentMode) {
+//    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
   } else {
     basePrompt = LOCAL_AGENT_SYSTEM_PROMPT;
   }

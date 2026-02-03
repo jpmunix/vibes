@@ -71,11 +71,11 @@ export default function SettingsPage() {
           className="flex items-center gap-2 mb-4 bg-(--background-lightest) py-5"
         >
           <ArrowLeft className="h-4 w-4" />
-          Go Back
+          Atrás
         </Button>
         <div className="flex justify-between mb-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Settings
+            Ajustes
           </h1>
         </div>
 
@@ -91,37 +91,13 @@ export default function SettingsPage() {
             <ProviderSettingsGrid />
           </div>
 
-          <div className="space-y-6">
-            <div
-              id="telemetry"
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
-            >
-              <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Telemetry
-              </h2>
-              <div className="space-y-2">
-                <TelemetrySwitch />
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  This records anonymous usage data to improve the product.
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
-                <span className="mr-2 font-medium">Telemetry ID:</span>
-                <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
-                  {settings ? settings.telemetryUserId : "n/a"}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Integrations Section */}
           <div
             id="integrations"
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Integrations
+              Integraciones
             </h2>
             <div className="space-y-4">
               <GitHubIntegration />
@@ -138,7 +114,7 @@ export default function SettingsPage() {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Agent Permissions (Pro)
+              Permisos del Agente
             </h2>
             <AgentToolsSettings />
           </div>
@@ -149,7 +125,7 @@ export default function SettingsPage() {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Tools (MCP)
+              Herramientas MCP
             </h2>
             <ToolsMcpSettings />
           </div>
@@ -160,7 +136,7 @@ export default function SettingsPage() {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Experiments
+              Experimentos
             </h2>
             <div className="space-y-4">
               <div className="space-y-1 mt-4">
@@ -174,11 +150,10 @@ export default function SettingsPage() {
                       });
                     }}
                   />
-                  <Label htmlFor="enable-native-git">Enable Native Git</Label>
+                  <Label htmlFor="enable-native-git">Habilitar Git nativo</Label>
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  This doesn't require any external Git installation and offers
-                  a faster, native-Git performance experience.
+                  Esto no requiere ninguna instalación externa de Git y ofrece una experiencia de rendimiento Git nativa más rápida.
                 </div>
               </div>
             </div>
@@ -190,18 +165,17 @@ export default function SettingsPage() {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800"
           >
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
-              Danger Zone
+              Zona peligrosa
             </h2>
 
             <div className="space-y-4">
               <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Reset Everything
+                    Revertir todo
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    This will delete all your apps, chats, and settings. This
-                    action cannot be undone.
+                    Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer.
                   </p>
                 </div>
                 <button
@@ -209,7 +183,7 @@ export default function SettingsPage() {
                   disabled={isResetting}
                   className="rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isResetting ? "Resetting..." : "Reset Everything"}
+                  {isResetting ? "Reseteando..." : "Resetear todo"}
                 </button>
               </div>
             </div>
@@ -239,13 +213,13 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
       className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        General Settings
+        Ajustes generales
       </h2>
 
       <div className="space-y-4 mb-4">
         <div className="flex items-center gap-4">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Theme
+            Tema
           </label>
 
           <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
@@ -310,7 +284,7 @@ export function WorkflowSettings() {
       className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        Workflow Settings
+        Configuración del flujo de trabajo
       </h2>
 
       <div className="mt-4">
@@ -320,21 +294,21 @@ export function WorkflowSettings() {
       <div className="space-y-1 mt-4">
         <AutoApproveSwitch showToast={false} />
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          This will automatically approve code changes and run them.
+          Aprobará automáticamente los cambios de código y los ejecutará
         </div>
       </div>
 
-      <div className="space-y-1 mt-4">
+{/*      <div className="space-y-1 mt-4">
         <AutoFixProblemsSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
           This will automatically fix TypeScript errors.
         </div>
-      </div>
+      </div>*/}
 
       <div className="space-y-1 mt-4">
         <AutoExpandPreviewSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Automatically expand the preview panel when code changes are made.
+          Expande automáticamente el panel de vista previa cuando se realizan cambios en el código
         </div>
       </div>
     </div>
@@ -347,7 +321,7 @@ export function AISettings() {
       className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        AI Settings
+        Ajustes IA
       </h2>
 
       <div className="mt-4">
