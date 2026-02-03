@@ -4,6 +4,11 @@
  */
 
 import { readSettings } from "@/main/settings";
+import {
+  MODEL_OPTIONS,
+  PROVIDER_TO_ENV_VAR,
+} from "@/ipc/shared/language_model_constants";
+import { getEnvVar } from "@/ipc/utils/read_env";
 import type { AgentContext } from "./types";
 
 export const DYAD_ENGINE_URL =
@@ -12,6 +17,150 @@ export const DYAD_ENGINE_URL =
 export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
   /** Additional headers to include */
   headers?: Record<string, string>;
+}
+
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_OPENROUTER_MODEL =
+  MODEL_OPTIONS.openrouter[0]?.name ?? "google/gemini-3-flash-preview";
+
+interface TurboFileEditRequestBody {
+  path: string;
+  content: string;
+  originalContent: string;
+  instructions?: string;
+}
+
+function parseTurboFileEditBody(body: EngineFetchOptions["body"]) {
+  if (!body) {
+    throw new Error("Turbo file edit requires a request body.");
+  }
+
+  if (typeof body === "string") {
+    return JSON.parse(body) as TurboFileEditRequestBody;
+  }
+
+  if (body instanceof Uint8Array) {
+    const decoded = new TextDecoder().decode(body);
+    return JSON.parse(decoded) as TurboFileEditRequestBody;
+  }
+
+  throw new Error("Unsupported turbo file edit request body format.");
+}
+
+function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
+  const configuredKey =
+    settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+  const envKey = (getEnvVar(PROVIDER_TO_ENV_VAR.openrouter) ?? "").trim();
+  const apiKey = configuredKey || envKey;
+
+  if (!apiKey) {
+    throw new Error(
+      "OpenRouter API key is required to run turbo file edits.",
+    );
+  }
+
+  return apiKey;
+}
+
+function getOpenRouterModel(settings: ReturnType<typeof readSettings>) {
+  if (
+    settings.selectedModel?.provider === "openrouter" &&
+    settings.selectedModel.name &&
+    settings.selectedModel.name !== "auto"
+  ) {
+    return settings.selectedModel.name;
+  }
+  return DEFAULT_OPENROUTER_MODEL;
+}
+
+function buildTurboEditMessages(body: TurboFileEditRequestBody) {
+  const instructions = body.instructions?.trim();
+  const instructionsBlock = instructions
+    ? `Instructions:\n${instructions}\n\n`
+    : "";
+
+  return [
+    {
+      role: "system",
+      content: [
+        "You are a precise code-editing assistant.",
+        "Apply the requested edit to the original file content.",
+        "Return the full updated file content only.",
+        "Preserve unchanged content exactly.",
+        'The edit snippet may contain "// ... existing code ..." markers that represent unchanged sections.',
+        "Do not include explanations or code fences.",
+      ].join(" "),
+    },
+    {
+      role: "user",
+      content: [
+        `File path: ${body.path}`,
+        instructionsBlock,
+        "<original>",
+        body.originalContent,
+        "</original>",
+        "",
+        "<edit>",
+        body.content,
+        "</edit>",
+      ]
+        .filter((line) => line !== "")
+        .join("\n"),
+    },
+  ];
+}
+
+function sanitizeTurboEditResponse(content: string) {
+  const trimmed = content.trim();
+  if (trimmed.startsWith("```")) {
+    const withoutFirstFence = trimmed.replace(/^```[a-zA-Z0-9-]*\n?/, "");
+    return withoutFirstFence.replace(/\n?```$/, "");
+  }
+  return content;
+}
+
+async function callTurboFileEditViaOpenRouter(
+  ctx: Pick<AgentContext, "dyadRequestId">,
+  options: EngineFetchOptions,
+): Promise<Response> {
+  const settings = readSettings();
+  const apiKey = getOpenRouterApiKey(settings);
+  const model = getOpenRouterModel(settings);
+  const body = parseTurboFileEditBody(options.body);
+
+  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      "X-Dyad-Request-Id": ctx.dyadRequestId,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      messages: buildTurboEditMessages(body),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `OpenRouter turbo file edit failed: ${response.status} ${response.statusText} - ${errorText}`,
+    );
+  }
+
+  const data = await response.json();
+  const rawContent = data?.choices?.[0]?.message?.content ?? "";
+  if (!rawContent) {
+    throw new Error("OpenRouter turbo file edit returned no content.");
+  }
+
+  const result = sanitizeTurboEditResponse(rawContent);
+
+  return new Response(JSON.stringify({ result }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
@@ -29,6 +178,10 @@ export async function engineFetch(
   endpoint: string,
   options: EngineFetchOptions = {},
 ): Promise<Response> {
+  if (endpoint === "/tools/turbo-file-edit") {
+    return callTurboFileEditViaOpenRouter(ctx, options);
+  }
+
   const settings = readSettings();
   const apiKey = settings.providerSettings?.auto?.apiKey?.value;
 
