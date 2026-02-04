@@ -183,7 +183,7 @@ export function ChatList({ show }: { show?: boolean }) {
             <Button
               onClick={handleNewChat}
               variant="outline"
-              className="flex items-center justify-start gap-2 mx-2 py-3"
+              className="flex items-center justify-start gap-2 ml-2 mr-6 py-3"
             >
               <PlusCircle size={16} />
               <span>Nuevo chat</span>
@@ -191,7 +191,7 @@ export function ChatList({ show }: { show?: boolean }) {
             <Button
               onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
               variant="outline"
-              className="flex items-center justify-start gap-2 mx-2 py-3"
+              className="flex items-center justify-start gap-2 ml-2 mr-6 py-3"
               data-testid="search-chats-button"
             >
               <Search size={16} />
@@ -210,7 +210,7 @@ export function ChatList({ show }: { show?: boolean }) {
               <SidebarMenu className="space-y-1">
                 {chats.map((chat) => (
                   <SidebarMenuItem key={chat.id} className="mb-1">
-                    <div className="flex w-[205px] items-center relative group/menu-item">
+                    <div className="flex ml-2 mr-6 items-center relative group/menu-item">
                       <Button
                         variant="ghost"
                         onClick={() =>
@@ -219,13 +219,13 @@ export function ChatList({ show }: { show?: boolean }) {
                             appId: chat.appId,
                           })
                         }
-                        className={`justify-start w-full text-left py-3 pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
+                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
                           ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
                           : ""
                           }`}
                       >
-                        <div className="flex flex-col w-full">
-                          <span className={`truncate ${selectedChatId === chat.id ? "font-semibold" : ""}`}>
+                        <div className="flex flex-col w-full relative overflow-hidden">
+                          <span className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}>
                             {chat.title || "Nuevo chat"}
                           </span>
                           <span className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
@@ -236,13 +236,20 @@ export function ChatList({ show }: { show?: boolean }) {
                         </div>
                       </Button>
 
+                      {/* Hover gradient shadow - refined for better visibility */}
+                      <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+                        ${selectedChatId === chat.id
+                          ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+                          : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"}`}
+                      />
+
                       <SidebarMenuAction
                         showOnHover
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRenameChat(chat.id, chat.title || "");
                         }}
-                        className="right-8"
+                        className="right-8 z-20"
                       >
                         <Edit3 className="h-4 w-4" />
                       </SidebarMenuAction>
@@ -255,7 +262,7 @@ export function ChatList({ show }: { show?: boolean }) {
                             chat.title || "New Chat",
                           );
                         }}
-                        className="right-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                       >
                         <Trash2 className="h-4 w-4" />
                       </SidebarMenuAction>

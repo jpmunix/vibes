@@ -4,6 +4,7 @@ import {
   PlusCircle,
   GitBranch,
   Info,
+  Eraser,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -21,7 +22,8 @@ import { useRouter } from "@tanstack/react-router";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import ConfirmationDialog from "../ConfirmationDialog";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useCurrentBranch } from "@/hooks/useCurrentBranch";
 import { useCheckoutVersion } from "@/hooks/useCheckoutVersion";
@@ -61,6 +63,8 @@ export function ChatHeader({
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
+  const [isConfirmEmptyDialogOpen, setIsConfirmEmptyDialogOpen] =
+    useState(false);
 
   useEffect(() => {
     if (appId) {
@@ -97,6 +101,26 @@ export function ChatHeader({
     } else {
       navigate({ to: "/" });
     }
+  };
+
+  const handleEmptyChat = async () => {
+    if (!selectedChatId) return;
+    try {
+      await ipc.chat.deleteMessages(selectedChatId);
+      showSuccess("Chat vaciado correctamente");
+      // Invalidate both chats (for title/last message) and the current chat data
+      await invalidateChats();
+      // We might need to refresh the current chat messages in the UI. 
+      // Usually invalidateChats + navigate might be enough if the messages component listens to selectedChatId.
+      // But clearing messages in the same chat might need a refresh of the chat content.
+      navigate({
+        to: "/chat",
+        search: { id: selectedChatId },
+      });
+    } catch (error) {
+      showError(`Error al vaciar el chat: ${(error as any).toString()}`);
+    }
+    setIsConfirmEmptyDialogOpen(false);
   };
 
   // REMINDER: KEEP UP TO DATE WITH app_handlers.ts
@@ -206,6 +230,16 @@ export function ChatHeader({
               ? "..."
               : `Versión ${versions.length}${versionPostfix}`}
           </Button>
+          <Button
+            onClick={() => setIsConfirmEmptyDialogOpen(true)}
+            variant="ghost"
+            title="Vaciar chat"
+            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            disabled={!selectedChatId || isStreaming}
+          >
+            <Eraser size={16} />
+            <span className="hidden @xs:inline">Vaciar chat</span>
+          </Button>
         </div>
 
         <button
@@ -220,6 +254,17 @@ export function ChatHeader({
           )}
         </button>
       </div>
+
+      <ConfirmationDialog
+        isOpen={isConfirmEmptyDialogOpen}
+        title="¿Vaciar chat?"
+        message="Esta acción eliminará todos los mensajes de este chat de forma permanente. No se puede deshacer."
+        confirmText="Vaciar"
+        cancelText="Cancelar"
+        confirmButtonClass="bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
+        onConfirm={handleEmptyChat}
+        onCancel={() => setIsConfirmEmptyDialogOpen(false)}
+      />
     </div>
   );
 }
