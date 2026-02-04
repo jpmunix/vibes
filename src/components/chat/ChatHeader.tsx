@@ -59,6 +59,7 @@ export function ChatHeader({
   const isAnyCheckoutVersionInProgress = useAtomValue(
     isAnyCheckoutVersionInProgressAtom,
   );
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
 
   const {
     branchInfo,
@@ -252,10 +253,36 @@ export function ChatHeader({
             <span className="hidden @xs:inline">Resumir chat</span>
           </Button>
           <Button
+            onClick={async () => {
+              if (!selectedChatId) return;
+              try {
+                setIsGeneratingTitle(true);
+                await ipc.chat.generateChatTitle({ chatId: selectedChatId });
+                invalidateChats();
+                showSuccess("Título del chat actualizado");
+              } catch (error) {
+                console.error("Failed to generate chat title:", error);
+                showError("Error al generar el título del chat");
+              } finally {
+                setIsGeneratingTitle(false);
+              }
+            }}
+            variant="ghost"
+            title="Generar título mágico"
+            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            disabled={!selectedChatId || isStreaming || isGeneratingTitle}
+          >
+            <Sparkles
+              size={16}
+              className={isGeneratingTitle ? "animate-pulse" : ""}
+            />
+            <span className="hidden @xs:inline">Título mágico</span>
+          </Button>
+          <Button
             onClick={() => setIsConfirmEmptyDialogOpen(true)}
             variant="ghost"
             title="Vaciar chat"
-            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
             disabled={!selectedChatId || isStreaming}
           >
             <Eraser size={16} />

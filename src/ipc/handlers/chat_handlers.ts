@@ -174,7 +174,7 @@ export function registerChatHandlers() {
 
   createTypedHandler(
     chatContracts.generateChatTitle,
-    async (_, { chatId }) => {
+    async (_, { chatId, prompt }) => {
       const { readSettings } = await import("../../main/settings");
       const settings = readSettings();
       const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
@@ -187,21 +187,25 @@ export function registerChatHandlers() {
       const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
       try {
-        // Fetch the first message from this chat
-        const firstMessage = await db
-          .select({
-            content: messages.content,
-          })
-          .from(messages)
-          .where(eq(messages.chatId, chatId))
-          .orderBy(messages.createdAt)
-          .limit(1);
+        let messageContent = prompt;
 
-        if (!firstMessage.length) {
-          return { title: "Nuevo chat" };
+        // If no prompt provided, fetch from DB (legacy/manual behavior)
+        if (!messageContent) {
+          // Fetch the first message from this chat
+          const firstMessage = await db
+            .select({
+              content: messages.content,
+            })
+            .from(messages)
+            .where(eq(messages.chatId, chatId))
+            .orderBy(messages.createdAt)
+            .limit(1);
+
+          if (!firstMessage.length) {
+            return { title: "Nuevo chat" };
+          }
+          messageContent = firstMessage[0].content;
         }
-
-        const messageContent = firstMessage[0].content;
 
         const response = await fetch(
           "https://openrouter.ai/api/v1/chat/completions",

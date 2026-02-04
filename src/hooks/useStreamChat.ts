@@ -144,6 +144,20 @@ export function useStreamChat({
         );
       }
 
+      // Fire and forget title generation with the prompt for new chats
+      (async () => {
+        try {
+          const chat = await ipc.chat.getChat(chatId);
+          if (!chat.title || chat.title.trim() === "Nuevo chat") {
+            ipc.chat.generateChatTitle({ chatId, prompt }).then(() => {
+              invalidateChats();
+            });
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+      })();
+
       let hasIncrementedStreamCount = false;
       try {
         ipc.chatStream.start(
@@ -216,21 +230,6 @@ export function useStreamChat({
               refreshVersions();
               invalidateTokenCount();
 
-              // Generate chat title after first message
-              (async () => {
-                try {
-                  const chat = await ipc.chat.getChat(chatId);
-                  if (
-                    (!chat.title || chat.title.trim() === "Nuevo chat") &&
-                    chat.messages.length >= 1
-                  ) {
-                    await ipc.chat.generateChatTitle({ chatId });
-                    invalidateChats(); // Refresh to show the new title
-                  }
-                } catch (error) {
-                  console.error("Error generating chat title:", error);
-                }
-              })();
 
               onSettled?.();
             },

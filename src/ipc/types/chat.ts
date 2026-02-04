@@ -240,7 +240,7 @@ export const chatContracts = {
 
   generateChatTitle: defineContract({
     channel: "generate-chat-title",
-    input: z.object({ chatId: z.number() }),
+    input: z.object({ chatId: z.number(), prompt: z.string().optional() }),
     output: z.object({ title: z.string() }),
   }),
 } as const;

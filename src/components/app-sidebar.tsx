@@ -128,7 +128,7 @@ export function AppSidebar() {
             <AppIcons onHoverChange={setHoverState} />
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="w-[540px]">
+          <div className="w-[405px]">
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <SettingsList show={selectedItem === "Ajustes"} />
@@ -194,6 +194,17 @@ function AppIcons({
                     className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
                       }`}
                     onMouseEnter={() => {
+                      if (item.title === "Aplicaciones") {
+                        onHoverChange("start-hover:app");
+                      } else if (item.title === "Chat") {
+                        onHoverChange("start-hover:chat");
+                      } else if (item.title === "Ajustes") {
+                        onHoverChange("start-hover:settings");
+                      } else if (item.title === "Biblioteca") {
+                        onHoverChange("start-hover:library");
+                      }
+                    }}
+                    onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onHoverChange("start-hover:app");
                       } else if (item.title === "Chat") {
