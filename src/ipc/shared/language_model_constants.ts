@@ -290,16 +290,6 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
   ],
   auto: [
     {
-      name: "auto",
-      displayName: "Auto",
-      description: "Automatically selects the best model",
-      tag: "Default",
-      // The following is reasonable defaults.
-      maxOutputTokens: 32_000,
-      contextWindow: 200_000,
-      temperature: 0,
-    },
-    {
       name: "turbo",
       displayName: "Turbo (Pro)",
       description: "Use very fast open-source frontier models",

@@ -20,8 +20,8 @@ const logger = log.scope("settings");
 // Need to maintain backwards compatibility!
 const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: {
-    name: "auto",
-    provider: "auto",
+    name: "google/gemini-3-flash-preview",
+    provider: "openrouter",
   },
   providerSettings: {},
   telemetryConsent: "unset",

@@ -1,16 +1,16 @@
 {
-  "name": "dyad",
-  "version": "0.36.0-beta.1",
-  "description": "Free, local, open-source AI app builder",
+  "name": "minube-vibes",
+  "version": "1.0",
+  "description": "AI app builder",
   "keywords": [],
   "license": "MIT",
   "author": {
-    "name": "Will Chen",
-    "email": "willchen90@gmail.com"
+    "name": "Munix",
+    "email": "pablo@minube.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dyad-sh/dyad.git"
+    "url": "https://github.com/minube/dyad.git"
   },
   "main": ".vite/build/main.js",
   "scripts": {
@@ -186,5 +186,5 @@
   "engines": {
     "node": ">=20"
   },
-  "productName": "dyad"
+  "productName": "minube-vibes"
 }
