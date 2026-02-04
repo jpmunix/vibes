@@ -366,6 +366,11 @@ export const appContracts = {
     input: z.string(),
     output: z.array(AppSearchResultSchema),
   }),
+  generateAppTitle: defineContract({
+    channel: "generate-app-title",
+    input: z.object({ prompt: z.string() }),
+    output: z.object({ title: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

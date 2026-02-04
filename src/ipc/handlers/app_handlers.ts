@@ -59,6 +59,7 @@ import {
 import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 import { AppSearchResult } from "@/lib/schemas";
+import { generateCuteAppName } from "../../lib/utils";
 
 import { getAppPort } from "../../../shared/ports";
 import {
@@ -252,8 +253,7 @@ async function executeAppLocalNode({
       .join(", ");
 
     logger.error(
-      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -557,8 +557,7 @@ RUN npm install -g pnpm
       .join(", ");
 
     logger.error(
-      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -1215,7 +1214,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-            error,
+          error,
         );
       }
     }
@@ -1971,6 +1970,68 @@ export function registerAppHandlers() {
         throw new Error(`Failed to move app files: ${error.message}`);
       }
     });
+  });
+
+  createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
+    const settings = readSettings();
+    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+    if (!apiKey) {
+      logger.warn(
+        "OpenRouter API key not found, using cute app name as fallback",
+      );
+      return { title: generateCuteAppName() };
+    }
+
+    const model = settings.appTitleGenerationModel || "google/gemma-3-4b-it";
+
+    try {
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://dyad.sh", // Optional, for OpenRouter analytics
+            "X-Title": "Dyad", // Optional
+          },
+          body: JSON.stringify({
+            model,
+            temperature: 0.7,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Eres un asistente útil que genera títulos de aplicaciones cortos y atractivos en español. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 30 caracteres.",
+              },
+              {
+                role: "user",
+                content: `Genera un título en español para esta idea de aplicación: "${prompt}"`,
+              },
+            ],
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
+        );
+      }
+
+      const data = await response.json();
+      const title =
+        data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+
+      // Sanitize title (remove quotes, etc)
+      const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 30);
+      return { title: sanitizedTitle };
+    } catch (error) {
+      logger.error("Error generating app title:", error);
+      return { title: generateCuteAppName() };
+    }
   });
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ArrowLeft, AlertTriangle, Rabbit } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Rabbit, Sparkles } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 
@@ -335,16 +335,16 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
         )}
 
         {provider === "openrouter" && (
-          <div className="mt-6 space-y-4 border border-blue-200 dark:border-blue-800/50 rounded-lg p-6 bg-blue-50/50 dark:bg-blue-900/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Rabbit className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Turbo Edit</h3>
+          <div className="mt-6 space-y-4 border rounded-lg p-6 bg-(--background-lightest)">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Modelos de Utilidad</h3>
             </div>
             <div className="space-y-3">
               <label
                 htmlFor="turboEditModel"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
               >
+                <Rabbit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Modelo para Turbo Edits
               </label>
               <Input
@@ -361,6 +361,33 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 rápidas de archivos (Turbo Edit). Por defecto:{" "}
                 <code className="bg-muted px-1 rounded">
                   qwen/qwen3-coder-flash
+                </code>
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-border">
+              <label
+                htmlFor="appTitleGenerationModel"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                Modelo para Generación de Títulos
+              </label>
+              <Input
+                id="appTitleGenerationModel"
+                value={settings?.appTitleGenerationModel ?? ""}
+                onChange={(e) =>
+                  updateSettings({ appTitleGenerationModel: e.target.value })
+                }
+                placeholder="p. ej. google/gemma-3-4b-it"
+                className="bg-background border-border focus-visible:ring-blue-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                Configura el modelo que OpenRouter utilizará para generar el
+                título de la aplicación a partir de tu prompt inicial. Por
+                defecto:{" "}
+                <code className="bg-muted px-1 rounded">
+                  google/gemma-3-4b-it
                 </code>
               </p>
             </div>

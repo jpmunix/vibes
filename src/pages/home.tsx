@@ -34,12 +34,7 @@ import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 import type { FileAttachment } from "@/ipc/types";
 import { NEON_TEMPLATE_IDS } from "@/shared/templates";
 import { neonTemplateHook } from "@/client_logic/template_hook";
-import {
-  ProBanner,
-  ManageDyadProButton,
-  SetupDyadProButton,
-} from "@/components/ProBanner";
-import { hasDyadProKey, getEffectiveDefaultChatMode } from "@/lib/schemas";
+import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 
 // Adding an export for attachments
@@ -165,9 +160,23 @@ export default function HomePage() {
 
     try {
       setIsLoading(true);
+
+      // Try to generate a title from the prompt
+      let appName = generateCuteAppName();
+      try {
+        const { title } = await ipc.app.generateAppTitle({
+          prompt: inputValue,
+        });
+        if (title) {
+          appName = title;
+        }
+      } catch (error) {
+        console.warn("Failed to generate app title, using cute name:", error);
+      }
+
       // Create the chat and navigate
       const result = await ipc.app.createApp({
-        name: generateCuteAppName(),
+        name: appName,
       });
       if (
         settings?.selectedTemplateId &&
@@ -310,7 +319,6 @@ export default function HomePage() {
             </span>
           </button>
         </div>
-        <ProBanner />
       </div>
       {/*<PrivacyBanner />*/}
 

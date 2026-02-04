@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   },
   providerSettings: {},
   turboEditModel: "qwen/qwen3-coder-flash",
+  appTitleGenerationModel: "google/gemma-3-4b-it",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
