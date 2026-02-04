@@ -180,7 +180,7 @@ export function SetupBanner() {
   return (
     <>
       <p className="text-xl font-medium text-zinc-700 dark:text-zinc-300 p-4 pt-6">
-        Setup minube vibes
+        Configura vibes
       </p>
       <OnboardingBanner
         isVisible={isOnboardingVisible}

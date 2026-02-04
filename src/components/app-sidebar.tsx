@@ -43,20 +43,20 @@ const items = [
     icon: Inbox,
   },
   {
-    title: "Settings",
+    title: "Ajustes",
     to: "/settings",
     icon: Settings,
   },
-  {
-    title: "Library",
-    to: "/themes",
-    icon: BookOpen,
-  },
-  {
-    title: "Hub",
-    to: "/hub",
-    icon: Store,
-  },
+  // {
+  //   title: "Library",
+  //   to: "/themes",
+  //   icon: BookOpen,
+  // },
+  // {
+  //   title: "Hub",
+  //   to: "/hub",
+  //   icon: Store,
+  // },
 ];
 
 // Hover state types
@@ -153,25 +153,25 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {/* Change button to open dialog instead of linking */}
-            <SidebarMenuButton
-              size="sm"
-              className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"
-              onClick={() => setIsHelpDialogOpen(true)} // Open dialog on click
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className={"text-xs"}>Help</span>
-            </SidebarMenuButton>
-            <HelpDialog
-              isOpen={isHelpDialogOpen}
-              onClose={() => setIsHelpDialogOpen(false)}
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      {/*<SidebarFooter>*/}
+      {/*  <SidebarMenu>*/}
+      {/*    <SidebarMenuItem>*/}
+      {/*      /!* Change button to open dialog instead of linking *!/*/}
+      {/*      <SidebarMenuButton*/}
+      {/*        size="sm"*/}
+      {/*        className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"*/}
+      {/*        onClick={() => setIsHelpDialogOpen(true)} // Open dialog on click*/}
+      {/*      >*/}
+      {/*        <HelpCircle className="h-5 w-5" />*/}
+      {/*        <span className={"text-xs"}>Help</span>*/}
+      {/*      </SidebarMenuButton>*/}
+      {/*      <HelpDialog*/}
+      {/*        isOpen={isHelpDialogOpen}*/}
+      {/*        onClose={() => setIsHelpDialogOpen(false)}*/}
+      {/*      />*/}
+      {/*    </SidebarMenuItem>*/}
+      {/*  </SidebarMenu>*/}
+      {/*</SidebarFooter>*/}
 
       <SidebarRail />
     </Sidebar>

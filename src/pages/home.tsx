@@ -226,8 +226,7 @@ export default function HomePage() {
             Building your app
           </h2>
           <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-8">
-            We're setting up your app with AI magic. <br />
-            This might take a moment...
+            Estamos configurando tu app con magia de IA. <br />Esto puede tardar un momento..
           </p>
         </div>
       </div>
@@ -237,13 +236,13 @@ export default function HomePage() {
   // Main Home Page Content
   return (
     <div className="flex flex-col items-center justify-center max-w-3xl w-full m-auto p-8 relative">
-      <div className="fixed top-16 right-8 z-50">
-        {settings && hasDyadProKey(settings) ? (
-          <ManageDyadProButton className="mt-0 w-auto h-9 px-3 text-base shadow-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800" />
-        ) : (
-          <SetupDyadProButton />
-        )}
-      </div>
+      {/*<div className="fixed top-16 right-8 z-50">*/}
+      {/*  {settings && hasDyadProKey(settings) ? (*/}
+      {/*    <ManageDyadProButton className="mt-0 w-auto h-9 px-3 text-base shadow-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800" />*/}
+      {/*  ) : (*/}
+      {/*    <SetupDyadProButton />*/}
+      {/*  )}*/}
+      {/*</div>*/}
       <ForceCloseDialog
         isOpen={forceCloseDialogOpen}
         onClose={() => setForceCloseDialogOpen(false)}
@@ -313,40 +312,40 @@ export default function HomePage() {
         </div>
         <ProBanner />
       </div>
-      <PrivacyBanner />
+      {/*<PrivacyBanner />*/}
 
       {/* Release Notes Dialog */}
-      <Dialog open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen}>
-        <DialogContent className="max-w-4xl bg-(--docs-bg) pr-0 pt-4 pl-4 gap-1">
-          <DialogHeader>
-            <DialogTitle>What's new in v{appVersion}?</DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-10 top-2 focus-visible:ring-0 focus-visible:ring-offset-0"
-              onClick={() =>
-                window.open(
-                  releaseUrl.replace("?hideHeader=true&theme=" + theme, ""),
-                  "_blank",
-                )
-              }
-            >
-              <ExternalLink className="w-4 h-4" />
-            </Button>
-          </DialogHeader>
-          <div className="overflow-auto h-[70vh] flex flex-col ">
-            {releaseUrl && (
-              <div className="flex-1">
-                <iframe
-                  src={releaseUrl}
-                  className="w-full h-full border-0 rounded-lg"
-                  title={`Release notes for v${appVersion}`}
-                />
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/*<Dialog open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen}>*/}
+      {/*  <DialogContent className="max-w-4xl bg-(--docs-bg) pr-0 pt-4 pl-4 gap-1">*/}
+      {/*    <DialogHeader>*/}
+      {/*      <DialogTitle>What's new in v{appVersion}?</DialogTitle>*/}
+      {/*      <Button*/}
+      {/*        variant="ghost"*/}
+      {/*        size="sm"*/}
+      {/*        className="absolute right-10 top-2 focus-visible:ring-0 focus-visible:ring-offset-0"*/}
+      {/*        onClick={() =>*/}
+      {/*          window.open(*/}
+      {/*            releaseUrl.replace("?hideHeader=true&theme=" + theme, ""),*/}
+      {/*            "_blank",*/}
+      {/*          )*/}
+      {/*        }*/}
+      {/*      >*/}
+      {/*        <ExternalLink className="w-4 h-4" />*/}
+      {/*      </Button>*/}
+      {/*    </DialogHeader>*/}
+      {/*    <div className="overflow-auto h-[70vh] flex flex-col ">*/}
+      {/*      {releaseUrl && (*/}
+      {/*        <div className="flex-1">*/}
+      {/*          <iframe*/}
+      {/*            src={releaseUrl}*/}
+      {/*            className="w-full h-full border-0 rounded-lg"*/}
+      {/*            title={`Release notes for v${appVersion}`}*/}
+      {/*          />*/}
+      {/*        </div>*/}
+      {/*      )}*/}
+      {/*    </div>*/}
+      {/*  </DialogContent>*/}
+      {/*</Dialog>*/}
     </div>
   );
 }
