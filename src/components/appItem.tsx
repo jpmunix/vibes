@@ -22,7 +22,7 @@ export function AppItem({
 }: AppItemProps) {
   return (
     <SidebarMenuItem className="mb-1">
-      <div className="flex ml-2 mr-6 items-center relative group/menu-item">
+      <div className="flex ml-2 mr-2 items-center relative group/menu-item">
         <Button
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
@@ -33,7 +33,7 @@ export function AppItem({
           data-testid={`app-list-item-${app.name}`}
         >
           <div className="flex flex-col w-full relative overflow-hidden">
-            <span className={`truncate mr-8 ${selectedAppId === app.id ? "font-semibold" : ""}`}>
+            <span className={`truncate mr-10 ${selectedAppId === app.id ? "font-semibold" : ""}`}>
               {app.name}
             </span>
             <span className={`text-xs ${selectedAppId === app.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
@@ -52,22 +52,24 @@ export function AppItem({
             : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"}`}
         />
 
-        <SidebarMenuAction
-          showOnHover
-          onClick={(e) => handleToggleFavorite(app.id, e)}
-          disabled={isFavoriteLoading}
-          className={`right-1 z-20 transition-colors ${app.isFavorite ? "opacity-100" : ""}`}
-          data-testid="favorite-button"
-        >
-          <Star
-            size={16}
-            className={
-              app.isFavorite
-                ? "fill-amber-500 text-amber-500"
-                : "text-gray-400 hover:text-amber-500 hover:fill-amber-500"
-            }
-          />
-        </SidebarMenuAction>
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1">
+          <SidebarMenuAction
+            showOnHover
+            onClick={(e) => handleToggleFavorite(app.id, e)}
+            disabled={isFavoriteLoading}
+            className={`transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 ${app.isFavorite ? "opacity-100" : ""}`}
+            data-testid="favorite-button"
+          >
+            <Star
+              size={14}
+              className={
+                app.isFavorite
+                  ? "fill-amber-500 text-amber-500"
+                  : "text-gray-400 hover:text-amber-500 hover:fill-amber-500"
+              }
+            />
+          </SidebarMenuAction>
+        </div>
       </div>
     </SidebarMenuItem>
   );
