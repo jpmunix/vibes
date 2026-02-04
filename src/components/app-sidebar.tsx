@@ -2,9 +2,6 @@ import {
   Home,
   Inbox,
   Settings,
-  HelpCircle,
-  Store,
-  BookOpen,
 } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
@@ -15,7 +12,6 @@ import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -26,7 +22,6 @@ import {
 } from "@/components/ui/sidebar";
 import { ChatList } from "./ChatList";
 import { AppList } from "./AppList";
-import { HelpDialog } from "./HelpDialog"; // Import the new dialog
 import { SettingsList } from "./SettingsList";
 import { LibraryList } from "./LibraryList";
 
@@ -62,7 +57,6 @@ export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar(); // retrieve current sidebar state
   const [hoverState, setHoverState] = useState<HoverState>("no-hover");
   const expandedByHover = useRef(false);
-  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false); // State for dialog
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
 
   useEffect(() => {
@@ -134,7 +128,7 @@ export function AppSidebar() {
             <AppIcons onHoverChange={setHoverState} />
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="w-[270px]">
+          <div className="w-[540px]">
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <SettingsList show={selectedItem === "Ajustes"} />

@@ -237,6 +237,12 @@ export const chatContracts = {
     input: z.number(), // chatId
     output: z.boolean(),
   }),
+
+  generateChatTitle: defineContract({
+    channel: "generate-chat-title",
+    input: z.object({ chatId: z.number() }),
+    output: z.object({ title: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

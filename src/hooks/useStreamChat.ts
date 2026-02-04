@@ -215,6 +215,23 @@ export function useStreamChat({
               refreshApp();
               refreshVersions();
               invalidateTokenCount();
+
+              // Generate chat title after first message
+              (async () => {
+                try {
+                  const chat = await ipc.chat.getChat(chatId);
+                  if (
+                    (!chat.title || chat.title.trim() === "Nuevo chat") &&
+                    chat.messages.length >= 1
+                  ) {
+                    await ipc.chat.generateChatTitle({ chatId });
+                    invalidateChats(); // Refresh to show the new title
+                  }
+                } catch (error) {
+                  console.error("Error generating chat title:", error);
+                }
+              })();
+
               onSettled?.();
             },
             onError: ({ error: errorMessage }) => {

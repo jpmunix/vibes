@@ -83,24 +83,24 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-          where: eq(chats.appId, appId),
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        })
+        where: eq(chats.appId, appId),
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      })
       : db.query.chats.findMany({
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        });
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      });
 
     const allChats = await query;
     return allChats as ChatSummary[];
@@ -171,6 +171,94 @@ export function registerChatHandlers() {
 
     return uniqueChats;
   });
+
+  createTypedHandler(
+    chatContracts.generateChatTitle,
+    async (_, { chatId }) => {
+      const { readSettings } = await import("../../main/settings");
+      const settings = readSettings();
+      const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+      if (!apiKey) {
+        logger.warn("OpenRouter API key not found, using default title");
+        return { title: "Nuevo chat" };
+      }
+
+      const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+      try {
+        // Fetch the first message from this chat
+        const firstMessage = await db
+          .select({
+            content: messages.content,
+          })
+          .from(messages)
+          .where(eq(messages.chatId, chatId))
+          .orderBy(messages.createdAt)
+          .limit(1);
+
+        if (!firstMessage.length) {
+          return { title: "Nuevo chat" };
+        }
+
+        const messageContent = firstMessage[0].content;
+
+        const response = await fetch(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+              "HTTP-Referer": "https://dyad.sh",
+              "X-Title": "Dyad",
+            },
+            body: JSON.stringify({
+              model,
+              temperature: 0.3,
+              max_tokens: 15,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro.",
+                },
+                {
+                  role: "user",
+                  content: `Genera un título corto en español para este chat: "${messageContent.slice(0, 500)}"`,
+                },
+              ],
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
+          );
+        }
+
+        const data = await response.json();
+        const title =
+          data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
+
+        // Sanitize title
+        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 50);
+
+        // Update the chat title in the database
+        await db
+          .update(chats)
+          .set({ title: sanitizedTitle })
+          .where(eq(chats.id, chatId));
+
+        return { title: sanitizedTitle };
+      } catch (error) {
+        logger.error("Error generating chat title:", error);
+        return { title: "Nuevo chat" };
+      }
+    },
+  );
 
   logger.debug("Registered chat IPC handlers");
 }
