@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Star } from "lucide-react";
-import { SidebarMenuItem } from "@/components/ui/sidebar";
+import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import type { ListedApp } from "@/ipc/types/app";
 
@@ -21,20 +21,22 @@ export function AppItem({
   isFavoriteLoading,
 }: AppItemProps) {
   return (
-    <SidebarMenuItem className="mb-1 relative ">
-      <div className="flex w-[190px] items-center">
+    <SidebarMenuItem className="mb-1">
+      <div className="flex ml-2 mr-6 items-center relative group/menu-item">
         <Button
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
-          className={`justify-start w-full text-left py-3 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
+            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
             : ""
             }`}
           data-testid={`app-list-item-${app.name}`}
         >
-          <div className="flex flex-col w-4/5">
-            <span className="truncate">{app.name}</span>
-            <span className="text-xs text-gray-500">
+          <div className="flex flex-col w-full relative overflow-hidden">
+            <span className={`truncate mr-8 ${selectedAppId === app.id ? "font-semibold" : ""}`}>
+              {app.name}
+            </span>
+            <span className={`text-xs ${selectedAppId === app.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
                 locale: es,
@@ -42,26 +44,30 @@ export function AppItem({
             </span>
           </div>
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
+
+        {/* Hover gradient shadow */}
+        <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+          ${selectedAppId === app.id
+            ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+            : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"}`}
+        />
+
+        <SidebarMenuAction
+          showOnHover
           onClick={(e) => handleToggleFavorite(app.id, e)}
           disabled={isFavoriteLoading}
-          className="absolute top-1 right-1 p-1 mx-1 h-6 w-6 z-10"
-          key={app.id}
+          className={`right-1 z-20 transition-colors ${app.isFavorite ? "opacity-100" : ""}`}
           data-testid="favorite-button"
         >
           <Star
-            size={12}
+            size={16}
             className={
               app.isFavorite
-                ? "fill-amber-600 text-amber-600 dark:fill-amber-400 dark:text-amber-400"
-                : selectedAppId === app.id
-                  ? "hover:fill-black hover:text-black"
-                  : "hover:fill-amber-600 hover:stroke-amber-600 hover:text-amber-600 dark:hover:fill-amber-400 dark:hover:stroke-amber-400 dark:hover:text-amber-400"
+                ? "fill-amber-500 text-amber-500"
+                : "text-gray-400 hover:text-amber-500 hover:fill-amber-500"
             }
           />
-        </Button>
+        </SidebarMenuAction>
       </div>
     </SidebarMenuItem>
   );
