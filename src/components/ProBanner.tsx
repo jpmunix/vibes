@@ -39,7 +39,7 @@ export function ProBanner() {
 }
 
 export function ManageDyadProButton({ className }: { className?: string }) {
-  return ( "" );
+  return ("");
 }
 
 export function SetupDyadProButton() {
@@ -53,7 +53,7 @@ export function SetupDyadProButton() {
       }}
     >
       <KeyRound aria-hidden="true" />
-      Already have Dyad Pro? Add your key
+      ¿Ya tienes Dyad Pro? Añade tu clave
     </Button>
   );
 }
@@ -79,14 +79,14 @@ export function AiAccessBanner() {
       <div className="relative z-10 text-center flex flex-col items-center gap-0.5 sm:gap-1 md:gap-1.5 px-4 md:px-6 pr-6 md:pr-8">
         <div className="mt-0.5 sm:mt-1 flex items-center gap-2 sm:gap-3 justify-center">
           <div className="text-xl font-semibold tracking-tight text-indigo-900 dark:text-indigo-100">
-            Access leading AI models with one plan
+            Accede a los mejores modelos de IA con un solo plan
           </div>
           <button
             type="button"
-            aria-label="Subscribe to Dyad Pro"
+            aria-label="Suscribirse a Dyad Pro"
             className="inline-flex items-center rounded-md bg-white/90 text-indigo-800 hover:bg-white shadow px-3 py-1.5 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/50"
           >
-            Get Dyad Pro
+            Obtener Dyad Pro
           </button>
         </div>
 
@@ -146,18 +146,18 @@ export function SmartContextBanner() {
         <div className="mt-0.5 sm:mt-1 flex items-center gap-2 sm:gap-3 justify-center">
           <div className="flex flex-col items-center text-center">
             <div className="text-xl font-semibold tracking-tight text-emerald-900 dark:text-emerald-100">
-              Up to 3x cheaper
+              Hasta 3 veces más barato
             </div>
             <div className="text-sm sm:text-base mt-1 text-emerald-700 dark:text-emerald-200/80">
-              by using Smart Context
+              usando Smart Context
             </div>
           </div>
           <button
             type="button"
-            aria-label="Get Dyad Pro"
+            aria-label="Obtener Dyad Pro"
             className="inline-flex items-center rounded-md bg-white/90 text-emerald-800 hover:bg-white shadow px-3 py-1.5 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/50"
           >
-            Get Dyad Pro
+            Obtener Dyad Pro
           </button>
         </div>
       </div>
@@ -187,18 +187,18 @@ export function TurboBanner() {
         <div className="mt-0.5 sm:mt-1 flex items-center gap-2 sm:gap-3 justify-center">
           <div className="flex flex-col items-center text-center">
             <div className="text-xl font-semibold tracking-tight text-rose-900 dark:text-rose-100">
-              Generate code 4–10x faster
+              Genera código 4–10 veces más rápido
             </div>
             <div className="text-sm sm:text-base mt-1 text-rose-700 dark:text-rose-200/80">
-              with Turbo Models & Turbo Edits
+              con Modelos y Ediciones Turbo
             </div>
           </div>
           <button
             type="button"
-            aria-label="Get Dyad Pro"
+            aria-label="Obtener Dyad Pro"
             className="inline-flex items-center rounded-md bg-white/90 text-rose-800 hover:bg-white shadow px-3 py-1.5 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white/50"
           >
-            Get Dyad Pro
+            Obtener Dyad Pro
           </button>
         </div>
       </div>

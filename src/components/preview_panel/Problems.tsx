@@ -39,7 +39,7 @@ const ProblemItem = ({ problem, checked, onToggle }: ProblemItemProps) => {
         onCheckedChange={onToggle}
         onClick={(e) => e.stopPropagation()}
         className="mt-0.5"
-        aria-label="Select problem"
+        aria-label="Seleccionar problema"
       />
       <div className="flex-shrink-0 mt-0.5">
         <XCircle size={16} className="text-red-500" />
@@ -65,12 +65,12 @@ interface RecheckButtonProps {
   appId: number;
   size?: "sm" | "default" | "lg";
   variant?:
-    | "default"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "ghost"
-    | "link";
+  | "default"
+  | "destructive"
+  | "outline"
+  | "secondary"
+  | "ghost"
+  | "link";
   className?: string;
   onBeforeRecheck?: () => void;
 }
@@ -115,7 +115,7 @@ const RecheckButton = ({
         size={14}
         className={`mr-1 ${isShowingChecking ? "animate-spin" : ""}`}
       />
-      {isShowingChecking ? "Checking..." : "Run checks"}
+      {isShowingChecking ? "Comprobando..." : "Ejecutar comprobaciones"}
     </Button>
   );
 };
@@ -146,7 +146,7 @@ const ProblemsSummary = ({
     return (
       <div className="flex flex-col items-center justify-center h-32 text-center">
         <p className="mt-6 text-sm font-medium text-muted-foreground mb-3">
-          No problems found
+          No se han encontrado problemas
         </p>
         <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-3">
           <Check size={20} className="text-green-600 dark:text-green-400" />
@@ -164,7 +164,7 @@ const ProblemsSummary = ({
           <div className="flex items-center gap-2">
             <XCircle size={16} className="text-red-500" />
             <span className="text-sm font-medium">
-              {totalErrors} {totalErrors === 1 ? "error" : "errors"}
+              {totalErrors} {totalErrors === 1 ? "error" : "errores"}
             </span>
           </div>
         )}
@@ -187,7 +187,7 @@ const ProblemsSummary = ({
             onClick={onClearAll}
             className="h-7 px-3 text-xs"
           >
-            Clear all
+            Limpiar todo
           </Button>
         )}
         <Button
@@ -199,7 +199,7 @@ const ProblemsSummary = ({
           disabled={selectedCount === 0}
         >
           <Wrench size={14} className="mr-1" />
-          {`Fix ${selectedCount} ${selectedCount === 1 ? "problem" : "problems"}`}
+          {`Solucionar ${selectedCount} ${selectedCount === 1 ? "problema" : "problemas"}`}
         </Button>
       </div>
     </div>
@@ -238,9 +238,10 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">No App Selected</h3>
+        <h3 className="text-lg font-medium mb-2">Ninguna aplicación seleccionada</h3>
         <p className="text-sm text-muted-foreground max-w-md">
-          Select an app to view TypeScript problems and diagnostic information.
+          Selecciona una aplicación para ver los problemas de TypeScript e
+          información de diagnóstico.
         </p>
       </div>
     );
@@ -252,9 +253,10 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">No Problems Report</h3>
+        <h3 className="text-lg font-medium mb-2">No hay informe de problemas</h3>
         <p className="text-sm text-muted-foreground max-w-md mb-4">
-          Run checks to scan your app for TypeScript errors and other problems.
+          Ejecuta las comprobaciones para escanear tu aplicación en busca de
+          errores de TypeScript y otros problemas.
         </p>
         <RecheckButton
           appId={selectedAppId}

@@ -234,6 +234,15 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       dollarSigns: 1,
     },
     {
+      name: "anthropic/claude-sonnet-4.5",
+      displayName: "Claude Sonnet 4.5",
+      description: "El equilibrio perfecto; código con \"sentido común\", razonamiento humano superior y velocidad media a un precio altamente eficiente",
+      maxOutputTokens: 65_000,
+      contextWindow: 1000000,
+      temperature: 0,
+      dollarSigns: 3
+    },
+    {
       name: "openai/gpt-5.1-codex-mini",
       displayName: "GPT 5.1 Codex mini",
       description: "Revolucionario en síntesis: código moderno, costo competitivo y gran rapidez",

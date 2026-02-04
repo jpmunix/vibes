@@ -33,7 +33,7 @@ import { LibraryList } from "./LibraryList";
 // Menu items.
 const items = [
   {
-    title: "Apps",
+    title: "Aplicaciones",
     to: "/",
     icon: Home,
   },
@@ -47,16 +47,6 @@ const items = [
     to: "/settings",
     icon: Settings,
   },
-  // {
-  //   title: "Library",
-  //   to: "/themes",
-  //   icon: BookOpen,
-  // },
-  // {
-  //   title: "Hub",
-  //   to: "/hub",
-  //   icon: Store,
-  // },
 ];
 
 // Hover state types
@@ -104,22 +94,22 @@ export function AppSidebar() {
 
   let selectedItem: string | null = null;
   if (hoverState === "start-hover:app") {
-    selectedItem = "Apps";
+    selectedItem = "Aplicaciones";
   } else if (hoverState === "start-hover:chat") {
     selectedItem = "Chat";
   } else if (hoverState === "start-hover:settings") {
-    selectedItem = "Settings";
+    selectedItem = "Ajustes";
   } else if (hoverState === "start-hover:library") {
-    selectedItem = "Library";
+    selectedItem = "Biblioteca";
   } else if (state === "expanded") {
     if (isAppRoute) {
-      selectedItem = "Apps";
+      selectedItem = "Aplicaciones";
     } else if (isChatRoute) {
       selectedItem = "Chat";
     } else if (isSettingsRoute) {
-      selectedItem = "Settings";
+      selectedItem = "Ajustes";
     } else if (isLibraryRoute) {
-      selectedItem = "Library";
+      selectedItem = "Biblioteca";
     }
   }
 
@@ -145,10 +135,10 @@ export function AppSidebar() {
           </div>
           {/* Right Column: Chat List Section */}
           <div className="w-[240px]">
-            <AppList show={selectedItem === "Apps"} />
+            <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
-            <SettingsList show={selectedItem === "Settings"} />
-            <LibraryList show={selectedItem === "Library"} />
+            <SettingsList show={selectedItem === "Ajustes"} />
+            <LibraryList show={selectedItem === "Biblioteca"} />
           </div>
         </div>
       </SidebarContent>
@@ -163,7 +153,7 @@ export function AppSidebar() {
       {/*        onClick={() => setIsHelpDialogOpen(true)} // Open dialog on click*/}
       {/*      >*/}
       {/*        <HelpCircle className="h-5 w-5" />*/}
-      {/*        <span className={"text-xs"}>Help</span>*/}
+      {/*        <span className={"text-xs"}>Ayuda</span>*/}
       {/*      </SidebarMenuButton>*/}
       {/*      <HelpDialog*/}
       {/*        isOpen={isHelpDialogOpen}*/}
@@ -207,17 +197,16 @@ function AppIcons({
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
+                      }`}
                     onMouseEnter={() => {
-                      if (item.title === "Apps") {
+                      if (item.title === "Aplicaciones") {
                         onHoverChange("start-hover:app");
                       } else if (item.title === "Chat") {
                         onHoverChange("start-hover:chat");
-                      } else if (item.title === "Settings") {
+                      } else if (item.title === "Ajustes") {
                         onHoverChange("start-hover:settings");
-                      } else if (item.title === "Library") {
+                      } else if (item.title === "Biblioteca") {
                         onHoverChange("start-hover:library");
                       }
                     }}

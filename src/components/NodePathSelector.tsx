@@ -17,7 +17,7 @@ export function NodePathSelector() {
     isValid: false,
   });
   const [isCheckingNode, setIsCheckingNode] = useState(false);
-  const [systemPath, setSystemPath] = useState<string>("Loading...");
+  const [systemPath, setSystemPath] = useState<string>("Cargando...");
 
   // Check Node.js status when component mounts or path changes
   useEffect(() => {

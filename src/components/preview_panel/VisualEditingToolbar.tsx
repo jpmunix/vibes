@@ -326,7 +326,7 @@ export function VisualEditingToolbar({
             <button
               onClick={handleDeselectComponent}
               className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-[#7f22fe] dark:text-gray-200"
-              aria-label="Deselect Component"
+              aria-label="Deseleccionar componente"
             >
               <X size={16} />
             </button>
@@ -345,7 +345,7 @@ export function VisualEditingToolbar({
         <>
           <StylePopover
             icon={<Move size={16} />}
-            title="Margin"
+            title="Margen"
             tooltip="Margin"
           >
             <div className="grid grid-cols-1 gap-2">
@@ -382,7 +382,7 @@ export function VisualEditingToolbar({
                 <rect x="7" y="7" width="10" height="10" rx="1" />
               </svg>
             }
-            title="Padding"
+            title="Relleno"
             tooltip="Padding"
           >
             <div className="grid grid-cols-1 gap-2">
@@ -405,20 +405,20 @@ export function VisualEditingToolbar({
 
           <StylePopover
             icon={<Square size={16} />}
-            title="Border"
+            title="Borde"
             tooltip="Border"
           >
             <div className="space-y-2">
               <NumberInput
                 id="border-width"
-                label="Width"
+                label="Ancho"
                 value={currentBorder.width}
                 onChange={(v) => handleBorderChange("width", v)}
                 placeholder="1"
               />
               <NumberInput
                 id="border-radius"
-                label="Radius"
+                label="Radio"
                 value={currentBorder.radius}
                 onChange={(v) => handleBorderChange("radius", v)}
                 placeholder="4"
@@ -439,7 +439,7 @@ export function VisualEditingToolbar({
 
           <StylePopover
             icon={<Palette size={16} />}
-            title="Background Color"
+            title="Elegir color de fondo"
             tooltip="Background"
           >
             <div>
@@ -461,13 +461,13 @@ export function VisualEditingToolbar({
           {hasStaticText && (
             <StylePopover
               icon={<Type size={16} />}
-              title="Text Style"
+              title="Estilo de texto"
               tooltip="Text Style"
             >
               <div className="space-y-2">
                 <NumberInput
                   id="font-size"
-                  label="Font Size"
+                  label="Tamaño de fuente"
                   value={currentTextStyles.fontSize}
                   onChange={(v) => handleTextStyleChange("fontSize", v)}
                   placeholder="16"

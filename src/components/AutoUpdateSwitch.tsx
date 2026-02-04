@@ -18,11 +18,11 @@ export function AutoUpdateSwitch() {
         checked={settings.enableAutoUpdate}
         onCheckedChange={(checked) => {
           updateSettings({ enableAutoUpdate: checked });
-          toast("Auto-update settings changed", {
+          toast("Ajustes de auto-actualización cambiados", {
             description:
-              "You will need to restart Dyad for your settings to take effect.",
+              "Debes reiniciar Dyad para que los cambios surtan efecto.",
             action: {
-              label: "Restart Dyad",
+              label: "Reiniciar Dyad",
               onClick: () => {
                 ipc.system.restartDyad();
               },
@@ -30,7 +30,7 @@ export function AutoUpdateSwitch() {
           });
         }}
       />
-      <Label htmlFor="enable-auto-update">Auto-update</Label>
+      <Label htmlFor="enable-auto-update">Auto-actualización</Label>
     </div>
   );
 }

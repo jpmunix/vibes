@@ -105,14 +105,14 @@ export function AppSearchDialog({
       filter={commandFilter}
     >
       <CommandInput
-        placeholder="Search apps"
+        placeholder="Buscar apps"
         value={searchQuery}
         onValueChange={setSearchQuery}
         data-testid="app-search-input"
       />
       <CommandList data-testid="app-search-list">
         <CommandEmpty data-testid="app-search-empty">
-          No results found.
+          No se encontraron resultados.
         </CommandEmpty>
         <CommandGroup heading="Apps" data-testid="app-search-group">
           {appsToShow.map((app) => {

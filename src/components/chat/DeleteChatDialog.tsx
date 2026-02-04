@@ -26,24 +26,24 @@ export function DeleteChatDialog({
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Chat</AlertDialogTitle>
+          <AlertDialogTitle>Eliminar chat</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{chatTitle || "this chat"}"? This
-            action cannot be undone and all messages in this chat will be
-            permanently lost.
+            ¿Estás seguro de que quieres eliminar "{chatTitle || "este chat"}"?
+            Esta acción no se puede deshacer y todos los mensajes de este chat
+            se perderán permanentemente.
             <br />
             <br />
-            <strong>Note:</strong> Any code changes that have already been
-            accepted will be kept.
+            <strong>Nota:</strong> Cualquier cambio de código que ya haya sido
+            aceptado se mantendrá.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirmDelete}
             className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:text-white dark:hover:bg-red-700"
           >
-            Delete Chat
+            Eliminar chat
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

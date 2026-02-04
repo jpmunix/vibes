@@ -144,7 +144,7 @@ function KeyValueEditor({
       {isAddingNew ? (
         <div className="space-y-3 p-3 border rounded-md bg-muted/50">
           <div className="space-y-2">
-            <Label htmlFor={`env-new-key-${id}`}>Key</Label>
+            <Label htmlFor={`env-new-key-${id}`}>Clave</Label>
             <Input
               id={`env-new-key-${id}`}
               placeholder={itemLabel === "Header" ? "Key" : "e.g., PATH"}
@@ -155,7 +155,7 @@ function KeyValueEditor({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`env-new-value-${id}`}>Value</Label>
+            <Label htmlFor={`env-new-value-${id}`}>Valor</Label>
             <Input
               id={`env-new-value-${id}`}
               placeholder={
@@ -173,7 +173,7 @@ function KeyValueEditor({
               disabled={disabled || isSaving}
             >
               <Save size={14} />
-              {isSaving ? "Saving..." : "Save"}
+              {isSaving ? "Guardando..." : "Guardar"}
             </Button>
             <Button
               onClick={() => {
@@ -185,7 +185,7 @@ function KeyValueEditor({
               size="sm"
             >
               <X size={14} />
-              Cancel
+              Cancelar
             </Button>
           </div>
         </div>
@@ -197,14 +197,14 @@ function KeyValueEditor({
           disabled={disabled}
         >
           <Plus size={14} />
-          Add {itemLabel}
+          Añadir {itemLabel}
         </Button>
       )}
 
       <div className="space-y-2">
         {envVars.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No {itemLabel.toLowerCase()}s configured
+            No hay {itemLabel.toLowerCase()}s configurados
           </p>
         ) : (
           envVars.map((kv) => (
@@ -218,14 +218,14 @@ function KeyValueEditor({
                     <Input
                       value={editingKeyValue}
                       onChange={(e) => setEditingKeyValue(e.target.value)}
-                      placeholder="Key"
+                      placeholder="Clave"
                       className="h-8"
                       disabled={disabled || isSaving}
                     />
                     <Input
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
-                      placeholder="Value"
+                      placeholder="Valor"
                       className="h-8"
                       disabled={disabled || isSaving}
                     />
@@ -313,7 +313,7 @@ export function ToolsMcpSettings() {
       if (lastDeepLink?.type === "add-mcp-server") {
         const deepLink = lastDeepLink as AddMcpServerDeepLinkData;
         const payload = deepLink.payload;
-        showInfo(`Prefilled ${payload.name} MCP server`);
+        showInfo(`Servidor MCP ${payload.name} rellenado previamente`);
         setName(payload.name);
         setTransport(payload.config.type);
         if (payload.config.type === "stdio") {
@@ -380,15 +380,15 @@ export function ToolsMcpSettings() {
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Name</Label>
+            <Label>Nombre</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My MCP Server"
+              placeholder="Mi servidor MCP"
             />
           </div>
           <div>
-            <Label htmlFor="mcp-transport-select">Transport</Label>
+            <Label htmlFor="mcp-transport-select">Transporte</Label>
             <select
               id="mcp-transport-select"
               data-testid="mcp-transport-select"
@@ -403,7 +403,7 @@ export function ToolsMcpSettings() {
           {transport === "stdio" && (
             <>
               <div>
-                <Label>Command</Label>
+                <Label>Comando</Label>
                 <Input
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
@@ -411,7 +411,7 @@ export function ToolsMcpSettings() {
                 />
               </div>
               <div>
-                <Label>Args</Label>
+                <Label>Argumentos</Label>
                 <Input
                   value={args}
                   onChange={(e) => setArgs(e.target.value)}
@@ -463,14 +463,14 @@ export function ToolsMcpSettings() {
                   onCheckedChange={() => toggleServerEnabled(s.id, !!s.enabled)}
                 />
                 <Button variant="outline" onClick={() => deleteServer(s.id)}>
-                  Delete
+                  Eliminar
                 </Button>
               </div>
             </div>
             {s.transport === "stdio" && (
               <div className="mt-3">
                 <div className="text-sm font-medium mb-2">
-                  Environment Variables
+                  Variables de entorno
                 </div>
                 <KeyValueEditor
                   id={s.id}
@@ -488,7 +488,7 @@ export function ToolsMcpSettings() {
             )}
             {s.transport === "http" && (
               <div className="mt-3">
-                <div className="text-sm font-medium mb-2">Headers</div>
+                <div className="text-sm font-medium mb-2">Encabezados</div>
                 <KeyValueEditor
                   id={s.id}
                   json={s.headersJson}
@@ -520,9 +520,9 @@ export function ToolsMcpSettings() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ask">Ask</SelectItem>
-                          <SelectItem value="always">Always allow</SelectItem>
-                          <SelectItem value="denied">Deny</SelectItem>
+                          <SelectItem value="ask">Preguntar</SelectItem>
+                          <SelectItem value="always">Permitir siempre</SelectItem>
+                          <SelectItem value="denied">Denegar</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -536,7 +536,7 @@ export function ToolsMcpSettings() {
               ))}
               {(toolsByServer[s.id] || []).length === 0 && (
                 <div className="text-xs text-muted-foreground">
-                  No tools discovered.
+                  No se descubrieron herramientas.
                 </div>
               )}
             </div>
@@ -544,7 +544,7 @@ export function ToolsMcpSettings() {
         ))}
         {servers.length === 0 && (
           <div className="text-sm text-muted-foreground">
-            No servers configured yet.
+            No hay servidores configurados aún.
           </div>
         )}
       </div>

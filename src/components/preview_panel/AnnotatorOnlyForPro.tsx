@@ -17,7 +17,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
       <button
         onClick={onGoBack}
         className="absolute top-4 left-4 p-2 hover:bg-accent rounded-md transition-all z-10 group"
-        aria-label="Go back"
+        aria-label="Volver"
       >
         <ArrowLeft
           size={20}

@@ -28,7 +28,7 @@ interface DeleteConfirmationDialogProps {
 
 export function DeleteConfirmationDialog({
   itemName,
-  itemType = "item",
+  itemType = "elemento",
   onDelete,
   trigger,
   isDeleting = false,
@@ -52,28 +52,28 @@ export function DeleteConfirmationDialog({
             </AlertDialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Delete {itemType.toLowerCase()}</p>
+            <p>Eliminar {itemType.toLowerCase()}</p>
           </TooltipContent>
         </Tooltip>
       )}
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {itemType}</AlertDialogTitle>
+          <AlertDialogTitle>Eliminar {itemType}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{itemName}"? This action cannot be
-            undone.
+            ¿Estás seguro de que quieres eliminar "{itemName}"? Esta acción no se puede
+            deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
           <AlertDialogAction onClick={onDelete} disabled={isDeleting}>
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                Eliminando...
               </>
             ) : (
-              "Delete"
+              "Eliminar"
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

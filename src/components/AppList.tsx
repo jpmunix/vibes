@@ -77,7 +77,7 @@ export function AppList({ show }: { show?: boolean }) {
         className="overflow-y-auto h-[calc(100vh-112px)]"
         data-testid="app-list-container"
       >
-        <SidebarGroupLabel>Your Apps</SidebarGroupLabel>
+        <SidebarGroupLabel>Tus aplicaciones</SidebarGroupLabel>
         <SidebarGroupContent>
           <div className="flex flex-col space-y-2">
             <Button
@@ -86,7 +86,7 @@ export function AppList({ show }: { show?: boolean }) {
               className="flex items-center justify-start gap-2 mx-2 py-2"
             >
               <PlusCircle size={16} />
-              <span>New App</span>
+              <span>Nueva aplicación</span>
             </Button>
             <Button
               onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
@@ -95,24 +95,24 @@ export function AppList({ show }: { show?: boolean }) {
               data-testid="search-apps-button"
             >
               <Search size={16} />
-              <span>Search Apps</span>
+              <span>Buscar aplicaciones</span>
             </Button>
 
             {loading ? (
               <div className="py-2 px-4 text-sm text-gray-500">
-                Loading apps...
+                Cargando aplicaciones...
               </div>
             ) : error ? (
               <div className="py-2 px-4 text-sm text-red-500">
-                Error loading apps
+                Error al cargar las aplicaciones
               </div>
             ) : apps.length === 0 ? (
               <div className="py-2 px-4 text-sm text-gray-500">
-                No apps found
+                No se encontraron aplicaciones
               </div>
             ) : (
               <SidebarMenu className="space-y-1" data-testid="app-list">
-                <SidebarGroupLabel>Favorite apps</SidebarGroupLabel>
+                <SidebarGroupLabel>Aplicaciones favoritas</SidebarGroupLabel>
                 {favoriteApps.map((app) => (
                   <AppItem
                     key={app.id}
@@ -123,7 +123,7 @@ export function AppList({ show }: { show?: boolean }) {
                     isFavoriteLoading={isFavoriteLoading}
                   />
                 ))}
-                <SidebarGroupLabel>Other apps</SidebarGroupLabel>
+                <SidebarGroupLabel>Otras aplicaciones</SidebarGroupLabel>
                 {nonFavoriteApps.map((app) => (
                   <AppItem
                     key={app.id}

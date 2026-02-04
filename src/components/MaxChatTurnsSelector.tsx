@@ -20,30 +20,30 @@ const defaultValue = "default";
 const options: OptionInfo[] = [
   {
     value: "2",
-    label: "Economy (2)",
+    label: "Económico (2)",
     description:
-      "Minimal context to reduce token usage and improve response times.",
+      "Contexto mínimo para reducir el uso de tokens y mejorar los tiempos de respuesta.",
   },
   {
     value: defaultValue,
-    label: `Default (${MAX_CHAT_TURNS_IN_CONTEXT})  `,
-    description: "Balanced context size for most conversations.",
+    label: `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})  `,
+    description: "Tamaño de contexto equilibrado para la mayoría de las conversaciones.",
   },
   {
     value: "5",
     label: "Plus (5)",
-    description: "Slightly higher context size for detailed conversations.",
+    description: "Tamaño de contexto ligeramente mayor para conversaciones detalladas.",
   },
   {
     value: "10",
-    label: "High (10)",
+    label: "Alto (10)",
     description:
-      "Extended context for complex conversations requiring more history.",
+      "Contexto extendido para conversaciones complejas que requieren más historial.",
   },
   {
     value: "100",
-    label: "Max (100)",
-    description: "Maximum context (not recommended due to cost and speed).",
+    label: "Máximo (100)",
+    description: "Contexto máximo (no recomendado por coste y velocidad).",
   },
 ];
 
@@ -74,11 +74,11 @@ export const MaxChatTurnsSelector: React.FC = () => {
           htmlFor="max-chat-turns"
           className="text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          Maximum number of chat turns used in context
+          Número máximo de turnos de chat en el contexto
         </label>
         <Select value={currentValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-[180px]" id="max-chat-turns">
-            <SelectValue placeholder="Select turns" />
+            <SelectValue placeholder="Selecciona turnos" />
           </SelectTrigger>
           <SelectContent>
             {options.map((option) => (

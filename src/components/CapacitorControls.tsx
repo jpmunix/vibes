@@ -66,11 +66,11 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     },
     onSuccess: () => {
       setIosStatus("idle");
-      showSuccess("Synced and opened iOS project in Xcode");
+      showSuccess("Proyecto iOS sincronizado y abierto en Xcode");
     },
     onError: (error) => {
       setIosStatus("idle");
-      showErrorDialog("Failed to sync and open iOS project", error);
+      showErrorDialog("Error al sincronizar y abrir el proyecto iOS", error);
     },
   });
 
@@ -86,11 +86,11 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     },
     onSuccess: () => {
       setAndroidStatus("idle");
-      showSuccess("Synced and opened Android project in Android Studio");
+      showSuccess("Proyecto Android sincronizado y abierto en Android Studio");
     },
     onError: (error) => {
       setAndroidStatus("idle");
-      showErrorDialog("Failed to sync and open Android project", error);
+      showErrorDialog("Error al sincronizar y abrir el proyecto Android", error);
     },
   });
 
@@ -98,22 +98,22 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
   const getIosButtonText = () => {
     switch (iosStatus) {
       case "syncing":
-        return { main: "Syncing...", sub: "Building app" };
+        return { main: "Sincronizando...", sub: "Construyendo la aplicación" };
       case "opening":
-        return { main: "Opening...", sub: "Launching Xcode" };
+        return { main: "Abriendo...", sub: "Iniciando Xcode" };
       default:
-        return { main: "Sync & Open iOS", sub: "Xcode" };
+        return { main: "Sincronizar y abrir iOS", sub: "Xcode" };
     }
   };
 
   const getAndroidButtonText = () => {
     switch (androidStatus) {
       case "syncing":
-        return { main: "Syncing...", sub: "Building app" };
+        return { main: "Sincronizando...", sub: "Construyendo la aplicación" };
       case "opening":
-        return { main: "Opening...", sub: "Launching Android Studio" };
+        return { main: "Abriendo...", sub: "Iniciando Android Studio" };
       default:
-        return { main: "Sync & Open Android", sub: "Android Studio" };
+        return { main: "Sincronizar y abrir Android", sub: "Android Studio" };
     }
   };
 
@@ -130,7 +130,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
       <Card className="mt-1" data-testid="capacitor-controls">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            Mobile Development
+            Desarrollo móvil
             <Button
               variant="ghost"
               size="sm"
@@ -142,12 +142,12 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               }}
               className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
             >
-              Need help?
+              ¿Necesitas ayuda?
               <ExternalLink className="h-3 w-3" />
             </Button>
           </CardTitle>
           <CardDescription>
-            Sync and open your Capacitor mobile projects
+            Sincroniza y abre tus proyectos móviles de Capacitor
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -203,8 +203,8 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               {errorDetails?.title}
             </DialogTitle>
             <DialogDescription>
-              An error occurred while running the Capacitor command. See details
-              below:
+              Ocurrió un error al ejecutar el comando de Capacitor. Ver detalles
+              a continuación:
             </DialogDescription>
           </DialogHeader>
 
@@ -218,7 +218,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               <Button
                 onClick={() => {
                   navigator.clipboard.writeText(errorDetails.message);
-                  showSuccess("Error details copied to clipboard");
+                  showSuccess("Detalles del error copiados al portapapeles");
                 }}
                 variant="ghost"
                 size="sm"
@@ -242,14 +242,14 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               className="flex items-center gap-2"
             >
               <Copy className="h-4 w-4" />
-              Copy Error
+              Copiar error
             </Button>
             <Button
               onClick={() => setErrorDialogOpen(false)}
               variant="outline"
               size="sm"
             >
-              Close
+              Cerrar
             </Button>
           </div>
         </DialogContent>

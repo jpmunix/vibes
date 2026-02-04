@@ -84,18 +84,18 @@ const formatTimeAgo = (input: string | number | Date): string => {
   const diffMs = Math.max(0, nowMs - timestampMs);
 
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "just now";
+  if (minutes < 1) return "ahora mismo";
   if (minutes < 60) {
-    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+    return `hace ${minutes} minuto${minutes === 1 ? "" : "s"}`;
   }
 
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    return `hace ${hours} hora${hours === 1 ? "" : "s"}`;
   }
 
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+  return `hace ${days} día${days === 1 ? "" : "s"}`;
 };
 
 const getSeverityOrder = (level: SecurityFinding["level"]): number => {
@@ -120,7 +120,15 @@ function SeverityBadge({ level }: { level: SecurityFinding["level"] }) {
       className={`${getSeverityColor(level)} uppercase text-xs font-semibold flex items-center gap-1 w-fit`}
     >
       <span className="flex-shrink-0">{getSeverityIcon(level)}</span>
-      <span>{level}</span>
+      <span>
+        {level === "critical"
+          ? "crítico"
+          : level === "high"
+            ? "alto"
+            : level === "medium"
+              ? "medio"
+              : "bajo"}
+      </span>
     </Badge>
   );
 }
@@ -151,12 +159,12 @@ function RunReviewButton({
               d="m4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          Running Security Review...
+          Ejecutando revisión de seguridad...
         </>
       ) : (
         <>
           <Shield className="w-4 h-4" />
-          Run Security Review
+          Ejecutar revisión de seguridad
         </>
       )}
     </Button>
@@ -182,7 +190,7 @@ function ReviewSummary({ data }: { data: SecurityReviewResult }) {
   return (
     <div className="space-y-1 mt-1">
       <div className="text-sm text-gray-600 dark:text-gray-400">
-        Last reviewed {formatTimeAgo(data.timestamp)}
+        Última revisión {formatTimeAgo(data.timestamp)}
       </div>
       <div className="flex items-center gap-3 text-sm">
         {severityLevels
@@ -194,7 +202,13 @@ function ReviewSummary({ data }: { data: SecurityReviewResult }) {
                 {counts[level]}
               </span>
               <span className="text-gray-600 dark:text-gray-400 capitalize">
-                {level}
+                {level === "critical"
+                  ? "crítico"
+                  : level === "high"
+                    ? "alto"
+                    : level === "medium"
+                      ? "medio"
+                      : "bajo"}
               </span>
             </span>
           ))}
@@ -244,7 +258,7 @@ function SecurityHeader({
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            Security Review
+            Revisión de seguridad
             <Badge variant="secondary" className="uppercase tracking-wide">
               experimental
             </Badge>
@@ -259,7 +273,7 @@ function SecurityHeader({
                   )
                 }
               >
-                Open Security Review docs
+                Abrir documentación de revisión de seguridad
               </a>
             </p>
           </div>
@@ -268,7 +282,7 @@ function SecurityHeader({
         <div className="flex flex-col items-end gap-2">
           <Button variant="outline" onClick={onOpenEditRules}>
             <Pencil className="w-4 h-4" />
-            Edit Security Rules
+            Editar reglas de seguridad
           </Button>
           <div className="flex items-center gap-2">
             <Button
@@ -306,13 +320,14 @@ function SecurityHeader({
                       d="m4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Fixing {selectedCount} Issue{selectedCount !== 1 ? "s" : ""}
-                  ...
+                  Solucionando {selectedCount} problema
+                  {selectedCount !== 1 ? "s" : ""}...
                 </>
               ) : (
                 <>
                   <Wrench className="w-4 h-4" />
-                  Fix {selectedCount} Issue{selectedCount !== 1 ? "s" : ""}
+                  Solucionar {selectedCount} problema
+                  {selectedCount !== 1 ? "s" : ""}
                 </>
               )}
             </Button>
@@ -349,7 +364,7 @@ function LoadingView() {
         </svg>
       </div>
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-4">
-        Loading...
+        Cargando...
       </h2>
     </div>
   );
@@ -362,10 +377,10 @@ function NoAppSelectedView() {
         <Shield className="w-8 h-8 text-gray-400" />
       </div>
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-        No App Selected
+        Ninguna aplicación seleccionada
       </h2>
       <p className="text-gray-600 dark:text-gray-400 max-w-md">
-        Select an app to run a security review
+        Selecciona una aplicación para ejecutar una revisión de seguridad
       </p>
     </div>
   );
@@ -398,10 +413,10 @@ function RunningReviewCard() {
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Security review is running
+            La revisión de seguridad se está ejecutando
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            Results will be available soon.
+            Los resultados estarán disponibles pronto.
           </p>
         </div>
       </CardContent>
@@ -424,11 +439,11 @@ function NoReviewCard({
             <Shield className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            No Security Review Found
+            No se ha encontrado ninguna revisión de seguridad
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Run a security review to identify potential vulnerabilities in your
-            application.
+            Ejecuta una revisión de seguridad para identificar posibles
+            vulnerabilidades en tu aplicación.
           </p>
           <RunReviewButton isRunning={isRunning} onRun={onRun} />
         </div>
@@ -446,14 +461,15 @@ function NoIssuesCard({ data }: { data?: SecurityReviewResult }) {
             <Shield className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            No Security Issues Found
+            No se han encontrado problemas de seguridad
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            Your application passed the security review with no issues detected.
+            Tu aplicación ha pasado la revisión de seguridad sin problemas
+            detectados.
           </p>
           {data && (
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-              Last reviewed {formatTimeAgo(data.timestamp)}
+              Última revisión {formatTimeAgo(data.timestamp)}
             </p>
           )}
         </div>
@@ -501,17 +517,17 @@ function FindingsTable({
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={onToggleSelectAll}
-                aria-label="Select all issues"
+                aria-label="Seleccionar todos los problemas"
               />
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-24">
-              Level
+              Nivel
             </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-              Issue
+              Problema
             </th>
             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-32">
-              Action
+              Acción
             </th>
           </tr>
         </thead>
@@ -521,7 +537,7 @@ function FindingsTable({
               finding.description.length > DESCRIPTION_PREVIEW_LENGTH;
             const displayDescription = isLongDescription
               ? finding.description.substring(0, DESCRIPTION_PREVIEW_LENGTH) +
-                "..."
+              "..."
               : finding.description;
             const findingKey = createFindingKey(finding);
             const isFixing = fixingFindingKey === findingKey;
@@ -536,7 +552,7 @@ function FindingsTable({
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={() => onToggleSelection(findingKey)}
-                    aria-label={`Select ${finding.title}`}
+                    aria-label={`Seleccionar ${finding.title}`}
                     onClick={(e) => e.stopPropagation()}
                   />
                 </td>
@@ -573,7 +589,7 @@ function FindingsTable({
                         className="h-7 px-2 py-0 gap-1"
                       >
                         <ChevronDown className="w-3 h-3" />
-                        Show more
+                        Mostrar más
                       </Button>
                     )}
                   </div>
@@ -607,10 +623,10 @@ function FindingsTable({
                             d="m4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                           />
                         </svg>
-                        Fixing Issue...
+                        Solucionando problema...
                       </>
                     ) : (
-                      <>Fix Issue</>
+                      <>Solucionar problema</>
                     )}
                   </Button>
                 </td>
@@ -681,14 +697,14 @@ function FindingDetailsDialog({
                     d="m4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Fixing Issue...
+                Solucionando problema...
               </>
             ) : (
-              <>Fix Issue</>
+              <>Solucionar problema</>
             )}
           </Button>
           <DialogClose asChild>
-            <Button variant="outline">Close</Button>
+            <Button variant="outline">Cerrar</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -756,12 +772,12 @@ export const SecurityPanel = () => {
       if (warning) {
         showWarning(warning);
       } else {
-        showSuccess("Security rules saved");
+        showSuccess("Reglas de seguridad guardadas");
       }
       setIsEditRulesOpen(false);
       refetchRules();
     } catch (err: any) {
-      showError(`Failed to save security rules: ${err.message || err}`);
+      showError(`Error al guardar las reglas de seguridad: ${err.message || err}`);
     } finally {
       setIsSaving(false);
     }
@@ -995,7 +1011,7 @@ ${issuesList}`;
                 onClick={handleSaveRules}
                 disabled={isSaving || isFetchingRules}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? "Guardando..." : "Guardar"}
               </Button>
             </DialogFooter>
           </DialogContent>

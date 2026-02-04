@@ -207,7 +207,7 @@ export function SetupBanner() {
                 <div className="flex items-center gap-3">
                   {getStatusIcon(isNodeSetupComplete, nodeCheckError)}
                   <span className="font-medium text-sm">
-                    1. Install Node.js (App Runtime)
+                    1. Instalar Node.js (entorno de ejecución)
                   </span>
                 </div>
               </div>
@@ -215,26 +215,26 @@ export function SetupBanner() {
             <AccordionContent className="px-4 pt-2 pb-4 bg-white dark:bg-zinc-900 border-t border-inherit">
               {nodeCheckError && (
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  Error checking Node.js status. Try installing Node.js.
+                  Error al comprobar el estado de Node.js. Intenta instalar Node.js.
                 </p>
               )}
               {isNodeSetupComplete ? (
                 <p className="text-sm">
-                  Node.js ({nodeSystemInfo!.nodeVersion}) installed.{" "}
+                  Node.js ({nodeSystemInfo!.nodeVersion}) instalado.{" "}
                   {nodeSystemInfo!.pnpmVersion && (
                     <span className="text-xs text-gray-500">
                       {" "}
-                      (optional) pnpm ({nodeSystemInfo!.pnpmVersion}) installed.
+                      (opcional) pnpm ({nodeSystemInfo!.pnpmVersion}) instalado.
                     </span>
                   )}
                 </p>
               ) : (
                 <div className="text-sm">
-                  <p>Node.js is required to run apps locally.</p>
+                  <p>Node.js es necesario para ejecutar apps localmente.</p>
                   {nodeInstallStep === "waiting-for-continue" && (
                     <p className="mt-1">
-                      After you have installed Node.js, click "Continue". If the
-                      installer didn't work, try{" "}
+                      Después de instalar Node.js, haz clic en "Continuar". Si el
+                      instalador no funcionó, prueba con{" "}
                       <a
                         className="text-blue-500 dark:text-blue-400 hover:underline"
                         onClick={() => {
@@ -243,7 +243,7 @@ export function SetupBanner() {
                           );
                         }}
                       >
-                        more download options
+                        más opciones de descarga
                       </a>
                       .
                     </p>
@@ -259,7 +259,7 @@ export function SetupBanner() {
                       onClick={() => setShowManualConfig(!showManualConfig)}
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Node.js already installed? Configure path manually →
+                      ¿Node.js ya está instalado? Configura la ruta manualmente →
                     </button>
 
                     {showManualConfig && (
@@ -273,12 +273,12 @@ export function SetupBanner() {
                           {isSelectingPath ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Selecting...
+                              Seleccionando...
                             </>
                           ) : (
                             <>
                               <Folder className="mr-2 h-4 w-4" />
-                              Browse for Node.js folder
+                              Buscar carpeta de Node.js
                             </>
                           )}
                         </Button>
@@ -308,7 +308,7 @@ export function SetupBanner() {
                 <div className="flex items-center gap-3">
                   {getStatusIcon(isAnyProviderSetup())}
                   <span className="font-medium text-sm">
-                    2. Setup AI Access
+                    2. Configurar acceso a IA
                   </span>
                 </div>
               </div>
@@ -329,7 +329,7 @@ export function SetupBanner() {
                       className="w-4 h-4"
                     />
                   }
-                  title="Setup OpenRouter API Key"
+                  title="Configurar clave API de OpenRouter"
                   chip={<>Necesario</>}
                 />
               </div>
@@ -352,20 +352,20 @@ function NodeJsHelpCallout() {
   return (
     <div className="mt-3 p-3 bg-(--background-lighter) border rounded-lg text-sm">
       <p>
-        If you run into issues, read our{" "}
+        Si tienes problemas, consulta nuestra{" "}
         <a
           onClick={() => {
             ipc.system.openExternalUrl("https://www.dyad.sh/docs/help/nodejs");
           }}
           className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
         >
-          Node.js troubleshooting guide
+          guía de solución de problemas de Node.js
         </a>
         .{" "}
       </p>
       <p className="mt-2">
-        Still stuck? Click the <b>Help</b> button in the bottom-left corner and
-        then <b>Report a Bug</b>.
+        ¿Sigues atascado? Haz clic en el botón de <b>Ayuda</b> en la esquina
+        inferior izquierda y luego en <b>Reportar un error</b>.
       </p>
     </div>
   );
@@ -384,7 +384,7 @@ function NodeInstallButton({
     case "install":
       return (
         <Button className="mt-3" onClick={handleNodeInstallClick}>
-          Install Node.js Runtime
+          Instalar entorno de ejecución de Node.js
         </Button>
       );
     case "continue-processing":
@@ -392,7 +392,7 @@ function NodeInstallButton({
         <Button className="mt-3" onClick={finishNodeInstall} disabled>
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Checking Node.js setup...
+            Comprobando la configuración de Node.js...
           </div>
         </Button>
       );
@@ -400,14 +400,15 @@ function NodeInstallButton({
       return (
         <Button className="mt-3" onClick={finishNodeInstall}>
           <div className="flex items-center gap-2">
-            Continue | I installed Node.js
+            Continuar | He instalado Node.js
           </div>
         </Button>
       );
     case "finished-checking":
       return (
         <div className="mt-3 text-sm text-red-600 dark:text-red-400">
-          Node.js not detected. Closing and re-opening Dyad usually fixes this.
+          No se detecta Node.js. Cerrar y volver a abrir Dyad suele solucionar
+          esto.
         </div>
       );
     default:
@@ -437,11 +438,11 @@ export const OpenRouterSetupBanner = ({
       leadingIcon={
         <img src={openrouterLogo} alt="OpenRouter" className="w-4 h-4" />
       }
-      title="Setup OpenRouter API Key"
+      title="Configurar clave API de OpenRouter"
       chip={
         <>
           <GiftIcon className="w-3 h-3" />
-          Free models available
+          Modelos gratuitos disponibles
         </>
       }
     />

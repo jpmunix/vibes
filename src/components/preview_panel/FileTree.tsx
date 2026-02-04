@@ -168,7 +168,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           <Input
             value={searchValue}
             onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Search file contents"
+            placeholder="Buscar contenido en archivos"
             className="h-8 pl-7 pr-16 text-sm"
             data-testid="file-tree-search"
             disabled={!appId}
@@ -177,7 +177,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setSearchValue("")}
-              aria-label="Clear search"
+              aria-label="Borrar búsqueda"
             >
               <X size={14} />
             </button>
@@ -193,8 +193,8 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>
               {searchLoading
-                ? "Searching files..."
-                : `${matchesByPath.size} match${matchesByPath.size === 1 ? "" : "es"}`}
+                ? "Buscando archivos..."
+                : `${matchesByPath.size} coincidenci${matchesByPath.size === 1 ? "a" : "as"}`}
             </span>
           </div>
         )}
@@ -207,11 +207,11 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           </div>
         )}
         {isSearchMode &&
-        !searchLoading &&
-        !searchError &&
-        matchesByPath.size === 0 ? (
+          !searchLoading &&
+          !searchError &&
+          matchesByPath.size === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            No files matched your search.
+            No hay archivos que coincidan con tu búsqueda.
           </div>
         ) : isSearchMode ? (
           <div className="px-2 py-1">

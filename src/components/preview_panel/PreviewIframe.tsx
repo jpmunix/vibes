@@ -556,12 +556,12 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       const { type, payload } = event.data as {
         type:
-          | "window-error"
-          | "unhandled-rejection"
-          | "iframe-sourcemapped-error"
-          | "build-error-report"
-          | "pushState"
-          | "replaceState";
+        | "window-error"
+        | "unhandled-rejection"
+        | "iframe-sourcemapped-error"
+        | "build-error-report"
+        | "pushState"
+        | "replaceState";
         payload?: {
           message?: string;
           stack?: string;
@@ -994,11 +994,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleActivateComponentSelector}
-                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      isPicking
-                        ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-                        : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
-                    }`}
+                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
+                      ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+                      : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                      }`}
                     disabled={
                       loading ||
                       !selectedAppId ||
@@ -1024,11 +1023,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleAnnotatorClick}
-                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      annotatorMode
-                        ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-                        : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
-                    }`}
+                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${annotatorMode
+                      ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+                      : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                      }`}
                     disabled={
                       loading ||
                       !selectedAppId ||
@@ -1086,7 +1084,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   >
                     {navigationHistory[currentHistoryPosition]
                       ? new URL(navigationHistory[currentHistoryPosition])
-                          .pathname
+                        .pathname
                       : "/"}
                   </span>
                   <ChevronDown size={14} className="flex-shrink-0" />
@@ -1120,10 +1118,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             <button
               onClick={onRestart}
               className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
-              title="Restart App"
+              title="Reiniciar aplicación"
             >
               <Power size={16} />
-              <span>Restart</span>
+              <span>Reiniciar</span>
             </button>
             <button
               data-testid="preview-open-browser-button"
@@ -1152,7 +1150,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300",
                     deviceMode !== "desktop" && "bg-gray-200 dark:bg-gray-700",
                   )}
-                  title="Device Mode"
+                  title="Modo de dispositivo"
                 >
                   <MonitorSmartphone size={16} />
                 </button>
@@ -1165,6 +1163,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipProvider>
                   <ToggleGroup
                     type="single"
+                    title="Modo de dispositivo"
                     value={deviceMode}
                     onValueChange={(value) => {
                       if (value) {
@@ -1178,7 +1177,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   >
                     {/* Tooltips placed inside items instead of wrapping
                     to avoid asChild prop merging that breaks highlighting */}
-                    <ToggleGroupItem value="desktop" aria-label="Desktop view">
+                    <ToggleGroupItem value="desktop" aria-label="Vista de escritorio">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="flex items-center justify-center">
@@ -1190,7 +1189,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                         </TooltipContent>
                       </Tooltip>
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="tablet" aria-label="Tablet view">
+                    <ToggleGroupItem value="tablet" aria-label="Vista de tableta">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="flex items-center justify-center">
@@ -1202,7 +1201,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                         </TooltipContent>
                       </Tooltip>
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="mobile" aria-label="Mobile view">
+                    <ToggleGroupItem value="mobile" aria-label="Vista móvil">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="flex items-center justify-center">

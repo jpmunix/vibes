@@ -62,10 +62,10 @@ export function AgentConsentBanner({
         <div className="flex items-center gap-2 mb-1">
           <Bot className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-sm font-medium">
-            Allow <span className="font-mono">{toolName}</span> to run?
+            ¿Permitir la ejecución de <span className="font-mono">{toolName}</span>?
             {queueTotal > 1 && (
               <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                (1 of {queueTotal})
+                (1 de {queueTotal})
               </span>
             )}
           </span>
@@ -84,7 +84,7 @@ export function AgentConsentBanner({
           <button
             onClick={onClose}
             className="ml-auto flex-shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted"
-            aria-label="Close"
+            aria-label="Cerrar"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -107,7 +107,7 @@ export function AgentConsentBanner({
                 className="mt-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
                 onClick={() => setIsInputExpanded((v) => !v)}
               >
-                {isInputExpanded ? "Show less" : "Show more"}
+                {isInputExpanded ? "Mostrar menos" : "Mostrar más"}
               </button>
             )}
           </div>
@@ -120,7 +120,7 @@ export function AgentConsentBanner({
             className="h-7 px-3 text-xs"
           >
             <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-            Always allow
+            Permitir siempre
           </Button>
           <Button
             onClick={() => onDecision("accept-once")}
@@ -129,7 +129,7 @@ export function AgentConsentBanner({
             className="h-7 px-3 text-xs"
           >
             <Check className="w-3.5 h-3.5 mr-1" />
-            Allow once
+            Permitir una vez
           </Button>
           <Button
             onClick={() => onDecision("decline")}
@@ -138,7 +138,7 @@ export function AgentConsentBanner({
             className="h-7 px-3 text-xs"
           >
             <Ban className="w-3.5 h-3.5 mr-1" />
-            Decline
+            Rechazar
           </Button>
         </div>
       </div>

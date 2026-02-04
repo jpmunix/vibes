@@ -57,13 +57,13 @@ export function ContextLimitBanner({
           <TooltipContent className="w-auto p-2 text-xs" side="top">
             <div className="grid gap-1">
               <div className="flex justify-between gap-4">
-                <span>Used:</span>
+                <span>Usado:</span>
                 <span className="font-medium">
                   {formatTokenCount(totalTokens)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span>Limit:</span>
+                <span>Límite:</span>
                 <span className="font-medium">
                   {formatTokenCount(contextWindow)}
                 </span>
@@ -72,7 +72,7 @@ export function ContextLimitBanner({
           </TooltipContent>
         </Tooltip>
         <p className="text-sm font-medium">
-          You're close to the context limit for this chat.
+          Estás cerca del límite de contexto para este chat.
         </p>
       </div>
       <Button
@@ -81,7 +81,7 @@ export function ContextLimitBanner({
         size="sm"
         className="h-8 border-amber-500/50 hover:bg-amber-500/20 hover:border-amber-500 text-amber-600 dark:text-amber-400"
       >
-        Summarize into new chat
+        Resumir en un nuevo chat
         <ArrowRight className="h-3 w-3 ml-2" />
       </Button>
     </div>

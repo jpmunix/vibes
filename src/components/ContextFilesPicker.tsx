@@ -126,16 +126,16 @@ export function ContextFilesPicker() {
           data-testid="codebase-context-trigger"
         >
           <Settings2 className="size-4 mr-2" />
-          Codebase context
+          Contexto del código
         </div>
       </DialogTrigger>
 
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Codebase Context</DialogTitle>
+          <DialogTitle>Contexto del código</DialogTitle>
           <DialogDescription>
             <span className="flex items-center gap-1">
-              Select the files to use as context.{" "}
+              Selecciona los archivos a usar como contexto.{" "}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -144,11 +144,11 @@ export function ContextFilesPicker() {
                   <TooltipContent className="max-w-[300px]">
                     {isSmartContextEnabled ? (
                       <p>
-                        With Smart Context, Dyad uses the most relevant files as
-                        context.
+                        Con el Contexto Inteligente, Dyad usa los archivos más
+                        relevantes como contexto.
                       </p>
                     ) : (
-                      <p>By default, Dyad uses your whole codebase.</p>
+                      <p>Por defecto, Dyad usa todo tu código.</p>
                     )}
                   </TooltipContent>
                 </Tooltip>
@@ -175,7 +175,7 @@ export function ContextFilesPicker() {
               onClick={addPath}
               data-testid="manual-context-files-add-button"
             >
-              Add
+              Añadir
             </Button>
           </div>
 
@@ -199,7 +199,7 @@ export function ContextFilesPicker() {
                         </TooltipContent>
                       </Tooltip>
                       <span className="text-xs text-muted-foreground">
-                        {p.files} files, ~{p.tokens} tokens
+                        {p.files} archivos, ~{p.tokens} tokens
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -219,8 +219,8 @@ export function ContextFilesPicker() {
               <div className="rounded-md border border-dashed p-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   {isSmartContextEnabled
-                    ? "Dyad will use Smart Context to automatically find the most relevant files to use as context."
-                    : "Dyad will use the entire codebase as context."}
+                    ? "Dyad usará el Contexto Inteligente para encontrar automáticamente los archivos más relevantes para usar como contexto."
+                    : "Dyad usará todo el código como contexto."}
                 </p>
               </div>
             )}
@@ -228,10 +228,10 @@ export function ContextFilesPicker() {
 
           <div className="pt-2">
             <div>
-              <h3 className="font-medium">Exclude Paths</h3>
+              <h3 className="font-medium">Rutas excluidas</h3>
               <p className="text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  These files will be excluded from the context.{" "}
+                  Estos archivos se excluirán del contexto.{" "}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -239,8 +239,9 @@ export function ContextFilesPicker() {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[300px]">
                         <p>
-                          Exclude paths take precedence - files that match both
-                          include and exclude patterns will be excluded.
+                          Las rutas excluidas tienen precedencia: los archivos
+                          que coincidan con patrones de inclusión y exclusión se
+                          excluirán.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -267,7 +268,7 @@ export function ContextFilesPicker() {
                 onClick={addExcludePath}
                 data-testid="exclude-context-files-add-button"
               >
-                Add
+                Añadir
               </Button>
             </div>
 
@@ -291,7 +292,7 @@ export function ContextFilesPicker() {
                           </TooltipContent>
                         </Tooltip>
                         <span className="text-xs text-muted-foreground">
-                          {p.files} files, ~{p.tokens} tokens
+                          {p.files} archivos, ~{p.tokens} tokens
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -314,10 +315,10 @@ export function ContextFilesPicker() {
           {isSmartContextEnabled && (
             <div className="pt-2">
               <div>
-                <h3 className="font-medium">Smart Context Auto-includes</h3>
+                <h3 className="font-medium">Auto-inclusiones de Contexto Inteligente</h3>
                 <p className="text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    These files will always be included in the context.{" "}
+                    Estos archivos siempre se incluirán en el contexto.{" "}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -325,9 +326,9 @@ export function ContextFilesPicker() {
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[300px]">
                           <p>
-                            Auto-include files are always included in the
-                            context in addition to the files selected as
-                            relevant by Smart Context.
+                            Los archivos de auto-inclusión siempre se incluyen
+                            en el contexto además de los archivos seleccionados
+                            como relevantes por el Contexto Inteligente.
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -354,7 +355,7 @@ export function ContextFilesPicker() {
                   onClick={addAutoIncludePath}
                   data-testid="auto-include-context-files-add-button"
                 >
-                  Add
+                  Añadir
                 </Button>
               </div>
 
@@ -378,7 +379,7 @@ export function ContextFilesPicker() {
                             </TooltipContent>
                           </Tooltip>
                           <span className="text-xs text-muted-foreground">
-                            {p.files} files, ~{p.tokens} tokens
+                            {p.files} archivos, ~{p.tokens} tokens
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

@@ -97,11 +97,11 @@ export function EditThemeDialog({
         description: draft.description.trim() || undefined,
         prompt: draft.prompt.trim(),
       });
-      toast.success("Theme updated successfully");
+      toast.success("Tema actualizado correctamente");
       setOpen(false);
     } catch (error) {
       showError(
-        `Failed to update theme: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Error al actualizar el tema: ${error instanceof Error ? error.message : "Error desconocido"}`,
       );
     } finally {
       setIsSaving(false);
@@ -135,25 +135,25 @@ export function EditThemeDialog({
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Edit theme</p>
+            <p>Editar tema</p>
           </TooltipContent>
         </Tooltip>
       )}
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Theme</DialogTitle>
+          <DialogTitle>Editar tema</DialogTitle>
           <DialogDescription>
-            Modify your custom theme settings and prompt.
+            Modifica los ajustes y el prompt de tu tema personalizado.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 mt-4">
           <div className="space-y-2">
             <label htmlFor="edit-theme-name" className="text-sm font-medium">
-              Theme Name
+              Nombre del tema
             </label>
             <Input
               id="edit-theme-name"
-              placeholder="Theme name"
+              placeholder="Nombre del tema"
               value={draft.name}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, name: e.target.value }))
@@ -165,11 +165,11 @@ export function EditThemeDialog({
               htmlFor="edit-theme-description"
               className="text-sm font-medium"
             >
-              Description (optional)
+              Descripción (opcional)
             </label>
             <Input
               id="edit-theme-description"
-              placeholder="A brief description of your theme"
+              placeholder="Una breve descripción de tu tema"
               value={draft.description}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, description: e.target.value }))
@@ -178,12 +178,12 @@ export function EditThemeDialog({
           </div>
           <div className="space-y-2">
             <label htmlFor="edit-theme-prompt" className="text-sm font-medium">
-              Theme Prompt
+              Prompt del tema
             </label>
             <Textarea
               id="edit-theme-prompt"
               ref={textareaRef}
-              placeholder="Enter your theme system prompt..."
+              placeholder="Introduce el prompt de sistema de tu tema..."
               value={draft.prompt}
               onChange={(e) => {
                 setDraft((d) => ({ ...d, prompt: e.target.value }));
@@ -196,7 +196,7 @@ export function EditThemeDialog({
         </div>
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={handleSave}
@@ -205,11 +205,11 @@ export function EditThemeDialog({
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                Guardando...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" /> Save
+                <Save className="mr-2 h-4 w-4" /> Guardar
               </>
             )}
           </Button>

@@ -64,7 +64,7 @@ export function CreateCustomModelDialog({
       });
     },
     onSuccess: () => {
-      showSuccess("Custom model created successfully!");
+      showSuccess("¡Modelo personalizado creado con éxito!");
       resetForm();
       onSuccess(); // Refetch or update UI
       onClose();
@@ -98,16 +98,16 @@ export function CreateCustomModelDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Add Custom Model</DialogTitle>
+          <DialogTitle>Añadir modelo personalizado</DialogTitle>
           <DialogDescription>
-            Configure a new language model for the selected provider.
+            Configura un nuevo modelo de lenguaje para el proveedor seleccionado.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="model-id" className="text-right">
-                Model ID*
+                ID del modelo*
               </Label>
               <Input
                 id="model-id"
@@ -116,14 +116,14 @@ export function CreateCustomModelDialog({
                   setApiName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="This must match the model expected by the API"
+                placeholder="Debe coincidir con el nombre del modelo de la API"
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="model-name" className="text-right">
-                Name*
+                Nombre*
               </Label>
               <Input
                 id="model-name"
@@ -132,14 +132,14 @@ export function CreateCustomModelDialog({
                   setDisplayName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Human-friendly name for the model"
+                placeholder="Nombre amigable para el modelo"
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
-                Description
+                Descripción
               </Label>
               <Input
                 id="description"
@@ -148,13 +148,13 @@ export function CreateCustomModelDialog({
                   setDescription(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: Describe the model's capabilities"
+                placeholder="Opcional: Describe las capacidades del modelo"
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="max-output-tokens" className="text-right">
-                Max Output Tokens
+                Máx. Tokens de Salida
               </Label>
               <Input
                 id="max-output-tokens"
@@ -164,13 +164,13 @@ export function CreateCustomModelDialog({
                   setMaxOutputTokens(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: e.g., 4096"
+                placeholder="Opcional: ej., 4096"
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="context-window" className="text-right">
-                Context Window
+                Ventana de Contexto
               </Label>
               <Input
                 id="context-window"
@@ -180,7 +180,7 @@ export function CreateCustomModelDialog({
                   setContextWindow(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: e.g., 8192"
+                placeholder="Opcional: ej., 8192"
                 disabled={mutation.isPending}
               />
             </div>
@@ -192,10 +192,10 @@ export function CreateCustomModelDialog({
               onClick={handleClose}
               disabled={mutation.isPending}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Adding..." : "Add Model"}
+              {mutation.isPending ? "Creando..." : "Crear modelo"}
             </Button>
           </DialogFooter>
         </form>

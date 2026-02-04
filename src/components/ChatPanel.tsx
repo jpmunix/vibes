@@ -237,7 +237,7 @@ export function ChatPanel({
                     size="icon"
                     className="rounded-full shadow-lg hover:shadow-xl transition-all border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
                     variant="outline"
-                    title={"Scroll to bottom"}
+                    title={"Ir al final"}
                   >
                     <ArrowDown className="h-4 w-4" />
                   </Button>

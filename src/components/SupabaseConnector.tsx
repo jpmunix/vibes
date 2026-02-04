@@ -93,17 +93,17 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         (p) => p.id === projectId && p.organizationSlug === organizationSlug,
       );
       if (!project) {
-        throw new Error("Project not found");
+        throw new Error("Proyecto no encontrado");
       }
       await setAppProject({
         projectId,
         appId,
         organizationSlug,
       });
-      toast.success("Project connected to app successfully");
+      toast.success("Proyecto conectado a la app con éxito");
       await refreshApp();
     } catch (error) {
-      toast.error("Failed to connect project to app: " + error);
+      toast.error("Error al conectar el proyecto a la app: " + error);
     }
   };
 
@@ -145,20 +145,20 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   const handleUnsetProject = async () => {
     try {
       await unsetAppProject(appId);
-      toast.success("Project disconnected from app successfully");
+      toast.success("Proyecto desconectado de la app con éxito");
       await refreshApp();
     } catch (error) {
       console.error("Failed to disconnect project:", error);
-      toast.error("Failed to disconnect project from app");
+      toast.error("Error al desconectar el proyecto de la app");
     }
   };
 
   const handleDeleteOrganization = async (organizationSlug: string) => {
     try {
       await deleteOrganization({ organizationSlug });
-      toast.success("Organization disconnected successfully");
+      toast.success("Organización desconectada con éxito");
     } catch (error) {
-      toast.error("Failed to disconnect organization: " + error);
+      toast.error("Error al desconectar la organización: " + error);
     }
   };
 
@@ -168,7 +168,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
       <Card className="mt-1">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            Supabase Project{" "}
+            Proyecto de Supabase{" "}
             <Button
               variant="outline"
               onClick={() => {
@@ -191,7 +191,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             </Button>
           </CardTitle>
           <CardDescription className="flex flex-col gap-1.5 text-sm">
-            This app is connected to project:{" "}
+            Esta app está conectada al proyecto:{" "}
             <Badge
               variant="secondary"
               className="ml-2 text-base font-bold px-3 py-1"
@@ -203,7 +203,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="supabase-branch-select">Database Branch</Label>
+              <Label htmlFor="supabase-branch-select">Rama de la base de datos</Label>
               <Select
                 value={app.supabaseProjectId || ""}
                 onValueChange={async (supabaseBranchProjectId) => {
@@ -212,7 +212,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                       (b) => b.projectRef === supabaseBranchProjectId,
                     );
                     if (!branch) {
-                      throw new Error("Branch not found");
+                      throw new Error("Rama no encontrada");
                     }
                     // Keep the same organizationSlug from the app
                     await setAppProject({
@@ -221,7 +221,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                       appId,
                       organizationSlug: app.supabaseOrganizationSlug,
                     });
-                    toast.success("Branch selected");
+                    toast.success("Rama seleccionada");
                     await refreshApp();
                   } catch (error) {
                     toast.error("Failed to set branch: " + error);
@@ -233,7 +233,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                   id="supabase-branch-select"
                   data-testid="supabase-branch-select"
                 >
-                  <SelectValue placeholder="Select a branch" />
+                  <SelectValue placeholder="Selecciona una rama" />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((branch) => (
@@ -250,7 +250,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             </div>
 
             <Button variant="destructive" onClick={handleUnsetProject}>
-              Disconnect Project
+              Desconectar proyecto
             </Button>
           </div>
         </CardContent>
@@ -270,14 +270,14 @@ export function SupabaseConnector({ appId }: { appId: number }) {
       <Card className="mt-1">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            Supabase Projects
+            Proyectos de Supabase
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => refetchProjects()}
                 disabled={isFetchingProjects}
-                title="Refresh projects"
+                title="Refrescar proyectos"
               >
                 <RefreshCw
                   className={`h-4 w-4 ${isFetchingProjects ? "animate-spin" : ""}`}
@@ -290,12 +290,12 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                 className="gap-1"
               >
                 <Plus className="h-4 w-4" />
-                Add Organization
+                Añadir organización
               </Button>
             </div>
           </CardTitle>
           <CardDescription>
-            Select a Supabase project to connect to this app
+            Selecciona un proyecto de Supabase para conectar a esta app
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -306,20 +306,20 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             </div>
           ) : projectsError ? (
             <div className="text-red-500">
-              Error loading projects: {projectsError.message}
+              Error al cargar los proyectos: {projectsError.message}
               <Button
                 variant="outline"
                 className="mt-2"
                 onClick={() => refetchProjects()}
               >
-                Retry
+                Reintentar
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Connected organizations list */}
               <div className="space-y-2">
-                <Label>Connected Organizations</Label>
+                <Label>Organizaciones conectadas</Label>
                 <div className="space-y-1">
                   {organizations.map((org) => (
                     <div
@@ -344,10 +344,10 @@ export function SupabaseConnector({ appId }: { appId: number }) {
                         onClick={() =>
                           handleDeleteOrganization(org.organizationSlug)
                         }
-                        title="Disconnect organization"
+                        title="Desconectar organización"
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        <span className="text-xs">Disconnect</span>
+                        <span className="text-xs">Desconectar</span>
                       </Button>
                     </div>
                   ))}
@@ -356,17 +356,17 @@ export function SupabaseConnector({ appId }: { appId: number }) {
 
               {projects.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No projects found in your connected Supabase organizations.
+                  No se han encontrado proyectos en tus organizaciones de Supabase conectadas.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="project-select">Project</Label>
+                  <Label htmlFor="project-select">Proyecto</Label>
                   <Select
                     value={currentProjectValue}
                     onValueChange={handleProjectSelect}
                   >
                     <SelectTrigger id="project-select">
-                      <SelectValue placeholder="Select a project" />
+                      <SelectValue placeholder="Selecciona un proyecto" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(groupedProjects).map(
@@ -399,7 +399,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   return (
     <div className="flex flex-col space-y-4 p-4 border rounded-md">
       <div className="flex flex-col md:flex-row items-center justify-between">
-        <h2 className="text-lg font-medium">Integrations</h2>
+        <h2 className="text-lg font-medium">Integraciones</h2>
         <img
           onClick={handleAddAccount}
           src={isDarkMode ? connectSupabaseDark : connectSupabaseLight}

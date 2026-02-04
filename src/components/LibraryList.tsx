@@ -11,7 +11,7 @@ type LibrarySection = {
 };
 
 const LIBRARY_SECTIONS: LibrarySection[] = [
-  { id: "themes", label: "Themes", to: "/themes", icon: Palette },
+  { id: "themes", label: "Temas", to: "/themes", icon: Palette },
   { id: "prompts", label: "Prompts", to: "/library", icon: FileText },
 ];
 
@@ -26,7 +26,7 @@ export function LibraryList({ show }: { show: boolean }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Library</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Biblioteca</h2>
       </div>
       <ScrollArea className="flex-grow">
         <div className="space-y-1 p-4 pt-0">

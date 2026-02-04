@@ -30,7 +30,7 @@ export function BugScreenshotDialog({
         setIsScreenshotSuccessOpen(true);
       } catch (error) {
         setScreenshotError(
-          error instanceof Error ? error.message : "Failed to take screenshot",
+          error instanceof Error ? error.message : "Error al hacer la captura",
         );
       }
     }, 200); // Small delay for dialog to close
@@ -40,7 +40,7 @@ export function BugScreenshotDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Take a screenshot?</DialogTitle>
+          <DialogTitle>¿Hacer una captura de pantalla?</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col space-y-4 w-full">
           <div className="flex flex-col space-y-2">
@@ -49,11 +49,11 @@ export function BugScreenshotDialog({
               onClick={handleReportBugWithScreenshot}
               className="w-full py-6 border-primary/50 shadow-sm shadow-primary/10 transition-all hover:shadow-md hover:shadow-primary/15"
             >
-              <Camera className="mr-2 h-5 w-5" /> Take a screenshot
-              (recommended)
+              <Camera className="mr-2 h-5 w-5" /> Hacer una captura
+              (recomendado)
             </Button>
             <p className="text-sm text-muted-foreground px-2">
-              You'll get better and faster responses if you do this!
+              ¡Recibirás respuestas mejores y más rápidas si haces esto!
             </p>
           </div>
           <div className="flex flex-col space-y-2">
@@ -66,16 +66,16 @@ export function BugScreenshotDialog({
             >
               <BugIcon className="mr-2 h-5 w-5" />{" "}
               {isLoading
-                ? "Preparing Report..."
-                : "File bug report without screenshot"}
+                ? "Preparando informe..."
+                : "Enviar informe de error sin captura"}
             </Button>
             <p className="text-sm text-muted-foreground px-2">
-              We'll still try to respond but might not be able to help as much.
+              Intentaremos responder, pero puede que no podamos ayudar tanto.
             </p>
           </div>
           {screenshotError && (
             <p className="text-sm text-destructive px-2">
-              Failed to take screenshot: {screenshotError}
+              Error al hacer la captura: {screenshotError}
             </p>
           )}
         </div>

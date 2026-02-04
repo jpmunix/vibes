@@ -28,18 +28,18 @@ export function DyadProTrialDialog({
   const features = [
     {
       icon: Zap,
-      title: "50 AI Credits",
-      description: "Start building right away",
+      title: "50 Créditos de IA",
+      description: "Empieza a construir de inmediato",
     },
     {
       icon: Cpu,
-      title: "Agent Mode",
-      description: "Automatically debug errors with AI",
+      title: "Modo Agente",
+      description: "Depura errores automáticamente con IA",
     },
     {
       icon: Wand2,
-      title: "Pro Features",
-      description: "AI themes, visual editing & more",
+      title: "Funciones Pro",
+      description: "Temas por IA, edición visual y más",
     },
   ];
 
@@ -54,10 +54,10 @@ export function DyadProTrialDialog({
           {/* Title */}
           <div className="text-center">
             <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              Unlock Dyad Pro
+              Desbloquea Dyad Pro
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start your free 3-day trial today
+              Comienza hoy tu prueba gratuita de 3 días
             </p>
           </div>
         </div>
@@ -92,20 +92,21 @@ export function DyadProTrialDialog({
               className="w-full bg-violet-600 py-5 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:bg-violet-500 hover:shadow-xl hover:shadow-violet-500/40 active:scale-[0.98]"
             >
               <Sparkles className="mr-2 h-4 w-4" />
-              Start Free Trial
+              Comenzar prueba gratuita
             </Button>
             <Button
               variant="ghost"
               onClick={handleLearnMore}
               className="w-full text-muted-foreground hover:text-foreground"
             >
-              Learn more about Pro
+              Más información sobre Pro
             </Button>
           </div>
 
           {/* Fine print */}
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            Cancel anytime. Free trial for first-time customers only.
+            Cancela en cualquier momento. Prueba gratuita solo para nuevos
+            clientes.
           </p>
         </div>
       </DialogContent>

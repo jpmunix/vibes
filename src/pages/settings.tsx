@@ -49,11 +49,11 @@ export default function SettingsPage() {
     setIsResetting(true);
     try {
       await ipc.system.resetAll();
-      showSuccess("Successfully reset everything. Restart the application.");
+      showSuccess("Se ha reseteado todo correctamente. Reinicia la aplicación.");
     } catch (error) {
       console.error("Error resetting:", error);
       showError(
-        error instanceof Error ? error.message : "An unknown error occurred",
+        error instanceof Error ? error.message : "Ocurrió un error desconocido",
       );
     } finally {
       setIsResetting(false);
@@ -193,10 +193,10 @@ export default function SettingsPage() {
 
       <ConfirmationDialog
         isOpen={isResetDialogOpen}
-        title="Reset Everything"
-        message="Are you sure you want to reset everything? This will delete all your apps, chats, and settings. This action cannot be undone."
-        confirmText="Reset Everything"
-        cancelText="Cancel"
+        title="Resetear todo"
+        message="¿Estás seguro de que quieres resetear todo? Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer."
+        confirmText="Resetear todo"
+        cancelText="Cancelar"
         onConfirm={handleResetEverything}
         onCancel={() => setIsResetDialogOpen(false)}
       />
@@ -230,14 +230,13 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
                 className={`
                 px-4 py-1.5 text-sm font-medium rounded-md
                 transition-all duration-200
-                ${
-                  theme === option
+                ${theme === option
                     ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }
+                  }
               `}
               >
-                {option.charAt(0).toUpperCase() + option.slice(1)}
+                {option === "system" ? "Sistema" : option === "light" ? "Claro" : "Oscuro"}
               </button>
             ))}
           </div>
@@ -251,8 +250,7 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
       <div className="space-y-1 mt-4">
         <AutoUpdateSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          This will automatically update the app when new versions are
-          available.
+          Esto actualizará automáticamente la aplicación cuando haya nuevas versiones disponibles.
         </div>
       </div>
 
@@ -268,7 +266,7 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
       </div>
 
       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-        <span className="mr-2 font-medium">App Version:</span>
+        <span className="mr-2 font-medium">Versión de la aplicación:</span>
         <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
           {appVersion ? appVersion : "-"}
         </span>
@@ -298,7 +296,7 @@ export function WorkflowSettings() {
         </div>
       </div>
 
-{/*      <div className="space-y-1 mt-4">
+      {/*      <div className="space-y-1 mt-4">
         <AutoFixProblemsSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
           This will automatically fix TypeScript errors.

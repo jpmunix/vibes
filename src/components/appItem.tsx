@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { Star } from "lucide-react";
 import { SidebarMenuItem } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -34,11 +35,10 @@ export function AppItem({
               <Button
                 variant="ghost"
                 onClick={() => handleAppClick(app.id)}
-                className={`justify-start w-full text-left py-3 hover:bg-sidebar-accent/80 ${
-                  selectedAppId === app.id
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : ""
-                }`}
+                className={`justify-start w-full text-left py-3 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : ""
+                  }`}
                 data-testid={`app-list-item-${app.name}`}
               >
                 <div className="flex flex-col w-4/5">
@@ -46,6 +46,7 @@ export function AppItem({
                   <span className="text-xs text-gray-500">
                     {formatDistanceToNow(new Date(app.createdAt), {
                       addSuffix: true,
+                      locale: es,
                     })}
                   </span>
                 </div>

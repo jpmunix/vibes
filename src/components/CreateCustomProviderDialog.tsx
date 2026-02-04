@@ -108,72 +108,72 @@ export function CreateCustomProviderDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? "Edit Custom Provider" : "Add Custom Provider"}
+            {isEditMode ? "Editar proveedor personalizado" : "Añadir proveedor personalizado"}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "Update your custom language model provider configuration."
-              : "Connect to a custom language model provider API."}
+              ? "Actualiza la configuración de tu proveedor de modelo de lenguaje personalizado."
+              : "Conéctate a una API de proveedor de modelo de lenguaje personalizada."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="id">Provider ID</Label>
+            <Label htmlFor="id">ID del proveedor</Label>
             <Input
               id="id"
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="E.g., my-provider"
+              placeholder="Ej., mi-proveedor"
               required
               disabled={isLoading || isEditMode}
             />
             <p className="text-xs text-muted-foreground">
-              A unique identifier for this provider (no spaces).
+              Un identificador único para este proveedor (sin espacios).
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name">Display Name</Label>
+            <Label htmlFor="name">Nombre a mostrar</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="E.g., My Provider"
+              placeholder="Ej., Mi proveedor"
               required
               disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
-              The name that will be displayed in the UI.
+              El nombre que se mostrará en la interfaz.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="apiBaseUrl">API Base URL</Label>
+            <Label htmlFor="apiBaseUrl">URL base de la API</Label>
             <Input
               id="apiBaseUrl"
               value={apiBaseUrl}
               onChange={(e) => setApiBaseUrl(e.target.value)}
-              placeholder="E.g., https://api.example.com/v1"
+              placeholder="Ej., https://api.example.com/v1"
               required
               disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
-              The base URL for the API endpoint.
+              La URL base para el endpoint de la API.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="envVarName">Environment Variable (Optional)</Label>
+            <Label htmlFor="envVarName">Variable de entorno (Opcional)</Label>
             <Input
               id="envVarName"
               value={envVarName}
               onChange={(e) => setEnvVarName(e.target.value)}
-              placeholder="E.g., MY_PROVIDER_API_KEY"
+              placeholder="Ej., MI_PROVEEDOR_API_KEY"
               disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
-              Environment variable name for the API key.
+              Nombre de la variable de entorno para la clave API.
             </p>
           </div>
 
@@ -182,7 +182,7 @@ export function CreateCustomProviderDialog({
               {errorMessage ||
                 (error instanceof Error
                   ? error.message
-                  : "Failed to create custom provider")}
+                  : "Error al crear el proveedor personalizado")}
             </div>
           )}
 
@@ -193,17 +193,17 @@ export function CreateCustomProviderDialog({
               onClick={handleClose}
               disabled={isLoading}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading
                 ? isEditMode
-                  ? "Updating..."
-                  : "Adding..."
+                  ? "Actualizando..."
+                  : "Creando..."
                 : isEditMode
-                  ? "Update Provider"
-                  : "Add Provider"}
+                  ? "Actualizar proveedor"
+                  : "Añadir proveedor"}
             </Button>
           </div>
         </form>

@@ -22,7 +22,7 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
     onSuccess: (result) => {
       setOutput(result.output);
       showSuccess(
-        "Database migration file generated and committed successfully!",
+        "¡Archivo de migración de base de datos generado y guardado correctamente!",
       );
       refreshVersions();
     },
@@ -50,29 +50,30 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Database className="w-5 h-5 text-primary" />
-          Portal Database Migration
+          Migración de base de datos del Portal
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Generate a new database migration file for your Portal app.
+          Genera un nuevo archivo de migración de base de datos para tu
+          aplicación Portal.
         </p>
 
         <div className="flex items-center gap-3">
           <Button
             onClick={handleCreateMigration}
             disabled={migrateMutation.isPending}
-            // className="bg-primary hover:bg-purple-700 text-white"
+          // className="bg-primary hover:bg-purple-700 text-white"
           >
             {migrateMutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Generating...
+                Generando...
               </>
             ) : (
               <>
                 <Database className="w-4 h-4 mr-2" />
-                Generate database migration
+                Generar migración de base de datos
               </>
             )}
           </Button>
@@ -84,7 +85,7 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
             className="text-sm"
           >
             <ExternalLink className="w-3 h-3 mr-1" />
-            Docs
+            Documentación
           </Button>
         </div>
 
@@ -92,7 +93,7 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
           <div className="mt-4">
             <div className="bg-gray-50 dark:bg-gray-900 border rounded-lg p-3">
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Command Output:
+                Salida del comando:
               </h4>
               <div className="max-h-64 overflow-auto">
                 <pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono">

@@ -170,7 +170,7 @@ export function CreateOrEditPromptDialog({
       ) : mode === "create" ? (
         <DialogTrigger asChild>
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> New Prompt
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Prompt
           </Button>
         </DialogTrigger>
       ) : (
@@ -187,29 +187,29 @@ export function CreateOrEditPromptDialog({
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Edit prompt</p>
+            <p>Editar prompt</p>
           </TooltipContent>
         </Tooltip>
       )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Create New Prompt" : "Edit Prompt"}
+            {mode === "create" ? "Crear nuevo prompt" : "Editar prompt"}
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Create a new prompt template for your library."
-              : "Edit your prompt template."}
+              ? "Crea una nueva plantilla de prompt para tu biblioteca."
+              : "Edita tu plantilla de prompt."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <Input
-            placeholder="Title"
+            placeholder="Título"
             value={draft.title}
             onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
           />
           <Input
-            placeholder="Description (optional)"
+            placeholder="Descripción (opcional)"
             value={draft.description}
             onChange={(e) =>
               setDraft((d) => ({ ...d, description: e.target.value }))
@@ -217,7 +217,7 @@ export function CreateOrEditPromptDialog({
           />
           <Textarea
             ref={textareaRef}
-            placeholder="Content"
+            placeholder="Contenido"
             value={draft.content}
             onChange={(e) => {
               setDraft((d) => ({ ...d, content: e.target.value }));
@@ -230,13 +230,13 @@ export function CreateOrEditPromptDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={onSave}
             disabled={!draft.title.trim() || !draft.content.trim()}
           >
-            <Save className="mr-2 h-4 w-4" /> Save
+            <Save className="mr-2 h-4 w-4" /> Guardar
           </Button>
         </DialogFooter>
       </DialogContent>

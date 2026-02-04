@@ -37,7 +37,7 @@ export const PublishPanel = () => {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Loading...
+          Cargando...
         </h2>
       </div>
     );
@@ -62,10 +62,10 @@ export const PublishPanel = () => {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          No App Selected
+          Ninguna aplicación seleccionada
         </h2>
         <p className="text-gray-600 dark:text-gray-400 max-w-md">
-          Select an app to view publishing options.
+          Selecciona una aplicación para ver las opciones de publicación.
         </p>
       </div>
     );
@@ -76,7 +76,7 @@ export const PublishPanel = () => {
       <div className="p-4 space-y-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Publish App
+            Publicar aplicación
           </h1>
         </div>
 
@@ -99,7 +99,7 @@ export const PublishPanel = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Sync your code to GitHub for collaboration.
+              Sincroniza tu código con GitHub para colaborar.
             </p>
             <GitHubConnector
               appId={selectedAppId}
@@ -137,7 +137,7 @@ export const PublishPanel = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Publish your app by deploying it to Vercel.
+              Publica tu aplicación desplegándola en Vercel.
             </p>
 
             {!app?.githubOrg || !app?.githubRepo ? (
@@ -158,11 +158,12 @@ export const PublishPanel = () => {
                   </svg>
                   <div>
                     <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                      GitHub Required for Vercel Deployment
+                      Se requiere GitHub para el despliegue en Vercel
                     </h3>
                     <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                      Deploying to Vercel requires connecting to GitHub first.
-                      Please set up your GitHub repository above.
+                      El despliegue en Vercel requiere conectar primero con
+                      GitHub. Por favor, configura tu repositorio de GitHub
+                      arriba.
                     </p>
                   </div>
                 </div>

@@ -116,9 +116,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                         versionId: currentMessage.sourceCommitHash,
                         currentChatMessageId: userMessage
                           ? {
-                              chatId: selectedChatId,
-                              messageId: userMessage.id,
-                            }
+                            chatId: selectedChatId,
+                            messageId: userMessage.id,
+                          }
                           : undefined,
                       });
                       const chat = await ipc.chat.getChat(selectedChatId);
@@ -145,7 +145,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                 ) : (
                   <Undo size={16} />
                 )}
-                Undo
+                Deshacer
               </Button>
             )}
           {!!messages.length && (
@@ -228,7 +228,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
               ) : (
                 <RefreshCw size={16} />
               )}
-              Retry
+              Reintentar
             </Button>
           )}
         </div>
@@ -393,7 +393,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         >
           <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
             <div className="flex flex-1 items-center justify-center text-gray-500">
-              No messages yet
+              Aún no hay mensajes
             </div>
           </div>
         </div>

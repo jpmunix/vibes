@@ -106,12 +106,12 @@ export function ChatSearchDialog({
       filter={commandFilter}
     >
       <CommandInput
-        placeholder="Search chats"
+        placeholder="Buscar chats"
         value={searchQuery}
         onValueChange={setSearchQuery}
       />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>No se encontraron resultados.</CommandEmpty>
         <CommandGroup heading="Chats">
           {chatsToShow.map((chat) => {
             const isSearch = searchQuery.trim() !== "";
@@ -121,9 +121,9 @@ export function ChatSearchDialog({
               (chat as ChatSearchResult).matchedMessageContent;
             const snippet = hasSnippet
               ? getSnippet(
-                  (chat as ChatSearchResult).matchedMessageContent as string,
-                  searchQuery,
-                )
+                (chat as ChatSearchResult).matchedMessageContent as string,
+                searchQuery,
+              )
               : null;
             return (
               <CommandItem
@@ -132,13 +132,13 @@ export function ChatSearchDialog({
                   onSelectChat({ chatId: chat.id, appId: chat.appId })
                 }
                 value={
-                  (chat.title || "Untitled Chat") +
+                  (chat.title || "Chat sin título") +
                   (snippet ? ` ${snippet.raw}` : "")
                 }
                 keywords={snippet ? [snippet.raw] : []}
               >
                 <div className="flex flex-col">
-                  <span>{chat.title || "Untitled Chat"}</span>
+                  <span>{chat.title || "Chat sin título"}</span>
                   {snippet && (
                     <span className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {snippet.before}

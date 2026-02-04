@@ -28,7 +28,7 @@ import { queryKeys } from "@/lib/queryKeys";
 
 const EnvironmentVariablesTitle = () => (
   <div className="flex items-center gap-2">
-    <span className="text-lg font-semibold">Environment Variables</span>
+    <span className="text-lg font-semibold">Variables de entorno</span>
     <span className="text-sm text-muted-foreground font-normal">Local</span>
     <Tooltip>
       <TooltipTrigger asChild>
@@ -36,9 +36,9 @@ const EnvironmentVariablesTitle = () => (
       </TooltipTrigger>
       <TooltipContent>
         <p>
-          To modify environment variables for Supabase or production,
+          Para modificar las variables de entorno para Supabase o producción,
           <br />
-          access your hosting provider's console and update them there.
+          accede a la consola de tu proveedor de hosting y actualízalas allí.
         </p>
       </TooltipContent>
     </Tooltip>
@@ -84,10 +84,10 @@ export const ConfigurePanel = () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.appEnvVars.byApp({ appId: selectedAppId }),
       });
-      showSuccess("Environment variables saved");
+      showSuccess("Variables de entorno guardadas");
     },
     onError: (error) => {
-      showError(`Failed to save environment variables: ${error}`);
+      showError(`Error al guardar las variables de entorno: ${error}`);
     },
   });
 
@@ -180,7 +180,7 @@ export const ConfigurePanel = () => {
           <CardContent>
             <div className="text-center py-8">
               <div className="text-sm text-muted-foreground">
-                Loading environment variables...
+                Cargando variables de entorno...
               </div>
             </div>
           </CardContent>
@@ -202,7 +202,7 @@ export const ConfigurePanel = () => {
           <CardContent>
             <div className="text-center py-8">
               <div className="text-sm text-red-500">
-                Error loading environment variables: {error.message}
+                Error al cargar las variables de entorno: {error.message}
               </div>
             </div>
           </CardContent>
@@ -224,7 +224,7 @@ export const ConfigurePanel = () => {
           <CardContent>
             <div className="text-center py-8">
               <div className="text-sm text-muted-foreground">
-                Select an app to manage environment variables
+                Selecciona una aplicación para gestionar las variables de entorno
               </div>
             </div>
           </CardContent>
@@ -246,7 +246,7 @@ export const ConfigurePanel = () => {
           {isAddingNew ? (
             <div className="space-y-3 p-3 border rounded-md bg-muted/50">
               <div className="space-y-2">
-                <Label htmlFor="new-key">Key</Label>
+                <Label htmlFor="new-key">Clave</Label>
                 <Input
                   id="new-key"
                   placeholder="e.g., API_URL"
@@ -256,7 +256,7 @@ export const ConfigurePanel = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-value">Value</Label>
+                <Label htmlFor="new-value">Valor</Label>
                 <Input
                   id="new-value"
                   placeholder="e.g., https://api.example.com"
@@ -271,11 +271,11 @@ export const ConfigurePanel = () => {
                   disabled={saveEnvVarsMutation.isPending}
                 >
                   <Save size={14} />
-                  {saveEnvVarsMutation.isPending ? "Saving..." : "Save"}
+                  {saveEnvVarsMutation.isPending ? "Guardando..." : "Guardar"}
                 </Button>
                 <Button onClick={handleCancelAdd} variant="outline" size="sm">
                   <X size={14} />
-                  Cancel
+                  Cancelar
                 </Button>
               </div>
             </div>
@@ -286,7 +286,7 @@ export const ConfigurePanel = () => {
               className="w-full"
             >
               <Plus size={14} />
-              Add Environment Variable
+              Añadir variable de entorno
             </Button>
           )}
 
@@ -294,7 +294,7 @@ export const ConfigurePanel = () => {
           <div className="space-y-2">
             {envVars.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No environment variables configured
+                No hay variables de entorno configuradas
               </p>
             ) : (
               envVars.map((envVar) => (
@@ -308,13 +308,13 @@ export const ConfigurePanel = () => {
                         <Input
                           value={editingKeyValue}
                           onChange={(e) => setEditingKeyValue(e.target.value)}
-                          placeholder="Key"
+                          placeholder="Clave"
                           className="h-8"
                         />
                         <Input
                           value={editingValue}
                           onChange={(e) => setEditingValue(e.target.value)}
-                          placeholder="Value"
+                          placeholder="Valor"
                           className="h-8"
                         />
                       </div>
@@ -390,7 +390,7 @@ export const ConfigurePanel = () => {
                 }
               }}
             >
-              <span>More app settings</span>
+              <span>Más ajustes de la aplicación</span>
               <ArrowRight size={16} />
             </Button>
           </div>

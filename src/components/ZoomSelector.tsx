@@ -52,7 +52,7 @@ export function ZoomSelector() {
         }
       >
         <SelectTrigger id="zoom-level" className="w-[220px]">
-          <SelectValue placeholder="Select zoom level" />
+          <SelectValue placeholder="Seleccionar nivel de zoom" />
         </SelectTrigger>
         <SelectContent>
           {Object.entries(ZOOM_LEVEL_LABELS).map(([value, label]) => (

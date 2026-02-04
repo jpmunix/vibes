@@ -75,7 +75,7 @@ export function ProviderSettingsGrid() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <h2 className="text-lg font-medium mb-6">AI Providers</h2>
+        <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <Card key={i} className="border-border">
@@ -93,12 +93,12 @@ export function ProviderSettingsGrid() {
   if (error) {
     return (
       <div className="p-6">
-        <h2 className="text-lg font-medium mb-6">AI Providers</h2>
+        <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            Failed to load AI providers: {error.message}
+            Error al cargar los proveedores de IA: {error.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -107,7 +107,7 @@ export function ProviderSettingsGrid() {
 
   return (
     <div className="p-6">
-      <h2 className="text-lg font-medium mb-6">AI Providers</h2>
+      <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {providers
           ?.filter((p) => p.type !== "local")
@@ -140,7 +140,7 @@ export function ProviderSettingsGrid() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Edit Provider</TooltipContent>
+                        <TooltipContent>Editar proveedor</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -154,7 +154,7 @@ export function ProviderSettingsGrid() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Delete Provider</TooltipContent>
+                        <TooltipContent>Eliminar proveedor</TooltipContent>
                       </Tooltip>
                     </div>
                   )}
@@ -162,11 +162,11 @@ export function ProviderSettingsGrid() {
                     {provider.name}
                     {isProviderSetup(provider.id) ? (
                       <span className="ml-3 text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/30 border border-green-500/50 dark:border-green-500/50 px-2 py-1 rounded-full">
-                        Ready
+                        Listo
                       </span>
                     ) : (
                       <span className="text-sm text-gray-500 bg-gray-50 dark:bg-gray-900 dark:text-gray-300 px-2 py-1 rounded-full">
-                        Needs Setup
+                        Requiere configuración
                       </span>
                     )}
                   </CardTitle>
@@ -174,7 +174,7 @@ export function ProviderSettingsGrid() {
                     {provider.hasFreeTier && (
                       <span className="text-blue-600 mt-2 dark:text-blue-400 text-sm font-medium bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full inline-flex items-center">
                         <GiftIcon className="w-4 h-4 mr-1" />
-                        Free tier available
+                        Plan gratuito disponible
                       </span>
                     )}
                   </CardDescription>
@@ -191,10 +191,10 @@ export function ProviderSettingsGrid() {
           <CardHeader className="p-4 flex flex-col items-center justify-center h-full">
             <PlusIcon className="h-8 w-8 text-muted-foreground mb-2" />
             <CardTitle className="text-lg font-medium text-center">
-              Add custom provider
+              Añadir proveedor personalizado
             </CardTitle>
             <CardDescription className="text-center">
-              Connect to a custom LLM API endpoint
+              Conecta a un endpoint de API de LLM personalizado
             </CardDescription>
           </CardHeader>
         </Card>
@@ -220,19 +220,19 @@ export function ProviderSettingsGrid() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Custom Provider</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar proveedor personalizado</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this custom provider and all its
-              associated models. This action cannot be undone.
+              Esto eliminará permanentemente este proveedor personalizado y
+              todos sus modelos asociados. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteProvider}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Provider"}
+              {isDeleting ? "Eliminando..." : "Eliminar proveedor"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

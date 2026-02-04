@@ -98,7 +98,7 @@ function ConnectedGitHubConnector({
       await ipc.github.disconnect({ appId });
       refreshApp();
     } catch (err: any) {
-      setDisconnectError(err.message || "Failed to disconnect repository.");
+      setDisconnectError(err.message || "Error al desconectar el repositorio.");
     } finally {
       setIsDisconnecting(false);
     }
@@ -134,7 +134,7 @@ function ConnectedGitHubConnector({
             if (mergeConflicts.length > 0) {
               setConflicts(mergeConflicts);
               setSyncError(
-                "Merge conflicts detected. Please resolve them in the editor.",
+                "Se han detectado conflictos de fusión. Por favor, resuélvelos en el editor.",
               );
               (err as Error & { handled?: boolean }).handled = true;
               return { error: err, handled: true };
@@ -173,7 +173,7 @@ function ConnectedGitHubConnector({
           inferredRebaseInProgress ||
           messageIndicatesRebase;
 
-        const errorMessage = err.message || "Failed to sync to GitHub.";
+        const errorMessage = err.message || "Error al sincronizar con GitHub.";
         setSyncError(errorMessage);
         setRebaseInProgress(rebaseInProgressState);
         setRebaseStatusMessage(null);
@@ -193,7 +193,7 @@ function ConnectedGitHubConnector({
     try {
       await ipc.github.rebaseAbort({ appId });
       setRebaseInProgress(false);
-      setRebaseStatusMessage("Rebase aborted. You can try syncing again.");
+      setRebaseStatusMessage("Rebase abortado. Puedes intentar sincronizar de nuevo.");
     } catch (err: any) {
       setSyncError(err.message || "Failed to abort rebase.");
       setRebaseInProgress(true);
@@ -210,7 +210,7 @@ function ConnectedGitHubConnector({
     try {
       await ipc.github.rebaseContinue({ appId });
       setRebaseInProgress(false);
-      setRebaseStatusMessage("Rebase continued. You can sync when ready.");
+      setRebaseStatusMessage("Rebase continuado. Puedes sincronizar cuando estés listo.");
     } catch (err: any) {
       setSyncError(err.message || "Failed to continue rebase.");
       setRebaseInProgress(true);
@@ -244,19 +244,19 @@ function ConnectedGitHubConnector({
         }
         return;
       }
-      setRebaseStatusMessage("Rebase and push completed successfully.");
+      setRebaseStatusMessage("Rebase y subida completados con éxito.");
     } catch (err: any) {
       if (err?.handled) {
         return;
       }
       const errorMessage =
-        err?.message || "Failed to rebase and sync to GitHub.";
+        err?.message || "Error al hacer rebase y sincronizar con GitHub.";
       setSyncError(errorMessage);
       setRebaseInProgress(errorMessage.includes("rebase-merge"));
       // If rebase failed, show appropriate message
       if (errorMessage.includes("rebase")) {
         setRebaseStatusMessage(
-          "Rebase failed. You may need to resolve conflicts or abort the rebase.",
+          "El rebase ha fallado. Puede que necesites resolver conflictos o abortar el rebase.",
         );
       }
       // Clear any stale rebase success message if sync failed after rebase
@@ -312,7 +312,7 @@ function ConnectedGitHubConnector({
 
   return (
     <div className="w-full" data-testid="github-connected-repo">
-      <p>Connected to GitHub Repo:</p>
+      <p>Conectado al repositorio de GitHub:</p>
       <a
         onClick={(e) => {
           e.preventDefault();
@@ -357,10 +357,10 @@ function ConnectedGitHubConnector({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              Syncing...
+              Sincronizando...
             </>
           ) : (
-            "Sync to GitHub"
+            "Sincronizar con GitHub"
           )}
         </Button>
         <Button
@@ -368,7 +368,7 @@ function ConnectedGitHubConnector({
           disabled={isDisconnecting}
           variant="outline"
         >
-          {isDisconnecting ? "Disconnecting..." : "Disconnect from repo"}
+          {isDisconnecting ? "Desconectando..." : "Desconectar del repositorio"}
         </Button>
       </div>
       {syncError && (
@@ -386,13 +386,13 @@ function ConnectedGitHubConnector({
               target="_blank"
               rel="noopener noreferrer"
             >
-              See troubleshooting guide
+              Ver guía de solución de problemas
             </a>
           </p>
           {showRebaseRecoveryOptions && (
             <div className="space-y-2 rounded-md border border-orange-200 p-3 dark:border-orange-800 dark:bg-orange-900/20">
               <p className="text-sm text-orange-800 dark:text-orange-100">
-                A rebase is already in progress. Choose how to proceed.
+                Ya hay un rebase en curso. Elige cómo proceder.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -402,7 +402,7 @@ function ConnectedGitHubConnector({
                   disabled={isRebaseActionPending}
                 >
                   <AlertTriangle className="h-4 w-4 mr-2" />
-                  {rebaseAction === "abort" ? "Aborting..." : "Abort rebase"}
+                  {rebaseAction === "abort" ? "Abortando..." : "Abortar rebase"}
                 </Button>
                 <Button
                   onClick={handleContinueRebase}
@@ -412,8 +412,8 @@ function ConnectedGitHubConnector({
                 >
                   <GitMerge className="h-4 w-4 mr-2" />
                   {rebaseAction === "continue"
-                    ? "Continuing..."
-                    : "Continue rebase"}
+                    ? "Continuando..."
+                    : "Continuar rebase"}
                 </Button>
                 <Button
                   onClick={handleSafeForcePush}
@@ -424,8 +424,8 @@ function ConnectedGitHubConnector({
                 >
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   {rebaseAction === "safe-push"
-                    ? "Safe force pushing..."
-                    : "Safe Force Push"}
+                    ? "Forzando subida segura..."
+                    : "Forzar subida segura"}
                 </Button>
               </div>
             </div>
@@ -439,7 +439,7 @@ function ConnectedGitHubConnector({
               className="text-orange-600 border-orange-600 hover:bg-orange-50"
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Force Push (Dangerous)
+              Forzar subida (Peligroso)
             </Button>
           )}
           {showRebaseAndSync && (
@@ -451,7 +451,7 @@ function ConnectedGitHubConnector({
               className="mt-2 ml-2"
             >
               <GitMerge className="h-4 w-4 mr-2" />
-              Rebase and Sync
+              Rebase y Sincronización
             </Button>
           )}
         </div>
@@ -460,7 +460,7 @@ function ConnectedGitHubConnector({
       {conflicts.length > 0 && (
         //show a message that there are conflicts and to resolve them in Editor
         <p className="text-sm text-red-600">
-          There are conflicts in the repository. Please resolve them in the
+          Hay conflictos en el repositorio. Por favor, resuélvelos en el
           editor.
         </p>
       )}
@@ -470,7 +470,7 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {syncSuccess && (
-        <p className="text-green-600 mt-2">Successfully pushed to GitHub!</p>
+        <p className="text-green-600 mt-2">¡Subido a GitHub con éxito!</p>
       )}
       {disconnectError && (
         <p className="text-red-600 mt-2">{disconnectError}</p>
@@ -482,44 +482,44 @@ function ConnectedGitHubConnector({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Force Push Warning
+              Advertencia de forzar subida
             </DialogTitle>
             <DialogDescription>
               <div className="space-y-3">
                 <p>
-                  You are about to perform a <strong>force push</strong> to your
-                  GitHub repository.
+                  Estás a punto de realizar un <strong>forzado de subida</strong> a tu
+                  repositorio de GitHub.
                 </p>
                 <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-md border border-orange-200 dark:border-orange-800">
                   <p className="text-sm text-orange-800 dark:text-orange-200">
                     <strong>
-                      This is dangerous and non-reversible and will:
+                      Esto es peligroso e irreversible y hará lo siguiente:
                     </strong>
                   </p>
                   <ul className="text-sm text-orange-700 dark:text-orange-300 list-disc list-inside mt-2 space-y-1">
-                    <li>Overwrite the remote repository history</li>
+                    <li>Sobrescribir el historial del repositorio remoto</li>
                     <li>
-                      Permanently delete commits that exist on the remote but
-                      not locally
+                      Eliminar permanentemente los commits que existen en el remoto pero
+                      no localmente
                     </li>
                   </ul>
                 </div>
                 <p className="text-sm">
-                  Only proceed if you're certain this is what you want to do.
+                  Solo procede si estás seguro de que esto es lo que quieres hacer.
                 </p>
               </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForceDialog(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={() => handleSyncToGithub({ force: true })}
               disabled={isSyncing}
             >
-              {isSyncing ? "Force Pushing..." : "Force Push"}
+              {isSyncing ? "Forzando subida..." : "Forzar subida"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -587,7 +587,7 @@ export function UnconnectedGitHubConnector({
     setGithubError(null);
     setGithubUserCode(null);
     setGithubVerificationUri(null);
-    setGithubStatusMessage("Requesting device code from GitHub...");
+    setGithubStatusMessage("Solicitando código de dispositivo a GitHub...");
 
     // Send IPC message to main process to start the flow
     ipc.github.startFlow({ appId });
@@ -623,7 +623,7 @@ export function UnconnectedGitHubConnector({
     // Listener for success
     const removeSuccessListener = ipc.events.github.onFlowSuccess((data) => {
       console.log("Received github:flow-success", data);
-      setGithubStatusMessage("Successfully connected to GitHub!");
+      setGithubStatusMessage("¡Conectado a GitHub con éxito!");
       setGithubUserCode(null); // Clear user-facing info
       setGithubVerificationUri(null);
       setGithubError(null);
@@ -636,7 +636,7 @@ export function UnconnectedGitHubConnector({
     // Listener for errors
     const removeErrorListener = ipc.events.github.onFlowError((data) => {
       console.log("Received github:flow-error", data);
-      setGithubError(data.error || "An unknown error occurred.");
+      setGithubError(data.error || "Ocurrió un error desconocido.");
       setGithubStatusMessage(null);
       setGithubUserCode(null);
       setGithubVerificationUri(null);
@@ -720,11 +720,11 @@ export function UnconnectedGitHubConnector({
         setRepoAvailable(result.available);
         if (!result.available) {
           setRepoCheckError(
-            result.error || "Repository name is not available.",
+            result.error || "El nombre del repositorio no está disponible.",
           );
         }
       } catch (err: any) {
-        setRepoCheckError(err.message || "Failed to check repo availability.");
+        setRepoCheckError(err.message || "Error al comprobar la disponibilidad del repositorio.");
       } finally {
         setIsCheckingRepo(false);
       }
@@ -778,7 +778,7 @@ export function UnconnectedGitHubConnector({
     } catch (err: any) {
       setCreateRepoError(
         err.message ||
-          `Failed to ${repoSetupMode === "create" ? "create" : "connect to"} repository.`,
+        `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
       );
     } finally {
       setIsCreatingRepo(false);
@@ -795,7 +795,7 @@ export function UnconnectedGitHubConnector({
           variant="outline"
           disabled={isConnectingToGithub} // Also disable if appId is null
         >
-          Connect to GitHub
+          Conectar a GitHub
           <Github className="h-5 w-5" />
           {isConnectingToGithub && (
             <svg
@@ -824,7 +824,7 @@ export function UnconnectedGitHubConnector({
         {/* GitHub Connection Status/Instructions */}
         {(githubUserCode || githubStatusMessage || githubError) && (
           <div className="mt-6 p-4 border rounded-md bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
-            <h4 className="font-medium mb-2">GitHub Connection</h4>
+            <h4 className="font-medium mb-2">Conexión con GitHub</h4>
             {githubError && (
               <p className="text-red-600 dark:text-red-400 mb-2">
                 Error: {githubError}
@@ -833,7 +833,7 @@ export function UnconnectedGitHubConnector({
             {githubUserCode && githubVerificationUri && (
               <div className="mb-2">
                 <p>
-                  1. Go to:
+                  1. Ve a:
                   <a
                     href={githubVerificationUri} // Make it a direct link
                     onClick={(e) => {
@@ -848,7 +848,7 @@ export function UnconnectedGitHubConnector({
                   </a>
                 </p>
                 <p>
-                  2. Enter code:
+                  2. Introduce el código:
                   <strong className="ml-1 font-mono text-lg tracking-wider bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded">
                     {githubUserCode}
                   </strong>
@@ -867,7 +867,7 @@ export function UnconnectedGitHubConnector({
                           );
                       }
                     }}
-                    title="Copy to clipboard"
+                    title="Copiar al portapapeles"
                   >
                     {codeCopied ? (
                       <Check className="h-4 w-4 text-green-500" />
@@ -895,13 +895,12 @@ export function UnconnectedGitHubConnector({
       <button
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
-        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${
-          !isExpanded
-            ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            : ""
-        }`}
+        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
+          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          : ""
+          }`}
       >
-        <span className="font-medium">Set up your GitHub repo</span>
+        <span className="font-medium">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
           <ChevronRight className="h-4 w-4 text-gray-500" />
         )}
@@ -909,9 +908,8 @@ export function UnconnectedGitHubConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
@@ -920,34 +918,32 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${
-                  repoSetupMode === "create"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("create");
                   setCreateRepoError(null);
                   setCreateRepoSuccess(false);
                 }}
               >
-                Create new repo
+                Crear nuevo repositorio
               </Button>
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${
-                  repoSetupMode === "existing"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${repoSetupMode === "existing"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
                   setCreateRepoError(null);
                   setCreateRepoSuccess(false);
                 }}
               >
-                Connect to existing repo
+                Conectar a repositorio existente
               </Button>
             </div>
           </div>
@@ -957,7 +953,7 @@ export function UnconnectedGitHubConnector({
               <>
                 <div>
                   <Label className="block text-sm font-medium">
-                    Repository Name
+                    Nombre del repositorio
                   </Label>
                   <Input
                     data-testid="github-create-repo-name-input"
@@ -974,12 +970,12 @@ export function UnconnectedGitHubConnector({
                   />
                   {isCheckingRepo && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Checking availability...
+                      Comprobando disponibilidad...
                     </p>
                   )}
                   {repoAvailable === true && (
                     <p className="text-xs text-green-600 mt-1">
-                      Repository name is available!
+                      ¡El nombre del repositorio está disponible!
                     </p>
                   )}
                   {repoAvailable === false && (
@@ -993,7 +989,7 @@ export function UnconnectedGitHubConnector({
               <>
                 <div>
                   <Label className="block text-sm font-medium">
-                    Select Repository
+                    Seleccionar repositorio
                   </Label>
                   <Select
                     value={selectedRepo}
@@ -1007,15 +1003,15 @@ export function UnconnectedGitHubConnector({
                       <SelectValue
                         placeholder={
                           isLoadingRepos
-                            ? "Loading repositories..."
-                            : "Select a repository"
+                            ? "Cargando repositorios..."
+                            : "Selecciona un repositorio"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       {availableRepos.map((repo) => (
                         <SelectItem key={repo.full_name} value={repo.full_name}>
-                          {repo.full_name} {repo.private && "(private)"}
+                          {repo.full_name} {repo.private && "(privado)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1026,7 +1022,7 @@ export function UnconnectedGitHubConnector({
 
             {/* Branch Selection */}
             <div>
-              <Label className="block text-sm font-medium">Branch</Label>
+              <Label className="block text-sm font-medium">Rama</Label>
               {repoSetupMode === "existing" && selectedRepo ? (
                 <div className="space-y-2">
                   <Select
@@ -1051,8 +1047,8 @@ export function UnconnectedGitHubConnector({
                       <SelectValue
                         placeholder={
                           isLoadingBranches
-                            ? "Loading branches..."
-                            : "Select a branch"
+                            ? "Cargando ramas..."
+                            : "Selecciona una rama"
                         }
                       />
                     </SelectTrigger>
@@ -1064,7 +1060,7 @@ export function UnconnectedGitHubConnector({
                       ))}
                       <SelectItem value="custom">
                         <span className="font-medium">
-                          ✏️ Type custom branch name
+                          ✏️ Escribir nombre de rama personalizado
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -1075,7 +1071,7 @@ export function UnconnectedGitHubConnector({
                       className="w-full"
                       value={customBranchName}
                       onChange={(e) => setCustomBranchName(e.target.value)}
-                      placeholder="Enter branch name (e.g., feature/new-feature)"
+                      placeholder="Introduce el nombre de la rama (ej., feature/nueva-rama)"
                       disabled={isCreatingRepo}
                     />
                   )}
@@ -1106,11 +1102,11 @@ export function UnconnectedGitHubConnector({
             >
               {isCreatingRepo
                 ? repoSetupMode === "create"
-                  ? "Creating..."
-                  : "Connecting..."
+                  ? "Creando..."
+                  : "Conectando..."
                 : repoSetupMode === "create"
-                  ? "Create Repo"
-                  : "Connect to Repo"}
+                  ? "Crear repositorio"
+                  : "Conectar al repositorio"}
             </Button>
           </form>
 
@@ -1120,8 +1116,8 @@ export function UnconnectedGitHubConnector({
           {createRepoSuccess && (
             <p className="text-green-600 mt-2">
               {repoSetupMode === "create"
-                ? "Repository created and linked!"
-                : "Connected to repository!"}
+                ? "¡Repositorio creado y vinculado!"
+                : "¡Conectado al repositorio!"}
             </p>
           )}
         </div>

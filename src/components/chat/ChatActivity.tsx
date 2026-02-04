@@ -48,7 +48,7 @@ export function ChatActivityButton() {
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>Recent chat activity</TooltipContent>
+        <TooltipContent>Actividad reciente del chat</TooltipContent>
       </Tooltip>
       <PopoverContent
         align="end"
@@ -78,14 +78,16 @@ function ChatActivityList({ onSelect }: { onSelect?: () => void }) {
     return (
       <div className="p-4 text-sm text-muted-foreground flex items-center gap-2">
         <Loader2 size={16} className="animate-spin" />
-        Loading activity…
+        Cargando actividad…
       </div>
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">No recent chats</div>
+      <div className="p-4 text-sm text-muted-foreground">
+        No hay chats recientes
+      </div>
     );
   }
 
@@ -105,7 +107,7 @@ function ChatActivityList({ onSelect }: { onSelect?: () => void }) {
           >
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">
-                {c.title ?? `Chat #${c.id}`}
+                {c.title ?? `Chat nº ${c.id}`}
               </div>
               <div className="text-xs text-muted-foreground">
                 {apps.apps.find((a) => a.id === c.appId)?.name}

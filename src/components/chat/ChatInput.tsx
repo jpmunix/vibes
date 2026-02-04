@@ -310,19 +310,18 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       {/* Display loading or error state for proposal */}
       {isProposalLoading && (
         <div className="p-4 text-sm text-muted-foreground">
-          Loading proposal...
+          Cargando propuesta...
         </div>
       )}
       {proposalError && (
         <div className="p-4 text-sm text-red-600">
-          Error loading proposal: {proposalError.message}
+          Error al cargar la propuesta: {proposalError.message}
         </div>
       )}
       <div className="p-4" data-testid="chat-input-container">
         <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-          }`}
+          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
+            }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -420,12 +419,11 @@ export function ChatInput({ chatId }: { chatId?: number }) {
                         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                       >
                         <Lock size={16} />
-                        <span className="font-medium">Visual editor (Pro)</span>
+                        <span className="font-medium">Editor visual (Pro)</span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Visual editing lets you make UI changes without AI and is
-                      a Pro-only feature
+                      La edición visual te permite hacer cambios en la interfaz sin IA y es una función exclusiva de Pro
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -459,7 +457,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
               <button
                 onClick={handleCancel}
                 className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg"
-                title="Cancel generation"
+                title="Cancelar generación"
               >
                 <StopCircleIcon size={20} />
               </button>
@@ -471,7 +469,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
                   disableSendButton
                 }
                 className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Send message"
+                title="Enviar mensaje"
               >
                 <SendHorizontalIcon size={20} />
               </button>
@@ -531,9 +529,9 @@ function SummarizeInNewChatButton() {
   return (
     <SuggestionButton
       onClick={handleSummarize}
-      tooltipText="Creating a new chat makes the AI more focused and efficient"
+      tooltipText="Crear un nuevo chat hace que la IA sea más enfocada y eficiente"
     >
-      Summarize to new chat
+      Resumir en un nuevo chat
     </SuggestionButton>
   );
 }
@@ -547,7 +545,7 @@ function RefactorFileButton({ path }: { path: string }) {
       return;
     }
     streamMessage({
-      prompt: `Refactor ${path} and make it more modular`,
+      prompt: `Refactoriza ${path} y hazlo más modular`,
       chatId,
       redo: false,
     });
@@ -555,10 +553,10 @@ function RefactorFileButton({ path }: { path: string }) {
   return (
     <SuggestionButton
       onClick={onClick}
-      tooltipText="Refactor the file to improve maintainability"
+      tooltipText="Refactoriza el archivo para mejorar su mantenimiento"
     >
       <span className="max-w-[180px] overflow-hidden whitespace-nowrap text-ellipsis">
-        Refactor {path.split("/").slice(-2).join("/")}
+        Refactorizar {path.split("/").slice(-2).join("/")}
       </span>
     </SuggestionButton>
   );
@@ -573,7 +571,7 @@ function WriteCodeProperlyButton() {
       return;
     }
     streamMessage({
-      prompt: `Write the code in the previous message in the correct format using \`<dyad-write>\` tags!`,
+      prompt: `¡Escribe el código del mensaje anterior en el formato correcto usando etiquetas \`<dyad-write>\`!`,
       chatId,
       redo: false,
     });
@@ -581,9 +579,9 @@ function WriteCodeProperlyButton() {
   return (
     <SuggestionButton
       onClick={onClick}
-      tooltipText="Write code properly (useful when AI generates the code in the wrong format)"
+      tooltipText="Escribe el código correctamente (útil cuando la IA genera el código en el formato incorrecto)"
     >
-      Write code properly
+      Escribir código correctamente
     </SuggestionButton>
   );
 }
@@ -601,8 +599,8 @@ function RebuildButton() {
   }, [selectedAppId, posthog, restartApp]);
 
   return (
-    <SuggestionButton onClick={onClick} tooltipText="Rebuild the application">
-      Rebuild app
+    <SuggestionButton onClick={onClick} tooltipText="Reconstruye la aplicación">
+      Reconstruir app
     </SuggestionButton>
   );
 }
@@ -622,9 +620,9 @@ function RestartButton() {
   return (
     <SuggestionButton
       onClick={onClick}
-      tooltipText="Restart the development server"
+      tooltipText="Reinicia el servidor de desarrollo"
     >
-      Restart app
+      Reiniciar app
     </SuggestionButton>
   );
 }
@@ -641,9 +639,9 @@ function RefreshButton() {
   return (
     <SuggestionButton
       onClick={onClick}
-      tooltipText="Refresh the application preview"
+      tooltipText="Actualiza la vista previa de la aplicación"
     >
-      Refresh app
+      Actualizar vista
     </SuggestionButton>
   );
 }
@@ -662,8 +660,8 @@ function KeepGoingButton() {
     });
   };
   return (
-    <SuggestionButton onClick={onClick} tooltipText="Keep going">
-      Keep going
+    <SuggestionButton onClick={onClick} tooltipText="Continuar">
+      Continuar
     </SuggestionButton>
   );
 }
@@ -688,7 +686,7 @@ export function mapActionToButton(action: SuggestedAction) {
       console.error(`Unsupported action: ${action.id}`);
       return (
         <Button variant="outline" size="sm" disabled key={action.id}>
-          Unsupported: {action.id}
+          No soportado: {action.id}
         </Button>
       );
   }
@@ -725,7 +723,7 @@ function ChatInputActions({
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
 
   if (proposal.type === "tip-proposal") {
-    return <div>Tip proposal</div>;
+    return <div>Propuesta de consejo</div>;
   }
   if (proposal.type === "action-proposal") {
     return <ActionProposalActions proposal={proposal}></ActionProposalActions>;
@@ -780,7 +778,7 @@ function ChatInputActions({
           </button>
           {proposal.securityRisks.length > 0 && (
             <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0">
-              Security risks found
+              Riesgos de seguridad detectados
             </span>
           )}
         </div>
@@ -800,7 +798,7 @@ function ChatInputActions({
             ) : (
               <Check size={16} className="mr-1" />
             )}
-            Approve
+            Aprobar
           </Button>
           <Button
             className="px-8"
@@ -815,7 +813,7 @@ function ChatInputActions({
             ) : (
               <X size={16} className="mr-1" />
             )}
-            Reject
+            Rechazar
           </Button>
           <div className="flex items-center space-x-1 ml-auto">
             <AutoApproveSwitch />
@@ -828,7 +826,7 @@ function ChatInputActions({
           <div className="p-3 border-t border-border bg-muted/50 text-sm">
             {!!proposal.securityRisks.length && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">Security Risks</h4>
+                <h4 className="font-semibold mb-1">Riesgos de seguridad</h4>
                 <ul className="space-y-1">
                   {proposal.securityRisks.map((risk, index) => (
                     <li key={index} className="flex items-start space-x-2">
@@ -855,7 +853,7 @@ function ChatInputActions({
 
             {proposal.sqlQueries?.length > 0 && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">SQL Queries</h4>
+                <h4 className="font-semibold mb-1">Consultas SQL</h4>
                 <ul className="space-y-2">
                   {proposal.sqlQueries.map((query, index) => (
                     <SqlQueryItem key={index} query={query} />
@@ -866,7 +864,7 @@ function ChatInputActions({
 
             {proposal.packagesAdded?.length > 0 && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">Packages Added</h4>
+                <h4 className="font-semibold mb-1">Paquetes añadidos</h4>
                 <ul className="space-y-1">
                   {proposal.packagesAdded.map((pkg, index) => (
                     <li
@@ -893,7 +891,7 @@ function ChatInputActions({
 
             {serverFunctions.length > 0 && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">Server Functions Changed</h4>
+                <h4 className="font-semibold mb-1">Funciones de servidor cambiadas</h4>
                 <ul className="space-y-1">
                   {serverFunctions.map((file: FileChange, index: number) => (
                     <li key={index} className="flex items-center space-x-2">
@@ -915,7 +913,7 @@ function ChatInputActions({
 
             {otherFilesChanged.length > 0 && (
               <div>
-                <h4 className="font-semibold mb-1">Files Changed</h4>
+                <h4 className="font-semibold mb-1">Archivos cambiados</h4>
                 <ul className="space-y-1">
                   {otherFilesChanged.map((file: FileChange, index: number) => (
                     <li key={index} className="flex items-center space-x-2">
@@ -977,7 +975,7 @@ function ProposalSummary({
     !packagesAdded.length &&
     !filesChanged.length
   ) {
-    return <span>No changes</span>;
+    return <span>Sin cambios</span>;
   }
 
   // Build parts array with only the segments that have content
@@ -985,25 +983,25 @@ function ProposalSummary({
 
   if (sqlQueries.length) {
     parts.push(
-      `${sqlQueries.length} SQL ${sqlQueries.length === 1 ? "query" : "queries"}`,
+      `${sqlQueries.length} SQL ${sqlQueries.length === 1 ? "consulta" : "consultas"}`,
     );
   }
 
   if (serverFunctions.length) {
     parts.push(
-      `${serverFunctions.length} Server ${serverFunctions.length === 1 ? "Function" : "Functions"}`,
+      `${serverFunctions.length} de servidor ${serverFunctions.length === 1 ? "Función" : "Funciones"}`,
     );
   }
 
   if (packagesAdded.length) {
     parts.push(
-      `${packagesAdded.length} ${packagesAdded.length === 1 ? "package" : "packages"}`,
+      `${packagesAdded.length} ${packagesAdded.length === 1 ? "paquete" : "paquetes"}`,
     );
   }
 
   if (filesChanged.length) {
     parts.push(
-      `${filesChanged.length} ${filesChanged.length === 1 ? "file" : "files"}`,
+      `${filesChanged.length} ${filesChanged.length === 1 ? "archivo" : "archivos"}`,
     );
   }
 
@@ -1027,7 +1025,7 @@ function SqlQueryItem({ query }: { query: SqlQuery }) {
         <div className="flex items-center gap-2">
           <Database size={16} className="text-muted-foreground flex-shrink-0" />
           <span className="text-sm font-medium">
-            {queryDescription || "SQL Query"}
+            {queryDescription || "Consulta SQL"}
           </span>
         </div>
         <div>

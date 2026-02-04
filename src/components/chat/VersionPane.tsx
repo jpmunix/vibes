@@ -105,12 +105,12 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
   return (
     <div className="h-full border-t border-2 border-border w-full">
       <div className="p-2 border-b border-border flex items-center justify-between">
-        <h2 className="text-base font-medium pl-2">Version History</h2>
+        <h2 className="text-base font-medium pl-2">Historial de versiones</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             className="p-1 hover:bg-(--background-lightest) rounded-md  "
-            aria-label="Close version pane"
+            aria-label="Cerrar panel de versiones"
           >
             <X size={20} />
           </button>
@@ -118,7 +118,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
       </div>
       <div className="overflow-y-auto h-[calc(100%-60px)]">
         {versions.length === 0 ? (
-          <div className="p-4 ">No versions available</div>
+          <div className="p-4 ">No hay versiones disponibles</div>
         ) : (
           <div className="divide-y divide-border">
             {versions.map((version: Version, index: number) => (
@@ -127,10 +127,10 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                 className={cn(
                   "px-4 py-2 hover:bg-(--background-lightest) cursor-pointer",
                   selectedVersionId === version.oid &&
-                    "bg-(--background-lightest)",
+                  "bg-(--background-lightest)",
                   isCheckingOutVersion &&
-                    selectedVersionId === version.oid &&
-                    "opacity-50 cursor-not-allowed",
+                  selectedVersionId === version.oid &&
+                  "opacity-50 cursor-not-allowed",
                 )}
                 onClick={() => {
                   if (!isCheckingOutVersion) {
@@ -141,7 +141,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-xs">
-                      Version {versions.length - index} (
+                      Versión {versions.length - index} (
                       {version.oid.slice(0, 7)})
                     </span>
                     {/* example format: '2025-07-25T21:52:01Z' */}
@@ -169,8 +169,8 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             </TooltipTrigger>
                             <TooltipContent>
                               {isExpired
-                                ? "DB snapshot may have expired (older than 24 hours)"
-                                : `Database snapshot available at timestamp ${version.dbTimestamp}`}
+                                ? "El snapshot de la base de datos puede haber caducado (más de 24 horas)"
+                                : `Snapshot de la base de datos disponible en la marca de tiempo ${version.dbTimestamp}`}
                             </TooltipContent>
                           </Tooltip>
                         );
@@ -186,13 +186,13 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                       )}
                     <span className="text-xs opacity-90">
                       {isCheckingOutVersion && selectedVersionId === version.oid
-                        ? "Loading..."
+                        ? "Cargando..."
                         : formatDistanceToNow(
-                            new Date(version.timestamp * 1000),
-                            {
-                              addSuffix: true,
-                            },
-                          )}
+                          new Date(version.timestamp * 1000),
+                          {
+                            addSuffix: true,
+                          },
+                        )}
                     </span>
                   </div>
                 </div>
@@ -203,18 +203,17 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                         "Reverted all changes back to version ",
                       )
                         ? version.message.replace(
-                            /Reverted all changes back to version ([a-f0-9]+)/,
-                            (_, hash) => {
-                              const targetIndex = versions.findIndex(
-                                (v) => v.oid === hash,
-                              );
-                              return targetIndex !== -1
-                                ? `Reverted all changes back to version ${
-                                    versions.length - targetIndex
-                                  }`
-                                : version.message;
-                            },
-                          )
+                          /Reverted all changes back to version ([a-f0-9]+)/,
+                          (_, hash) => {
+                            const targetIndex = versions.findIndex(
+                              (v) => v.oid === hash,
+                            );
+                            return targetIndex !== -1
+                              ? `Se han revertido todos los cambios a la versión ${versions.length - targetIndex
+                              }`
+                              : version.message;
+                          },
+                        )
                         : version.message}
                     </p>
                   )}
@@ -242,9 +241,9 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             "invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
                             selectedVersionId === version.oid && "visible",
                             isRevertingVersion &&
-                              "opacity-50 cursor-not-allowed",
+                            "opacity-50 cursor-not-allowed",
                           )}
-                          aria-label="Restore to this version"
+                          aria-label="Restaurar a esta versión"
                         >
                           {isRevertingVersion ? (
                             <Loader2 size={12} className="animate-spin" />
@@ -252,14 +251,14 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             <RotateCcw size={12} />
                           )}
                           <span>
-                            {isRevertingVersion ? "Restoring..." : "Restore"}
+                            {isRevertingVersion ? "Restaurando..." : "Restaurar"}
                           </span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         {isRevertingVersion
-                          ? "Restoring to this version..."
-                          : "Restore to this version"}
+                          ? "Restaurando a esta versión..."
+                          : "Restaurar a esta versión"}
                       </TooltipContent>
                     </Tooltip>
                   </div>

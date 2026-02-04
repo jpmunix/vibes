@@ -115,7 +115,7 @@ export function ChatList({ show }: { show?: boolean }) {
         await invalidateChats();
       } catch (error) {
         // DO A TOAST
-        showError(`Failed to create new chat: ${(error as any).toString()}`);
+        showError(`Error al crear un nuevo chat: ${(error as any).toString()}`);
       }
     } else {
       // If no app is selected, navigate to home page
@@ -126,7 +126,7 @@ export function ChatList({ show }: { show?: boolean }) {
   const handleDeleteChat = async (chatId: number) => {
     try {
       await ipc.chat.deleteChat(chatId);
-      showSuccess("Chat deleted successfully");
+      showSuccess("Chat eliminado correctamente");
 
       // If the deleted chat was selected, navigate to home
       if (selectedChatId === chatId) {
@@ -137,7 +137,7 @@ export function ChatList({ show }: { show?: boolean }) {
       // Refresh the chat list
       await invalidateChats();
     } catch (error) {
-      showError(`Failed to delete chat: ${(error as any).toString()}`);
+      showError(`Error al eliminar el chat: ${(error as any).toString()}`);
     }
   };
 
@@ -176,7 +176,7 @@ export function ChatList({ show }: { show?: boolean }) {
         className="overflow-y-auto h-[calc(100vh-112px)]"
         data-testid="chat-list-container"
       >
-        <SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
+        <SidebarGroupLabel>Chats recientes</SidebarGroupLabel>
         <SidebarGroupContent>
           <div className="flex flex-col space-y-4">
             <Button
@@ -185,7 +185,7 @@ export function ChatList({ show }: { show?: boolean }) {
               className="flex items-center justify-start gap-2 mx-2 py-3"
             >
               <PlusCircle size={16} />
-              <span>New Chat</span>
+              <span>Nuevo chat</span>
             </Button>
             <Button
               onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
@@ -194,16 +194,16 @@ export function ChatList({ show }: { show?: boolean }) {
               data-testid="search-chats-button"
             >
               <Search size={16} />
-              <span>Search chats</span>
+              <span>Buscar chats</span>
             </Button>
 
             {loading ? (
               <div className="py-3 px-4 text-sm text-gray-500">
-                Loading chats...
+                Cargando chats...
               </div>
             ) : chats.length === 0 ? (
               <div className="py-3 px-4 text-sm text-gray-500">
-                No chats found
+                No se encontraron chats
               </div>
             ) : (
               <SidebarMenu className="space-y-1">
@@ -218,15 +218,14 @@ export function ChatList({ show }: { show?: boolean }) {
                             appId: chat.appId,
                           })
                         }
-                        className={`justify-start w-full text-left py-3 pr-1 hover:bg-sidebar-accent/80 ${
-                          selectedChatId === chat.id
+                        className={`justify-start w-full text-left py-3 pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
                             ? "bg-sidebar-accent text-sidebar-accent-foreground"
                             : ""
-                        }`}
+                          }`}
                       >
                         <div className="flex flex-col w-full">
                           <span className="truncate">
-                            {chat.title || "New Chat"}
+                            {chat.title || "Nuevo chat"}
                           </span>
                           <span className="text-xs text-gray-500">
                             {formatDistanceToNow(new Date(chat.createdAt), {
@@ -262,7 +261,7 @@ export function ChatList({ show }: { show?: boolean }) {
                               className="px-3 py-2"
                             >
                               <Edit3 className="mr-2 h-4 w-4" />
-                              <span>Rename Chat</span>
+                              <span>Renombrar chat</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() =>
@@ -274,7 +273,7 @@ export function ChatList({ show }: { show?: boolean }) {
                               className="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 focus:bg-red-50 dark:focus:bg-red-950/50"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete Chat</span>
+                              <span>Eliminar chat</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

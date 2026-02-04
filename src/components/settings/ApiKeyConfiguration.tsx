@@ -176,7 +176,7 @@ export function ApiKeyConfiguration({
                 onClick={() => onSaveKey(apiKeyInput)}
                 disabled={isSaving || !apiKeyInput}
               >
-                {isSaving ? "Saving..." : "Save Key"}
+                {isSaving ? "Guardando..." : "Guardar clave"}
               </Button>
             </div>
             {saveError && <p className="text-xs text-red-600">{saveError}</p>}

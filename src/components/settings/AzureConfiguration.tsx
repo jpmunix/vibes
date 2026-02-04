@@ -99,9 +99,9 @@ export function AzureConfiguration({
     if (hasSavedSettings) {
       return {
         variant: "default" as const,
-        title: "Azure OpenAI Configured",
+        title: "Azure OpenAI configurado",
         description:
-          "Dyad will use the credentials saved in Settings for Azure OpenAI models.",
+          "Dyad utilizará las credenciales guardadas en Ajustes para los modelos de Azure OpenAI.",
         icon: KeyRound,
         titleClassName: "",
         descriptionClassName: "",
@@ -111,9 +111,9 @@ export function AzureConfiguration({
     if (usingEnvironmentOnly) {
       return {
         variant: "default" as const,
-        title: "Using Environment Variables",
+        title: "Usando variables de entorno",
         description:
-          "AZURE_API_KEY and AZURE_RESOURCE_NAME are set. Values saved below will override them.",
+          "AZURE_API_KEY y AZURE_RESOURCE_NAME están configuradas. Los valores guardados a continuación las sobrescribirán.",
         icon: Info,
         titleClassName: "",
         descriptionClassName: "",
@@ -122,9 +122,9 @@ export function AzureConfiguration({
     }
     return {
       variant: "destructive" as const,
-      title: "Azure OpenAI Configuration Required",
+      title: "Configuración de Azure OpenAI requerida",
       description:
-        "Provide your Azure resource name and API key below, or configure the AZURE_API_KEY and AZURE_RESOURCE_NAME environment variables.",
+        "Proporciona tu nombre de recurso de Azure y la clave API a continuación, o configura las variables de entorno AZURE_API_KEY y AZURE_RESOURCE_NAME.",
       icon: Info,
       titleClassName: "text-red-800 dark:text-red-400",
       descriptionClassName: "text-red-800 dark:text-red-400",
@@ -153,7 +153,7 @@ export function AzureConfiguration({
             htmlFor="azure-resource-name"
             className="block text-sm font-medium mb-1"
           >
-            Resource Name
+            Nombre del recurso
           </label>
           <Input
             id="azure-resource-name"
@@ -172,7 +172,7 @@ export function AzureConfiguration({
             htmlFor="azure-api-key"
             className="block text-sm font-medium mb-1"
           >
-            API Key
+            Clave API
           </label>
           <Input
             id="azure-api-key"
@@ -182,7 +182,7 @@ export function AzureConfiguration({
               setSaved(false);
               setError(null);
             }}
-            placeholder="Enter your Azure OpenAI API key"
+            placeholder="Introduce tu clave API de Azure OpenAI"
             autoComplete="off"
             type="password"
           />
@@ -191,11 +191,11 @@ export function AzureConfiguration({
 
       <div className="flex items-center gap-2">
         <Button onClick={handleSave} disabled={saving || !hasUnsavedChanges}>
-          {saving ? "Saving..." : "Save Settings"}
+          {saving ? "Guardando..." : "Guardar Ajustes"}
         </Button>
         {saved && !error && (
           <span className="flex items-center text-green-600 text-sm">
-            <CheckCircle2 className="h-4 w-4 mr-1" /> Saved
+            <CheckCircle2 className="h-4 w-4 mr-1" /> Guardado
           </span>
         )}
       </div>
@@ -203,17 +203,17 @@ export function AzureConfiguration({
       {!isConfigured && !error && (
         <Alert variant="default">
           <Info className="h-4 w-4" />
-          <AlertTitle>Configuration Needed</AlertTitle>
+          <AlertTitle>Configuración necesaria</AlertTitle>
           <AlertDescription>
-            Azure OpenAI requests require both a resource name and API key.
-            Enter them above or supply the environment variables instead.
+            Las solicitudes de Azure OpenAI requieren tanto un nombre de recurso como una clave API.
+            Introdúcelos arriba o proporciona las variables de entorno en su lugar.
           </AlertDescription>
         </Alert>
       )}
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Save Error</AlertTitle>
+          <AlertTitle>Error al guardar</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -229,7 +229,7 @@ export function AzureConfiguration({
           className="border rounded-lg px-4 bg-background"
         >
           <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
-            Environment Variables (optional)
+            Variables de entorno (opcional)
           </AccordionTrigger>
           <AccordionContent className="pt-4 space-y-4">
             <div className="space-y-3 text-sm">
@@ -241,7 +241,7 @@ export function AzureConfiguration({
                   data-testid="azure-api-key-status"
                   className={`px-2 py-1 rounded text-xs font-medium ${envApiKey ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
-                  {envApiKey ? "Set" : "Not Set"}
+                  {envApiKey ? "Configurada" : "No configurada"}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted rounded border">
@@ -252,19 +252,19 @@ export function AzureConfiguration({
                   data-testid="azure-resource-name-status"
                   className={`px-2 py-1 rounded text-xs font-medium ${envResourceName ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
-                  {envResourceName ? "Set" : "Not Set"}
+                  {envResourceName ? "Configurada" : "No configurada"}
                 </span>
               </div>
             </div>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                You can continue to configure Azure via environment variables.
-                If both variables are present and no settings are saved, Dyad
-                will use them automatically.
+                Puedes continuar configurando Azure a través de variables de entorno.
+                Si ambas variables están presentes y no hay ajustes guardados, Dyad
+                las utilizará automáticamente.
               </p>
               <p>
-                Values saved in Settings take precedence over environment
-                variables. Restart Dyad after changing environment variables.
+                Los valores guardados en Ajustes tienen prioridad sobre las variables de entorno.
+                Reinicia Dyad después de cambiar las variables de entorno.
               </p>
             </div>
           </AccordionContent>

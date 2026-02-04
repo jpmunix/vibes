@@ -90,14 +90,13 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     >
       <div className={`mt-2 w-full max-w-3xl mx-auto group`}>
         <div
-          className={`rounded-lg p-2 ${
-            message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
-          }`}
+          className={`rounded-lg p-2 ${message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
+            }`}
         >
           {message.role === "assistant" &&
-          !message.content &&
-          isStreaming &&
-          isLastMessage ? (
+            !message.content &&
+            isStreaming &&
+            isLastMessage ? (
             <div className="flex h-6 items-center space-x-2 p-2">
               <motion.div
                 className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
@@ -154,13 +153,12 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             </div>
           )}
           {(message.role === "assistant" && message.content && !isStreaming) ||
-          message.approvalState ? (
+            message.approvalState ? (
             <div
-              className={`mt-2 flex items-center ${
-                message.role === "assistant" && message.content && !isStreaming
+              className={`mt-2 flex items-center ${message.role === "assistant" && message.content && !isStreaming
                   ? "justify-between"
                   : ""
-              } text-xs`}
+                } text-xs`}
             >
               {message.role === "assistant" &&
                 message.content &&
@@ -182,7 +180,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {copied ? "Copied!" : "Copy"}
+                        {copied ? "¡Copiado!" : "Copiar"}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -193,12 +191,12 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                     {message.approvalState === "approved" ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Approved</span>
+                        <span>Aprobado</span>
                       </>
                     ) : message.approvalState === "rejected" ? (
                       <>
                         <XCircle className="h-4 w-4 text-red-500" />
-                        <span>Rejected</span>
+                        <span>Rechazado</span>
                       </>
                     ) : null}
                   </div>
@@ -270,14 +268,14 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                         <Copy className="h-3 w-3" />
                       )}
                       <span className="text-xs">
-                        {copiedRequestId ? "Copied" : "Request ID"}
+                        {copiedRequestId ? "Copiado" : "ID de solicitud"}
                       </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {copiedRequestId
-                      ? "Copied!"
-                      : `Copy Request ID: ${message.requestId.slice(0, 8)}...`}
+                      ? "¡Copiado!"
+                      : `Copiar ID de solicitud: ${message.requestId.slice(0, 8)}...`}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -291,7 +289,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Max tokens used: {message.totalTokens.toLocaleString()}
+                    Máximo de tokens usados: {message.totalTokens.toLocaleString()}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -44,7 +44,7 @@ interface ImportAppDialogProps {
   onClose: () => void;
 }
 export const AI_RULES_PROMPT =
-  "Generate an AI_RULES.md file for this app. Describe the tech stack in 5-10 bullet points and describe clear rules about what libraries to use for what.";
+  "Genera un archivo AI_RULES.md para esta aplicación. Describe el stack tecnológico en 5-10 puntos y describe reglas claras sobre qué librerías usar para qué.";
 export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [hasAiRules, setHasAiRules] = useState<boolean | null>(null);
@@ -93,7 +93,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       const fetchedRepos = await ipc.github.listRepos();
       setRepos(fetchedRepos);
     } catch (err: unknown) {
-      showError("Failed to fetch repositories.: " + (err as any).toString());
+      showError("Error al obtener los repositorios: " + (err as any).toString());
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         });
         setGithubNameExists(result.exists);
       } catch (error: unknown) {
-        showError("Failed to check app name: " + (error as any).toString());
+        showError("Error al comprobar el nombre de la app: " + (error as any).toString());
       } finally {
         setIsCheckingGithubName(false);
       }
@@ -138,7 +138,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         return;
       }
       setSelectedAppId(result.app.id);
-      showSuccess(`Successfully imported ${result.app.name}`);
+      showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
       navigate({ to: "/chat", search: { id: chatId } });
       if (!result.hasAiRules) {
@@ -149,7 +149,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       }
       onClose();
     } catch (error: unknown) {
-      showError("Failed to import repository: " + (error as any).toString());
+      showError("Error al importar el repositorio: " + (error as any).toString());
     } finally {
       setImporting(false);
     }
@@ -172,7 +172,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         return;
       }
       setSelectedAppId(result.app.id);
-      showSuccess(`Successfully imported ${result.app.name}`);
+      showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
       navigate({ to: "/chat", search: { id: chatId } });
       if (!result.hasAiRules) {
@@ -183,7 +183,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       }
       onClose();
     } catch (error: unknown) {
-      showError("Failed to import repository: " + (error as any).toString());
+      showError("Error al importar el repositorio: " + (error as any).toString());
     } finally {
       setImporting(false);
     }
@@ -202,7 +202,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         });
         setGithubNameExists(result.exists);
       } catch (error: unknown) {
-        showError("Failed to check app name: " + (error as any).toString());
+        showError("Error al comprobar el nombre de la app: " + (error as any).toString());
       } finally {
         setIsCheckingGithubName(false);
       }
@@ -224,7 +224,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       });
       setNameExists(result.exists);
     } catch (error: unknown) {
-      showError("Failed to check app name: " + (error as any).toString());
+      showError("Error al comprobar el nombre de la app: " + (error as any).toString());
     } finally {
       setIsCheckingName(false);
     }
@@ -266,8 +266,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     onSuccess: async (result) => {
       showSuccess(
         !hasAiRules
-          ? "App imported successfully. Dyad will automatically generate an AI_RULES.md now."
-          : "App imported successfully",
+          ? "App importada con éxito. Dyad generará un AI_RULES.md ahora."
+          : "App importada con éxito",
       );
       onClose();
 
@@ -322,17 +322,16 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[98vh] overflow-y-auto flex flex-col p-0">
         <DialogHeader className="sticky top-0 bg-background border-b px-6 py-4">
-          <DialogTitle>Import App</DialogTitle>
+          <DialogTitle>Importar App</DialogTitle>
           <DialogDescription className="text-sm">
-            Import existing app from local folder or clone from Github.
+            Importa una aplicación existente desde una carpeta local o clónala desde Github.
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
           <Alert className="border-blue-500/20 text-blue-500 mb-2">
             <Info className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="text-xs sm:text-sm">
-              App import is an experimental feature. If you encounter any
-              issues, please report them using the Help button.
+              La importación de apps es una función experimental. Si encuentras algún problema, infórmalo usando el botón de Ayuda.
             </AlertDescription>
           </Alert>
           <Tabs defaultValue="local-folder" className="w-full">
@@ -341,14 +340,14 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 value="local-folder"
                 className="text-xs sm:text-sm px-2 py-2"
               >
-                Local Folder
+                Carpeta local
               </TabsTrigger>
               <TabsTrigger
                 value="github-repos"
                 className="text-xs sm:text-sm px-2 py-2"
               >
-                <span className="hidden sm:inline">Your GitHub Repos</span>
-                <span className="sm:hidden">GitHub Repos</span>
+                <span className="hidden sm:inline">Mis repos de GitHub</span>
+                <span className="sm:hidden">GitHub</span>
               </TabsTrigger>
               <TabsTrigger
                 value="github-url"
@@ -371,8 +370,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Folder className="mr-2 h-4 w-4" />
                     )}
                     {selectFolderMutation.isPending
-                      ? "Selecting folder..."
-                      : "Select Folder"}
+                      ? "Seleccionando carpeta..."
+                      : "Seleccionar carpeta"}
                   </Button>
                 ) : (
                   <div className="space-y-4">
@@ -380,7 +379,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="text-sm font-medium mb-1">
-                            Selected folder:
+                            Carpeta seleccionada:
                           </p>
                           <p className="text-xs sm:text-sm text-muted-foreground break-words">
                             {selectedPath}
@@ -394,7 +393,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           disabled={importAppMutation.isPending}
                         >
                           <X className="h-4 w-4" />
-                          <span className="sr-only">Clear selection</span>
+                          <span className="sr-only">Limpiar selección</span>
                         </Button>
                       </div>
                     </div>
@@ -412,29 +411,27 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                         htmlFor="copy-to-dyad-apps"
                         className="text-xs sm:text-sm cursor-pointer"
                       >
-                        Copy to the{" "}
+                        Copiar a la carpeta{" "}
                         <code className="bg-muted px-1 py-0.5 rounded text-xs">
                           dyad-apps
                         </code>{" "}
-                        folder
                       </label>
                     </div>
 
                     <div className="space-y-2">
                       {nameExists && (
                         <p className="text-xs sm:text-sm text-yellow-500">
-                          An app with this name already exists. Please choose a
-                          different name:
+                          Ya existe una aplicación con este nombre. Por favor, elige un nombre diferente:
                         </p>
                       )}
                       <div className="relative">
                         <Label className="text-xs sm:text-sm ml-2 mb-2">
-                          App name
+                          Nombre de la aplicación
                         </Label>
                         <Input
                           value={customAppName}
                           onChange={handleAppNameChange}
-                          placeholder="Enter new app name"
+                          placeholder="Introduce el nombre de la app"
                           className="w-full pr-8 text-sm"
                           disabled={importAppMutation.isPending}
                         />
@@ -449,12 +446,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <Accordion type="single" collapsible>
                       <AccordionItem value="advanced-options">
                         <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
-                          Advanced options
+                          Opciones avanzadas
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4">
                           <div className="grid gap-2">
                             <Label className="text-xs sm:text-sm ml-2 mb-2">
-                              Install command
+                              Comando de instalación
                             </Label>
                             <Input
                               value={installCommand}
@@ -468,7 +465,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           </div>
                           <div className="grid gap-2">
                             <Label className="text-xs sm:text-sm ml-2 mb-2">
-                              Start command
+                              Comando de inicio
                             </Label>
                             <Input
                               value={startCommand}
@@ -480,7 +477,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           </div>
                           {!commandsValid && (
                             <p className="text-xs sm:text-sm text-red-500">
-                              Both commands are required when customizing.
+                              Ambos comandos son obligatorios al personalizar.
                             </p>
                           )}
                         </AccordionContent>
@@ -496,15 +493,15 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">
-                                AI_RULES.md lets Dyad know which tech stack to
-                                use for editing the app
+                                AI_RULES.md le dice a Dyad qué tecnologías
+                                usar para editar la app
                               </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <AlertDescription className="text-xs sm:text-sm">
-                          No AI_RULES.md found. Dyad will automatically generate
-                          one after importing.
+                          No se encontró AI_RULES.md. Dyad generará uno
+                          automáticamente después de importar.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -512,7 +509,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     {importAppMutation.isPending && (
                       <div className="flex items-center justify-center space-x-2 text-xs sm:text-sm text-muted-foreground animate-pulse">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Importing app...</span>
+                        <span>Importando app...</span>
                       </div>
                     )}
                   </div>
@@ -526,7 +523,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   disabled={importAppMutation.isPending}
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button
                   onClick={handleImport}
@@ -538,7 +535,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   }
                   className="w-full sm:w-auto min-w-[80px]"
                 >
-                  {importAppMutation.isPending ? <>Importing...</> : "Import"}
+                  {importAppMutation.isPending ? <>Importando...</> : "Importar"}
                 </Button>
               </DialogFooter>
             </TabsContent>
@@ -562,12 +559,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                   <div className="space-y-2">
                     <Label className="text-xs sm:text-sm ml-2 mb-2">
-                      App name (optional)
+                      Nombre de la aplicación (opcional)
                     </Label>
                     <Input
                       value={githubAppName}
                       onChange={handleGithubAppNameChange}
-                      placeholder="Leave empty to use repository name"
+                      placeholder="Deja vacío para usar el nombre del repositorio"
                       className="w-full pr-8 text-sm"
                       disabled={importing}
                     />
@@ -578,8 +575,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     )}
                     {githubNameExists && (
                       <p className="text-xs sm:text-sm text-yellow-500">
-                        An app with this name already exists. Please choose a
-                        different name.
+                        Ya existe una aplicación con este nombre. Por favor, elige un nombre diferente.
                       </p>
                     )}
                   </div>
@@ -587,7 +583,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   <div className="flex flex-col space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
                     {!loading && repos.length === 0 && (
                       <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
-                        No repositories found
+                        No se encontraron repositorios
                       </p>
                     )}
                     {repos.map((repo) => (
@@ -613,7 +609,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           {importing ? (
                             <Loader2 className="animate-spin h-4 w-4" />
                           ) : (
-                            "Import"
+                            "Importar"
                           )}
                         </Button>
                       </div>
@@ -625,12 +621,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Accordion type="single" collapsible>
                         <AccordionItem value="advanced-options">
                           <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
-                            Advanced options
+                            Opciones avanzadas
                           </AccordionTrigger>
                           <AccordionContent className="space-y-4">
                             <div className="grid gap-2">
                               <Label className="text-xs sm:text-sm">
-                                Install command
+                                Comando de instalación
                               </Label>
                               <Input
                                 value={installCommand}
@@ -644,7 +640,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </div>
                             <div className="grid gap-2">
                               <Label className="text-xs sm:text-sm">
-                                Start command
+                                Comando de inicio
                               </Label>
                               <Input
                                 value={startCommand}
@@ -658,7 +654,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </div>
                             {!commandsValid && (
                               <p className="text-xs sm:text-sm text-red-500">
-                                Both commands are required when customizing.
+                                Ambos comandos son obligatorios al personalizar.
                               </p>
                             )}
                           </AccordionContent>
@@ -671,7 +667,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">Repository URL</Label>
+                <Label className="text-xs sm:text-sm">URL del repositorio</Label>
                 <Input
                   placeholder="https://github.com/user/repo.git"
                   value={url}
@@ -683,12 +679,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm">
-                  App name (optional)
+                  Nombre de la aplicación (opcional)
                 </Label>
                 <Input
                   value={githubAppName}
                   onChange={handleGithubAppNameChange}
-                  placeholder="Leave empty to use repository name"
+                  placeholder="Deja vacío para usar el nombre del repositorio"
                   disabled={importing}
                   className="text-sm"
                 />
@@ -699,8 +695,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 )}
                 {githubNameExists && (
                   <p className="text-xs sm:text-sm text-yellow-500">
-                    An app with this name already exists. Please choose a
-                    different name.
+                    Ya existe una aplicación con este nombre. Por favor, elige un
+                    nombre diferente.
                   </p>
                 )}
               </div>
@@ -708,12 +704,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
               <Accordion type="single" collapsible>
                 <AccordionItem value="advanced-options">
                   <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
-                    Advanced options
+                    Opciones avanzadas
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <div className="grid gap-2">
                       <Label className="text-xs sm:text-sm">
-                        Install command
+                        Comando de instalación
                       </Label>
                       <Input
                         value={installCommand}
@@ -725,7 +721,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     </div>
                     <div className="grid gap-2">
                       <Label className="text-xs sm:text-sm">
-                        Start command
+                        Comando de inicio
                       </Label>
                       <Input
                         value={startCommand}
@@ -737,7 +733,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     </div>
                     {!commandsValid && (
                       <p className="text-xs sm:text-sm text-red-500">
-                        Both commands are required when customizing.
+                        Ambos comandos son obligatorios al personalizar.
                       </p>
                     )}
                   </AccordionContent>
@@ -752,10 +748,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 {importing ? (
                   <>
                     <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    Importing...
+                    Importando...
                   </>
                 ) : (
-                  "Import"
+                  "Importar"
                 )}
               </Button>
             </TabsContent>

@@ -30,14 +30,14 @@ export function SupabaseIntegration() {
         enableSupabaseWriteSqlMigration: false,
       });
       if (result) {
-        showSuccess("Successfully disconnected all Supabase organizations");
+        showSuccess("Todas las organizaciones de Supabase se han desconectado con éxito");
         await refetchOrganizations();
       } else {
-        showError("Failed to disconnect from Supabase");
+        showError("Error al desconectar de Supabase");
       }
     } catch (err: any) {
       showError(
-        err.message || "An error occurred while disconnecting from Supabase",
+        err.message || "Se produjo un error al desconectar de Supabase",
       );
     } finally {
       setIsDisconnecting(false);
@@ -47,9 +47,9 @@ export function SupabaseIntegration() {
   const handleDeleteOrganization = async (organizationSlug: string) => {
     try {
       await deleteOrganization({ organizationSlug });
-      showSuccess("Organization disconnected successfully");
+      showSuccess("Organización desconectada con éxito");
     } catch (err: any) {
-      showError(err.message || "Failed to disconnect organization");
+      showError(err.message || "Error al desconectar la organización");
     }
   };
 
@@ -58,9 +58,9 @@ export function SupabaseIntegration() {
       await updateSettings({
         enableSupabaseWriteSqlMigration: enabled,
       });
-      showSuccess("Setting updated");
+      showSuccess("Ajuste actualizado");
     } catch (err: any) {
-      showError(err.message || "Failed to update setting");
+      showError(err.message || "Error al actualizar el ajuste");
     }
   };
 
@@ -69,9 +69,9 @@ export function SupabaseIntegration() {
       await updateSettings({
         skipPruneEdgeFunctions: enabled,
       });
-      showSuccess("Setting updated");
+      showSuccess("Ajuste actualizado");
     } catch (err: any) {
-      showError(err.message || "Failed to update setting");
+      showError(err.message || "Error al actualizar el ajuste");
     }
   };
 
@@ -84,11 +84,11 @@ export function SupabaseIntegration() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Supabase Integration
+            Integración de Supabase
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {organizations.length} organization
-            {organizations.length !== 1 ? "s" : ""} connected to Supabase.
+            {organizations.length} organización
+            {organizations.length !== 1 ? "es" : ""} conectada a Supabase.
           </p>
         </div>
         <Button
@@ -98,7 +98,7 @@ export function SupabaseIntegration() {
           disabled={isDisconnecting}
           className="flex items-center gap-2"
         >
-          {isDisconnecting ? "Disconnecting..." : "Disconnect All"}
+          {isDisconnecting ? "Desconectando..." : "Desconectar todo"}
           <DatabaseZap className="h-4 w-4" />
         </Button>
       </div>
@@ -125,10 +125,10 @@ export function SupabaseIntegration() {
               size="sm"
               className="h-7 px-2 text-muted-foreground hover:text-destructive shrink-0"
               onClick={() => handleDeleteOrganization(org.organizationSlug)}
-              title="Disconnect organization"
+              title="Desconectar organización"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">Disconnect</span>
+              <span className="text-xs">Desconectar</span>
             </Button>
           </div>
         ))}
@@ -146,13 +146,13 @@ export function SupabaseIntegration() {
               htmlFor="supabase-migrations"
               className="text-sm font-medium"
             >
-              Write SQL migration files
+              Escribir archivos de migración SQL
             </Label>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Generate SQL migration files when modifying your Supabase schema.
-              This helps you track database changes in version control, though
-              these files aren't used for chat context, which uses the live
-              schema.
+              Genera archivos de migración SQL al modificar el esquema de
+              Supabase. Esto te ayuda a rastrear los cambios de la base de datos
+              en el control de versiones, aunque estos archivos no se usan para
+              el contexto del chat, que usa el esquema en vivo.
             </p>
           </div>
         </div>
@@ -170,12 +170,13 @@ export function SupabaseIntegration() {
               htmlFor="skip-prune-edge-functions"
               className="text-sm font-medium"
             >
-              Keep extra Supabase edge functions
+              Mantener funciones de borde adicionales de Supabase
             </Label>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              When disabled, edge functions deployed to Supabase but not present
-              in your codebase will be automatically deleted during sync
-              operations (e.g., after reverting or modifying shared modules).
+              Cuando está desactivado, las funciones de borde desplegadas en
+              Supabase pero no presentes en tu código se eliminarán
+              automáticamente durante las operaciones de sincronización (por
+              ejemplo, después de revertir o modificar módulos compartidos).
             </p>
           </div>
         </div>

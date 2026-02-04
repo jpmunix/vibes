@@ -79,7 +79,7 @@ export function ChatModeSelector() {
       case "build":
         return "Build";
       case "ask":
-        return "Ask";
+        return "Preguntar";
       case "agent":
         return "Build (MCP)";
       case "local-agent":
@@ -112,7 +112,7 @@ export function ChatModeSelector() {
           <div className="flex flex-col">
             <span>Abrir el menú de modos</span>
             <span className="text-xs text-gray-200 dark:text-gray-500">
-              {isMac ? "⌘ + ." : "Ctrl + ."} to toggle
+              {isMac ? "⌘ + ." : "Ctrl + ."} para cambiar
             </span>
           </div>
         </TooltipContent>
@@ -151,7 +151,7 @@ export function ChatModeSelector() {
         )}*/}
         <SelectItem value="build">
           <div className="flex flex-col items-start">
-            <span className="font-medium">Build</span>
+            <span className="font-medium">Construir</span>
             <span className="text-xs text-muted-foreground">
               Genera y edita con una gestion de contexto algo peor
             </span>
@@ -159,7 +159,7 @@ export function ChatModeSelector() {
         </SelectItem>
         <SelectItem value="ask">
           <div className="flex flex-col items-start">
-            <span className="font-medium">Ask</span>
+            <span className="font-medium">Preguntar</span>
             <span className="text-xs text-muted-foreground">
               Pregunta sobre cosas de la app pero sin editar
             </span>

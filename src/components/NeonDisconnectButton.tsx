@@ -14,10 +14,9 @@ export function NeonDisconnectButton({ className }: NeonDisconnectButtonProps) {
       await updateSettings({
         neon: undefined,
       });
-      toast.success("Disconnected from Neon successfully");
+      toast.success("Desconectado de Neon con éxito");
     } catch (error) {
-      console.error("Failed to disconnect from Neon:", error);
-      toast.error("Failed to disconnect from Neon");
+      toast.error("Error al desconectar de Neon");
     }
   };
 
@@ -32,7 +31,7 @@ export function NeonDisconnectButton({ className }: NeonDisconnectButtonProps) {
       className={className}
       size="sm"
     >
-      Disconnect from Neon
+      Desconectar de Neon
     </Button>
   );
 }

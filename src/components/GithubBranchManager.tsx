@@ -270,13 +270,13 @@ export function GithubBranchManager({
       } catch (switchError: any) {
         showError(
           switchError?.message ||
-            `Failed to switch branch after aborting ${operationType}. Please try again.`,
+          `Failed to switch branch after aborting ${operationType}. Please try again.`,
         );
       }
     } catch (abortError: any) {
       showError(
         abortError?.message ||
-          `Failed to abort ongoing ${operationType} before switching branches.`,
+        `Failed to abort ongoing ${operationType} before switching branches.`,
       );
     } finally {
       setIsSwitching(false);
@@ -357,7 +357,7 @@ export function GithubBranchManager({
           setConflicts([]);
           showError(
             fetchError.message ||
-              "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
+            "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
           );
         }
       } else {
@@ -400,7 +400,7 @@ export function GithubBranchManager({
           }
         >
           <SelectTrigger className="w-full" data-testid="branch-select-trigger">
-            <SelectValue placeholder="Select branch" />
+            <SelectValue placeholder="Seleccionar rama" />
           </SelectTrigger>
           <SelectContent>
             {branches.map((branch) => (
@@ -426,7 +426,7 @@ export function GithubBranchManager({
                   <Button
                     variant="outline"
                     size="icon"
-                    title="Branch actions"
+                    title="Acciones de rama"
                     data-testid="branch-actions-menu-trigger"
                   >
                     <EllipsisVertical className="h-4 w-4" />
@@ -492,7 +492,7 @@ export function GithubBranchManager({
                     className="mt-2"
                     data-testid="source-branch-select-trigger"
                   >
-                    <SelectValue placeholder="Select source (optional, defaults to HEAD)" />
+                    <SelectValue placeholder="Seleccionar origen (opcional, por defecto HEAD)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HEAD">HEAD (Current)</SelectItem>
@@ -690,10 +690,9 @@ export function GithubBranchManager({
                   Aborting…
                 </span>
               ) : (
-                `Abort ${
-                  abortConfirmation?.operationType === "merge"
-                    ? "Merge"
-                    : "Rebase"
+                `Abort ${abortConfirmation?.operationType === "merge"
+                  ? "Merge"
+                  : "Rebase"
                 } & Switch`
               )}
             </AlertDialogAction>
@@ -734,9 +733,8 @@ export function GithubBranchManager({
           </div>
         </CardHeader>
         <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
-            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-          }`}
+          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+            }`}
         >
           <CardContent className="space-y-4 pt-0">
             {/* Banner for native git requirement */}

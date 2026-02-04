@@ -35,14 +35,14 @@ export function DefaultChatModeSelector() {
   function NewBadge() {
     return (
       <span className="inline-flex items-center rounded-full px-2 text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      minube pro
-    </span>
+        minube pro
+      </span>
     );
   }
   const getModeDisplayName = (mode: ChatMode) => {
     switch (mode) {
       case "build":
-        return "Build";
+        return "Construir";
       case "agent":
         return "Build (MCP)";
       case "local-agent":
@@ -73,17 +73,17 @@ export function DefaultChatModeSelector() {
             <SelectItem value="local-agent">
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Pro agent</span>
+                  <span className="font-medium">Pro Agent</span>
                   <NewBadge />
                 </div>
                 <span className="text-xs text-muted-foreground">
-                El mejor modo de trabajo para el día a día
-              </span>
+                  El mejor modo de trabajo para el día a día
+                </span>
               </div>
             </SelectItem>
             <SelectItem value="build">
               <div className="flex flex-col items-start">
-                <span className="font-medium">Build</span>
+                <span className="font-medium">Construir</span>
                 <span className="text-xs text-muted-foreground">
                   Genera y edita con una gestion de contexto algo peor
                 </span>

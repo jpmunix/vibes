@@ -23,27 +23,27 @@ export const CommunityCodeConsentDialog: React.FC<
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Community Code Notice</AlertDialogTitle>
+          <AlertDialogTitle>Aviso de código de la comunidad</AlertDialogTitle>
           <AlertDialogDescription className="space-y-3">
             <p>
-              This code was created by a Dyad community member, not our core
-              team.
+              Este código fue creado por un miembro de la comunidad de Dyad, no
+              por nuestro equipo principal.
             </p>
             <p>
-              Community code can be very helpful, but since it's built
-              independently, it may have bugs, security risks, or could cause
-              issues with your system. We can't provide official support if
-              problems occur.
+              El código de la comunidad puede ser muy útil, pero como se desarrolla
+              de forma independiente, puede tener errores, riesgos de seguridad o
+              causar problemas en tu sistema. No podemos ofrecer soporte oficial
+              si surgen problemas.
             </p>
             <p>
-              We recommend reviewing the code on GitHub first. Only proceed if
-              you're comfortable with these risks.
+              Recomendamos revisar primero el código en GitHub. Procede solo si
+              te sientes cómodo con estos riesgos.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onAccept}>Accept</AlertDialogAction>
+          <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onAccept}>Aceptar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

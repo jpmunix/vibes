@@ -25,17 +25,17 @@ export function FreeAgentQuotaBanner({
   const resetTimeDisplay =
     hoursUntilReset !== null
       ? hoursUntilReset === 0
-        ? "less than 1 hour"
-        : `${hoursUntilReset} hour${hoursUntilReset === 1 ? "" : "s"}`
-      : "later";
+        ? "menos de 1 hora"
+        : `${hoursUntilReset} ${hoursUntilReset === 1 ? "hora" : "horas"}`
+      : "más tarde";
 
   // Format the actual reset time (e.g., "11:59 PM")
   const resetDateTime = resetTime
     ? new Date(resetTime).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
     : "";
 
   const handleUpgrade = () => {
@@ -51,14 +51,14 @@ export function FreeAgentQuotaBanner({
         <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div className="flex-1 space-y-2">
           <p className="text-sm text-amber-700 dark:text-amber-300">
-            You have used all 5 messages for the free Agent mode today. Check
-            back in {resetTimeDisplay} ({resetDateTime}). If you don't want to
-            wait, upgrade to Dyad Pro or switch back to Build mode.
+            Has usado los 5 mensajes del modo Agente gratuito por hoy. Vuelve en{" "}
+            {resetTimeDisplay} ({resetDateTime}). Si no quieres esperar,
+            actualiza a Dyad Pro o vuelve al modo Build.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleUpgrade} size="sm" className="gap-1.5">
               <Sparkles className="h-3.5 w-3.5" />
-              Upgrade to Dyad Pro
+              Actualizar a Dyad Pro
             </Button>
             <Button
               onClick={onSwitchToBuildMode}
@@ -67,7 +67,7 @@ export function FreeAgentQuotaBanner({
               className="gap-1.5 border-amber-500/50 hover:bg-amber-500/20"
             >
               <ArrowRight className="h-3.5 w-3.5" />
-              Switch back to Build mode
+              Volver al modo Build
             </Button>
           </div>
         </div>

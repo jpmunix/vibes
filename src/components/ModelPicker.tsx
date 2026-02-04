@@ -127,8 +127,8 @@ export function ModelPicker() {
   const providerEntries =
     !loading && modelsByProviders
       ? Object.entries(modelsByProviders).filter(
-          ([providerId]) => providerId !== "auto",
-        )
+        ([providerId]) => providerId !== "auto",
+      )
       : [];
   const primaryProviders = providerEntries.filter(([providerId, models]) => {
     if (models.length === 0) return false;
@@ -158,7 +158,7 @@ export function ModelPicker() {
                 {modelDisplayName === "Auto" && (
                   <>
                     <span className="text-xs text-muted-foreground">
-                      Model:
+                      Modelo:
                     </span>{" "}
                   </>
                 )}
@@ -178,12 +178,12 @@ export function ModelPicker() {
         {!isTrial &&
           (loading ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
-              Loading models...
+              Cargando modelos...
             </div>
           ) : !modelsByProviders ||
             Object.keys(modelsByProviders).length === 0 ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
-              No cloud models available
+              No hay modelos en la nube disponibles
             </div>
           ) : (
             /* Cloud models loaded */
@@ -215,18 +215,18 @@ export function ModelPicker() {
                           <span>{providerDisplayName}</span>
                           {provider?.type === "custom" && (
                             <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                              Custom
+                              Personalizado
                             </span>
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {models.length} models
+                          {models.length} modelos
                         </span>
                       </div>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-56 max-h-100 overflow-y-auto">
                       <DropdownMenuLabel>
-                        {providerDisplayName + " Models"}
+                        Modelos de {providerDisplayName}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       {models.map((model) => (
@@ -235,7 +235,7 @@ export function ModelPicker() {
                             <DropdownMenuItem
                               className={
                                 selectedModel.provider === providerId &&
-                                selectedModel.name === model.apiName
+                                  selectedModel.name === model.apiName
                                   ? "bg-secondary"
                                   : ""
                               }
@@ -278,14 +278,14 @@ export function ModelPicker() {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="w-full font-normal">
                     <div className="flex flex-col items-start">
-                      <span>Other AI providers</span>
+                      <span>Otros proveedores de IA</span>
                       <span className="text-xs text-muted-foreground">
-                        {secondaryProviders.length} providers
+                        {secondaryProviders.length} proveedores
                       </span>
                     </div>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuLabel>Other AI providers</DropdownMenuLabel>
+                    <DropdownMenuLabel>Otros proveedores de IA</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {secondaryProviders.map(([providerId, models]) => {
                       const provider = providers?.find(
@@ -299,18 +299,18 @@ export function ModelPicker() {
                                 <span>{provider?.name ?? providerId}</span>
                                 {provider?.type === "custom" && (
                                   <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                                    Custom
+                                    Personalizado
                                   </span>
                                 )}
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {models.length} models
+                                {models.length} modelos
                               </span>
                             </div>
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent className="w-56">
                             <DropdownMenuLabel>
-                              {(provider?.name ?? providerId) + " Models"}
+                              Modelos de {provider?.name ?? providerId}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             {models.map((model) => (
@@ -319,7 +319,7 @@ export function ModelPicker() {
                                   <DropdownMenuItem
                                     className={
                                       selectedModel.provider === providerId &&
-                                      selectedModel.name === model.apiName
+                                        selectedModel.name === model.apiName
                                         ? "bg-secondary"
                                         : ""
                                     }

@@ -66,7 +66,7 @@ export function SettingsList({ show }: { show: boolean }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Settings</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Ajustes</h2>
       </div>
       <ScrollArea className="flex-grow">
         <div className="space-y-1 p-4 pt-0">

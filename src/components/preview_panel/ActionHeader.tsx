@@ -91,10 +91,10 @@ export const ActionHeader = () => {
       },
       onSuccess: async () => {
         await refreshAppIframe();
-        showSuccess("Preview data cleared");
+        showSuccess("Datos de vista previa borrados");
       },
       onError: (error) => {
-        showError(`Error clearing preview data: ${error}`);
+        showError(`Error al borrar los datos de vista previa: ${error}`);
       },
     });
   };
@@ -226,14 +226,14 @@ export const ActionHeader = () => {
             "preview",
             previewRef,
             <Eye size={iconSize} />,
-            "Preview",
+            "Vista previa",
             "preview-mode-button",
           )}
           {renderButton(
             "problems",
             problemsRef,
             <AlertTriangle size={iconSize} />,
-            "Problems",
+            "Problemas",
             "problems-mode-button",
             displayCount && (
               <span className="ml-0.5 px-1 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
@@ -245,28 +245,28 @@ export const ActionHeader = () => {
             "code",
             codeRef,
             <Code size={iconSize} />,
-            "Code",
+            "Código",
             "code-mode-button",
           )}
           {renderButton(
             "configure",
             configureRef,
             <Wrench size={iconSize} />,
-            "Configure",
+            "Configurar",
             "configure-mode-button",
           )}
           {renderButton(
             "security",
             securityRef,
             <Shield size={iconSize} />,
-            "Security",
+            "Seguridad",
             "security-mode-button",
           )}
           {renderButton(
             "publish",
             publishRef,
             <Globe size={iconSize} />,
-            "Publish",
+            "Publicar",
             "publish-mode-button",
           )}
         </div>
@@ -278,7 +278,7 @@ export const ActionHeader = () => {
               <button
                 data-testid="preview-more-options-button"
                 className="no-app-region-drag flex items-center justify-center p-1.5 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
-                title="More options"
+                title="Más opciones"
               >
                 <MoreVertical size={16} />
               </button>
@@ -287,18 +287,19 @@ export const ActionHeader = () => {
               <DropdownMenuItem onClick={onCleanRestart}>
                 <Cog size={16} />
                 <div className="flex flex-col">
-                  <span>Rebuild</span>
+                  <span>Reconstruir</span>
                   <span className="text-xs text-muted-foreground">
-                    Re-installs node_modules and restarts
+                    Reinstala node_modules y reinicia
                   </span>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onClearSessionData}>
                 <Trash2 size={16} />
                 <div className="flex flex-col">
-                  <span>Clear Cache</span>
+                  <span>Borrar caché</span>
                   <span className="text-xs text-muted-foreground">
-                    Clears cookies and local storage and other app cache
+                    Borra cookies, almacenamiento local y otra caché de la
+                    aplicación
                   </span>
                 </div>
               </DropdownMenuItem>

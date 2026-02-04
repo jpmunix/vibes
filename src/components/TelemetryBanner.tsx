@@ -23,12 +23,12 @@ export function PrivacyBanner() {
       <div className="flex flex-col gap-3">
         <div>
           <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200">
-            Share anonymous data?
+            ¿Compartir datos anónimos?
           </h4>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Help improve Dyad with anonymous usage data.
+            Ayuda a mejorar Dyad con datos de uso anónimos.
             <em className="block italic mt-0.5">
-              Note: this does not log your code or messages.
+              Nota: esto no registra tu código ni tus mensajes.
             </em>
             <a
               onClick={() => {
@@ -38,7 +38,7 @@ export function PrivacyBanner() {
               }}
               className="cursor-pointer text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Learn more
+              Saber más
             </a>
           </p>
         </div>
@@ -50,7 +50,7 @@ export function PrivacyBanner() {
             }}
             data-testid="telemetry-accept-button"
           >
-            Accept
+            Aceptar
           </Button>
           <Button
             variant="secondary"
@@ -59,14 +59,14 @@ export function PrivacyBanner() {
             }}
             data-testid="telemetry-reject-button"
           >
-            Reject
+            Rechazar
           </Button>
           <Button
             variant="ghost"
             onClick={() => setHideBanner(true)}
             data-testid="telemetry-later-button"
           >
-            Later
+            Más tarde
           </Button>
         </div>
       </div>

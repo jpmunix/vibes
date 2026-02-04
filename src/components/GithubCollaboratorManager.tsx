@@ -60,7 +60,7 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
       setCollaborators(collabs);
     } catch (error: any) {
       console.error("Failed to load collaborators:", error);
-      showError("Failed to load collaborators: " + error.message);
+      showError("Error al cargar colaboradores: " + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +79,7 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
     setIsInviting(true);
     try {
       await ipc.github.inviteCollaborator({ appId, username: trimmedUsername });
-      showSuccess(`Invited ${trimmedUsername} to the project.`);
+      showSuccess(`Se ha invitado a ${trimmedUsername} al proyecto.`);
       setInviteUsername("");
       // Reload list (though they might be pending)
       loadCollaborators();
@@ -98,7 +98,7 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
         appId,
         username: collaboratorToDelete,
       });
-      showSuccess(`Removed ${collaboratorToDelete} from the project.`);
+      showSuccess(`Se ha eliminado a ${collaboratorToDelete} del proyecto.`);
       loadCollaborators();
     } catch (error: any) {
       showError(error.message);
@@ -118,10 +118,10 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
             <Users className="w-5 h-5" />
             <div>
               <CardTitle className="text-sm" data-testid="collaborators-header">
-                Collaborators
+                Colaboradores
               </CardTitle>
               <CardDescription className="text-xs">
-                Manage who has access to this project via GitHub.
+                Gestiona quién tiene acceso a este proyecto a través de GitHub.
               </CardDescription>
             </div>
           </div>
@@ -133,15 +133,14 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
         </div>
       </CardHeader>
       <div
-        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
-          isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <CardContent className="space-y-4">
           {/* Invite Form */}
           <form onSubmit={handleInvite} className="flex gap-2">
             <Input
-              placeholder="GitHub username"
+              placeholder="Nombre de usuario de GitHub"
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
               disabled={isInviting}
@@ -153,11 +152,11 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
               disabled={isInviting || !inviteUsername.trim()}
             >
               {isInviting ? (
-                "Inviting..."
+                "Invitando..."
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Invite
+                  Invitar
                 </>
               )}
             </Button>
@@ -166,15 +165,15 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
           {/* Collaborators List */}
           <div className="space-y-2 mt-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Current Team
+              Equipo actual
             </h3>
             {isLoading ? (
               <div className="text-sm text-center py-4 text-gray-500">
-                Loading collaborators...
+                Cargando colaboradores...
               </div>
             ) : collaborators.length === 0 ? (
               <div className="text-sm text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-md">
-                No collaborators found.
+                No se encontraron colaboradores.
               </div>
             ) : (
               <div className="space-y-2">
@@ -194,10 +193,10 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
                         <p className="text-sm font-medium">{collab.login}</p>
                         <p className="text-xs text-gray-500">
                           {collab.permissions?.admin
-                            ? "Admin"
+                            ? "Administrador"
                             : collab.permissions?.push
                               ? "Editor"
-                              : "Viewer"}
+                              : "Lector"}
                         </p>
                       </div>
                     </div>
@@ -226,22 +225,22 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove collaborator?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar colaborador?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove{" "}
-              <span className="font-medium">{collaboratorToDelete}</span> from
-              this project? This action cannot be undone.
+              ¿Estás seguro de que quieres eliminar a{" "}
+              <span className="font-medium">{collaboratorToDelete}</span> de
+              este proyecto? Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="confirm-remove-collaborator-cancel">
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               data-testid="confirm-remove-collaborator"
               onClick={handleRemove}
             >
-              Remove
+              Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

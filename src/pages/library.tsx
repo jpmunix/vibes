@@ -16,10 +16,10 @@ export default function LibraryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [prefillData, setPrefillData] = useState<
     | {
-        title: string;
-        description: string;
-        content: string;
-      }
+      title: string;
+      description: string;
+      content: string;
+    }
     | undefined
   >(undefined);
 
@@ -28,7 +28,7 @@ export default function LibraryPage() {
       if (lastDeepLink?.type === "add-prompt") {
         const deepLink = lastDeepLink as unknown as AddPromptDeepLinkData;
         const payload = deepLink.payload;
-        showInfo(`Prefilled prompt: ${payload.title}`);
+        showInfo(`Prompt precargado: ${payload.title}`);
         setPrefillData({
           title: payload.title,
           description: payload.description,
@@ -53,7 +53,7 @@ export default function LibraryPage() {
     <div className="min-h-screen px-8 py-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold mr-4">Library: Prompts</h1>
+          <h1 className="text-3xl font-bold mr-4">Biblioteca: Prompts</h1>
           <CreatePromptDialog
             onCreatePrompt={createPrompt}
             prefillData={prefillData}
@@ -63,10 +63,10 @@ export default function LibraryPage() {
         </div>
 
         {isLoading ? (
-          <div>Loading...</div>
+          <div>Cargando...</div>
         ) : prompts.length === 0 ? (
           <div className="text-muted-foreground">
-            No prompts yet. Create one to get started.
+            Aún no hay prompts. Crea uno para empezar.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">

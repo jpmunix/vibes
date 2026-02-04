@@ -34,13 +34,13 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
   ) : (
     <AlertTriangle size={16} className={iconColor} />
   );
-  const label = isError ? "Error" : "Warning";
+  const label = isError ? "Error" : "Advertencia";
 
   const handleAIFix = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (message && selectedChatId) {
       streamMessage({
-        prompt: `Fix the error: ${message}`,
+        prompt: `Arreglar el error: ${message}`,
         chatId: selectedChatId,
       });
     }
@@ -103,7 +103,7 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
             className="cursor-pointer flex items-center justify-center bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded text-xs px-2 py-1 h-6"
           >
             <Sparkles size={14} className="mr-1" />
-            <span>Fix with AI</span>
+            <span>Arreglar con IA</span>
           </button>
         </div>
       )}

@@ -102,21 +102,21 @@ export function McpConsentToast({
                 </div>
               </div>
               <h3 className="ml-3 text-base font-semibold text-amber-900 dark:text-amber-100">
-                Tool wants to run
+                La herramienta quiere ejecutarse
               </h3>
               <button
                 onClick={handleClose}
                 className="ml-auto flex-shrink-0 p-1.5 text-amber-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-slate-200 transition-colors duration-200 rounded-md hover:bg-amber-100/50 dark:hover:bg-slate-700/50"
-                aria-label="Close"
+                aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-2 text-sm">
               <p>
-                <span className="font-semibold">{toolName}</span> from
-                <span className="font-semibold"> {serverName}</span> requests
-                your consent.
+                <span className="font-semibold">{toolName}</span> de
+                <span className="font-semibold"> {serverName}</span> solicita su
+                consentimiento.
               </p>
               {toolDescription && (
                 <div>
@@ -136,7 +136,7 @@ export function McpConsentToast({
                       className="mt-1 text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
                       onClick={() => setIsExpanded((v) => !v)}
                     >
-                      {isExpanded ? "Show less" : "Show more"}
+                      {isExpanded ? "Mostrar menos" : "Mostrar más"}
                     </button>
                   )}
                 </div>
@@ -161,7 +161,7 @@ export function McpConsentToast({
                       className="mt-1 text-xs font-medium text-amber-700 hover:underline dark:text-amber-300"
                       onClick={() => setIsInputExpanded((v) => !v)}
                     >
-                      {isInputExpanded ? "Show less" : "Show more"}
+                      {isInputExpanded ? "Mostrar menos" : "Mostrar más"}
                     </button>
                   )}
                 </div>
@@ -173,7 +173,7 @@ export function McpConsentToast({
                 size="sm"
                 className="px-6"
               >
-                Allow once
+                Permitir una vez
               </Button>
               <Button
                 onClick={() => handle("accept-always")}
@@ -181,7 +181,7 @@ export function McpConsentToast({
                 variant="secondary"
                 className="px-6"
               >
-                Always allow
+                Permitir siempre
               </Button>
               <Button
                 onClick={() => handle("decline")}
@@ -189,7 +189,7 @@ export function McpConsentToast({
                 variant="outline"
                 className="px-6"
               >
-                Decline
+                Rechazar
               </Button>
             </div>
           </div>

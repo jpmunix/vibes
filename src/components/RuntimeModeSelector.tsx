@@ -23,7 +23,7 @@ export function RuntimeModeSelector() {
     try {
       await updateSettings({ runtimeMode2: value });
     } catch (error: any) {
-      showError(`Failed to update runtime mode: ${error.message}`);
+      showError(`Error al actualizar el modo de ejecución: ${error.message}`);
     }
   };
 
@@ -32,7 +32,7 @@ export function RuntimeModeSelector() {
       <div className="space-y-1">
         <div className="flex items-center space-x-2">
           <Label className="text-sm font-medium" htmlFor="runtime-mode">
-            Runtime Mode
+            Modo de ejecución
           </Label>
           <Select
             value={settings.runtimeMode2 ?? "host"}
@@ -42,19 +42,19 @@ export function RuntimeModeSelector() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="host">Local (default)</SelectItem>
+              <SelectItem value="host">Local (predeterminado)</SelectItem>
               <SelectItem value="docker">Docker (experimental)</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Choose whether to run apps directly on the local machine or in Docker
-          containers
+          Elige si quieres ejecutar las aplicaciones directamente en la máquina
+          local o en contenedores Docker
         </div>
       </div>
       {isDockerMode && (
         <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-          ⚠️ Docker mode is <b>experimental</b> and requires{" "}
+          ⚠️ El modo Docker es <b>experimental</b> y requiere que{" "}
           <button
             type="button"
             className="underline font-medium cursor-pointer"
@@ -66,7 +66,7 @@ export function RuntimeModeSelector() {
           >
             Docker Desktop
           </button>{" "}
-          to be installed and running
+          esté instalado y en ejecución
         </div>
       )}
     </div>

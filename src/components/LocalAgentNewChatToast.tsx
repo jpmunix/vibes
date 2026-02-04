@@ -32,7 +32,7 @@ export function LocalAgentNewChatToast({
                 </div>
               </div>
               <h3 className="ml-3 text-sm font-semibold text-blue-900 dark:text-blue-100">
-                Agent Mode Activated
+                Modo Agente activado
               </h3>
 
               {/* Close button */}
@@ -40,7 +40,7 @@ export function LocalAgentNewChatToast({
                 type="button"
                 onClick={handleClose}
                 className="ml-auto flex-shrink-0 p-1.5 text-blue-500 dark:text-slate-400 hover:text-blue-700 dark:hover:text-slate-200 transition-colors duration-200 rounded-md hover:bg-blue-100/50 dark:hover:bg-slate-700/50"
-                aria-label="Close"
+                aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -49,8 +49,8 @@ export function LocalAgentNewChatToast({
             {/* Message */}
             <div className="mb-4">
               <p className="text-[14px] text-blue-800 dark:text-slate-200 leading-relaxed">
-                <strong>Tip: Create a new chat</strong> to give the agent a
-                clean context for better results.
+                <strong>Consejo: Crea un nuevo chat</strong> para darle al
+                agente un contexto limpio para obtener mejores resultados.
               </p>
             </div>
 
@@ -62,7 +62,7 @@ export function LocalAgentNewChatToast({
                 variant="ghost"
                 className="text-blue-600 dark:text-slate-400 hover:text-blue-800 dark:hover:text-slate-200 hover:bg-blue-100/50 dark:hover:bg-slate-700/50"
               >
-                Never show again
+                No volver a mostrar
               </Button>
             </div>
           </div>

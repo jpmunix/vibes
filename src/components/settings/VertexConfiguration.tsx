@@ -102,7 +102,7 @@ export function VertexConfiguration() {
           <Textarea
             value={serviceAccountKey}
             onChange={(e) => setServiceAccountKey(e.target.value)}
-            placeholder="Paste the full JSON contents of your service account key here"
+            placeholder="Pega aquí el contenido JSON completo de tu clave de cuenta de servicio"
             className="min-h-40"
           />
         </div>
@@ -110,11 +110,11 @@ export function VertexConfiguration() {
 
       <div className="flex items-center gap-2">
         <Button onClick={onSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Settings"}
+          {saving ? "Guardando..." : "Guardar Ajustes"}
         </Button>
         {saved && !error && (
           <span className="flex items-center text-green-600 text-sm">
-            <CheckCircle2 className="h-4 w-4 mr-1" /> Saved
+            <CheckCircle2 className="h-4 w-4 mr-1" /> Guardado
           </span>
         )}
       </div>
@@ -122,17 +122,14 @@ export function VertexConfiguration() {
       {!isConfigured && (
         <Alert variant="default">
           <Info className="h-4 w-4" />
-          <AlertTitle>Configuration Required</AlertTitle>
-          <AlertDescription>
-            Provide Project, Location, and a service account JSON key with
-            Vertex AI access.
-          </AlertDescription>
+          <AlertTitle>Configuración requerida</AlertTitle>
+          Proporciona el Proyecto, la Ubicación y una clave JSON de cuenta de servicio con acceso a Vertex AI.
         </Alert>
       )}
 
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Save Error</AlertTitle>
+          <AlertTitle>Error al guardar</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

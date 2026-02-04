@@ -16,9 +16,7 @@ export function AutoApproveSwitch({
         checked={settings?.autoApproveChanges}
         onCheckedChange={() => {
           updateSettings({ autoApproveChanges: !settings?.autoApproveChanges });
-          if (!settings?.autoApproveChanges && showToast) {
-            showInfo("You can disable auto-approve in the Settings.");
-          }
+          showInfo("Puedes desactivar la auto-aprobación en Ajustes.");
         }}
       />
       <Label htmlFor="auto-approve">Auto aprobar</Label>

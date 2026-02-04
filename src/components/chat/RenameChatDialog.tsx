@@ -50,7 +50,7 @@ export function RenameChatDialog({
         chatId,
         title: newTitle.trim(),
       });
-      showSuccess("Chat renamed successfully");
+      showSuccess("Chat renombrado correctamente");
 
       // Call the parent's onRename callback to refresh the chat list
       onRename();
@@ -58,7 +58,7 @@ export function RenameChatDialog({
       // Close the dialog
       handleOpenChange(false);
     } catch (error) {
-      showError(`Failed to rename chat: ${(error as any).toString()}`);
+      showError(`Error al renombrar el chat: ${(error as any).toString()}`);
     }
   };
 
@@ -70,20 +70,22 @@ export function RenameChatDialog({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rename Chat</DialogTitle>
-          <DialogDescription>Enter a new name for this chat.</DialogDescription>
+          <DialogTitle>Renombrar chat</DialogTitle>
+          <DialogDescription>
+            Introduce un nuevo nombre para este chat.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="chat-title" className="text-right">
-              Title
+              Título
             </Label>
             <Input
               id="chat-title"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               className="col-span-3"
-              placeholder="Enter chat title..."
+              placeholder="Introduce el título del chat..."
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleSave();
@@ -94,10 +96,10 @@ export function RenameChatDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button onClick={handleSave} disabled={!newTitle.trim()}>
-            Save
+            Guardar
           </Button>
         </DialogFooter>
       </DialogContent>

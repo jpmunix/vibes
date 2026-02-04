@@ -19,20 +19,20 @@ const defaultValue = "medium";
 const options: OptionInfo[] = [
   {
     value: "low",
-    label: "Low",
+    label: "Bajo",
     description:
-      "Minimal thinking tokens for faster responses and lower costs.",
+      "Tokens de razonamiento mínimos para respuestas más rápidas y costes más bajos.",
   },
   {
     value: defaultValue,
-    label: "Medium (default)",
-    description: "Balanced thinking for most conversations.",
+    label: "Medio (por defecto)",
+    description: "Razonamiento equilibrado para la mayoría de las conversaciones.",
   },
   {
     value: "high",
-    label: "High",
+    label: "Alto",
     description:
-      "Extended thinking for complex problems requiring deep analysis.",
+      "Razonamiento extendido para problemas complejos que requieren un análisis profundo.",
   },
 ];
 
@@ -57,11 +57,11 @@ export const ThinkingBudgetSelector: React.FC = () => {
           htmlFor="thinking-budget"
           className="text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          Thinking Budget
+          Presupuesto de razonamiento
         </label>
         <Select value={currentValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-[180px]" id="thinking-budget">
-            <SelectValue placeholder="Select budget" />
+            <SelectValue placeholder="Selecciona presupuesto" />
           </SelectTrigger>
           <SelectContent>
             {options.map((option) => (

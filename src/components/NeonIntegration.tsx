@@ -14,10 +14,10 @@ export function NeonIntegration() {
     <div className="flex items-center justify-between">
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Neon Integration
+          Integración de Neon
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Your account is connected to Neon.
+          Tu cuenta está conectada a Neon.
         </p>
       </div>
 

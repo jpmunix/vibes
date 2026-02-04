@@ -16,13 +16,13 @@ export function GitHubIntegration() {
         githubUser: undefined,
       });
       if (result) {
-        showSuccess("Successfully disconnected from GitHub");
+        showSuccess("Desconectado de GitHub con éxito");
       } else {
-        showError("Failed to disconnect from GitHub");
+        showError("Error al desconectar de GitHub");
       }
     } catch (err: any) {
       showError(
-        err.message || "An error occurred while disconnecting from GitHub",
+        err.message || "Se produjo un error al desconectar de GitHub",
       );
     } finally {
       setIsDisconnecting(false);
@@ -39,10 +39,10 @@ export function GitHubIntegration() {
     <div className="flex items-center justify-between">
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          GitHub Integration
+          Integración de GitHub
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Your account is connected to GitHub.
+          Tu cuenta está conectada a GitHub.
         </p>
       </div>
 
@@ -53,7 +53,7 @@ export function GitHubIntegration() {
         disabled={isDisconnecting}
         className="flex items-center gap-2"
       >
-        {isDisconnecting ? "Disconnecting..." : "Disconnect from GitHub"}
+        {isDisconnecting ? "Desconectando..." : "Desconectar de GitHub"}
         <Github className="h-4 w-4" />
       </Button>
     </div>

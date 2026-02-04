@@ -78,7 +78,7 @@ export function ChatHeader({
     // If this throws, it will automatically show an error toast
     await renameBranch({ oldBranchName: "master", newBranchName: "main" });
 
-    showSuccess("Master branch renamed to main");
+    showSuccess("Rama master renombrada a main");
   };
 
   const handleNewChat = async () => {
@@ -92,7 +92,7 @@ export function ChatHeader({
         });
         await invalidateChats();
       } catch (error) {
-        showError(`Failed to create new chat: ${(error as any).toString()}`);
+        showError(`Error al crear un nuevo chat: ${(error as any).toString()}`);
       }
     } else {
       navigate({ to: "/" });
@@ -124,13 +124,13 @@ export function ChatHeader({
                           {isAnyCheckoutVersionInProgress ? (
                             <>
                               <span>
-                                Please wait, switching back to latest version...
+                                Por favor, espera, volviendo a la última versión...
                               </span>
                             </>
                           ) : (
                             <>
-                              <strong>Warning:</strong>
-                              <span>You are not on a branch</span>
+                              <strong>Advertencia:</strong>
+                              <span>No estás en ninguna rama</span>
                               <Info size={14} />
                             </>
                           )}
@@ -139,8 +139,8 @@ export function ChatHeader({
                       <TooltipContent>
                         <p>
                           {isAnyCheckoutVersionInProgress
-                            ? "Version checkout is currently in progress"
-                            : "Checkout main branch, otherwise changes will not be saved properly"}
+                            ? "La recuperación de la versión está en curso"
+                            : "Recupera la rama main, de lo contrario los cambios no se guardarán correctamente"}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -149,10 +149,10 @@ export function ChatHeader({
               )}
               {currentBranchName && currentBranchName !== "<no-branch>" && (
                 <span>
-                  You are on branch: <strong>{currentBranchName}</strong>.
+                  Estás en la rama: <strong>{currentBranchName}</strong>.
                 </span>
               )}
-              {branchInfoLoading && <span>Checking branch...</span>}
+              {branchInfoLoading && <span>Comprobando rama...</span>}
             </span>
           </div>
           {currentBranchName === "master" ? (
@@ -162,7 +162,7 @@ export function ChatHeader({
               onClick={handleRenameMasterToMain}
               disabled={isRenamingBranch || branchInfoLoading}
             >
-              {isRenamingBranch ? "Renaming..." : "Rename master to main"}
+              {isRenamingBranch ? "Renombrando..." : "Renombrar master a main"}
             </Button>
           ) : isAnyCheckoutVersionInProgress && !isCheckingOutVersion ? null : (
             <Button
@@ -172,8 +172,8 @@ export function ChatHeader({
               disabled={isCheckingOutVersion || branchInfoLoading}
             >
               {isCheckingOutVersion
-                ? "Checking out..."
-                : "Switch to main branch"}
+                ? "Recuperando..."
+                : "Cambiar a la rama main"}
             </Button>
           )}
         </div>
@@ -194,7 +194,7 @@ export function ChatHeader({
             className="hidden @2xs:flex items-center justify-start gap-2 mx-2 py-3"
           >
             <PlusCircle size={16} />
-            <span>New Chat</span>
+            <span>Nuevo chat</span>
           </Button>
           <Button
             onClick={onVersionClick}
@@ -204,7 +204,7 @@ export function ChatHeader({
             <History size={16} />
             {versionsLoading
               ? "..."
-              : `Version ${versions.length}${versionPostfix}`}
+              : `Versión ${versions.length}${versionPostfix}`}
           </Button>
         </div>
 

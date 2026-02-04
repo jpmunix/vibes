@@ -84,27 +84,27 @@ export function CreateAppDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New App</DialogTitle>
+          <DialogTitle>Crear nueva aplicación</DialogTitle>
           <DialogDescription>
-            {`Create a new app using the ${template?.title} template.`}
+            {`Crea una nueva aplicación usando la plantilla ${template?.title}.`}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="appName">App Name</Label>
+              <Label htmlFor="appName">Nombre de la aplicación</Label>
               <Input
                 id="appName"
                 value={appName}
                 onChange={(e) => setAppName(e.target.value)}
-                placeholder="Enter app name..."
+                placeholder="Introduce el nombre de la aplicación..."
                 className={nameExists ? "border-red-500" : ""}
                 disabled={isSubmitting}
               />
               {nameExists && (
                 <p className="text-sm text-red-500">
-                  An app with this name already exists
+                  Ya existe una aplicación con este nombre
                 </p>
               )}
             </div>
@@ -117,7 +117,7 @@ export function CreateAppDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               type="submit"
@@ -127,7 +127,7 @@ export function CreateAppDialog({
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isSubmitting ? "Creating..." : "Create App"}
+              {isSubmitting ? "Creando..." : "Crear Aplicación"}
             </Button>
           </DialogFooter>
         </form>

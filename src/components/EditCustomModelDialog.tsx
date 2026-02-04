@@ -112,7 +112,7 @@ export function EditCustomModelDialog({
           return; // stop closing dialog
         }
       }
-      showSuccess("Custom model updated successfully!");
+      showSuccess("¡Modelo personalizado actualizado con éxito!");
       onSuccess();
       onClose();
     },
@@ -138,16 +138,16 @@ export function EditCustomModelDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Edit Custom Model</DialogTitle>
+          <DialogTitle>Editar modelo personalizado</DialogTitle>
           <DialogDescription>
-            Modify the configuration of the selected language model.
+            Modifica la configuración del modelo de lenguaje seleccionado.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-model-id" className="text-right">
-                Model ID*
+                ID del modelo*
               </Label>
               <Input
                 id="edit-model-id"
@@ -156,14 +156,14 @@ export function EditCustomModelDialog({
                   setApiName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="This must match the model expected by the API"
+                placeholder="Debe coincidir con el modelo esperado por la API"
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-model-name" className="text-right">
-                Name*
+                Nombre*
               </Label>
               <Input
                 id="edit-model-name"
@@ -172,14 +172,14 @@ export function EditCustomModelDialog({
                   setDisplayName(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Human-friendly name for the model"
+                placeholder="Nombre amigable para el modelo"
                 required
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-description" className="text-right">
-                Description
+                Descripción
               </Label>
               <Input
                 id="edit-description"
@@ -188,13 +188,13 @@ export function EditCustomModelDialog({
                   setDescription(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: Describe the model's capabilities"
+                placeholder="Opcional: Describe las capacidades del modelo"
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-max-output-tokens" className="text-right">
-                Max Output Tokens
+                Máx. Tokens de Salida
               </Label>
               <Input
                 id="edit-max-output-tokens"
@@ -204,13 +204,13 @@ export function EditCustomModelDialog({
                   setMaxOutputTokens(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: e.g., 4096"
+                placeholder="Opcional: ej., 4096"
                 disabled={mutation.isPending}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-context-window" className="text-right">
-                Context Window
+                Ventana de Contexto
               </Label>
               <Input
                 id="edit-context-window"
@@ -220,7 +220,7 @@ export function EditCustomModelDialog({
                   setContextWindow(e.target.value)
                 }
                 className="col-span-3"
-                placeholder="Optional: e.g., 8192"
+                placeholder="Opcional: ej., 8192"
                 disabled={mutation.isPending}
               />
             </div>
@@ -232,10 +232,10 @@ export function EditCustomModelDialog({
               onClick={handleClose}
               disabled={mutation.isPending}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Updating..." : "Update Model"}
+              {mutation.isPending ? "Actualizando..." : "Actualizar modelo"}
             </Button>
           </DialogFooter>
         </form>

@@ -63,7 +63,7 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
             onClick={() => refreshApp()}
             className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading || !app.id}
-            title="Refresh Files"
+            title="Actualizar archivos"
           >
             <RefreshCw size={16} />
           </button>

@@ -45,7 +45,7 @@ export function McpToolsPicker() {
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent>Tools</TooltipContent>
+          <TooltipContent>Herramientas</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <PopoverContent
@@ -54,15 +54,15 @@ export function McpToolsPicker() {
       >
         <div className="space-y-4">
           <div>
-            <h3 className="font-medium">Tools (MCP)</h3>
+            <h3 className="font-medium">Herramientas (MCP)</h3>
             <p className="text-sm text-muted-foreground">
-              Enable tools from your configured MCP servers.
+              Habilita herramientas de tus servidores MCP configurados.
             </p>
           </div>
           {servers.length === 0 ? (
             <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-              No MCP servers configured. Configure them in Settings → Tools
-              (MCP).
+              No hay servidores MCP configurados. Configúralos en Ajustes →
+              Herramientas (MCP).
             </div>
           ) : (
             <div className="space-y-3">
@@ -71,9 +71,9 @@ export function McpToolsPicker() {
                   <div className="flex items-center justify-between">
                     <div className="font-medium text-sm truncate">{s.name}</div>
                     {s.enabled ? (
-                      <Badge variant="secondary">Enabled</Badge>
+                      <Badge variant="secondary">Habilitado</Badge>
                     ) : (
-                      <Badge variant="outline">Disabled</Badge>
+                      <Badge variant="outline">Deshabilitado</Badge>
                     )}
                   </div>
                   <div className="mt-2 space-y-1">
@@ -106,16 +106,18 @@ export function McpToolsPicker() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ask">Ask</SelectItem>
-                            <SelectItem value="always">Always allow</SelectItem>
-                            <SelectItem value="denied">Deny</SelectItem>
+                            <SelectItem value="ask">Preguntar</SelectItem>
+                            <SelectItem value="always">
+                              Permitir siempre
+                            </SelectItem>
+                            <SelectItem value="denied">Denegar</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     ))}
                     {(toolsByServer[s.id] || []).length === 0 && (
                       <div className="text-xs text-muted-foreground">
-                        No tools discovered.
+                        No se han descubierto herramientas.
                       </div>
                     )}
                   </div>

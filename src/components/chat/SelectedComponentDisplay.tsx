@@ -55,14 +55,14 @@ export function SelectedComponentsDisplay() {
     >
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs font-medium text-muted-foreground">
-          Selected Components ({selectedComponents.length})
+          Componentes seleccionados ({selectedComponents.length})
         </span>
         <button
           onClick={handleClearAll}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          title="Clear all selected components"
+          title="Borrar todos los componentes seleccionados"
         >
-          Clear all
+          Borrar todo
         </button>
       </div>
       {selectedComponents.map((selectedComponent, index) => (
@@ -92,7 +92,7 @@ export function SelectedComponentsDisplay() {
             <button
               onClick={() => handleRemoveComponent(index)}
               className="ml-2 flex-shrink-0 rounded-full p-0.5 hover:bg-indigo-600/20"
-              title="Deselect component"
+              title="Deseleccionar componente"
             >
               <X size={18} className="text-indigo-600 dark:text-indigo-400" />
             </button>

@@ -124,7 +124,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
 
   const handleUploadChatSession = async () => {
     if (!selectedChatId) {
-      alert("Please select a chat first");
+      alert("Por favor, selecciona un chat primero");
       return;
     }
 
@@ -139,7 +139,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
     } catch (error) {
       console.error("Failed to upload chat session:", error);
       alert(
-        "Failed to upload chat session. Please try again or report manually.",
+        "Error al subir la sesión de chat. Por favor, inténtalo de nuevo o infórmalo manualmente.",
       );
     } finally {
       setIsUploading(false);
@@ -174,8 +174,8 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       );
 
       if (!response.ok) {
-        showError(`Failed to get upload URL: ${response.statusText}`);
-        throw new Error(`Failed to get upload URL: ${response.statusText}`);
+        showError(`Error al obtener la URL de subida: ${response.statusText}`);
+        throw new Error(`Error al obtener la URL de subida: ${response.statusText}`);
       }
 
       const { uploadUrl, filename } = await response.json();
@@ -193,7 +193,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       setReviewMode(false);
     } catch (error) {
       console.error("Failed to upload chat logs:", error);
-      alert("Failed to upload chat logs. Please try again.");
+      alert("Error al subir los registros del chat. Por favor, inténtalo de nuevo.");
     } finally {
       setIsUploading(false);
     }
@@ -239,14 +239,14 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload Complete</DialogTitle>
+            <DialogTitle>Subida completada</DialogTitle>
           </DialogHeader>
           <div className="py-6 flex flex-col items-center space-y-4">
             <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-full">
               <CheckIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-lg font-medium">
-              Chat Logs Uploaded Successfully
+              Registros de chat subidos correctamente
             </h3>
             <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded flex items-center space-x-2 font-mono text-sm">
               <FileIcon
@@ -262,13 +262,13 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               <span>{sessionId}</span>
             </div>
             <p className="text-center text-sm">
-              You must open a GitHub issue for us to investigate. Without a
-              linked issue, your report will not be reviewed.
+              Debes abrir un problema en GitHub para que lo investiguemos. Sin
+              un problema vinculado, tu informe no será revisado.
             </p>
           </div>
           <DialogFooter>
             <Button onClick={handleOpenGitHubIssue} className="w-full">
-              Open GitHub Issue
+              Abrir problema en GitHub
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -289,23 +289,23 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
-              OK to upload chat session?
+              ¿Estás de acuerdo con subir la sesión de chat?
             </DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            Please review the information that will be submitted. Your chat
-            messages, system information, and a snapshot of your codebase will
-            be included.
+            Por favor, revisa la información que se enviará. Se incluirán tus
+            mensajes de chat, información del sistema y una instantánea de tu
+            código.
           </DialogDescription>
 
           <div className="space-y-4 overflow-y-auto flex-grow">
             <div className="border rounded-md p-3">
-              <h3 className="font-medium mb-2">Chat Messages</h3>
+              <h3 className="font-medium mb-2">Mensajes de chat</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-40 overflow-y-auto">
                 {chatLogsData.chat.messages.map((msg) => (
                   <div key={msg.id} className="mb-2">
                     <span className="font-semibold">
-                      {msg.role === "user" ? "You" : "Assistant"}:{" "}
+                      {msg.role === "user" ? "Tú" : "Asistente"}:{" "}
                     </span>
                     <span>{msg.content}</span>
                   </div>
@@ -314,28 +314,28 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
             </div>
 
             <div className="border rounded-md p-3">
-              <h3 className="font-medium mb-2">Codebase Snapshot</h3>
+              <h3 className="font-medium mb-2">Instantánea del código</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-40 overflow-y-auto font-mono">
                 {chatLogsData.codebase}
               </div>
             </div>
 
             <div className="border rounded-md p-3">
-              <h3 className="font-medium mb-2">Logs</h3>
+              <h3 className="font-medium mb-2">Registros</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-40 overflow-y-auto font-mono">
                 {chatLogsData.debugInfo.logs}
               </div>
             </div>
 
             <div className="border rounded-md p-3">
-              <h3 className="font-medium mb-2">System Information</h3>
+              <h3 className="font-medium mb-2">Información del sistema</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                <p>Dyad Version: {chatLogsData.debugInfo.dyadVersion}</p>
-                <p>Platform: {chatLogsData.debugInfo.platform}</p>
-                <p>Architecture: {chatLogsData.debugInfo.architecture}</p>
+                <p>Versión de Dyad: {chatLogsData.debugInfo.dyadVersion}</p>
+                <p>Plataforma: {chatLogsData.debugInfo.platform}</p>
+                <p>Arquitectura: {chatLogsData.debugInfo.architecture}</p>
                 <p>
-                  Node Version:{" "}
-                  {chatLogsData.debugInfo.nodeVersion || "Not available"}
+                  Versión de Node:{" "}
+                  {chatLogsData.debugInfo.nodeVersion || "No disponible"}
                 </p>
               </div>
             </div>
@@ -347,7 +347,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               onClick={handleCancelReview}
               className="flex items-center"
             >
-              <XIcon className="mr-2 h-4 w-4" /> Cancel
+              <XIcon className="mr-2 h-4 w-4" /> Cancelar
             </Button>
             <Button
               onClick={handleSubmitChatLogs}
@@ -355,10 +355,10 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               disabled={isUploading}
             >
               {isUploading ? (
-                "Uploading..."
+                "Subiendo..."
               ) : (
                 <>
-                  <CheckIcon className="mr-2 h-4 w-4" /> Upload
+                  <CheckIcon className="mr-2 h-4 w-4" /> Subir
                 </>
               )}
             </Button>
@@ -372,10 +372,11 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Need help with Dyad?</DialogTitle>
+          <DialogTitle>¿Necesitas ayuda con Dyad?</DialogTitle>
         </DialogHeader>
         <DialogDescription className="">
-          If you need help or want to report an issue, here are some options:
+          Si necesitas ayuda o quieres informar de un problema, aquí tienes
+          algunas opciones:
         </DialogDescription>
         <div className="flex flex-col space-y-4 w-full">
           {isDyadProUser ? (
@@ -387,12 +388,12 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
                 }}
                 className="w-full py-6 border-primary/50 shadow-sm shadow-primary/10 transition-all hover:shadow-md hover:shadow-primary/15"
               >
-                <SparklesIcon className="mr-2 h-5 w-5" /> Chat with Dyad help
-                bot (Pro)
+                <SparklesIcon className="mr-2 h-5 w-5" /> Chatear con el bot de
+                ayuda de Dyad (Pro)
               </Button>
               <p className="text-sm text-muted-foreground px-2">
-                Opens an in-app help chat assistant that searches through Dyad's
-                docs.
+                Abre un asistente de chat de ayuda en la aplicación que busca en
+                la documentación de Dyad.
               </p>
             </div>
           ) : (
@@ -404,10 +405,10 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
                 }}
                 className="w-full py-6 bg-(--background-lightest)"
               >
-                <BookOpenIcon className="mr-2 h-5 w-5" /> Open Docs
+                <BookOpenIcon className="mr-2 h-5 w-5" /> Abrir documentación
               </Button>
               <p className="text-sm text-muted-foreground px-2">
-                Get help with common questions and issues.
+                Obtén ayuda con preguntas y problemas comunes.
               </p>
             </div>
           )}
@@ -423,11 +424,12 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               className="w-full py-6 bg-(--background-lightest)"
             >
               <BugIcon className="mr-2 h-5 w-5" />{" "}
-              {isLoading ? "Preparing Report..." : "Report a Bug"}
+              {isLoading ? "Preparando informe..." : "Informar de un error"}
             </Button>
             <p className="text-sm text-muted-foreground px-2">
-              We'll auto-fill your report with system info and logs. You can
-              review it for any sensitive info before submitting.
+              Rellenaremos automáticamente tu informe con información del sistema
+              y registros. Puedes revisarlo para ver si hay información sensible
+              antes de enviarlo.
             </p>
           </div>
           <div className="flex flex-col space-y-2">
@@ -438,11 +440,12 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               className="w-full py-6 bg-(--background-lightest)"
             >
               <UploadIcon className="mr-2 h-5 w-5" />{" "}
-              {isUploading ? "Preparing Upload..." : "Upload Chat Session"}
+              {isUploading ? "Preparando subida..." : "Subir sesión de chat"}
             </Button>
             <p className="text-sm text-muted-foreground px-2">
-              Share chat logs and code for troubleshooting. Data is used only to
-              resolve your issue and auto-deleted after a limited time.
+              Comparte los registros del chat y el código para solucionar
+              problemas. Los datos se utilizan solo para resolver tu problema y
+              se eliminan automáticamente después de un tiempo limitado.
             </p>
           </div>
         </div>

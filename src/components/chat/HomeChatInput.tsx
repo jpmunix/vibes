@@ -29,9 +29,9 @@ export function HomeChatInput({
   useChatModeToggle();
 
   const typingText = useTypingPlaceholder([
-    "an ecommerce store...",
-    "an information page...",
-    "a landing page...",
+    "una tienda de ecommerce...",
+    "una página de información...",
+    "una landing page...",
   ]);
   const placeholder = `Pídele a vibes que haga ${typingText ?? ""}`;
 
@@ -72,9 +72,8 @@ export function HomeChatInput({
     <>
       <div className="p-4" data-testid="home-chat-input-container">
         <div
-          className={`relative flex flex-col space-y-2 border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-          }`}
+          className={`relative flex flex-col space-y-2 border border-border rounded-lg bg-(--background-lighter) shadow-sm ${isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
+            }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -103,7 +102,7 @@ export function HomeChatInput({
             {isStreaming ? (
               <button
                 className="px-2 py-2 mt-1 mr-1 text-(--sidebar-accent-fg) rounded-lg opacity-50 cursor-not-allowed" // Indicate disabled state
-                title="Cancel generation (unavailable here)"
+                title="Cancelar generación (no disponible aquí)"
               >
                 <StopCircleIcon size={20} />
               </button>
@@ -112,7 +111,7 @@ export function HomeChatInput({
                 onClick={handleCustomSubmit}
                 disabled={!inputValue.trim() && attachments.length === 0}
                 className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Send message"
+                title="Enviar mensaje"
               >
                 <SendIcon size={20} />
               </button>

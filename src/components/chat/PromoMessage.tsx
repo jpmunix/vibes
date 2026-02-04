@@ -22,7 +22,7 @@ export interface MessageConfig {
 
 // Generic Message component
 export function Message({ spans }: MessageConfig) {
-  return ( ""
+  return (""
     // <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
     //   <p className="text-sm text-blue-700">
     //     {spans.map((span, index) => {
@@ -55,18 +55,18 @@ export function Message({ spans }: MessageConfig) {
 // Predefined message configurations
 export const TURBO_EDITS_PROMO_MESSAGE: MessageConfig = {
   spans: [
-    { type: "text", content: "Tired of waiting on AI?" },
-    { type: "link", content: " Get Dyad Pro", url: "https://dyad.sh/pro#ai" },
-    { type: "text", content: " for faster edits with Turbo Edits." },
+    { type: "text", content: "¿Cansado de esperar a la IA?" },
+    { type: "link", content: " Consigue Dyad Pro", url: "https://dyad.sh/pro#ai" },
+    { type: "text", content: " para ediciones más rápidas con Turbo Edits." },
   ],
 };
 
 export const SMART_CONTEXT_PROMO_MESSAGE: MessageConfig = {
   spans: [
-    { type: "text", content: "Save up to 3x on AI costs with " },
+    { type: "text", content: "Ahorra hasta 3 veces en costes de IA con " },
     {
       type: "link",
-      content: "Dyad Pro's Smart Context",
+      content: "Smart Context de Dyad Pro",
       url: "https://dyad.sh/pro#ai",
     },
   ],
@@ -77,7 +77,7 @@ export const DIFFERENT_MODEL_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Getting stuck in a debugging loop? Try a different model.",
+      content: "¿Te has atascado en un bucle de depuración? Prueba un modelo diferente.",
     },
   ],
 };
@@ -86,11 +86,11 @@ export const REDDIT_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Join 600+ builders in the ",
+      content: "Únete a más de 600 constructores en el ",
     },
     {
       type: "link",
-      content: "Dyad subreddit",
+      content: "Subreddit de Dyad",
       url: "https://www.reddit.com/r/dyadbuilders/",
     },
   ],
@@ -100,7 +100,7 @@ export const REPORT_A_BUG_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Found a bug? Click Help > Report a Bug",
+      content: "¿Has encontrado un error? Haz clic en Ayuda > Informar de un error",
     },
   ],
 };
@@ -110,7 +110,7 @@ export const UPLOAD_CHAT_TIP: MessageConfig = {
     {
       type: "text",
       content:
-        "Want to report a bad AI response? Upload the chat by clicking Help",
+        "¿Quieres informar de una mala respuesta de la IA? Sube el chat haciendo clic en Ayuda",
     },
   ],
 };
@@ -119,12 +119,12 @@ export const BUILD_A_BIBLE_APP_TIP: MessageConfig = {
   spans: [
     {
       type: "link",
-      content: "Watch",
+      content: "Mira",
       url: "https://www.youtube.com/watch?v=a7OoruOkkeg&list=PL1xR2pfIiRlW7mgr9AS95OkFQBtvrSlO5",
     },
     {
       type: "text",
-      content: " the creator of Dyad build a Bible app step-by-step",
+      content: " al creador de Dyad construye una aplicación de la Biblia paso a paso",
     },
   ],
 };
@@ -133,11 +133,11 @@ export const DEBUGGING_TIPS_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Getting stuck? Read our ",
+      content: "¿Te has atascado? Lee nuestros ",
     },
     {
       type: "link",
-      content: "debugging tips",
+      content: "consejos de depuración",
       url: "https://www.dyad.sh/docs/guides/debugging",
     },
   ],
@@ -148,11 +148,11 @@ export const AI_RULES_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Advanced tip: Customize your ",
+      content: "Consejo avanzado: Personaliza tus ",
     },
     {
       type: "link",
-      content: "AI rules",
+      content: "reglas de IA",
       url: "https://www.dyad.sh/docs/guides/ai-rules",
     },
   ],
@@ -162,7 +162,7 @@ export const NEW_CHAT_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Want to keep the AI focused? Start a new chat.",
+      content: "¿Quieres mantener a la IA centrada? Empieza un nuevo chat.",
     },
   ],
 };
@@ -172,7 +172,7 @@ export const ROADMAP_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Want to know what's next? Check out our ",
+      content: "¿Quieres saber qué es lo siguiente? Consulta nuestro ",
     },
     {
       type: "link",
@@ -187,7 +187,7 @@ export const GITHUB_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "Like Dyad? Star it on ",
+      content: "¿Te gusta Dyad? Danos una estrella en ",
     },
     {
       type: "link",

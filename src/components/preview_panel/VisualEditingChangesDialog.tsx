@@ -162,7 +162,7 @@ export function VisualEditingChangesDialog({
       <div className="flex gap-1 lg:gap-2 w-full lg:w-auto flex-wrap">
         <Button size="sm" onClick={handleSave} disabled={isSaving}>
           <Check size={14} className="mr-1" />
-          <span>{isSaving ? "Saving..." : "Save Changes"}</span>
+          <span>{isSaving ? "Guardando..." : "Guardar cambios"}</span>
         </Button>
         <Button
           size="sm"

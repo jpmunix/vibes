@@ -158,7 +158,7 @@ export function AuxiliaryActionsMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="py-2 px-3">
               <Paperclip size={16} className="mr-2" />
-              Attach files
+              Adjuntar archivos
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <FileAttachmentDropdown
@@ -172,7 +172,7 @@ export function AuxiliaryActionsMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="py-2 px-3">
               <Palette size={16} className="mr-2" />
-              Themes
+              Temas
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <DropdownMenuItem
@@ -182,7 +182,7 @@ export function AuxiliaryActionsMenu({
               >
                 <div className="flex items-center w-full">
                   <Ban size={16} className="mr-2 text-muted-foreground" />
-                  <span className="flex-1">No Theme</span>
+                  <span className="flex-1">Sin tema</span>
                   {currentThemeId === null && (
                     <Check size={16} className="text-primary ml-2" />
                   )}
@@ -252,7 +252,7 @@ export function AuxiliaryActionsMenu({
                           </DropdownMenuItem>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          {theme.description || "Custom theme"}
+                          {theme.description || "Tema personalizado"}
                         </TooltipContent>
                       </Tooltip>
                     );
@@ -275,7 +275,7 @@ export function AuxiliaryActionsMenu({
                       size={16}
                       className="mr-2 text-muted-foreground"
                     />
-                    <span className="flex-1">More themes</span>
+                    <span className="flex-1">Más temas</span>
                   </div>
                 </DropdownMenuItem>
               )}
@@ -293,7 +293,7 @@ export function AuxiliaryActionsMenu({
                       size={16}
                       className="mr-2 text-muted-foreground"
                     />
-                    <span className="flex-1">New Theme</span>
+                    <span className="flex-1">Nuevo tema</span>
                   </div>
                 </DropdownMenuItem>
               </>
@@ -317,7 +317,7 @@ export function AuxiliaryActionsMenu({
                   }
                 />
                 <span className="flex-1">
-                  {showTokenBar ? "Hide" : "Show"} token usage
+                  {showTokenBar ? "Ocultar" : "Mostrar"} uso de tokens
                 </span>
               </DropdownMenuItem>
             </>
@@ -339,7 +339,7 @@ export function AuxiliaryActionsMenu({
       <Dialog open={allThemesDialogOpen} onOpenChange={setAllThemesDialogOpen}>
         <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>All Custom Themes</DialogTitle>
+            <DialogTitle>Todos los temas personalizados</DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 -mx-6 px-6">
             {/* All custom themes list */}
@@ -353,9 +353,8 @@ export function AuxiliaryActionsMenu({
                     handleThemeSelect(themeId);
                     setAllThemesDialogOpen(false);
                   }}
-                  className={`flex items-center p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                    isSelected ? "bg-primary/10" : ""
-                  }`}
+                  className={`flex items-center p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${isSelected ? "bg-primary/10" : ""
+                    }`}
                 >
                   <Brush size={18} className="mr-3 text-muted-foreground" />
                   <div className="flex-1">

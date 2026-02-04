@@ -163,7 +163,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Dyad Help Bot</DialogTitle>
+          <DialogTitle>Bot de ayuda de Dyad</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 h-[480px]">
           {error && (
@@ -186,11 +186,11 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
             {messages.length === 0 ? (
               <div className="space-y-3">
                 <div className="text-sm text-muted-foreground">
-                  Ask a question about using Dyad.
+                  Haz una pregunta sobre cómo usar Dyad.
                 </div>
                 <div className="text-xs text-muted-foreground/70 bg-muted/50 rounded-md p-3">
-                  This conversation may be logged and used to improve the
-                  product. Please do not put any sensitive information in here.
+                  Esta conversación puede ser registrada y utilizada para mejorar el
+                  producto. Por favor, no introduzcas información sensible aquí.
                 </div>
               </div>
             ) : (
@@ -228,7 +228,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
               className="flex-1 h-10 rounded-md border bg-background px-3 text-sm"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question..."
+              placeholder="Escribe tu pregunta..."
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -237,7 +237,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
               }}
             />
             <Button onClick={handleSend} disabled={streaming || !input.trim()}>
-              {streaming ? "Sending..." : "Send"}
+              {streaming ? "Enviando..." : "Enviar"}
             </Button>
           </div>
         </div>

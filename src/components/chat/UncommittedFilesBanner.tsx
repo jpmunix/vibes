@@ -45,13 +45,13 @@ function getStatusIcon(status: UncommittedFile["status"]) {
 function getStatusLabel(status: UncommittedFile["status"]) {
   switch (status) {
     case "added":
-      return "Added";
+      return "Añadido";
     case "modified":
-      return "Modified";
+      return "Modificado";
     case "deleted":
-      return "Deleted";
+      return "Eliminado";
     case "renamed":
-      return "Renamed";
+      return "Renombrado";
     default:
       return status;
   }
@@ -66,15 +66,15 @@ function generateDefaultCommitMessage(files: UncommittedFile[]): string {
   const renamed = files.filter((f) => f.status === "renamed").length;
 
   const parts: string[] = [];
-  if (added > 0) parts.push(`add ${added} file${added > 1 ? "s" : ""}`);
+  if (added > 0) parts.push(`añadir ${added} archivo${added > 1 ? "s" : ""}`);
   if (modified > 0)
-    parts.push(`update ${modified} file${modified > 1 ? "s" : ""}`);
+    parts.push(`actualizar ${modified} archivo${modified > 1 ? "s" : ""}`);
   if (deleted > 0)
-    parts.push(`remove ${deleted} file${deleted > 1 ? "s" : ""}`);
+    parts.push(`eliminar ${deleted} archivo${deleted > 1 ? "s" : ""}`);
   if (renamed > 0)
-    parts.push(`rename ${renamed} file${renamed > 1 ? "s" : ""}`);
+    parts.push(`renombrar ${renamed} archivo${renamed > 1 ? "s" : ""}`);
 
-  if (parts.length === 0) return "Update files";
+  if (parts.length === 0) return "Actualizar archivos";
 
   // Capitalize first letter
   const message = parts.join(", ");
@@ -116,8 +116,8 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
         <div className="flex items-center gap-2 text-sm">
           <FileWarning size={16} />
           <span>
-            You have <strong>{uncommittedFiles.length}</strong> uncommitted{" "}
-            {uncommittedFiles.length === 1 ? "change" : "changes"}.
+            Tienes <strong>{uncommittedFiles.length}</strong>{" "}
+            {uncommittedFiles.length === 1 ? "cambio" : "cambios"} sin confirmar.
           </span>
         </div>
         <Button
@@ -126,7 +126,7 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
           onClick={handleOpenDialog}
           data-testid="review-commit-button"
         >
-          Review & commit
+          Revisar y confirmar
         </Button>
       </div>
 
@@ -140,9 +140,9 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
       >
         <DialogContent className="sm:max-w-lg" data-testid="commit-dialog">
           <DialogHeader>
-            <DialogTitle>Review & Commit Changes</DialogTitle>
+            <DialogTitle>Revisar y confirmar cambios</DialogTitle>
             <DialogDescription>
-              Review your changes and enter a commit message.
+              Revisa tus cambios e introduce un mensaje de confirmación.
             </DialogDescription>
           </DialogHeader>
 
@@ -152,20 +152,20 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
                 htmlFor="commit-message"
                 className="text-sm font-medium mb-2 block"
               >
-                Commit message
+                Mensaje de confirmación
               </label>
               <Input
                 id="commit-message"
                 value={commitMessage}
                 onChange={(e) => setCommitMessage(e.target.value)}
-                placeholder="Enter commit message..."
+                placeholder="Introduce el mensaje de confirmación..."
                 data-testid="commit-message-input"
               />
             </div>
 
             <div>
               <p className="text-sm font-medium mb-2">
-                Changed files ({uncommittedFiles.length})
+                Archivos cambiados ({uncommittedFiles.length})
               </p>
               <div
                 className="max-h-60 overflow-y-auto rounded-md border p-2 space-y-1"
@@ -189,13 +189,13 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
                       className={cn(
                         "text-xs px-1.5 py-0.5 rounded",
                         file.status === "added" &&
-                          "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+                        "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
                         file.status === "modified" &&
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
                         file.status === "deleted" &&
-                          "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+                        "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
                         file.status === "renamed" &&
-                          "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                        "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
                       )}
                     >
                       {getStatusLabel(file.status)}
@@ -212,14 +212,14 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
               onClick={() => setIsDialogOpen(false)}
               disabled={isCommitting}
             >
-              Cancel
+              Cancelar
             </Button>
             <Button
               onClick={handleCommit}
               disabled={!commitMessage.trim() || isCommitting}
               data-testid="commit-button"
             >
-              {isCommitting ? "Committing..." : "Commit"}
+              {isCommitting ? "Confirmando..." : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>

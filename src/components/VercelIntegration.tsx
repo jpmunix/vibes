@@ -14,13 +14,13 @@ export function VercelIntegration() {
         vercelAccessToken: undefined,
       });
       if (result) {
-        showSuccess("Successfully disconnected from Vercel");
+        showSuccess("Desconectado de Vercel con éxito");
       } else {
-        showError("Failed to disconnect from Vercel");
+        showError("Error al desconectar de Vercel");
       }
     } catch (err: any) {
       showError(
-        err.message || "An error occurred while disconnecting from Vercel",
+        err.message || "Se produjo un error al desconectar de Vercel",
       );
     } finally {
       setIsDisconnecting(false);
@@ -37,10 +37,10 @@ export function VercelIntegration() {
     <div className="flex items-center justify-between">
       <div>
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Vercel Integration
+          Integración de Vercel
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Your account is connected to Vercel.
+          Tu cuenta está conectada a Vercel.
         </p>
       </div>
 
@@ -51,7 +51,7 @@ export function VercelIntegration() {
         disabled={isDisconnecting}
         className="flex items-center gap-2"
       >
-        {isDisconnecting ? "Disconnecting..." : "Disconnect from Vercel"}
+        {isDisconnecting ? "Desconectando..." : "Desconectar de Vercel"}
         <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M24 22.525H0l12-21.05 12 21.05z" />
         </svg>

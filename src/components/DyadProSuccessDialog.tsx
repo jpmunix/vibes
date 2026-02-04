@@ -25,14 +25,14 @@ export function DyadProSuccessDialog({
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <span>Welcome to Dyad Pro!</span>
+            <span>¡Bienvenido a Dyad Pro!</span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-4 space-y-4">
           <p className="text-base text-muted-foreground">
-            You're all set! We've applied these default settings, but you can
-            change them anytime:
+            ¡Todo listo! Hemos aplicado estos ajustes predeterminados, pero
+            puedes cambiarlos en cualquier momento:
           </p>
 
           <div className="space-y-3">
@@ -41,9 +41,9 @@ export function DyadProSuccessDialog({
                 <Zap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <p className="font-medium">Auto model</p>
+                <p className="font-medium">Modelo automático</p>
                 <p className="text-sm text-muted-foreground">
-                  Automatically picks a top AI model
+                  Selecciona automáticamente un modelo de IA de primer nivel
                 </p>
               </div>
             </div>
@@ -53,9 +53,9 @@ export function DyadProSuccessDialog({
                 <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="font-medium">Agent mode</p>
+                <p className="font-medium">Modo Agente</p>
                 <p className="text-sm text-muted-foreground">
-                  Dyad can work on bigger tasks and debug issues
+                  Dyad puede trabajar en tareas más grandes y depurar problemas
                 </p>
               </div>
             </div>
@@ -64,7 +64,7 @@ export function DyadProSuccessDialog({
 
         <DialogFooter>
           <Button onClick={onClose} className="w-full">
-            Get Started
+            Empezar
           </Button>
         </DialogFooter>
       </DialogContent>
