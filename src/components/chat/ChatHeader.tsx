@@ -3,8 +3,8 @@ import {
   History,
   PlusCircle,
   GitBranch,
-  Info,
   Eraser,
+  Sparkles,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -25,6 +25,9 @@ import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import ConfirmationDialog from "../ConfirmationDialog";
 import { useStreamChat } from "@/hooks/useStreamChat";
+import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
+import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
+import { useSetAtom } from "jotai";
 import { useCurrentBranch } from "@/hooks/useCurrentBranch";
 import { useCheckoutVersion } from "@/hooks/useCheckoutVersion";
 import { useRenameBranch } from "@/hooks/useRenameBranch";
@@ -51,6 +54,8 @@ export function ChatHeader({
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const { invalidateChats } = useChats(appId);
   const { isStreaming } = useStreamChat();
+  const setMessagesById = useSetAtom(chatMessagesByIdAtom);
+  const { handleSummarize } = useSummarizeInNewChat();
   const isAnyCheckoutVersionInProgress = useAtomValue(
     isAnyCheckoutVersionInProgressAtom,
   );
@@ -108,11 +113,17 @@ export function ChatHeader({
     try {
       await ipc.chat.deleteMessages(selectedChatId);
       showSuccess("Chat vaciado correctamente");
-      // Invalidate both chats (for title/last message) and the current chat data
+
+      // Update local atom to reflect empty messages immediately
+      setMessagesById((prev) => {
+        const next = new Map(prev);
+        next.set(selectedChatId, []);
+        return next;
+      });
+
+      // Invalidate chats (for title/last message)
       await invalidateChats();
-      // We might need to refresh the current chat messages in the UI. 
-      // Usually invalidateChats + navigate might be enough if the messages component listens to selectedChatId.
-      // But clearing messages in the same chat might need a refresh of the chat content.
+
       navigate({
         to: "/chat",
         search: { id: selectedChatId },
@@ -231,6 +242,16 @@ export function ChatHeader({
               : `Versión ${versions.length}${versionPostfix}`}
           </Button>
           <Button
+            onClick={handleSummarize}
+            variant="ghost"
+            title="Resumir chat"
+            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+            disabled={!selectedChatId || isStreaming}
+          >
+            <Sparkles size={16} />
+            <span className="hidden @xs:inline">Resumir chat</span>
+          </Button>
+          <Button
             onClick={() => setIsConfirmEmptyDialogOpen(true)}
             variant="ghost"
             title="Vaciar chat"
@@ -262,6 +283,7 @@ export function ChatHeader({
         confirmText="Vaciar"
         cancelText="Cancelar"
         confirmButtonClass="bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
+        showOverlay={false}
         onConfirm={handleEmptyChat}
         onCancel={() => setIsConfirmEmptyDialogOpen(false)}
       />

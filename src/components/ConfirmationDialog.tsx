@@ -7,6 +7,7 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   confirmButtonClass?: string;
+  showOverlay?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -18,20 +19,23 @@ export default function ConfirmationDialog({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   confirmButtonClass = "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+  showOverlay = true,
   onConfirm,
   onCancel,
 }: ConfirmationDialogProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
       <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onCancel}
-        />
+        {showOverlay && (
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity pointer-events-auto"
+            onClick={onCancel}
+          />
+        )}
 
-        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg pointer-events-auto">
           <div className="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
