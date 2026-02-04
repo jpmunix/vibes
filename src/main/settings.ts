@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
-  turboEditModel: "qwen/qwen3-coder-flash",
+  turboEditModel: "google/gemini-3-flash-preview",
   appTitleGenerationModel: "google/gemini-2.5-flash-lite",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),

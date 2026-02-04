@@ -38,6 +38,7 @@ async function callTurboFileEdit(
   },
   ctx: AgentContext,
 ): Promise<string> {
+  console.log('TurboEdit','callTurboFileEdit', params)
   const response = await engineFetch(ctx, "/tools/turbo-file-edit", {
     method: "POST",
     body: JSON.stringify({
@@ -143,7 +144,7 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
   modifiesState: true,
 
   // Disable in Basic Agent mode (free tier) - requires engine
-  isEnabled: (ctx) => !ctx.isBasicAgentMode,
+  isEnabled: (ctx) => true,
 
   getConsentPreview: (args) => `Edit ${args.path}`,
 
@@ -171,8 +172,12 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
     }
 
     const originalContent = await readFile(fullFilePath, "utf8");
-
+    console.log('TurboEdit','originalContent', originalContent)
     // Call the turbo-file-edit endpoint
+
+    console.log('TurboEdit','args', args)
+    console.log('TurboEdit','args.instructions', args.instructions)
+
     const newContent = await callTurboFileEdit(
       {
         path: args.path,

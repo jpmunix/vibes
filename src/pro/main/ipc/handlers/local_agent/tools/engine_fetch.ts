@@ -109,9 +109,11 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.turboEditModel || "qwen/qwen3-coder-flash";
+  const model = settings.turboEditModel || "google/gemini-3-flash-preview";
   const body = parseTurboFileEditBody(options.body);
-
+  console.log("TurboEdit", "start")
+  console.log("TurboEdit", "apiKey",apiKey)
+  console.log("TurboEdit", "model",model)
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -144,6 +146,7 @@ async function callTurboFileEditViaOpenRouter(
   console.warn(data.choices[0].message.content);
   console.error('##########################################################################')
   const result = sanitizeTurboEditResponse(rawContent);
+  console.info('##RESULT #################################################################', result)
 
   return new Response(JSON.stringify({ result }), {
     status: 200,
@@ -166,6 +169,7 @@ export async function engineFetch(
   endpoint: string,
   options: EngineFetchOptions = {},
 ): Promise<Response> {
+  console.log('TurboEdit','engineFetch', endpoint)
   if (endpoint === "/tools/turbo-file-edit") {
     return callTurboFileEditViaOpenRouter(ctx, options);
   }

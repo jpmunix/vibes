@@ -207,13 +207,6 @@ export const systemContracts = {
     output: DoesReleaseNoteExistResultSchema,
   }),
 
-  // Budget
-  getUserBudget: defineContract({
-    channel: "get-user-budget",
-    input: z.void(),
-    output: UserBudgetInfoSchema,
-  }),
-
   // Upload
   uploadToSignedUrl: defineContract({
     channel: "upload-to-signed-url",

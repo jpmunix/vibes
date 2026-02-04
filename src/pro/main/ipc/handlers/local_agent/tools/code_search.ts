@@ -77,7 +77,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
     defaultConsent: "always",
 
     // Disable in Basic Agent mode (free tier) - requires engine
-    isEnabled: (ctx) => !ctx.isBasicAgentMode,
+    isEnabled: (ctx) => true,
 
     getConsentPreview: (args) => `Search for "${args.query}"`,
 

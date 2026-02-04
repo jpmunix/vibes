@@ -353,14 +353,14 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 onChange={(e) =>
                   updateSettings({ turboEditModel: e.target.value })
                 }
-                placeholder="p. ej. qwen/qwen3-coder-flash"
+                placeholder="p. ej. google/gemini-3-flash-preview"
                 className="bg-background border-border focus-visible:ring-blue-500"
               />
               <p className="text-xs text-muted-foreground">
                 Configura el modelo que OpenRouter utilizará para las ediciones
                 rápidas de archivos (Turbo Edit). Por defecto:{" "}
                 <code className="bg-muted px-1 rounded">
-                  qwen/qwen3-coder-flash
+                  google/gemini-3-flash-preview
                 </code>
               </p>
             </div>
