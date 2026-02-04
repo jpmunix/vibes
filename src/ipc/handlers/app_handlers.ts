@@ -2086,11 +2086,11 @@ export function registerAppHandlers() {
                 {
                   role: "system",
                   content:
-                    "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be specific and descriptive.",
+                    "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be strictly functional and deterministic. Do not use marketing adjectives like 'Ultimate', 'Best', 'Simple', 'Super', 'Pro'. Just describe what it does (e.g., 'Todo Manager', 'Invoice Generator').",
                 },
                 {
                   role: "user",
-                  content: `Generate a descriptive app name in English for this application idea: "${userPrompt}"`,
+                  content: `Generate a strictly functional and deterministic app name in English for this application idea: "${userPrompt}"`,
                 },
               ],
             }),

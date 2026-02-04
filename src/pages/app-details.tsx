@@ -333,7 +333,7 @@ export default function AppDetailsPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 p-0.5 h-auto text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+            className="ml-1 items-center gap-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
             onClick={handleGenerateTitle}
             disabled={isGeneratingTitle}
             title="Generar título mágico basado en el historial"
@@ -343,6 +343,7 @@ export default function AppDetailsPage() {
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
+            <span className="text-xs">Título mágico</span>
           </Button>
         </div>
 
@@ -845,6 +846,6 @@ export default function AppDetailsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </div >
   );
 }
