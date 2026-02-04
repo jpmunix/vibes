@@ -12,7 +12,6 @@ import { ipc } from "@/ipc/types";
 import { showError } from "@/lib/toast";
 import { toast } from "sonner";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
-import { AiAccessBanner } from "./ProBanner";
 import type {
   ThemeGenerationMode,
   ThemeGenerationModel,
@@ -320,7 +319,6 @@ export function AIGeneratorTab({
             Función exclusiva Pro
           </p>
         </div>
-        <AiAccessBanner />
       </div>
     );
   }

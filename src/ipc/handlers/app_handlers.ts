@@ -1,7 +1,7 @@
 import { ipcMain, app, dialog } from "electron";
 import { db, getDatabasePath } from "../../db";
 import { apps, chats, messages } from "../../db/schema";
-import { desc, eq, like } from "drizzle-orm";
+import { desc, eq, like, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { appContracts } from "../types/app";
 import type { AppFileSearchResult } from "../types/app";
@@ -1983,7 +1983,7 @@ export function registerAppHandlers() {
       return { title: generateCuteAppName() };
     }
 
-    const model = settings.appTitleGenerationModel || "google/gemma-3-4b-it";
+    const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
     try {
       const response = await fetch(
@@ -1998,7 +1998,8 @@ export function registerAppHandlers() {
           },
           body: JSON.stringify({
             model,
-            temperature: 0.7,
+            temperature: 0.3, // Lower temperature for faster, more deterministic responses
+            max_tokens: 20, // Limit tokens since we only need a short app name
             messages: [
               {
                 role: "system",
@@ -2033,6 +2034,89 @@ export function registerAppHandlers() {
       return { title: generateCuteAppName() };
     }
   });
+
+  createTypedHandler(
+    appContracts.generateAppTitleFromHistory,
+    async (_, { appId }) => {
+      const settings = readSettings();
+      const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+      if (!apiKey) {
+        logger.warn(
+          "OpenRouter API key not found, using cute app name as fallback",
+        );
+        return { title: generateCuteAppName() };
+      }
+
+      const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+      try {
+        // Fetch the first user message where they define what they want
+        const firstUserMessage = await db
+          .select({
+            content: messages.content,
+          })
+          .from(messages)
+          .innerJoin(chats, eq(messages.chatId, chats.id))
+          .where(and(eq(chats.appId, appId), eq(messages.role, "user")))
+          .orderBy(messages.createdAt) // Get oldest first
+          .limit(1);
+
+        if (!firstUserMessage.length) {
+          return { title: generateCuteAppName() };
+        }
+
+        const userPrompt = firstUserMessage[0].content;
+
+        const response = await fetch(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+              "HTTP-Referer": "https://dyad.sh",
+              "X-Title": "Dyad",
+            },
+            body: JSON.stringify({
+              model,
+              temperature: 0.3, // Lower temperature for faster, more deterministic responses
+              max_tokens: 20, // Limit tokens since we only need a short app name
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be specific and descriptive.",
+                },
+                {
+                  role: "user",
+                  content: `Generate a descriptive app name in English for this application idea: "${userPrompt}"`,
+                },
+              ],
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
+          );
+        }
+
+        const data = await response.json();
+        const title =
+          data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+
+        // Sanitize title
+        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 40);
+        return { title: sanitizedTitle };
+      } catch (error) {
+        logger.error("Error generating app title from history:", error);
+        return { title: generateCuteAppName() };
+      }
+    },
+  );
 }
 
 function getCommand({

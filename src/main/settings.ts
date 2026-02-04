@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   },
   providerSettings: {},
   turboEditModel: "qwen/qwen3-coder-flash",
-  appTitleGenerationModel: "google/gemma-3-4b-it",
+  appTitleGenerationModel: "google/gemini-2.5-flash-lite",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,

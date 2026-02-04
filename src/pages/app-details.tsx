@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Pencil,
   Folder,
+  Sparkles,
 } from "lucide-react";
 import {
   Popover,
@@ -57,6 +58,8 @@ export default function AppDetailsPage() {
     useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isRenamingFolder, setIsRenamingFolder] = useState(false);
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [aiGeneratedTitle, setAiGeneratedTitle] = useState<string | null>(null);
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [newCopyAppName, setNewCopyAppName] = useState("");
@@ -109,6 +112,24 @@ export default function AppDetailsPage() {
     }
   };
 
+  const handleGenerateTitle = async () => {
+    if (!appId) return;
+    try {
+      setIsGeneratingTitle(true);
+      const { title } = await ipc.app.generateAppTitleFromHistory({ appId });
+
+      // Store the original AI-generated title for the app name
+      setAiGeneratedTitle(title);
+      setNewAppName(title);
+      setIsRenameConfirmDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to generate title:", error);
+      showError("Error al generar el título");
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  };
+
   const handleRenameApp = async (renameFolder: boolean) => {
     if (!appId || !selectedApp || !newAppName.trim()) return;
 
@@ -116,7 +137,26 @@ export default function AppDetailsPage() {
       setIsRenaming(true);
 
       // Determine the new path based on user's choice
-      const appPath = renameFolder ? newAppName : selectedApp.path;
+      let appPath = selectedApp.path;
+
+      if (renameFolder) {
+        // If this is from AI generation, normalize the folder name
+        if (aiGeneratedTitle) {
+          appPath = aiGeneratedTitle
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/ñ/g, 'n')
+            .replace(/\s+/g, '_')
+            .replace(/[^a-z0-9_-]/g, '')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .trim() || 'app';
+        } else {
+          // Regular rename, use the app name as folder name
+          appPath = newAppName;
+        }
+      }
 
       await ipc.app.renameApp({
         appId,
@@ -126,6 +166,7 @@ export default function AppDetailsPage() {
 
       setIsRenameDialogOpen(false);
       setIsRenameConfirmDialogOpen(false);
+      setAiGeneratedTitle(null); // Clear AI-generated title
       await refreshApps();
     } catch (error) {
       console.error("Failed to rename app:", error);
@@ -288,6 +329,20 @@ export default function AppDetailsPage() {
             data-testid="app-details-rename-app-button"
           >
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-1 p-0.5 h-auto text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+            onClick={handleGenerateTitle}
+            disabled={isGeneratingTitle}
+            title="Generar título mágico basado en el historial"
+          >
+            {isGeneratingTitle ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
           </Button>
         </div>
 

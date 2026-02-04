@@ -379,7 +379,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 onChange={(e) =>
                   updateSettings({ appTitleGenerationModel: e.target.value })
                 }
-                placeholder="p. ej. google/gemma-3-4b-it"
+                placeholder="p. ej. google/gemini-2.5-flash-lite"
                 className="bg-background border-border focus-visible:ring-blue-500"
               />
               <p className="text-xs text-muted-foreground">
@@ -387,7 +387,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 título de la aplicación a partir de tu prompt inicial. Por
                 defecto:{" "}
                 <code className="bg-muted px-1 rounded">
-                  google/gemma-3-4b-it
+                  google/gemini-2.5-flash-lite
                 </code>
               </p>
             </div>

@@ -371,6 +371,11 @@ export const appContracts = {
     input: z.object({ prompt: z.string() }),
     output: z.object({ title: z.string() }),
   }),
+  generateAppTitleFromHistory: defineContract({
+    channel: "generate-app-title-from-history",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ title: z.string() }),
+  }),
 } as const;
 
 // =============================================================================
