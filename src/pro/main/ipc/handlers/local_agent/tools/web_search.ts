@@ -15,22 +15,22 @@ const webSearchSchema = z.object({
 });
 
 const DESCRIPTION = `
-Use this tool to access real-time information beyond your training data cutoff.
+Usa esta herramienta para acceder a información en tiempo real más allá de la fecha de corte de tus datos de entrenamiento.
 
-When to Search:
-- Current API documentation, library versions, or breaking changes
-- Latest best practices, security advisories, or bug fixes
-- Specific error messages or troubleshooting solutions
-- Recent framework updates or deprecation notices
+Cuándo buscar:
+- Documentación actual de API, versiones de librerías o cambios importantes
+- Mejores prácticas recientes, avisos de seguridad o correcciones de errores
+- Mensajes de error específicos o soluciones de resolución de problemas
+- Actualizaciones recientes de frameworks o avisos de obsolescencia
 
-Query Tips:
-- Be specific: Include version numbers, exact error messages, or technical terms
-- Add context: "React 19 useEffect cleanup" not just "React hooks"
+Consejos para la consulta:
+- Sé específico: Incluye números de versión, mensajes de error exactos o términos técnicos
+- Añade contexto: "React 19 useEffect cleanup" en lugar de solo "React hooks"
 
-Examples:
+Ejemplos:
 
 <example>
-OpenAI GPT-5 API model names
+Nombres de modelos de la API de OpenAI GPT-5
 </example>
 
 <example>

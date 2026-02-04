@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Rabbit } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {} from "@/components/ui/accordion";
+import { } from "@/components/ui/accordion";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { showError } from "@/lib/toast";
+import { Input } from "@/components/ui/input";
 import {
   UserSettings,
   AzureProviderSetting,
@@ -330,6 +331,39 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
               onCheckedChange={handleToggleDyadPro}
               disabled={isSaving}
             />
+          </div>
+        )}
+
+        {provider === "openrouter" && (
+          <div className="mt-6 space-y-4 border border-blue-200 dark:border-blue-800/50 rounded-lg p-6 bg-blue-50/50 dark:bg-blue-900/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Rabbit className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Turbo Edit</h3>
+            </div>
+            <div className="space-y-3">
+              <label
+                htmlFor="turboEditModel"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Modelo para Turbo Edits
+              </label>
+              <Input
+                id="turboEditModel"
+                value={settings?.turboEditModel ?? ""}
+                onChange={(e) =>
+                  updateSettings({ turboEditModel: e.target.value })
+                }
+                placeholder="p. ej. qwen/qwen3-coder-flash"
+                className="bg-background border-border focus-visible:ring-blue-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                Configura el modelo que OpenRouter utilizará para las ediciones
+                rápidas de archivos (Turbo Edit). Por defecto:{" "}
+                <code className="bg-muted px-1 rounded">
+                  qwen/qwen3-coder-flash
+                </code>
+              </p>
+            </div>
           </div>
         )}
 

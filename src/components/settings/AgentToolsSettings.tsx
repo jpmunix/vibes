@@ -120,9 +120,9 @@ function ToolConsentRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ask">Ask</SelectItem>
-            <SelectItem value="always">Always allow</SelectItem>
-            <SelectItem value="never">Never allow</SelectItem>
+            <SelectItem value="ask">Preguntar</SelectItem>
+            <SelectItem value="always">Permitir siempre</SelectItem>
+            <SelectItem value="never">No permitir nunca</SelectItem>
           </SelectContent>
         </Select>
       </div>

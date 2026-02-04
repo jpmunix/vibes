@@ -20,7 +20,6 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const DEFAULT_OPENROUTER_MODEL = "qwen/qwen3-coder-flash";
 
 interface TurboFileEditRequestBody {
   path: string;
@@ -110,7 +109,7 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = DEFAULT_OPENROUTER_MODEL;
+  const model = settings.turboEditModel || "qwen/qwen3-coder-flash";
   const body = parseTurboFileEditBody(options.body);
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {

@@ -10,19 +10,19 @@ testSetup("setup ai provider", async ({ po }) => {
     .getByRole("button", { name: "Setup Google Gemini API Key" })
     .click();
   await expect(
-    po.page.getByRole("heading", { name: "Configure Google" }),
+    po.page.getByRole("heading", { name: "Configurar Google" }),
   ).toBeVisible();
 
-  await po.page.getByRole("button", { name: "Go Back" }).click();
+  await po.page.getByRole("button", { name: "Atrás" }).click();
   await po.page
-    .getByRole("button", { name: "Setup OpenRouter API Key" })
+    .getByRole("button", { name: "Establecer un API Key de OpenRouter" })
     .click();
   await expect(
-    po.page.getByRole("heading", { name: "Configure OpenRouter" }),
+    po.page.getByRole("heading", { name: "Configurar OpenRouter" }),
   ).toBeVisible();
 
-  await po.page.getByRole("button", { name: "Go Back" }).click();
+  await po.page.getByRole("button", { name: "Atrás" }).click();
   await po.page
-    .getByRole("button", { name: "Setup other AI providers" })
+    .getByRole("button", { name: "Configurar otros proveedores de IA" })
     .click();
 });

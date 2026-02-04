@@ -17,17 +17,17 @@ export const webCrawlResponseSchema = z.object({
 });
 
 const DESCRIPTION = `
-You can crawl a website so you can clone it.
+Puedes rastrear un sitio web para poder clonarlo.
 
-### When You MUST Trigger a Crawl
-Trigger a crawl ONLY if BOTH conditions are true:
+### Cuándo DEBES iniciar un rastreo
+Inicia un rastreo SOLO si AMBAS condiciones son verdaderas:
 
-1. The user's message shows intent to CLONE / COPY / REPLICATE / RECREATE / DUPLICATE / MIMIC a website.
-   - Keywords include: clone, copy, replicate, recreate, duplicate, mimic, build the same, make the same.
+1. El mensaje del usuario muestra intención de CLONAR / COPIAR / REPLICAR / RECREAR / DUPLICAR / IMITAR un sitio web.
+   - Las palabras clave incluyen: clonar, copiar, replicar, recrear, duplicar, imitar, construir lo mismo, hacer lo mismo.
 
-2. The user's message contains a URL or something that appears to be a domain name.
-   - e.g. "example.com", "https://example.com"
-   - Do not require 'http://' or 'https://'.
+2. El mensaje del usuario contiene una URL o algo que parece ser un nombre de dominio.
+   - p. ej. "ejemplo.com", "https://ejemplo.com"
+   - No requiere 'http://' o 'https://'.
 `;
 
 const CLONE_INSTRUCTIONS = `

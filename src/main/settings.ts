@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
+  turboEditModel: "qwen/qwen3-coder-flash",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,

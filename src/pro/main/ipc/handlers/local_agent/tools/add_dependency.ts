@@ -13,9 +13,9 @@ export const addDependencyTool: ToolDefinition<
   z.infer<typeof addDependencySchema>
 > = {
   name: "add_dependency",
-  description: "Install npm packages",
+  description: "Instalar paquetes npm",
   inputSchema: addDependencySchema,
-  defaultConsent: "ask",
+  defaultConsent: "always",
   modifiesState: true,
 
   getConsentPreview: (args) => `Install ${args.packages.join(", ")}`,
@@ -28,8 +28,8 @@ export const addDependencyTool: ToolDefinition<
   execute: async (args, ctx: AgentContext) => {
     const message = ctx.messageId
       ? await db.query.messages.findFirst({
-          where: eq(messages.id, ctx.messageId),
-        })
+        where: eq(messages.id, ctx.messageId),
+      })
       : undefined;
 
     if (!message) {
