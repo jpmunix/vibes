@@ -31,7 +31,7 @@ testSkipIfWindows("thinking budget", async ({ po }) => {
   await po.page.getByRole("combobox", { name: "Thinking Budget" }).click();
   await po.page.getByRole("option", { name: "High" }).click();
   po.snapshotSettingsDelta(beforeSettings3);
-  await po.page.getByText("Go Back").click();
+  await po.page.getByText("Atrás").click();
   await po.sendPrompt("[dump] hi");
   await po.snapshotServerDump("request");
 });

@@ -100,7 +100,7 @@ testSetup.describe("Setup Flow", () => {
     await expect(
       po.page.getByRole("heading", { name: "Configure Google" }),
     ).toBeVisible();
-    await po.page.getByRole("button", { name: "Go Back" }).click();
+    await po.page.getByRole("button", { name: "Atrás" }).click();
 
     // Test OpenRouter navigation
     await po.page
@@ -109,13 +109,13 @@ testSetup.describe("Setup Flow", () => {
     await expect(
       po.page.getByRole("heading", { name: "Configure OpenRouter" }),
     ).toBeVisible();
-    await po.page.getByRole("button", { name: "Go Back" }).click();
+    await po.page.getByRole("button", { name: "Atrás" }).click();
 
     // Test other providers navigation
     await po.page
       .getByRole("heading", { name: "Setup other AI providers" })
       .click();
-    await expect(po.page.getByRole("link", { name: "Settings" })).toBeVisible();
+    await expect(po.page.getByRole("link", { name: "Ajustes" })).toBeVisible();
 
     // Now configure the test provider
     await po.setUpTestProvider();
@@ -129,7 +129,7 @@ testSetup.describe("Setup Flow", () => {
 
     // After configuring a provider, the setup banner should be gone
     await expect(
-      po.page.getByText("Setup Dyad", { exact: true }),
+      po.page.getByText("Hagamos magia", { exact: true }),
     ).not.toBeVisible();
     await expect(po.page.getByText("Hagamos magia")).toBeVisible();
   });

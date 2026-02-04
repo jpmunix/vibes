@@ -18,6 +18,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuAction,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -209,7 +210,7 @@ export function ChatList({ show }: { show?: boolean }) {
               <SidebarMenu className="space-y-1">
                 {chats.map((chat) => (
                   <SidebarMenuItem key={chat.id} className="mb-1">
-                    <div className="flex w-[175px] items-center">
+                    <div className="flex w-[205px] items-center relative group/menu-item">
                       <Button
                         variant="ghost"
                         onClick={() =>
@@ -219,15 +220,15 @@ export function ChatList({ show }: { show?: boolean }) {
                           })
                         }
                         className={`justify-start w-full text-left py-3 pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                            : ""
+                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+                          : ""
                           }`}
                       >
                         <div className="flex flex-col w-full">
-                          <span className="truncate">
+                          <span className={`truncate ${selectedChatId === chat.id ? "font-semibold" : ""}`}>
                             {chat.title || "Nuevo chat"}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
                             {formatDistanceToNow(new Date(chat.createdAt), {
                               addSuffix: true,
                             })}
@@ -235,49 +236,29 @@ export function ChatList({ show }: { show?: boolean }) {
                         </div>
                       </Button>
 
-                      {selectedChatId === chat.id && (
-                        <DropdownMenu
-                          modal={false}
-                          onOpenChange={(open) => setIsDropdownOpen(open)}
-                        >
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="ml-1 w-4"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="space-y-1 p-2"
-                          >
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleRenameChat(chat.id, chat.title || "")
-                              }
-                              className="px-3 py-2"
-                            >
-                              <Edit3 className="mr-2 h-4 w-4" />
-                              <span>Renombrar chat</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleDeleteChatClick(
-                                  chat.id,
-                                  chat.title || "New Chat",
-                                )
-                              }
-                              className="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 focus:bg-red-50 dark:focus:bg-red-950/50"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Eliminar chat</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <SidebarMenuAction
+                        showOnHover
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRenameChat(chat.id, chat.title || "");
+                        }}
+                        className="right-8"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </SidebarMenuAction>
+                      <SidebarMenuAction
+                        showOnHover
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteChatClick(
+                            chat.id,
+                            chat.title || "New Chat",
+                          );
+                        }}
+                        className="right-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </SidebarMenuAction>
                     </div>
                   </SidebarMenuItem>
                 ))}

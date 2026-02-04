@@ -33,7 +33,7 @@ import { LibraryList } from "./LibraryList";
 // Menu items.
 const items = [
   {
-    title: "Aplicaciones",
+    title: "Apps",
     to: "/",
     icon: Home,
   },
@@ -134,7 +134,7 @@ export function AppSidebar() {
             <AppIcons onHoverChange={setHoverState} />
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="w-[240px]">
+          <div className="w-[270px]">
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <SettingsList show={selectedItem === "Ajustes"} />
