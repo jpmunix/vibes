@@ -55,9 +55,35 @@ type HoverState =
 
 export function AppSidebar() {
   const { state, toggleSidebar } = useSidebar(); // retrieve current sidebar state
+  // Using activeTab to explicitly control which view is shown.
+  // This decouples the view from the hover state and ensures immediate feedback on click.
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [hoverState, setHoverState] = useState<HoverState>("no-hover");
   const expandedByHover = useRef(false);
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
+
+  const routerState = useRouterState();
+  const isAppRoute =
+    routerState.location.pathname === "/" ||
+    routerState.location.pathname.startsWith("/app-details");
+  const isChatRoute = routerState.location.pathname === "/chat";
+  const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
+  const isLibraryRoute =
+    routerState.location.pathname.startsWith("/library") ||
+    routerState.location.pathname.startsWith("/themes");
+
+  // Sync activeTab with route changes
+  useEffect(() => {
+    if (isAppRoute) {
+      setActiveTab("Aplicaciones");
+    } else if (isChatRoute) {
+      setActiveTab("Chat");
+    } else if (isSettingsRoute) {
+      setActiveTab("Ajustes");
+    } else if (isLibraryRoute) {
+      setActiveTab("Biblioteca");
+    }
+  }, [isAppRoute, isChatRoute, isSettingsRoute, isLibraryRoute]);
 
   useEffect(() => {
     if (hoverState.startsWith("start-hover") && state === "collapsed") {
@@ -76,36 +102,10 @@ export function AppSidebar() {
     }
   }, [hoverState, toggleSidebar, state, setHoverState, isDropdownOpen]);
 
-  const routerState = useRouterState();
-  const isAppRoute =
-    routerState.location.pathname === "/" ||
-    routerState.location.pathname.startsWith("/app-details");
-  const isChatRoute = routerState.location.pathname === "/chat";
-  const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
-  const isLibraryRoute =
-    routerState.location.pathname.startsWith("/library") ||
-    routerState.location.pathname.startsWith("/themes");
-
-  let selectedItem: string | null = null;
-  if (hoverState === "start-hover:app") {
-    selectedItem = "Aplicaciones";
-  } else if (hoverState === "start-hover:chat") {
-    selectedItem = "Chat";
-  } else if (hoverState === "start-hover:settings") {
-    selectedItem = "Ajustes";
-  } else if (hoverState === "start-hover:library") {
-    selectedItem = "Biblioteca";
-  } else if (state === "expanded") {
-    if (isAppRoute) {
-      selectedItem = "Aplicaciones";
-    } else if (isChatRoute) {
-      selectedItem = "Chat";
-    } else if (isSettingsRoute) {
-      selectedItem = "Ajustes";
-    } else if (isLibraryRoute) {
-      selectedItem = "Biblioteca";
-    }
-  }
+  // Determine what to show.
+  // Prioritize activeTab for main content.
+  // Hover state is only for expanding the sidebar, not for switching tabs anymore.
+  const selectedItem = activeTab;
 
   return (
     <Sidebar
@@ -125,7 +125,15 @@ export function AppSidebar() {
                 setHoverState("clear-hover");
               }}
             />
-            <AppIcons onHoverChange={setHoverState} />
+            <AppIcons
+              onTabChange={(tab) => {
+                setActiveTab(tab);
+                // If collapsed, expand immediately on click
+                if (state === "collapsed") {
+                  toggleSidebar();
+                }
+              }}
+            />
           </div>
           {/* Right Column: Chat List Section */}
           <div className="w-[405px]">
@@ -163,9 +171,9 @@ export function AppSidebar() {
 }
 
 function AppIcons({
-  onHoverChange,
+  onTabChange,
 }: {
-  onHoverChange: (state: HoverState) => void;
+  onTabChange: (tab: string) => void;
 }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
@@ -193,26 +201,15 @@ function AppIcons({
                     to={item.to}
                     className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
                       }`}
-                    onMouseEnter={() => {
-                      if (item.title === "Aplicaciones") {
-                        onHoverChange("start-hover:app");
-                      } else if (item.title === "Chat") {
-                        onHoverChange("start-hover:chat");
-                      } else if (item.title === "Ajustes") {
-                        onHoverChange("start-hover:settings");
-                      } else if (item.title === "Biblioteca") {
-                        onHoverChange("start-hover:library");
-                      }
-                    }}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
-                        onHoverChange("start-hover:app");
+                        onTabChange("Aplicaciones");
                       } else if (item.title === "Chat") {
-                        onHoverChange("start-hover:chat");
+                        onTabChange("Chat");
                       } else if (item.title === "Ajustes") {
-                        onHoverChange("start-hover:settings");
+                        onTabChange("Ajustes");
                       } else if (item.title === "Biblioteca") {
-                        onHoverChange("start-hover:library");
+                        onTabChange("Biblioteca");
                       }
                     }}
                   >
