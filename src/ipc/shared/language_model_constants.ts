@@ -9,6 +9,7 @@ export interface ModelOption {
   displayName: string;
   description: string;
   dollarSigns?: number;
+  brainSigns?: number;
   temperature?: number;
   tag?: string;
   tagColor?: string;
@@ -33,6 +34,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     // https://platform.openai.com/docs/models/gpt-5.1
     {
@@ -46,6 +48,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     // https://platform.openai.com/docs/models/gpt-5.1-codex
     {
@@ -58,6 +61,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     // https://platform.openai.com/docs/models/gpt-5.1-codex-mini
     {
@@ -70,6 +74,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 2,
+      brainSigns: 2,
     },
 
     // https://platform.openai.com/docs/models/gpt-5
@@ -83,6 +88,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     // https://platform.openai.com/docs/models/gpt-5-codex
     {
@@ -95,6 +101,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     // https://platform.openai.com/docs/models/gpt-5-mini
     {
@@ -107,6 +114,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Requires temperature to be default value (1)
       temperature: 1,
       dollarSigns: 2,
+      brainSigns: 2,
     },
   ],
   // https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table
@@ -121,6 +129,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 200_000,
       temperature: 0,
       dollarSigns: 5,
+      brainSigns: 3,
     },
     {
       name: SONNET_4_5,
@@ -132,6 +141,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 5,
+      brainSigns: 3,
     },
     {
       name: "claude-sonnet-4-20250514",
@@ -142,6 +152,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 5,
+      brainSigns: 2,
     },
   ],
   google: [
@@ -157,6 +168,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Recommended by Google: https://ai.google.dev/gemini-api/docs/gemini-3?thinking=high#temperature
       temperature: 1.0,
       dollarSigns: 4,
+      brainSigns: 3,
     },
     // https://ai.google.dev/gemini-api/docs/models#gemini-3-pro
     {
@@ -170,6 +182,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       // Recommended by Google: https://ai.google.dev/gemini-api/docs/gemini-3?thinking=high#temperature
       temperature: 1.0,
       dollarSigns: 2,
+      brainSigns: 2,
     },
     // https://ai.google.dev/gemini-api/docs/models#gemini-2.5-pro-preview-03-25
     {
@@ -182,6 +195,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_048_576,
       temperature: 0,
       dollarSigns: 3,
+      brainSigns: 2,
     },
     // https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-preview
     {
@@ -194,6 +208,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_048_576,
       temperature: 0,
       dollarSigns: 2,
+      brainSigns: 2,
     },
   ],
   openrouter: [
@@ -205,6 +220,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
+      brainSigns: 2,
     },
     {
       name: "google/gemini-3-pro-preview",
@@ -214,6 +230,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 128_000,
       temperature: 0,
       dollarSigns: 3,
+      brainSigns: 3,
     },
     {
       name: "google/gemini-2.5-pro",
@@ -223,6 +240,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 3,
+      brainSigns: 2,
     },
     {
       name: "google/gemini-2.5-flash",
@@ -232,6 +250,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 1,
+      brainSigns: 2,
     },
     {
       name: "anthropic/claude-sonnet-4.5",
@@ -240,7 +259,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       maxOutputTokens: 65_000,
       contextWindow: 1000000,
       temperature: 0,
-      dollarSigns: 3
+      dollarSigns: 3,
+      brainSigns: 3,
     },
     {
       name: "openai/gpt-5.1-codex-mini",
@@ -250,6 +270,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
+      brainSigns: 2,
     },
     {
       name: "openai/gpt-4.1",
@@ -259,6 +280,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 3,
+      brainSigns: 2,
     },
     {
       name: "openai/gpt-4.1-mini",
@@ -268,6 +290,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 1,
+      brainSigns: 1,
     },
     {
       name: "openai/gpt-4.1-nano",
@@ -277,6 +300,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 1,
+      brainSigns: 1,
     },
     {
       name: "qwen/qwen-plus-2025-07-28",
@@ -286,6 +310,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
+      brainSigns: 2,
     },
   ],
   auto: [
@@ -394,6 +419,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 256_000,
       temperature: 0,
       dollarSigns: 1,
+      brainSigns: 2,
     },
     {
       name: "grok-4",
@@ -403,6 +429,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 256_000,
       temperature: 0,
       dollarSigns: 4,
+      brainSigns: 3,
     },
     {
       name: "grok-3",
@@ -412,6 +439,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 131_072,
       temperature: 0,
       dollarSigns: 4,
+      brainSigns: 2,
     },
   ],
   bedrock: [
@@ -444,6 +472,7 @@ export const TURBO_MODELS: LanguageModel[] = [
     contextWindow: 131_000,
     temperature: 0.7,
     dollarSigns: 3,
+    brainSigns: 2,
     type: "cloud",
   },
   {
@@ -454,6 +483,7 @@ export const TURBO_MODELS: LanguageModel[] = [
     contextWindow: 256_000,
     temperature: 0,
     dollarSigns: 2,
+    brainSigns: 2,
     type: "cloud",
   },
 ];

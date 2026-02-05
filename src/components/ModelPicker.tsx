@@ -25,6 +25,7 @@ import { ipc, LocalModel } from "@/ipc/types";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { PriceBadge } from "@/components/PriceBadge";
+import { BrainBadge } from "@/components/BrainBadge";
 import { TURBO_MODELS } from "@/ipc/shared/language_model_constants";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -270,14 +271,17 @@ export function ModelPicker() {
                                 setOpen(false);
                               }}
                             >
-                              <div className="flex justify-between items-start w-full">
-                                <span>{model.displayName}</span>
-                                <PriceBadge dollarSigns={model.dollarSigns} />
-                                {model.tag && (
-                                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                    {model.tag}
-                                  </span>
-                                )}
+                              <div className="flex justify-between items-start w-full gap-1">
+                                <span className="flex-1">{model.displayName}</span>
+                                <div className="flex items-center gap-1">
+                                  <PriceBadge dollarSigns={model.dollarSigns} />
+                                  <BrainBadge brainSigns={model.brainSigns} />
+                                  {model.tag && (
+                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                      {model.tag}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </DropdownMenuItem>
                           </TooltipTrigger>
@@ -366,13 +370,17 @@ export function ModelPicker() {
                                       setOpen(false);
                                     }}
                                   >
-                                    <div className="flex justify-between items-start w-full">
-                                      <span>{model.displayName}</span>
-                                      {model.tag && (
-                                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                          {model.tag}
-                                        </span>
-                                      )}
+                                    <div className="flex justify-between items-start w-full gap-1">
+                                      <span className="flex-1">{model.displayName}</span>
+                                      <div className="flex items-center gap-1">
+                                        <PriceBadge dollarSigns={model.dollarSigns} />
+                                        <BrainBadge brainSigns={model.brainSigns} />
+                                        {model.tag && (
+                                          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                            {model.tag}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </DropdownMenuItem>
                                 </TooltipTrigger>
