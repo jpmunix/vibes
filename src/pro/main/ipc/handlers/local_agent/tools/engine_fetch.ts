@@ -4,11 +4,7 @@
  */
 
 import { readSettings } from "@/main/settings";
-import {
-  MODEL_OPTIONS,
-  PROVIDER_TO_ENV_VAR,
-} from "@/ipc/shared/language_model_constants";
-import { getEnvVar } from "@/ipc/utils/read_env";
+import log from "electron-log";
 import type { AgentContext } from "./types";
 
 export const DYAD_ENGINE_URL =
@@ -20,6 +16,7 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const logger = log.scope("engine_fetch");
 
 interface TurboFileEditRequestBody {
   path: string;
@@ -111,15 +108,12 @@ async function callTurboFileEditViaOpenRouter(
   const apiKey = getOpenRouterApiKey(settings);
   const model = settings.turboEditModel || "google/gemini-3-flash-preview";
   const body = parseTurboFileEditBody(options.body);
-  console.log("TurboEdit", "start")
-  console.log("TurboEdit", "apiKey",apiKey)
-  console.log("TurboEdit", "model",model)
+
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      "X-Dyad-Request-Id": ctx.dyadRequestId,
+      Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model,
@@ -140,13 +134,11 @@ async function callTurboFileEditViaOpenRouter(
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
-  console.error('##########################################################################')
-  console.log(buildTurboEditMessages(body));
-  console.error('##########################################################################')
-  console.warn(data.choices[0].message.content);
-  console.error('##########################################################################')
+
+  logger.log(buildTurboEditMessages(body));
+  logger.warn(data.choices[0].message.content);
   const result = sanitizeTurboEditResponse(rawContent);
-  console.info('##RESULT #################################################################', result)
+  logger.info(result)
 
   return new Response(JSON.stringify({ result }), {
     status: 200,
@@ -169,7 +161,7 @@ export async function engineFetch(
   endpoint: string,
   options: EngineFetchOptions = {},
 ): Promise<Response> {
-  console.log('TurboEdit','engineFetch', endpoint)
+
   if (endpoint === "/tools/turbo-file-edit") {
     return callTurboFileEditViaOpenRouter(ctx, options);
   }

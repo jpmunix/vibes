@@ -48,8 +48,11 @@ export function ModelPicker() {
   const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
     useLanguageModelsByProviders();
 
-  const { data: providers, isLoading: providersLoading } =
-    useLanguageModelProviders();
+  const {
+    data: providers,
+    isLoading: providersLoading,
+    isProviderSetup,
+  } = useLanguageModelProviders();
 
   const loading = modelsByProvidersLoading || providersLoading;
   // Ollama Models Hook
@@ -67,6 +70,9 @@ export function ModelPicker() {
     error: lmStudioError,
     loadModels: loadLMStudioModels,
   } = useLocalLMSModels();
+
+  const isOllamaSetup = ollamaModels.length > 0 && !ollamaError;
+  const isLMStudioSetup = lmStudioModels.length > 0 && !lmStudioError;
 
   // Load models when the dropdown opens
   useEffect(() => {
@@ -207,11 +213,23 @@ export function ModelPicker() {
                   provider?.id === "auto"
                     ? "Dyad Turbo"
                     : (provider?.name ?? providerId);
+                const isSetup =
+                  providerId === "ollama"
+                    ? isOllamaSetup
+                    : providerId === "lmstudio"
+                      ? isLMStudioSetup
+                      : isProviderSetup(providerId);
                 return (
                   <DropdownMenuSub key={providerId}>
                     <DropdownMenuSubTrigger className="w-full font-normal">
                       <div className="flex flex-col items-start w-full">
                         <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "w-2 h-2 rounded-full",
+                              isSetup ? "bg-green-500" : "bg-red-500/20",
+                            )}
+                          />
                           <span>{providerDisplayName}</span>
                           {provider?.type === "custom" && (
                             <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
@@ -291,11 +309,23 @@ export function ModelPicker() {
                       const provider = providers?.find(
                         (p) => p.id === providerId,
                       );
+                      const isSetup =
+                        providerId === "ollama"
+                          ? isOllamaSetup
+                          : providerId === "lmstudio"
+                            ? isLMStudioSetup
+                            : isProviderSetup(providerId);
                       return (
                         <DropdownMenuSub key={providerId}>
                           <DropdownMenuSubTrigger className="w-full font-normal">
                             <div className="flex flex-col items-start w-full">
                               <div className="flex items-center gap-2">
+                                <div
+                                  className={cn(
+                                    "w-2 h-2 rounded-full",
+                                    isSetup ? "bg-green-500" : "bg-red-500/20",
+                                  )}
+                                />
                                 <span>{provider?.name ?? providerId}</span>
                                 {provider?.type === "custom" && (
                                   <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
