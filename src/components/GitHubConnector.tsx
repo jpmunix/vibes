@@ -95,9 +95,21 @@ function ConnectedGitHubConnector({
   const [rebaseInProgress, setRebaseInProgress] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
+  const [aheadCount, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Fetch git state (ahead/behind) to decide UI visibility
+    (async () => {
+      try {
+        const state = await ipc.github.getGitState({ appId });
+        if (typeof state.ahead === "number") setAheadCount(state.ahead);
+        else setAheadCount(0);
+      } catch {
+        setAheadCount(0);
+      }
+    })();
+
     // Only auto-generate commit message if user hasn't edited it
     if (hasUncommittedFiles && !commitMessage && !isCommitMessageEdited) {
       const added = uncommittedFiles.filter((f) => f.status === "added").length;
@@ -128,7 +140,7 @@ function ConnectedGitHubConnector({
       setCommitMessage("");
       setIsCommitMessageEdited(false);
     }
-  }, [hasUncommittedFiles, uncommittedFiles, commitMessage, isCommitMessageEdited]);
+  }, [appId, hasUncommittedFiles, uncommittedFiles, commitMessage, isCommitMessageEdited]);
 
   const handleDisconnectRepo = async () => {
     setIsDisconnecting(true);
@@ -372,7 +384,7 @@ function ConnectedGitHubConnector({
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
-      {hasUncommittedFiles && (
+      {(hasUncommittedFiles && false) && (
         <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
           <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
             <FileWarning size={16} />
@@ -395,7 +407,7 @@ function ConnectedGitHubConnector({
             </div>
             <Input
               id="commit-message"
-              placeholder="Describa sus cambios..."
+              placeholder="Describe tus cambios..."
               value={commitMessage}
               onChange={(e) => {
                 setCommitMessage(e.target.value);
@@ -415,7 +427,7 @@ function ConnectedGitHubConnector({
       <div className="mt-2 flex gap-2">
         <Button
           onClick={() => handleSyncToGithub()}
-          disabled={isRebaseActionPending || (hasUncommittedFiles && !commitMessage.trim())}
+          disabled={isRebaseActionPending}
         >
           {isSyncing ? (
             <>

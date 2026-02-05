@@ -1010,6 +1010,47 @@ export async function gitCurrentBranch({
   }
 }
 
+export async function getGitAheadCount({
+  path,
+  branch,
+}: {
+  path: string;
+  branch: string;
+}): Promise<number> {
+  const settings = readSettings();
+  if (settings.enableNativeGit) {
+    try {
+      // Check if the remote branch exists first
+      const remoteCheck = await execGit(
+        ["rev-parse", "--verify", `origin/${branch}`],
+        path,
+      );
+      if (remoteCheck.exitCode !== 0) {
+        // If remote branch doesn't exist, we consider all local commits as ahead
+        const allCommits = await execGit(["rev-list", "--count", branch], path);
+        return allCommits.exitCode === 0
+          ? Number.parseInt(allCommits.stdout.trim(), 10)
+          : 0;
+      }
+
+      const result = await execGit(
+        ["rev-list", "--count", `origin/${branch}..${branch}`],
+        path,
+      );
+      if (result.exitCode !== 0) return 0;
+      return Number.parseInt(result.stdout.trim(), 10);
+    } catch (e) {
+      logger.error("Error getting git ahead count:", e);
+      return 0;
+    }
+  } else {
+    // isomorphic-git doesn't have a direct equivalent for rev-list --count A..B
+    // For now return 0 or implement a manual log comparison if really needed.
+    // Given the project uses native git by default, this is a reasonable limitation.
+    return 0;
+  }
+}
+
 export async function gitLog({
   path,
   depth = 100_000,

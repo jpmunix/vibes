@@ -76,6 +76,7 @@ export const GithubSyncOptionsSchema = z.object({
 export const GitStateSchema = z.object({
   mergeInProgress: z.boolean(),
   rebaseInProgress: z.boolean(),
+  ahead: z.number().optional(),
 });
 
 export const LocalBranchesResultSchema = z.object({

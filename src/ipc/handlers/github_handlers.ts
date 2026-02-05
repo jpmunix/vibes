@@ -1044,7 +1044,7 @@ export async function ensureCleanWorkspace(
 async function handleGetGitState(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
-): Promise<{ mergeInProgress: boolean; rebaseInProgress: boolean }> {
+): Promise<{ mergeInProgress: boolean; rebaseInProgress: boolean; ahead?: number }> {
   const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
@@ -1052,7 +1052,18 @@ async function handleGetGitState(
   const mergeInProgress = isGitMergeInProgress({ path: appPath });
   const rebaseInProgress = isGitRebaseInProgress({ path: appPath });
 
-  return { mergeInProgress, rebaseInProgress };
+  let ahead: number | undefined = undefined;
+  try {
+    const branch = app.githubBranch || (await gitCurrentBranch({ path: appPath })) || "main";
+    // getGitAheadCount lives in git_utils
+    const { getGitAheadCount } = await import("../utils/git_utils");
+    ahead = await getGitAheadCount({ path: appPath, branch });
+  } catch (e) {
+    // best-effort; ignore errors
+    ahead = undefined;
+  }
+
+  return { mergeInProgress, rebaseInProgress, ahead };
 }
 
 async function handleListCollaborators(
