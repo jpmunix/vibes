@@ -6,6 +6,23 @@ import log from "electron-log";
 
 const logger = log.scope("search_replace_processor");
 
+export type MatchFailureDiagnostic = {
+  matchingLines: number;
+  totalSearchLines: number;
+  startLine: number;
+  endLine: number;
+  firstMismatchSearchLine?: number;
+  firstMismatchFileLine?: number;
+  contextPreview: string[];
+};
+
+export type SearchReplaceResult = {
+  success: boolean;
+  content?: string;
+  error?: string;
+  diagnostic?: MatchFailureDiagnostic;
+};
+
 // ============================================================================
 // Options Interface
 // ============================================================================
@@ -159,6 +176,58 @@ function findBestPartialMatch(
   };
 }
 
+function buildMatchFailureDiagnostic(
+  resultLines: string[],
+  searchLines: string[],
+): MatchFailureDiagnostic {
+  const bestMatch = findBestPartialMatch(resultLines, searchLines);
+
+  const contextLines = 2;
+  const startLine = bestMatch.startIndex + 1;
+  const endLine = Math.min(
+    resultLines.length,
+    bestMatch.startIndex + searchLines.length,
+  );
+  const contextStart = Math.max(0, bestMatch.startIndex - contextLines);
+  const contextEnd = Math.min(
+    resultLines.length,
+    bestMatch.startIndex + searchLines.length + contextLines,
+  );
+
+  const contextPreview: string[] = [];
+  for (let i = contextStart; i < contextEnd; i++) {
+    contextPreview.push(`${i + 1}: ${resultLines[i]}`);
+  }
+
+  const firstMismatchSearchLine =
+    bestMatch.firstMismatchIndex < searchLines.length
+      ? bestMatch.firstMismatchIndex + 1
+      : undefined;
+  const firstMismatchFileLine =
+    bestMatch.firstMismatchIndex < searchLines.length
+      ? bestMatch.startIndex + bestMatch.firstMismatchIndex + 1
+      : undefined;
+
+  return {
+    matchingLines: bestMatch.matchingLines,
+    totalSearchLines: searchLines.length,
+    startLine,
+    endLine,
+    firstMismatchSearchLine,
+    firstMismatchFileLine,
+    contextPreview,
+  };
+}
+
+export function formatMatchFailureSummary(
+  diagnostic: MatchFailureDiagnostic,
+): string {
+  const mismatchPart = diagnostic.firstMismatchSearchLine
+    ? `; first mismatch at search line ${diagnostic.firstMismatchSearchLine}`
+    : "";
+  return `Closest match ${diagnostic.matchingLines}/${diagnostic.totalSearchLines} lines around lines ${diagnostic.startLine}-${diagnostic.endLine}${mismatchPart}.`;
+}
+
 /**
  * Log detailed information about a failed match to help diagnose issues
  */
@@ -273,11 +342,7 @@ function cascadingMatch(
 export function applySearchReplace(
   originalContent: string,
   diffContent: string,
-): {
-  success: boolean;
-  content?: string;
-  error?: string;
-} {
+): SearchReplaceResult {
   const blocks = parseSearchReplaceBlocks(diffContent);
   if (blocks.length === 0) {
     return {
@@ -333,11 +398,26 @@ export function applySearchReplace(
     }
 
     if (matchResult.error) {
+      // If the file already contains the replacement content (e.g., rerun),
+      // treat as success to keep the operation idempotent.
+      if (replaceLines.length > 0) {
+        const replaceMatch = cascadingMatch(resultLines, replaceLines);
+        if (!replaceMatch.error && replaceMatch.matchIndex >= 0) {
+          appliedCount++;
+          logger.info(
+            `search_replace: block ${appliedCount} already applied; skipping.`,
+          );
+          continue;
+        }
+      }
+
+      const diagnostic = buildMatchFailureDiagnostic(resultLines, searchLines);
       // Log detailed diagnostic information for debugging
       logMatchFailure(resultLines, searchLines, appliedCount);
       return {
         success: false,
         error: matchResult.error,
+        diagnostic,
       };
     }
 

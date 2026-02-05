@@ -1,10 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { parseSearchReplaceBlocks } from "@/pro/shared/search_replace_parser";
+import {
+  applySearchReplace,
+  formatMatchFailureSummary,
+} from "@/pro/main/ipc/processors/search_replace_processor";
 
 // Create mock logger functions that we can spy on
 const mockError = vi.fn();
 const mockWarn = vi.fn();
 const mockDebug = vi.fn();
+const mockInfo = vi.fn();
 
 // Mock electron-log - must be before importing the module that uses it
 vi.mock("electron-log", () => {
@@ -15,13 +20,11 @@ vi.mock("electron-log", () => {
         warn: (...args: unknown[]) => mockWarn(...args),
         error: (...args: unknown[]) => mockError(...args),
         debug: (...args: unknown[]) => mockDebug(...args),
+        info: (...args: unknown[]) => mockInfo(...args),
       }),
     },
   };
 });
-
-// Import after mock is set up
-import { applySearchReplace } from "@/pro/main/ipc/processors/search_replace_processor";
 
 describe("search_replace_processor - parseSearchReplaceBlocks", () => {
   it("parses multiple blocks with start_line in ascending order", () => {
@@ -199,9 +202,37 @@ NOT IN FILE
 STILL NOT
 >>>>>>> REPLACE
 `;
-    const { success, error } = applySearchReplace(original, diff);
+    const { success, error, diagnostic } = applySearchReplace(original, diff);
     expect(success).toBe(false);
     expect(error).toMatch(/Search block did not match any content/i);
+    expect(diagnostic).toBeDefined();
+    expect(diagnostic).toMatchObject({
+      matchingLines: expect.any(Number),
+      totalSearchLines: expect.any(Number),
+      startLine: expect.any(Number),
+      endLine: expect.any(Number),
+      contextPreview: expect.any(Array),
+    });
+    expect(diagnostic?.totalSearchLines).toBeGreaterThan(0);
+  });
+
+  it("succeeds as a no-op when replacement content already exists", () => {
+    const original = [
+      "<Button>",
+      "  Comenzar",
+      "</Button>",
+    ].join("\n");
+    const diff = `
+<<<<<<< SEARCH
+  Empezar ahora
+=======
+  Comenzar
+>>>>>>> REPLACE
+`;
+    const { success, content, error } = applySearchReplace(original, diff);
+    expect(success).toBe(true);
+    expect(error).toBeUndefined();
+    expect(content).toBe(original);
   });
 
   it("matches despite differing indentation and trailing whitespace", () => {
@@ -415,9 +446,15 @@ this does not exist
 replacement
 >>>>>>> REPLACE
 `;
-    const { success, error } = applySearchReplace(original, diff);
+    const { success, error, diagnostic } = applySearchReplace(original, diff);
     expect(success).toBe(false);
     expect(error).toMatch(/did not match any content/i);
+    expect(diagnostic?.contextPreview).toBeDefined();
+    if (diagnostic) {
+      const summary = formatMatchFailureSummary(diagnostic);
+      expect(summary).toMatch(/Closest match/i);
+      expect(summary).toMatch(/lines around lines/i);
+    }
   });
 });
 

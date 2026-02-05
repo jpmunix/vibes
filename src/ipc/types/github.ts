@@ -70,6 +70,7 @@ export const UncommittedFileSchema = z.object({
 export const GithubSyncOptionsSchema = z.object({
   force: z.boolean().optional(),
   forceWithLease: z.boolean().optional(),
+  commitMessage: z.string().optional(),
 });
 
 export const GitStateSchema = z.object({
@@ -176,6 +177,7 @@ export const githubContracts = {
       appId: z.number(),
       force: z.boolean().optional(),
       forceWithLease: z.boolean().optional(),
+      commitMessage: z.string().optional(),
     }),
     output: z.void(),
   }),

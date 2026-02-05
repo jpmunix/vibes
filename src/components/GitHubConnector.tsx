@@ -7,10 +7,12 @@ import {
   AlertTriangle,
   ChevronRight,
   GitMerge,
+  FileWarning,
 } from "lucide-react";
 import { ipc, type GithubSyncOptions } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
+import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
 import {
   Select,
   SelectContent,
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { GithubBranchManager } from "@/components/GithubBranchManager";
 
 type SyncResult =
@@ -75,6 +78,7 @@ function ConnectedGitHubConnector({
   triggerAutoSync,
   onAutoSyncComplete,
 }: ConnectedGitHubConnectorProps) {
+  const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
@@ -89,7 +93,42 @@ function ConnectedGitHubConnector({
     "abort" | "continue" | "safe-push" | null
   >(null);
   const [rebaseInProgress, setRebaseInProgress] = useState(false);
+  const [commitMessage, setCommitMessage] = useState("");
+  const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Only auto-generate commit message if user hasn't edited it
+    if (hasUncommittedFiles && !commitMessage && !isCommitMessageEdited) {
+      const added = uncommittedFiles.filter((f) => f.status === "added").length;
+      const modified = uncommittedFiles.filter((f) => f.status === "modified")
+        .length;
+      const deleted = uncommittedFiles.filter((f) => f.status === "deleted")
+        .length;
+      const renamed = uncommittedFiles.filter((f) => f.status === "renamed")
+        .length;
+
+      const parts: string[] = [];
+      if (added > 0)
+        parts.push(`añadir ${added} archivo${added > 1 ? "s" : ""}`);
+      if (modified > 0)
+        parts.push(`actualizar ${modified} archivo${modified > 1 ? "s" : ""}`);
+      if (deleted > 0)
+        parts.push(`eliminar ${deleted} archivo${deleted > 1 ? "s" : ""}`);
+      if (renamed > 0)
+        parts.push(`renombrar ${renamed} archivo${renamed > 1 ? "s" : ""}`);
+
+      if (parts.length > 0) {
+        const message = parts.join(", ");
+        setCommitMessage(message.charAt(0).toUpperCase() + message.slice(1));
+      } else {
+        setCommitMessage("Actualizar archivos");
+      }
+    } else if (!hasUncommittedFiles && commitMessage) {
+      setCommitMessage("");
+      setIsCommitMessageEdited(false);
+    }
+  }, [hasUncommittedFiles, uncommittedFiles, commitMessage, isCommitMessageEdited]);
 
   const handleDisconnectRepo = async () => {
     setIsDisconnecting(true);
@@ -121,11 +160,15 @@ function ConnectedGitHubConnector({
           appId,
           force,
           forceWithLease,
+          commitMessage: hasUncommittedFiles ? commitMessage : undefined,
         });
         setSyncSuccess(true);
         setRebaseInProgress(false);
         setConflicts([]); // Clear conflicts on successful sync
         setRebaseStatusMessage(null);
+        // Reset commit message state after successful sync
+        setCommitMessage("");
+        setIsCommitMessageEdited(false);
         return {};
       } catch (err: any) {
         if (err?.name === "GitConflictError") {
@@ -329,10 +372,50 @@ function ConnectedGitHubConnector({
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
+      {hasUncommittedFiles && (
+        <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
+            <FileWarning size={16} />
+            <span className="font-medium">
+              Tienes {uncommittedFiles.length}{" "}
+              {uncommittedFiles.length === 1 ? "cambio" : "cambios"} sin
+              confirmar
+            </span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="commit-message" className="text-xs font-semibold">
+                Mensaje de commit
+              </Label>
+              {!commitMessage.trim() && (
+                <span className="text-[10px] text-red-500 font-medium">
+                  Obligatorio
+                </span>
+              )}
+            </div>
+            <Input
+              id="commit-message"
+              placeholder="Describa sus cambios..."
+              value={commitMessage}
+              onChange={(e) => {
+                setCommitMessage(e.target.value);
+                setIsCommitMessageEdited(true);
+              }}
+              className={cn(
+                "bg-white dark:bg-slate-950",
+                !commitMessage.trim() && "border-red-500 focus-visible:ring-red-500"
+              )}
+            />
+            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70">
+              Estos cambios se confirmarán automáticamente antes de sincronizar.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="mt-2 flex gap-2">
         <Button
           onClick={() => handleSyncToGithub()}
-          disabled={isRebaseActionPending}
+          disabled={isRebaseActionPending || (hasUncommittedFiles && !commitMessage.trim())}
         >
           {isSyncing ? (
             <>

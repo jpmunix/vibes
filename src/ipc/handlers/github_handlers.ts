@@ -827,10 +827,12 @@ async function handlePushToGithub(
     appId,
     force,
     forceWithLease,
+    commitMessage,
   }: {
     appId: number;
     force?: boolean;
     forceWithLease?: boolean;
+    commitMessage?: string;
   },
 ): Promise<void> {
   // Get access token from settings
@@ -847,6 +849,44 @@ async function handlePushToGithub(
   }
   const appPath = getDyadAppPath(app.path);
   const branch = app.githubBranch || "main";
+
+  // Auto-commit changes if commitMessage is provided
+  if (commitMessage) {
+    const isClean = await isGitStatusClean({ path: appPath });
+    if (!isClean) {
+      if (isGitMergeInProgress({ path: appPath })) {
+        throw new Error(
+          "Cannot auto-commit changes because a merge is in progress. " +
+            "Please complete or abort the merge and try again.",
+        );
+      }
+      if (isGitRebaseInProgress({ path: appPath })) {
+        throw new Error(
+          "Cannot auto-commit changes because a rebase is in progress. " +
+            "Please complete or abort the rebase and try again.",
+        );
+      }
+
+      try {
+        await gitAddAll({ path: appPath });
+        await gitCommit({
+          path: appPath,
+          message: commitMessage,
+        });
+        logger.info(
+          `[GitHub Handler] Committed local changes with custom message before push.`,
+        );
+      } catch (commitError: any) {
+        logger.error(
+          "[GitHub Handler] Failed to commit local changes before push:",
+          commitError,
+        );
+        throw new Error(
+          `Failed to commit uncommitted changes: ${commitError?.message || String(commitError)}`,
+        );
+      }
+    }
+  }
 
   // Set up remote URL with token
   const remoteUrl = IS_TEST_BUILD

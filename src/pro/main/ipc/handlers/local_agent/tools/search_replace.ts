@@ -9,7 +9,10 @@ import {
   escapeXmlContent,
 } from "./types";
 import { safeJoin } from "@/ipc/utils/path_utils";
-import { applySearchReplace } from "@/pro/main/ipc/processors/search_replace_processor";
+import {
+  applySearchReplace,
+  formatMatchFailureSummary,
+} from "@/pro/main/ipc/processors/search_replace_processor";
 import { escapeSearchReplaceMarkers } from "@/pro/shared/search_replace_markers";
 import { deploySupabaseFunction } from "@/supabase_admin/supabase_management_client";
 import {
@@ -115,12 +118,15 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
     const result = applySearchReplace(original, operations);
 
     if (!result.success || typeof result.content !== "string") {
+      const diagnosticSummary =
+        result.diagnostic && formatMatchFailureSummary(result.diagnostic);
+      const baseError = (result.error ?? "unknown").replace(/\.+$/, "");
       sendTelemetryEvent("local_agent:search_replace:failure", {
         filePath: args.file_path,
         error: result.error ?? "unknown",
       });
       throw new Error(
-        `Failed to apply search-replace: ${result.error ?? "unknown"}`,
+        `Failed to apply search-replace: ${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""} Read the latest file and include more surrounding lines before retrying.`,
       );
     }
 

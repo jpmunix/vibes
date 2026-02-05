@@ -346,6 +346,24 @@ describe("searchReplaceTool", () => {
         expect.stringContaining("const y = 2"),
       );
     });
+
+    it("surfaces diagnostic guidance when search text is missing", async () => {
+      const originalContent = ["first", "second", "third"].join("\n");
+
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.promises.readFile).mockResolvedValue(originalContent);
+
+      await expect(
+        searchReplaceTool.execute(
+          {
+            file_path: "test.ts",
+            old_string: "not here",
+            new_string: "replacement",
+          },
+          mockContext,
+        ),
+      ).rejects.toThrow(/Read the latest file/i);
+    });
   });
 
   describe("buildXml", () => {
