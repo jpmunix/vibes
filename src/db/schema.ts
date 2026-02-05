@@ -269,3 +269,16 @@ export const customThemes = sqliteTable("custom_themes", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+// --- Notes table ---
+export const notes = sqliteTable("notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull().default("Nueva nota"),
+  content: text("content").notNull().default(""),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});

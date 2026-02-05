@@ -38,6 +38,7 @@ import { visualEditingContracts } from "../types/visual-editing";
 import { securityContracts } from "../types/security";
 import { miscContracts, miscEvents } from "../types/misc";
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
+import { noteContracts } from "../types/note";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -61,6 +62,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(settingsContracts),
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(chatContracts),
+  ...getInvokeChannels(noteContracts),
   ...getInvokeChannels(agentContracts),
 
   // Stream invoke channels

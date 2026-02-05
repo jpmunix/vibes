@@ -1,13 +1,10 @@
-import {
-  Home,
-  Inbox,
-  Settings,
-} from "lucide-react";
+import { Home, Inbox, Settings, StickyNote } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 import {
   Sidebar,
@@ -21,6 +18,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ChatList } from "./ChatList";
+import { NotesList } from "./NotesList";
 import { AppList } from "./AppList";
 import { SettingsList } from "./SettingsList";
 import { LibraryList } from "./LibraryList";
@@ -38,6 +36,11 @@ const items = [
     icon: Inbox,
   },
   {
+    title: "Notas",
+    to: "/notes",
+    icon: StickyNote,
+  },
+  {
     title: "Ajustes",
     to: "/settings",
     icon: Settings,
@@ -48,6 +51,7 @@ const items = [
 type HoverState =
   | "start-hover:app"
   | "start-hover:chat"
+  | "start-hover:notes"
   | "start-hover:settings"
   | "start-hover:library"
   | "clear-hover"
@@ -78,6 +82,8 @@ export function AppSidebar() {
       setActiveTab("Aplicaciones");
     } else if (isChatRoute) {
       setActiveTab("Chat");
+    } else if (routerState.location.pathname.startsWith("/notes")) {
+      setActiveTab("Notas");
     } else if (isSettingsRoute) {
       setActiveTab("Ajustes");
     } else if (isLibraryRoute) {
@@ -139,6 +145,7 @@ export function AppSidebar() {
           <div className="w-[405px]">
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
+            <NotesList show={selectedItem === "Notas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
             <LibraryList show={selectedItem === "Biblioteca"} />
           </div>
@@ -170,13 +177,11 @@ export function AppSidebar() {
   );
 }
 
-function AppIcons({
-  onTabChange,
-}: {
-  onTabChange: (tab: string) => void;
-}) {
+function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
+
+  const displayItems = [...items];
 
   return (
     // When collapsed: only show the main menu
@@ -185,7 +190,7 @@ function AppIcons({
 
       <SidebarGroupContent>
         <SidebarMenu>
-          {items.map((item) => {
+          {displayItems.map((item) => {
             const isActive =
               (item.to === "/" && pathname === "/") ||
               (item.to !== "/" && pathname.startsWith(item.to));
@@ -199,13 +204,16 @@ function AppIcons({
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
-                      }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
+                      isActive ? "bg-sidebar-accent" : ""
+                    }`}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onTabChange("Aplicaciones");
                       } else if (item.title === "Chat") {
                         onTabChange("Chat");
+                      } else if (item.title === "Notas") {
+                        onTabChange("Notas");
                       } else if (item.title === "Ajustes") {
                         onTabChange("Ajustes");
                       } else if (item.title === "Biblioteca") {

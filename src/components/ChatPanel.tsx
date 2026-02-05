@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
   chatStreamCountByIdAtom,
   isStreamingByIdAtom,
 } from "../atoms/chatAtoms";
+import { isVersionPaneOpenAtom } from "../atoms/viewAtoms";
 import { ipc } from "@/ipc/types";
 
 import { ChatHeader } from "./chat/ChatHeader";
@@ -32,7 +33,9 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
-  const [isVersionPaneOpen, setIsVersionPaneOpen] = useState(false);
+  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
+    isVersionPaneOpenAtom,
+  );
   const [error, setError] = useState<string | null>(null);
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);

@@ -537,7 +537,7 @@ function FindingsTable({
               finding.description.length > DESCRIPTION_PREVIEW_LENGTH;
             const displayDescription = isLongDescription
               ? finding.description.substring(0, DESCRIPTION_PREVIEW_LENGTH) +
-              "..."
+                "..."
               : finding.description;
             const findingKey = createFindingKey(finding);
             const isFixing = fixingFindingKey === findingKey;
@@ -777,7 +777,9 @@ export const SecurityPanel = () => {
       setIsEditRulesOpen(false);
       refetchRules();
     } catch (err: any) {
-      showError(`Error al guardar las reglas de seguridad: ${err.message || err}`);
+      showError(
+        `Error al guardar las reglas de seguridad: ${err.message || err}`,
+      );
     } finally {
       setIsSaving(false);
     }

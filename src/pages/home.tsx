@@ -235,7 +235,8 @@ export default function HomePage() {
             Construyendo tu aplicación
           </h2>
           <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-8">
-            Estamos configurando tu app con magia de IA. <br />Esto puede tardar un momento.
+            Estamos configurando tu app con magia de IA. <br />
+            Esto puede tardar un momento.
           </p>
         </div>
       </div>
@@ -271,7 +272,9 @@ export default function HomePage() {
               <button
                 type="button"
                 key={index}
-                onClick={() => setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)}
+                onClick={() =>
+                  setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
+                }
                 className="flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-200
                            bg-white/50 backdrop-blur-sm
                            transition-all duration-200

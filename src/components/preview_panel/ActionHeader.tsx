@@ -12,6 +12,7 @@ import {
   Wrench,
   Globe,
   Shield,
+  History,
 } from "lucide-react";
 import { ChatActivityButton } from "@/components/chat/ChatActivity";
 import { motion } from "framer-motion";
@@ -43,11 +44,22 @@ export type PreviewMode =
   | "publish"
   | "security";
 
+interface ActionHeaderProps {
+  onVersionClick?: () => void;
+  versions?: any[];
+  versionsLoading?: boolean;
+}
+
 // Preview Header component with preview mode toggle
-export const ActionHeader = () => {
+export const ActionHeader = ({
+  onVersionClick,
+  versions = [],
+  versionsLoading = false,
+}: ActionHeaderProps) => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const versionsRef = useRef<HTMLButtonElement>(null);
   const previewRef = useRef<HTMLButtonElement>(null);
   const codeRef = useRef<HTMLButtonElement>(null);
   const problemsRef = useRef<HTMLButtonElement>(null);
@@ -222,12 +234,39 @@ export const ActionHeader = () => {
               mass: 0.6,
             }}
           />
+          {onVersionClick && (
+            <button
+              ref={versionsRef}
+              data-testid="versions-button"
+              className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
+              onClick={onVersionClick}
+            >
+              <History size={iconSize} />
+              <span>
+                {versionsLoading ? "..." : `Versión ${versions.length}`}
+              </span>
+            </button>
+          )}
           {renderButton(
             "preview",
             previewRef,
             <Eye size={iconSize} />,
             "Vista previa",
             "preview-mode-button",
+          )}
+          {renderButton(
+            "code",
+            codeRef,
+            <Code size={iconSize} />,
+            "Código",
+            "code-mode-button",
+          )}
+          {renderButton(
+            "publish",
+            publishRef,
+            <Globe size={iconSize} />,
+            "Publicar",
+            "publish-mode-button",
           )}
           {renderButton(
             "problems",
@@ -242,32 +281,11 @@ export const ActionHeader = () => {
             ),
           )}
           {renderButton(
-            "code",
-            codeRef,
-            <Code size={iconSize} />,
-            "Código",
-            "code-mode-button",
-          )}
-          {renderButton(
-            "configure",
-            configureRef,
-            <Wrench size={iconSize} />,
-            "Configurar",
-            "configure-mode-button",
-          )}
-          {renderButton(
             "security",
             securityRef,
             <Shield size={iconSize} />,
             "Seguridad",
             "security-mode-button",
-          )}
-          {renderButton(
-            "publish",
-            publishRef,
-            <Globe size={iconSize} />,
-            "Publicar",
-            "publish-mode-button",
           )}
         </div>
         {/* Chat activity bell */}

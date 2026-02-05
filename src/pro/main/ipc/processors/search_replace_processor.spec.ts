@@ -217,11 +217,7 @@ STILL NOT
   });
 
   it("succeeds as a no-op when replacement content already exists", () => {
-    const original = [
-      "<Button>",
-      "  Comenzar",
-      "</Button>",
-    ].join("\n");
+    const original = ["<Button>", "  Comenzar", "</Button>"].join("\n");
     const diff = `
 <<<<<<< SEARCH
   Empezar ahora

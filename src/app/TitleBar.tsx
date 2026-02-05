@@ -1,8 +1,10 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { isVersionPaneOpenAtom } from "@/atoms/viewAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
+import { useVersions } from "@/hooks/useVersions";
 import { Button } from "@/components/ui/button";
 // @ts-ignore
 import logo from "../../assets/logo.svg";
@@ -23,13 +25,17 @@ import {
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 
 export const TitleBar = () => {
-  const [selectedAppId] = useAtom(selectedAppIdAtom);
+  const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { apps } = useLoadApps();
   const { navigate } = useRouter();
   const location = useLocation();
   const { settings, refreshSettings } = useSettings();
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
+  const { versions, loading: versionsLoading } = useVersions(selectedAppId);
+  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
+    isVersionPaneOpenAtom,
+  );
 
   useEffect(() => {
     // Check if we're running on Windows
@@ -98,7 +104,11 @@ export const TitleBar = () => {
         {/* Preview Header */}
         {location.pathname === "/chat" && (
           <div className="flex-1 flex justify-end">
-            <ActionHeader />
+            <ActionHeader
+              onVersionClick={() => setIsVersionPaneOpen(!isVersionPaneOpen)}
+              versions={versions}
+              versionsLoading={versionsLoading}
+            />
           </div>
         )}
 

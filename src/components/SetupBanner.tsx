@@ -215,7 +215,8 @@ export function SetupBanner() {
             <AccordionContent className="px-4 pt-2 pb-4 bg-white dark:bg-zinc-900 border-t border-inherit">
               {nodeCheckError && (
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  Error al comprobar el estado de Node.js. Intenta instalar Node.js.
+                  Error al comprobar el estado de Node.js. Intenta instalar
+                  Node.js.
                 </p>
               )}
               {isNodeSetupComplete ? (
@@ -233,8 +234,8 @@ export function SetupBanner() {
                   <p>Node.js es necesario para ejecutar apps localmente.</p>
                   {nodeInstallStep === "waiting-for-continue" && (
                     <p className="mt-1">
-                      Después de instalar Node.js, haz clic en "Continuar". Si el
-                      instalador no funcionó, prueba con{" "}
+                      Después de instalar Node.js, haz clic en "Continuar". Si
+                      el instalador no funcionó, prueba con{" "}
                       <a
                         className="text-blue-500 dark:text-blue-400 hover:underline"
                         onClick={() => {
@@ -259,7 +260,8 @@ export function SetupBanner() {
                       onClick={() => setShowManualConfig(!showManualConfig)}
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      ¿Node.js ya está instalado? Configura la ruta manualmente →
+                      ¿Node.js ya está instalado? Configura la ruta manualmente
+                      →
                     </button>
 
                     {showManualConfig && (
@@ -314,8 +316,6 @@ export function SetupBanner() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pt-2 pb-4 bg-white dark:bg-zinc-900 border-t border-inherit">
-
-
               <div className="mt-2 flex gap-2">
                 <SetupProviderCard
                   className="flex-1"
@@ -333,8 +333,6 @@ export function SetupBanner() {
                   chip={<>Necesario</>}
                 />
               </div>
-
-
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -439,11 +437,7 @@ export const OpenRouterSetupBanner = ({
         <img src={openrouterLogo} alt="OpenRouter" className="w-4 h-4" />
       }
       title="Configurar clave API de OpenRouter"
-      chip={
-        <>
-
-        </>
-      }
+      chip={<></>}
     />
   );
 };

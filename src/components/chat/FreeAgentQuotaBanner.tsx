@@ -32,10 +32,10 @@ export function FreeAgentQuotaBanner({
   // Format the actual reset time (e.g., "11:59 PM")
   const resetDateTime = resetTime
     ? new Date(resetTime).toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
     : "";
 
   const handleUpgrade = () => {

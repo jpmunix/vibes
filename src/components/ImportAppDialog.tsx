@@ -93,7 +93,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       const fetchedRepos = await ipc.github.listRepos();
       setRepos(fetchedRepos);
     } catch (err: unknown) {
-      showError("Error al obtener los repositorios: " + (err as any).toString());
+      showError(
+        "Error al obtener los repositorios: " + (err as any).toString(),
+      );
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         });
         setGithubNameExists(result.exists);
       } catch (error: unknown) {
-        showError("Error al comprobar el nombre de la app: " + (error as any).toString());
+        showError(
+          "Error al comprobar el nombre de la app: " +
+            (error as any).toString(),
+        );
       } finally {
         setIsCheckingGithubName(false);
       }
@@ -149,7 +154,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       }
       onClose();
     } catch (error: unknown) {
-      showError("Error al importar el repositorio: " + (error as any).toString());
+      showError(
+        "Error al importar el repositorio: " + (error as any).toString(),
+      );
     } finally {
       setImporting(false);
     }
@@ -183,7 +190,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       }
       onClose();
     } catch (error: unknown) {
-      showError("Error al importar el repositorio: " + (error as any).toString());
+      showError(
+        "Error al importar el repositorio: " + (error as any).toString(),
+      );
     } finally {
       setImporting(false);
     }
@@ -202,7 +211,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         });
         setGithubNameExists(result.exists);
       } catch (error: unknown) {
-        showError("Error al comprobar el nombre de la app: " + (error as any).toString());
+        showError(
+          "Error al comprobar el nombre de la app: " +
+            (error as any).toString(),
+        );
       } finally {
         setIsCheckingGithubName(false);
       }
@@ -224,7 +236,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       });
       setNameExists(result.exists);
     } catch (error: unknown) {
-      showError("Error al comprobar el nombre de la app: " + (error as any).toString());
+      showError(
+        "Error al comprobar el nombre de la app: " + (error as any).toString(),
+      );
     } finally {
       setIsCheckingName(false);
     }
@@ -324,14 +338,16 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         <DialogHeader className="sticky top-0 bg-background border-b px-6 py-4">
           <DialogTitle>Importar App</DialogTitle>
           <DialogDescription className="text-sm">
-            Importa una aplicación existente desde una carpeta local o clónala desde Github.
+            Importa una aplicación existente desde una carpeta local o clónala
+            desde Github.
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
           <Alert className="border-blue-500/20 text-blue-500 mb-2">
             <Info className="h-4 w-4 flex-shrink-0" />
             <AlertDescription className="text-xs sm:text-sm">
-              La importación de apps es una función experimental. Si encuentras algún problema, infórmalo usando el botón de Ayuda.
+              La importación de apps es una función experimental. Si encuentras
+              algún problema, infórmalo usando el botón de Ayuda.
             </AlertDescription>
           </Alert>
           <Tabs defaultValue="local-folder" className="w-full">
@@ -421,7 +437,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <div className="space-y-2">
                       {nameExists && (
                         <p className="text-xs sm:text-sm text-yellow-500">
-                          Ya existe una aplicación con este nombre. Por favor, elige un nombre diferente:
+                          Ya existe una aplicación con este nombre. Por favor,
+                          elige un nombre diferente:
                         </p>
                       )}
                       <div className="relative">
@@ -493,8 +510,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">
-                                AI_RULES.md le dice a Dyad qué tecnologías
-                                usar para editar la app
+                                AI_RULES.md le dice a Dyad qué tecnologías usar
+                                para editar la app
                               </p>
                             </TooltipContent>
                           </Tooltip>
@@ -535,7 +552,11 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   }
                   className="w-full sm:w-auto min-w-[80px]"
                 >
-                  {importAppMutation.isPending ? <>Importando...</> : "Importar"}
+                  {importAppMutation.isPending ? (
+                    <>Importando...</>
+                  ) : (
+                    "Importar"
+                  )}
                 </Button>
               </DialogFooter>
             </TabsContent>
@@ -575,7 +596,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     )}
                     {githubNameExists && (
                       <p className="text-xs sm:text-sm text-yellow-500">
-                        Ya existe una aplicación con este nombre. Por favor, elige un nombre diferente.
+                        Ya existe una aplicación con este nombre. Por favor,
+                        elige un nombre diferente.
                       </p>
                     )}
                   </div>
@@ -667,7 +689,9 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">URL del repositorio</Label>
+                <Label className="text-xs sm:text-sm">
+                  URL del repositorio
+                </Label>
                 <Input
                   placeholder="https://github.com/user/repo.git"
                   value={url}
@@ -695,8 +719,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 )}
                 {githubNameExists && (
                   <p className="text-xs sm:text-sm text-yellow-500">
-                    Ya existe una aplicación con este nombre. Por favor, elige un
-                    nombre diferente.
+                    Ya existe una aplicación con este nombre. Por favor, elige
+                    un nombre diferente.
                   </p>
                 )}
               </div>

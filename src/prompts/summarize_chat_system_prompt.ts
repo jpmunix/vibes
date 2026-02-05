@@ -46,6 +46,6 @@ Responde este resumen en español incluyendo las cabeceras de "Important Context
 `;
 
 export const SUMMARY_SYSTEM_PROMPT_LANGS = {
-  en: 'Summarize from chat-id',
-  es: 'Resumir el chat chat-id='
+  en: "Summarize from chat-id",
+  es: "Resumir el chat chat-id=",
 };

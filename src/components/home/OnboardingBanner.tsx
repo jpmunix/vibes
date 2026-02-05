@@ -10,5 +10,5 @@ export const OnboardingBanner = ({
 }) => {
   if (!isVisible) return null;
 
-  return ( "" ) }
-;
+  return "";
+};

@@ -1,10 +1,6 @@
 import React from "react";
 
-export function BrainBadge({
-  brainSigns,
-}: {
-  brainSigns: number | undefined;
-}) {
+export function BrainBadge({ brainSigns }: { brainSigns: number | undefined }) {
   if (brainSigns === undefined || brainSigns === null) return null;
 
   const label = "🧠".repeat(brainSigns);

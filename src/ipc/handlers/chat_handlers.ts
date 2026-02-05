@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { apps, chats, messages } from "../../db/schema";
-import { desc, eq, and, like } from "drizzle-orm";
+import { desc, eq, and, like, ne, gte } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
 import log from "electron-log";
@@ -83,24 +83,24 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-        where: eq(chats.appId, appId),
-        columns: {
-          id: true,
-          title: true,
-          createdAt: true,
-          appId: true,
-        },
-        orderBy: [desc(chats.createdAt)],
-      })
+          where: eq(chats.appId, appId),
+          columns: {
+            id: true,
+            title: true,
+            createdAt: true,
+            appId: true,
+          },
+          orderBy: [desc(chats.createdAt)],
+        })
       : db.query.chats.findMany({
-        columns: {
-          id: true,
-          title: true,
-          createdAt: true,
-          appId: true,
-        },
-        orderBy: [desc(chats.createdAt)],
-      });
+          columns: {
+            id: true,
+            title: true,
+            createdAt: true,
+            appId: true,
+          },
+          orderBy: [desc(chats.createdAt)],
+        });
 
     const allChats = await query;
     return allChats as ChatSummary[];
@@ -177,14 +177,16 @@ export function registerChatHandlers() {
     async (_, { chatId, prompt }) => {
       const { readSettings } = await import("../../main/settings");
       const settings = readSettings();
-      const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+      const apiKey =
+        settings.providerSettings?.openrouter?.apiKey?.value?.trim();
 
       if (!apiKey) {
         logger.warn("OpenRouter API key not found, using default title");
         return { title: "Nuevo chat" };
       }
 
-      const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      const model =
+        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
       try {
         let messageContent = prompt;
@@ -207,6 +209,15 @@ export function registerChatHandlers() {
           messageContent = firstMessage[0].content;
         }
 
+        // If it's a summarize command, don't generate title
+        // This is a safety check in case the frontend still calls it
+        if (
+          messageContent.startsWith("Resumir el chat chat-id=") ||
+          messageContent.startsWith("Summarize from chat-id")
+        ) {
+          return { title: "Nuevo chat" };
+        }
+
         const response = await fetch(
           "https://openrouter.ai/api/v1/chat/completions",
           {
@@ -225,11 +236,11 @@ export function registerChatHandlers() {
                 {
                   role: "system",
                   content:
-                    "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro.",
+                    "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
                 },
                 {
                   role: "user",
-                  content: `Genera un título corto en español para este chat: "${messageContent.slice(0, 500)}"`,
+                  content: `Genera un título corto en español en formato objetivo (sin primera persona) para este chat: "${messageContent.slice(0, 500)}"`,
                 },
               ],
             }),
@@ -263,6 +274,120 @@ export function registerChatHandlers() {
       }
     },
   );
+
+  createTypedHandler(
+    chatContracts.deleteAllChatsExceptCurrent,
+    async (_, { appId, currentChatId }) => {
+      if (currentChatId !== null) {
+        await db
+          .delete(chats)
+          .where(and(eq(chats.appId, appId), ne(chats.id, currentChatId)));
+      } else {
+        // If no current chat, delete all chats for the app
+        await db.delete(chats).where(eq(chats.appId, appId));
+      }
+    },
+  );
+
+  createTypedHandler(chatContracts.summarizeTodaysChats, async (_, appId) => {
+    const { readSettings } = await import("../../main/settings");
+    const settings = readSettings();
+    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+    if (!apiKey) {
+      throw new Error("OpenRouter API key not found");
+    }
+
+    const model =
+      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+    // Get today's start timestamp (midnight)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Fetch all chats created today for this app
+    const todaysChats = await db.query.chats.findMany({
+      where: and(eq(chats.appId, appId), gte(chats.createdAt, today)),
+      columns: {
+        id: true,
+        title: true,
+        createdAt: true,
+      },
+      with: {
+        messages: {
+          columns: {
+            role: true,
+            content: true,
+          },
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        },
+      },
+      orderBy: [desc(chats.createdAt)],
+    });
+
+    if (todaysChats.length === 0) {
+      return { summary: "No hay chats del día de hoy para resumir." };
+    }
+
+    // Build the context for the AI
+    const chatsContext = todaysChats
+      .map((chat) => {
+        const chatTitle = chat.title || "Sin título";
+        const messagesText = chat.messages
+          .map((msg) => `${msg.role}: ${msg.content}`)
+          .join("\n");
+        return `## Chat: ${chatTitle}\n${messagesText}`;
+      })
+      .join("\n\n---\n\n");
+
+    try {
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://dyad.sh",
+            "X-Title": "Dyad",
+          },
+          body: JSON.stringify({
+            model,
+            temperature: 0.3,
+            max_tokens: 500,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Eres un asistente que resume el trabajo del día a nivel de features y funcionalidades principales. NO entres en detalles técnicos de archivos, componentes o implementación. Crea un resumen con grandes titulares de las features desarrolladas, bugs corregidos y cambios importantes. Usa viñetas con títulos descriptivos y concisos. IMPORTANTE: No uses frases introductorias como 'Aquí tienes el resumen' o similares. Empieza directamente con el contenido del resumen. FORMATO: Siempre responde en formato markdown, usando viñetas (-), encabezados (##), y saltos de línea apropiados.",
+              },
+              {
+                role: "user",
+                content: `Resume las features y funcionalidades principales trabajadas hoy (NO menciones archivos ni componentes específicos, solo las features a alto nivel):\n\n${chatsContext}`,
+              },
+            ],
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
+        );
+      }
+
+      const data = await response.json();
+      const summary =
+        data?.choices?.[0]?.message?.content?.trim() ||
+        "No se pudo generar el resumen.";
+
+      return { summary };
+    } catch (error) {
+      logger.error("Error generating daily summary:", error);
+      throw new Error("Error al generar el resumen del día");
+    }
+  });
 
   logger.debug("Registered chat IPC handlers");
 }

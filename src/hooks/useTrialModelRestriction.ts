@@ -1,6 +1,6 @@
 export function useTrialModelRestriction() {
   return {
-    isTrial:false,
+    isTrial: false,
     isLoadingTrialStatus: false,
   };
 }

@@ -46,9 +46,7 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
 
   if (!apiKey) {
-    throw new Error(
-      "OpenRouter API key is required to run turbo file edits.",
-    );
+    throw new Error("OpenRouter API key is required to run turbo file edits.");
   }
 
   return apiKey;
@@ -106,14 +104,14 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.turboEditModel || "google/gemini-3-flash-preview";
+  const model = settings.turboEditModel || "openai/gpt-4.1";
   const body = parseTurboFileEditBody(options.body);
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
@@ -138,7 +136,7 @@ async function callTurboFileEditViaOpenRouter(
   logger.log(buildTurboEditMessages(body));
   logger.warn(data.choices[0].message.content);
   const result = sanitizeTurboEditResponse(rawContent);
-  logger.info(result)
+  logger.info(result);
 
   return new Response(JSON.stringify({ result }), {
     status: 200,
@@ -161,7 +159,6 @@ export async function engineFetch(
   endpoint: string,
   options: EngineFetchOptions = {},
 ): Promise<Response> {
-
   if (endpoint === "/tools/turbo-file-edit") {
     return callTurboFileEditViaOpenRouter(ctx, options);
   }

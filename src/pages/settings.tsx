@@ -50,7 +50,9 @@ export default function SettingsPage() {
     setIsResetting(true);
     try {
       await ipc.system.resetAll();
-      showSuccess("Se ha reseteado todo correctamente. Reinicia la aplicación.");
+      showSuccess(
+        "Se ha reseteado todo correctamente. Reinicia la aplicación.",
+      );
     } catch (error) {
       console.error("Error resetting:", error);
       showError(
@@ -151,10 +153,13 @@ export default function SettingsPage() {
                       });
                     }}
                   />
-                  <Label htmlFor="enable-native-git">Habilitar Git nativo</Label>
+                  <Label htmlFor="enable-native-git">
+                    Habilitar Git nativo
+                  </Label>
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Esto no requiere ninguna instalación externa de Git y ofrece una experiencia de rendimiento Git nativa más rápida.
+                  Esto no requiere ninguna instalación externa de Git y ofrece
+                  una experiencia de rendimiento Git nativa más rápida.
                 </div>
               </div>
             </div>
@@ -176,7 +181,8 @@ export default function SettingsPage() {
                     Revertir todo
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer.
+                    Esto eliminará todas tus aplicaciones, chats y
+                    configuraciones. Esta acción no se puede deshacer.
                   </p>
                 </div>
                 <button
@@ -231,13 +237,18 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
                 className={`
                 px-4 py-1.5 text-sm font-medium rounded-md
                 transition-all duration-200
-                ${theme === option
+                ${
+                  theme === option
                     ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                  }
+                }
               `}
               >
-                {option === "system" ? "Sistema" : option === "light" ? "Claro" : "Oscuro"}
+                {option === "system"
+                  ? "Sistema"
+                  : option === "light"
+                    ? "Claro"
+                    : "Oscuro"}
               </button>
             ))}
           </div>
@@ -251,7 +262,8 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
       <div className="space-y-1 mt-4">
         <AutoUpdateSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Esto actualizará automáticamente la aplicación cuando haya nuevas versiones disponibles.
+          Esto actualizará automáticamente la aplicación cuando haya nuevas
+          versiones disponibles.
         </div>
       </div>
 
@@ -307,7 +319,8 @@ export function WorkflowSettings() {
       <div className="space-y-1 mt-4">
         <AutoExpandPreviewSwitch />
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Expande automáticamente el panel de vista previa cuando se realizan cambios en el código
+          Expande automáticamente el panel de vista previa cuando se realizan
+          cambios en el código
         </div>
       </div>
     </div>

@@ -170,7 +170,6 @@ export function ProviderSettingsGrid() {
                       </span>
                     )}
                   </CardTitle>
-
                 </CardHeader>
               </Card>
             );
@@ -213,14 +212,18 @@ export function ProviderSettingsGrid() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar proveedor personalizado</AlertDialogTitle>
+            <AlertDialogTitle>
+              Eliminar proveedor personalizado
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Esto eliminará permanentemente este proveedor personalizado y
               todos sus modelos asociados. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteProvider}
               disabled={isDeleting}

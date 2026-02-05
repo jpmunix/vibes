@@ -60,8 +60,8 @@ export function DeleteConfirmationDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Eliminar {itemType}</AlertDialogTitle>
           <AlertDialogDescription>
-            ¿Estás seguro de que quieres eliminar "{itemName}"? Esta acción no se puede
-            deshacer.
+            ¿Estás seguro de que quieres eliminar "{itemName}"? Esta acción no
+            se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

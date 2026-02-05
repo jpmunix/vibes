@@ -26,17 +26,22 @@ export function AppItem({
         <Button
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
-          className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
-            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-            : ""
-            }`}
+          className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${
+            selectedAppId === app.id
+              ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+              : ""
+          }`}
           data-testid={`app-list-item-${app.name}`}
         >
           <div className="flex flex-col w-full relative overflow-hidden">
-            <span className={`truncate mr-10 ${selectedAppId === app.id ? "font-semibold" : ""}`}>
+            <span
+              className={`truncate mr-10 ${selectedAppId === app.id ? "font-semibold" : ""}`}
+            >
               {app.name}
             </span>
-            <span className={`text-xs ${selectedAppId === app.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
+            <span
+              className={`text-xs ${selectedAppId === app.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
+            >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
                 locale: es,
@@ -46,10 +51,13 @@ export function AppItem({
         </Button>
 
         {/* Hover gradient shadow */}
-        <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
-          ${selectedAppId === app.id
-            ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
-            : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"}`}
+        <div
+          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+          ${
+            selectedAppId === app.id
+              ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+              : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+          }`}
         />
 
         <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1">

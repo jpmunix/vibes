@@ -51,7 +51,7 @@ import {
 import {
   SUMMARIZE_CHAT_SYSTEM_PROMPT,
   SUMMARIZE_IN_SPANISH_PROMPT,
-  SUMMARY_SYSTEM_PROMPT_LANGS
+  SUMMARY_SYSTEM_PROMPT_LANGS,
 } from "../../prompts/summarize_chat_system_prompt";
 import { SECURITY_REVIEW_SYSTEM_PROMPT } from "../../prompts/security_review_prompt";
 import fs from "node:fs";

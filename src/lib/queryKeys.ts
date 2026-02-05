@@ -37,6 +37,15 @@ export const queryKeys = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Notes
+  // ─────────────────────────────────────────────────────────────────────────────
+  notes: {
+    all: ["notes"] as const,
+    detail: ({ noteId }: { noteId: number | null }) =>
+      ["notes", "detail", noteId] as const,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Proposals
   // ─────────────────────────────────────────────────────────────────────────────
   proposals: {
@@ -264,6 +273,7 @@ export type QueryKeyOf<T> = T extends readonly unknown[]
 export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.apps)[keyof typeof queryKeys.apps]>
   | QueryKeyOf<(typeof queryKeys.chats)[keyof typeof queryKeys.chats]>
+  | QueryKeyOf<(typeof queryKeys.notes)[keyof typeof queryKeys.notes]>
   | QueryKeyOf<(typeof queryKeys.proposals)[keyof typeof queryKeys.proposals]>
   | QueryKeyOf<(typeof queryKeys.versions)[keyof typeof queryKeys.versions]>
   | QueryKeyOf<(typeof queryKeys.branches)[keyof typeof queryKeys.branches]>

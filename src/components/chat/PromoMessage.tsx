@@ -22,41 +22,44 @@ export interface MessageConfig {
 
 // Generic Message component
 export function Message({ spans }: MessageConfig) {
-  return (""
-    // <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
-    //   <p className="text-sm text-blue-700">
-    //     {spans.map((span, index) => {
-    //       if (span.type === "text") {
-    //         return <span key={index}>{span.content}</span>;
-    //       } else if (span.type === "link") {
-    //         return (
-    //           <a
-    //             key={index}
-    //             onClick={() => {
-    //               if (span.action) {
-    //                 span.action();
-    //               } else if (span.url) {
-    //                 ipc.system.openExternalUrl(span.url);
-    //               }
-    //             }}
-    //             className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
-    //           >
-    //             {span.content}
-    //           </a>
-    //         );
-    //       }
-    //       return null;
-    //     })}
-    //   </p>
-    // </div>
-  );
+  return "";
+  // <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
+  //   <p className="text-sm text-blue-700">
+  //     {spans.map((span, index) => {
+  //       if (span.type === "text") {
+  //         return <span key={index}>{span.content}</span>;
+  //       } else if (span.type === "link") {
+  //         return (
+  //           <a
+  //             key={index}
+  //             onClick={() => {
+  //               if (span.action) {
+  //                 span.action();
+  //               } else if (span.url) {
+  //                 ipc.system.openExternalUrl(span.url);
+  //               }
+  //             }}
+  //             className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+  //           >
+  //             {span.content}
+  //           </a>
+  //         );
+  //       }
+  //       return null;
+  //     })}
+  //   </p>
+  // </div>
 }
 
 // Predefined message configurations
 export const TURBO_EDITS_PROMO_MESSAGE: MessageConfig = {
   spans: [
     { type: "text", content: "¿Cansado de esperar a la IA?" },
-    { type: "link", content: " Consigue Dyad Pro", url: "https://dyad.sh/pro#ai" },
+    {
+      type: "link",
+      content: " Consigue Dyad Pro",
+      url: "https://dyad.sh/pro#ai",
+    },
     { type: "text", content: " para ediciones más rápidas con Turbo Edits." },
   ],
 };
@@ -77,7 +80,8 @@ export const DIFFERENT_MODEL_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "¿Te has atascado en un bucle de depuración? Prueba un modelo diferente.",
+      content:
+        "¿Te has atascado en un bucle de depuración? Prueba un modelo diferente.",
     },
   ],
 };
@@ -100,7 +104,8 @@ export const REPORT_A_BUG_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "¿Has encontrado un error? Haz clic en Ayuda > Informar de un error",
+      content:
+        "¿Has encontrado un error? Haz clic en Ayuda > Informar de un error",
     },
   ],
 };
@@ -124,7 +129,8 @@ export const BUILD_A_BIBLE_APP_TIP: MessageConfig = {
     },
     {
       type: "text",
-      content: " al creador de Dyad construye una aplicación de la Biblia paso a paso",
+      content:
+        " al creador de Dyad construye una aplicación de la Biblia paso a paso",
     },
   ],
 };

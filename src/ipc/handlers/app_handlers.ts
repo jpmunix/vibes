@@ -253,7 +253,8 @@ async function executeAppLocalNode({
       .join(", ");
 
     logger.error(
-      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"
+      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${
+        errorOutput || "(empty)"
       }`,
     );
 
@@ -557,7 +558,8 @@ RUN npm install -g pnpm
       .join(", ");
 
     logger.error(
-      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${
+        errorOutput || "(empty)"
       }`,
     );
 
@@ -1214,7 +1216,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-          error,
+            error,
         );
       }
     }
@@ -1983,7 +1985,8 @@ export function registerAppHandlers() {
       return { title: generateCuteAppName() };
     }
 
-    const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+    const model =
+      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
     try {
       const response = await fetch(
@@ -2044,7 +2047,8 @@ export function registerAppHandlers() {
     appContracts.generateAppTitleFromHistory,
     async (_, { appId }) => {
       const settings = readSettings();
-      const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+      const apiKey =
+        settings.providerSettings?.openrouter?.apiKey?.value?.trim();
 
       if (!apiKey) {
         logger.warn(
@@ -2053,7 +2057,8 @@ export function registerAppHandlers() {
         return { title: generateCuteAppName() };
       }
 
-      const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      const model =
+        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
       try {
         // Fetch the first user message where they define what they want

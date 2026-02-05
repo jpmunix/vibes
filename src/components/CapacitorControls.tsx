@@ -90,7 +90,10 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     },
     onError: (error) => {
       setAndroidStatus("idle");
-      showErrorDialog("Error al sincronizar y abrir el proyecto Android", error);
+      showErrorDialog(
+        "Error al sincronizar y abrir el proyecto Android",
+        error,
+      );
     },
   });
 

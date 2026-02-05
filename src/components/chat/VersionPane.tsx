@@ -127,10 +127,10 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                 className={cn(
                   "px-4 py-2 hover:bg-(--background-lightest) cursor-pointer",
                   selectedVersionId === version.oid &&
-                  "bg-(--background-lightest)",
+                    "bg-(--background-lightest)",
                   isCheckingOutVersion &&
-                  selectedVersionId === version.oid &&
-                  "opacity-50 cursor-not-allowed",
+                    selectedVersionId === version.oid &&
+                    "opacity-50 cursor-not-allowed",
                 )}
                 onClick={() => {
                   if (!isCheckingOutVersion) {
@@ -188,11 +188,11 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                       {isCheckingOutVersion && selectedVersionId === version.oid
                         ? "Cargando..."
                         : formatDistanceToNow(
-                          new Date(version.timestamp * 1000),
-                          {
-                            addSuffix: true,
-                          },
-                        )}
+                            new Date(version.timestamp * 1000),
+                            {
+                              addSuffix: true,
+                            },
+                          )}
                     </span>
                   </div>
                 </div>
@@ -203,17 +203,18 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                         "Reverted all changes back to version ",
                       )
                         ? version.message.replace(
-                          /Reverted all changes back to version ([a-f0-9]+)/,
-                          (_, hash) => {
-                            const targetIndex = versions.findIndex(
-                              (v) => v.oid === hash,
-                            );
-                            return targetIndex !== -1
-                              ? `Se han revertido todos los cambios a la versión ${versions.length - targetIndex
-                              }`
-                              : version.message;
-                          },
-                        )
+                            /Reverted all changes back to version ([a-f0-9]+)/,
+                            (_, hash) => {
+                              const targetIndex = versions.findIndex(
+                                (v) => v.oid === hash,
+                              );
+                              return targetIndex !== -1
+                                ? `Se han revertido todos los cambios a la versión ${
+                                    versions.length - targetIndex
+                                  }`
+                                : version.message;
+                            },
+                          )
                         : version.message}
                     </p>
                   )}
@@ -241,7 +242,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             "invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
                             selectedVersionId === version.oid && "visible",
                             isRevertingVersion &&
-                            "opacity-50 cursor-not-allowed",
+                              "opacity-50 cursor-not-allowed",
                           )}
                           aria-label="Restaurar a esta versión"
                         >
@@ -251,7 +252,9 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                             <RotateCcw size={12} />
                           )}
                           <span>
-                            {isRevertingVersion ? "Restaurando..." : "Restaurar"}
+                            {isRevertingVersion
+                              ? "Restaurando..."
+                              : "Restaurar"}
                           </span>
                         </button>
                       </TooltipTrigger>

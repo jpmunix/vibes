@@ -62,7 +62,8 @@ export function AgentConsentBanner({
         <div className="flex items-center gap-2 mb-1">
           <Bot className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <span className="text-sm font-medium">
-            ¿Permitir la ejecución de <span className="font-mono">{toolName}</span>?
+            ¿Permitir la ejecución de{" "}
+            <span className="font-mono">{toolName}</span>?
             {queueTotal > 1 && (
               <span className="ml-1.5 text-xs text-muted-foreground font-normal">
                 (1 de {queueTotal})

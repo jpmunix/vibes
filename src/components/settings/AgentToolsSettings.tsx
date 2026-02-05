@@ -70,7 +70,9 @@ export function AgentToolsSettings() {
           <ChevronRight
             className={`size-4 transition-transform ${showAutoApproved ? "rotate-90" : ""}`}
           />
-          <span>Herramientas permitidas por defecto ({autoApprovedTools.length})</span>
+          <span>
+            Herramientas permitidas por defecto ({autoApprovedTools.length})
+          </span>
         </button>
         {showAutoApproved && (
           <div className="space-y-2 pl-6">

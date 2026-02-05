@@ -108,7 +108,9 @@ export function CreateCustomProviderDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? "Editar proveedor personalizado" : "Añadir proveedor personalizado"}
+            {isEditMode
+              ? "Editar proveedor personalizado"
+              : "Añadir proveedor personalizado"}
           </DialogTitle>
           <DialogDescription>
             {isEditMode

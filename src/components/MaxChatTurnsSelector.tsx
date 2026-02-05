@@ -27,12 +27,14 @@ const options: OptionInfo[] = [
   {
     value: defaultValue,
     label: `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})  `,
-    description: "Tamaño de contexto equilibrado para la mayoría de las conversaciones.",
+    description:
+      "Tamaño de contexto equilibrado para la mayoría de las conversaciones.",
   },
   {
     value: "5",
     label: "Plus (5)",
-    description: "Tamaño de contexto ligeramente mayor para conversaciones detalladas.",
+    description:
+      "Tamaño de contexto ligeramente mayor para conversaciones detalladas.",
   },
   {
     value: "10",

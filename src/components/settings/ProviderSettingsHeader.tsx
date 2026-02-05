@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { } from "react";
+import {} from "react";
 
 interface ProviderSettingsHeaderProps {
   providerDisplayName: string;
@@ -89,10 +89,11 @@ export function ProviderSettingsHeader({
             <Skeleton className="h-6 w-6 rounded-full" />
           ) : (
             <Circle
-              className={`h-5 w-5 ${isConfigured
-                ? "fill-green-500 text-green-600"
-                : "fill-yellow-400 text-yellow-500"
-                }`}
+              className={`h-5 w-5 ${
+                isConfigured
+                  ? "fill-green-500 text-green-600"
+                  : "fill-yellow-400 text-yellow-500"
+              }`}
             />
           )}
           <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">

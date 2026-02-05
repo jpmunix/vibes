@@ -284,14 +284,13 @@ const createWindow = () => {
     }
 
     //if (process.env.NODE_ENV === "development") {
-      template.push(
-        { type: "separator" },
-        {
-          label: "Inspect Element",
-          click: () =>
-            mainWindow?.webContents.inspectElement(params.x, params.y),
-        },
-      );
+    template.push(
+      { type: "separator" },
+      {
+        label: "Inspect Element",
+        click: () => mainWindow?.webContents.inspectElement(params.x, params.y),
+      },
+    );
     //}
 
     const menu = Menu.buildFromTemplate(template);

@@ -202,53 +202,6 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="supabase-branch-select">Rama de la base de datos</Label>
-              <Select
-                value={app.supabaseProjectId || ""}
-                onValueChange={async (supabaseBranchProjectId) => {
-                  try {
-                    const branch = branches.find(
-                      (b) => b.projectRef === supabaseBranchProjectId,
-                    );
-                    if (!branch) {
-                      throw new Error("Rama no encontrada");
-                    }
-                    // Keep the same organizationSlug from the app
-                    await setAppProject({
-                      projectId: branch.projectRef,
-                      parentProjectId: branch.parentProjectRef,
-                      appId,
-                      organizationSlug: app.supabaseOrganizationSlug,
-                    });
-                    toast.success("Rama seleccionada");
-                    await refreshApp();
-                  } catch (error) {
-                    toast.error("Failed to set branch: " + error);
-                  }
-                }}
-                disabled={isLoadingBranches || isSettingAppProject}
-              >
-                <SelectTrigger
-                  id="supabase-branch-select"
-                  data-testid="supabase-branch-select"
-                >
-                  <SelectValue placeholder="Selecciona una rama" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem
-                      key={branch.projectRef}
-                      value={branch.projectRef}
-                    >
-                      {branch.name}
-                      {branch.isDefault && " (Default)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <Button variant="destructive" onClick={handleUnsetProject}>
               Desconectar proyecto
             </Button>
@@ -356,7 +309,8 @@ export function SupabaseConnector({ appId }: { appId: number }) {
 
               {projects.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No se han encontrado proyectos en tus organizaciones de Supabase conectadas.
+                  No se han encontrado proyectos en tus organizaciones de
+                  Supabase conectadas.
                 </p>
               ) : (
                 <div className="space-y-2">

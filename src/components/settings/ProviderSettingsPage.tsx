@@ -6,7 +6,7 @@ import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { } from "@/components/ui/accordion";
+import {} from "@/components/ui/accordion";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -337,7 +337,9 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
         {provider === "openrouter" && (
           <div className="mt-6 space-y-4 border rounded-lg p-6 bg-(--background-lightest)">
             <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Modelos de Utilidad</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Modelos de Utilidad
+              </h3>
             </div>
             <div className="space-y-3">
               <label
@@ -353,15 +355,13 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 onChange={(e) =>
                   updateSettings({ turboEditModel: e.target.value })
                 }
-                placeholder="p. ej. google/gemini-3-flash-preview"
+                placeholder="p. ej. openai/gpt-4.1"
                 className="bg-background border-border focus-visible:ring-blue-500"
               />
               <p className="text-xs text-muted-foreground">
                 Configura el modelo que OpenRouter utilizará para las ediciones
                 rápidas de archivos (Turbo Edit). Por defecto:{" "}
-                <code className="bg-muted px-1 rounded">
-                  google/gemini-3-flash-preview
-                </code>
+                <code className="bg-muted px-1 rounded">openai/gpt-4.1</code>
               </p>
             </div>
 
@@ -379,7 +379,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 onChange={(e) =>
                   updateSettings({ appTitleGenerationModel: e.target.value })
                 }
-                placeholder="p. ej. google/gemini-2.5-flash-lite"
+                placeholder="p. ej. openai/gpt-4.1-nano"
                 className="bg-background border-border focus-visible:ring-blue-500"
               />
               <p className="text-xs text-muted-foreground">
@@ -387,7 +387,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 título de la aplicación a partir de tu prompt inicial. Por
                 defecto:{" "}
                 <code className="bg-muted px-1 rounded">
-                  google/gemini-2.5-flash-lite
+                  openai/gpt-4.1-nano
                 </code>
               </p>
             </div>

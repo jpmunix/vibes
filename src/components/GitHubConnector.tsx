@@ -113,12 +113,15 @@ function ConnectedGitHubConnector({
     // Only auto-generate commit message if user hasn't edited it
     if (hasUncommittedFiles && !commitMessage && !isCommitMessageEdited) {
       const added = uncommittedFiles.filter((f) => f.status === "added").length;
-      const modified = uncommittedFiles.filter((f) => f.status === "modified")
-        .length;
-      const deleted = uncommittedFiles.filter((f) => f.status === "deleted")
-        .length;
-      const renamed = uncommittedFiles.filter((f) => f.status === "renamed")
-        .length;
+      const modified = uncommittedFiles.filter(
+        (f) => f.status === "modified",
+      ).length;
+      const deleted = uncommittedFiles.filter(
+        (f) => f.status === "deleted",
+      ).length;
+      const renamed = uncommittedFiles.filter(
+        (f) => f.status === "renamed",
+      ).length;
 
       const parts: string[] = [];
       if (added > 0)
@@ -140,7 +143,13 @@ function ConnectedGitHubConnector({
       setCommitMessage("");
       setIsCommitMessageEdited(false);
     }
-  }, [appId, hasUncommittedFiles, uncommittedFiles, commitMessage, isCommitMessageEdited]);
+  }, [
+    appId,
+    hasUncommittedFiles,
+    uncommittedFiles,
+    commitMessage,
+    isCommitMessageEdited,
+  ]);
 
   const handleDisconnectRepo = async () => {
     setIsDisconnecting(true);
@@ -248,7 +257,9 @@ function ConnectedGitHubConnector({
     try {
       await ipc.github.rebaseAbort({ appId });
       setRebaseInProgress(false);
-      setRebaseStatusMessage("Rebase abortado. Puedes intentar sincronizar de nuevo.");
+      setRebaseStatusMessage(
+        "Rebase abortado. Puedes intentar sincronizar de nuevo.",
+      );
     } catch (err: any) {
       setSyncError(err.message || "Failed to abort rebase.");
       setRebaseInProgress(true);
@@ -265,7 +276,9 @@ function ConnectedGitHubConnector({
     try {
       await ipc.github.rebaseContinue({ appId });
       setRebaseInProgress(false);
-      setRebaseStatusMessage("Rebase continuado. Puedes sincronizar cuando estés listo.");
+      setRebaseStatusMessage(
+        "Rebase continuado. Puedes sincronizar cuando estés listo.",
+      );
     } catch (err: any) {
       setSyncError(err.message || "Failed to continue rebase.");
       setRebaseInProgress(true);
@@ -384,7 +397,7 @@ function ConnectedGitHubConnector({
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
-      {(hasUncommittedFiles && false) && (
+      {hasUncommittedFiles && false && (
         <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
           <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
             <FileWarning size={16} />
@@ -415,7 +428,8 @@ function ConnectedGitHubConnector({
               }}
               className={cn(
                 "bg-white dark:bg-slate-950",
-                !commitMessage.trim() && "border-red-500 focus-visible:ring-red-500"
+                !commitMessage.trim() &&
+                  "border-red-500 focus-visible:ring-red-500",
               )}
             />
             <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70">
@@ -555,8 +569,7 @@ function ConnectedGitHubConnector({
       {conflicts.length > 0 && (
         //show a message that there are conflicts and to resolve them in Editor
         <p className="text-sm text-red-600">
-          Hay conflictos en el repositorio. Por favor, resuélvelos en el
-          editor.
+          Hay conflictos en el repositorio. Por favor, resuélvelos en el editor.
         </p>
       )}
       {rebaseStatusMessage && (
@@ -582,8 +595,8 @@ function ConnectedGitHubConnector({
             <DialogDescription>
               <div className="space-y-3">
                 <p>
-                  Estás a punto de realizar un <strong>forzado de subida</strong> a tu
-                  repositorio de GitHub.
+                  Estás a punto de realizar un{" "}
+                  <strong>forzado de subida</strong> a tu repositorio de GitHub.
                 </p>
                 <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-md border border-orange-200 dark:border-orange-800">
                   <p className="text-sm text-orange-800 dark:text-orange-200">
@@ -594,13 +607,14 @@ function ConnectedGitHubConnector({
                   <ul className="text-sm text-orange-700 dark:text-orange-300 list-disc list-inside mt-2 space-y-1">
                     <li>Sobrescribir el historial del repositorio remoto</li>
                     <li>
-                      Eliminar permanentemente los commits que existen en el remoto pero
-                      no localmente
+                      Eliminar permanentemente los commits que existen en el
+                      remoto pero no localmente
                     </li>
                   </ul>
                 </div>
                 <p className="text-sm">
-                  Solo procede si estás seguro de que esto es lo que quieres hacer.
+                  Solo procede si estás seguro de que esto es lo que quieres
+                  hacer.
                 </p>
               </div>
             </DialogDescription>
@@ -819,7 +833,10 @@ export function UnconnectedGitHubConnector({
           );
         }
       } catch (err: any) {
-        setRepoCheckError(err.message || "Error al comprobar la disponibilidad del repositorio.");
+        setRepoCheckError(
+          err.message ||
+            "Error al comprobar la disponibilidad del repositorio.",
+        );
       } finally {
         setIsCheckingRepo(false);
       }
@@ -873,7 +890,7 @@ export function UnconnectedGitHubConnector({
     } catch (err: any) {
       setCreateRepoError(
         err.message ||
-        `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
+          `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
       );
     } finally {
       setIsCreatingRepo(false);
@@ -990,10 +1007,11 @@ export function UnconnectedGitHubConnector({
       <button
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
-        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
-          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-          : ""
-          }`}
+        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${
+          !isExpanded
+            ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            : ""
+        }`}
       >
         <span className="font-medium">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
@@ -1003,8 +1021,9 @@ export function UnconnectedGitHubConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-          }`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+        }`}
       >
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
@@ -1013,10 +1032,11 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
+                className={`flex-1 rounded-none rounded-l-md border-0 ${
+                  repoSetupMode === "create"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
                 onClick={() => {
                   setRepoSetupMode("create");
                   setCreateRepoError(null);
@@ -1028,10 +1048,11 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${repoSetupMode === "existing"
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${
+                  repoSetupMode === "existing"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
                   setCreateRepoError(null);

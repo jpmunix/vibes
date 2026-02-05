@@ -521,7 +521,9 @@ export function ToolsMcpSettings() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ask">Preguntar</SelectItem>
-                          <SelectItem value="always">Permitir siempre</SelectItem>
+                          <SelectItem value="always">
+                            Permitir siempre
+                          </SelectItem>
                           <SelectItem value="denied">Denegar</SelectItem>
                         </SelectContent>
                       </Select>

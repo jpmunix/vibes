@@ -189,8 +189,9 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
                   Haz una pregunta sobre cómo usar Dyad.
                 </div>
                 <div className="text-xs text-muted-foreground/70 bg-muted/50 rounded-md p-3">
-                  Esta conversación puede ser registrada y utilizada para mejorar el
-                  producto. Por favor, no introduzcas información sensible aquí.
+                  Esta conversación puede ser registrada y utilizada para
+                  mejorar el producto. Por favor, no introduzcas información
+                  sensible aquí.
                 </div>
               </div>
             ) : (

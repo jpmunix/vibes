@@ -16,10 +16,10 @@ export default function LibraryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [prefillData, setPrefillData] = useState<
     | {
-      title: string;
-      description: string;
-      content: string;
-    }
+        title: string;
+        description: string;
+        content: string;
+      }
     | undefined
   >(undefined);
 

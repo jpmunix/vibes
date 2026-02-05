@@ -30,10 +30,10 @@ export const CommunityCodeConsentDialog: React.FC<
               por nuestro equipo principal.
             </p>
             <p>
-              El código de la comunidad puede ser muy útil, pero como se desarrolla
-              de forma independiente, puede tener errores, riesgos de seguridad o
-              causar problemas en tu sistema. No podemos ofrecer soporte oficial
-              si surgen problemas.
+              El código de la comunidad puede ser muy útil, pero como se
+              desarrolla de forma independiente, puede tener errores, riesgos de
+              seguridad o causar problemas en tu sistema. No podemos ofrecer
+              soporte oficial si surgen problemas.
             </p>
             <p>
               Recomendamos revisar primero el código en GitHub. Procede solo si

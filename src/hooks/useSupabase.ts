@@ -96,13 +96,17 @@ export function useSupabase(options: UseSupabaseOptions = {}) {
       organizationSlug: branchesOrganizationSlug ?? null,
     }),
     queryFn: async () => {
+      /*
+      // Deshabilitado por petición del usuario (Error 403 y no se usa)
       const list = await ipc.supabase.listBranches({
         projectId: branchesProjectId!,
         organizationSlug: branchesOrganizationSlug ?? null,
       });
       return Array.isArray(list) ? list : [];
+      */
+      return [];
     },
-    enabled: !!branchesProjectId,
+    enabled: false, // Deshabilitado: !!branchesProjectId,
     meta: { showErrorToast: true },
   });
 

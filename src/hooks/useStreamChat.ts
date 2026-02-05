@@ -29,6 +29,7 @@ import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
 
 export function getRandomNumberId() {
   return Math.floor(Math.random() * 1_000_000_000_000_000);
@@ -76,6 +77,7 @@ export function useStreamChat({
       attachments,
       selectedComponents,
       onSettled,
+      isSystemPrompt = false,
     }: {
       prompt: string;
       chatId: number;
@@ -83,6 +85,7 @@ export function useStreamChat({
       attachments?: FileAttachment[];
       selectedComponents?: ComponentSelection[];
       onSettled?: () => void;
+      isSystemPrompt?: boolean;
     }) => {
       if (
         (!prompt.trim() && (!attachments || attachments.length === 0)) ||
@@ -147,6 +150,15 @@ export function useStreamChat({
       // Fire and forget title generation with the prompt for new chats
       (async () => {
         try {
+          // Don't generate title if it's a summarize command or a system prompt
+          const isSummarize = Object.values(SUMMARY_SYSTEM_PROMPT_LANGS).some(
+            (prefix) => prompt.startsWith(prefix),
+          );
+
+          if (isSummarize || isSystemPrompt) {
+            return;
+          }
+
           const chat = await ipc.chat.getChat(chatId);
           if (!chat.title || chat.title.trim() === "Nuevo chat") {
             ipc.chat.generateChatTitle({ chatId, prompt }).then(() => {
@@ -229,7 +241,6 @@ export function useStreamChat({
               refreshApp();
               refreshVersions();
               invalidateTokenCount();
-
 
               onSettled?.();
             },

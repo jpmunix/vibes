@@ -118,7 +118,7 @@ export function ChatModeSelector() {
         </TooltipContent>
       </Tooltip>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-        {(
+        {
           <SelectItem value="local-agent">
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
@@ -130,7 +130,7 @@ export function ChatModeSelector() {
               </span>
             </div>
           </SelectItem>
-        )}
+        }
         {/*{!isProEnabled && (
           <SelectItem value="local-agent" disabled={isQuotaExceeded}>
             <div className="flex flex-col items-start">

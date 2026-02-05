@@ -1,6 +1,5 @@
 import {
   PanelRightOpen,
-  History,
   PlusCircle,
   GitBranch,
   Eraser,
@@ -10,7 +9,6 @@ import {
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { useVersions } from "@/hooks/useVersions";
 import { Button } from "../ui/button";
 import {
   Tooltip,
@@ -50,7 +48,6 @@ export function ChatHeader({
   onVersionClick,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
-  const { versions, loading: versionsLoading } = useVersions(appId);
   const { navigate } = useRouter();
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const { invalidateChats } = useChats(appId);
@@ -136,9 +133,6 @@ export function ChatHeader({
     setIsConfirmEmptyDialogOpen(false);
   };
 
-  // REMINDER: KEEP UP TO DATE WITH app_handlers.ts
-  const versionPostfix = versions.length === 100_000 ? `+` : "";
-
   const isNotMainBranch = branchInfo && branchInfo.branch !== "main";
 
   const currentBranchName = branchInfo?.branch;
@@ -161,7 +155,8 @@ export function ChatHeader({
                           {isAnyCheckoutVersionInProgress ? (
                             <>
                               <span>
-                                Por favor, espera, volviendo a la última versión...
+                                Por favor, espera, volviendo a la última
+                                versión...
                               </span>
                             </>
                           ) : (
@@ -232,16 +227,6 @@ export function ChatHeader({
           >
             <PlusCircle size={16} />
             <span>Nuevo chat</span>
-          </Button>
-          <Button
-            onClick={onVersionClick}
-            variant="ghost"
-            className="hidden @6xs:flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md"
-          >
-            <History size={16} />
-            {versionsLoading
-              ? "..."
-              : `Versión ${versions.length}${versionPostfix}`}
           </Button>
           <Button
             onClick={handleSummarize}

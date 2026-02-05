@@ -572,9 +572,7 @@ export const getSystemPromptForChatMode = ({
   if (chatMode === "ask") {
     return ASK_MODE_SYSTEM_PROMPT;
   }
-  return (
-    BUILD_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT
-  );
+  return BUILD_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT;
 };
 
 export const readAiRules = async (dyadAppPath: string) => {

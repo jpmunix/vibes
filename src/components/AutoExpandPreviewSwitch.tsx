@@ -17,7 +17,9 @@ export function AutoExpandPreviewSwitch() {
           });
         }}
       />
-      <Label htmlFor="auto-expand-preview">Auto extraer el panel de preview</Label>
+      <Label htmlFor="auto-expand-preview">
+        Auto extraer el panel de preview
+      </Label>
     </div>
   );
 }

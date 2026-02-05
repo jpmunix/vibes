@@ -123,7 +123,8 @@ export function VertexConfiguration() {
         <Alert variant="default">
           <Info className="h-4 w-4" />
           <AlertTitle>Configuración requerida</AlertTitle>
-          Proporciona el Proyecto, la Ubicación y una clave JSON de cuenta de servicio con acceso a Vertex AI.
+          Proporciona el Proyecto, la Ubicación y una clave JSON de cuenta de
+          servicio con acceso a Vertex AI.
         </Alert>
       )}
 

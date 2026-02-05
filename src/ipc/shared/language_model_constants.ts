@@ -220,7 +220,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       contextWindow: 1_000_000,
       temperature: 0,
       dollarSigns: 2,
-      brainSigns: 2
+      brainSigns: 2,
     },
     {
       name: "google/gemini-3-pro-preview",
@@ -235,7 +235,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "google/gemini-2.5-pro",
       displayName: "Gemini 2.5 Pro",
-      description: "Élite en razonamiento lógico y código complejo; costo medio-alto con velocidad moderada",
+      description:
+        "Élite en razonamiento lógico y código complejo; costo medio-alto con velocidad moderada",
       maxOutputTokens: 65_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -245,7 +246,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "google/gemini-2.5-flash",
       displayName: "Gemini 2.5 Flash",
-      description: "Equilibrio óptimo: código sólido, extremadamente rápido y el más económico de su clase.",
+      description:
+        "Equilibrio óptimo: código sólido, extremadamente rápido y el más económico de su clase.",
       maxOutputTokens: 65_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -255,7 +257,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "anthropic/claude-sonnet-4.5",
       displayName: "Claude Sonnet 4.5",
-      description: "El equilibrio perfecto; código con \"sentido común\", razonamiento humano superior y velocidad media a un precio altamente eficiente",
+      description:
+        'El equilibrio perfecto; código con "sentido común", razonamiento humano superior y velocidad media a un precio altamente eficiente',
       maxOutputTokens: 65_000,
       contextWindow: 1000000,
       temperature: 0,
@@ -265,7 +268,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "openai/gpt-5.1-codex-mini",
       displayName: "GPT 5.1 Codex mini",
-      description: "Revolucionario en síntesis: código moderno, costo competitivo y gran rapidez",
+      description:
+        "Revolucionario en síntesis: código moderno, costo competitivo y gran rapidez",
       maxOutputTokens: 100_000,
       contextWindow: 400_000,
       temperature: 0,
@@ -275,7 +279,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "openai/gpt-4.1",
       displayName: "GPT 4.1",
-      description: "El estándar de oro: código muy refinado y fiable, precio alto y velocidad constante.",
+      description:
+        "El estándar de oro: código muy refinado y fiable, precio alto y velocidad constante.",
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -285,7 +290,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "openai/gpt-4.1-mini",
       displayName: "GPT 4.1 mini",
-      description: "Eficiencia pura: ideal para scripts rápidos y tareas repetitivas, muy barato y veloz",
+      description:
+        "Eficiencia pura: ideal para scripts rápidos y tareas repetitivas, muy barato y veloz",
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -295,7 +301,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "openai/gpt-4.1-nano",
       displayName: "GPT 4.1 nano",
-      description: "Instantáneo y casi gratuito; perfecto para \"snippets\" simples o autocompletado básico.",
+      description:
+        'Instantáneo y casi gratuito; perfecto para "snippets" simples o autocompletado básico.',
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,
@@ -305,7 +312,8 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     {
       name: "qwen/qwen-plus-2025-07-28",
       displayName: "Qwen Plus",
-      description: "La alternativa potente: excelente en algoritmos, muy económico y velocidad estable.",
+      description:
+        "La alternativa potente: excelente en algoritmos, muy económico y velocidad estable.",
       maxOutputTokens: 32_000,
       contextWindow: 1_000_000,
       temperature: 0,

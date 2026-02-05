@@ -124,7 +124,6 @@ export function ModelPicker() {
   // Get auto provider models (if any)
   const autoModels = [];
 
-
   if (!settings) {
     return null;
   }
@@ -134,8 +133,8 @@ export function ModelPicker() {
   const providerEntries =
     !loading && modelsByProviders
       ? Object.entries(modelsByProviders).filter(
-        ([providerId]) => providerId !== "auto",
-      )
+          ([providerId]) => providerId !== "auto",
+        )
       : [];
   const primaryProviders = providerEntries.filter(([providerId, models]) => {
     if (models.length === 0) return false;
@@ -161,10 +160,7 @@ export function ModelPicker() {
               size="sm"
               className="flex items-center gap-2 h-8 max-w-[290px] px-4 text-xs-sm"
             >
-              <span className="truncate">
-
-                {modelDisplayName}
-              </span>
+              <span className="truncate">{modelDisplayName}</span>
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
@@ -248,7 +244,7 @@ export function ModelPicker() {
                             <DropdownMenuItem
                               className={
                                 selectedModel.provider === providerId &&
-                                  selectedModel.name === model.apiName
+                                selectedModel.name === model.apiName
                                   ? "bg-secondary"
                                   : ""
                               }
@@ -266,7 +262,9 @@ export function ModelPicker() {
                               }}
                             >
                               <div className="flex justify-between items-start w-full gap-1">
-                                <span className="flex-1">{model.displayName}</span>
+                                <span className="flex-1">
+                                  {model.displayName}
+                                </span>
                                 <div className="flex items-center gap-1">
                                   <PriceBadge dollarSigns={model.dollarSigns} />
                                   <BrainBadge brainSigns={model.brainSigns} />
@@ -301,7 +299,9 @@ export function ModelPicker() {
                     </div>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuLabel>Otros proveedores de IA</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      Otros proveedores de IA
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {secondaryProviders.map(([providerId, models]) => {
                       const provider = providers?.find(
@@ -347,7 +347,7 @@ export function ModelPicker() {
                                   <DropdownMenuItem
                                     className={
                                       selectedModel.provider === providerId &&
-                                        selectedModel.name === model.apiName
+                                      selectedModel.name === model.apiName
                                         ? "bg-secondary"
                                         : ""
                                     }
@@ -365,10 +365,16 @@ export function ModelPicker() {
                                     }}
                                   >
                                     <div className="flex justify-between items-start w-full gap-1">
-                                      <span className="flex-1">{model.displayName}</span>
+                                      <span className="flex-1">
+                                        {model.displayName}
+                                      </span>
                                       <div className="flex items-center gap-1">
-                                        <PriceBadge dollarSigns={model.dollarSigns} />
-                                        <BrainBadge brainSigns={model.brainSigns} />
+                                        <PriceBadge
+                                          dollarSigns={model.dollarSigns}
+                                        />
+                                        <BrainBadge
+                                          brainSigns={model.brainSigns}
+                                        />
                                         {model.tag && (
                                           <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
                                             {model.tag}

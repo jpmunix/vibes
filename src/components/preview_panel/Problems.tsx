@@ -65,12 +65,12 @@ interface RecheckButtonProps {
   appId: number;
   size?: "sm" | "default" | "lg";
   variant?:
-  | "default"
-  | "destructive"
-  | "outline"
-  | "secondary"
-  | "ghost"
-  | "link";
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   className?: string;
   onBeforeRecheck?: () => void;
 }
@@ -238,7 +238,9 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">Ninguna aplicación seleccionada</h3>
+        <h3 className="text-lg font-medium mb-2">
+          Ninguna aplicación seleccionada
+        </h3>
         <p className="text-sm text-muted-foreground max-w-md">
           Selecciona una aplicación para ver los problemas de TypeScript e
           información de diagnóstico.
@@ -253,7 +255,9 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">No hay informe de problemas</h3>
+        <h3 className="text-lg font-medium mb-2">
+          No hay informe de problemas
+        </h3>
         <p className="text-sm text-muted-foreground max-w-md mb-4">
           Ejecuta las comprobaciones para escanear tu aplicación en busca de
           errores de TypeScript y otros problemas.

@@ -25,8 +25,8 @@ export function ScreenshotSuccessDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            ¡Captura de pantalla copiada al portapapeles! Pégala en el
-            problema de GitHub.
+            ¡Captura de pantalla copiada al portapapeles! Pégala en el problema
+            de GitHub.
           </DialogTitle>
         </DialogHeader>
         <Button

@@ -26,7 +26,8 @@ const options: OptionInfo[] = [
   {
     value: defaultValue,
     label: "Medio (por defecto)",
-    description: "Razonamiento equilibrado para la mayoría de las conversaciones.",
+    description:
+      "Razonamiento equilibrado para la mayoría de las conversaciones.",
   },
   {
     value: "high",

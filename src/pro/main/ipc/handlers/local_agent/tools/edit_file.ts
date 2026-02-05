@@ -38,7 +38,7 @@ async function callTurboFileEdit(
   },
   ctx: AgentContext,
 ): Promise<string> {
-  logger.log('TurboEdit','callTurboFileEdit', params)
+  logger.log("TurboEdit", "callTurboFileEdit", params);
   const response = await engineFetch(ctx, "/tools/turbo-file-edit", {
     method: "POST",
     body: JSON.stringify({
@@ -175,7 +175,7 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
 
     // Call the turbo-file-edit endpoint
 
-    logger.log('TurboEdit','args', args)
+    logger.log("TurboEdit", "args", args);
     const newContent = await callTurboFileEdit(
       {
         path: args.path,

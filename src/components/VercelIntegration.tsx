@@ -19,9 +19,7 @@ export function VercelIntegration() {
         showError("Error al desconectar de Vercel");
       }
     } catch (err: any) {
-      showError(
-        err.message || "Se produjo un error al desconectar de Vercel",
-      );
+      showError(err.message || "Se produjo un error al desconectar de Vercel");
     } finally {
       setIsDisconnecting(false);
     }

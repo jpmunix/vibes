@@ -19,7 +19,6 @@ const ignore = (file: string) => {
   // @see - https://github.com/electron/packager/blob/v18.1.3/src/copy-filter.ts#L89-L93
   if (file === "/node_modules") {
     return false;
-
   }
   if (file.startsWith("/drizzle")) {
     return false;

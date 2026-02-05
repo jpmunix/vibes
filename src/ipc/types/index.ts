@@ -50,6 +50,7 @@ export { visualEditingContracts } from "./visual-editing";
 export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 export { freeAgentQuotaContracts } from "./free_agent_quota";
+export { noteContracts } from "./note";
 
 // =============================================================================
 // Client Exports
@@ -58,6 +59,7 @@ export { freeAgentQuotaContracts } from "./free_agent_quota";
 export { settingsClient } from "./settings";
 export { appClient } from "./app";
 export { chatClient, chatStreamClient } from "./chat";
+export { noteClient } from "./note";
 export { agentClient, agentEventClient } from "./agent";
 export { githubClient, gitClient, githubEventClient } from "./github";
 export { mcpClient, mcpEventClient } from "./mcp";
@@ -284,6 +286,9 @@ export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
 // Free agent quota types
 export type { FreeAgentQuotaStatus } from "./free_agent_quota";
 
+// Note types
+export type { Note, NoteSummary, UpdateNoteParams } from "./note";
+
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
 // =============================================================================
@@ -340,6 +345,7 @@ import { visualEditingClient } from "./visual-editing";
 import { securityClient } from "./security";
 import { miscClient, miscEventClient } from "./misc";
 import { freeAgentQuotaClient } from "./free_agent_quota";
+import { noteClient } from "./note";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -365,6 +371,7 @@ export const ipc = {
   settings: settingsClient,
   app: appClient,
   chat: chatClient,
+  note: noteClient,
   agent: agentClient,
 
   // Streaming clients

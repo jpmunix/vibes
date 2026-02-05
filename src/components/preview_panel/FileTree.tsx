@@ -207,9 +207,9 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           </div>
         )}
         {isSearchMode &&
-          !searchLoading &&
-          !searchError &&
-          matchesByPath.size === 0 ? (
+        !searchLoading &&
+        !searchError &&
+        matchesByPath.size === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
             No hay archivos que coincidan con tu búsqueda.
           </div>

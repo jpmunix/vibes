@@ -121,9 +121,9 @@ export function ChatSearchDialog({
               (chat as ChatSearchResult).matchedMessageContent;
             const snippet = hasSnippet
               ? getSnippet(
-                (chat as ChatSearchResult).matchedMessageContent as string,
-                searchQuery,
-              )
+                  (chat as ChatSearchResult).matchedMessageContent as string,
+                  searchQuery,
+                )
               : null;
             return (
               <CommandItem

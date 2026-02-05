@@ -116,9 +116,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                         versionId: currentMessage.sourceCommitHash,
                         currentChatMessageId: userMessage
                           ? {
-                            chatId: selectedChatId,
-                            messageId: userMessage.id,
-                          }
+                              chatId: selectedChatId,
+                              messageId: userMessage.id,
+                            }
                           : undefined,
                       });
                       const chat = await ipc.chat.getChat(selectedChatId);

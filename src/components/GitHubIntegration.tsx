@@ -21,9 +21,7 @@ export function GitHubIntegration() {
         showError("Error al desconectar de GitHub");
       }
     } catch (err: any) {
-      showError(
-        err.message || "Se produjo un error al desconectar de GitHub",
-      );
+      showError(err.message || "Se produjo un error al desconectar de GitHub");
     } finally {
       setIsDisconnecting(false);
     }

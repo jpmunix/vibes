@@ -315,7 +315,9 @@ export function ContextFilesPicker() {
           {isSmartContextEnabled && (
             <div className="pt-2">
               <div>
-                <h3 className="font-medium">Auto-inclusiones de Contexto Inteligente</h3>
+                <h3 className="font-medium">
+                  Auto-inclusiones de Contexto Inteligente
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     Estos archivos siempre se incluirán en el contexto.{" "}

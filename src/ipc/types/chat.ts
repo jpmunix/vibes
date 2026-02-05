@@ -243,6 +243,21 @@ export const chatContracts = {
     input: z.object({ chatId: z.number(), prompt: z.string().optional() }),
     output: z.object({ title: z.string() }),
   }),
+
+  deleteAllChatsExceptCurrent: defineContract({
+    channel: "delete-all-chats-except-current",
+    input: z.object({
+      appId: z.number(),
+      currentChatId: z.number().nullable(),
+    }),
+    output: z.void(),
+  }),
+
+  summarizeTodaysChats: defineContract({
+    channel: "summarize-todays-chats",
+    input: z.number(), // appId
+    output: z.object({ summary: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

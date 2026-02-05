@@ -205,8 +205,9 @@ export function AzureConfiguration({
           <Info className="h-4 w-4" />
           <AlertTitle>Configuración necesaria</AlertTitle>
           <AlertDescription>
-            Las solicitudes de Azure OpenAI requieren tanto un nombre de recurso como una clave API.
-            Introdúcelos arriba o proporciona las variables de entorno en su lugar.
+            Las solicitudes de Azure OpenAI requieren tanto un nombre de recurso
+            como una clave API. Introdúcelos arriba o proporciona las variables
+            de entorno en su lugar.
           </AlertDescription>
         </Alert>
       )}
@@ -258,13 +259,14 @@ export function AzureConfiguration({
             </div>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
-                Puedes continuar configurando Azure a través de variables de entorno.
-                Si ambas variables están presentes y no hay ajustes guardados, Dyad
-                las utilizará automáticamente.
+                Puedes continuar configurando Azure a través de variables de
+                entorno. Si ambas variables están presentes y no hay ajustes
+                guardados, Dyad las utilizará automáticamente.
               </p>
               <p>
-                Los valores guardados en Ajustes tienen prioridad sobre las variables de entorno.
-                Reinicia Dyad después de cambiar las variables de entorno.
+                Los valores guardados en Ajustes tienen prioridad sobre las
+                variables de entorno. Reinicia Dyad después de cambiar las
+                variables de entorno.
               </p>
             </div>
           </AccordionContent>

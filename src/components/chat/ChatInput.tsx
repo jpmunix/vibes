@@ -320,8 +320,9 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       )}
       <div className="p-4" data-testid="chat-input-container">
         <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-            }`}
+          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
+            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -423,7 +424,8 @@ export function ChatInput({ chatId }: { chatId?: number }) {
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      La edición visual te permite hacer cambios en la interfaz sin IA y es una función exclusiva de Pro
+                      La edición visual te permite hacer cambios en la interfaz
+                      sin IA y es una función exclusiva de Pro
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -891,7 +893,9 @@ function ChatInputActions({
 
             {serverFunctions.length > 0 && (
               <div className="mb-3">
-                <h4 className="font-semibold mb-1">Funciones de servidor cambiadas</h4>
+                <h4 className="font-semibold mb-1">
+                  Funciones de servidor cambiadas
+                </h4>
                 <ul className="space-y-1">
                   {serverFunctions.map((file: FileChange, index: number) => (
                     <li key={index} className="flex items-center space-x-2">

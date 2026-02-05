@@ -90,13 +90,14 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     >
       <div className={`mt-2 w-full max-w-3xl mx-auto group`}>
         <div
-          className={`rounded-lg p-2 ${message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
-            }`}
+          className={`rounded-lg p-2 ${
+            message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
+          }`}
         >
           {message.role === "assistant" &&
-            !message.content &&
-            isStreaming &&
-            isLastMessage ? (
+          !message.content &&
+          isStreaming &&
+          isLastMessage ? (
             <div className="flex h-6 items-center space-x-2 p-2">
               <motion.div
                 className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
@@ -153,12 +154,13 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             </div>
           )}
           {(message.role === "assistant" && message.content && !isStreaming) ||
-            message.approvalState ? (
+          message.approvalState ? (
             <div
-              className={`mt-2 flex items-center ${message.role === "assistant" && message.content && !isStreaming
+              className={`mt-2 flex items-center ${
+                message.role === "assistant" && message.content && !isStreaming
                   ? "justify-between"
                   : ""
-                } text-xs`}
+              } text-xs`}
             >
               {message.role === "assistant" &&
                 message.content &&
@@ -289,7 +291,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Máximo de tokens usados: {message.totalTokens.toLocaleString()}
+                    Máximo de tokens usados:{" "}
+                    {message.totalTokens.toLocaleString()}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

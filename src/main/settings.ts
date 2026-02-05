@@ -24,8 +24,8 @@ const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
-  turboEditModel: "google/gemini-3-flash-preview",
-  appTitleGenerationModel: "google/gemini-2.5-flash-lite",
+  turboEditModel: "openai/gpt-4.1",
+  appTitleGenerationModel: "openai/gpt-4.1-nano",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   chatLanguage: "es",
 };
 
-type Lang = 'en' | 'es';
+type Lang = "en" | "es";
 
 const SETTINGS_FILE = "user-settings.json";
 

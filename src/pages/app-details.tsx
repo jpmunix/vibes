@@ -142,16 +142,17 @@ export default function AppDetailsPage() {
       if (renameFolder) {
         // If this is from AI generation, normalize the folder name
         if (aiGeneratedTitle) {
-          appPath = aiGeneratedTitle
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/ñ/g, 'n')
-            .replace(/\s+/g, '_')
-            .replace(/[^a-z0-9_-]/g, '')
-            .replace(/_{2,}/g, '_')
-            .replace(/^_+|_+$/g, '')
-            .trim() || 'app';
+          appPath =
+            aiGeneratedTitle
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/ñ/g, "n")
+              .replace(/\s+/g, "_")
+              .replace(/[^a-z0-9_-]/g, "")
+              .replace(/_{2,}/g, "_")
+              .replace(/^_+|_+$/g, "")
+              .trim() || "app";
         } else {
           // Regular rename, use the app name as folder name
           appPath = newAppName;
@@ -846,6 +847,6 @@ export default function AppDetailsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </div >
+    </div>
   );
 }

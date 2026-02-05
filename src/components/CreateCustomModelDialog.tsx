@@ -100,7 +100,8 @@ export function CreateCustomModelDialog({
         <DialogHeader>
           <DialogTitle>Añadir modelo personalizado</DialogTitle>
           <DialogDescription>
-            Configura un nuevo modelo de lenguaje para el proveedor seleccionado.
+            Configura un nuevo modelo de lenguaje para el proveedor
+            seleccionado.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

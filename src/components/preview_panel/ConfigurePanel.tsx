@@ -224,7 +224,8 @@ export const ConfigurePanel = () => {
           <CardContent>
             <div className="text-center py-8">
               <div className="text-sm text-muted-foreground">
-                Selecciona una aplicación para gestionar las variables de entorno
+                Selecciona una aplicación para gestionar las variables de
+                entorno
               </div>
             </div>
           </CardContent>

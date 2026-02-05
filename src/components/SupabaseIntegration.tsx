@@ -30,7 +30,9 @@ export function SupabaseIntegration() {
         enableSupabaseWriteSqlMigration: false,
       });
       if (result) {
-        showSuccess("Todas las organizaciones de Supabase se han desconectado con éxito");
+        showSuccess(
+          "Todas las organizaciones de Supabase se han desconectado con éxito",
+        );
         await refetchOrganizations();
       } else {
         showError("Error al desconectar de Supabase");

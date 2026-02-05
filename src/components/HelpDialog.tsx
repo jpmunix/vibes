@@ -175,7 +175,9 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
 
       if (!response.ok) {
         showError(`Error al obtener la URL de subida: ${response.statusText}`);
-        throw new Error(`Error al obtener la URL de subida: ${response.statusText}`);
+        throw new Error(
+          `Error al obtener la URL de subida: ${response.statusText}`,
+        );
       }
 
       const { uploadUrl, filename } = await response.json();
@@ -193,7 +195,9 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       setReviewMode(false);
     } catch (error) {
       console.error("Failed to upload chat logs:", error);
-      alert("Error al subir los registros del chat. Por favor, inténtalo de nuevo.");
+      alert(
+        "Error al subir los registros del chat. Por favor, inténtalo de nuevo.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -427,9 +431,9 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
               {isLoading ? "Preparando informe..." : "Informar de un error"}
             </Button>
             <p className="text-sm text-muted-foreground px-2">
-              Rellenaremos automáticamente tu informe con información del sistema
-              y registros. Puedes revisarlo para ver si hay información sensible
-              antes de enviarlo.
+              Rellenaremos automáticamente tu informe con información del
+              sistema y registros. Puedes revisarlo para ver si hay información
+              sensible antes de enviarlo.
             </p>
           </div>
           <div className="flex flex-col space-y-2">

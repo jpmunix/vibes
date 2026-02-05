@@ -2,11 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { formatDistanceToNow } from "date-fns";
-import { PlusCircle, MoreVertical, Trash2, Edit3, Search } from "lucide-react";
+import {
+  PlusCircle,
+  Trash2,
+  Edit3,
+  Search,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { useAtom } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
 import { useSettings } from "@/hooks/useSettings";
@@ -21,15 +27,20 @@ import {
   SidebarMenuAction,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useChats } from "@/hooks/useChats";
 import { RenameChatDialog } from "@/components/chat/RenameChatDialog";
 import { DeleteChatDialog } from "@/components/chat/DeleteChatDialog";
+import { DailySummaryDialog } from "@/components/chat/DailySummaryDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { ChatSearchDialog } from "./ChatSearchDialog";
 import { useSelectChat } from "@/hooks/useSelectChat";
@@ -38,7 +49,6 @@ export function ChatList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const [selectedAppId] = useAtom(selectedAppIdAtom);
-  const [, setIsDropdownOpen] = useAtom(dropdownOpenAtom);
   const { settings, updateSettings, envVars } = useSettings();
   const { isQuotaExceeded, isLoading: isQuotaLoading } = useFreeAgentQuota();
 
@@ -59,6 +69,15 @@ export function ChatList({ show }: { show?: boolean }) {
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const { selectChat } = useSelectChat();
+
+  // summary dialog state
+  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [dailySummary, setDailySummary] = useState("");
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [selectedAppName, setSelectedAppName] = useState<string>("");
+
+  // delete all chats dialog state
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
 
   // Update selectedChatId when route changes
   useEffect(() => {
@@ -171,6 +190,54 @@ export function ChatList({ show }: { show?: boolean }) {
     }
   };
 
+  const handleDeleteAllChatsClick = () => {
+    setIsDeleteAllDialogOpen(true);
+  };
+
+  const handleConfirmDeleteAllChats = async () => {
+    if (!selectedAppId) {
+      showError("No hay una aplicación seleccionada");
+      return;
+    }
+
+    try {
+      await ipc.chat.deleteAllChatsExceptCurrent({
+        appId: selectedAppId,
+        currentChatId: selectedChatId,
+      });
+      showSuccess(
+        selectedChatId
+          ? "Todos los chats excepto el actual han sido eliminados"
+          : "Todos los chats han sido eliminados",
+      );
+      await invalidateChats();
+    } catch (error) {
+      showError(`Error al eliminar los chats: ${(error as any).toString()}`);
+    } finally {
+      setIsDeleteAllDialogOpen(false);
+    }
+  };
+
+  const handleSummarizeToday = async () => {
+    if (!selectedAppId) {
+      showError("No hay una aplicación seleccionada");
+      return;
+    }
+
+    try {
+      setIsLoadingSummary(true);
+      const app = await ipc.app.getApp(selectedAppId);
+      setSelectedAppName(app.name);
+      const result = await ipc.chat.summarizeTodaysChats(selectedAppId);
+      setDailySummary(result.summary);
+      setIsSummaryDialogOpen(true);
+    } catch (error) {
+      showError(`Error al generar el resumen: ${(error as any).toString()}`);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+
   return (
     <>
       <SidebarGroup
@@ -197,6 +264,27 @@ export function ChatList({ show }: { show?: boolean }) {
               <Search size={16} />
               <span>Buscar chats</span>
             </Button>
+            <Button
+              onClick={handleDeleteAllChatsClick}
+              variant="outline"
+              className="flex items-center justify-start gap-2 ml-2 mr-6 py-3"
+            >
+              <Trash2 size={16} />
+              <span>Eliminar chats</span>
+            </Button>
+            <Button
+              onClick={handleSummarizeToday}
+              variant="outline"
+              className="flex items-center justify-start gap-2 ml-2 mr-6 py-3"
+              disabled={isLoadingSummary}
+            >
+              {isLoadingSummary ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <FileText size={16} />
+              )}
+              <span>Resumir el trabajo de hoy</span>
+            </Button>
 
             {loading ? (
               <div className="py-3 px-4 text-sm text-gray-500">
@@ -219,16 +307,21 @@ export function ChatList({ show }: { show?: boolean }) {
                             appId: chat.appId,
                           })
                         }
-                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
-                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-                          : ""
-                          }`}
+                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${
+                          selectedChatId === chat.id
+                            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+                            : ""
+                        }`}
                       >
                         <div className="flex flex-col w-full relative overflow-hidden">
-                          <span className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}>
+                          <span
+                            className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
+                          >
                             {chat.title || "Nuevo chat"}
                           </span>
-                          <span className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}>
+                          <span
+                            className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
+                          >
                             {formatDistanceToNow(new Date(chat.createdAt), {
                               addSuffix: true,
                             })}
@@ -237,10 +330,13 @@ export function ChatList({ show }: { show?: boolean }) {
                       </Button>
 
                       {/* Hover gradient shadow - refined for better visibility */}
-                      <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
-                        ${selectedChatId === chat.id
-                          ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
-                          : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"}`}
+                      <div
+                        className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+                        ${
+                          selectedChatId === chat.id
+                            ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+                            : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+                        }`}
                       />
 
                       <SidebarMenuAction
@@ -302,6 +398,38 @@ export function ChatList({ show }: { show?: boolean }) {
         appId={selectedAppId}
         allChats={chats}
       />
+
+      {/* Daily Summary Dialog */}
+      <DailySummaryDialog
+        isOpen={isSummaryDialogOpen}
+        onOpenChange={setIsSummaryDialogOpen}
+        summary={dailySummary}
+        appId={selectedAppId}
+        appName={selectedAppName}
+      />
+
+      {/* Delete All Chats Dialog */}
+      <AlertDialog
+        open={isDeleteAllDialogOpen}
+        onOpenChange={setIsDeleteAllDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar todos los chats?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedChatId
+                ? "Se eliminarán todos los chats excepto el actual. Esta acción no se puede deshacer."
+                : "Se eliminarán todos los chats. Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteAllChats}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

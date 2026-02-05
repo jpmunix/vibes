@@ -29,8 +29,12 @@ export function useSummarizeInNewChat() {
       // navigate to new chat
       await navigate({ to: "/chat", search: { id: newChatId } });
       await streamMessage({
-        prompt: (SUMMARY_SYSTEM_PROMPT_LANGS[ lang as keyof typeof SUMMARY_SYSTEM_PROMPT_LANGS ] || SUMMARY_SYSTEM_PROMPT_LANGS.es) + chatId,
+        prompt:
+          (SUMMARY_SYSTEM_PROMPT_LANGS[
+            lang as keyof typeof SUMMARY_SYSTEM_PROMPT_LANGS
+          ] || SUMMARY_SYSTEM_PROMPT_LANGS.es) + chatId,
         chatId: newChatId,
+        isSystemPrompt: true,
       });
     } catch (err) {
       showError(err);

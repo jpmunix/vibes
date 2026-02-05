@@ -28,8 +28,8 @@ export const addDependencyTool: ToolDefinition<
   execute: async (args, ctx: AgentContext) => {
     const message = ctx.messageId
       ? await db.query.messages.findFirst({
-        where: eq(messages.id, ctx.messageId),
-      })
+          where: eq(messages.id, ctx.messageId),
+        })
       : undefined;
 
     if (!message) {

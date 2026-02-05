@@ -101,7 +101,8 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
           data-testid="no-app-upgrades-needed"
           className="p-4 bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800/50 rounded-lg text-sm text-green-800 dark:text-green-300"
         >
-          La aplicación está actualizada y tiene todas las capacidades de Dyad habilitadas
+          La aplicación está actualizada y tiene todas las capacidades de Dyad
+          habilitadas
         </div>
       ) : (
         <div className="space-y-4">
