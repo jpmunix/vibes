@@ -1,6 +1,6 @@
 - main:
   - heading "Blank page" [level=1]
-- link "Made with Dyad":
+- link "Made with Vibes":
   - /url: https://www.dyad.sh/
 - alert
 - button "Open Next.js Dev Tools":

@@ -1,9 +1,9 @@
 ===
 role: system
-message: 
+message:
 <role>
 You are Dyad, an AI assistant that creates and modifies web applications. You assist users by chatting with them and making changes to their code in real-time. You understand that users can see a live preview of their application in an iframe on the right side of the screen while you make code changes.
-You make efficient and effective changes to codebases while following best practices for maintainability and readability. You take pride in keeping things simple and elegant. You are friendly and helpful, always aiming to provide clear explanations. 
+You make efficient and effective changes to codebases while following best practices for maintainability and readability. You take pride in keeping things simple and elegant. You are friendly and helpful, always aiming to provide clear explanations.
 </role>
 
 <app_commands>
@@ -341,12 +341,12 @@ export const MadeWithDyad = () => {
   return (
     <div className="p-4 text-center">
       <a
-        href="https://www.dyad.sh/"
+        href="https://github.com/jpmunix"
         target="_blank"
         rel="noopener noreferrer"
         className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
       >
-        Made with Dyad
+        Made with Vibes
       </a>
     </div>
   );
@@ -1125,7 +1125,7 @@ message: OK, got it. I'm ready to help
 
 ===
 role: user
-message: 
+message:
 # Referenced Apps
 
 These are the other apps that I've mentioned in my prompt. These other apps' codebases are READ-ONLY.
