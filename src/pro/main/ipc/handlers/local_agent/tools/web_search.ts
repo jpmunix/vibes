@@ -7,6 +7,7 @@ import {
   escapeXmlContent,
 } from "./types";
 import { engineFetch } from "./engine_fetch";
+import { readSettings } from "@/main/settings";
 
 const logger = log.scope("web_search");
 
@@ -93,7 +94,82 @@ function parseSSEEvents(
 }
 
 /**
- * Call the web search SSE endpoint and stream results
+ * Call Serper.dev API for web search
+ */
+async function callSerperSearch(
+  query: string,
+  ctx: AgentContext,
+  apiKey: string,
+): Promise<string> {
+  ctx.onXmlStream(`<dyad-web-search query="${escapeXmlAttr(query)}">`);
+
+  const url = `https://google.serper.dev/search?q=${encodeURIComponent(query)}&gl=es&hl=es`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Serper search failed: ${response.status} ${response.statusText} - ${errorText}`,
+    );
+  }
+
+  const data = await response.json();
+
+  // Convert JSON response to readable text format
+  let result = `# Resultados de búsqueda para: "${query}"\n\n`;
+
+  // Add organic results
+  if (data.organic && Array.isArray(data.organic)) {
+    result += "## Resultados principales:\n\n";
+    for (const item of data.organic.slice(0, 5)) {
+      result += `### ${item.title}\n`;
+      result += `**URL:** ${item.link}\n`;
+      if (item.snippet) {
+        result += `${item.snippet}\n`;
+      }
+      result += "\n";
+    }
+  }
+
+  // Add answer box if present
+  if (data.answerBox) {
+    result += "## Respuesta destacada:\n\n";
+    if (data.answerBox.answer) {
+      result += `${data.answerBox.answer}\n\n`;
+    }
+    if (data.answerBox.snippet) {
+      result += `${data.answerBox.snippet}\n\n`;
+    }
+  }
+
+  // Add knowledge graph if present
+  if (data.knowledgeGraph) {
+    result += "## Información adicional:\n\n";
+    if (data.knowledgeGraph.title) {
+      result += `**${data.knowledgeGraph.title}**\n`;
+    }
+    if (data.knowledgeGraph.description) {
+      result += `${data.knowledgeGraph.description}\n`;
+    }
+  }
+
+  // Stream the result
+  ctx.onXmlStream(
+    `<dyad-web-search query="${escapeXmlAttr(query)}">${escapeXmlContent(result)}`,
+  );
+
+  return result;
+}
+
+/**
+ * Call the web search SSE endpoint and stream results (legacy Dyad Pro)
  */
 async function callWebSearchSSE(
   query: string,
@@ -161,15 +237,25 @@ export const webSearchTool: ToolDefinition<z.infer<typeof webSearchSchema>> = {
   inputSchema: webSearchSchema,
   defaultConsent: "ask",
 
-  // Disable in Basic Agent mode (free tier) - requires engine
-  isEnabled: (ctx) => !ctx.isBasicAgentMode,
+  // Enable only if Serper API key is configured
+  isEnabled: (ctx) => {
+    const settings = readSettings();
+    return !!settings.serperApiKey?.value;
+  },
 
   getConsentPreview: (args) => `Search the web: "${args.query}"`,
 
   execute: async (args, ctx: AgentContext) => {
     logger.log(`Executing web search: ${args.query}`);
 
-    const result = await callWebSearchSSE(args.query, ctx);
+    const settings = readSettings();
+    const serperApiKey = settings.serperApiKey?.value;
+
+    if (!serperApiKey) {
+      throw new Error("Serper API key not configured. Please configure it in settings.");
+    }
+
+    const result = await callSerperSearch(args.query, ctx, serperApiKey);
 
     if (!result) {
       throw new Error("Web search returned no results");

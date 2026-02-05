@@ -31,6 +31,7 @@ import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
+import { SerperApiKeySettings } from "@/components/SerperApiKeySettings";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -344,6 +345,10 @@ export function AISettings() {
 
       <div className="mt-4">
         <ChatLanguageSelector />
+      </div>
+
+      <div className="mt-4">
+        <SerperApiKeySettings />
       </div>
     </div>
   );

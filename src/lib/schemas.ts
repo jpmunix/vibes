@@ -346,6 +346,7 @@ export const UserSettingsSchema = z
       .optional(),
     hideLocalAgentNewChatToast: z.boolean().optional(),
     chatLanguage: ChatLanguageSchema.optional(),
+    serperApiKey: SecretSchema.optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)
