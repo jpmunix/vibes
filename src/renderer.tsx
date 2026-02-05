@@ -205,9 +205,15 @@ function App() {
         next.delete(chatId);
         return next;
       });
+      // Also clear auto-router model info when a new stream starts
+      setAutoRouterModelInfo((prev) => {
+        const next = new Map(prev);
+        next.delete(chatId);
+        return next;
+      });
     });
     return () => unsubscribe();
-  }, [setAgentTodosByChatId]);
+  }, [setAgentTodosByChatId, setAutoRouterModelInfo]);
 
   useEffect(() => {
     const unsubscribe = ipc.events.agent.onConsentRequest((payload) => {

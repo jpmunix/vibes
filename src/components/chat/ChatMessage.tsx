@@ -30,6 +30,7 @@ import {
 import {
   selectedChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
+  isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 
@@ -44,6 +45,10 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { versions: liveVersions } = useVersions(appId);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
+  const isSelectingModelById = useAtomValue(isSelectingModelByIdAtom);
+  const isSelectingModel = selectedChatId
+    ? (isSelectingModelById.get(selectedChatId) ?? false)
+    : false;
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = async () => {
@@ -104,7 +109,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
           {message.role === "assistant" &&
           !message.content &&
           isStreaming &&
-          isLastMessage ? (
+          isLastMessage &&
+          !isSelectingModel ? (
             <div className="flex h-6 items-center space-x-2 p-2">
               <motion.div
                 className="h-3 w-3 rounded-full bg-(--primary) dark:bg-blue-500"
@@ -139,7 +145,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                 }}
               />
             </div>
-          ) : (
+          ) : !isSelectingModel ? (
             <div
               className="prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
               suppressHydrationWarning
@@ -147,7 +153,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
               {message.role === "assistant" ? (
                 <>
                   <DyadMarkdownParser content={message.content} />
-                  {isLastMessage && isStreaming && (
+                  {isLastMessage && isStreaming && !isSelectingModel && (
                     <div className="mt-4 ml-4 relative w-5 h-5 animate-spin">
                       <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-(--primary) dark:bg-blue-500 rounded-full"></div>
                       <div className="absolute bottom-0 left-0 w-2 h-2 bg-(--primary) dark:bg-blue-500 rounded-full opacity-80"></div>
@@ -159,7 +165,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                 <VanillaMarkdownParser content={message.content} />
               )}
             </div>
-          )}
+          ) : null}
           {(message.role === "assistant" && message.content && !isStreaming) ||
           message.approvalState ? (
             <div

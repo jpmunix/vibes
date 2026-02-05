@@ -490,7 +490,14 @@ ${componentSnippet}
       } else {
         // Normal AI processing for non-test prompts
 
+        // Check if this is a summarize prompt
+        const isSummarizeIntent =
+          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
+          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+
+        // Use auto-router only if it's not a summarize chat
         if (
+          !isSummarizeIntent &&
           settings.selectedModel.provider === "auto-router" &&
           settings.selectedModel.name === "auto"
         ) {

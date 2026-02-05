@@ -90,19 +90,10 @@ function FooterComponent({ context }: { context?: FooterContext }) {
     autoRouterModelInfo,
   } = context;
 
-  // Get auto-router model info for current chat
-  const currentAutoRouterInfo =
-    selectedChatId && autoRouterModelInfo.get(selectedChatId);
-
   return (
     <>
       {/* Show auto-router selecting message */}
       {isSelectingModel && <AutoRouterSelecting />}
-
-      {/* Show auto-router selected message (once) */}
-      {!isSelectingModel && currentAutoRouterInfo && !isStreaming && (
-        <AutoRouterSelectedMessage modelInfo={currentAutoRouterInfo} />
-      )}
 
       {/* Show context limit banner when close to token limit */}
       {!isStreaming && tokenCountResult && (
@@ -346,16 +337,31 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         const isLastMessage = index === messages.length - 1;
         const messageKey = message.id;
 
+        // Show auto-router card before the last assistant message if we have the info
+        const shouldShowAutoRouterCard =
+          isLastMessage &&
+          message.role === "assistant" &&
+          !isSelectingModel &&
+          selectedChatId &&
+          autoRouterModelInfo.get(selectedChatId);
+
         return (
-          <div className="px-4" key={messageKey}>
-            <MemoizedChatMessage
-              message={message}
-              isLastMessage={isLastMessage}
-            />
+          <div key={messageKey}>
+            {shouldShowAutoRouterCard && (
+              <AutoRouterSelectedMessage
+                modelInfo={autoRouterModelInfo.get(selectedChatId)!}
+              />
+            )}
+            <div className="px-4">
+              <MemoizedChatMessage
+                message={message}
+                isLastMessage={isLastMessage}
+              />
+            </div>
           </div>
         );
       },
-      [messages.length],
+      [messages.length, isSelectingModel, selectedChatId, autoRouterModelInfo],
     );
 
     // Create context object for Footer component with stable references
@@ -444,9 +450,27 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         >
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
+            // Show auto-router card before the last assistant message if we have the info
+            const shouldShowAutoRouterCard =
+              isLastMessage &&
+              message.role === "assistant" &&
+              !isSelectingModel &&
+              selectedChatId &&
+              autoRouterModelInfo.get(selectedChatId);
+
             return (
-              <div className="px-4" key={message.id}>
-                <ChatMessage message={message} isLastMessage={isLastMessage} />
+              <div key={message.id}>
+                {shouldShowAutoRouterCard && (
+                  <AutoRouterSelectedMessage
+                    modelInfo={autoRouterModelInfo.get(selectedChatId)!}
+                  />
+                )}
+                <div className="px-4">
+                  <ChatMessage
+                    message={message}
+                    isLastMessage={isLastMessage}
+                  />
+                </div>
               </div>
             );
           })}
