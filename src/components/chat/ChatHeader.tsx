@@ -5,6 +5,7 @@ import {
   GitBranch,
   Eraser,
   Sparkles,
+  Info,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
