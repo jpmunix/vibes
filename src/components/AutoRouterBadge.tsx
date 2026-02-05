@@ -33,6 +33,9 @@ export function AutoRouterBadge({
         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium border border-blue-500/20">
           <Zap className="w-3 h-3" />
           <span>Auto</span>
+          <span className="text-[10px] leading-none uppercase tracking-wide rounded-sm bg-blue-500/20 px-1 py-0.5 border border-blue-500/30">
+            Beta
+          </span>
         </div>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs whitespace-pre-wrap">

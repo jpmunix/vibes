@@ -313,6 +313,7 @@ export const UserSettingsSchema = z
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
+    enableTurboEditsV2: z.boolean().optional(),
     enableProSmartFilesContextMode: z.boolean().optional(),
     enableProWebSearch: z.boolean().optional(),
     proSmartContextOption: SmartContextModeSchema.optional(),
@@ -327,10 +328,11 @@ export const UserSettingsSchema = z
     previewDeviceMode: DeviceModeSchema.optional(),
 
     enableAutoFixProblems: z.boolean().optional(),
+    enableBackgroundProblemAutoFix: z.boolean().optional(),
     autoExpandPreviewPanel: z.boolean().optional(),
     enableNativeGit: z.boolean().optional(),
-    enableAutoUpdate: z.boolean(),
-    releaseChannel: ReleaseChannelSchema,
+    enableAutoUpdate: z.boolean().optional(),
+    releaseChannel: ReleaseChannelSchema.optional(),
     runtimeMode2: RuntimeMode2Schema.optional(),
     customNodePath: z.string().optional().nullable(),
     isRunning: z.boolean().optional(),
@@ -430,12 +432,8 @@ export function isSupabaseConnected(settings: UserSettings | null): boolean {
 }
 
 export function isTurboEditsV2Enabled(settings: UserSettings): boolean {
-  // return Boolean(
-  //   isDyadProEnabled(settings) &&
-  //   settings.enableProLazyEditsMode === true &&
-  //   settings.proLazyEditsMode === "v2",
-  // );
-  return true;
+  // Enabled by default; can be explicitly disabled by the user
+  return settings.enableTurboEditsV2 ?? true;
 }
 
 // Define interfaces for the props

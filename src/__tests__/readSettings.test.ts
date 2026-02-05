@@ -53,27 +53,30 @@ describe("readSettings", () => {
       );
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "autoExpandPreviewPanel": true,
+          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "autoExpandPreviewPanel": false,
+          "chatLanguage": "es",
           "enableAutoFixProblems": false,
-          "enableAutoUpdate": true,
+          "enableBackgroundProblemAutoFix": false,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
+          "enableTurboEditsV2": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
           "providerSettings": {},
-          "releaseChannel": "stable",
           "selectedChatMode": "build",
           "selectedModel": {
-            "name": "auto",
-            "provider": "auto",
+            "name": "google/gemini-3-flash-preview",
+            "provider": "openrouter",
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
+          "turboEditModel": "openai/gpt-4.1",
         }
       `);
     });
@@ -106,8 +109,8 @@ describe("readSettings", () => {
       expect(result.telemetryConsent).toBe("opted_in");
       expect(result.hasRunBefore).toBe(true);
       // Should still have defaults for missing properties
-      expect(result.enableAutoUpdate).toBe(true);
-      expect(result.releaseChannel).toBe("stable");
+      expect(result.enableAutoUpdate).toBeUndefined();
+      expect(result.releaseChannel).toBeUndefined();
     });
 
     it("should decrypt encrypted provider API keys", () => {
@@ -293,8 +296,8 @@ describe("readSettings", () => {
       });
 
       // Should still have defaults for missing properties
-      expect(result.enableAutoUpdate).toBe(true);
-      expect(result.releaseChannel).toBe("stable");
+      expect(result.enableAutoUpdate).toBeUndefined();
+      expect(result.releaseChannel).toBeUndefined();
     });
   });
 
@@ -309,27 +312,30 @@ describe("readSettings", () => {
 
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "autoExpandPreviewPanel": true,
+          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "autoExpandPreviewPanel": false,
+          "chatLanguage": "es",
           "enableAutoFixProblems": false,
-          "enableAutoUpdate": true,
+          "enableBackgroundProblemAutoFix": false,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
+          "enableTurboEditsV2": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
           "providerSettings": {},
-          "releaseChannel": "stable",
           "selectedChatMode": "build",
           "selectedModel": {
-            "name": "auto",
-            "provider": "auto",
+            "name": "google/gemini-3-flash-preview",
+            "provider": "openrouter",
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
+          "turboEditModel": "openai/gpt-4.1",
         }
       `);
     });
@@ -342,10 +348,9 @@ describe("readSettings", () => {
 
       expect(result).toMatchObject({
         selectedModel: {
-          name: "auto",
-          provider: "auto",
+          name: "google/gemini-3-flash-preview",
+          provider: "openrouter",
         },
-        releaseChannel: "stable",
       });
     });
 
@@ -365,10 +370,9 @@ describe("readSettings", () => {
 
       expect(result).toMatchObject({
         selectedModel: {
-          name: "auto",
-          provider: "auto",
+          name: "google/gemini-3-flash-preview",
+          provider: "openrouter",
         },
-        releaseChannel: "stable",
       });
     });
 
@@ -390,10 +394,9 @@ describe("readSettings", () => {
 
       expect(result).toMatchObject({
         selectedModel: {
-          name: "auto",
-          provider: "auto",
+          name: "google/gemini-3-flash-preview",
+          provider: "openrouter",
         },
-        releaseChannel: "stable",
       });
     });
   });

@@ -18,7 +18,10 @@ export function useCheckProblems(appId: number | null) {
       }
       return ipc.misc.checkProblems({ appId });
     },
-    enabled: !!appId && settings?.enableAutoFixProblems,
+    enabled:
+      !!appId &&
+      settings?.enableAutoFixProblems &&
+      settings?.enableBackgroundProblemAutoFix,
     // DO NOT SHOW ERROR TOAST.
   });
 

@@ -55,7 +55,7 @@ export const ActionHeader = ({
 }: ActionHeaderProps) => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
-  const setIsVersionPaneOpen = useSetAtom(isVersionPaneOpenAtom);
+  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(isVersionPaneOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const versionsRef = useRef<HTMLButtonElement>(null);
   const previewRef = useRef<HTMLButtonElement>(null);
@@ -82,6 +82,10 @@ export const ActionHeader = ({
   }, []);
 
   const selectPanel = (panel: PreviewMode) => {
+    // Close versions pane when navigating to another tab
+    if (isVersionPaneOpen) {
+      setIsVersionPaneOpen(false);
+    }
     if (previewMode === panel) {
       setIsPreviewOpen(!isPreviewOpen);
     } else {
@@ -132,27 +136,31 @@ export const ActionHeader = ({
     const updateIndicator = () => {
       let targetRef: React.RefObject<HTMLButtonElement | null>;
 
-      switch (previewMode) {
-        case "preview":
-          targetRef = previewRef;
-          break;
-        case "code":
-          targetRef = codeRef;
-          break;
-        case "problems":
-          targetRef = problemsRef;
-          break;
-        case "configure":
-          targetRef = configureRef;
-          break;
-        case "publish":
-          targetRef = publishRef;
-          break;
-        case "security":
-          targetRef = securityRef;
-          break;
-        default:
-          return;
+      if (isVersionPaneOpen) {
+        targetRef = versionsRef;
+      } else {
+        switch (previewMode) {
+          case "preview":
+            targetRef = previewRef;
+            break;
+          case "code":
+            targetRef = codeRef;
+            break;
+          case "problems":
+            targetRef = problemsRef;
+            break;
+          case "configure":
+            targetRef = configureRef;
+            break;
+          case "publish":
+            targetRef = publishRef;
+            break;
+          case "security":
+            targetRef = securityRef;
+            break;
+          default:
+            return;
+        }
       }
 
       if (targetRef.current) {
@@ -175,7 +183,7 @@ export const ActionHeader = ({
     // Small delay to ensure DOM is updated
     const timeoutId = setTimeout(updateIndicator, 10);
     return () => clearTimeout(timeoutId);
-  }, [previewMode, displayCount, isPreviewOpen, isCompact]);
+  }, [previewMode, displayCount, isPreviewOpen, isCompact, isVersionPaneOpen]);
 
   const renderButton = (
     mode: PreviewMode,
@@ -235,7 +243,9 @@ export const ActionHeader = ({
           <button
             ref={versionsRef}
             data-testid="versions-button"
-            className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
+            className={`no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 flex-col ${
+              isVersionPaneOpen ? "bg-[var(--background-lightest)] shadow" : "hover:bg-[var(--background)]"
+            }`}
             onClick={() => {
               // Open preview panel if closed
               if (!isPreviewOpen) {

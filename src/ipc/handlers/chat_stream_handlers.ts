@@ -1377,16 +1377,22 @@ This conversation includes one or more image attachments. When the user uploads 
             const originalFullResponse = fullResponse;
             const previousAttempts: ModelMessage[] = [];
             // Timeout global para prevenir loops infinitos
-            const TURBO_EDIT_MAX_TIME = 40 * 1000; // 40 segundos
+            const TURBO_EDIT_MAX_TIME = 20 * 1000; // 20 segundos
             const turboEditStartTime = Date.now();
             let timeoutExceeded = false;
 
             while (
               issues.length > 0 &&
-              searchReplaceFixAttempts < 2 &&
+              searchReplaceFixAttempts < 1 &&
               !abortController.signal.aborted &&
               !timeoutExceeded
             ) {
+              if (issues.length > 5) {
+                logger.warn(
+                  `Skipping auto-fix: too many search-replace issues (${issues.length})`,
+                );
+                break;
+              }
               // Verificar timeout
               if (Date.now() - turboEditStartTime >= TURBO_EDIT_MAX_TIME) {
                 timeoutExceeded = true;
@@ -1544,6 +1550,7 @@ ${formattedSearchReplaceIssues}`,
             // installed yet.
             addDependencies.length === 0 &&
             settings.enableAutoFixProblems &&
+            settings.enableBackgroundProblemAutoFix &&
             settings.selectedChatMode !== "ask"
           ) {
             try {

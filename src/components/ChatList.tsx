@@ -10,7 +10,7 @@ import {
   FileText,
   Loader2,
 } from "lucide-react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
@@ -44,6 +44,7 @@ import {
 
 import { ChatSearchDialog } from "./ChatSearchDialog";
 import { useSelectChat } from "@/hooks/useSelectChat";
+import { isStreamingByIdAtom } from "@/atoms/chatAtoms";
 
 export function ChatList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -69,6 +70,7 @@ export function ChatList({ show }: { show?: boolean }) {
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const { selectChat } = useSelectChat();
+  const isStreamingById = useAtomValue(isStreamingByIdAtom);
 
   // summary dialog state
   const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
@@ -313,12 +315,20 @@ export function ChatList({ show }: { show?: boolean }) {
                             : ""
                         }`}
                       >
-                        <div className="flex flex-col w-full relative overflow-hidden">
-                          <span
-                            className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
-                          >
-                            {chat.title || "Nuevo chat"}
-                          </span>
+                        <div className="flex items-center gap-2 w-full relative overflow-hidden">
+                          {isStreamingById.get(chat.id) === true && (
+                            <Loader2
+                              size={16}
+                              className="text-blue-500 animate-spin flex-shrink-0"
+                              aria-label="Chat en progreso"
+                            />
+                          )}
+                          <div className="flex flex-col w-full overflow-hidden">
+                            <span
+                              className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
+                            >
+                              {chat.title || "Nuevo chat"}
+                            </span>
                           <span
                             className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
                           >
@@ -326,6 +336,7 @@ export function ChatList({ show }: { show?: boolean }) {
                               addSuffix: true,
                             })}
                           </span>
+                          </div>
                         </div>
                       </Button>
 

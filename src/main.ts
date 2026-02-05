@@ -4,7 +4,6 @@ import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
 // @ts-ignore
 import started from "electron-squirrel-startup";
-import { updateElectronApp, UpdateSourceType } from "update-electron-app";
 import log from "electron-log";
 import {
   getSettingsFilePath,
@@ -124,23 +123,7 @@ export async function onReady() {
   createWindow();
   createApplicationMenu();
 
-  logger.info("Auto-update enabled=", settings.enableAutoUpdate);
-  if (settings.enableAutoUpdate) {
-    // Technically we could just pass the releaseChannel directly to the host,
-    // but this is more explicit and falls back to stable if there's an unknown
-    // release channel.
-    const postfix = settings.releaseChannel === "beta" ? "beta" : "stable";
-    const host = `https://api.dyad.sh/v1/update/${postfix}`;
-    logger.info("Auto-update release channel=", postfix);
-    updateElectronApp({
-      logger,
-      updateSource: {
-        type: UpdateSourceType.ElectronPublicUpdateService,
-        repo: "dyad-sh/dyad",
-        host,
-      },
-    }); // additional configuration options available
-  }
+  // Auto-update disabled by request
 }
 
 export async function onFirstRunMaybe(settings: UserSettings) {
@@ -174,7 +157,7 @@ async function promptMoveToApplicationsFolder(): Promise<void> {
     type: "question",
     buttons: ["Move to Applications Folder", "Do Not Move"],
     defaultId: 0,
-    message: "Move to Applications Folder? (required for auto-update)",
+    message: "Move to Applications Folder?",
   });
 
   if (response === 0) {

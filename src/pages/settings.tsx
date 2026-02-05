@@ -19,12 +19,7 @@ import { SupabaseIntegration } from "@/components/SupabaseIntegration";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
-import { AutoUpdateSwitch } from "@/components/AutoUpdateSwitch";
-import { ReleaseChannelSelector } from "@/components/ReleaseChannelSelector";
 import { NeonIntegration } from "@/components/NeonIntegration";
-import { RuntimeModeSelector } from "@/components/RuntimeModeSelector";
-import { NodePathSelector } from "@/components/NodePathSelector";
-import { ToolsMcpSettings } from "@/components/settings/ToolsMcpSettings";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { ZoomSelector } from "@/components/ZoomSelector";
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
@@ -119,17 +114,6 @@ export default function SettingsPage() {
               Permisos del Agente
             </h2>
             <AgentToolsSettings />
-          </div>
-
-          {/* Tools (MCP) */}
-          <div
-            id="tools-mcp"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
-          >
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Herramientas MCP
-            </h2>
-            <ToolsMcpSettings />
           </div>
 
           {/* Experiments Section */}
@@ -258,25 +242,6 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
         <ZoomSelector />
       </div>
 
-      <div className="space-y-1 mt-4">
-        <AutoUpdateSwitch />
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Esto actualizará automáticamente la aplicación cuando haya nuevas
-          versiones disponibles.
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <ReleaseChannelSelector />
-      </div>
-
-      <div className="mt-4">
-        <RuntimeModeSelector />
-      </div>
-      <div className="mt-4">
-        <NodePathSelector />
-      </div>
-
       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-4">
         <span className="mr-2 font-medium">Versión de la aplicación:</span>
         <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
@@ -288,6 +253,14 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
 }
 
 export function WorkflowSettings() {
+  const { settings, updateSettings } = useSettings();
+
+  const handleToggleBackgroundProblemFix = async (value: boolean) => {
+    await updateSettings({
+      enableBackgroundProblemAutoFix: value,
+    });
+  };
+
   return (
     <div
       id="workflow-settings"
@@ -308,12 +281,23 @@ export function WorkflowSettings() {
         </div>
       </div>
 
-      {/*      <div className="space-y-1 mt-4">
-        <AutoFixProblemsSwitch />
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          This will automatically fix TypeScript errors.
+      <div className="space-y-1 mt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              Auto-fix de problemas en segundo plano
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Si está desactivado, aunque se detecten problemas no se gastará
+              tiempo arreglándolos mientras trabajas en otras tareas.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableBackgroundProblemAutoFix ?? false}
+            onCheckedChange={handleToggleBackgroundProblemFix}
+          />
         </div>
-      </div>*/}
+      </div>
 
       <div className="space-y-1 mt-4">
         <AutoExpandPreviewSwitch />
@@ -325,6 +309,53 @@ export function WorkflowSettings() {
     </div>
   );
 }
+
+function TurboEditsV2Switch() {
+  const { settings, updateSettings } = useSettings();
+  const [saving, setSaving] = useState(false);
+  const isEnabled = settings?.enableTurboEditsV2 ?? true;
+
+  const handleToggle = async (value: boolean) => {
+    setSaving(true);
+    try {
+      await updateSettings({ enableTurboEditsV2: value });
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar Turbo Edits",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            Turbo Edits (v2)
+          </h3>
+          <span className="text-[10px] leading-none uppercase tracking-wide rounded-sm bg-blue-500/15 text-blue-700 dark:text-blue-300 px-2 py-0.5 border border-blue-500/25">
+            Beta
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Activa o desactiva el modo de búsqueda y reemplazo automático que
+          intenta arreglar cambios fallidos antes de escribir los archivos.
+        </p>
+      </div>
+      <Switch
+        checked={isEnabled}
+        onCheckedChange={handleToggle}
+        disabled={saving}
+        aria-label="Activar Turbo Edits"
+      />
+    </div>
+  );
+}
+
 export function AISettings() {
   return (
     <div
@@ -337,6 +368,10 @@ export function AISettings() {
 
       <div className="mt-4">
         <ThinkingBudgetSelector />
+      </div>
+
+      <div className="mt-4">
+        <TurboEditsV2Switch />
       </div>
 
       <div className="mt-4">

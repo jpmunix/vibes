@@ -17,7 +17,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "provider-settings", label: "OpenRouter" },
   { id: "integrations", label: "Integraciones" },
   { id: "agent-permissions", label: "Permisos del agente" },
-  { id: "tools-mcp", label: "Herramientas MCP" },
   { id: "experiments", label: "Experimentos" },
   { id: "danger-zone", label: "Zona peligrosa" },
 ];

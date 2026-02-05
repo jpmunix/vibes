@@ -46,6 +46,7 @@ export function NotesList({ show }: { show?: boolean }) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renameNoteId, setRenameNoteId] = useState<number | null>(null);
   const [renameNoteTitle, setRenameNoteTitle] = useState("");
+  const [busyNoteIds, setBusyNoteIds] = useState<Set<number>>(new Set());
 
   // Get current note ID from route
   const currentNoteId =
@@ -71,6 +72,7 @@ export function NotesList({ show }: { show?: boolean }) {
   };
 
   const handleDeleteClick = (noteId: number, noteTitle: string) => {
+    if (busyNoteIds.has(noteId) || currentNoteId === noteId) return;
     setDeleteNoteId(noteId);
     setDeleteNoteTitle(noteTitle);
     setIsDeleteDialogOpen(true);
@@ -80,6 +82,7 @@ export function NotesList({ show }: { show?: boolean }) {
     if (deleteNoteId === null) return;
 
     try {
+      setBusyNoteIds((prev) => new Set(prev).add(deleteNoteId));
       await ipc.note.deleteNote(deleteNoteId);
       showSuccess("Nota eliminada correctamente");
 
@@ -92,6 +95,11 @@ export function NotesList({ show }: { show?: boolean }) {
     } catch (error) {
       showError(`Error al eliminar nota: ${(error as Error).message}`);
     } finally {
+      setBusyNoteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteNoteId);
+        return next;
+      });
       setIsDeleteDialogOpen(false);
       setDeleteNoteId(null);
       setDeleteNoteTitle("");
@@ -99,6 +107,7 @@ export function NotesList({ show }: { show?: boolean }) {
   };
 
   const handleRenameClick = (noteId: number, currentTitle: string) => {
+    if (busyNoteIds.has(noteId) || currentNoteId === noteId) return;
     setRenameNoteId(noteId);
     setRenameNoteTitle(currentTitle);
     setIsRenameDialogOpen(true);
@@ -108,6 +117,7 @@ export function NotesList({ show }: { show?: boolean }) {
     if (renameNoteId === null) return;
 
     try {
+      setBusyNoteIds((prev) => new Set(prev).add(renameNoteId));
       await ipc.note.updateNote({
         noteId: renameNoteId,
         title: renameNoteTitle,
@@ -117,6 +127,11 @@ export function NotesList({ show }: { show?: boolean }) {
     } catch (error) {
       showError(`Error al renombrar nota: ${(error as Error).message}`);
     } finally {
+      setBusyNoteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(renameNoteId);
+        return next;
+      });
       setIsRenameDialogOpen(false);
       setRenameNoteId(null);
       setRenameNoteTitle("");
@@ -196,26 +211,30 @@ export function NotesList({ show }: { show?: boolean }) {
                         }`}
                       />
 
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRenameClick(note.id, note.title);
-                        }}
-                        className="right-8 z-20"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </SidebarMenuAction>
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClick(note.id, note.title);
-                        }}
-                        className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </SidebarMenuAction>
+                      {!busyNoteIds.has(note.id) && currentNoteId !== note.id && (
+                        <>
+                          <SidebarMenuAction
+                            showOnHover
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRenameClick(note.id, note.title);
+                            }}
+                            className="right-8 z-20"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </SidebarMenuAction>
+                          <SidebarMenuAction
+                            showOnHover
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(note.id, note.title);
+                            }}
+                            className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </SidebarMenuAction>
+                        </>
+                      )}
                     </div>
                   </SidebarMenuItem>
                 ))}

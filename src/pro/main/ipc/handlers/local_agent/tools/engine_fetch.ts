@@ -17,6 +17,7 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const logger = log.scope("engine_fetch");
+const TURBO_EDIT_TIMEOUT_MS = 20_000;
 
 interface TurboFileEditRequestBody {
   path: string;
@@ -98,16 +99,30 @@ function sanitizeTurboEditResponse(content: string) {
   return content;
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = TURBO_EDIT_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function callTurboFileEditViaOpenRouter(
   ctx: Pick<AgentContext, "dyadRequestId">,
   options: EngineFetchOptions,
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.turboEditModel || "openai/gpt-4.1";
+  const model = settings.turboEditModel || "openai/gpt-4.1-mini";
   const body = parseTurboFileEditBody(options.body);
 
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+  const baseRequest = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -118,7 +133,22 @@ async function callTurboFileEditViaOpenRouter(
       temperature: 0,
       messages: buildTurboEditMessages(body),
     }),
-  });
+  } satisfies RequestInit;
+
+  let response: Response | null = null;
+  try {
+    response = await fetchWithTimeout(
+      `${OPENROUTER_BASE_URL}/chat/completions`,
+      baseRequest,
+    );
+  } catch (error) {
+    logger.error("OpenRouter turbo edit request timed out or failed", error);
+    throw new Error(
+      `OpenRouter turbo file edit failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -160,6 +190,7 @@ export async function engineFetch(
   options: EngineFetchOptions = {},
 ): Promise<Response> {
   if (endpoint === "/tools/turbo-file-edit") {
+    // Turbo Edit uses OpenRouter only; failures should bubble so callers can fallback to full rewrite
     return callTurboFileEditViaOpenRouter(ctx, options);
   }
 
