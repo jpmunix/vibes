@@ -211,9 +211,15 @@ function App() {
         next.delete(chatId);
         return next;
       });
+      // Clear selecting state as well
+      setIsSelectingModelById((prev) => {
+        const next = new Map(prev);
+        next.delete(chatId);
+        return next;
+      });
     });
     return () => unsubscribe();
-  }, [setAgentTodosByChatId, setAutoRouterModelInfo]);
+  }, [setAgentTodosByChatId, setAutoRouterModelInfo, setIsSelectingModelById]);
 
   useEffect(() => {
     const unsubscribe = ipc.events.agent.onConsentRequest((payload) => {

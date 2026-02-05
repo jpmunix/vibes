@@ -14,4 +14,10 @@ export default defineConfig({
       "@": resolve(__dirname, "./src"),
     },
   },
+  server: {
+    watch: {
+      usePolling: false,
+      ignored: ["**"], // Ignora todos los cambios de archivos
+    },
+  },
 });

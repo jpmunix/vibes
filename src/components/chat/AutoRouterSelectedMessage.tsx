@@ -1,14 +1,16 @@
-import { Bot, Sparkles } from "lucide-react";
-import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  Bot,
+  Sparkles,
+  Loader,
+  ChevronsDownUp,
+  ChevronsUpDown,
+} from "lucide-react";
+import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
+import { useState } from "react";
 
 interface AutoRouterSelectedMessageProps {
-  modelInfo: AutoRouterModelInfo;
+  modelInfo?: AutoRouterModelInfo;
+  isSelecting?: boolean;
 }
 
 const COMPLEXITY_LABELS: Record<number, string> = {
@@ -17,14 +19,6 @@ const COMPLEXITY_LABELS: Record<number, string> = {
   3: "media",
   4: "alta",
   5: "muy alta",
-};
-
-const COMPLEXITY_COLORS: Record<number, string> = {
-  1: "text-green-600 dark:text-green-400",
-  2: "text-lime-600 dark:text-lime-400",
-  3: "text-yellow-600 dark:text-yellow-400",
-  4: "text-orange-600 dark:text-orange-400",
-  5: "text-red-600 dark:text-red-400",
 };
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -48,79 +42,96 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
 
 export function AutoRouterSelectedMessage({
   modelInfo,
+  isSelecting = false,
 }: AutoRouterSelectedMessageProps) {
-  const fullModelPath = `${modelInfo.model.provider}/${modelInfo.model.name}`;
-  const modelName = MODEL_DISPLAY_NAMES[fullModelPath] || modelInfo.model.name;
-  const complexityLabel = COMPLEXITY_LABELS[modelInfo.complexity] || "media";
-  const complexityColor =
-    COMPLEXITY_COLORS[modelInfo.complexity] || COMPLEXITY_COLORS[3];
-  const taskTypeLabel =
-    TASK_TYPE_LABELS[modelInfo.taskType] || modelInfo.taskType;
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Get model info if available
+  const fullModelPath = modelInfo
+    ? `${modelInfo.model.provider}/${modelInfo.model.name}`
+    : "";
+  const modelName = modelInfo
+    ? MODEL_DISPLAY_NAMES[fullModelPath] || modelInfo.model.name
+    : "";
+  const complexityLabel = modelInfo
+    ? COMPLEXITY_LABELS[modelInfo.complexity] || "media"
+    : "";
+  const taskTypeLabel = modelInfo
+    ? TASK_TYPE_LABELS[modelInfo.taskType] || modelInfo.taskType
+    : "";
 
   return (
-    <div className="px-4 my-3">
+    <div className="px-4 my-2">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg shadow-sm">
-          <div className="flex items-start gap-3 px-4 py-3">
-            <div className="flex-shrink-0 mt-0.5">
+        <div
+          className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
+            isSelecting ? "border-blue-500" : "border-border"
+          }`}
+          onClick={() => !isSelecting && setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <Bot size={20} className="text-blue-600 dark:text-blue-400" />
-                <Sparkles
-                  size={12}
-                  className="absolute -top-1 -right-1 text-yellow-500 dark:text-yellow-400"
-                />
+                <Bot size={16} className="text-blue-600 dark:text-blue-400" />
+                {!isSelecting && (
+                  <Sparkles
+                    size={10}
+                    className="absolute -top-1 -right-1 text-yellow-500 dark:text-yellow-400"
+                  />
+                )}
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                  Auto-Router
-                </span>
-              </div>
-              <div className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">Modelo seleccionado:</span>{" "}
-                <span className="font-semibold text-blue-700 dark:text-blue-300">
-                  {modelName}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mt-2 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Complejidad:
+              {isSelecting ? (
+                <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
+                  <Loader size={14} className="mr-2 animate-spin" />
+                  <span className="font-medium">Seleccionando modelo...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+                    {modelName}
                   </span>
-                  <span className={`font-semibold ${complexityColor}`}>
-                    {complexityLabel}
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    · {complexityLabel}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Tipo:
-                  </span>
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">
-                    {taskTypeLabel}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
+            {!isSelecting && (
+              <div className="flex items-center">
+                {isExpanded ? (
+                  <ChevronsDownUp
+                    size={20}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  />
+                ) : (
+                  <ChevronsUpDown
+                    size={20}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  />
+                )}
+              </div>
+            )}
           </div>
 
-          {modelInfo.reasoning && (
-            <Accordion
-              type="single"
-              collapsible
-              className="border-t border-blue-200 dark:border-blue-800"
-            >
-              <AccordionItem value="reasoning" className="border-0">
-                <AccordionTrigger className="px-4 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:no-underline hover:bg-blue-100/50 dark:hover:bg-blue-900/30">
-                  Ver razonamiento
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-3">
-                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+          {!isSelecting && modelInfo && (
+            <>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <span className="font-medium">Tipo:</span> {taskTypeLabel}
+              </div>
+              {isExpanded && modelInfo.reasoning && (
+                <div
+                  className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs cursor-text"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="text-gray-600 dark:text-gray-300 mb-1 font-medium">
+                    Razonamiento:
+                  </div>
+                  <div className="text-gray-600 dark:text-gray-400 leading-relaxed">
                     {modelInfo.reasoning}
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

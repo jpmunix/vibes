@@ -427,48 +427,31 @@ ${componentSnippet}
         })
         .returning({ id: messages.id });
       const userMessageId = insertedUserMessage.id;
+
+      // Send the user message immediately to the frontend
+      const chatWithUserMessage = await db.query.chats.findFirst({
+        where: eq(chats.id, req.chatId),
+        with: {
+          messages: {
+            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+          },
+          app: true,
+        },
+      });
+
+      if (chatWithUserMessage) {
+        safeSend(event.sender, "chat:response:chunk", {
+          chatId: req.chatId,
+          messages: chatWithUserMessage.messages,
+        });
+      }
+
       const settings = readSettings();
       // Only Dyad Pro requests have request ids.
       if (settings.enableDyadPro) {
         // Generate requestId early so it can be saved with the message
         dyadRequestId = uuidv4();
       }
-
-      // Add a placeholder assistant message immediately
-      const [placeholderAssistantMessage] = await db
-        .insert(messages)
-        .values({
-          chatId: req.chatId,
-          role: "assistant",
-          content: "", // Start with empty content
-          requestId: dyadRequestId,
-          model: settings.selectedModel.name,
-          sourceCommitHash: await getCurrentCommitHash({
-            path: getDyadAppPath(chat.app.path),
-          }),
-        })
-        .returning();
-
-      // Fetch updated chat data after possible deletions and additions
-      const updatedChat = await db.query.chats.findFirst({
-        where: eq(chats.id, req.chatId),
-        with: {
-          messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-          },
-          app: true, // Include app information
-        },
-      });
-
-      if (!updatedChat) {
-        throw new Error(`Chat not found: ${req.chatId}`);
-      }
-
-      // Send the messages right away so that the loading state is shown for the message.
-      safeSend(event.sender, "chat:response:chunk", {
-        chatId: req.chatId,
-        messages: updatedChat.messages,
-      });
 
       let fullResponse = "";
       let maxTokensUsed: number | undefined;
@@ -478,7 +461,53 @@ ${componentSnippet}
       // Check if this is a test prompt
       const testResponse = getTestResponse(req.prompt);
 
+      // Check if this is a summarize prompt (before creating the message)
+      const isSummarizeIntent =
+        req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
+        req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+
+      // Declare placeholderAssistantMessage and updatedChat at a higher scope
+      let placeholderAssistantMessage: any;
+      let updatedChat: any;
+
       if (testResponse) {
+        // For test prompts, we need to create the placeholder first
+        // Create placeholder before streaming test response
+        [placeholderAssistantMessage] = await db
+          .insert(messages)
+          .values({
+            chatId: req.chatId,
+            role: "assistant",
+            content: "",
+            requestId: dyadRequestId,
+            model: settings.selectedModel.name,
+            sourceCommitHash: await getCurrentCommitHash({
+              path: getDyadAppPath(chat.app.path),
+            }),
+          })
+          .returning();
+
+        // Fetch updated chat data
+        updatedChat = await db.query.chats.findFirst({
+          where: eq(chats.id, req.chatId),
+          with: {
+            messages: {
+              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            },
+            app: true,
+          },
+        });
+
+        if (!updatedChat) {
+          throw new Error(`Chat not found: ${req.chatId}`);
+        }
+
+        // Send the messages right away
+        safeSend(event.sender, "chat:response:chunk", {
+          chatId: req.chatId,
+          messages: updatedChat.messages,
+        });
+
         // For test prompts, use the dedicated function
         fullResponse = await streamTestResponse(
           event,
@@ -490,13 +519,31 @@ ${componentSnippet}
       } else {
         // Normal AI processing for non-test prompts
 
-        // Check if this is a summarize prompt
-        const isSummarizeIntent =
-          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
-          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
-
-        // Use auto-router only if it's not a summarize chat
+        // If it's a summarize intent and auto-router is selected, use the title generation model
         if (
+          isSummarizeIntent &&
+          settings.selectedModel.provider === "auto-router" &&
+          settings.selectedModel.name === "auto"
+        ) {
+          // Use the appTitleGenerationModel from settings
+          const titleModel =
+            settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+          // Parse the model string (format: "provider/model")
+          const [provider, ...modelParts] = titleModel.split("/");
+          const modelName = modelParts.join("/"); // Handle models with / in name
+
+          selectedModel = {
+            provider,
+            name: modelName,
+          };
+
+          logger.info(
+            `Using title generation model for summarize task: ${provider}/${modelName}`,
+          );
+        }
+        // Use auto-router only if it's not a summarize chat
+        else if (
           !isSummarizeIntent &&
           settings.selectedModel.provider === "auto-router" &&
           settings.selectedModel.name === "auto"
@@ -574,6 +621,42 @@ ${componentSnippet}
             throw error; // Re-throw to show error to user
           }
         }
+
+        // Create placeholder assistant message after model selection is complete
+        [placeholderAssistantMessage] = await db
+          .insert(messages)
+          .values({
+            chatId: req.chatId,
+            role: "assistant",
+            content: "",
+            requestId: dyadRequestId,
+            model: selectedModel.name,
+            sourceCommitHash: await getCurrentCommitHash({
+              path: getDyadAppPath(chat.app.path),
+            }),
+          })
+          .returning();
+
+        // Fetch updated chat data
+        updatedChat = await db.query.chats.findFirst({
+          where: eq(chats.id, req.chatId),
+          with: {
+            messages: {
+              orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+            },
+            app: true,
+          },
+        });
+
+        if (!updatedChat) {
+          throw new Error(`Chat not found: ${req.chatId}`);
+        }
+
+        // Send the messages right away so that the loading state is shown
+        safeSend(event.sender, "chat:response:chunk", {
+          chatId: req.chatId,
+          messages: updatedChat.messages,
+        });
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -800,9 +883,7 @@ ${componentSnippet}
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
-        const isSummarizeIntent =
-          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
-          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+        // Use the isSummarizeIntent variable declared earlier
         if (isSummarizeIntent) {
           systemPrompt = SUMMARIZE_CHAT_SYSTEM_PROMPT;
           if (settings.chatLanguage === "es") {
