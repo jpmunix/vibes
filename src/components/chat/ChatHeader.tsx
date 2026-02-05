@@ -5,6 +5,7 @@ import {
   Eraser,
   Sparkles,
   Info,
+  Save,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -23,6 +24,7 @@ import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import ConfirmationDialog from "../ConfirmationDialog";
+import { marked } from "marked";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
@@ -50,7 +52,7 @@ export function ChatHeader({
   const appId = useAtomValue(selectedAppIdAtom);
   const { navigate } = useRouter();
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
-  const { invalidateChats } = useChats(appId);
+  const { chats, invalidateChats } = useChats(appId);
   const { isStreaming } = useStreamChat();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const { handleSummarize } = useSummarizeInNewChat();
@@ -58,6 +60,7 @@ export function ChatHeader({
     isAnyCheckoutVersionInProgressAtom,
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const {
     branchInfo,
@@ -69,6 +72,8 @@ export function ChatHeader({
   const { renameBranch, isRenamingBranch } = useRenameBranch();
   const [isConfirmEmptyDialogOpen, setIsConfirmEmptyDialogOpen] =
     useState(false);
+
+  const messagesById = useAtomValue(chatMessagesByIdAtom);
 
   useEffect(() => {
     if (appId) {
@@ -131,6 +136,51 @@ export function ChatHeader({
       showError(`Error al vaciar el chat: ${(error as any).toString()}`);
     }
     setIsConfirmEmptyDialogOpen(false);
+  };
+
+  const handleSaveNote = async () => {
+    if (!selectedChatId) return;
+    try {
+      setIsSavingNote(true);
+
+      // Obtener el chat actual para el título
+      const currentChat = chats.find((chat) => chat.id === selectedChatId);
+      const chatTitle = currentChat?.title || "Chat sin título";
+
+      // Obtener los mensajes del chat
+      const messages = messagesById.get(selectedChatId) || [];
+      const chatMarkdown = messages
+        .map((msg) => {
+          const role = msg.role === "user" ? "**Usuario**" : "**Asistente**";
+          return `### ${role}\n\n${msg.content}\n`;
+        })
+        .join("\n---\n\n");
+
+      // Convertir el markdown a HTML
+      const chatContent = (await marked.parse(chatMarkdown)) as string;
+
+      // Crear la nota
+      const noteId = await ipc.note.createNote();
+
+      // Actualizar la nota con el título y contenido del chat
+      await ipc.note.updateNote({
+        noteId,
+        title: chatTitle,
+        content: chatContent,
+      });
+
+      showSuccess("Nota guardada correctamente");
+
+      // Navegar a la nota creada
+      navigate({
+        to: "/notes/$noteId",
+        params: { noteId: noteId.toString() },
+      });
+    } catch (error) {
+      showError(`Error al guardar la nota: ${(error as any).toString()}`);
+    } finally {
+      setIsSavingNote(false);
+    }
   };
 
   const isNotMainBranch = branchInfo && branchInfo.branch !== "main";
@@ -263,6 +313,16 @@ export function ChatHeader({
               className={isGeneratingTitle ? "animate-pulse" : ""}
             />
             <span className="hidden @xs:inline">Título mágico</span>
+          </Button>
+          <Button
+            onClick={handleSaveNote}
+            variant="ghost"
+            title="Guardar nota"
+            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
+            disabled={!selectedChatId || isStreaming || isSavingNote}
+          >
+            <Save size={16} className={isSavingNote ? "animate-pulse" : ""} />
+            <span className="hidden @xs:inline">Guardar nota</span>
           </Button>
           <Button
             onClick={() => setIsConfirmEmptyDialogOpen(true)}

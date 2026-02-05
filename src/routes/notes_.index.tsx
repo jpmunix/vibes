@@ -5,7 +5,7 @@ export const notesIndexRoute = createRoute({
   getParentRoute: () => notesRoute,
   path: "/",
   component: () => (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex items-center justify-center h-full w-full">
       <div className="text-center">
         <h1 className="text-2xl font-bold mb-2">Notas</h1>
         <p className="text-muted-foreground">
