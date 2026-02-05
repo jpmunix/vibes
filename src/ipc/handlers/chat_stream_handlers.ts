@@ -1359,6 +1359,15 @@ This conversation includes one or more image attachments. When the user uploads 
             settings.selectedChatMode !== "ask" &&
             isTurboEditsV2Enabled(settings)
           ) {
+            const maxIssues = settings.autoFixMaxIssues ?? 5;
+            const maxAttempts = settings.autoFixMaxAttempts ?? 1;
+            const maxDurationMs = settings.autoFixMaxDurationMs ?? 20_000;
+            const autoFixModelSettings =
+              settings.autoFixModel ?? settings.selectedModel;
+            const { modelClient: autoFixModelClient } = await getModelClient(
+              autoFixModelSettings,
+              settings,
+            );
             let issues = await dryRunSearchReplace({
               fullResponse,
               appPath: getDyadAppPath(updatedChat.app.path),
@@ -1376,30 +1385,23 @@ This conversation includes one or more image attachments. When the user uploads 
             let searchReplaceFixAttempts = 0;
             const originalFullResponse = fullResponse;
             const previousAttempts: ModelMessage[] = [];
-            // Timeout global para prevenir loops infinitos
-            const TURBO_EDIT_MAX_TIME = 20 * 1000; // 20 segundos
             const turboEditStartTime = Date.now();
             let timeoutExceeded = false;
 
             while (
               issues.length > 0 &&
-              searchReplaceFixAttempts < 1 &&
+              issues.length <= maxIssues &&
+              searchReplaceFixAttempts < maxAttempts &&
               !abortController.signal.aborted &&
               !timeoutExceeded
             ) {
-              if (issues.length > 5) {
-                logger.warn(
-                  `Skipping auto-fix: too many search-replace issues (${issues.length})`,
-                );
-                break;
-              }
               // Verificar timeout
-              if (Date.now() - turboEditStartTime >= TURBO_EDIT_MAX_TIME) {
+              if (Date.now() - turboEditStartTime >= maxDurationMs) {
                 timeoutExceeded = true;
                 logger.error(
-                  `Turbo Edit timeout exceeded after ${TURBO_EDIT_MAX_TIME / 1000}s`,
+                  `Turbo Edit timeout exceeded after ${maxDurationMs / 1000}s`,
                 );
-                fullResponse += `<dyad-output type="error" message="Turbo Edit timeout exceeded">Failed to apply search-replace changes after ${TURBO_EDIT_MAX_TIME / 1000} seconds. The changes were too complex to apply automatically. Please try breaking down your request into smaller changes, or use specific file paths to make the edits more targeted.</dyad-output>`;
+                fullResponse += `<dyad-output type="error" message="Turbo Edit timeout exceeded">Failed to apply search-replace changes after ${maxDurationMs / 1000} seconds. The changes were too complex to apply automatically. Please try breaking down your request into smaller changes, or use specific file paths to make the edits more targeted.</dyad-output>`;
                 await processResponseChunkUpdate({
                   fullResponse,
                 });
@@ -1410,7 +1412,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 (Date.now() - turboEditStartTime) / 1000,
               );
               logger.warn(
-                `Detected search-replace issues (attempt #${searchReplaceFixAttempts + 1}/2, elapsed: ${elapsedTime}s): ${issues.map((i) => i.error).join(", ")}`,
+                `Detected search-replace issues (attempt #${searchReplaceFixAttempts + 1}/${maxAttempts}, elapsed: ${elapsedTime}s): ${issues.map((i) => i.error).join(", ")}`,
               );
               const formattedSearchReplaceIssues = issues
                 .map(({ filePath, error }) => {
@@ -1419,7 +1421,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 .join("\n\n");
 
               // Feedback visual mejorado con contador de intentos
-              fullResponse += `<dyad-output type="warning" message="Auto-fixing Turbo Edits (attempt ${searchReplaceFixAttempts + 1}/2, ${issues.length} issue${issues.length > 1 ? "s" : ""})...">${formattedSearchReplaceIssues}</dyad-output>`;
+              fullResponse += `<dyad-output type="warning" message="Auto-fixing Turbo Edits (attempt ${searchReplaceFixAttempts + 1}/${maxAttempts}, ${issues.length} issue${issues.length > 1 ? "s" : ""})...">${formattedSearchReplaceIssues}</dyad-output>`;
               await processResponseChunkUpdate({
                 fullResponse,
               });
@@ -1450,7 +1452,7 @@ ${formattedSearchReplaceIssues}`,
                     ...previousAttempts,
                     userPrompt,
                   ],
-                  modelClient,
+                  modelClient: autoFixModelClient,
                   files: files,
                 });
               previousAttempts.push(userPrompt);
@@ -1563,11 +1565,24 @@ ${formattedSearchReplaceIssues}`,
               let autoFixAttempts = 0;
               const originalFullResponse = fullResponse;
               const previousAttempts: ModelMessage[] = [];
+              const maxAttempts = settings.autoFixMaxAttempts ?? 1;
+              const maxDurationMs = settings.autoFixMaxDurationMs ?? 20_000;
+              const autoFixStartTime = Date.now();
+              const problemFixModelSettings =
+                settings.autoFixModel ?? settings.selectedModel;
+              const { modelClient: problemFixModelClient } =
+                await getModelClient(problemFixModelSettings, settings);
               while (
                 problemReport.problems.length > 0 &&
-                autoFixAttempts < 2 &&
+                autoFixAttempts < maxAttempts &&
                 !abortController.signal.aborted
               ) {
+                if (Date.now() - autoFixStartTime >= maxDurationMs) {
+                  logger.warn(
+                    `Auto-fix problems timeout after ${maxDurationMs / 1000}s`,
+                  );
+                  break;
+                }
                 fullResponse += `<dyad-problem-report summary="${problemReport.problems.length} problems">
 ${problemReport.problems
   .map(
@@ -1578,7 +1593,7 @@ ${problemReport.problems
 </dyad-problem-report>`;
 
                 logger.info(
-                  `Attempting to auto-fix problems, attempt #${autoFixAttempts + 1}`,
+                  `Attempting to auto-fix problems, attempt #${autoFixAttempts + 1}/${maxAttempts}`,
                 );
                 autoFixAttempts++;
                 const problemFixPrompt = createProblemFixPrompt(problemReport);
@@ -1605,13 +1620,9 @@ ${problemReport.problems
                     chatContext,
                     virtualFileSystem,
                   });
-                const { modelClient } = await getModelClient(
-                  settings.selectedModel,
-                  settings,
-                );
 
                 const { fullStream } = await simpleStreamText({
-                  modelClient,
+                  modelClient: problemFixModelClient,
                   files: files,
                   chatMessages: [
                     ...chatMessages.map((msg, index) => {

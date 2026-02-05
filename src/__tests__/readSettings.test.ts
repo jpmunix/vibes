@@ -55,6 +55,13 @@ describe("readSettings", () => {
         {
           "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
+          "autoFixMaxAttempts": 1,
+          "autoFixMaxDurationMs": 20000,
+          "autoFixMaxIssues": 5,
+          "autoFixModel": {
+            "name": "google/gemini-3-flash-preview",
+            "provider": "openrouter",
+          },
           "chatLanguage": "es",
           "enableAutoFixProblems": false,
           "enableBackgroundProblemAutoFix": false,
@@ -314,6 +321,13 @@ describe("readSettings", () => {
         {
           "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
+          "autoFixMaxAttempts": 1,
+          "autoFixMaxDurationMs": 20000,
+          "autoFixMaxIssues": 5,
+          "autoFixModel": {
+            "name": "google/gemini-3-flash-preview",
+            "provider": "openrouter",
+          },
           "chatLanguage": "es",
           "enableAutoFixProblems": false,
           "enableBackgroundProblemAutoFix": false,

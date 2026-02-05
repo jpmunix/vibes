@@ -33,6 +33,13 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableProLazyEditsMode: true,
   enableTurboEditsV2: true,
   enableProSmartFilesContextMode: true,
+  autoFixModel: {
+    name: "google/gemini-3-flash-preview",
+    provider: "openrouter",
+  },
+  autoFixMaxDurationMs: 20_000,
+  autoFixMaxAttempts: 1,
+  autoFixMaxIssues: 5,
   selectedChatMode: "build",
   enableAutoFixProblems: false,
   enableBackgroundProblemAutoFix: false,

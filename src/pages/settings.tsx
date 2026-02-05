@@ -27,6 +27,7 @@ import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { SerperApiKeySettings } from "@/components/SerperApiKeySettings";
+import { Input } from "@/components/ui/input";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -261,6 +262,25 @@ export function WorkflowSettings() {
     });
   };
 
+  const handleUpdateAutoFixModel = async (field: "name" | "provider", value: string) => {
+    const current = settings?.autoFixModel;
+    await updateSettings({
+      autoFixModel: {
+        name: field === "name" ? value : current?.name ?? "google/gemini-3-flash-preview",
+        provider: field === "provider" ? value : current?.provider ?? "openrouter",
+      },
+    });
+  };
+
+  const handleUpdateNumberSetting = async (
+    field: "autoFixMaxDurationMs" | "autoFixMaxAttempts" | "autoFixMaxIssues",
+    value: number,
+    fallback: number,
+  ) => {
+    const parsed = Number.isFinite(value) && value > 0 ? value : fallback;
+    await updateSettings({ [field]: parsed } as any);
+  };
+
   return (
     <div
       id="workflow-settings"
@@ -296,6 +316,92 @@ export function WorkflowSettings() {
             checked={settings?.enableBackgroundProblemAutoFix ?? false}
             onCheckedChange={handleToggleBackgroundProblemFix}
           />
+        </div>
+      </div>
+
+      <div className="space-y-3 mt-4">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          Modelo y límites para auto-fix
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y limita tiempo/intentos para evitar consumo excesivo.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              Modelo (auto-fix)
+            </Label>
+            <Input
+              value={settings?.autoFixModel?.name ?? ""}
+              onChange={(e) =>
+                handleUpdateAutoFixModel("name", e.target.value.trim())
+              }
+              placeholder="p. ej. openai/gpt-4.1-mini"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              Proveedor
+            </Label>
+            <Input
+              value={settings?.autoFixModel?.provider ?? ""}
+              onChange={(e) =>
+                handleUpdateAutoFixModel("provider", e.target.value.trim())
+              }
+              placeholder="openrouter"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              Tiempo máx. auto-fix (ms)
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              value={settings?.autoFixMaxDurationMs ?? 20000}
+              onChange={(e) =>
+                handleUpdateNumberSetting(
+                  "autoFixMaxDurationMs",
+                  Number(e.target.value),
+                  20000,
+                )
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              Intentos máx. auto-fix
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              value={settings?.autoFixMaxAttempts ?? 1}
+              onChange={(e) =>
+                handleUpdateNumberSetting(
+                  "autoFixMaxAttempts",
+                  Number(e.target.value),
+                  1,
+                )
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              Nº máx. de issues para auto-fix
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              value={settings?.autoFixMaxIssues ?? 5}
+              onChange={(e) =>
+                handleUpdateNumberSetting(
+                  "autoFixMaxIssues",
+                  Number(e.target.value),
+                  5,
+                )
+              }
+            />
+          </div>
         </div>
       </div>
 
