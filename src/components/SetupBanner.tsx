@@ -441,8 +441,7 @@ export const OpenRouterSetupBanner = ({
       title="Configurar clave API de OpenRouter"
       chip={
         <>
-          <GiftIcon className="w-3 h-3" />
-          Modelos gratuitos disponibles
+
         </>
       }
     />

@@ -170,14 +170,7 @@ export function ProviderSettingsGrid() {
                       </span>
                     )}
                   </CardTitle>
-                  <CardDescription>
-                    {provider.hasFreeTier && (
-                      <span className="text-blue-600 mt-2 dark:text-blue-400 text-sm font-medium bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full inline-flex items-center">
-                        <GiftIcon className="w-4 h-4 mr-1" />
-                        Plan gratuito disponible
-                      </span>
-                    )}
-                  </CardDescription>
+
                 </CardHeader>
               </Card>
             );
