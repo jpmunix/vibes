@@ -67,6 +67,8 @@ import { mcpServers } from "../../db/schema";
 import { requireMcpToolConsent } from "../utils/mcp_consent";
 
 import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
+import { analyzeAndRouteModel } from "../utils/model_router";
+import { getLanguageModelsByProviders } from "../shared/language_model_helpers";
 
 import { safeSend } from "../utils/safe_sender";
 import { cleanFullResponse } from "../utils/cleanFullResponse";
@@ -470,6 +472,8 @@ ${componentSnippet}
 
       let fullResponse = "";
       let maxTokensUsed: number | undefined;
+      // Auto-routing: if provider is "auto-router", analyze task and select best model
+      let selectedModel = settings.selectedModel;
 
       // Check if this is a test prompt
       const testResponse = getTestResponse(req.prompt);
@@ -485,8 +489,82 @@ ${componentSnippet}
         );
       } else {
         // Normal AI processing for non-test prompts
+
+        if (
+          settings.selectedModel.provider === "auto-router" &&
+          settings.selectedModel.name === "auto"
+        ) {
+          try {
+            logger.info("Auto-routing enabled, analyzing task complexity...");
+
+            // Get all available models from enabled providers
+            const modelsByProviders = await getLanguageModelsByProviders();
+            const availableModels: Array<{
+              model: typeof settings.selectedModel;
+              dollarSigns?: number;
+              brainSigns?: number;
+              displayName: string;
+            }> = [];
+
+            for (const [providerId, models] of Object.entries(
+              modelsByProviders,
+            )) {
+              // Skip auto-router provider itself
+              if (providerId === "auto-router") continue;
+
+              for (const model of models) {
+                availableModels.push({
+                  model: {
+                    provider: providerId,
+                    name: model.apiName,
+                    customModelId: model.id,
+                  },
+                  dollarSigns: model.dollarSigns,
+                  brainSigns: model.brainSigns,
+                  displayName: model.displayName,
+                });
+              }
+            }
+
+            if (availableModels.length === 0) {
+              logger.error(
+                "No models available for auto-routing. Please configure at least one AI provider.",
+              );
+              throw new Error(
+                "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
+              );
+            }
+
+            const attachmentCount = req.attachments?.length ?? 0;
+            const analysis = await analyzeAndRouteModel(
+              req.prompt,
+              availableModels,
+              settings,
+              attachmentCount,
+            );
+
+            selectedModel = analysis.recommendedModel;
+
+            logger.info(
+              `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
+            );
+
+            // Send model selection info to frontend
+            safeSend(event.sender, "chat:model:selected", {
+              chatId: req.chatId,
+              model: selectedModel,
+              complexity: analysis.complexity,
+              taskType: analysis.taskType,
+              reasoning: analysis.reasoning,
+            });
+          } catch (error) {
+            logger.error("Error during auto-routing:", error);
+            throw error; // Re-throw to show error to user
+          }
+        }
+
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
-          await getModelClient(settings.selectedModel, settings);
+          await getModelClient(selectedModel, settings);
 
         const appPath = getDyadAppPath(updatedChat.app.path);
         // When we don't have smart context enabled, we
@@ -1540,7 +1618,12 @@ ${problemReport.problems
         // Update the placeholder assistant message with the full response
         await db
           .update(messages)
-          .set({ content: fullResponse })
+          .set({
+            content: fullResponse,
+            model: selectedModel
+              ? `${selectedModel.provider}/${selectedModel.name}`
+              : placeholderAssistantMessage.model,
+          })
           .where(eq(messages.id, placeholderAssistantMessage.id));
         const settings = readSettings();
         if (

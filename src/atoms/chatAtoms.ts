@@ -31,3 +31,18 @@ export const pendingAgentConsentsAtom = atom<PendingAgentConsent[]>([]);
 
 // Agent todos per chat
 export const agentTodosByChatIdAtom = atom<Map<number, AgentTodo[]>>(new Map());
+
+// Auto-router model selection info per chat
+export interface AutoRouterModelInfo {
+  model: {
+    provider: string;
+    name: string;
+  };
+  complexity: number;
+  taskType: string;
+  reasoning: string;
+}
+
+export const autoRouterModelInfoByChatIdAtom = atom<
+  Map<number, AutoRouterModelInfo>
+>(new Map());

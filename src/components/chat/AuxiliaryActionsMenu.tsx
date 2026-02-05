@@ -1,10 +1,5 @@
-import { useState, useMemo } from "react";
-import {
-  Plus,
-  Paperclip,
-  ChartColumnIncreasing,
-  MoreHorizontal,
-} from "lucide-react";
+import { useState } from "react";
+import { Plus, Paperclip, ChartColumnIncreasing } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,13 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ContextFilesPicker } from "@/components/ContextFilesPicker";
 import { FileAttachmentDropdown } from "./FileAttachmentDropdown";
-import { useThemes } from "@/hooks/useThemes";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useCustomThemes } from "@/hooks/useCustomThemes";
 import { useSettings } from "@/hooks/useSettings";
-import { ipc } from "@/ipc/types";
-import { useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
 
 interface AuxiliaryActionsMenuProps {
   onFileSelect: (
@@ -45,42 +36,18 @@ export function AuxiliaryActionsMenu({
   appId,
 }: AuxiliaryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [, setCustomThemeDialogOpen] = useState(false);
-  const [, setAllThemesDialogOpen] = useState(false);
+  const [] = useState(false);
+  const [] = useState(false);
 
-  const { customThemes } = useCustomThemes();
+  
   const { themeId: appThemeId } = useAppTheme(appId);
-  const { settings, updateSettings } = useSettings();
-  const queryClient = useQueryClient();
+  const { settings } = useSettings();
 
   // Determine current theme: use app theme if appId exists, otherwise use settings
   // Note: settings stores empty string for "no theme", convert to null
-  const currentThemeId =
-    appId != null ? appThemeId : settings?.selectedThemeId || null;
+  
 
   // Compute visible custom themes: selected custom theme + up to 3 others
-  const visibleCustomThemes = useMemo(() => {
-    const MAX_VISIBLE = 4; // selected + 3 others
-
-    // Check if current theme is a custom theme
-    const selectedCustomTheme = customThemes.find(
-      (t) => `custom:${t.id}` === currentThemeId,
-    );
-    const otherCustomThemes = customThemes.filter(
-      (t) => `custom:${t.id}` !== currentThemeId,
-    );
-
-    const result = [];
-    if (selectedCustomTheme) {
-      result.push(selectedCustomTheme);
-    }
-
-    // Add up to (MAX_VISIBLE - result.length) other custom themes
-    const remaining = MAX_VISIBLE - result.length;
-    result.push(...otherCustomThemes.slice(0, remaining));
-
-    return result;
-  }, [customThemes, currentThemeId]);
 
   return (
     <>

@@ -11,6 +11,7 @@ import {
   chatStreamCountByIdAtom,
   isStreamingByIdAtom,
   recentStreamChatIdsAtom,
+  autoRouterModelInfoByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
@@ -59,6 +60,7 @@ export function useStreamChat({
   const { checkProblems } = useCheckProblems(selectedAppId);
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
+  
   const posthog = usePostHog();
   const queryClient = useQueryClient();
   let chatId: number | undefined;

@@ -28,6 +28,40 @@ export function isProviderSetup(
     return false;
   }
 
+  // Auto-router is always setup if there's at least one other provider configured
+  if (provider === "auto-router") {
+    if (!settings) return false;
+
+    // Check if any other provider is configured (manually to avoid recursion)
+    const providers = [
+      "openai",
+      "anthropic",
+      "google",
+      "openrouter",
+      "xai",
+      "azure",
+      "vertex",
+      "bedrock",
+    ];
+
+    for (const p of providers) {
+      const providerSettings = settings.providerSettings[p];
+
+      // Check API key in settings
+      if (providerSettings?.apiKey?.value) {
+        return true;
+      }
+
+      // Check env var
+      const envVar = PROVIDER_TO_ENV_VAR[p];
+      if (envVar && envVars[envVar]) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   const providerSettings = settings?.providerSettings[provider];
 
   // Vertex uses service account credentials instead of an API key

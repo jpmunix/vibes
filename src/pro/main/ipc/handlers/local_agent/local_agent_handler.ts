@@ -25,6 +25,8 @@ import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
 import { getProviderOptions, getAiHeaders } from "@/ipc/utils/provider_options";
+import { analyzeAndRouteModel } from "@/ipc/utils/model_router";
+import { getLanguageModelsByProviders } from "@/ipc/shared/language_model_helpers";
 
 import {
   AgentToolName,
@@ -172,11 +174,84 @@ export async function handleLocalAgentStream(
   const allInjectedMessages: InjectedMessage[] = [];
 
   try {
+    // Auto-routing: if provider is "auto-router", analyze task and select best model
+    let selectedModel = settings.selectedModel;
+
+    if (
+      settings.selectedModel.provider === "auto-router" &&
+      settings.selectedModel.name === "auto"
+    ) {
+      try {
+        logger.info(
+          "Auto-routing enabled for local agent, analyzing task complexity...",
+        );
+
+        // Get all available models from enabled providers
+        const modelsByProviders = await getLanguageModelsByProviders();
+        const availableModels: Array<{
+          model: typeof settings.selectedModel;
+          dollarSigns?: number;
+          brainSigns?: number;
+          displayName: string;
+        }> = [];
+
+        for (const [providerId, models] of Object.entries(modelsByProviders)) {
+          // Skip auto-router provider itself
+          if (providerId === "auto-router") continue;
+
+          for (const model of models) {
+            availableModels.push({
+              model: {
+                provider: providerId,
+                name: model.apiName,
+                customModelId: model.id,
+              },
+              dollarSigns: model.dollarSigns,
+              brainSigns: model.brainSigns,
+              displayName: model.displayName,
+            });
+          }
+        }
+
+        if (availableModels.length === 0) {
+          logger.error(
+            "No models available for auto-routing. Please configure at least one AI provider.",
+          );
+          throw new Error(
+            "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
+          );
+        }
+
+        const attachmentCount = req.attachments?.length ?? 0;
+        const analysis = await analyzeAndRouteModel(
+          req.prompt,
+          availableModels,
+          settings,
+          attachmentCount,
+        );
+
+        selectedModel = analysis.recommendedModel;
+
+        logger.info(
+          `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
+        );
+
+        // Send model selection info to frontend
+        safeSend(event.sender, "chat:model:selected", {
+          chatId: req.chatId,
+          model: selectedModel,
+          complexity: analysis.complexity,
+          taskType: analysis.taskType,
+          reasoning: analysis.reasoning,
+        });
+      } catch (error) {
+        logger.error("Error during auto-routing:", error);
+        throw error; // Re-throw to show error to user
+      }
+    }
+
     // Get model client
-    const { modelClient } = await getModelClient(
-      settings.selectedModel,
-      settings,
-    );
+    const { modelClient } = await getModelClient(selectedModel, settings);
 
     // Build tool execute context
     const fileEditTracker: FileEditTracker = Object.create(null);

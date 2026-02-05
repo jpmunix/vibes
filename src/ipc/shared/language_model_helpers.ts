@@ -160,7 +160,7 @@ export async function getLanguageModelsByProviders(): Promise<
 > {
   const providers = await getLanguageModelProviders();
 
-  // Fetch all models concurrently
+  // Fetch all models concurrently, including auto-router
   const modelPromises = providers
     .filter((p) => p.type !== "local")
     .map(async (provider) => {

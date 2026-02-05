@@ -9,12 +9,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useState } from "react";
 import { useLocalModels } from "@/hooks/useLocalModels";
@@ -26,9 +21,9 @@ import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { PriceBadge } from "@/components/PriceBadge";
 import { BrainBadge } from "@/components/BrainBadge";
-import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -47,29 +42,16 @@ export function ModelPicker() {
   const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
     useLanguageModelsByProviders();
 
-  const {
-    data: providers,
-    isLoading: providersLoading,
-    isProviderSetup,
-  } = useLanguageModelProviders();
+  const { isLoading: providersLoading } = useLanguageModelProviders();
 
   const loading = modelsByProvidersLoading || providersLoading;
   // Ollama Models Hook
-  const {
-    models: ollamaModels,
-    error: ollamaError,
-    loadModels: loadOllamaModels,
-  } = useLocalModels();
+  const { models: ollamaModels, loadModels: loadOllamaModels } =
+    useLocalModels();
 
   // LM Studio Models Hook
-  const {
-    models: lmStudioModels,
-    error: lmStudioError,
-    loadModels: loadLMStudioModels,
-  } = useLocalLMSModels();
-
-  const isOllamaSetup = ollamaModels.length > 0 && !ollamaError;
-  const isLMStudioSetup = lmStudioModels.length > 0 && !lmStudioError;
+  const { models: lmStudioModels, loadModels: loadLMStudioModels } =
+    useLocalLMSModels();
 
   // Load models when the dropdown opens
   useEffect(() => {
@@ -125,25 +107,25 @@ export function ModelPicker() {
   const selectedModel = settings?.selectedModel;
   const modelDisplayName = getModelDisplayName();
   // Split providers into primary and secondary groups (excluding auto)
-  const providerEntries =
-    !loading && modelsByProviders
-      ? Object.entries(modelsByProviders).filter(
-          ([providerId]) => providerId !== "auto",
-        )
-      : [];
-  const primaryProviders = providerEntries.filter(([providerId, models]) => {
-    if (models.length === 0) return false;
-    const provider = providers?.find((p) => p.id === providerId);
-    return !(provider && provider.secondary);
-  });
+  // const providerEntries =
+  //   !loading && modelsByProviders
+  //     ? Object.entries(modelsByProviders).filter(
+  //         ([providerId]) => providerId !== "auto",
+  //       )
+  //     : [];
+  // const primaryProviders = providerEntries.filter(([providerId, models]) => {
+  //   if (models.length === 0) return false;
+  //   const provider = providers?.find((p) => p.id === providerId);
+  //   return !(provider && provider.secondary);
+  // });
   // if (settings && isDyadProEnabled(settings)) {
   //   primaryProviders.unshift(["auto", TURBO_MODELS]);
   // }
-  const secondaryProviders = providerEntries.filter(([providerId, models]) => {
-    if (models.length === 0) return false;
-    const provider = providers?.find((p) => p.id === providerId);
-    return !!(provider && provider.secondary);
-  });
+  // const secondaryProviders = providerEntries.filter(([providerId, models]) => {
+  //   if (models.length === 0) return false;
+  //   const provider = providers?.find((p) => p.id === providerId);
+  //   return !!(provider && provider.secondary);
+  // });
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -156,6 +138,8 @@ export function ModelPicker() {
               className="flex items-center gap-2 h-8 max-w-[290px] px-4 text-xs-sm"
             >
               <span className="truncate">{modelDisplayName}</span>
+              {selectedModel.provider === "auto-router" &&
+                selectedModel.name === "auto" && <AutoRouterBadge />}
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
@@ -166,53 +150,37 @@ export function ModelPicker() {
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        {/* OpenRouter models only */}
         {!isTrial &&
           (loading ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
               Cargando modelos...
             </div>
           ) : !modelsByProviders ||
-            !modelsByProviders["openrouter"] ||
-            modelsByProviders["openrouter"].length === 0 ? (
+            (!modelsByProviders["openrouter"] &&
+              !modelsByProviders["auto-router"]) ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
-              No hay modelos de OpenRouter disponibles
+              No hay modelos disponibles
             </div>
           ) : (
-            /* OpenRouter models loaded */
+            /* Models loaded */
             <>
-              <DropdownMenuLabel>Modelos de OpenRouter</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {modelsByProviders["openrouter"]
-                .filter((model) => {
-                  // Don't show free models if Dyad Pro is enabled because
-                  // we will use the paid models (in Dyad Pro backend) which
-                  // don't have the free limitations.
-                  if (
-                    isDyadProEnabled(settings) &&
-                    model.apiName.endsWith(":free")
-                  ) {
-                    return false;
-                  }
-                  return true;
-                })
-                .map((model) => (
-                  <Tooltip key={`openrouter-${model.apiName}`}>
+              {/* Auto-Router section */}
+              {modelsByProviders["auto-router"] &&
+                modelsByProviders["auto-router"].length > 0 &&
+                modelsByProviders["auto-router"].map((model) => (
+                  <Tooltip key={`auto-router-${model.apiName}`}>
                     <TooltipTrigger asChild>
                       <DropdownMenuItem
                         className={
-                          selectedModel.provider === "openrouter" &&
+                          selectedModel.provider === "auto-router" &&
                           selectedModel.name === model.apiName
                             ? "bg-secondary"
                             : ""
                         }
                         onClick={() => {
-                          const customModelId =
-                            model.type === "custom" ? model.id : undefined;
                           onModelSelect({
                             name: model.apiName,
-                            provider: "openrouter",
-                            customModelId,
+                            provider: "auto-router",
                           });
                           setOpen(false);
                         }}
@@ -220,13 +188,7 @@ export function ModelPicker() {
                         <div className="flex justify-between items-start w-full gap-1">
                           <span className="flex-1">{model.displayName}</span>
                           <div className="flex items-center gap-1">
-                            <PriceBadge dollarSigns={model.dollarSigns} />
-                            <BrainBadge brainSigns={model.brainSigns} />
-                            {model.tag && (
-                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                {model.tag}
-                              </span>
-                            )}
+                            <AutoRouterBadge />
                           </div>
                         </div>
                       </DropdownMenuItem>
@@ -236,6 +198,63 @@ export function ModelPicker() {
                     </TooltipContent>
                   </Tooltip>
                 ))}
+
+              {/* OpenRouter section */}
+              {modelsByProviders["openrouter"] &&
+                modelsByProviders["openrouter"].length > 0 &&
+                modelsByProviders["openrouter"]
+                  .filter((model) => {
+                    // Don't show free models if Dyad Pro is enabled because
+                    // we will use the paid models (in Dyad Pro backend) which
+                    // don't have the free limitations.
+                    if (
+                      isDyadProEnabled(settings) &&
+                      model.apiName.endsWith(":free")
+                    ) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((model) => (
+                    <Tooltip key={`openrouter-${model.apiName}`}>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuItem
+                          className={
+                            selectedModel.provider === "openrouter" &&
+                            selectedModel.name === model.apiName
+                              ? "bg-secondary"
+                              : ""
+                          }
+                          onClick={() => {
+                            const customModelId =
+                              model.type === "custom" ? model.id : undefined;
+                            onModelSelect({
+                              name: model.apiName,
+                              provider: "openrouter",
+                              customModelId,
+                            });
+                            setOpen(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-start w-full gap-1">
+                            <span className="flex-1">{model.displayName}</span>
+                            <div className="flex items-center gap-1">
+                              <PriceBadge dollarSigns={model.dollarSigns} />
+                              <BrainBadge brainSigns={model.brainSigns} />
+                              {model.tag && (
+                                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                  {model.tag}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {model.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
             </>
           ))}
       </DropdownMenuContent>

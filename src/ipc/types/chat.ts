@@ -121,6 +121,20 @@ export const ChatResponseErrorSchema = z.object({
 });
 
 /**
+ * Schema for auto-router model selected event.
+ */
+export const ChatModelSelectedSchema = z.object({
+  chatId: z.number(),
+  model: z.object({
+    provider: z.string(),
+    name: z.string(),
+  }),
+  complexity: z.number(),
+  taskType: z.string(),
+  reasoning: z.string(),
+});
+
+/**
  * Schema for create chat result (returns chatId).
  */
 export const CreateChatResultSchema = z.number();

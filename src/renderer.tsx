@@ -17,6 +17,7 @@ import { useSetAtom } from "jotai";
 import {
   pendingAgentConsentsAtom,
   agentTodosByChatIdAtom,
+  autoRouterModelInfoByChatIdAtom,
 } from "./atoms/chatAtoms";
 import { queryKeys } from "./lib/queryKeys";
 
@@ -137,6 +138,28 @@ function App() {
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
   const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
+  const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
+
+  // Auto-router model selection updates
+  useEffect(() => {
+    // @ts-ignore - using raw preload API for custom event
+    const unsubscribe = window.electron?.ipcRenderer?.on?.(
+      "chat:model:selected",
+      (payload: any) => {
+        setAutoRouterModelInfo((prev) => {
+          const next = new Map(prev);
+          next.set(payload.chatId, {
+            model: payload.model,
+            complexity: payload.complexity,
+            taskType: payload.taskType,
+            reasoning: payload.reasoning,
+          });
+          return next;
+        });
+      },
+    );
+    return () => unsubscribe?.();
+  }, [setAutoRouterModelInfo]);
 
   // Agent todos updates
   useEffect(() => {

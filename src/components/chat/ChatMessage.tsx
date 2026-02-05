@@ -27,6 +27,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import {
+  selectedChatIdAtom,
+  autoRouterModelInfoByChatIdAtom,
+} from "@/atoms/chatAtoms";
+import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 
 interface ChatMessageProps {
   message: Message;
@@ -37,6 +42,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions: liveVersions } = useVersions(appId);
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
+  const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = async () => {
@@ -204,10 +211,20 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                   </div>
                 )}
                 {message.role === "assistant" && message.model && (
-                  <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 w-full sm:w-auto">
-                    <Bot className="h-4 w-4 flex-shrink-0" />
-                    <span>{message.model}</span>
-                  </div>
+                  <>
+                    {selectedChatId &&
+                    autoRouterModelInfo.get(selectedChatId) ? (
+                      <AutoRouterModelBadge
+                        modelInfo={autoRouterModelInfo.get(selectedChatId)!}
+                        showInline={false}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 w-full sm:w-auto">
+                        <Bot className="h-4 w-4 flex-shrink-0" />
+                        <span>{message.model}</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -1,5 +1,3 @@
-import { LanguageModel } from "@/ipc/types";
-
 export const PROVIDERS_THAT_SUPPORT_THINKING: (keyof typeof MODEL_OPTIONS)[] = [
   "google",
 ];
@@ -22,6 +20,21 @@ export const SONNET_4_5 = "claude-sonnet-4-5-20250929";
 export const GEMINI_3_FLASH = "gemini-3-flash-preview";
 
 export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
+  "auto-router": [
+    {
+      name: "auto",
+      displayName: "Selección Automática",
+      description:
+        "La IA analiza tu tarea y selecciona automáticamente el mejor modelo según complejidad",
+      maxOutputTokens: undefined,
+      contextWindow: undefined,
+      temperature: 0,
+      dollarSigns: 2,
+      brainSigns: 2,
+      tag: "Auto",
+      tagColor: "blue",
+    },
+  ],
   openrouter: [
     {
       name: "google/gemini-3-flash-preview",
@@ -158,6 +171,12 @@ export const CLOUD_PROVIDERS: Record<
     secondary?: boolean;
   }
 > = {
+  "auto-router": {
+    displayName: "Auto-Router (IA)",
+    hasFreeTier: true,
+    websiteUrl: undefined,
+    gatewayPrefix: "",
+  },
   openrouter: {
     displayName: "OpenRouter",
     hasFreeTier: true,

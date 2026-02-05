@@ -69,9 +69,7 @@ export function ChatHeader({
   const currentChatTodos = selectedChatId
     ? agentTodosByChatId.get(selectedChatId) || []
     : [];
-  const inProgressTask = currentChatTodos.find(
-    (todo) => todo.status === "in_progress",
-  );
+  
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
@@ -192,12 +190,10 @@ export function ChatHeader({
 
   const currentBranchName = branchInfo?.branch;
 
-  const showLoadingBar = isAnyCheckoutVersionInProgress || isStreaming;
-  const loadingMessage = inProgressTask
-    ? inProgressTask.activeForm
-    : isAnyCheckoutVersionInProgress
-      ? "Recuperando versión..."
-      : undefined;
+  const showLoadingBar = isAnyCheckoutVersionInProgress;
+  const loadingMessage = isAnyCheckoutVersionInProgress
+    ? "Recuperando versión..."
+    : undefined;
 
   return (
     <div className="flex flex-col w-full @container">

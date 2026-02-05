@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePostHog } from "posthog-js/react";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
-import { useScrollAndNavigateTo } from "@/hooks/useScrollAndNavigateTo";
 // @ts-ignore
 // @ts-ignore
 // @ts-ignore
@@ -92,11 +91,6 @@ export function SetupBanner() {
   useEffect(() => {
     checkNode();
   }, [checkNode]);
-
-  const settingsScrollAndNavigateTo = useScrollAndNavigateTo("/settings", {
-    behavior: "smooth",
-    block: "start",
-  });
 
   const handleOpenRouterSetupClick = () => {
     posthog.capture("setup-flow:ai-provider-setup:openrouter:click");

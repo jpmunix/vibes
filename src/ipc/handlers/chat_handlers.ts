@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { apps, chats, messages } from "../../db/schema";
-import { desc, eq, and, like, ne, gte, exists } from "drizzle-orm";
+import { desc, eq, and, like, ne, gte } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
 import log from "electron-log";

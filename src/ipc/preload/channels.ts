@@ -117,6 +117,9 @@ export const VALID_RECEIVE_CHANNELS = [
   ...getReceiveChannels(mcpEvents),
   ...getReceiveChannels(systemEvents),
   ...getReceiveChannels(miscEvents),
+
+  // Additional chat events
+  "chat:model:selected",
 ] as const;
 
 // =============================================================================

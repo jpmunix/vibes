@@ -252,7 +252,9 @@ export const webSearchTool: ToolDefinition<z.infer<typeof webSearchSchema>> = {
     const serperApiKey = settings.serperApiKey?.value;
 
     if (!serperApiKey) {
-      throw new Error("Serper API key not configured. Please configure it in settings.");
+      throw new Error(
+        "Serper API key not configured. Please configure it in settings.",
+      );
     }
 
     const result = await callSerperSearch(args.query, ctx, serperApiKey);

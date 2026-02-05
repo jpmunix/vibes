@@ -127,21 +127,18 @@ export function ChatErrorBox({
   return (
     <ChatErrorContainer onDismiss={onDismiss}>
       {error}
-      <div className="mt-2 space-y-2 space-x-2">
-        {!isDyadProEnabled &&
-          error.includes(AI_STREAMING_ERROR_MESSAGE_PREFIX) &&
-          !error.includes("TypeError: terminated") && (
+      {!isDyadProEnabled &&
+        error.includes(AI_STREAMING_ERROR_MESSAGE_PREFIX) &&
+        !error.includes("TypeError: terminated") && (
+          <div className="mt-2">
             <ExternalLink
               href="https://dyad.sh/pro?utm_source=dyad-app&utm_medium=app&utm_campaign=general-error"
               variant="primary"
             >
               Upgrade to Dyad Pro
             </ExternalLink>
-          )}
-        <ExternalLink href="https://www.dyad.sh/docs/faq">
-          Read docs
-        </ExternalLink>
-      </div>
+          </div>
+        )}
     </ChatErrorContainer>
   );
 }
