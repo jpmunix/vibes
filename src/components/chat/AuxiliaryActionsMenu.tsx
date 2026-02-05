@@ -39,13 +39,11 @@ export function AuxiliaryActionsMenu({
   const [] = useState(false);
   const [] = useState(false);
 
-  
   const { themeId: appThemeId } = useAppTheme(appId);
   const { settings } = useSettings();
 
   // Determine current theme: use app theme if appId exists, otherwise use settings
   // Note: settings stores empty string for "no theme", convert to null
-  
 
   // Compute visible custom themes: selected custom theme + up to 3 others
 

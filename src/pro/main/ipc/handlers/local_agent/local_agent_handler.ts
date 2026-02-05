@@ -186,6 +186,11 @@ export async function handleLocalAgentStream(
           "Auto-routing enabled for local agent, analyzing task complexity...",
         );
 
+        // Notify frontend that model selection is starting
+        safeSend(event.sender, "chat:model:selecting", {
+          chatId: req.chatId,
+        });
+
         // Get all available models from enabled providers
         const modelsByProviders = await getLanguageModelsByProviders();
         const availableModels: Array<{

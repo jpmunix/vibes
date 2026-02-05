@@ -69,7 +69,6 @@ export function ChatHeader({
   const currentChatTodos = selectedChatId
     ? agentTodosByChatId.get(selectedChatId) || []
     : [];
-  
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();

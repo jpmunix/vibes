@@ -8,6 +8,8 @@ import { OpenRouterSetupBanner, SetupBanner } from "../SetupBanner";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import {
   selectedChatIdAtom,
+  autoRouterModelInfoByChatIdAtom,
+  isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Loader2, RefreshCw, Undo } from "lucide-react";
@@ -23,6 +25,8 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { PromoMessage } from "./PromoMessage";
 import { ContextLimitBanner } from "./ContextLimitBanner";
 import { useCountTokens } from "@/hooks/useCountTokens";
+import { AutoRouterSelecting } from "./AutoRouterSelecting";
+import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
 
 interface MessagesListProps {
   messages: Message[];
@@ -54,6 +58,10 @@ interface FooterContext {
   settings: ReturnType<typeof useSettings>["settings"];
   userBudget: ReturnType<typeof useUserBudgetInfo>["userBudget"];
   renderSetupBanner: () => React.ReactNode;
+  isSelectingModel: boolean;
+  autoRouterModelInfo: ReturnType<
+    typeof useAtomValue<typeof autoRouterModelInfoByChatIdAtom>
+  >;
 }
 
 // Footer component for Virtuoso - receives context via props
@@ -78,10 +86,24 @@ function FooterComponent({ context }: { context?: FooterContext }) {
     settings,
     userBudget,
     renderSetupBanner,
+    isSelectingModel,
+    autoRouterModelInfo,
   } = context;
+
+  // Get auto-router model info for current chat
+  const currentAutoRouterInfo =
+    selectedChatId && autoRouterModelInfo.get(selectedChatId);
 
   return (
     <>
+      {/* Show auto-router selecting message */}
+      {isSelectingModel && <AutoRouterSelecting />}
+
+      {/* Show auto-router selected message (once) */}
+      {!isSelectingModel && currentAutoRouterInfo && !isStreaming && (
+        <AutoRouterSelectedMessage modelInfo={currentAutoRouterInfo} />
+      )}
+
       {/* Show context limit banner when close to token limit */}
       {!isStreaming && tokenCountResult && (
         <ContextLimitBanner
@@ -271,6 +293,11 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const [isRetryLoading, setIsRetryLoading] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
     const { userBudget } = useUserBudgetInfo();
+    const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
+    const isSelectingModelById = useAtomValue(isSelectingModelByIdAtom);
+    const isSelectingModel = selectedChatId
+      ? (isSelectingModelById.get(selectedChatId) ?? false)
+      : false;
 
     // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
     // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
@@ -351,6 +378,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         settings,
         userBudget,
         renderSetupBanner,
+        isSelectingModel,
+        autoRouterModelInfo,
       }),
       [
         messages,
@@ -369,6 +398,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         setMessagesById,
         settings,
         userBudget,
+        isSelectingModel,
+        autoRouterModelInfo,
         renderSetupBanner,
       ],
     );

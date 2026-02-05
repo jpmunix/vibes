@@ -120,6 +120,7 @@ export const VALID_RECEIVE_CHANNELS = [
 
   // Additional chat events
   "chat:model:selected",
+  "chat:model:selecting",
 ] as const;
 
 // =============================================================================

@@ -18,6 +18,7 @@ import {
   pendingAgentConsentsAtom,
   agentTodosByChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
+  isSelectingModelByIdAtom,
 } from "./atoms/chatAtoms";
 import { queryKeys } from "./lib/queryKeys";
 
@@ -139,8 +140,25 @@ function App() {
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
   const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
   const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
+  const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
 
-  // Auto-router model selection updates
+  // Auto-router model selection start
+  useEffect(() => {
+    // @ts-ignore - using raw preload API for custom event
+    const unsubscribe = window.electron?.ipcRenderer?.on?.(
+      "chat:model:selecting",
+      (payload: any) => {
+        setIsSelectingModelById((prev) => {
+          const next = new Map(prev);
+          next.set(payload.chatId, true);
+          return next;
+        });
+      },
+    );
+    return () => unsubscribe?.();
+  }, [setIsSelectingModelById]);
+
+  // Auto-router model selection complete
   useEffect(() => {
     // @ts-ignore - using raw preload API for custom event
     const unsubscribe = window.electron?.ipcRenderer?.on?.(
@@ -156,10 +174,16 @@ function App() {
           });
           return next;
         });
+        // Clear selecting state
+        setIsSelectingModelById((prev) => {
+          const next = new Map(prev);
+          next.set(payload.chatId, false);
+          return next;
+        });
       },
     );
     return () => unsubscribe?.();
-  }, [setAutoRouterModelInfo]);
+  }, [setAutoRouterModelInfo, setIsSelectingModelById]);
 
   // Agent todos updates
   useEffect(() => {

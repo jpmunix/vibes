@@ -46,3 +46,6 @@ export interface AutoRouterModelInfo {
 export const autoRouterModelInfoByChatIdAtom = atom<
   Map<number, AutoRouterModelInfo>
 >(new Map());
+
+// Auto-router model selection loading state per chat
+export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
