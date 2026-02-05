@@ -239,6 +239,9 @@ export type ZoomLevel = z.infer<typeof ZoomLevelSchema>;
 export const DeviceModeSchema = z.enum(["desktop", "tablet", "mobile"]);
 export type DeviceMode = z.infer<typeof DeviceModeSchema>;
 
+export const ChatLanguageSchema = z.enum(["es", "en"]);
+export type ChatLanguage = z.infer<typeof ChatLanguageSchema>;
+
 export const SmartContextModeSchema = z.enum([
   "balanced",
   "conservative",
@@ -322,6 +325,7 @@ export const UserSettingsSchema = z
       })
       .optional(),
     hideLocalAgentNewChatToast: z.boolean().optional(),
+    chatLanguage: ChatLanguageSchema.optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

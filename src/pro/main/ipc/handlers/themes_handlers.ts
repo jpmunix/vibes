@@ -614,10 +614,18 @@ Modern dark theme with purple accents for testing.
       const { modelClient } = await getModelClient(selectedModel, settings);
 
       // Select system prompt based on generation mode
-      const systemPrompt =
+      const baseSystemPrompt =
         params.generationMode === "high-fidelity"
           ? HIGH_FIDELITY_META_PROMPT
           : THEME_GENERATION_META_PROMPT;
+
+      // Add language instruction based on user settings
+      const languageInstruction =
+        settings.chatLanguage === "en"
+          ? "\n\nIMPORTANT: You MUST generate the entire theme prompt in English. All descriptions, rules, and instructions must be written in English."
+          : "\n\nIMPORTANTE: Debes generar todo el prompt del tema en español. Todas las descripciones, reglas e instrucciones deben estar escritas en español.";
+
+      const systemPrompt = baseSystemPrompt + languageInstruction;
 
       // Build the user input prompt (sanitize user-provided keywords)
       const keywordsPart = sanitizeKeywords(params.keywords) || "N/A";
@@ -840,10 +848,18 @@ Modern theme extracted from website for testing.
       const { modelClient } = await getModelClient(selectedModel, settings);
 
       // Select system prompt based on generation mode
-      const systemPrompt =
+      const baseSystemPrompt =
         params.generationMode === "high-fidelity"
           ? WEB_CRAWL_HIGH_FIDELITY_META_PROMPT
           : WEB_CRAWL_THEME_GENERATION_META_PROMPT;
+
+      // Add language instruction based on user settings
+      const languageInstruction =
+        settings.chatLanguage === "en"
+          ? "\n\nIMPORTANT: You MUST generate the entire theme prompt in English. All descriptions, rules, and instructions must be written in English."
+          : "\n\nIMPORTANTE: Debes generar todo el prompt del tema en español. Todas las descripciones, reglas e instrucciones deben estar escritas en español.";
+
+      const systemPrompt = baseSystemPrompt + languageInstruction;
 
       // Build the user input prompt (sanitize user-provided keywords)
       const keywordsPart = sanitizeKeywords(params.keywords) || "N/A";

@@ -28,7 +28,7 @@ If you output one of these commands, tell the user to look for the action button
 </app_commands>`;
 
 const GENERAL_GUIDELINES_BLOCK = `<general_guidelines>
-- Always reply to the user in the same language they are using.
+[[LANGUAGE_INSTRUCTION]]
 - Before proceeding with any code edits, check whether the user's request has already been implemented. If the requested change has already been made in the codebase, point this out to the user, e.g., "This feature is already implemented as described."
 - Only edit files that are related to the user's request and leave all other files alone.
 - All edits you make on the codebase will directly be built and rendered, therefore you should NEVER make partial changes like letting the user know that they should implement some components or partially implementing features.
@@ -147,7 +147,7 @@ You are friendly and helpful, always aiming to provide clear explanations. You t
 </important_constraints>
 
 <general_guidelines>
-- Always reply to the user in the same language they are using.
+[[LANGUAGE_INSTRUCTION]]
 - Use your tools to read and understand the codebase before answering questions
 - Provide clear, accurate explanations based on the actual code
 - When explaining code, reference specific files and line numbers when helpful
@@ -252,19 +252,31 @@ Available packages and libraries:
 export function constructLocalAgentPrompt(
   aiRules: string | undefined,
   themePrompt?: string,
-  options?: { readOnly?: boolean; basicAgentMode?: boolean },
+  options?: {
+    readOnly?: boolean;
+    basicAgentMode?: boolean;
+    chatLanguage?: "es" | "en";
+  },
 ): string {
   // Select the appropriate base prompt
   let basePrompt: string;
   if (options?.readOnly) {
     basePrompt = LOCAL_AGENT_ASK_SYSTEM_PROMPT;
-//  } else if (options?.basicAgentMode) {
-//    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
+    //  } else if (options?.basicAgentMode) {
+    //    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
   } else {
     basePrompt = LOCAL_AGENT_SYSTEM_PROMPT;
   }
 
   let prompt = basePrompt.replace("[[AI_RULES]]", aiRules ?? DEFAULT_AI_RULES);
+
+  // Replace language instruction placeholder
+  const chatLanguage = options?.chatLanguage ?? "es";
+  const languageInstruction =
+    chatLanguage === "es"
+      ? "- Debes responder SIEMPRE en español, independientemente del idioma en el que el usuario escriba. Todas tus respuestas, explicaciones y mensajes deben estar completamente en español."
+      : "- You MUST respond ALWAYS in English, regardless of the language the user writes in. All your responses, explanations and messages must be completely in English.";
+  prompt = prompt.replace("[[LANGUAGE_INSTRUCTION]]", languageInstruction);
 
   // Append theme prompt if provided
   if (themePrompt) {

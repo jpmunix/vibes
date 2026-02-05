@@ -74,6 +74,7 @@ export function registerTokenCountHandlers() {
             : settings.selectedChatMode,
         enableTurboEditsV2: isTurboEditsV2Enabled(settings),
         themePrompt,
+        chatLanguage: settings.chatLanguage || "es",
       });
       let supabaseContext = "";
 

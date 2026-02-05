@@ -32,6 +32,7 @@ import { ZoomSelector } from "@/components/ZoomSelector";
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
+import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -328,6 +329,10 @@ export function AISettings() {
 
       <div className="mt-4">
         <MaxChatTurnsSelector />
+      </div>
+
+      <div className="mt-4">
+        <ChatLanguageSelector />
       </div>
     </div>
   );

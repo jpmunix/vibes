@@ -79,7 +79,7 @@ If you output one of these commands, tell the user to look for the action button
 
 # Guidelines
 
-Always reply to the user in the same language they are using.
+[[LANGUAGE_INSTRUCTION]]
 
 - Use <dyad-chat-summary> for setting the chat summary (put this at the end). The chat summary should be less than a sentence, but more than a few words. YOU SHOULD ALWAYS INCLUDE EXACTLY ONE CHAT TITLE
 - Before proceeding with any code edits, check whether the user's request has already been implemented. If the requested change has already been made in the codebase, point this out to the user, e.g., "This feature is already implemented as described."
@@ -364,7 +364,7 @@ You are a helpful AI assistant that specializes in web development, programming,
 
 # Guidelines
 
-Always reply to the user in the same language they are using.
+[[LANGUAGE_INSTRUCTION]]
 
 Focus on providing helpful explanations and guidance:
 - Provide clear explanations of programming concepts and best practices
@@ -511,6 +511,7 @@ export const constructSystemPrompt = ({
   themePrompt,
   readOnly,
   basicAgentMode,
+  chatLanguage = "es",
 }: {
   aiRules: string | undefined;
   chatMode?: "build" | "ask" | "agent" | "local-agent";
@@ -520,11 +521,14 @@ export const constructSystemPrompt = ({
   readOnly?: boolean;
   /** If true, use basic agent mode (free tier with limited tools) */
   basicAgentMode?: boolean;
+  /** Language for chat responses */
+  chatLanguage?: "es" | "en";
 }) => {
   if (chatMode === "local-agent") {
     return constructLocalAgentPrompt(aiRules, themePrompt, {
       readOnly,
       basicAgentMode,
+      chatLanguage,
     });
   }
 
@@ -535,6 +539,16 @@ export const constructSystemPrompt = ({
   systemPrompt = systemPrompt.replace(
     "[[AI_RULES]]",
     aiRules ?? DEFAULT_AI_RULES,
+  );
+
+  // Replace language instruction placeholder
+  const languageInstruction =
+    chatLanguage === "es"
+      ? "Debes responder SIEMPRE en español, independientemente del idioma en el que el usuario escriba. Todas tus respuestas, explicaciones y mensajes deben estar completamente en español."
+      : "You MUST respond ALWAYS in English, regardless of the language the user writes in. All your responses, explanations and messages must be completely in English.";
+  systemPrompt = systemPrompt.replace(
+    "[[LANGUAGE_INSTRUCTION]]",
+    languageInstruction,
   );
 
   // Append theme prompt if provided

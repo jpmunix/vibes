@@ -642,6 +642,7 @@ ${componentSnippet}
           enableTurboEditsV2: true,
           themePrompt,
           basicAgentMode: isBasicAgentMode(settings),
+          chatLanguage: settings.chatLanguage || "es",
         });
 
         // Add information about mentioned apps if any
@@ -1043,6 +1044,7 @@ This conversation includes one or more image attachments. When the user uploads 
             enableTurboEditsV2: false,
             themePrompt,
             readOnly: true,
+            chatLanguage: settings.chatLanguage || "es",
           });
 
           await handleLocalAgentStream(event, req, abortController, {
@@ -1133,6 +1135,7 @@ This conversation includes one or more image attachments. When the user uploads 
               aiRules: await readAiRules(getDyadAppPath(updatedChat.app.path)),
               chatMode: "agent",
               enableTurboEditsV2: false,
+              chatLanguage: settings.chatLanguage || "es",
             }),
             files: files,
             dyadDisableFiles: true,
