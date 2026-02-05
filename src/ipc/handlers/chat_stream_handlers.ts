@@ -48,7 +48,11 @@ import {
   getSupabaseContext,
   getSupabaseClientCode,
 } from "../../supabase_admin/supabase_context";
-import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "../../prompts/summarize_chat_system_prompt";
+import {
+  SUMMARIZE_CHAT_SYSTEM_PROMPT,
+  SUMMARIZE_IN_SPANISH_PROMPT,
+  SUMMARY_SYSTEM_PROMPT_LANGS
+} from "../../prompts/summarize_chat_system_prompt";
 import { SECURITY_REVIEW_SYSTEM_PROMPT } from "../../prompts/security_review_prompt";
 import fs from "node:fs";
 import * as path from "path";
@@ -228,7 +232,7 @@ async function processStreamChunks({
   return { fullResponse, incrementalResponse };
 }
 
-export function registerChatStreamHandlers() {
+function registerChatStreamHandlers() {
   ipcMain.handle("chat:stream", async (event, req: ChatStreamParams) => {
     let attachmentPaths: string[] = [];
     try {
@@ -706,11 +710,14 @@ ${componentSnippet}
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
-        const isSummarizeIntent = req.prompt.startsWith(
-          "Summarize from chat-id=",
-        );
+        const isSummarizeIntent =
+          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
+          req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
         if (isSummarizeIntent) {
           systemPrompt = SUMMARIZE_CHAT_SYSTEM_PROMPT;
+          if (settings.chatLanguage === "es") {
+            systemPrompt += SUMMARIZE_IN_SPANISH_PROMPT;
+          }
         }
 
         // Update the system prompt for images if there are image attachments
@@ -1609,6 +1616,8 @@ ${problemReport.problems
     return true;
   });
 }
+
+export default registerChatStreamHandlers;
 
 export function formatMessagesForSummary(
   messages: { role: string; content: string | undefined }[],

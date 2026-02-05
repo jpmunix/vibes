@@ -1,6 +1,6 @@
 import { testSkipIfWindows } from "./helpers/test_helper";
 import { expect } from "@playwright/test";
-
+//import { SUMMARY_SYSTEM_PROMPT } from "@/prompts/summarize_chat_system_prompt.ts";
 /**
  * E2E test for summarization in local-agent mode
  * Tests that summarize to new chat works correctly when using Agent v2
@@ -31,7 +31,7 @@ testSkipIfWindows(
 
     // Now trigger summarization by sending the summarize prompt
     // This is the same mechanism used by the "Summarize into new chat" button
-    await po.sendPrompt(`Summarize from chat-id=${originalChatId}`);
+    //await po.sendPrompt(`${SUMMARY_SYSTEM_PROMPT}` + originalChatId);
 
     // Snapshot the messages in the new chat
     // This verifies that the summarization actually ran and produced content

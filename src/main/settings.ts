@@ -46,6 +46,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   chatLanguage: "es",
 };
 
+type Lang = 'en' | 'es';
+
 const SETTINGS_FILE = "user-settings.json";
 
 export function getSettingsFilePath(): string {

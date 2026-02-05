@@ -40,3 +40,12 @@ Your task is to analyze the conversation and provide:
 
 YOU MUST ALWAYS INCLUDE EXACTLY ONE <dyad-chat-summary> TAG AT THE END.
 `;
+
+export const SUMMARIZE_IN_SPANISH_PROMPT = `
+Responde este resumen en español incluyendo las cabeceras de "Important Context", "Major changes" y "Relevant Files" 
+`;
+
+export const SUMMARY_SYSTEM_PROMPT_LANGS = {
+  en: 'Summarize from chat-id',
+  es: 'Resumir el chat chat-id='
+};
