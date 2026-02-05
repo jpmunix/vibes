@@ -12,19 +12,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
 import { usePostHog } from "posthog-js/react";
-import { PrivacyBanner } from "@/components/TelemetryBanner";
 import { INSPIRATION_PROMPTS } from "@/prompts/inspiration_prompts";
 import { useAppVersion } from "@/hooks/useAppVersion";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
 import { ImportAppButton } from "@/components/ImportAppButton";
 import { showError } from "@/lib/toast";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
@@ -58,8 +49,8 @@ export default function HomePage() {
   const { streamMessage } = useStreamChat({ hasChatId: false });
   const posthog = usePostHog();
   const appVersion = useAppVersion();
-  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
-  const [releaseUrl, setReleaseUrl] = useState("");
+  const [, setReleaseNotesOpen] = useState(false);
+  const [, setReleaseUrl] = useState("");
   const { theme } = useTheme();
   const queryClient = useQueryClient();
 

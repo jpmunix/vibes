@@ -56,7 +56,9 @@ export function PreviewPanel() {
   const [previewMode] = useAtom(previewModeAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(isVersionPaneOpenAtom);
+  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
+    isVersionPaneOpenAtom,
+  );
   const { runApp, stopApp, loading, app } = useRunApp();
   const { loadEdgeLogs } = useSupabase();
   const runningAppIdRef = useRef<number | null>(null);

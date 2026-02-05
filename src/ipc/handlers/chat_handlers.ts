@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { apps, chats, messages } from "../../db/schema";
-import { desc, eq, and, like, ne, gte } from "drizzle-orm";
+import { desc, eq, and, like, ne, gte, exists } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
 import log from "electron-log";
@@ -305,9 +305,23 @@ export function registerChatHandlers() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch all chats created today for this app
+    // Fetch all chats that have messages created today for this app
     const todaysChats = await db.query.chats.findMany({
-      where: and(eq(chats.appId, appId), gte(chats.createdAt, today)),
+      where: (chats, { exists, and, eq }) =>
+        and(
+          eq(chats.appId, appId),
+          exists(
+            db
+              .select()
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.chatId, chats.id),
+                  gte(messages.createdAt, today),
+                ),
+              ),
+          ),
+        ),
       columns: {
         id: true,
         title: true,
@@ -315,6 +329,7 @@ export function registerChatHandlers() {
       },
       with: {
         messages: {
+          where: gte(messages.createdAt, today),
           columns: {
             role: true,
             content: true,

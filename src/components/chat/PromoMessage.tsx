@@ -1,4 +1,3 @@
-import { ipc } from "@/ipc/types";
 import React from "react";
 
 // Types for the message system

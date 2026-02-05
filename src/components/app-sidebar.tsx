@@ -2,9 +2,8 @@ import { Home, Inbox, Settings, StickyNote } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 import {
   Sidebar,

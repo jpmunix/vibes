@@ -1063,7 +1063,7 @@ async function handleGetGitState(
     // getGitAheadCount lives in git_utils
     const { getGitAheadCount } = await import("../utils/git_utils");
     ahead = await getGitAheadCount({ path: appPath, branch });
-  } catch (e) {
+  } catch {
     // best-effort; ignore errors
     ahead = undefined;
   }

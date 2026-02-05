@@ -27,7 +27,6 @@ export function DefaultChatModeSelector() {
     freeAgentQuotaAvailable,
   );
   // Show Basic Agent option if user is Pro OR if they have free quota available
-  const showBasicAgentOption = isProEnabled || freeAgentQuotaAvailable;
 
   const handleDefaultChatModeChange = (value: ChatMode) => {
     updateSettings({ defaultChatMode: value });

@@ -3,7 +3,6 @@ import {
   ArrowUp,
   Circle,
   ExternalLink,
-  GiftIcon,
   KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

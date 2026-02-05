@@ -9,7 +9,6 @@ import {
   Cog,
   Trash2,
   AlertTriangle,
-  Wrench,
   Globe,
   Shield,
   History,

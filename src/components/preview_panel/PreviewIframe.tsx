@@ -24,7 +24,6 @@ import {
   Monitor,
   Tablet,
   Smartphone,
-  Pen,
 } from "lucide-react";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";

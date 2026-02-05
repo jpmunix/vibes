@@ -14,7 +14,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "General" },
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "ai-settings", label: "Ajustes IA" },
-  { id: "provider-settings", label: "Proveedores" },
+  { id: "provider-settings", label: "OpenRouter" },
   { id: "integrations", label: "Integraciones" },
   { id: "agent-permissions", label: "Permisos del agente" },
   { id: "tools-mcp", label: "Herramientas MCP" },

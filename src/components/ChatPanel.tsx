@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
   chatStreamCountByIdAtom,
@@ -173,7 +173,7 @@ export function ChatPanel({
     return () => {
       container.removeEventListener("scroll", handleScroll);
     };
-  }, [handleScrollTracking, settings?.isTestMode, isVersionPaneOpen]);
+  }, [handleScrollTracking, settings?.isTestMode]);
 
   // Test mode: Auto-scroll during streaming (280px threshold)
   // Note: Virtuoso handles this via followOutput in production mode

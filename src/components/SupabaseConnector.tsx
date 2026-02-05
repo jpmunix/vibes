@@ -56,12 +56,9 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   const {
     organizations,
     projects,
-    branches,
     isLoadingProjects,
     isFetchingProjects,
     projectsError,
-    isLoadingBranches,
-    isSettingAppProject,
     refetchOrganizations,
     refetchProjects,
     deleteOrganization,

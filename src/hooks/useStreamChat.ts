@@ -165,7 +165,7 @@ export function useStreamChat({
               invalidateChats();
             });
           }
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
       })();

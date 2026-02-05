@@ -95,7 +95,7 @@ function ConnectedGitHubConnector({
   const [rebaseInProgress, setRebaseInProgress] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
-  const [aheadCount, setAheadCount] = useState<number>(0);
+  const [, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
 
   useEffect(() => {

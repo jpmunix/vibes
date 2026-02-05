@@ -1,6 +1,3 @@
-import { ipc } from "@/ipc/types";
-import { Play } from "lucide-react";
-
 export const OnboardingBanner = ({
   isVisible,
   setIsVisible,

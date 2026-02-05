@@ -1,12 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
-  ChevronRight,
-  GiftIcon,
   CheckCircle,
   AlertCircle,
   XCircle,
   Loader2,
-  Settings,
   Folder,
 } from "lucide-react";
 import { providerSettingsRoute } from "@/routes/settings/providers/$provider";
@@ -27,9 +24,7 @@ import { usePostHog } from "posthog-js/react";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useScrollAndNavigateTo } from "@/hooks/useScrollAndNavigateTo";
 // @ts-ignore
-import logo from "../../assets/logo.svg";
 // @ts-ignore
-import googleIcon from "../../assets/ai-logos/google-g-icon.svg";
 // @ts-ignore
 import openrouterLogo from "../../assets/ai-logos/openrouter-logo.png";
 import { OnboardingBanner } from "./home/OnboardingBanner";
@@ -103,29 +98,12 @@ export function SetupBanner() {
     block: "start",
   });
 
-  const handleGoogleSetupClick = () => {
-    posthog.capture("setup-flow:ai-provider-setup:google:click");
-    navigate({
-      to: providerSettingsRoute.id,
-      params: { provider: "google" },
-    });
-  };
-
   const handleOpenRouterSetupClick = () => {
     posthog.capture("setup-flow:ai-provider-setup:openrouter:click");
     navigate({
       to: providerSettingsRoute.id,
       params: { provider: "openrouter" },
     });
-  };
-  const handleDyadProSetupClick = () => {
-    posthog.capture("setup-flow:ai-provider-setup:dyad:click");
-    setShowDyadProTrialDialog(true);
-  };
-
-  const handleOtherProvidersClick = () => {
-    posthog.capture("setup-flow:ai-provider-setup:other:click");
-    settingsScrollAndNavigateTo("provider-settings");
   };
 
   const handleNodeInstallClick = useCallback(async () => {

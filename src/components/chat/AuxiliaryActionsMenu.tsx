@@ -3,11 +3,6 @@ import {
   Plus,
   Paperclip,
   ChartColumnIncreasing,
-  Palette,
-  Check,
-  Ban,
-  Brush,
-  PlusCircle,
   MoreHorizontal,
 } from "lucide-react";
 import {
@@ -20,21 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { ContextFilesPicker } from "@/components/ContextFilesPicker";
 import { FileAttachmentDropdown } from "./FileAttachmentDropdown";
-import { CustomThemeDialog } from "@/components/CustomThemeDialog";
 import { useThemes } from "@/hooks/useThemes";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useCustomThemes } from "@/hooks/useCustomThemes";
@@ -62,9 +45,9 @@ export function AuxiliaryActionsMenu({
   appId,
 }: AuxiliaryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [customThemeDialogOpen, setCustomThemeDialogOpen] = useState(false);
-  const [allThemesDialogOpen, setAllThemesDialogOpen] = useState(false);
-  const { themes } = useThemes();
+  const [, setCustomThemeDialogOpen] = useState(false);
+  const [, setAllThemesDialogOpen] = useState(false);
+
   const { customThemes } = useCustomThemes();
   const { themeId: appThemeId } = useAppTheme(appId);
   const { settings, updateSettings } = useSettings();
@@ -98,41 +81,6 @@ export function AuxiliaryActionsMenu({
 
     return result;
   }, [customThemes, currentThemeId]);
-
-  const hasMoreCustomThemes = customThemes.length > visibleCustomThemes.length;
-
-  const handleThemeSelect = async (themeId: string | null) => {
-    if (appId != null) {
-      // Update app-specific theme
-      await ipc.template.setAppTheme({
-        appId,
-        themeId,
-      });
-      // Invalidate app theme query to refresh
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.appTheme.byApp({ appId }),
-      });
-    } else {
-      // Update default theme in settings (for new apps)
-      // Store as string for settings (empty string for no theme)
-      await updateSettings({ selectedThemeId: themeId ?? "" });
-    }
-  };
-
-  const handleCreateCustomTheme = () => {
-    setIsOpen(false);
-    setCustomThemeDialogOpen(true);
-  };
-
-  const handleCustomThemeDialogClose = (open: boolean) => {
-    setCustomThemeDialogOpen(open);
-    if (!open) {
-      // Refresh custom themes when dialog closes
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.customThemes.all,
-      });
-    }
-  };
 
   return (
     <>

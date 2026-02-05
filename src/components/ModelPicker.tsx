@@ -21,16 +21,14 @@ import { useLocalModels } from "@/hooks/useLocalModels";
 import { useLocalLMSModels } from "@/hooks/useLMStudioModels";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 
-import { ipc, LocalModel } from "@/ipc/types";
+import { LocalModel } from "@/ipc/types";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { PriceBadge } from "@/components/PriceBadge";
 import { BrainBadge } from "@/components/BrainBadge";
-import { TURBO_MODELS } from "@/ipc/shared/language_model_constants";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { useTrialModelRestriction } from "@/hooks/useTrialModelRestriction";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -59,7 +57,6 @@ export function ModelPicker() {
   // Ollama Models Hook
   const {
     models: ollamaModels,
-    loading: ollamaLoading,
     error: ollamaError,
     loadModels: loadOllamaModels,
   } = useLocalModels();
@@ -67,7 +64,6 @@ export function ModelPicker() {
   // LM Studio Models Hook
   const {
     models: lmStudioModels,
-    loading: lmStudioLoading,
     error: lmStudioError,
     loadModels: loadLMStudioModels,
   } = useLocalLMSModels();
@@ -122,7 +118,6 @@ export function ModelPicker() {
   };
 
   // Get auto provider models (if any)
-  const autoModels = [];
 
   if (!settings) {
     return null;
@@ -171,23 +166,25 @@ export function ModelPicker() {
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        {/* Cloud models - only show for non-trial users */}
+        {/* OpenRouter models only */}
         {!isTrial &&
           (loading ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
               Cargando modelos...
             </div>
           ) : !modelsByProviders ||
-            Object.keys(modelsByProviders).length === 0 ? (
+            !modelsByProviders["openrouter"] ||
+            modelsByProviders["openrouter"].length === 0 ? (
             <div className="text-xs text-center py-2 text-muted-foreground">
-              No hay modelos en la nube disponibles
+              No hay modelos de OpenRouter disponibles
             </div>
           ) : (
-            /* Cloud models loaded */
+            /* OpenRouter models loaded */
             <>
-              {/* Primary providers as submenus */}
-              {primaryProviders.map(([providerId, models]) => {
-                models = models.filter((model) => {
+              <DropdownMenuLabel>Modelos de OpenRouter</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {modelsByProviders["openrouter"]
+                .filter((model) => {
                   // Don't show free models if Dyad Pro is enabled because
                   // we will use the paid models (in Dyad Pro backend) which
                   // don't have the free limitations.
@@ -198,204 +195,47 @@ export function ModelPicker() {
                     return false;
                   }
                   return true;
-                });
-                const provider = providers?.find((p) => p.id === providerId);
-                const providerDisplayName =
-                  provider?.id === "auto"
-                    ? "Dyad Turbo"
-                    : (provider?.name ?? providerId);
-                const isSetup =
-                  providerId === "ollama"
-                    ? isOllamaSetup
-                    : providerId === "lmstudio"
-                      ? isLMStudioSetup
-                      : isProviderSetup(providerId);
-                return (
-                  <DropdownMenuSub key={providerId}>
-                    <DropdownMenuSubTrigger className="w-full font-normal">
-                      <div className="flex flex-col items-start w-full">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              "w-2 h-2 rounded-full",
-                              isSetup ? "bg-green-500" : "bg-red-500/20",
-                            )}
-                          />
-                          <span>{providerDisplayName}</span>
-                          {provider?.type === "custom" && (
-                            <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                              Personalizado
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {models.length} modelos
-                        </span>
-                      </div>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-56 max-h-100 overflow-y-auto">
-                      <DropdownMenuLabel>
-                        Modelos de {providerDisplayName}
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {models.map((model) => (
-                        <Tooltip key={`${providerId}-${model.apiName}`}>
-                          <TooltipTrigger asChild>
-                            <DropdownMenuItem
-                              className={
-                                selectedModel.provider === providerId &&
-                                selectedModel.name === model.apiName
-                                  ? "bg-secondary"
-                                  : ""
-                              }
-                              onClick={() => {
-                                const customModelId =
-                                  model.type === "custom"
-                                    ? model.id
-                                    : undefined;
-                                onModelSelect({
-                                  name: model.apiName,
-                                  provider: providerId,
-                                  customModelId,
-                                });
-                                setOpen(false);
-                              }}
-                            >
-                              <div className="flex justify-between items-start w-full gap-1">
-                                <span className="flex-1">
-                                  {model.displayName}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <PriceBadge dollarSigns={model.dollarSigns} />
-                                  <BrainBadge brainSigns={model.brainSigns} />
-                                  {model.tag && (
-                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                      {model.tag}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            {model.description}
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                );
-              })}
-
-              {/* Secondary providers grouped under Other AI providers */}
-              {secondaryProviders.length > 0 && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="w-full font-normal">
-                    <div className="flex flex-col items-start">
-                      <span>Otros proveedores de IA</span>
-                      <span className="text-xs text-muted-foreground">
-                        {secondaryProviders.length} proveedores
-                      </span>
-                    </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56">
-                    <DropdownMenuLabel>
-                      Otros proveedores de IA
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {secondaryProviders.map(([providerId, models]) => {
-                      const provider = providers?.find(
-                        (p) => p.id === providerId,
-                      );
-                      const isSetup =
-                        providerId === "ollama"
-                          ? isOllamaSetup
-                          : providerId === "lmstudio"
-                            ? isLMStudioSetup
-                            : isProviderSetup(providerId);
-                      return (
-                        <DropdownMenuSub key={providerId}>
-                          <DropdownMenuSubTrigger className="w-full font-normal">
-                            <div className="flex flex-col items-start w-full">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={cn(
-                                    "w-2 h-2 rounded-full",
-                                    isSetup ? "bg-green-500" : "bg-red-500/20",
-                                  )}
-                                />
-                                <span>{provider?.name ?? providerId}</span>
-                                {provider?.type === "custom" && (
-                                  <span className="text-[10px] bg-amber-500/20 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                                    Personalizado
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {models.length} modelos
+                })
+                .map((model) => (
+                  <Tooltip key={`openrouter-${model.apiName}`}>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuItem
+                        className={
+                          selectedModel.provider === "openrouter" &&
+                          selectedModel.name === model.apiName
+                            ? "bg-secondary"
+                            : ""
+                        }
+                        onClick={() => {
+                          const customModelId =
+                            model.type === "custom" ? model.id : undefined;
+                          onModelSelect({
+                            name: model.apiName,
+                            provider: "openrouter",
+                            customModelId,
+                          });
+                          setOpen(false);
+                        }}
+                      >
+                        <div className="flex justify-between items-start w-full gap-1">
+                          <span className="flex-1">{model.displayName}</span>
+                          <div className="flex items-center gap-1">
+                            <PriceBadge dollarSigns={model.dollarSigns} />
+                            <BrainBadge brainSigns={model.brainSigns} />
+                            {model.tag && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                {model.tag}
                               </span>
-                            </div>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="w-56">
-                            <DropdownMenuLabel>
-                              Modelos de {provider?.name ?? providerId}
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {models.map((model) => (
-                              <Tooltip key={`${providerId}-${model.apiName}`}>
-                                <TooltipTrigger asChild>
-                                  <DropdownMenuItem
-                                    className={
-                                      selectedModel.provider === providerId &&
-                                      selectedModel.name === model.apiName
-                                        ? "bg-secondary"
-                                        : ""
-                                    }
-                                    onClick={() => {
-                                      const customModelId =
-                                        model.type === "custom"
-                                          ? model.id
-                                          : undefined;
-                                      onModelSelect({
-                                        name: model.apiName,
-                                        provider: providerId,
-                                        customModelId,
-                                      });
-                                      setOpen(false);
-                                    }}
-                                  >
-                                    <div className="flex justify-between items-start w-full gap-1">
-                                      <span className="flex-1">
-                                        {model.displayName}
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <PriceBadge
-                                          dollarSigns={model.dollarSigns}
-                                        />
-                                        <BrainBadge
-                                          brainSigns={model.brainSigns}
-                                        />
-                                        {model.tag && (
-                                          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                            {model.tag}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </DropdownMenuItem>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">
-                                  {model.description}
-                                </TooltipContent>
-                              </Tooltip>
-                            ))}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      );
-                    })}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )}
+                            )}
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {model.description}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
             </>
           ))}
       </DropdownMenuContent>

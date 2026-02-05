@@ -10,7 +10,7 @@ import type { LanguageModelProvider } from "@/ipc/types";
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useCustomLanguageModelProvider } from "@/hooks/useCustomLanguageModelProvider";
-import { GiftIcon, PlusIcon, Trash2, Edit } from "lucide-react";
+import { PlusIcon, Trash2, Edit } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -108,16 +108,16 @@ export function ProviderSettingsGrid() {
   return (
     <div className="p-6">
       <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {providers
-          ?.filter((p) => p.type !== "local")
+          ?.filter((p) => p.type !== "local" && p.id === "openrouter")
           .map((provider: LanguageModelProvider) => {
             const isCustom = provider.type === "custom";
 
             return (
               <Card
                 key={provider.id}
-                className="relative transition-all hover:shadow-md border-border"
+                className="relative transition-all hover:shadow-md border-border w-full"
               >
                 <CardHeader
                   className="p-4 cursor-pointer"
@@ -174,22 +174,6 @@ export function ProviderSettingsGrid() {
               </Card>
             );
           })}
-
-        {/* Add custom provider button */}
-        <Card
-          className="cursor-pointer transition-all hover:shadow-md border-border border-dashed hover:border-primary/70"
-          onClick={() => setIsDialogOpen(true)}
-        >
-          <CardHeader className="p-4 flex flex-col items-center justify-center h-full">
-            <PlusIcon className="h-8 w-8 text-muted-foreground mb-2" />
-            <CardTitle className="text-lg font-medium text-center">
-              Añadir proveedor personalizado
-            </CardTitle>
-            <CardDescription className="text-center">
-              Conecta a un endpoint de API de LLM personalizado
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
 
       <CreateCustomProviderDialog

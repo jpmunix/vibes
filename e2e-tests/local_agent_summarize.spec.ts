@@ -24,7 +24,6 @@ testSkipIfWindows(
     const url = po.page.url();
     const chatIdMatch = url.match(/[?&]id=(\d+)/);
     expect(chatIdMatch).toBeTruthy();
-    const originalChatId = chatIdMatch![1];
 
     // Create a new chat by clicking the "New Chat" button
     await po.clickNewChat();
