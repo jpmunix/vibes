@@ -1205,13 +1205,35 @@ This conversation includes one or more image attachments. When the user uploads 
             let searchReplaceFixAttempts = 0;
             const originalFullResponse = fullResponse;
             const previousAttempts: ModelMessage[] = [];
+            // Timeout global para prevenir loops infinitos
+            const TURBO_EDIT_MAX_TIME = 40 * 1000; // 40 segundos
+            const turboEditStartTime = Date.now();
+            let timeoutExceeded = false;
+
             while (
               issues.length > 0 &&
               searchReplaceFixAttempts < 2 &&
-              !abortController.signal.aborted
+              !abortController.signal.aborted &&
+              !timeoutExceeded
             ) {
+              // Verificar timeout
+              if (Date.now() - turboEditStartTime >= TURBO_EDIT_MAX_TIME) {
+                timeoutExceeded = true;
+                logger.error(
+                  `Turbo Edit timeout exceeded after ${TURBO_EDIT_MAX_TIME / 1000}s`,
+                );
+                fullResponse += `<dyad-output type="error" message="Turbo Edit timeout exceeded">Failed to apply search-replace changes after ${TURBO_EDIT_MAX_TIME / 1000} seconds. The changes were too complex to apply automatically. Please try breaking down your request into smaller changes, or use specific file paths to make the edits more targeted.</dyad-output>`;
+                await processResponseChunkUpdate({
+                  fullResponse,
+                });
+                break;
+              }
+
+              const elapsedTime = Math.round(
+                (Date.now() - turboEditStartTime) / 1000,
+              );
               logger.warn(
-                `Detected search-replace issues (attempt #${searchReplaceFixAttempts + 1}): ${issues.map((i) => i.error).join(", ")}`,
+                `Detected search-replace issues (attempt #${searchReplaceFixAttempts + 1}/2, elapsed: ${elapsedTime}s): ${issues.map((i) => i.error).join(", ")}`,
               );
               const formattedSearchReplaceIssues = issues
                 .map(({ filePath, error }) => {
@@ -1219,24 +1241,26 @@ This conversation includes one or more image attachments. When the user uploads 
                 })
                 .join("\n\n");
 
-              fullResponse += `<dyad-output type="warning" message="Could not apply Turbo Edits properly for some of the files; re-generating code...">${formattedSearchReplaceIssues}</dyad-output>`;
+              // Feedback visual mejorado con contador de intentos
+              fullResponse += `<dyad-output type="warning" message="Auto-fixing Turbo Edits (attempt ${searchReplaceFixAttempts + 1}/2, ${issues.length} issue${issues.length > 1 ? "s" : ""})...">${formattedSearchReplaceIssues}</dyad-output>`;
               await processResponseChunkUpdate({
                 fullResponse,
               });
 
               logger.info(
-                `Attempting to fix search-replace issues, attempt #${searchReplaceFixAttempts + 1}`,
+                `Attempting to fix search-replace issues, attempt #${searchReplaceFixAttempts + 1}, elapsed time: ${elapsedTime}s`,
               );
 
+              // Fallback más agresivo: después del primer intento, usar dyad-write
               const fixSearchReplacePrompt =
                 searchReplaceFixAttempts === 0
                   ? `There was an issue with the following \`dyad-search-replace\` tags. Make sure you use \`dyad-read\` to read the latest version of the file and then trying to do search & replace again.`
-                  : `There was an issue with the following \`dyad-search-replace\` tags. Please fix the errors by generating the code changes using \`dyad-write\` tags instead.`;
+                  : `There was an issue with the following \`dyad-search-replace\` tags. Please fix the errors by generating the code changes using \`dyad-write\` tags instead to rewrite the affected files completely.`;
               searchReplaceFixAttempts++;
               const userPrompt = {
                 role: "user",
                 content: `${fixSearchReplacePrompt}
-                
+
 ${formattedSearchReplaceIssues}`,
               } as const;
 
@@ -1272,16 +1296,33 @@ ${formattedSearchReplaceIssues}`,
                 appPath: getDyadAppPath(updatedChat.app.path),
               });
 
+              const finalElapsedTime = Math.round(
+                (Date.now() - turboEditStartTime) / 1000,
+              );
               sendTelemetryEvent("search_replace:fix", {
                 attemptNumber: searchReplaceFixAttempts,
                 success: issues.length === 0,
                 issueCount: issues.length,
+                elapsedTimeSeconds: finalElapsedTime,
+                timedOut: timeoutExceeded,
                 errors: issues.map((i) => ({
                   filePath: i.filePath,
                   error: i.error,
                 })),
               });
+
+              logger.info(
+                `Search-replace fix attempt #${searchReplaceFixAttempts} completed. Issues remaining: ${issues.length}, elapsed: ${finalElapsedTime}s`,
+              );
             }
+
+            // Log final stats
+            const totalElapsedTime = Math.round(
+              (Date.now() - turboEditStartTime) / 1000,
+            );
+            logger.info(
+              `Turbo Edit Stats: attempts=${searchReplaceFixAttempts}, remainingIssues=${issues.length}, totalTime=${totalElapsedTime}s, timedOut=${timeoutExceeded}`,
+            );
           }
 
           if (

@@ -80,6 +80,35 @@ const unicodeNormalized: LineComparator = (fileLine, patternLine) =>
   normalizeString(fileLine.trim()) === normalizeString(patternLine.trim());
 
 /**
+ * Pass 5: Partial Match with Threshold (90%)
+ * Allow small differences like extra/missing comments or minor formatting
+ */
+const partialMatch90Percent: LineComparator = (fileLine, patternLine) => {
+  const normalizedFile = normalizeString(fileLine.trim());
+  const normalizedPattern = normalizeString(patternLine.trim());
+
+  // Si son idénticos, match perfecto
+  if (normalizedFile === normalizedPattern) return true;
+
+  // Calcular similitud usando Levenshtein-like simple
+  const maxLen = Math.max(normalizedFile.length, normalizedPattern.length);
+  if (maxLen === 0) return true;
+
+  // Contar caracteres coincidentes
+  const minLen = Math.min(normalizedFile.length, normalizedPattern.length);
+  let matches = 0;
+  for (let i = 0; i < minLen; i++) {
+    if (normalizedFile[i] === normalizedPattern[i]) {
+      matches++;
+    }
+  }
+
+  // Calcular similitud (ajustado por diferencia de longitud)
+  const similarity = matches / maxLen;
+  return similarity >= 0.9;
+};
+
+/**
  * All matching passes in order of decreasing strictness
  */
 const MATCHING_PASSES: Array<{ name: string; comparator: LineComparator }> = [
@@ -90,6 +119,7 @@ const MATCHING_PASSES: Array<{ name: string; comparator: LineComparator }> = [
   },
   { name: "all-edge-whitespace-ignored", comparator: allEdgeWhitespaceIgnored },
   { name: "unicode-normalized", comparator: unicodeNormalized },
+  { name: "partial-match-90%", comparator: partialMatch90Percent },
 ];
 
 /**
@@ -356,6 +386,10 @@ export function applySearchReplace(
   let resultLines = originalContent.split(/\r?\n/);
   let appliedCount = 0;
 
+  logger.debug(
+    `Applying search-replace: ${blocks.length} blocks, file has ${resultLines.length} lines`,
+  );
+
   for (const block of blocks) {
     let { searchContent, replaceContent } = block;
 
@@ -405,7 +439,7 @@ export function applySearchReplace(
         if (!replaceMatch.error && replaceMatch.matchIndex >= 0) {
           appliedCount++;
           logger.info(
-            `search_replace: block ${appliedCount} already applied; skipping.`,
+            `search_replace: block ${appliedCount} already applied; skipping (idempotent).`,
           );
           continue;
         }
@@ -414,6 +448,9 @@ export function applySearchReplace(
       const diagnostic = buildMatchFailureDiagnostic(resultLines, searchLines);
       // Log detailed diagnostic information for debugging
       logMatchFailure(resultLines, searchLines, appliedCount);
+      logger.error(
+        `search_replace: Failed to apply block ${appliedCount + 1}/${blocks.length}. Error: ${matchResult.error}`,
+      );
       return {
         success: false,
         error: matchResult.error,
@@ -422,6 +459,9 @@ export function applySearchReplace(
     }
 
     const matchIndex = matchResult.matchIndex;
+    logger.debug(
+      `search_replace: Block ${appliedCount + 1}/${blocks.length} matched at line ${matchIndex + 1} using ${matchResult.passName} pass`,
+    );
 
     const matchedLines = resultLines.slice(
       matchIndex,
@@ -466,10 +506,14 @@ export function applySearchReplace(
   }
 
   if (appliedCount === 0) {
+    logger.error("search_replace: No blocks could be applied");
     return {
       success: false,
       error: "No search/replace blocks could be applied",
     };
   }
+  logger.info(
+    `search_replace: Successfully applied ${appliedCount}/${blocks.length} blocks`,
+  );
   return { success: true, content: resultLines.join(lineEnding) };
 }
