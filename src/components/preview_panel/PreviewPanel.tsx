@@ -5,6 +5,7 @@ import {
   previewPanelKeyAtom,
   selectedAppIdAtom,
 } from "../../atoms/appAtoms";
+import { isVersionPaneOpenAtom } from "../../atoms/viewAtoms";
 
 import { CodeView } from "./CodeView";
 import { PreviewIframe } from "./PreviewIframe";
@@ -18,6 +19,7 @@ import { useRunApp } from "@/hooks/useRunApp";
 import { PublishPanel } from "./PublishPanel";
 import { SecurityPanel } from "./SecurityPanel";
 import { useSupabase } from "@/hooks/useSupabase";
+import { VersionPane } from "../chat/VersionPane";
 
 interface ConsoleHeaderProps {
   isOpen: boolean;
@@ -54,6 +56,7 @@ export function PreviewPanel() {
   const [previewMode] = useAtom(previewModeAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(isVersionPaneOpenAtom);
   const { runApp, stopApp, loading, app } = useRunApp();
   const { loadEdgeLogs } = useSupabase();
   const runningAppIdRef = useRef<number | null>(null);
@@ -137,7 +140,12 @@ export function PreviewPanel() {
         <PanelGroup direction="vertical">
           <Panel id="content" minSize={30}>
             <div className="h-full overflow-y-auto">
-              {previewMode === "preview" ? (
+              {isVersionPaneOpen ? (
+                <VersionPane
+                  isVisible={isVersionPaneOpen}
+                  onClose={() => setIsVersionPaneOpen(false)}
+                />
+              ) : previewMode === "preview" ? (
                 <PreviewIframe key={key} loading={loading} />
               ) : previewMode === "code" ? (
                 <CodeView loading={loading} app={app} />

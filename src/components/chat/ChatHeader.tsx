@@ -19,7 +19,7 @@ import {
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom, agentTodosByChatIdAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
@@ -37,17 +37,13 @@ import { LoadingBar } from "../ui/LoadingBar";
 import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
 
 interface ChatHeaderProps {
-  isVersionPaneOpen: boolean;
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
-  onVersionClick: () => void;
 }
 
 export function ChatHeader({
-  isVersionPaneOpen,
   isPreviewOpen,
   onTogglePreview,
-  onVersionClick,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
   const { navigate } = useRouter();
@@ -61,12 +57,21 @@ export function ChatHeader({
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
 
   const {
     branchInfo,
     isLoading: branchInfoLoading,
     refetchBranchInfo,
   } = useCurrentBranch(appId);
+
+  // Get the in-progress task for the current chat
+  const currentChatTodos = selectedChatId
+    ? agentTodosByChatId.get(selectedChatId) || []
+    : [];
+  const inProgressTask = currentChatTodos.find(
+    (todo) => todo.status === "in_progress",
+  );
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
@@ -187,11 +192,18 @@ export function ChatHeader({
 
   const currentBranchName = branchInfo?.branch;
 
+  const showLoadingBar = isAnyCheckoutVersionInProgress || isStreaming;
+  const loadingMessage = inProgressTask
+    ? inProgressTask.activeForm
+    : isAnyCheckoutVersionInProgress
+      ? "Recuperando versión..."
+      : undefined;
+
   return (
     <div className="flex flex-col w-full @container">
-      <LoadingBar isVisible={isAnyCheckoutVersionInProgress} />
-      {/* If the version pane is open, it's expected to not always be on the main branch. */}
-      {isNotMainBranch && !isVersionPaneOpen && (
+      <LoadingBar isVisible={showLoadingBar} message={loadingMessage} />
+      {/* Show branch warning when not on main branch */}
+      {isNotMainBranch && (
         <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
           <div className="flex items-center gap-2 text-sm">
             <GitBranch size={16} />
@@ -263,7 +275,7 @@ export function ChatHeader({
 
       {/* Show uncommitted files banner when on a branch and there are uncommitted changes */}
       {/* Hide while streaming to avoid distracting the user */}
-      {!isVersionPaneOpen && branchInfo?.branch && !isStreaming && (
+      {branchInfo?.branch && !isStreaming && (
         <UncommittedFilesBanner appId={appId} />
       )}
 

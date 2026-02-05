@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { previewModeAtom, selectedAppIdAtom } from "../../atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 
@@ -34,7 +34,7 @@ import {
 import { showError, showSuccess } from "@/lib/toast";
 import { useMutation } from "@tanstack/react-query";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
-import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import { isPreviewOpenAtom, isVersionPaneOpenAtom } from "@/atoms/viewAtoms";
 
 export type PreviewMode =
   | "preview"
@@ -45,19 +45,18 @@ export type PreviewMode =
   | "security";
 
 interface ActionHeaderProps {
-  onVersionClick?: () => void;
   versions?: any[];
   versionsLoading?: boolean;
 }
 
 // Preview Header component with preview mode toggle
 export const ActionHeader = ({
-  onVersionClick,
   versions = [],
   versionsLoading = false,
 }: ActionHeaderProps) => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
+  const setIsVersionPaneOpen = useSetAtom(isVersionPaneOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const versionsRef = useRef<HTMLButtonElement>(null);
   const previewRef = useRef<HTMLButtonElement>(null);
@@ -234,19 +233,24 @@ export const ActionHeader = ({
               mass: 0.6,
             }}
           />
-          {onVersionClick && (
-            <button
-              ref={versionsRef}
-              data-testid="versions-button"
-              className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
-              onClick={onVersionClick}
-            >
-              <History size={iconSize} />
-              <span>
-                {versionsLoading ? "..." : `Versión ${versions.length}`}
-              </span>
-            </button>
-          )}
+          <button
+            ref={versionsRef}
+            data-testid="versions-button"
+            className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
+            onClick={() => {
+              // Open preview panel if closed
+              if (!isPreviewOpen) {
+                setIsPreviewOpen(true);
+              }
+              // Toggle version pane
+              setIsVersionPaneOpen((prev) => !prev);
+            }}
+          >
+            <History size={iconSize} />
+            <span>
+              {versionsLoading ? "..." : `Versión ${versions.length}`}
+            </span>
+          </button>
           {renderButton(
             "preview",
             previewRef,

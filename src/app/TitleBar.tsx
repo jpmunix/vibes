@@ -1,6 +1,5 @@
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { isVersionPaneOpenAtom } from "@/atoms/viewAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
@@ -33,9 +32,6 @@ export const TitleBar = () => {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
-  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
-    isVersionPaneOpenAtom,
-  );
 
   useEffect(() => {
     // Check if we're running on Windows
@@ -105,7 +101,6 @@ export const TitleBar = () => {
         {location.pathname === "/chat" && (
           <div className="flex-1 flex justify-end">
             <ActionHeader
-              onVersionClick={() => setIsVersionPaneOpen(!isVersionPaneOpen)}
               versions={versions}
               versionsLoading={versionsLoading}
             />

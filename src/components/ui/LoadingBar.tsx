@@ -1,20 +1,28 @@
 import { cn } from "@/lib/utils";
 import React from "react";
 
-export const LoadingBar: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
+interface LoadingBarProps {
+  isVisible: boolean;
+  message?: string;
+}
+
+export const LoadingBar: React.FC<LoadingBarProps> = ({
+  isVisible,
+  message,
+}) => {
   return (
-    <div
-      key="loading-bar"
-      className={cn(
-        "relative w-full h-1 bg-primary/20 overflow-hidden",
-        isVisible ? "" : "invisible",
-      )}
-    >
+    <div className={cn("w-full", isVisible ? "" : "invisible")}>
       <div
-        className={cn(
-          "absolute top-0 left-0 h-full w-1/2 bg-primary animate-marquee",
-        )}
-      />
+        key="loading-bar"
+        className="relative w-full h-1 bg-primary/20 overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 h-full w-1/2 bg-primary animate-marquee" />
+      </div>
+      {message && (
+        <div className="px-4 py-1.5 text-xs text-muted-foreground bg-muted/30">
+          {message}
+        </div>
+      )}
     </div>
   );
 };

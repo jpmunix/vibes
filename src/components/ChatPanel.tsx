@@ -5,13 +5,11 @@ import {
   chatStreamCountByIdAtom,
   isStreamingByIdAtom,
 } from "../atoms/chatAtoms";
-import { isVersionPaneOpenAtom } from "../atoms/viewAtoms";
 import { ipc } from "@/ipc/types";
 
 import { ChatHeader } from "./chat/ChatHeader";
 import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
-import { VersionPane } from "./chat/VersionPane";
 import { ChatError } from "./chat/ChatError";
 import { FreeAgentQuotaBanner } from "./chat/FreeAgentQuotaBanner";
 import { Button } from "@/components/ui/button";
@@ -33,9 +31,6 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
-  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
-    isVersionPaneOpenAtom,
-  );
   const [error, setError] = useState<string | null>(null);
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -214,55 +209,47 @@ export function ChatPanel({
   return (
     <div className="flex flex-col h-full">
       <ChatHeader
-        isVersionPaneOpen={isVersionPaneOpen}
         isPreviewOpen={isPreviewOpen}
         onTogglePreview={onTogglePreview}
-        onVersionClick={() => setIsVersionPaneOpen(!isVersionPaneOpen)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {!isVersionPaneOpen && (
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex-1 relative overflow-hidden">
-              <MessagesList
-                messages={messages}
-                messagesEndRef={messagesEndRef}
-                ref={messagesContainerRef}
-                onScrollerRef={handleScrollerRef}
-                distanceFromBottomRef={distanceFromBottomRef}
-                isUserScrolling={isUserScrolling}
-              />
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 relative overflow-hidden">
+            <MessagesList
+              messages={messages}
+              messagesEndRef={messagesEndRef}
+              ref={messagesContainerRef}
+              onScrollerRef={handleScrollerRef}
+              distanceFromBottomRef={distanceFromBottomRef}
+              isUserScrolling={isUserScrolling}
+            />
 
-              {/* Scroll to bottom button */}
-              {showScrollButton && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
-                  <Button
-                    onClick={handleScrollButtonClick}
-                    size="icon"
-                    className="rounded-full shadow-lg hover:shadow-xl transition-all border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
-                    variant="outline"
-                    title={"Ir al final"}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <ChatError error={error} onDismiss={() => setError(null)} />
-            {showFreeAgentQuotaBanner && (
-              <FreeAgentQuotaBanner
-                onSwitchToBuildMode={() =>
-                  updateSettings({ selectedChatMode: "build" })
-                }
-              />
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
+                <Button
+                  onClick={handleScrollButtonClick}
+                  size="icon"
+                  className="rounded-full shadow-lg hover:shadow-xl transition-all border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
+                  variant="outline"
+                  title={"Ir al final"}
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              </div>
             )}
-            <ChatInput chatId={chatId} />
           </div>
-        )}
-        <VersionPane
-          isVisible={isVersionPaneOpen}
-          onClose={() => setIsVersionPaneOpen(false)}
-        />
+
+          <ChatError error={error} onDismiss={() => setError(null)} />
+          {showFreeAgentQuotaBanner && (
+            <FreeAgentQuotaBanner
+              onSwitchToBuildMode={() =>
+                updateSettings({ selectedChatMode: "build" })
+              }
+            />
+          )}
+          <ChatInput chatId={chatId} />
+        </div>
       </div>
     </div>
   );
