@@ -51,7 +51,10 @@ async function callTurboFileEdit(
       }),
     });
   } catch (error) {
-    logger.warn("Turbo edit request failed, falling back to local rewrite", error);
+    logger.warn(
+      "Turbo edit request failed, falling back to local rewrite",
+      error,
+    );
     response = null;
   }
 

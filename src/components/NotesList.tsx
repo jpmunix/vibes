@@ -211,30 +211,31 @@ export function NotesList({ show }: { show?: boolean }) {
                         }`}
                       />
 
-                      {!busyNoteIds.has(note.id) && currentNoteId !== note.id && (
-                        <>
-                          <SidebarMenuAction
-                            showOnHover
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRenameClick(note.id, note.title);
-                            }}
-                            className="right-8 z-20"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </SidebarMenuAction>
-                          <SidebarMenuAction
-                            showOnHover
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(note.id, note.title);
-                            }}
-                            className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </SidebarMenuAction>
-                        </>
-                      )}
+                      {!busyNoteIds.has(note.id) &&
+                        currentNoteId !== note.id && (
+                          <>
+                            <SidebarMenuAction
+                              showOnHover
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRenameClick(note.id, note.title);
+                              }}
+                              className="right-8 z-20"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </SidebarMenuAction>
+                            <SidebarMenuAction
+                              showOnHover
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(note.id, note.title);
+                              }}
+                              className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </SidebarMenuAction>
+                          </>
+                        )}
                     </div>
                   </SidebarMenuItem>
                 ))}

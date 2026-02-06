@@ -63,7 +63,8 @@ export function GitHubIntegration() {
             Auto-commit antes de push/conectar
           </p>
           <p className="text-xs text-muted-foreground">
-            Si lo desactivas, podrás revisar y hacer commit manual antes de enviar a GitHub.
+            Si lo desactivas, podrás revisar y hacer commit manual antes de
+            enviar a GitHub.
           </p>
         </div>
         <Switch

@@ -28,20 +28,20 @@ export function TokenBar({ chatId }: TokenBarProps) {
   const [inputValue] = useAtom(chatInputValueAtom);
   const { result, error } = useCountTokens(chatId ?? null, inputValue);
   const [showLog, setShowLog] = React.useState(false);
-   const [lastStat, setLastStat] = useState<TokenStatEntry | null>(null);
+  const [lastStat, setLastStat] = useState<TokenStatEntry | null>(null);
 
-   useEffect(() => {
-     if (!showLog || !chatId) return;
-     (async () => {
-       try {
-         const entries = await tokenStatsClient.getTokenStats();
-         const latest = entries.find((e) => e.chatId === chatId) ?? null;
-         setLastStat(latest);
-       } catch {
-         // ignore
-       }
-     })();
-   }, [showLog, chatId]);
+  useEffect(() => {
+    if (!showLog || !chatId) return;
+    (async () => {
+      try {
+        const entries = await tokenStatsClient.getTokenStats();
+        const latest = entries.find((e) => e.chatId === chatId) ?? null;
+        setLastStat(latest);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [showLog, chatId]);
 
   if (!chatId || !result) {
     return null;

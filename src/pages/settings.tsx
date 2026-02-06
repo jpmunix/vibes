@@ -268,12 +268,19 @@ export function WorkflowSettings() {
     });
   };
 
-  const handleUpdateAutoFixModel = async (field: "name" | "provider", value: string) => {
+  const handleUpdateAutoFixModel = async (
+    field: "name" | "provider",
+    value: string,
+  ) => {
     const current = settings?.autoFixModel;
     await updateSettings({
       autoFixModel: {
-        name: field === "name" ? value : current?.name ?? "google/gemini-3-flash-preview",
-        provider: field === "provider" ? value : current?.provider ?? "openrouter",
+        name:
+          field === "name"
+            ? value
+            : (current?.name ?? "google/gemini-3-flash-preview"),
+        provider:
+          field === "provider" ? value : (current?.provider ?? "openrouter"),
       },
     });
   };
@@ -330,7 +337,8 @@ export function WorkflowSettings() {
           Modelo y límites para auto-fix
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y limita tiempo/intentos para evitar consumo excesivo.
+          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y
+          limita tiempo/intentos para evitar consumo excesivo.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -346,9 +354,7 @@ export function WorkflowSettings() {
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Proveedor
-            </Label>
+            <Label className="text-xs text-muted-foreground">Proveedor</Label>
             <Input
               value={settings?.autoFixModel?.provider ?? ""}
               onChange={(e) =>
@@ -480,7 +486,10 @@ export function AISettings() {
   const { settings, updateSettings } = useSettings();
 
   const handleToggle = async (
-    field: "enableLocalSmartContext" | "enableMcpSmartContext" | "enableTokenStats",
+    field:
+      | "enableLocalSmartContext"
+      | "enableMcpSmartContext"
+      | "enableTokenStats",
     value: boolean,
   ) => {
     await updateSettings({ [field]: value } as any);
@@ -525,7 +534,8 @@ export function AISettings() {
               Ranking local (sin backend)
             </p>
             <p className="text-xs text-muted-foreground">
-              Reduce el contexto eligiendo archivos relevantes según el prompt cuando no hay engine remoto.
+              Reduce el contexto eligiendo archivos relevantes según el prompt
+              cuando no hay engine remoto.
             </p>
           </div>
           <Switch
@@ -539,7 +549,8 @@ export function AISettings() {
           <div className="space-y-1 pr-3">
             <p className="text-sm font-medium text-foreground">Usar MCP</p>
             <p className="text-xs text-muted-foreground">
-              Si hay un servidor MCP configurado, úsalo para seleccionar archivos antes de enviar el prompt.
+              Si hay un servidor MCP configurado, úsalo para seleccionar
+              archivos antes de enviar el prompt.
             </p>
           </div>
           <Switch
@@ -555,7 +566,8 @@ export function AISettings() {
               Guardar métricas de tokens
             </p>
             <p className="text-xs text-muted-foreground">
-              Guarda el uso de tokens por turno para mostrar logs y gráficas en Stats.
+              Guarda el uso de tokens por turno para mostrar logs y gráficas en
+              Stats.
             </p>
           </div>
           <Switch

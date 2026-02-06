@@ -2118,7 +2118,6 @@ ${otherAppsCodebaseInfo}
 `;
 }
 
-
 async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
   try {
@@ -2155,72 +2154,75 @@ async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
             return typeof res === "string" ? res : JSON.stringify(res);
           },
         };
-  }
-}
+      }
+    }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function tryMcpRankFiles({
-  prompt,
-  files,
-  maxResults,
-}: {
-  prompt: string;
-  files: CodebaseFile[];
-  maxResults: number;
-}): Promise<CodebaseFile[] | null> {
-  try {
-    const servers = await db
-      .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.enabled, true as any));
-    if (!servers.length) return null;
-    const server = servers[0];
-    const client = await mcpManager.getClient(server.id);
-    const tools = await client.tools();
-    const rankTool = tools["rank_files"];
-    if (!rankTool) return null;
-    const payload = {
-      query: prompt,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async function tryMcpRankFiles({
+      prompt,
+      files,
       maxResults,
-    };
-    const result = await rankTool.execute(payload, {} as any);
-    // Accept JSON array or newline-delimited paths
-    let paths: string[] = [];
-    if (Array.isArray(result)) {
-      paths = result as string[];
-    } else if (typeof result === "string") {
+    }: {
+      prompt: string;
+      files: CodebaseFile[];
+      maxResults: number;
+    }): Promise<CodebaseFile[] | null> {
       try {
-        const parsed = JSON.parse(result);
-        if (Array.isArray(parsed)) {
-          paths = parsed;
-        } else {
-          paths = result
-            .split("\n")
-            .map((p) => p.trim())
-            .filter(Boolean);
+        const servers = await db
+          .select()
+          .from(mcpServers)
+          .where(eq(mcpServers.enabled, true as any));
+        if (!servers.length) return null;
+        const server = servers[0];
+        const client = await mcpManager.getClient(server.id);
+        const tools = await client.tools();
+        const rankTool = tools["rank_files"];
+        if (!rankTool) return null;
+        const payload = {
+          query: prompt,
+          maxResults,
+        };
+        const result = await rankTool.execute(payload, {} as any);
+        // Accept JSON array or newline-delimited paths
+        let paths: string[] = [];
+        if (Array.isArray(result)) {
+          paths = result as string[];
+        } else if (typeof result === "string") {
+          try {
+            const parsed = JSON.parse(result);
+            if (Array.isArray(parsed)) {
+              paths = parsed;
+            } else {
+              paths = result
+                .split("\n")
+                .map((p) => p.trim())
+                .filter(Boolean);
+            }
+          } catch {
+            paths = result
+              .split("\n")
+              .map((p) => p.trim())
+              .filter(Boolean);
+          }
         }
-      } catch {
-        paths = result
-          .split("\n")
-          .map((p) => p.trim())
-          .filter(Boolean);
+        if (!paths.length) return null;
+        const selected = [];
+        const set = new Set(paths);
+        for (const f of files) {
+          if (set.has(f.path)) {
+            selected.push(f);
+          }
+        }
+        if (selected.length === 0) return null;
+        return selected.slice(0, maxResults);
+      } catch (error) {
+        logger.warn(
+          "MCP rank_files failed, falling back to local ranking",
+          error,
+        );
+        return null;
       }
     }
-    if (!paths.length) return null;
-    const selected = [];
-    const set = new Set(paths);
-    for (const f of files) {
-      if (set.has(f.path)) {
-        selected.push(f);
-      }
-    }
-    if (selected.length === 0) return null;
-    return selected.slice(0, maxResults);
-  } catch (error) {
-    logger.warn("MCP rank_files failed, falling back to local ranking", error);
-    return null;
-  }
-}
   } catch (e) {
     logger.warn("Failed building MCP toolset", e);
   }

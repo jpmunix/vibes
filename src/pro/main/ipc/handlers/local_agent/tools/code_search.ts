@@ -28,10 +28,7 @@ function rankFilesLocally({
   files: z.infer<typeof FileContextSchema>[];
   maxResults?: number;
 }): string[] {
-  const terms = query
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 
   const scored = files.map((file) => {

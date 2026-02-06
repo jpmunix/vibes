@@ -329,13 +329,13 @@ export function ChatList({ show }: { show?: boolean }) {
                             >
                               {chat.title || "Nuevo chat"}
                             </span>
-                          <span
-                            className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
-                          >
-                            {formatDistanceToNow(new Date(chat.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
+                            <span
+                              className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
+                            >
+                              {formatDistanceToNow(new Date(chat.createdAt), {
+                                addSuffix: true,
+                              })}
+                            </span>
                           </div>
                         </div>
                       </Button>

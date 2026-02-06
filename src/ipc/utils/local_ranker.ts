@@ -13,10 +13,7 @@ export function rankFilesLocally({
   files: CodebaseFile[];
   maxResults?: number;
 }): RankedFile[] {
-  const terms = prompt
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  const terms = prompt.toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
 
   const scored = files.map((file) => {

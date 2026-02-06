@@ -15,6 +15,18 @@ export const DyadRead: React.FC<DyadReadProps> = ({
 }) => {
   const path = pathProp || node?.properties?.path || "";
   const fileName = path ? path.split("/").pop() : "";
+  const startLine = node?.properties?.start_line;
+  const endLine = node?.properties?.end_line;
+
+  // Build line range description
+  let lineRangeText = "";
+  if (startLine != null && endLine != null) {
+    lineRangeText = `lines ${startLine}-${endLine}`;
+  } else if (startLine != null) {
+    lineRangeText = `from line ${startLine}`;
+  } else if (endLine != null) {
+    lineRangeText = `to line ${endLine}`;
+  }
 
   return (
     <div className="bg-(--background-lightest) rounded-lg px-4 py-2 border border-border my-2">
@@ -27,6 +39,9 @@ export const DyadRead: React.FC<DyadReadProps> = ({
             </span>
           )}
           <div className="text-xs text-gray-600 font-medium">Read</div>
+          {lineRangeText && (
+            <span className="text-xs text-gray-500">({lineRangeText})</span>
+          )}
         </div>
       </div>
       {path && (
