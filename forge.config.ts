@@ -190,6 +190,11 @@ const config: ForgeConfig = {
           config: "vite.worker.config.mts",
           target: "main",
         },
+        {
+          entry: "workers/context/context_worker.ts",
+          config: "vite.worker.config.mts",
+          target: "main",
+        },
       ],
       renderer: [
         {

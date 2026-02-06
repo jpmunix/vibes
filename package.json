@@ -1,6 +1,6 @@
 {
   "name": "minube-vibes",
-  "version": "2.1",
+  "version": "2.1.1",
   "description": "AI app builder",
   "keywords": [],
   "license": "MIT",
@@ -25,7 +25,9 @@
     "verify-release": "node scripts/verify-release-assets.js",
     "ts": "npm run ts:main && npm run ts:workers",
     "ts:main": "npx tsgo -p tsconfig.app.json --noEmit --incremental",
-    "ts:workers": "npx tsc -p workers/tsc/tsconfig.json --noEmit --incremental",
+    "ts:workers": "npm run ts:worker:tsc && npm run ts:worker:context",
+    "ts:worker:tsc": "npx tsc -p workers/tsc/tsconfig.json --noEmit --incremental",
+    "ts:worker:context": "npx tsc -p workers/context/tsconfig.json --noEmit --incremental",
     "lint": "npx oxlint --fix",
     "lint:fix": "npx oxlint --fix --fix-suggestions --fix-dangerously",
     "db:generate": "drizzle-kit generate",

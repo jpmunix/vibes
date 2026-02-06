@@ -76,6 +76,7 @@ import { cleanFullResponse } from "../utils/cleanFullResponse";
 import { generateProblemReport } from "../processors/tsc";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { AsyncVirtualFileSystem } from "../../../shared/VirtualFilesystem";
+import { analyzeContextInWorker } from "../processors/context_worker_client";
 import { escapeXmlAttr, escapeXmlContent } from "../../../shared/xmlEscape";
 import {
   getDyadAddDependencyTags,
@@ -94,7 +95,7 @@ import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
 import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
-import { rankFilesLocally, buildCodebaseXml } from "../utils/local_ranker";
+import { buildCodebaseXml } from "../utils/local_ranker";
 import { getSemanticContext } from "../utils/semantic_context";
 import {
   isDyadProEnabled,
@@ -712,27 +713,6 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        if (!isSummarizeIntent) {
-          // Extract codebase for current app
-          logger.log(
-            `[BUILD MODE] Extracting codebase from ${appPath} with chatContext:`,
-            chatContext,
-          );
-          const extracted = await extractCodebase({
-            appPath,
-            chatContext,
-          });
-          codebaseInfo = extracted.formattedOutput;
-          files = extracted.files;
-          logger.log(
-            `[BUILD MODE] Extracted ${files.length} files from codebase`,
-          );
-        } else {
-          logger.log(
-            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
-          );
-        }
-
         // Local smart context: if remote engine is disabled, trim files by prompt relevance
         const useLocalContext =
           (!isEngineEnabled || disableRemoteEngine) &&
@@ -743,90 +723,70 @@ ${componentSnippet}
           `[BUILD MODE] useLocalContext: ${useLocalContext}, isEngineEnabled: ${isEngineEnabled}, disableRemoteEngine: ${disableRemoteEngine}`,
         );
 
-        if (useLocalContext) {
-          let ranked: CodebaseFile[] | null = null;
-
-          // Determine max files from settings (default 20, reduced from 60 for better focus)
-          const maxFiles = settings.maxContextFiles ?? 20;
-          logger.log(
-            `[BUILD MODE] Starting smart context with maxFiles: ${maxFiles}`,
-          );
-
-          // Try MCP ranking first if enabled
-          if (settings.enableMcpSmartContext) {
-            logger.log(
-              `[BUILD MODE] Attempting MCP ranking for ${files.length} files...`,
-            );
-            ranked = await tryMcpRankFiles({
-              prompt: req.prompt,
-              files,
-              maxResults: maxFiles,
-            });
-            if (ranked) {
-              logger.log(
-                `[BUILD MODE] ✓ MCP ranking succeeded: reduced files to ${ranked.length}`,
-              );
-              logger.log(
-                `[BUILD MODE] MCP selected files: ${ranked.map((f) => f.path).join(", ")}`,
-              );
-            } else {
-              logger.log(`[BUILD MODE] ✗ MCP ranking returned null`);
-            }
-          }
-
-          // If MCP didn't work, try semantic search (if enabled) or fall back to keyword
-          if (!ranked) {
-            // Use semantic search if enabled (default: true for better results)
-            // Falls back automatically to keyword search if vector index isn't ready
+        if (!isSummarizeIntent) {
+          // Use worker thread for context analysis to prevent UI freezing
+          // This is especially important for large codebases and semantic search
+          if (useLocalContext) {
+            const maxFiles = settings.maxContextFiles ?? 20;
             const useSemanticSearch = settings.enableSemanticSearch !== false;
 
-            if (useSemanticSearch) {
-              logger.log(
-                `[BUILD MODE] Attempting semantic search using mini model (all-MiniLM-L6-v2)...`,
-              );
-              ranked = await getSemanticContext({
+            logger.log(
+              `[BUILD MODE] Using context worker for analysis (maxFiles: ${maxFiles}, semantic: ${useSemanticSearch})`,
+            );
+
+            try {
+              // Run context analysis in worker thread (non-blocking)
+              const result = await analyzeContextInWorker({
                 appPath,
+                chatContext,
                 prompt: req.prompt,
-                files,
+                useSemanticSearch,
                 maxFiles,
-                useSemanticSearch: true,
-                buildIndexIfNeeded: true,
               });
+
+              codebaseInfo = result.codebaseInfo;
+              files = result.files;
+
               logger.log(
-                `[BUILD MODE] ✓ Semantic search completed: reduced files to ${ranked.length}`,
+                `[BUILD MODE] Context worker completed: ${files.length} files selected`,
               );
-              logger.log(
-                `[BUILD MODE] Semantically selected files: ${ranked.map((f) => f.path).join(", ")}`,
+            } catch (error) {
+              // Fallback to synchronous extraction if worker fails
+              logger.error(
+                `[BUILD MODE] Context worker failed, falling back to sync extraction:`,
+                error,
               );
-            } else {
-              // Explicitly disabled semantic search, use keyword ranking
-              logger.log(
-                `[BUILD MODE] Semantic search disabled, using keyword ranking...`,
-              );
-              ranked = rankFilesLocally({
-                prompt: req.prompt,
-                files,
-                maxResults: maxFiles,
+
+              const extracted = await extractCodebase({
+                appPath,
+                chatContext,
               });
+              codebaseInfo = extracted.formattedOutput;
+              files = extracted.files;
+
               logger.log(
-                `[BUILD MODE] ✓ Keyword ranking completed: reduced files to ${ranked.length}`,
-              );
-              logger.log(
-                `[BUILD MODE] Keyword selected files: ${ranked.map((f) => f.path).join(", ")}`,
+                `[BUILD MODE] Fallback extraction: ${files.length} files`,
               );
             }
-          }
-
-          if (ranked && ranked.length > 0) {
-            files = ranked;
-            codebaseInfo = buildCodebaseXml(ranked);
+          } else {
+            // Simple case: no local context ranking needed, use direct extraction
             logger.log(
-              `[BUILD MODE] Final context includes ${files.length} ranked files`,
+              `[BUILD MODE] Extracting codebase from ${appPath} with chatContext (no ranking):`,
+              chatContext,
+            );
+            const extracted = await extractCodebase({
+              appPath,
+              chatContext,
+            });
+            codebaseInfo = extracted.formattedOutput;
+            files = extracted.files;
+            logger.log(
+              `[BUILD MODE] Extracted ${files.length} files from codebase`,
             );
           }
         } else {
           logger.log(
-            `[BUILD MODE] Local context disabled, using all ${files.length} files`,
+            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
           );
         }
 
