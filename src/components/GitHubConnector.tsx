@@ -9,7 +9,7 @@ import {
   GitMerge,
   FileWarning,
 } from "lucide-react";
-import { ipc, type GithubSyncOptions } from "@/ipc/types";
+import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GithubBranchManager } from "@/components/GithubBranchManager";
+import { GitPreviewModal } from "@/components/GitPreviewModal";
 
 type SyncResult =
   | { error: Error; handled?: boolean }
@@ -97,6 +98,10 @@ function ConnectedGitHubConnector({
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
   const [, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [gitPreview, setGitPreview] = useState<GitPreview | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
 
   useEffect(() => {
     // Fetch git state (ahead/behind) to decide UI visibility
@@ -161,6 +166,40 @@ function ConnectedGitHubConnector({
       setDisconnectError(err.message || "Error al desconectar el repositorio.");
     } finally {
       setIsDisconnecting(false);
+    }
+  };
+
+  const handleOpenPreview = async () => {
+    setIsLoadingPreview(true);
+    setShowPreviewModal(true);
+    try {
+      const preview = await ipc.github.getPreview({ appId });
+      setGitPreview(preview);
+    } catch (err: any) {
+      console.error("Failed to load preview:", err);
+      setSyncError(err.message || "Error al cargar la vista previa.");
+      setShowPreviewModal(false);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const handleConfirmSync = async () => {
+    setShowPreviewModal(false);
+    await handleSyncToGithub();
+  };
+
+  const handleGenerateCommitMessage = async () => {
+    setIsGeneratingMessage(true);
+    try {
+      const result = await ipc.github.generateCommitMessage({ appId });
+      setCommitMessage(result.message);
+      setIsCommitMessageEdited(true);
+    } catch (err: any) {
+      console.error("Failed to generate commit message:", err);
+      setSyncError(err.message || "Error al generar el mensaje de commit.");
+    } finally {
+      setIsGeneratingMessage(false);
     }
   };
 
@@ -440,37 +479,10 @@ function ConnectedGitHubConnector({
       )}
       <div className="mt-2 flex gap-2">
         <Button
-          onClick={() => handleSyncToGithub()}
-          disabled={isRebaseActionPending}
+          onClick={handleOpenPreview}
+          disabled={isRebaseActionPending || !commitMessage.trim()}
         >
-          {isSyncing ? (
-            <>
-              <svg
-                className="animate-spin h-5 w-5 mr-2 inline"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                style={{ display: "inline" }}
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Sincronizando...
-            </>
-          ) : (
-            "Sincronizar con GitHub"
-          )}
+          Vista previa y sincronizar
         </Button>
         <Button
           onClick={handleDisconnectRepo}
@@ -480,6 +492,20 @@ function ConnectedGitHubConnector({
           {isDisconnecting ? "Desconectando..." : "Desconectar del repositorio"}
         </Button>
       </div>
+
+      {/* Git Preview Modal */}
+      <GitPreviewModal
+        open={showPreviewModal}
+        onOpenChange={setShowPreviewModal}
+        preview={gitPreview}
+        isLoading={isLoadingPreview}
+        onConfirm={handleConfirmSync}
+        isConfirming={isSyncing}
+        commitMessage={commitMessage}
+        onCommitMessageChange={setCommitMessage}
+        onGenerateCommitMessage={handleGenerateCommitMessage}
+        isGeneratingMessage={isGeneratingMessage}
+      />
       {syncError && (
         <div className="mt-2 space-y-2">
           <p className="text-red-600">

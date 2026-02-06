@@ -99,6 +99,14 @@ export const ForceCloseDetectedPayloadSchema = z.object({
     .optional(),
 });
 
+export const OpenRouterCreditsSchema = z.object({
+  totalCredits: z.number(),
+  totalUsage: z.number(),
+  availableCredits: z.number(),
+});
+
+export type OpenRouterCredits = z.infer<typeof OpenRouterCreditsSchema>;
+
 // =============================================================================
 // System Contracts
 // =============================================================================
@@ -230,6 +238,13 @@ export const systemContracts = {
     channel: "restart-dyad",
     input: z.void(),
     output: z.void(),
+  }),
+
+  // OpenRouter credits
+  getOpenRouterCredits: defineContract({
+    channel: "system:get-openrouter-credits",
+    input: z.void(),
+    output: OpenRouterCreditsSchema,
   }),
 } as const;
 

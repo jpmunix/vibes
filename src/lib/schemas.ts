@@ -319,8 +319,14 @@ export const UserSettingsSchema = z
     enableLocalSmartContext: z.boolean().optional(),
     // Allow using MCP server for smart context/file ranking
     enableMcpSmartContext: z.boolean().optional(),
+    // Enable semantic search with local embeddings (vector search)
+    enableSemanticSearch: z.boolean().optional(),
+    // Maximum files to include in context (reduces tokens)
+    maxContextFiles: z.number().optional(),
     // Persist token stats for charts/logging
     enableTokenStats: z.boolean().optional(),
+    // Enable verbose internal chat logs (debugging/diagnostics)
+    enableVerboseChatLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
     // Control GitHub auto-commit behavior

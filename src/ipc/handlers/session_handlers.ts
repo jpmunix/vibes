@@ -3,6 +3,10 @@ import fs from "node:fs/promises";
 import { getTypeScriptCachePath } from "@/paths/paths";
 import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
+import { readSettings } from "../../main/settings";
+import log from "electron-log";
+
+const logger = log.scope("session_handlers");
 
 export const registerSessionHandlers = () => {
   createTypedHandler(systemContracts.clearSessionData, async () => {
@@ -18,6 +22,42 @@ export const registerSessionHandlers = () => {
       await fs.rm(getTypeScriptCachePath(), { recursive: true, force: true });
     } catch {
       // Directory might not exist
+    }
+  });
+
+  createTypedHandler(systemContracts.getOpenRouterCredits, async () => {
+    const settings = readSettings();
+    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+    if (!apiKey) {
+      throw new Error("OpenRouter API key not found");
+    }
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/credits", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status}`);
+      }
+
+      const body = await response.json();
+      const totalCredits = body.data?.total_credits ?? 0;
+      const totalUsage = body.data?.total_usage ?? 0;
+      const availableCredits = totalCredits - totalUsage;
+
+      return {
+        totalCredits,
+        totalUsage,
+        availableCredits,
+      };
+    } catch (error: any) {
+      logger.error("Failed to get OpenRouter credits:", error);
+      throw new Error(error.message || "Failed to get OpenRouter credits.");
     }
   });
 };

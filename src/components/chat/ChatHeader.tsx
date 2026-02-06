@@ -6,6 +6,7 @@ import {
   Sparkles,
   Info,
   Save,
+  FileText,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -39,11 +40,15 @@ import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
+  isLogsOpen?: boolean;
+  onToggleLogs?: () => void;
 }
 
 export function ChatHeader({
   isPreviewOpen,
   onTogglePreview,
+  isLogsOpen = false,
+  onToggleLogs,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
   const { navigate } = useRouter();
@@ -335,6 +340,22 @@ export function ChatHeader({
             <Eraser size={16} />
             <span className="hidden @xs:inline">Vaciar chat</span>
           </Button>
+          {onToggleLogs && (
+            <Button
+              onClick={onToggleLogs}
+              variant="ghost"
+              title="Logs del chat"
+              className={`flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md ${
+                isLogsOpen
+                  ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/30"
+              }`}
+              disabled={!selectedChatId}
+            >
+              <FileText size={16} />
+              <span className="hidden @xs:inline">Logs</span>
+            </Button>
+          )}
         </div>
 
         <button

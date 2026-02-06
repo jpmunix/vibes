@@ -5,7 +5,6 @@ import {
   previewPanelKeyAtom,
   selectedAppIdAtom,
 } from "../../atoms/appAtoms";
-import { isVersionPaneOpenAtom } from "../../atoms/viewAtoms";
 
 import { CodeView } from "./CodeView";
 import { PreviewIframe } from "./PreviewIframe";
@@ -53,12 +52,9 @@ const ConsoleHeader = ({
 
 // Main PreviewPanel component
 export function PreviewPanel() {
-  const [previewMode] = useAtom(previewModeAtom);
+  const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-  const [isVersionPaneOpen, setIsVersionPaneOpen] = useAtom(
-    isVersionPaneOpenAtom,
-  );
   const { runApp, stopApp, loading, app } = useRunApp();
   const { loadEdgeLogs } = useSupabase();
   const runningAppIdRef = useRef<number | null>(null);
@@ -134,7 +130,8 @@ export function PreviewPanel() {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [app?.supabaseProjectId, app?.supabaseOrganizationSlug, loadEdgeLogs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app?.supabaseProjectId, app?.supabaseOrganizationSlug]);
 
   return (
     <div className="flex flex-col h-full">
@@ -142,10 +139,10 @@ export function PreviewPanel() {
         <PanelGroup direction="vertical">
           <Panel id="content" minSize={30}>
             <div className="h-full overflow-y-auto">
-              {isVersionPaneOpen ? (
+              {previewMode === "versions" ? (
                 <VersionPane
-                  isVisible={isVersionPaneOpen}
-                  onClose={() => setIsVersionPaneOpen(false)}
+                  isVisible={true}
+                  onClose={() => setPreviewMode("preview")}
                 />
               ) : previewMode === "preview" ? (
                 <PreviewIframe key={key} loading={loading} />

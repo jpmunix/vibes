@@ -1454,3 +1454,111 @@ export function isGitRebaseInProgress({ path }: GitBaseParams): boolean {
   }
   return false;
 }
+
+/**
+ * Get the diff for uncommitted changes
+ */
+export async function gitDiff({
+  path,
+  cached = false,
+}: GitBaseParams & { cached?: boolean }): Promise<string> {
+  const args = ["diff"];
+  if (cached) args.push("--cached");
+
+  const result = await execGit(args, path);
+
+  if (result.exitCode !== 0) {
+    throw new Error(`Git diff failed: ${result.stderr}`);
+  }
+
+  return result.stdout;
+}
+
+/**
+ * Get diff with stats for a specific file
+ */
+export async function gitDiffFile({ path, filepath }: GitFileParams): Promise<{
+  additions: number;
+  deletions: number;
+  diff: string;
+}> {
+  // Get numstat for additions/deletions
+  const numstatArgs = ["diff", "--numstat", "--", filepath];
+  const numstatResult = await execGit(numstatArgs, path);
+
+  let additions = 0;
+  let deletions = 0;
+
+  if (numstatResult.exitCode === 0 && numstatResult.stdout) {
+    const parts = numstatResult.stdout.split(/\s+/);
+    if (parts.length >= 2) {
+      additions = Number.parseInt(parts[0]) || 0;
+      deletions = Number.parseInt(parts[1]) || 0;
+    }
+  }
+
+  // Get actual diff
+  const diffArgs = ["diff", "--", filepath];
+  const diffResult = await execGit(diffArgs, path);
+
+  return {
+    additions,
+    deletions,
+    diff: diffResult.exitCode === 0 ? diffResult.stdout : "",
+  };
+}
+
+/**
+ * Get local commits that haven't been pushed to remote
+ */
+export async function gitLocalCommits({
+  path,
+  branch,
+  remote = "origin",
+}: {
+  path: string;
+  branch: string;
+  remote?: string;
+}): Promise<
+  Array<{
+    hash: string;
+    shortHash: string;
+    message: string;
+    author: string;
+    date: string;
+  }>
+> {
+  try {
+    // Get commits that are in local branch but not in remote
+    const args = [
+      "log",
+      `${remote}/${branch}..${branch}`,
+      "--pretty=format:%H|%h|%s|%an|%ai",
+    ];
+
+    const result = await execGit(args, path);
+
+    if (result.exitCode !== 0 || !result.stdout) {
+      // If remote branch doesn't exist yet, try to get all local commits
+      const fallbackArgs = ["log", branch, "--pretty=format:%H|%h|%s|%an|%ai"];
+      const fallbackResult = await execGit(fallbackArgs, path);
+
+      if (fallbackResult.exitCode !== 0 || !fallbackResult.stdout) {
+        return [];
+      }
+
+      return fallbackResult.stdout.split("\n").map((line) => {
+        const [hash, shortHash, message, author, date] = line.split("|");
+        return { hash, shortHash, message, author, date };
+      });
+    }
+
+    return result.stdout.split("\n").map((line) => {
+      const [hash, shortHash, message, author, date] = line.split("|");
+      return { hash, shortHash, message, author, date };
+    });
+  } catch (error: unknown) {
+    logger.error("Failed to get local commits:", error);
+    return [];
+  }
+}

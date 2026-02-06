@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineContract, createClient } from "./core";
+import { defineContract, createClient } from "../contracts/core";
 
 export const TokenStatEntrySchema = z.object({
   chatId: z.number(),

@@ -67,8 +67,9 @@ import { mcpServers } from "../../db/schema";
 import { requireMcpToolConsent } from "../utils/mcp_consent";
 
 import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
-import { analyzeAndRouteModel } from "../utils/model_router";
-import { getLanguageModelsByProviders } from "../shared/language_model_helpers";
+// DESHABILITADO TEMPORALMENTE - Auto-router imports
+// import { analyzeAndRouteModel } from "../utils/model_router";
+// import { getLanguageModelsByProviders } from "../shared/language_model_helpers";
 
 import { safeSend } from "../utils/safe_sender";
 import { cleanFullResponse } from "../utils/cleanFullResponse";
@@ -92,7 +93,9 @@ import { replacePromptReference } from "../utils/replacePromptReference";
 import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
 import { logTokenUsage } from "../utils/token_stats_logger";
+import { logChatInfo, logChatError } from "../utils/chat_logger";
 import { rankFilesLocally, buildCodebaseXml } from "../utils/local_ranker";
+import { getSemanticContext } from "../utils/semantic_context";
 import {
   isDyadProEnabled,
   isBasicAgentMode,
@@ -547,85 +550,106 @@ ${componentSnippet}
             `Using title generation model for summarize task: ${provider}/${modelName}`,
           );
         }
+        // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
         // Use auto-router only if it's not a summarize chat
-        else if (
-          !isSummarizeIntent &&
-          settings.selectedModel.provider === "auto-router" &&
-          settings.selectedModel.name === "auto"
-        ) {
-          try {
-            logger.info("Auto-routing enabled, analyzing task complexity...");
+        // else if (
+        //   !isSummarizeIntent &&
+        //   settings.selectedModel.provider === "auto-router" &&
+        //   settings.selectedModel.name === "auto"
+        // ) {
+        //   try {
+        //     logger.info("Auto-routing enabled, analyzing task complexity...");
 
-            // Notify frontend that model selection is starting
-            safeSend(event.sender, "chat:model:selecting", {
-              chatId: req.chatId,
-            });
+        //     await logChatInfo(
+        //       req.chatId,
+        //       "model-selection",
+        //       "Auto-routing enabled, analyzing task complexity",
+        //       { provider: "auto-router" },
+        //     );
 
-            // Get all available models from enabled providers
-            const modelsByProviders = await getLanguageModelsByProviders();
-            const availableModels: Array<{
-              model: typeof settings.selectedModel;
-              dollarSigns?: number;
-              brainSigns?: number;
-              displayName: string;
-            }> = [];
+        //     // Notify frontend that model selection is starting
+        //     safeSend(event.sender, "chat:model:selecting", {
+        //       chatId: req.chatId,
+        //     });
 
-            for (const [providerId, models] of Object.entries(
-              modelsByProviders,
-            )) {
-              // Skip auto-router provider itself
-              if (providerId === "auto-router") continue;
+        //     // Get all available models from enabled providers
+        //     const modelsByProviders = await getLanguageModelsByProviders();
+        //     const availableModels: Array<{
+        //       model: typeof settings.selectedModel;
+        //       dollarSigns?: number;
+        //       brainSigns?: number;
+        //       displayName: string;
+        //     }> = [];
 
-              for (const model of models) {
-                availableModels.push({
-                  model: {
-                    provider: providerId,
-                    name: model.apiName,
-                    customModelId: model.id,
-                  },
-                  dollarSigns: model.dollarSigns,
-                  brainSigns: model.brainSigns,
-                  displayName: model.displayName,
-                });
-              }
-            }
+        //     for (const [providerId, models] of Object.entries(
+        //       modelsByProviders,
+        //     )) {
+        //       // Skip auto-router provider itself
+        //       if (providerId === "auto-router") continue;
 
-            if (availableModels.length === 0) {
-              logger.error(
-                "No models available for auto-routing. Please configure at least one AI provider.",
-              );
-              throw new Error(
-                "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
-              );
-            }
+        //       for (const model of models) {
+        //         availableModels.push({
+        //           model: {
+        //             provider: providerId,
+        //             name: model.apiName,
+        //             customModelId: model.id,
+        //           },
+        //           dollarSigns: model.dollarSigns,
+        //           brainSigns: model.brainSigns,
+        //           displayName: model.displayName,
+        //         });
+        //       }
+        //     }
 
-            const attachmentCount = req.attachments?.length ?? 0;
-            const analysis = await analyzeAndRouteModel(
-              req.prompt,
-              availableModels,
-              settings,
-              attachmentCount,
-            );
+        //     if (availableModels.length === 0) {
+        //       logger.error(
+        //         "No models available for auto-routing. Please configure at least one AI provider.",
+        //       );
+        //       throw new Error(
+        //         "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
+        //       );
+        //     }
 
-            selectedModel = analysis.recommendedModel;
+        //     const attachmentCount = req.attachments?.length ?? 0;
+        //     const analysis = await analyzeAndRouteModel(
+        //       req.prompt,
+        //       availableModels,
+        //       settings,
+        //       attachmentCount,
+        //     );
 
-            logger.info(
-              `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
-            );
+        //     selectedModel = analysis.recommendedModel;
 
-            // Send model selection info to frontend
-            safeSend(event.sender, "chat:model:selected", {
-              chatId: req.chatId,
-              model: selectedModel,
-              complexity: analysis.complexity,
-              taskType: analysis.taskType,
-              reasoning: analysis.reasoning,
-            });
-          } catch (error) {
-            logger.error("Error during auto-routing:", error);
-            throw error; // Re-throw to show error to user
-          }
-        }
+        //     logger.info(
+        //       `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
+        //     );
+
+        //     await logChatInfo(
+        //       req.chatId,
+        //       "model-selection",
+        //       `Selected model: ${selectedModel.provider}/${selectedModel.name}`,
+        //       {
+        //         complexity: analysis.complexity,
+        //         taskType: analysis.taskType,
+        //         reasoning: analysis.reasoning,
+        //         provider: selectedModel.provider,
+        //         model: selectedModel.name,
+        //       },
+        //     );
+
+        //     // Send model selection info to frontend
+        //     safeSend(event.sender, "chat:model:selected", {
+        //       chatId: req.chatId,
+        //       model: selectedModel,
+        //       complexity: analysis.complexity,
+        //       taskType: analysis.taskType,
+        //       reasoning: analysis.reasoning,
+        //     });
+        //   } catch (error) {
+        //     logger.error("Error during auto-routing:", error);
+        //     throw error; // Re-throw to show error to user
+        //   }
+        // }
 
         // Create placeholder assistant message after model selection is complete
         [placeholderAssistantMessage] = await db
@@ -698,11 +722,16 @@ ${componentSnippet}
 
         if (useLocalContext) {
           let ranked: CodebaseFile[] | null = null;
+
+          // Determine max files from settings (default 20, reduced from 60 for better focus)
+          const maxFiles = settings.maxContextFiles ?? 20;
+
+          // Try MCP ranking first if enabled
           if (settings.enableMcpSmartContext) {
             ranked = await tryMcpRankFiles({
               prompt: req.prompt,
               files,
-              maxResults: 60,
+              maxResults: maxFiles,
             });
             if (ranked) {
               logger.log(
@@ -710,18 +739,38 @@ ${componentSnippet}
               );
             }
           }
+
+          // If MCP didn't work, try semantic search (if enabled) or fall back to keyword
           if (!ranked) {
-            ranked = rankFilesLocally({
-              prompt: req.prompt,
-              files,
-              maxResults: 60,
-            });
-            if (ranked.length > 0) {
+            // Use semantic search if enabled (default: true for better results)
+            // Falls back automatically to keyword search if vector index isn't ready
+            const useSemanticSearch = settings.enableSemanticSearch !== false;
+
+            if (useSemanticSearch) {
+              ranked = await getSemanticContext({
+                appPath,
+                prompt: req.prompt,
+                files,
+                maxFiles,
+                useSemanticSearch: true,
+                buildIndexIfNeeded: true,
+              });
               logger.log(
-                `Smart context (local): reduced files to ${ranked.length} for prompt`,
+                `Smart context (semantic): reduced files to ${ranked.length} for prompt`,
+              );
+            } else {
+              // Explicitly disabled semantic search, use keyword ranking
+              ranked = rankFilesLocally({
+                prompt: req.prompt,
+                files,
+                maxResults: maxFiles,
+              });
+              logger.log(
+                `Smart context (keyword): reduced files to ${ranked.length} for prompt`,
               );
             }
           }
+
           if (ranked && ranked.length > 0) {
             files = ranked;
             codebaseInfo = buildCodebaseXml(ranked);
@@ -793,6 +842,20 @@ ${componentSnippet}
           codebaseInfo.length / 4,
         );
 
+        await logChatInfo(
+          req.chatId,
+          "context-building",
+          "Extracted codebase information",
+          {
+            appPath,
+            codebaseLength: codebaseInfo.length,
+            estimatedTokens: Math.round(codebaseInfo.length / 4),
+            mentionedApps: mentionedAppsCodebases.length,
+            isDeepContextEnabled,
+          },
+          placeholderAssistantMessage.id,
+        );
+
         // Prepare message history for the AI
         const messageHistory = updatedChat.messages.map((message) => ({
           role: message.role as "user" | "assistant" | "system",
@@ -801,15 +864,13 @@ ${componentSnippet}
           commitHash: message.commitHash,
         }));
 
-        // For Dyad Pro + Deep Context, we set to 200 chat turns (+1)
-        // this is to enable more cache hits. Practically, users should
-        // rarely go over this limit because they will hit the model's
-        // context window limit.
+        // For Dyad Pro + Deep Context, we set to 50 chat turns (+1)
+        // REDUCED from 201 to save tokens while maintaining good context
         //
         // Limit chat history based on maxChatTurnsInContext setting
         // We add 1 because the current prompt counts as a turn.
         const maxChatTurns = isDeepContextEnabled
-          ? 201
+          ? 51
           : (settings.maxChatTurnsInContext || MAX_CHAT_TURNS_IN_CONTEXT) + 1;
 
         // If we need to limit the context, we take only the most recent turns
@@ -1119,8 +1180,29 @@ This conversation includes one or more image attachments. When the user uploads 
               "sending AI request to engine with request id:",
               dyadRequestId,
             );
+            await logChatInfo(
+              req.chatId,
+              "streaming",
+              "Starting AI request to engine",
+              {
+                requestId: dyadRequestId,
+                model: selectedModel.name,
+                provider: selectedModel.provider,
+              },
+              placeholderAssistantMessage.id,
+            );
           } else {
             logger.log("sending AI request");
+            await logChatInfo(
+              req.chatId,
+              "streaming",
+              "Starting AI request",
+              {
+                model: selectedModel.name,
+                provider: selectedModel.provider,
+              },
+              placeholderAssistantMessage.id,
+            );
           }
           let versionedFiles: VersionedFiles | undefined;
           if (isDeepContextEnabled) {
@@ -1160,8 +1242,12 @@ This conversation includes one or more image attachments. When the user uploads 
             messages: chatMessages.filter((m) => m.content),
             onFinish: (response) => {
               const totalTokens = response.usage?.totalTokens;
-              const promptTokens = response.usage?.promptTokens;
-              const completionTokens = response.usage?.completionTokens;
+              // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
+              const promptTokens =
+                response.usage?.promptTokens ?? response.usage?.inputTokens;
+              const completionTokens =
+                response.usage?.completionTokens ??
+                response.usage?.outputTokens;
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1182,6 +1268,25 @@ This conversation includes one or more image attachments. When the user uploads 
 
                 logger.log(
                   `Total tokens used (aggregated for message ${placeholderAssistantMessage.id}): ${maxTokensUsed}`,
+                );
+
+                // Log token usage for verbose chat logs
+                void logChatInfo(
+                  req.chatId,
+                  "token-usage",
+                  `Total tokens: ${totalTokens} (input: ${promptTokens ?? "?"}, output: ${completionTokens ?? "?"})`,
+                  {
+                    totalTokens,
+                    inputTokens: promptTokens,
+                    outputTokens: completionTokens,
+                    model:
+                      selectedModel?.name ??
+                      placeholderAssistantMessage.model ??
+                      null,
+                    filesCount: files?.length ?? 0,
+                    toolsCount: tools ? Object.keys(tools).length : 0,
+                  },
+                  placeholderAssistantMessage.id,
                 );
 
                 // Persist simple token stats for charts/logs
@@ -1220,6 +1325,20 @@ This conversation includes one or more image attachments. When the user uploads 
                 `AI stream text error for request: ${requestIdPrefix} errorMessage=${errorMessage} error=`,
                 error,
               );
+
+              void logChatError(
+                req.chatId,
+                "error-handling",
+                `Streaming error: ${message}`,
+                {
+                  errorMessage,
+                  requestId: dyadRequestId,
+                  model: selectedModel.name,
+                  provider: selectedModel.provider,
+                },
+                placeholderAssistantMessage.id,
+              );
+
               event.sender.send("chat:response:error", {
                 chatId: req.chatId,
                 error: `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`,
@@ -2118,6 +2237,73 @@ ${otherAppsCodebaseInfo}
 `;
 }
 
+/**
+ * Helper function to try MCP-based file ranking
+ * Moved outside getMcpTools to be accessible from other functions
+ */
+async function tryMcpRankFiles({
+  prompt,
+  files,
+  maxResults,
+}: {
+  prompt: string;
+  files: CodebaseFile[];
+  maxResults: number;
+}): Promise<CodebaseFile[] | null> {
+  try {
+    const servers = await db
+      .select()
+      .from(mcpServers)
+      .where(eq(mcpServers.enabled, true as any));
+    if (!servers.length) return null;
+    const server = servers[0];
+    const client = await mcpManager.getClient(server.id);
+    const tools = await client.tools();
+    const rankTool = tools["rank_files"];
+    if (!rankTool) return null;
+    const payload = {
+      query: prompt,
+      maxResults,
+    };
+    const result = await rankTool.execute(payload, {} as any);
+    // Accept JSON array or newline-delimited paths
+    let paths: string[] = [];
+    if (Array.isArray(result)) {
+      paths = result as string[];
+    } else if (typeof result === "string") {
+      try {
+        const parsed = JSON.parse(result);
+        if (Array.isArray(parsed)) {
+          paths = parsed;
+        } else {
+          paths = result
+            .split("\n")
+            .map((p: string) => p.trim())
+            .filter(Boolean);
+        }
+      } catch {
+        paths = result
+          .split("\n")
+          .map((p: string) => p.trim())
+          .filter(Boolean);
+      }
+    }
+    if (!paths.length) return null;
+    const selected = [];
+    const set = new Set(paths);
+    for (const f of files) {
+      if (set.has(f.path)) {
+        selected.push(f);
+      }
+    }
+    if (selected.length === 0) return null;
+    return selected.slice(0, maxResults);
+  } catch (error) {
+    logger.warn("MCP rank_files failed, falling back to local ranking", error);
+    return null;
+  }
+}
+
 async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
   try {
@@ -2154,73 +2340,6 @@ async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
             return typeof res === "string" ? res : JSON.stringify(res);
           },
         };
-      }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async function tryMcpRankFiles({
-      prompt,
-      files,
-      maxResults,
-    }: {
-      prompt: string;
-      files: CodebaseFile[];
-      maxResults: number;
-    }): Promise<CodebaseFile[] | null> {
-      try {
-        const servers = await db
-          .select()
-          .from(mcpServers)
-          .where(eq(mcpServers.enabled, true as any));
-        if (!servers.length) return null;
-        const server = servers[0];
-        const client = await mcpManager.getClient(server.id);
-        const tools = await client.tools();
-        const rankTool = tools["rank_files"];
-        if (!rankTool) return null;
-        const payload = {
-          query: prompt,
-          maxResults,
-        };
-        const result = await rankTool.execute(payload, {} as any);
-        // Accept JSON array or newline-delimited paths
-        let paths: string[] = [];
-        if (Array.isArray(result)) {
-          paths = result as string[];
-        } else if (typeof result === "string") {
-          try {
-            const parsed = JSON.parse(result);
-            if (Array.isArray(parsed)) {
-              paths = parsed;
-            } else {
-              paths = result
-                .split("\n")
-                .map((p) => p.trim())
-                .filter(Boolean);
-            }
-          } catch {
-            paths = result
-              .split("\n")
-              .map((p) => p.trim())
-              .filter(Boolean);
-          }
-        }
-        if (!paths.length) return null;
-        const selected = [];
-        const set = new Set(paths);
-        for (const f of files) {
-          if (set.has(f.path)) {
-            selected.push(f);
-          }
-        }
-        if (selected.length === 0) return null;
-        return selected.slice(0, maxResults);
-      } catch (error) {
-        logger.warn(
-          "MCP rank_files failed, falling back to local ranking",
-          error,
-        );
-        return null;
       }
     }
   } catch (e) {

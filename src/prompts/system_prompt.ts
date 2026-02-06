@@ -534,7 +534,7 @@ export const constructSystemPrompt = ({
 
   let systemPrompt = getSystemPromptForChatMode({
     chatMode,
-    enableTurboEditsV2,
+    enableTurboEditsV2: _enableTurboEditsV2,
   });
   systemPrompt = systemPrompt.replace(
     "[[AI_RULES]]",

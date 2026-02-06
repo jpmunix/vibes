@@ -23,6 +23,8 @@ import {
   isGitMergeInProgress,
   isGitRebaseInProgress,
   GitConflictError,
+  gitDiffFile,
+  gitLocalCommits,
 } from "../utils/git_utils";
 import * as schema from "../../db/schema";
 import fs from "node:fs";
@@ -854,6 +856,7 @@ async function handlePushToGithub(
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
+    const autoCommitEnabled = settings.enableGithubAutoCommit !== false;
     if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
@@ -1368,6 +1371,244 @@ async function handleCloneRepoFromUrl(
   }
 }
 
+// --- GitHub Get Preview Handler ---
+async function handleGetPreview(
+  event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+): Promise<{
+  uncommittedFiles: Array<{
+    path: string;
+    status: "added" | "modified" | "deleted" | "renamed";
+    additions: number;
+    deletions: number;
+    diff: string;
+  }>;
+  localCommits: Array<{
+    hash: string;
+    shortHash: string;
+    message: string;
+    author: string;
+    date: string;
+  }>;
+  totalAdditions: number;
+  totalDeletions: number;
+}> {
+  try {
+    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    if (!app) {
+      throw new Error("App not found");
+    }
+
+    const appPath = getDyadAppPath(app.path);
+    const branch = app.githubBranch || "main";
+
+    // Get uncommitted files with diffs
+    const { default: git } = await import("isomorphic-git");
+    const fs = await import("fs/promises");
+
+    // Get git status to find uncommitted files
+    const status = await git.statusMatrix({ fs, dir: appPath });
+    const uncommittedFiles = status
+      .filter(([, head, workdir, stage]) => {
+        // Filter for files that have changes (modified, added, deleted)
+        return head !== workdir || workdir !== stage;
+      })
+      .map(([filepath, head, workdir]) => {
+        let statusType: "added" | "modified" | "deleted" | "renamed" =
+          "modified";
+        if (head === 0 && workdir === 2) statusType = "added";
+        else if (head === 1 && workdir === 0) statusType = "deleted";
+        return { path: filepath, status: statusType };
+      });
+
+    let totalAdditions = 0;
+    let totalDeletions = 0;
+
+    const filesWithDiffs = await Promise.all(
+      uncommittedFiles.map(async (file) => {
+        try {
+          const { additions, deletions, diff } = await gitDiffFile({
+            path: appPath,
+            filepath: file.path,
+          });
+
+          totalAdditions += additions;
+          totalDeletions += deletions;
+
+          return {
+            path: file.path,
+            status: file.status,
+            additions,
+            deletions,
+            diff,
+          };
+        } catch (error) {
+          logger.error(`Failed to get diff for ${file.path}:`, error);
+          return {
+            path: file.path,
+            status: file.status,
+            additions: 0,
+            deletions: 0,
+            diff: "",
+          };
+        }
+      }),
+    );
+
+    // Get local commits
+    let localCommits: Array<{
+      hash: string;
+      shortHash: string;
+      message: string;
+      author: string;
+      date: string;
+    }> = [];
+
+    try {
+      localCommits = await gitLocalCommits({
+        path: appPath,
+        branch,
+        remote: "origin",
+      });
+    } catch (error) {
+      logger.warn("Failed to get local commits:", error);
+      // Continue without local commits if there's an error
+    }
+
+    return {
+      uncommittedFiles: filesWithDiffs,
+      localCommits,
+      totalAdditions,
+      totalDeletions,
+    };
+  } catch (err: any) {
+    logger.error("[GitHub Handler] Failed to get preview:", err);
+    throw new Error(err.message || "Failed to get git preview.");
+  }
+}
+
+// --- GitHub Generate Commit Message Handler ---
+async function handleGenerateCommitMessage(
+  event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+): Promise<{ message: string }> {
+  try {
+    const settings = readSettings();
+    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+    if (!apiKey) {
+      throw new Error("OpenRouter API key not found");
+    }
+
+    const model =
+      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    if (!app) {
+      throw new Error("App not found");
+    }
+
+    const appPath = getDyadAppPath(app.path);
+
+    // Get uncommitted files with diffs
+    const { default: git } = await import("isomorphic-git");
+    const fs = await import("fs/promises");
+
+    // Get git status to find uncommitted files
+    const status = await git.statusMatrix({ fs, dir: appPath });
+    const uncommittedFiles = status
+      .filter(([, head, workdir, stage]) => {
+        return head !== workdir || workdir !== stage;
+      })
+      .map(([filepath, head, workdir]) => {
+        let statusType: "added" | "modified" | "deleted" = "modified";
+        if (head === 0 && workdir === 2) statusType = "added";
+        else if (head === 1 && workdir === 0) statusType = "deleted";
+        return { path: filepath, status: statusType };
+      });
+
+    if (uncommittedFiles.length === 0) {
+      return { message: "No hay cambios para confirmar" };
+    }
+
+    // Get diffs for context (limit to first 10 files to avoid token limits)
+    const filesToAnalyze = uncommittedFiles.slice(0, 10);
+    const diffsPromises = filesToAnalyze.map(async (file) => {
+      try {
+        const { diff } = await gitDiffFile({
+          path: appPath,
+          filepath: file.path,
+        });
+        return `File: ${file.path} (${file.status})\n${diff.slice(0, 500)}`; // Limit diff size
+      } catch {
+        return `File: ${file.path} (${file.status})`;
+      }
+    });
+
+    const diffs = await Promise.all(diffsPromises);
+    const diffsContext = diffs.join("\n\n");
+
+    // Build prompt for AI
+    const prompt = `Generate a concise, clear commit message in Spanish for these git changes.
+The message should:
+- Be one line, under 72 characters
+- Start with a verb in infinitive (añadir, actualizar, corregir, eliminar, etc.)
+- Summarize the main change, not list every file
+- Be specific but brief
+
+Changes:
+${diffsContext}
+
+Return ONLY the commit message, nothing else.`;
+
+    // Call OpenRouter API
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://dyad.sh",
+          "X-Title": "Dyad - Git Commit Message Generator",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 100,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("OpenRouter API error:", {
+        status: response.status,
+        body: errorText,
+      });
+      throw new Error(`OpenRouter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const generatedMessage =
+      data.choices?.[0]?.message?.content?.trim() ||
+      "Actualizar archivos del proyecto";
+
+    return { message: generatedMessage };
+  } catch (err: any) {
+    logger.error("[GitHub Handler] Failed to generate commit message:", err);
+    throw new Error(
+      err.message || "Failed to generate commit message with AI.",
+    );
+  }
+}
+
 // --- Registration ---
 export function registerGithubHandlers() {
   createTypedHandler(githubContracts.startFlow, async (event, params) => {
@@ -1450,6 +1691,17 @@ export function registerGithubHandlers() {
     githubContracts.cloneRepoFromUrl,
     async (event, params) => {
       return handleCloneRepoFromUrl(event, params);
+    },
+  );
+
+  createTypedHandler(githubContracts.getPreview, async (event, params) => {
+    return handleGetPreview(event, params);
+  });
+
+  createTypedHandler(
+    githubContracts.generateCommitMessage,
+    async (event, params) => {
+      return handleGenerateCommitMessage(event, params);
     },
   );
 }

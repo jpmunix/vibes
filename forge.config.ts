@@ -38,6 +38,15 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/better-sqlite3")) {
     return false;
   }
+  if (file.startsWith("/node_modules/onnxruntime-node")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/sharp")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/@img")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/bindings")) {
     return false;
   }
@@ -83,7 +92,7 @@ const config: ForgeConfig = {
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
-    extraModules: ["better-sqlite3"],
+    extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
     force: true,
   },
   makers: [
