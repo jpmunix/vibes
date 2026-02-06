@@ -50,10 +50,22 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/@img")) {
     return false;
   }
+  if (file.startsWith("/node_modules/@xenova/transformers/node_modules/sharp")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/bindings")) {
     return false;
   }
   if (file.startsWith("/node_modules/file-uri-to-path")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/@mapbox")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/detect-libc")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/prebuild-install")) {
     return false;
   }
   if (file.startsWith("/.vite")) {
@@ -89,7 +101,10 @@ const config: ForgeConfig = {
           appleIdPassword: process.env.APPLE_PASSWORD!,
           teamId: process.env.APPLE_TEAM_ID!,
         },
-    asar: true,
+    asar: {
+      unpack:
+        "**/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
+    },
     ignore,
     extraResource: ["node_modules/dugite/git", "node_modules/@vscode"],
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
