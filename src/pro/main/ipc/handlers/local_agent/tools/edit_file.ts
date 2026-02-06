@@ -39,21 +39,25 @@ async function callTurboFileEdit(
   ctx: AgentContext,
 ): Promise<string> {
   logger.log("TurboEdit", "callTurboFileEdit", params);
-  const response = await engineFetch(ctx, "/tools/turbo-file-edit", {
-    method: "POST",
-    body: JSON.stringify({
-      path: params.path,
-      content: params.content,
-      originalContent: params.originalContent,
-      instructions: params.instructions ?? "",
-    }),
-  });
+  let response: Response | null = null;
+  try {
+    response = await engineFetch(ctx, "/tools/turbo-file-edit", {
+      method: "POST",
+      body: JSON.stringify({
+        path: params.path,
+        content: params.content,
+        originalContent: params.originalContent,
+        instructions: params.instructions ?? "",
+      }),
+    });
+  } catch (error) {
+    logger.warn("Turbo edit request failed, falling back to local rewrite", error);
+    response = null;
+  }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `File edit failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
+  if (!response || !response.ok) {
+    // Fallback: return requested content so caller can write full file
+    return params.content;
   }
 
   const data = turboFileEditResponseSchema.parse(await response.json());
@@ -144,7 +148,7 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
   modifiesState: true,
 
   // Disable in Basic Agent mode (free tier) - requires engine
-  isEnabled: (ctx) => true,
+  isEnabled: (_ctx) => true,
 
   getConsentPreview: (args) => `Edit ${args.path}`,
 

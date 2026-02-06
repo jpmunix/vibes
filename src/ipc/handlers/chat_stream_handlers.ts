@@ -115,6 +115,9 @@ import { getAiMessagesJsonIfWithinLimit } from "../utils/ai_messages_utils";
 type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
 const logger = log.scope("chat_stream_handlers");
+const disableRemoteEngine =
+  process.env.DYAD_DISABLE_REMOTE_ENGINE === "true" ||
+  process.env.DYAD_ENABLE_REMOTE_ENGINE === "false";
 
 // Track active streams for cancellation
 const activeStreams = new Map<number, AbortController>();
@@ -1157,6 +1160,8 @@ This conversation includes one or more image attachments. When the user uploads 
             messages: chatMessages.filter((m) => m.content),
             onFinish: (response) => {
               const totalTokens = response.usage?.totalTokens;
+              const promptTokens = response.usage?.promptTokens;
+              const completionTokens = response.usage?.completionTokens;
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)
@@ -1178,6 +1183,25 @@ This conversation includes one or more image attachments. When the user uploads 
                 logger.log(
                   `Total tokens used (aggregated for message ${placeholderAssistantMessage.id}): ${maxTokensUsed}`,
                 );
+
+                // Persist simple token stats for charts/logs
+                if (settings.enableTokenStats !== false) {
+                  logTokenUsage({
+                    chatId: req.chatId,
+                    messageId: placeholderAssistantMessage.id,
+                    totalTokens,
+                    promptTokens,
+                    completionTokens,
+                    model:
+                      selectedModel?.name ??
+                      placeholderAssistantMessage.model ??
+                      null,
+                    timestamp: Date.now(),
+                    appId: updatedChat?.app?.id ?? null,
+                    filesSent: files?.map((f) => f.path) ?? [],
+                    toolsUsed: tools ? Object.keys(tools) : [],
+                  });
+                }
               } else {
                 logger.log("Total tokens used: unknown");
               }
@@ -1817,11 +1841,13 @@ ${problemReport.problems
             updatedFiles: status.updatedFiles ?? false,
             extraFiles: status.extraFiles,
             extraFilesError: status.extraFilesError,
+            chatSummary,
           } satisfies ChatResponseEnd);
         } else {
           safeSend(event.sender, "chat:response:end", {
             chatId: req.chatId,
             updatedFiles: false,
+            chatSummary,
           } satisfies ChatResponseEnd);
         }
       }

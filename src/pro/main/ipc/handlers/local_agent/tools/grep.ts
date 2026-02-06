@@ -15,6 +15,10 @@ import log from "electron-log";
 
 const logger = log.scope("grep");
 
+const DEFAULT_LIMIT = 100;
+const MAX_LIMIT = 250;
+const MAX_LINE_LENGTH = 500;
+
 const grepSchema = z.object({
   query: z.string().describe("The regex pattern to search for"),
   include_pattern: z
@@ -31,6 +35,15 @@ const grepSchema = z.object({
     .boolean()
     .optional()
     .describe("Whether the search should be case sensitive (default: false)"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_LIMIT)
+    .optional()
+    .describe(
+      `Maximum number of matches to return (default ${DEFAULT_LIMIT}, max ${MAX_LIMIT})`,
+    ),
 });
 
 interface RipgrepMatch {
@@ -42,6 +55,8 @@ interface RipgrepMatch {
 function buildGrepAttributes(
   args: Partial<z.infer<typeof grepSchema>>,
   count?: number,
+  total?: number,
+  truncated?: boolean,
 ): string {
   const attrs: string[] = [];
   if (args.query) {
@@ -58,6 +73,12 @@ function buildGrepAttributes(
   }
   if (count !== undefined) {
     attrs.push(`count="${count}"`);
+  }
+  if (total !== undefined) {
+    attrs.push(`total="${total}"`);
+  }
+  if (truncated) {
+    attrs.push(`truncated="true"`);
   }
   return attrs.join(" ");
 }
@@ -192,26 +213,54 @@ export const grepTool: ToolDefinition<z.infer<typeof grepSchema>> = {
   },
 
   execute: async (args, ctx: AgentContext) => {
+    const includePatWasWildcard = args.include_pattern === "*";
+
     const matches = await runRipgrep({
       appPath: ctx.appPath,
       query: args.query,
-      includePat: args.include_pattern,
+      includePat: includePatWasWildcard ? undefined : args.include_pattern,
       excludePat: args.exclude_pattern,
       caseSensitive: args.case_sensitive,
     });
 
-    const attrs = buildGrepAttributes(args, matches.length);
+    // Sort deterministically
+    const sortedMatches = [...matches].sort(
+      (a, b) => a.path.localeCompare(b.path) || a.lineNumber - b.lineNumber,
+    );
 
-    if (matches.length === 0) {
+    const totalCount = sortedMatches.length;
+    const limit = Math.min(args.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+    const limitedMatches = sortedMatches.slice(0, limit);
+    const wasTruncated = totalCount > limit;
+
+    const attrs = buildGrepAttributes(
+      args,
+      limitedMatches.length,
+      totalCount,
+      wasTruncated,
+    );
+
+    if (limitedMatches.length === 0) {
       ctx.onXmlComplete(`<dyad-grep ${attrs}>No matches found.</dyad-grep>`);
       return "No matches found.";
     }
 
-    // Format output: path:line: content
-    const lines = matches.map(
-      (m) => `${m.path}:${m.lineNumber}: ${m.lineText}`,
-    );
-    const resultText = lines.join("\n");
+    // Format output: path:line: content (truncated)
+    const lines = limitedMatches.map((m) => {
+      const text =
+        m.lineText.length > MAX_LINE_LENGTH
+          ? m.lineText.slice(0, MAX_LINE_LENGTH) + "..."
+          : m.lineText;
+      return `${m.path}:${m.lineNumber}: ${text}`;
+    });
+    let resultText = lines.join("\n");
+
+    if (wasTruncated) {
+      resultText += `\n\n[TRUNCATED: Showing ${limitedMatches.length} of ${totalCount} matches. Usa include_pattern (p. ej. "*.ts") o una consulta más específica para acotar.]`;
+    }
+    if (includePatWasWildcard) {
+      resultText += `\n\n[NOTA: include_pattern="*" se ignoró porque coincide con todo (incluido git-ignored). Omite include_pattern para buscar todo o usa un glob específico como "*.ts".]`;
+    }
 
     ctx.onXmlComplete(
       `<dyad-grep ${attrs}>\n${escapeXmlContent(resultText)}\n</dyad-grep>`,

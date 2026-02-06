@@ -28,6 +28,11 @@ import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { SerperApiKeySettings } from "@/components/SerperApiKeySettings";
 import { Input } from "@/components/ui/input";
+import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
+import { tokenStatsClient } from "@/ipc/types";
+import type { TokenStatEntry } from "@/ipc/types/token_stats";
+import { Card } from "@/components/ui/card";
+import { formatDistanceToNow } from "date-fns";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -81,6 +86,7 @@ export default function SettingsPage() {
           <GeneralSettings appVersion={appVersion} />
           <WorkflowSettings />
           <AISettings />
+          <StatsSettings />
 
           <div
             id="provider-settings"
@@ -412,6 +418,14 @@ export function WorkflowSettings() {
           cambios en el código
         </div>
       </div>
+
+      <div className="space-y-1 mt-4">
+        <ChatCompletionNotificationSwitch />
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Mostrar notificación nativa cuando termine una respuesta (si la
+          ventana no está enfocada).
+        </div>
+      </div>
     </div>
   );
 }
@@ -463,6 +477,15 @@ function TurboEditsV2Switch() {
 }
 
 export function AISettings() {
+  const { settings, updateSettings } = useSettings();
+
+  const handleToggle = async (
+    field: "enableLocalSmartContext" | "enableMcpSmartContext" | "enableTokenStats",
+    value: boolean,
+  ) => {
+    await updateSettings({ [field]: value } as any);
+  };
+
   return (
     <div
       id="ai-settings"
@@ -491,6 +514,193 @@ export function AISettings() {
       <div className="mt-4">
         <SerperApiKeySettings />
       </div>
+
+      <div className="mt-6 space-y-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          Smart Context local
+        </h3>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">
+              Ranking local (sin backend)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Reduce el contexto eligiendo archivos relevantes según el prompt cuando no hay engine remoto.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableLocalSmartContext !== false}
+            onCheckedChange={(checked) =>
+              handleToggle("enableLocalSmartContext", checked)
+            }
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">Usar MCP</p>
+            <p className="text-xs text-muted-foreground">
+              Si hay un servidor MCP configurado, úsalo para seleccionar archivos antes de enviar el prompt.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableMcpSmartContext === true}
+            onCheckedChange={(checked) =>
+              handleToggle("enableMcpSmartContext", checked)
+            }
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">
+              Guardar métricas de tokens
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Guarda el uso de tokens por turno para mostrar logs y gráficas en Stats.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableTokenStats !== false}
+            onCheckedChange={(checked) =>
+              handleToggle("enableTokenStats", checked)
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsSettings() {
+  const [entries, setEntries] = useState<TokenStatEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await tokenStatsClient.getTokenStats();
+      setEntries(data || []);
+    } catch (error) {
+      console.error("Failed to load token stats", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const last50 = entries.slice(0, 50);
+  const maxTokens = Math.max(...last50.map((e) => e.totalTokens), 1);
+
+  return (
+    <div
+      id="stats-settings"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          Stats de tokens
+        </h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const header = [
+                "timestamp",
+                "chatId",
+                "messageId",
+                "totalTokens",
+                "promptTokens",
+                "completionTokens",
+                "model",
+                "filesSent",
+                "toolsUsed",
+              ].join(",");
+              const lines = entries.map((e) =>
+                [
+                  new Date(e.timestamp).toISOString(),
+                  e.chatId,
+                  e.messageId,
+                  e.totalTokens,
+                  e.promptTokens ?? "",
+                  e.completionTokens ?? "",
+                  e.model ?? "",
+                  (e.filesSent || []).join("|"),
+                  (e.toolsUsed || []).join("|"),
+                ].join(","),
+              );
+              const csv = [header, ...lines].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "token-stats.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            {loading ? "Cargando..." : "Refrescar"}
+          </Button>
+        </div>
+      </div>
+      {last50.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Aún no hay datos. Envía un mensaje para registrar tokens.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            Últimos {last50.length} turnos
+          </div>
+          <div className="space-y-2">
+            {last50.map((entry) => {
+              const pct = Math.min((entry.totalTokens / maxTokens) * 100, 100);
+              return (
+                <Card
+                  key={`${entry.timestamp}-${entry.messageId}`}
+                  className="p-2"
+                >
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-mono">
+                      chat #{entry.chatId} · msg {entry.messageId}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(entry.timestamp), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded">
+                    <div
+                      className="h-2 bg-primary rounded"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] mt-1 text-muted-foreground">
+                    <span>
+                      {entry.totalTokens.toLocaleString()} tokens{" "}
+                      {entry.promptTokens
+                        ? `(prompt ${entry.promptTokens.toLocaleString()}, comp ${entry.completionTokens?.toLocaleString?.() ?? "-"})`
+                        : ""}
+                    </span>
+                    <span>{entry.model || "modelo"}</span>
+                  </div>
+                  {entry.filesSent?.length ? (
+                    <div className="text-[11px] text-muted-foreground mt-1 line-clamp-1">
+                      Archivos: {entry.filesSent.slice(0, 5).join(", ")}
+                      {entry.filesSent.length > 5 ? "…" : ""}
+                    </div>
+                  ) : null}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

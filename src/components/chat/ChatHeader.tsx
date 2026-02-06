@@ -19,7 +19,7 @@ import {
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom, agentTodosByChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
@@ -57,18 +57,12 @@ export function ChatHeader({
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
-  const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
 
   const {
     branchInfo,
     isLoading: branchInfoLoading,
     refetchBranchInfo,
   } = useCurrentBranch(appId);
-
-  // Get the in-progress task for the current chat
-  const currentChatTodos = selectedChatId
-    ? agentTodosByChatId.get(selectedChatId) || []
-    : [];
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();

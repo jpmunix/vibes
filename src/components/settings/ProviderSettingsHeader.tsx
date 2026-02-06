@@ -44,7 +44,7 @@ export function ProviderSettingsHeader({
   providerDisplayName,
   isConfigured,
   isLoading,
-  hasFreeTier,
+  hasFreeTier: _hasFreeTier,
   providerWebsiteUrl,
   isDyad,
   onBackClick,

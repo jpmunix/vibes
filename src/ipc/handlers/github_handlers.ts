@@ -137,6 +137,7 @@ export async function prepareLocalBranch({
   }
   const appPath = getDyadAppPath(app.path);
   const targetBranch = branch || "main";
+  const autoCommitEnabled = readSettings().enableGithubAutoCommit !== false;
 
   try {
     // Set up remote URL if provided (should be set up before calling this)
@@ -169,7 +170,7 @@ export async function prepareLocalBranch({
     // This ensures atomicity and prevents conflicts between concurrent operations
     await withLock(appId, async () => {
       const isClean = await isGitStatusClean({ path: appPath });
-      if (!isClean) {
+      if (!isClean && autoCommitEnabled) {
         if (isGitMergeInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a merge is in progress. " +
@@ -853,7 +854,7 @@ async function handlePushToGithub(
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
-    if (!isClean) {
+    if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a merge is in progress. " +

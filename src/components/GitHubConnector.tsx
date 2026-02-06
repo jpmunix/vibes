@@ -397,7 +397,7 @@ function ConnectedGitHubConnector({
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
-      {hasUncommittedFiles && false && (
+      {hasUncommittedFiles && (
         <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
           <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
             <FileWarning size={16} />

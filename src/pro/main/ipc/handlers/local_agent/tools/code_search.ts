@@ -17,6 +17,7 @@ const FileContextSchema = z.object({
   content: z.string(),
 });
 
+const logger = log.scope("code_search");
 
 function rankFilesLocally({
   query,
@@ -85,7 +86,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
     defaultConsent: "always",
 
     // Disable in Basic Agent mode (free tier) - requires engine
-    isEnabled: (ctx) => true,
+    isEnabled: () => true,
 
     getConsentPreview: (args) => `Search for "${args.query}"`,
 

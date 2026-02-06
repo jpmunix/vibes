@@ -553,6 +553,7 @@ export async function handleLocalAgentStream(
     safeSend(event.sender, "chat:response:end", {
       chatId: req.chatId,
       updatedFiles: !readOnly,
+      chatSummary: ctx.chatSummary,
     } satisfies ChatResponseEnd);
 
     return true; // Success

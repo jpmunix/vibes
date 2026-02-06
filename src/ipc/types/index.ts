@@ -51,6 +51,7 @@ export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 export { freeAgentQuotaContracts } from "./free_agent_quota";
 export { noteContracts } from "./note";
+export { tokenStatsContracts } from "./token_stats";
 
 // =============================================================================
 // Client Exports
@@ -78,6 +79,7 @@ export { capacitorClient } from "./capacitor";
 export { contextClient } from "./context";
 export { upgradeClient } from "./upgrade";
 export { visualEditingClient } from "./visual-editing";
+export { tokenStatsClient } from "./token_stats";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
@@ -346,6 +348,7 @@ import { securityClient } from "./security";
 import { miscClient, miscEventClient } from "./misc";
 import { freeAgentQuotaClient } from "./free_agent_quota";
 import { noteClient } from "./note";
+import { tokenStatsClient } from "./token_stats";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -402,6 +405,7 @@ export const ipc = {
   security: securityClient,
   misc: miscClient,
   freeAgentQuota: freeAgentQuotaClient,
+  tokenStats: tokenStatsClient,
 
   // Event clients for main->renderer pub/sub
   events: {
