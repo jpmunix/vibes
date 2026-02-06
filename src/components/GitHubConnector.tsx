@@ -480,7 +480,7 @@ function ConnectedGitHubConnector({
       <div className="mt-2 flex gap-2">
         <Button
           onClick={handleOpenPreview}
-          disabled={isRebaseActionPending || !commitMessage.trim()}
+          disabled={isRebaseActionPending || (hasUncommittedFiles && !commitMessage.trim())}
         >
           Vista previa y sincronizar
         </Button>

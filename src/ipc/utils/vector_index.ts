@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import log from "electron-log";
 import { embed, cosineSimilarity } from "./embeddings";
 import { CodebaseFile } from "@/utils/codebase";
+import { getUserDataPath } from "../../paths/paths";
 
 const logger = log.scope("vector_index");
 
@@ -32,13 +33,20 @@ export class LocalVectorIndex {
   constructor(appPath: string) {
     this.appPath = appPath;
 
-    // Store index in .dyad directory within the app
-    const dyadDir = path.join(appPath, ".dyad");
-    if (!fs.existsSync(dyadDir)) {
-      fs.mkdirSync(dyadDir, { recursive: true });
+    // Store index in userData directory to avoid polluting project directories
+    // Create a hash of the app path to uniquely identify each project
+    const pathHash = crypto
+      .createHash("sha256")
+      .update(appPath)
+      .digest("hex")
+      .slice(0, 16);
+
+    const indexesDir = path.join(getUserDataPath(), "embeddings-indexes");
+    if (!fs.existsSync(indexesDir)) {
+      fs.mkdirSync(indexesDir, { recursive: true });
     }
 
-    this.indexPath = path.join(dyadDir, "vector_index.db");
+    this.indexPath = path.join(indexesDir, `vector_index_${pathHash}.db`);
 
     try {
       this.db = new Database(this.indexPath);
@@ -71,9 +79,48 @@ export class LocalVectorIndex {
       `);
 
       logger.info(`Vector index initialized at ${this.indexPath}`);
+
+      // Clean up old .dyad directory if it exists in the project
+      this.cleanupOldIndexLocation();
     } catch (error) {
       logger.error("Error initializing vector index:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Cleans up old index files that were stored in the project's .dyad directory
+   * This is a migration from the old storage location to the new userData location
+   */
+  private cleanupOldIndexLocation() {
+    try {
+      const oldDyadDir = path.join(this.appPath, ".dyad");
+      const oldIndexPath = path.join(oldDyadDir, "vector_index.db");
+
+      if (fs.existsSync(oldIndexPath)) {
+        logger.info(`Cleaning up old index at ${oldIndexPath}`);
+        fs.unlinkSync(oldIndexPath);
+
+        // Also remove WAL files if they exist
+        const walPath = `${oldIndexPath}-wal`;
+        const shmPath = `${oldIndexPath}-shm`;
+        if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+        if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+
+        // Try to remove .dyad directory if it's empty
+        try {
+          const files = fs.readdirSync(oldDyadDir);
+          if (files.length === 0) {
+            fs.rmdirSync(oldDyadDir);
+            logger.info(`Removed empty .dyad directory`);
+          }
+        } catch {
+          // Directory not empty or doesn't exist, ignore
+        }
+      }
+    } catch (error) {
+      logger.warn("Error cleaning up old index location:", error);
+      // Don't throw - this is just cleanup
     }
   }
 

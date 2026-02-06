@@ -85,15 +85,21 @@ export async function fetchOllamaModels(): Promise<{ models: LocalModel[] }> {
     logger.info(`Successfully fetched ${models.length} models from Ollama`);
     return { models };
   } catch (error) {
+    // Silently return empty list when Ollama is not available
+    // This is expected behavior when users don't have Ollama installed/running
     if (
       error instanceof TypeError &&
       (error as Error).message.includes("fetch failed")
     ) {
-      throw new Error(
-        "Could not connect to Ollama. Make sure it's running at http://localhost:11434",
+      logger.debug(
+        "Ollama not available at",
+        getOllamaApiUrl(),
+        "- returning empty model list",
       );
+      return { models: [] };
     }
-    throw new Error("Failed to fetch models from Ollama");
+    logger.warn("Failed to fetch models from Ollama:", error);
+    return { models: [] };
   }
 }
 

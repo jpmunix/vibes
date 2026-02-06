@@ -167,7 +167,8 @@ export async function handleIndexAllFiles(
     // Get or create indexer for this app
     const indexer = getIncrementalIndexer(appPath);
 
-    // Index all files - now returns count of indexed files
+    // Index all files synchronously - batching is handled internally
+    // The batching allows the event loop to breathe between batches
     const filesIndexed = await indexer.indexAllFiles();
 
     console.log(`[embeddings] Indexed ${filesIndexed} files`);

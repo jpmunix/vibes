@@ -11,12 +11,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useEffect, useState } from "react";
-import { useLocalModels } from "@/hooks/useLocalModels";
-import { useLocalLMSModels } from "@/hooks/useLMStudioModels";
+import { useState } from "react";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 
-import { LocalModel } from "@/ipc/types";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { PriceBadge } from "@/components/PriceBadge";
@@ -45,39 +42,9 @@ export function ModelPicker() {
   const { isLoading: providersLoading } = useLanguageModelProviders();
 
   const loading = modelsByProvidersLoading || providersLoading;
-  // Ollama Models Hook
-  const { models: ollamaModels, loadModels: loadOllamaModels } =
-    useLocalModels();
-
-  // LM Studio Models Hook
-  const { models: lmStudioModels, loadModels: loadLMStudioModels } =
-    useLocalLMSModels();
-
-  // Load models when the dropdown opens
-  useEffect(() => {
-    if (open) {
-      loadOllamaModels();
-      loadLMStudioModels();
-    }
-  }, [open, loadOllamaModels, loadLMStudioModels]);
 
   // Get display name for the selected model
   const getModelDisplayName = () => {
-    if (selectedModel.provider === "ollama") {
-      return (
-        ollamaModels.find(
-          (model: LocalModel) => model.modelName === selectedModel.name,
-        )?.displayName || selectedModel.name
-      );
-    }
-    if (selectedModel.provider === "lmstudio") {
-      return (
-        lmStudioModels.find(
-          (model: LocalModel) => model.modelName === selectedModel.name,
-        )?.displayName || selectedModel.name // Fallback to path if not found
-      );
-    }
-
     // For cloud models, look up in the modelsByProviders data
     if (modelsByProviders && modelsByProviders[selectedModel.provider]) {
       const customFoundModel = modelsByProviders[selectedModel.provider].find(

@@ -141,11 +141,10 @@ export async function getLanguageModels({
         apiName: model.name,
         type: "cloud",
       }));
-    } else {
-      console.warn(
-        `Provider "${providerId}" is cloud type but not found in MODEL_OPTIONS.`,
-      );
     }
+    // Note: Some cloud providers (like openai, anthropic, google) don't have
+    // hardcoded models in MODEL_OPTIONS and rely only on custom models.
+    // This is expected behavior and not a warning condition.
   }
 
   return [...hardcodedModels, ...customModels];

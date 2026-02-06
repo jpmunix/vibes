@@ -84,7 +84,7 @@ export function ChatModeSelector() {
         return "Build (MCP)";
       case "local-agent":
         // Show "Basic Agent" for non-Pro users, "Agent" for Pro users
-        return isProEnabled ? "Pro Agent" : "Pro Agent";
+        return isProEnabled ? "Agente inteligente" : "Agente inteligente";
       default:
         return "Build";
     }
@@ -122,7 +122,7 @@ export function ChatModeSelector() {
           <SelectItem value="local-agent">
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium">Pro agent</span>
+                <span className="font-medium">Agente inteligente</span>
                 <NewBadge />
               </div>
               <span className="text-xs text-muted-foreground">

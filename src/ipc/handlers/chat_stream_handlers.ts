@@ -708,11 +708,30 @@ ${componentSnippet}
               }
             : validateChatContext(updatedChat.app.chatContext);
 
-        // Extract codebase for current app
-        let { formattedOutput: codebaseInfo, files } = await extractCodebase({
-          appPath,
-          chatContext,
-        });
+        // Skip codebase extraction for summarize intent to save tokens
+        let codebaseInfo = "";
+        let files: CodebaseFile[] = [];
+
+        if (!isSummarizeIntent) {
+          // Extract codebase for current app
+          logger.log(
+            `[BUILD MODE] Extracting codebase from ${appPath} with chatContext:`,
+            chatContext,
+          );
+          const extracted = await extractCodebase({
+            appPath,
+            chatContext,
+          });
+          codebaseInfo = extracted.formattedOutput;
+          files = extracted.files;
+          logger.log(
+            `[BUILD MODE] Extracted ${files.length} files from codebase`,
+          );
+        } else {
+          logger.log(
+            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
+          );
+        }
 
         // Local smart context: if remote engine is disabled, trim files by prompt relevance
         const useLocalContext =
@@ -720,14 +739,24 @@ ${componentSnippet}
           settings.enableProSmartFilesContextMode &&
           settings.enableLocalSmartContext !== false;
 
+        logger.log(
+          `[BUILD MODE] useLocalContext: ${useLocalContext}, isEngineEnabled: ${isEngineEnabled}, disableRemoteEngine: ${disableRemoteEngine}`,
+        );
+
         if (useLocalContext) {
           let ranked: CodebaseFile[] | null = null;
 
           // Determine max files from settings (default 20, reduced from 60 for better focus)
           const maxFiles = settings.maxContextFiles ?? 20;
+          logger.log(
+            `[BUILD MODE] Starting smart context with maxFiles: ${maxFiles}`,
+          );
 
           // Try MCP ranking first if enabled
           if (settings.enableMcpSmartContext) {
+            logger.log(
+              `[BUILD MODE] Attempting MCP ranking for ${files.length} files...`,
+            );
             ranked = await tryMcpRankFiles({
               prompt: req.prompt,
               files,
@@ -735,8 +764,13 @@ ${componentSnippet}
             });
             if (ranked) {
               logger.log(
-                `Smart context (MCP): reduced files to ${ranked.length} for prompt`,
+                `[BUILD MODE] ✓ MCP ranking succeeded: reduced files to ${ranked.length}`,
               );
+              logger.log(
+                `[BUILD MODE] MCP selected files: ${ranked.map((f) => f.path).join(", ")}`,
+              );
+            } else {
+              logger.log(`[BUILD MODE] ✗ MCP ranking returned null`);
             }
           }
 
@@ -747,6 +781,9 @@ ${componentSnippet}
             const useSemanticSearch = settings.enableSemanticSearch !== false;
 
             if (useSemanticSearch) {
+              logger.log(
+                `[BUILD MODE] Attempting semantic search using mini model (all-MiniLM-L6-v2)...`,
+              );
               ranked = await getSemanticContext({
                 appPath,
                 prompt: req.prompt,
@@ -756,17 +793,26 @@ ${componentSnippet}
                 buildIndexIfNeeded: true,
               });
               logger.log(
-                `Smart context (semantic): reduced files to ${ranked.length} for prompt`,
+                `[BUILD MODE] ✓ Semantic search completed: reduced files to ${ranked.length}`,
+              );
+              logger.log(
+                `[BUILD MODE] Semantically selected files: ${ranked.map((f) => f.path).join(", ")}`,
               );
             } else {
               // Explicitly disabled semantic search, use keyword ranking
+              logger.log(
+                `[BUILD MODE] Semantic search disabled, using keyword ranking...`,
+              );
               ranked = rankFilesLocally({
                 prompt: req.prompt,
                 files,
                 maxResults: maxFiles,
               });
               logger.log(
-                `Smart context (keyword): reduced files to ${ranked.length} for prompt`,
+                `[BUILD MODE] ✓ Keyword ranking completed: reduced files to ${ranked.length}`,
+              );
+              logger.log(
+                `[BUILD MODE] Keyword selected files: ${ranked.map((f) => f.path).join(", ")}`,
               );
             }
           }
@@ -774,7 +820,14 @@ ${componentSnippet}
           if (ranked && ranked.length > 0) {
             files = ranked;
             codebaseInfo = buildCodebaseXml(ranked);
+            logger.log(
+              `[BUILD MODE] Final context includes ${files.length} ranked files`,
+            );
           }
+        } else {
+          logger.log(
+            `[BUILD MODE] Local context disabled, using all ${files.length} files`,
+          );
         }
 
         // For smart context and selected components, we will mark the selected components' files as focused.
@@ -1454,6 +1507,112 @@ This conversation includes one or more image attachments. When the user uploads 
             await markMessageAsUsingFreeAgentQuota(userMessageId);
           }
 
+          // Add semantic context for Agente inteligente
+          // Extract codebase and use semantic search to provide initial context
+          // Skip for summarize intent to save tokens
+          logger.log(
+            `[AGENT MODE] Starting Agente inteligente${isSummarizeIntent ? " (summarize mode - no codebase)" : " with semantic context"}`,
+          );
+          let localAgentSystemPrompt = systemPrompt;
+
+          if (!isSummarizeIntent) {
+            try {
+              const chatContext = validateChatContext(
+                updatedChat.app.chatContext,
+              );
+              logger.log(
+                `[AGENT MODE] Extracting codebase from ${appPath} with chatContext:`,
+                chatContext,
+              );
+              const { files } = await extractCodebase({
+                appPath,
+                chatContext,
+              });
+              logger.log(
+                `[AGENT MODE] Extracted ${files.length} files from codebase`,
+              );
+
+              // Use semantic search if enabled (default: true)
+              const useSemanticSearch = settings.enableSemanticSearch !== false;
+              logger.log(
+                `[AGENT MODE] useSemanticSearch: ${useSemanticSearch}, files: ${files.length}`,
+              );
+
+              if (useSemanticSearch && files.length > 0) {
+                const maxFiles = settings.maxContextFiles ?? 20;
+                logger.log(
+                  `[AGENT MODE] Starting smart context with maxFiles: ${maxFiles}`,
+                );
+                let ranked: CodebaseFile[] | null = null;
+
+                // Try MCP ranking first if enabled
+                if (settings.enableMcpSmartContext) {
+                  logger.log(
+                    `[AGENT MODE] Attempting MCP ranking for ${files.length} files...`,
+                  );
+                  ranked = await tryMcpRankFiles({
+                    prompt: req.prompt,
+                    files,
+                    maxResults: maxFiles,
+                  });
+                  if (ranked) {
+                    logger.log(
+                      `[AGENT MODE] ✓ MCP ranking succeeded: ${ranked.length} files`,
+                    );
+                    logger.log(
+                      `[AGENT MODE] MCP selected files: ${ranked.map((f) => f.path).join(", ")}`,
+                    );
+                  } else {
+                    logger.log(`[AGENT MODE] ✗ MCP ranking returned null`);
+                  }
+                }
+
+                // If MCP didn't work, try semantic search
+                if (!ranked) {
+                  logger.log(
+                    `[AGENT MODE] Attempting semantic search using mini model (all-MiniLM-L6-v2)...`,
+                  );
+                  ranked = await getSemanticContext({
+                    appPath,
+                    prompt: req.prompt,
+                    files,
+                    maxFiles,
+                    useSemanticSearch: true,
+                    buildIndexIfNeeded: true,
+                  });
+                  logger.log(
+                    `[AGENT MODE] ✓ Semantic search completed: ${ranked.length} files selected`,
+                  );
+                  logger.log(
+                    `[AGENT MODE] Semantically selected files: ${ranked.map((f) => f.path).join(", ")}`,
+                  );
+                }
+
+                if (ranked && ranked.length > 0) {
+                  const codebaseInfo = buildCodebaseXml(ranked);
+                  localAgentSystemPrompt += `\n\n# Relevant Codebase Context\nBased on your prompt, here are the most relevant files in the codebase. You can use the read_file and other tools to explore additional files as needed.\n\n${codebaseInfo}`;
+                  logger.log(
+                    `[AGENT MODE] Added ${ranked.length} files to system prompt as initial context`,
+                  );
+                }
+              } else {
+                logger.log(
+                  `[AGENT MODE] Semantic search disabled or no files available`,
+                );
+              }
+            } catch (error) {
+              // Best-effort: if semantic context fails, continue without it
+              logger.warn(
+                "[AGENT MODE] Failed to add semantic context to Agente inteligente:",
+                error,
+              );
+            }
+          } else {
+            logger.log(
+              `[AGENT MODE] Skipping codebase extraction for summarize intent`,
+            );
+          }
+
           let streamSuccess = false;
           try {
             streamSuccess = await handleLocalAgentStream(
@@ -1462,7 +1621,7 @@ This conversation includes one or more image attachments. When the user uploads 
               abortController,
               {
                 placeholderMessageId: placeholderAssistantMessage.id,
-                systemPrompt,
+                systemPrompt: localAgentSystemPrompt,
                 dyadRequestId: dyadRequestId ?? "[no-request-id]",
                 messageOverride: isSummarizeIntent ? chatMessages : undefined,
               },

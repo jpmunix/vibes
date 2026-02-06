@@ -210,6 +210,21 @@ export class IncrementalIndexer {
   async indexAllFiles(): Promise<number> {
     logger.info(`Starting full indexing for ${this.appPath}...`);
 
+    // Check if appPath exists
+    const fs = await import("fs/promises");
+    try {
+      const stats = await fs.stat(this.appPath);
+      logger.info(
+        `AppPath exists: ${this.appPath}, isDirectory: ${stats.isDirectory()}`,
+      );
+    } catch (error) {
+      logger.error(
+        `AppPath does not exist or is inaccessible: ${this.appPath}`,
+        error,
+      );
+      return 0;
+    }
+
     const { glob } = await import("glob");
     const allowedExtensions = [
       ".ts",
@@ -236,6 +251,7 @@ export class IncrementalIndexer {
     let allFiles: string[] = [];
 
     for (const pattern of patterns) {
+      logger.debug(`Searching for pattern ${pattern} in ${this.appPath}`);
       const files = await glob(pattern, {
         cwd: this.appPath,
         absolute: true,
@@ -250,6 +266,7 @@ export class IncrementalIndexer {
           "**/.dyad/**",
         ],
       });
+      logger.debug(`Pattern ${pattern} found ${files.length} files`);
       allFiles = allFiles.concat(files);
     }
 
@@ -260,7 +277,7 @@ export class IncrementalIndexer {
       return 0;
     }
 
-    // Process files in batches
+    // Process files in batches with small delays to keep UI responsive
     const batchSize = 5;
     let indexedCount = 0;
 
@@ -292,6 +309,12 @@ export class IncrementalIndexer {
       logger.debug(
         `Indexed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allFiles.length / batchSize)} (${indexedCount}/${allFiles.length} files processed)`,
       );
+
+      // Small delay between batches to allow event loop to process other events
+      // This prevents completely blocking the main thread
+      if (i + batchSize < allFiles.length) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
     }
 
     logger.info(

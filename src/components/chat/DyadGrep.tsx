@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
+import { useSettings } from "@/hooks/useSettings";
+import { t } from "@/lib/i18n";
 
 interface DyadGrepProps {
   children?: ReactNode;
@@ -26,6 +28,8 @@ interface DyadGrepProps {
 }
 
 export const DyadGrep: React.FC<DyadGrepProps> = ({ children, node }) => {
+  const { settings } = useSettings();
+  const language = settings?.chatLanguage || "es";
   const [isContentVisible, setIsContentVisible] = useState(false);
 
   // State handling
@@ -86,7 +90,7 @@ export const DyadGrep: React.FC<DyadGrepProps> = ({ children, node }) => {
           {inProgress && (
             <div className="flex items-center text-(--primary) text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Searching...</span>
+              <span>{t("searching", language)}</span>
             </div>
           )}
           {aborted && (

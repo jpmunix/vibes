@@ -44,7 +44,7 @@ export function DefaultChatModeSelector() {
       case "agent":
         return "Build (MCP)";
       case "local-agent":
-        return "Pro Agent";
+        return "Agente inteligente";
       case "ask":
       default:
         throw new Error(`Unknown chat mode: ${mode}`);
@@ -71,7 +71,7 @@ export function DefaultChatModeSelector() {
             <SelectItem value="local-agent">
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Pro Agent</span>
+                  <span className="font-medium">Agente inteligente</span>
                   <NewBadge />
                 </div>
                 <span className="text-xs text-muted-foreground">

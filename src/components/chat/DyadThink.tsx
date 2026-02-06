@@ -3,6 +3,8 @@ import { Brain, ChevronDown, ChevronUp, Loader } from "lucide-react";
 import { VanillaMarkdownParser } from "./DyadMarkdownParser";
 import { CustomTagState } from "./stateTypes";
 import { DyadTokenSavings } from "./DyadTokenSavings";
+import { useSettings } from "@/hooks/useSettings";
+import { t } from "@/lib/i18n";
 
 interface DyadThinkProps {
   node?: any;
@@ -10,6 +12,8 @@ interface DyadThinkProps {
 }
 
 export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
+  const { settings } = useSettings();
+  const language = settings?.chatLanguage || "es";
   const state = node?.properties?.state as CustomTagState;
   const inProgress = state === "pending";
   const [isExpanded, setIsExpanded] = useState(inProgress);
@@ -63,7 +67,7 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
         style={{ zIndex: 1 }}
       >
         <Brain size={16} className="text-purple-500" />
-        <span>Thinking</span>
+        <span>{t("thinking", language)}</span>
         {inProgress && (
           <Loader size={14} className="ml-1 text-purple-500 animate-spin" />
         )}

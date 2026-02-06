@@ -130,6 +130,11 @@ export async function handleLocalAgentStream(
     messageOverride?: ModelMessage[];
   },
 ): Promise<boolean> {
+  logger.log(`[AGENT] ============================================`);
+  logger.log(
+    `[AGENT] Starting Agente inteligente handler (chatId: ${req.chatId}, readOnly: ${readOnly})`,
+  );
+  logger.log(`[AGENT] Prompt: ${req.prompt.substring(0, 100)}...`);
   const settings = readSettings();
 
   // Check Pro status or Basic Agent mode
@@ -318,9 +323,16 @@ export async function handleLocalAgentStream(
     // Build tool set (agent tools + MCP tools)
     // In read-only mode, only include read-only tools and skip MCP tools
     // (since we can't determine if MCP tools modify state)
+    logger.log(
+      `[AGENT] Building tool set (readOnly: ${readOnly}, basicAgentMode: ${isBasicAgentMode(settings)})`,
+    );
     const agentTools = buildAgentToolSet(ctx, { readOnly });
     const mcpTools = readOnly ? {} : await getMcpTools(event, ctx);
     const allTools: ToolSet = { ...agentTools, ...mcpTools };
+    logger.log(
+      `[AGENT] Tool set built: ${Object.keys(agentTools).length} agent tools, ${Object.keys(mcpTools).length} MCP tools`,
+    );
+    logger.log(`[AGENT] Available tools: ${Object.keys(allTools).join(", ")}`);
 
     // Prepare message history with graceful fallback
     // Use messageOverride if provided (e.g., for summarization)
@@ -329,8 +341,17 @@ export async function handleLocalAgentStream(
       : chat.messages
           .filter((msg) => msg.content || msg.aiMessagesJson)
           .flatMap((msg) => parseAiMessagesJson(msg));
+    logger.log(
+      `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
+    );
 
     // Stream the response
+    logger.log(
+      `[AGENT] Starting streamText with model: ${selectedModel.provider}/${selectedModel.name}`,
+    );
+    logger.log(
+      `[AGENT] System prompt length: ${systemPrompt.length} characters`,
+    );
     const streamResult = streamText({
       model: modelClient.model,
       headers: getAiHeaders({
@@ -484,10 +505,16 @@ export async function handleLocalAgentStream(
 
         case "tool-call":
           // Tool execution happens via execute callbacks
+          logger.log(
+            `[AGENT] Tool call: ${part.toolName} (id: ${part.toolCallId})`,
+          );
           break;
 
         case "tool-result":
           // Tool results are already handled by the execute callback
+          logger.log(
+            `[AGENT] Tool result: ${part.toolName} (id: ${part.toolCallId})`,
+          );
           break;
       }
 

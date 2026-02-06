@@ -20,24 +20,42 @@ export interface LMStudioModel {
 }
 
 export async function fetchLMStudioModels(): Promise<{ models: LocalModel[] }> {
-  const modelsResponse: Response = await fetch(
-    `${LM_STUDIO_BASE_URL}/api/v0/models`,
-  );
-  if (!modelsResponse.ok) {
-    throw new Error("Failed to fetch models from LM Studio");
-  }
-  const modelsJson = await modelsResponse.json();
-  const downloadedModels = modelsJson.data as LMStudioModel[];
-  const models: LocalModel[] = downloadedModels
-    .filter((model: any) => model.type === "llm")
-    .map((model: any) => ({
-      modelName: model.id,
-      displayName: model.id,
-      provider: "lmstudio",
-    }));
+  try {
+    const modelsResponse: Response = await fetch(
+      `${LM_STUDIO_BASE_URL}/api/v0/models`,
+    );
+    if (!modelsResponse.ok) {
+      throw new Error("Failed to fetch models from LM Studio");
+    }
+    const modelsJson = await modelsResponse.json();
+    const downloadedModels = modelsJson.data as LMStudioModel[];
+    const models: LocalModel[] = downloadedModels
+      .filter((model: any) => model.type === "llm")
+      .map((model: any) => ({
+        modelName: model.id,
+        displayName: model.id,
+        provider: "lmstudio",
+      }));
 
-  logger.info(`Successfully fetched ${models.length} models from LM Studio`);
-  return { models };
+    logger.info(`Successfully fetched ${models.length} models from LM Studio`);
+    return { models };
+  } catch (error) {
+    // Silently return empty list when LM Studio is not available
+    // This is expected behavior when users don't have LM Studio installed/running
+    if (
+      error instanceof TypeError &&
+      (error as Error).message.includes("fetch failed")
+    ) {
+      logger.debug(
+        "LM Studio not available at",
+        LM_STUDIO_BASE_URL,
+        "- returning empty model list",
+      );
+      return { models: [] };
+    }
+    logger.warn("Failed to fetch models from LM Studio:", error);
+    return { models: [] };
+  }
 }
 
 export function registerLMStudioHandlers() {
