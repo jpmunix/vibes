@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableNativeGit: true,
   autoExpandPreviewPanel: false,
   chatLanguage: "es",
+  showTokenBar: false,
 };
 
 type Lang = "en" | "es";

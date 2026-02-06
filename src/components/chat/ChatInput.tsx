@@ -29,7 +29,7 @@ import {
   pendingAgentConsentsAtom,
   agentTodosByChatIdAtom,
 } from "@/atoms/chatAtoms";
-import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
@@ -82,12 +82,10 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-const showTokenBarAtom = atom(false);
-
 export function ChatInput({ chatId }: { chatId?: number }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
@@ -98,12 +96,16 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
-  const [showTokenBar, setShowTokenBar] = useAtom(showTokenBarAtom);
+  const [showTokenBar, setShowTokenBar] = useState(false);
   const queryClient = useQueryClient();
   const toggleShowTokenBar = useCallback(() => {
-    setShowTokenBar((prev) => !prev);
-    queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
-  }, [setShowTokenBar, queryClient]);
+    setShowTokenBar((prev) => {
+      const next = !prev;
+      void updateSettings({ showTokenBar: next });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
+      return next;
+    });
+  }, [updateSettings, queryClient]);
   const [selectedComponents, setSelectedComponents] = useAtom(
     selectedComponentsPreviewAtom,
   );
@@ -123,6 +125,12 @@ export function ChatInput({ chatId }: { chatId?: number }) {
     (c) => c.chatId === chatId,
   );
   const pendingAgentConsent = consentsForThisChat[0] ?? null;
+
+  useEffect(() => {
+    if (settings?.showTokenBar !== undefined) {
+      setShowTokenBar(settings.showTokenBar);
+    }
+  }, [settings?.showTokenBar]);
 
   // Get todos for this chat
   const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
