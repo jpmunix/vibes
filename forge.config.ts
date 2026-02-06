@@ -22,7 +22,9 @@ const ignore = (file: string) => {
   if (file.startsWith("/scaffold")) {
     return false;
   }
-
+  if (file.startsWith("/node_modules/semver")) {
+    return false;
+  }
   if (file.startsWith("/worker") && !file.startsWith("/workers")) {
     return false;
   }
@@ -103,10 +105,10 @@ const config: ForgeConfig = {
         },
     asar: {
       unpack:
-        "**/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
+        "**/node_modules/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,semver,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
     },
     ignore,
-    extraResource: ["node_modules/dugite/git", "node_modules/@vscode"],
+    extraResource: ["node_modules/better-sqlite3","node_modules/dugite/git", "node_modules/@vscode", "node_modules/sharp"],
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {

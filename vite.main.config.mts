@@ -15,6 +15,7 @@ export default defineConfig({
         "onnxruntime-node",
         "onnxruntime-common",
         "sharp",
+        "semver",
         "bindings",
         "file-uri-to-path",
         "@mapbox/node-pre-gyp",
