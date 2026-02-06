@@ -91,6 +91,8 @@ import { inArray } from "drizzle-orm";
 import { replacePromptReference } from "../utils/replacePromptReference";
 import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
+import { logTokenUsage } from "../utils/token_stats_logger";
+import { rankFilesLocally, buildCodebaseXml } from "../utils/local_ranker";
 import {
   isDyadProEnabled,
   isBasicAgentMode,
@@ -680,10 +682,48 @@ ${componentSnippet}
             : validateChatContext(updatedChat.app.chatContext);
 
         // Extract codebase for current app
-        const { formattedOutput: codebaseInfo, files } = await extractCodebase({
+        let { formattedOutput: codebaseInfo, files } = await extractCodebase({
           appPath,
           chatContext,
         });
+
+        // Local smart context: if remote engine is disabled, trim files by prompt relevance
+        const useLocalContext =
+          (!isEngineEnabled || disableRemoteEngine) &&
+          settings.enableProSmartFilesContextMode &&
+          settings.enableLocalSmartContext !== false;
+
+        if (useLocalContext) {
+          let ranked: CodebaseFile[] | null = null;
+          if (settings.enableMcpSmartContext) {
+            ranked = await tryMcpRankFiles({
+              prompt: req.prompt,
+              files,
+              maxResults: 60,
+            });
+            if (ranked) {
+              logger.log(
+                `Smart context (MCP): reduced files to ${ranked.length} for prompt`,
+              );
+            }
+          }
+          if (!ranked) {
+            ranked = rankFilesLocally({
+              prompt: req.prompt,
+              files,
+              maxResults: 60,
+            });
+            if (ranked.length > 0) {
+              logger.log(
+                `Smart context (local): reduced files to ${ranked.length} for prompt`,
+              );
+            }
+          }
+          if (ranked && ranked.length > 0) {
+            files = ranked;
+            codebaseInfo = buildCodebaseXml(ranked);
+          }
+        }
 
         // For smart context and selected components, we will mark the selected components' files as focused.
         // This means that we don't do the regular smart context handling, but we'll allow fetching
@@ -2052,6 +2092,7 @@ ${otherAppsCodebaseInfo}
 `;
 }
 
+
 async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
   try {
@@ -2088,8 +2129,72 @@ async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
             return typeof res === "string" ? res : JSON.stringify(res);
           },
         };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function tryMcpRankFiles({
+  prompt,
+  files,
+  maxResults,
+}: {
+  prompt: string;
+  files: CodebaseFile[];
+  maxResults: number;
+}): Promise<CodebaseFile[] | null> {
+  try {
+    const servers = await db
+      .select()
+      .from(mcpServers)
+      .where(eq(mcpServers.enabled, true as any));
+    if (!servers.length) return null;
+    const server = servers[0];
+    const client = await mcpManager.getClient(server.id);
+    const tools = await client.tools();
+    const rankTool = tools["rank_files"];
+    if (!rankTool) return null;
+    const payload = {
+      query: prompt,
+      maxResults,
+    };
+    const result = await rankTool.execute(payload, {} as any);
+    // Accept JSON array or newline-delimited paths
+    let paths: string[] = [];
+    if (Array.isArray(result)) {
+      paths = result as string[];
+    } else if (typeof result === "string") {
+      try {
+        const parsed = JSON.parse(result);
+        if (Array.isArray(parsed)) {
+          paths = parsed;
+        } else {
+          paths = result
+            .split("\n")
+            .map((p) => p.trim())
+            .filter(Boolean);
+        }
+      } catch {
+        paths = result
+          .split("\n")
+          .map((p) => p.trim())
+          .filter(Boolean);
       }
     }
+    if (!paths.length) return null;
+    const selected = [];
+    const set = new Set(paths);
+    for (const f of files) {
+      if (set.has(f.path)) {
+        selected.push(f);
+      }
+    }
+    if (selected.length === 0) return null;
+    return selected.slice(0, maxResults);
+  } catch (error) {
+    logger.warn("MCP rank_files failed, falling back to local ranking", error);
+    return null;
+  }
+}
   } catch (e) {
     logger.warn("Failed building MCP toolset", e);
   }
