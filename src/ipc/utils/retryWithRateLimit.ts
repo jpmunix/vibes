@@ -34,6 +34,40 @@ export function isRateLimitError(error: any): boolean {
   return status === 429;
 }
 
+/**
+ * Checks if an error is a network error that should be retried.
+ * Includes timeouts, connection errors, DNS errors, etc.
+ */
+export function isNetworkError(error: any): boolean {
+  // Check for fetch failure errors
+  if (error instanceof TypeError && error.message === "fetch failed") {
+    return true;
+  }
+
+  // Check for common network error codes
+  const code = error?.code || error?.cause?.code;
+  if (code) {
+    const retryableCodes = [
+      "ETIMEDOUT",
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ENOTFOUND",
+      "ENETUNREACH",
+      "EHOSTUNREACH",
+    ];
+    return retryableCodes.includes(code);
+  }
+
+  return false;
+}
+
+/**
+ * Checks if an error should be retried (rate limit or network error).
+ */
+export function isRetryableError(error: any): boolean {
+  return isRateLimitError(error) || isNetworkError(error);
+}
+
 // Retry configuration
 const RETRY_CONFIG = {
   maxRetries: 8,
@@ -80,15 +114,18 @@ export async function retryWithRateLimit<T>(
     } catch (error: any) {
       lastError = error;
 
-      // Only retry on rate limit errors
-      if (!isRateLimitError(error)) {
+      // Only retry on retryable errors (rate limit or network errors)
+      if (!isRetryableError(error)) {
         throw error;
       }
 
       // Don't retry if we've exhausted all attempts
       if (attempt === maxRetries) {
+        const errorType = isRateLimitError(error)
+          ? "rate limit"
+          : "network error";
         logger.error(
-          `${context}: Failed after ${maxRetries + 1} attempts due to rate limit`,
+          `${context}: Failed after ${maxRetries + 1} attempts due to ${errorType}`,
         );
         throw error;
       }
@@ -100,8 +137,12 @@ export async function retryWithRateLimit<T>(
       const jitter =
         exponentialDelay * RETRY_CONFIG.jitterFactor * Math.random();
       delay = Math.min(exponentialDelay + jitter, maxDelay);
+
+      const errorType = isRateLimitError(error)
+        ? "Rate limited"
+        : "Network error";
       logger.warn(
-        `${context}: Rate limited (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${Math.round(delay)}ms`,
+        `${context}: ${errorType} (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${Math.round(delay)}ms`,
       );
 
       await new Promise((resolve) => setTimeout(resolve, delay));

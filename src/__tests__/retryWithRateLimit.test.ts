@@ -1,5 +1,7 @@
 import {
   isRateLimitError,
+  isNetworkError,
+  isRetryableError,
   retryWithRateLimit,
   RateLimitError,
   fetchWithRetry,
@@ -135,6 +137,96 @@ describe("isRateLimitError", () => {
   });
 });
 
+describe("isNetworkError", () => {
+  describe("returns true for network errors", () => {
+    it("should return true for fetch failed TypeError", () => {
+      const error = new TypeError("fetch failed");
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ETIMEDOUT error", () => {
+      const error = { code: "ETIMEDOUT" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ETIMEDOUT in cause", () => {
+      const error = { cause: { code: "ETIMEDOUT" } };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ECONNRESET error", () => {
+      const error = { code: "ECONNRESET" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ECONNREFUSED error", () => {
+      const error = { code: "ECONNREFUSED" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ENOTFOUND error", () => {
+      const error = { code: "ENOTFOUND" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for ENETUNREACH error", () => {
+      const error = { code: "ENETUNREACH" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+
+    it("should return true for EHOSTUNREACH error", () => {
+      const error = { code: "EHOSTUNREACH" };
+      expect(isNetworkError(error)).toBe(true);
+    });
+  });
+
+  describe("returns false for non-network errors", () => {
+    it("should return false for other TypeErrors", () => {
+      const error = new TypeError("something else");
+      expect(isNetworkError(error)).toBe(false);
+    });
+
+    it("should return false for regular Error", () => {
+      const error = new Error("generic error");
+      expect(isNetworkError(error)).toBe(false);
+    });
+
+    it("should return false for error with different code", () => {
+      const error = { code: "EACCES" };
+      expect(isNetworkError(error)).toBe(false);
+    });
+
+    it("should return false for null", () => {
+      expect(isNetworkError(null)).toBe(false);
+    });
+
+    it("should return false for undefined", () => {
+      expect(isNetworkError(undefined)).toBe(false);
+    });
+
+    it("should return false for empty object", () => {
+      expect(isNetworkError({})).toBe(false);
+    });
+  });
+});
+
+describe("isRetryableError", () => {
+  it("should return true for rate limit errors", () => {
+    const error = { response: { status: 429 } };
+    expect(isRetryableError(error)).toBe(true);
+  });
+
+  it("should return true for network errors", () => {
+    const error = new TypeError("fetch failed");
+    expect(isRetryableError(error)).toBe(true);
+  });
+
+  it("should return false for non-retryable errors", () => {
+    const error = new Error("generic error");
+    expect(isRetryableError(error)).toBe(false);
+  });
+});
+
 describe("retryWithRateLimit", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -200,7 +292,7 @@ describe("retryWithRateLimit", () => {
     });
   });
 
-  describe("non-rate-limit errors", () => {
+  describe("non-retryable errors", () => {
     it("should throw immediately for 400 error", async () => {
       const badRequestError = { response: { status: 400 } };
       const operation = vi.fn().mockRejectedValue(badRequestError);
@@ -222,23 +314,85 @@ describe("retryWithRateLimit", () => {
     });
 
     it("should throw immediately for generic Error", async () => {
-      const error = new Error("Network failure");
+      const error = new Error("Generic failure");
       const operation = vi.fn().mockRejectedValue(error);
 
       await expect(
         retryWithRateLimit(operation, "test-operation"),
-      ).rejects.toThrow("Network failure");
+      ).rejects.toThrow("Generic failure");
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
-    it("should throw immediately for error without response", async () => {
-      const error = { message: "Connection timeout" };
+    it("should throw immediately for error without response or network code", async () => {
+      const error = { message: "Some custom error" };
       const operation = vi.fn().mockRejectedValue(error);
 
       await expect(
         retryWithRateLimit(operation, "test-operation"),
       ).rejects.toEqual(error);
       expect(operation).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("network errors", () => {
+    it("should retry on fetch failed TypeError", async () => {
+      const networkError = new TypeError("fetch failed");
+      const operation = vi
+        .fn()
+        .mockRejectedValueOnce(networkError)
+        .mockResolvedValueOnce("success after retry");
+
+      const resultPromise = retryWithRateLimit(operation, "test-operation", {
+        baseDelay: 100,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(200);
+
+      const result = await resultPromise;
+
+      expect(result).toBe("success after retry");
+      expect(operation).toHaveBeenCalledTimes(2);
+    });
+
+    it("should retry on ETIMEDOUT error", async () => {
+      const timeoutError = {
+        code: "ETIMEDOUT",
+        message: "Connection timed out",
+      };
+      const operation = vi
+        .fn()
+        .mockRejectedValueOnce(timeoutError)
+        .mockResolvedValueOnce("success after retry");
+
+      const resultPromise = retryWithRateLimit(operation, "test-operation", {
+        baseDelay: 100,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(200);
+
+      const result = await resultPromise;
+
+      expect(result).toBe("success after retry");
+      expect(operation).toHaveBeenCalledTimes(2);
+    });
+
+    it("should exhaust retries on persistent network errors", async () => {
+      const networkError = new TypeError("fetch failed");
+      const operation = vi.fn().mockRejectedValue(networkError);
+
+      const resultPromise = retryWithRateLimit(operation, "test-operation", {
+        maxRetries: 2,
+        baseDelay: 100,
+      });
+
+      const expectation = expect(resultPromise).rejects.toThrow("fetch failed");
+
+      await vi.runAllTimersAsync();
+
+      await expectation;
+      expect(operation).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
     });
   });
 
@@ -521,19 +675,49 @@ describe("fetchWithRetry", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("should propagate fetch network errors without retrying", async () => {
-    const networkError = new Error("Network failure");
+  it("should retry on network errors and succeed", async () => {
+    const networkError = new TypeError("fetch failed");
+    const successResponse = new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+    });
+
+    vi.mocked(fetch)
+      .mockRejectedValueOnce(networkError)
+      .mockResolvedValueOnce(successResponse);
+
+    const resultPromise = fetchWithRetry(
+      "https://example.com/api",
+      { method: "GET" },
+      "test-fetch",
+      { baseDelay: 100 },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(200);
+
+    const result = await resultPromise;
+
+    expect(result).toBe(successResponse);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should exhaust retries on persistent network errors", async () => {
+    const networkError = new TypeError("fetch failed");
     vi.mocked(fetch).mockRejectedValue(networkError);
 
-    await expect(
-      fetchWithRetry(
-        "https://example.com/api",
-        { method: "GET" },
-        "test-fetch",
-      ),
-    ).rejects.toThrow("Network failure");
+    const resultPromise = fetchWithRetry(
+      "https://example.com/api",
+      { method: "GET" },
+      "test-fetch",
+      { maxRetries: 2, baseDelay: 100 },
+    );
 
-    expect(fetch).toHaveBeenCalledTimes(1);
+    const expectation = expect(resultPromise).rejects.toThrow("fetch failed");
+
+    await vi.runAllTimersAsync();
+
+    await expectation;
+    expect(fetch).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
   });
 
   it("should pass request body correctly", async () => {

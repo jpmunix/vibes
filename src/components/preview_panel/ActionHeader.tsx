@@ -284,6 +284,13 @@ export const ActionHeader = ({
             "Seguridad",
             "security-mode-button",
           )}
+          {renderButton(
+            "configure",
+            configureRef,
+            <Cog size={iconSize} />,
+            "Configurar",
+            "configure-mode-button",
+          )}
         </div>
         {/* Chat activity bell */}
         <div className="flex items-center gap-1">

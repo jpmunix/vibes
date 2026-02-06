@@ -26,7 +26,8 @@ interface VectorSearchResult {
  * Stores file chunks with their embeddings in SQLite
  */
 export class LocalVectorIndex {
-  private db: Database.Database;
+  private db: Database.Database | null = null;
+  private dbInitPromise: Promise<void> | null = null;
   private appPath: string;
   private indexPath: string;
 
@@ -48,44 +49,65 @@ export class LocalVectorIndex {
 
     this.indexPath = path.join(indexesDir, `vector_index_${pathHash}.db`);
 
-    try {
-      this.db = new Database(this.indexPath);
+    // Defer DB initialization to avoid blocking on construction
+    // DB will be lazily initialized when first accessed
+    this.dbInitPromise = new Promise((resolve, reject) => {
+      setImmediate(() => {
+        try {
+          this.db = new Database(this.indexPath);
 
-      // Enable WAL mode for better concurrency
-      this.db.pragma("journal_mode = WAL");
+          // Enable WAL mode for better concurrency
+          this.db.pragma("journal_mode = WAL");
 
-      // Create tables
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS file_metadata (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          path TEXT NOT NULL,
-          content_hash TEXT NOT NULL,
-          last_indexed INTEGER NOT NULL,
-          chunk_index INTEGER NOT NULL,
-          total_chunks INTEGER NOT NULL,
-          UNIQUE(path, chunk_index)
-        );
+          // Create tables
+          this.db.exec(`
+            CREATE TABLE IF NOT EXISTS file_metadata (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              path TEXT NOT NULL,
+              content_hash TEXT NOT NULL,
+              last_indexed INTEGER NOT NULL,
+              chunk_index INTEGER NOT NULL,
+              total_chunks INTEGER NOT NULL,
+              UNIQUE(path, chunk_index)
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_file_path ON file_metadata(path);
-        CREATE INDEX IF NOT EXISTS idx_content_hash ON file_metadata(content_hash);
+            CREATE INDEX IF NOT EXISTS idx_file_path ON file_metadata(path);
+            CREATE INDEX IF NOT EXISTS idx_content_hash ON file_metadata(content_hash);
 
-        CREATE TABLE IF NOT EXISTS file_embeddings (
-          file_id INTEGER NOT NULL,
-          embedding BLOB NOT NULL,
-          FOREIGN KEY(file_id) REFERENCES file_metadata(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS file_embeddings (
+              file_id INTEGER NOT NULL,
+              embedding BLOB NOT NULL,
+              FOREIGN KEY(file_id) REFERENCES file_metadata(id) ON DELETE CASCADE
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_file_id ON file_embeddings(file_id);
-      `);
+            CREATE INDEX IF NOT EXISTS idx_file_id ON file_embeddings(file_id);
+          `);
 
-      logger.info(`Vector index initialized at ${this.indexPath}`);
+          logger.info(`Vector index initialized at ${this.indexPath}`);
 
-      // Clean up old .dyad directory if it exists in the project
-      this.cleanupOldIndexLocation();
-    } catch (error) {
-      logger.error("Error initializing vector index:", error);
-      throw error;
+          // Clean up old .dyad directory if it exists in the project
+          this.cleanupOldIndexLocation();
+
+          resolve();
+        } catch (error) {
+          logger.error("Error initializing vector index:", error);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  /**
+   * Ensure database is initialized before using it
+   */
+  private async ensureDbReady(): Promise<Database.Database> {
+    if (this.dbInitPromise) {
+      await this.dbInitPromise;
     }
+    if (!this.db) {
+      throw new Error("Database initialization failed");
+    }
+    return this.db;
   }
 
   /**
@@ -167,10 +189,11 @@ export class LocalVectorIndex {
    */
   async addFile(filePath: string, content: string): Promise<void> {
     try {
+      const db = await this.ensureDbReady();
       const hash = crypto.createHash("sha256").update(content).digest("hex");
 
       // Check if file already indexed with same content
-      const existing = this.db
+      const existing = db
         .prepare(
           "SELECT content_hash FROM file_metadata WHERE path = ? LIMIT 1",
         )
@@ -182,7 +205,7 @@ export class LocalVectorIndex {
       }
 
       // Delete old entries for this file
-      this.db.prepare("DELETE FROM file_metadata WHERE path = ?").run(filePath);
+      db.prepare("DELETE FROM file_metadata WHERE path = ?").run(filePath);
 
       // Chunk content for better embedding quality
       const chunks = this.chunkContent(content);
@@ -191,17 +214,17 @@ export class LocalVectorIndex {
       const embeddings = await Promise.all(chunks.map((chunk) => embed(chunk)));
 
       // Insert new entries in transaction
-      const insertMetadata = this.db.prepare(`
+      const insertMetadata = db.prepare(`
         INSERT INTO file_metadata (path, content_hash, last_indexed, chunk_index, total_chunks)
         VALUES (?, ?, ?, ?, ?)
       `);
 
-      const insertEmbedding = this.db.prepare(`
+      const insertEmbedding = db.prepare(`
         INSERT INTO file_embeddings (file_id, embedding)
         VALUES (?, ?)
       `);
 
-      this.db.transaction(() => {
+      db.transaction(() => {
         for (let i = 0; i < chunks.length; i++) {
           const result = insertMetadata.run(
             filePath,
@@ -233,11 +256,12 @@ export class LocalVectorIndex {
    */
   async search(query: string, maxResults: number = 15): Promise<string[]> {
     try {
+      const db = await this.ensureDbReady();
       // Generate query embedding
       const queryEmbedding = await embed(query);
 
       // Get all embeddings from database
-      const rows = this.db
+      const rows = db
         .prepare(
           `
         SELECT
@@ -323,12 +347,22 @@ export class LocalVectorIndex {
 
   /**
    * Get statistics about the index
+   * Returns zeros if DB not ready yet (non-blocking)
    */
   getStats(): {
     totalFiles: number;
     totalChunks: number;
     indexSize: number;
   } {
+    // Return empty stats if DB not ready (don't block)
+    if (!this.db) {
+      return {
+        totalFiles: 0,
+        totalChunks: 0,
+        indexSize: 0,
+      };
+    }
+
     const fileCount = this.db
       .prepare("SELECT COUNT(DISTINCT path) as count FROM file_metadata")
       .get() as { count: number };
@@ -355,8 +389,9 @@ export class LocalVectorIndex {
   /**
    * Clear the entire index
    */
-  clear(): void {
-    this.db.exec(`
+  async clear(): Promise<void> {
+    const db = await this.ensureDbReady();
+    db.exec(`
       DELETE FROM file_embeddings;
       DELETE FROM file_metadata;
     `);
@@ -366,8 +401,13 @@ export class LocalVectorIndex {
   /**
    * Close the database connection
    */
-  close(): void {
-    this.db.close();
-    logger.info("Vector index closed");
+  async close(): Promise<void> {
+    if (this.dbInitPromise) {
+      await this.dbInitPromise;
+    }
+    if (this.db) {
+      this.db.close();
+      logger.info("Vector index closed");
+    }
   }
 }

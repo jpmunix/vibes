@@ -77,30 +77,8 @@ if (process.defaultApp) {
 }
 
 export async function onReady() {
-  try {
-    const backupManager = new BackupManager({
-      settingsFile: getSettingsFilePath(),
-      dbFile: getDatabasePath(),
-    });
-    await backupManager.initialize();
-  } catch (e) {
-    logger.error("Error initializing backup manager", e);
-  }
-  initializeDatabase();
-
-  // Cleanup old ai_messages_json entries to prevent database bloat
-  cleanupOldAiMessagesJson();
-
+  // Read settings first (quick operation)
   const settings = readSettings();
-
-  // Add dyad-apps directory to git safe.directory (required for Windows).
-  // The trailing /* allows access to all repositories under the named directory.
-  // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
-  if (settings.enableNativeGit) {
-    // Don't need to await because this only needs to run before
-    // the user starts interacting with Dyad app and uses a git-related feature.
-    gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
-  }
 
   // Check if app was force-closed
   if (settings.isRunning) {
@@ -116,12 +94,42 @@ export async function onReady() {
   // Set isRunning to true at startup
   writeSettings({ isRunning: true });
 
-  // Start performance monitoring
-  startPerformanceMonitoring();
-
+  // Create window FIRST to show UI quickly
   await onFirstRunMaybe(settings);
   createWindow();
   createApplicationMenu();
+
+  // Then do heavy operations in background (non-blocking)
+  setImmediate(async () => {
+    try {
+      // Initialize backup manager
+      const backupManager = new BackupManager({
+        settingsFile: getSettingsFilePath(),
+        dbFile: getDatabasePath(),
+      });
+      await backupManager.initialize();
+    } catch (e) {
+      logger.error("Error initializing backup manager", e);
+    }
+
+    // Initialize database (blocking but in background)
+    initializeDatabase();
+
+    // Cleanup old ai_messages_json entries to prevent database bloat
+    await cleanupOldAiMessagesJson();
+
+    // Add dyad-apps directory to git safe.directory (required for Windows).
+    // The trailing /* allows access to all repositories under the named directory.
+    // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
+    if (settings.enableNativeGit) {
+      await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
+    }
+
+    // Start performance monitoring after everything is initialized
+    startPerformanceMonitoring();
+
+    logger.info("Background initialization completed");
+  });
 
   // Auto-update disabled by request
 }

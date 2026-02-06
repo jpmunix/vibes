@@ -358,7 +358,31 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     }
   }, [isProMode, isComponentSelectorInitialized]);
 
+  // Use refs to avoid re-creating the event listener on every state change
+  const navigationHistoryRef = useRef(navigationHistory);
+  const currentHistoryPositionRef = useRef(currentHistoryPosition);
+  const selectedAppIdRef = useRef(selectedAppId);
+  const appUrlRef = useRef(appUrl);
+
+  // Update refs when values change
+  useEffect(() => {
+    navigationHistoryRef.current = navigationHistory;
+  }, [navigationHistory]);
+
+  useEffect(() => {
+    currentHistoryPositionRef.current = currentHistoryPosition;
+  }, [currentHistoryPosition]);
+
+  useEffect(() => {
+    selectedAppIdRef.current = selectedAppId;
+  }, [selectedAppId]);
+
+  useEffect(() => {
+    appUrlRef.current = appUrl;
+  }, [appUrl]);
+
   // Add message listener for iframe errors and navigation events
+  // This effect only runs ONCE to avoid removing/re-adding listeners
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Only handle messages from our iframe
@@ -376,7 +400,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level: logLevel,
           type: "client" as const,
           message: formattedMessage,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -396,7 +420,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level: "info" as const,
           type: "network-requests" as const,
           message: formattedMessage,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -418,7 +442,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level,
           type: "network-requests" as const,
           message: formattedMessage,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -439,7 +463,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level: "error" as const,
           type: "network-requests" as const,
           message: formattedMessage,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -587,7 +611,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level: "error" as const,
           type: "client" as const,
           message: `Iframe error: ${errorMessage}`,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -604,7 +628,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           level: "error" as const,
           type: "client" as const,
           message: `Build error report: ${JSON.stringify(payload)}`,
-          appId: selectedAppId!,
+          appId: selectedAppIdRef.current!,
           timestamp: Date.now(),
         };
 
@@ -615,10 +639,14 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         setConsoleEntries((prev) => [...prev, logEntry]);
       } else if (type === "pushState" || type === "replaceState") {
         // Update navigation history based on the type of state change
+        // Use refs to get current values without causing re-renders
         if (type === "pushState" && payload?.newUrl) {
           // For pushState, we trim any forward history and add the new URL
           const newHistory = [
-            ...navigationHistory.slice(0, currentHistoryPosition + 1),
+            ...navigationHistoryRef.current.slice(
+              0,
+              currentHistoryPositionRef.current + 1,
+            ),
             payload.newUrl,
           ];
           setNavigationHistory(newHistory);
@@ -627,10 +655,12 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           currentIframeUrlRef.current = payload.newUrl;
           // Preserve URL for HMR remounts - only if it's a different route from root
           // Compare origins and check if there's a meaningful path
-          if (selectedAppId && appUrl) {
+          const currentAppId = selectedAppIdRef.current;
+          const currentAppUrl = appUrlRef.current;
+          if (currentAppId && currentAppUrl) {
             try {
               const newUrlObj = new URL(payload.newUrl);
-              const appUrlObj = new URL(appUrl);
+              const appUrlObj = new URL(currentAppUrl);
               // Only preserve if there's a non-root path
               if (
                 newUrlObj.origin === appUrlObj.origin &&
@@ -640,13 +670,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 const urlToPreserve = payload.newUrl;
                 setPreservedUrls((prev) => ({
                   ...prev,
-                  [selectedAppId]: urlToPreserve,
+                  [currentAppId]: urlToPreserve,
                 }));
               } else if (newUrlObj.origin === appUrlObj.origin) {
                 // Clear preserved URL when navigating back to root
                 setPreservedUrls((prev) => {
                   const next = { ...prev };
-                  delete next[selectedAppId];
+                  delete next[currentAppId];
                   return next;
                 });
               }
@@ -656,16 +686,18 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           }
         } else if (type === "replaceState" && payload?.newUrl) {
           // For replaceState, we replace the current URL
-          const newHistory = [...navigationHistory];
-          newHistory[currentHistoryPosition] = payload.newUrl;
+          const newHistory = [...navigationHistoryRef.current];
+          newHistory[currentHistoryPositionRef.current] = payload.newUrl;
           setNavigationHistory(newHistory);
           // Update the current iframe URL ref to match the navigation
           currentIframeUrlRef.current = payload.newUrl;
           // Preserve URL for HMR remounts - only if it's a different route from root
-          if (selectedAppId && appUrl) {
+          const currentAppId = selectedAppIdRef.current;
+          const currentAppUrl = appUrlRef.current;
+          if (currentAppId && currentAppUrl) {
             try {
               const newUrlObj = new URL(payload.newUrl);
-              const appUrlObj = new URL(appUrl);
+              const appUrlObj = new URL(currentAppUrl);
               // Only preserve if there's a non-root path
               if (
                 newUrlObj.origin === appUrlObj.origin &&
@@ -675,13 +707,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 const urlToPreserve = payload.newUrl;
                 setPreservedUrls((prev) => ({
                   ...prev,
-                  [selectedAppId]: urlToPreserve,
+                  [currentAppId]: urlToPreserve,
                 }));
               } else if (newUrlObj.origin === appUrlObj.origin) {
                 // Clear preserved URL when navigating back to root
                 setPreservedUrls((prev) => {
                   const next = { ...prev };
-                  delete next[selectedAppId];
+                  delete next[currentAppId];
                   return next;
                 });
               }
@@ -695,18 +727,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [
-    navigationHistory,
-    currentHistoryPosition,
-    selectedAppId,
-    appUrl,
-    errorMessage,
-    setErrorMessage,
-    setIsComponentSelectorInitialized,
-    setSelectedComponentsPreview,
-    setVisualEditingSelectedComponent,
-    setPreservedUrls,
-  ]);
+    // Empty deps - only register listener once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Update navigation buttons state

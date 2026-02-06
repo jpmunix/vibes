@@ -52,7 +52,9 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/@img")) {
     return false;
   }
-  if (file.startsWith("/node_modules/@xenova/transformers/node_modules/sharp")) {
+  if (
+    file.startsWith("/node_modules/@xenova/transformers/node_modules/sharp")
+  ) {
     return false;
   }
   if (file.startsWith("/node_modules/bindings")) {
@@ -108,7 +110,12 @@ const config: ForgeConfig = {
         "**/node_modules/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,semver,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
     },
     ignore,
-    extraResource: ["node_modules/better-sqlite3","node_modules/dugite/git", "node_modules/@vscode", "node_modules/sharp"],
+    extraResource: [
+      "node_modules/better-sqlite3",
+      "node_modules/dugite/git",
+      "node_modules/@vscode",
+      "node_modules/sharp",
+    ],
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
