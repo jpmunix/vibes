@@ -41,6 +41,9 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/onnxruntime-node")) {
     return false;
   }
+  if (file.startsWith("/node_modules/onnxruntime-common")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/sharp")) {
     return false;
   }

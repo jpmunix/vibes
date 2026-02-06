@@ -298,9 +298,20 @@ export function ChatHeader({
             onClick={async () => {
               if (!selectedChatId) return;
               try {
+                console.log(
+                  `[ChatHeader] Generating title for chatId=${selectedChatId}`,
+                );
                 setIsGeneratingTitle(true);
-                await ipc.chat.generateChatTitle({ chatId: selectedChatId });
-                invalidateChats();
+                const result = await ipc.chat.generateChatTitle({
+                  chatId: selectedChatId,
+                });
+                console.log(
+                  `[ChatHeader] Generated title result:`,
+                  result,
+                  `for chatId=${selectedChatId}`,
+                );
+                await invalidateChats();
+                console.log(`[ChatHeader] Invalidated chats cache`);
                 showSuccess("Título del chat actualizado");
               } catch (error) {
                 console.error("Failed to generate chat title:", error);
@@ -310,7 +321,7 @@ export function ChatHeader({
               }
             }}
             variant="ghost"
-            title="Generar título mágico"
+            title="Generar título automático"
             className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
             disabled={!selectedChatId || isStreaming || isGeneratingTitle}
           >
@@ -318,7 +329,7 @@ export function ChatHeader({
               size={16}
               className={isGeneratingTitle ? "animate-pulse" : ""}
             />
-            <span className="hidden @xs:inline">Título mágico</span>
+            <span className="hidden @xs:inline">Título automático</span>
           </Button>
           <Button
             onClick={handleSaveNote}
