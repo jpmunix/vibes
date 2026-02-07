@@ -130,6 +130,7 @@ export function registerTodoHandlers() {
       .insert(chats)
       .values({
         appId: app.id,
+        todoId: todo.id,
         initialCommitHash,
         title: `Desarrollar: ${todo.content.slice(0, 50)}`,
       })

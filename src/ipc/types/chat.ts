@@ -36,6 +36,7 @@ export const ChatSchema = z.object({
   id: z.number(),
   title: z.string(),
   messages: z.array(MessageSchema),
+  todoId: z.number().nullable().optional(),
   initialCommitHash: z.string().nullable().optional(),
   dbTimestamp: z.string().nullable().optional(),
 });

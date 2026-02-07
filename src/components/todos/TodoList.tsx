@@ -93,7 +93,7 @@ export function TodoList({
   }
 
   return (
-    <div className="space-y-4 w-full max-w-4xl">
+    <div className="space-y-4 w-full max-w-7xl">
       <div className={`flex gap-2`}>
         <Input
           placeholder="Añadir nueva tarea..."

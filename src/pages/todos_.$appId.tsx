@@ -4,11 +4,14 @@ import { useLoadApps } from "@/hooks/useLoadApps";
 import { useTodos } from "@/hooks/useTodos";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useSetAtom } from "jotai";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 export default function TodoDetailPage() {
   const { appId } = useParams({ from: "/todos/$appId" });
   const numericAppId = Number.parseInt(appId);
   const navigate = useNavigate();
+  const setSelectedAppId = useSetAtom(selectedAppIdAtom);
 
   const { apps } = useLoadApps();
   const app = apps.find((a) => a.id === numericAppId);
@@ -40,11 +43,13 @@ export default function TodoDetailPage() {
   };
 
   const handleDevelop = async (todoId: number) => {
-    const _result = await developTodo(todoId);
-    // Navigate to the new chat
+    const result = await developTodo(todoId);
+    // Set the selected app before navigating
+    setSelectedAppId(numericAppId);
+    // Navigate to the new chat with autoStart enabled
     navigate({
       to: "/chat",
-      search: { id: numericAppId },
+      search: { id: result.chatId, autoStart: true },
     });
   };
 

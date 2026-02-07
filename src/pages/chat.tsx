@@ -15,13 +15,26 @@ import { useChats } from "@/hooks/useChats";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 export default function ChatPage() {
-  let { id: chatId } = useSearch({ from: "/chat" });
+  let { id: chatId, autoStart: autoStartFromUrl } = useSearch({ from: "/chat" });
   const navigate = useNavigate();
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const [isResizing, setIsResizing] = useState(false);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const { chats, loading } = useChats(selectedAppId);
+
+  // Store the chatId that should auto-start
+  const [autoStartChatId, setAutoStartChatId] = useState<number | null>(null);
+
+  // Capture autoStart from URL and then remove it
+  useEffect(() => {
+    if (autoStartFromUrl && chatId) {
+      setAutoStartChatId(chatId);
+      navigate({ to: "/chat", search: { id: chatId }, replace: true });
+    }
+  }, [autoStartFromUrl, chatId, navigate]);
+
+  const autoStart = autoStartChatId === chatId;
 
   useEffect(() => {
     if (!chatId && chats.length && !loading) {
@@ -30,7 +43,7 @@ export default function ChatPage() {
       setSelectedAppId(chats[0].appId);
       navigate({ to: "/chat", search: { id: chats[0].id }, replace: true });
     }
-  }, [chatId, chats, loading, navigate]);
+  }, [chatId, chats, loading, navigate, setSelectedAppId]);
 
   useEffect(() => {
     if (isPreviewOpen) {
@@ -47,6 +60,7 @@ export default function ChatPage() {
         <div className="h-full w-full">
           <ChatPanel
             chatId={chatId}
+            autoStart={autoStart}
             isPreviewOpen={isPreviewOpen}
             onTogglePreview={() => {
               setIsPreviewOpen(!isPreviewOpen);

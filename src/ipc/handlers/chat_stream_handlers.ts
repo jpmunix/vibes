@@ -550,6 +550,17 @@ ${componentSnippet}
           logger.info(
             `Using title generation model for summarize task: ${provider}/${modelName}`,
           );
+
+          await logChatInfo(
+            req.chatId,
+            "model-selection",
+            `Using title generation model for summarize task: ${provider}/${modelName}`,
+            {
+              provider,
+              model: modelName,
+              reason: "summarize-intent",
+            },
+          );
         }
         // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
         // Use auto-router only if it's not a summarize chat
@@ -687,6 +698,18 @@ ${componentSnippet}
           chatId: req.chatId,
           messages: updatedChat.messages,
         });
+
+        // Log selected model before starting stream
+        await logChatInfo(
+          req.chatId,
+          "model-selection",
+          `Selected model: ${selectedModel.provider}/${selectedModel.name}`,
+          {
+            provider: selectedModel.provider,
+            model: selectedModel.name,
+            customModelId: selectedModel.customModelId,
+          },
+        );
 
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
@@ -1239,6 +1262,23 @@ This conversation includes one or more image attachments. When the user uploads 
             builtinProviderId: modelClient.builtinProviderId,
             settings,
           });
+
+          logger.log(
+            "Starting direct AI request (no engine):",
+            modelClient.model,
+          );
+          await logChatInfo(
+            req.chatId,
+            "streaming",
+            "Starting AI request",
+            {
+              model: modelClient.model,
+              provider: selectedModel.provider,
+              hasTools: !!tools,
+              messageCount: chatMessages.length,
+            },
+            placeholderAssistantMessage?.id,
+          );
 
           const streamResult = streamText({
             headers: getAiHeaders({
@@ -2454,6 +2494,18 @@ async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
             });
 
             if (!ok) throw new Error(`User declined running tool ${key}`);
+
+            await logChatInfo(
+              req.chatId,
+              "tool-execution",
+              `Executing MCP tool: ${name}`,
+              {
+                serverName: s.name,
+                toolName: name,
+                inputPreview,
+              },
+            );
+
             const res = await mcpTool.execute(args, execCtx);
 
             return typeof res === "string" ? res : JSON.stringify(res);

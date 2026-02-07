@@ -12,11 +12,11 @@ import {
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { Loader2, RefreshCw, Undo } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Undo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVersions } from "@/hooks/useVersions";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { showError, showWarning } from "@/lib/toast";
+import { showError, showSuccess, showWarning } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
@@ -61,6 +61,7 @@ interface FooterContext {
   autoRouterModelInfo: ReturnType<
     typeof useAtomValue<typeof autoRouterModelInfoByChatIdAtom>
   >;
+  todoId: number | null;
 }
 
 // Footer component for Virtuoso - receives context via props
@@ -85,7 +86,24 @@ function FooterComponent({ context }: { context?: FooterContext }) {
     settings,
     userBudget,
     renderSetupBanner,
+    todoId,
   } = context;
+
+  const [isTodoCompleted, setIsTodoCompleted] = useState(false);
+
+  // Fetch todo completion status
+  React.useEffect(() => {
+    if (todoId) {
+      ipc.todo.getTodosByApp(appId ?? 0).then((todos) => {
+        const todo = todos.find((t) => t.id === todoId);
+        if (todo) {
+          setIsTodoCompleted(todo.completed);
+        }
+      }).catch((error) => {
+        console.error("Error fetching todo:", error);
+      });
+    }
+  }, [todoId, appId]);
 
   return (
     <>
@@ -98,7 +116,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
       )}
 
       {!isStreaming && (
-        <div className="flex max-w-3xl mx-auto gap-2">
+        <div className="flex max-w-3xl mx-auto gap-2 mt-4">
           {!!messages.length &&
             messages[messages.length - 1].role === "assistant" && (
               <Button
@@ -240,6 +258,27 @@ function FooterComponent({ context }: { context?: FooterContext }) {
               Reintentar
             </Button>
           )}
+          {!!messages.length && todoId && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isTodoCompleted}
+              className={isTodoCompleted ? "bg-green-500/20 border-green-500/30 text-white hover:bg-green-500/20" : ""}
+              onClick={async () => {
+                if (!todoId) return;
+                try {
+                  await ipc.todo.updateTodo({ todoId, completed: true });
+                  setIsTodoCompleted(true);
+                  showSuccess("Tarea marcada como completada");
+                } catch (error) {
+                  showError(`Error al marcar tarea: ${(error as Error).message}`);
+                }
+              }}
+            >
+              <CheckCircle2 size={16} className="mr-1" />
+              {isTodoCompleted ? "Completada" : "Marcar como completada"}
+            </Button>
+          )}
         </div>
       )}
 
@@ -276,6 +315,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const setMessagesById = useSetAtom(chatMessagesByIdAtom);
     const [isUndoLoading, setIsUndoLoading] = useState(false);
     const [isRetryLoading, setIsRetryLoading] = useState(false);
+    const [todoId, setTodoId] = useState<number | null>(null);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
     const { userBudget } = useUserBudgetInfo();
     const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
@@ -283,6 +323,17 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const isSelectingModel = selectedChatId
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
+
+    // Fetch todoId from chat
+    React.useEffect(() => {
+      if (selectedChatId) {
+        ipc.chat.getChat(selectedChatId).then((chat) => {
+          setTodoId(chat.todoId ?? null);
+        }).catch((error) => {
+          console.error("Error fetching chat:", error);
+        });
+      }
+    }, [selectedChatId]);
 
     // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
     // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
@@ -396,6 +447,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         renderSetupBanner,
         isSelectingModel,
         autoRouterModelInfo,
+        todoId,
       }),
       [
         messages,
@@ -417,6 +469,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         isSelectingModel,
         autoRouterModelInfo,
         renderSetupBanner,
+        todoId,
       ],
     );
 

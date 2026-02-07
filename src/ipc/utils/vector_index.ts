@@ -205,9 +205,6 @@ export class LocalVectorIndex {
         return;
       }
 
-      // Delete old entries for this file
-      db.prepare("DELETE FROM file_metadata WHERE path = ?").run(filePath);
-
       // Chunk content for better embedding quality
       const chunks = this.chunkContent(content);
 
@@ -216,6 +213,9 @@ export class LocalVectorIndex {
       const embeddings = await generateEmbeddingsInWorker(chunks, filePath);
 
       // Insert new entries in transaction
+      // Use DELETE + INSERT wrapped in transaction to avoid race conditions
+      const deleteOld = db.prepare("DELETE FROM file_metadata WHERE path = ?");
+
       const insertMetadata = db.prepare(`
         INSERT INTO file_metadata (path, content_hash, last_indexed, chunk_index, total_chunks)
         VALUES (?, ?, ?, ?, ?)
@@ -226,27 +226,41 @@ export class LocalVectorIndex {
         VALUES (?, ?)
       `);
 
-      db.transaction(() => {
-        for (let i = 0; i < chunks.length; i++) {
-          const result = insertMetadata.run(
-            filePath,
-            hash,
-            Date.now(),
-            i,
-            chunks.length,
-          );
+      try {
+        db.transaction(() => {
+          // Delete all old chunks for this file first
+          deleteOld.run(filePath);
 
-          const fileId = result.lastInsertRowid;
+          // Then insert new chunks
+          for (let i = 0; i < chunks.length; i++) {
+            const result = insertMetadata.run(
+              filePath,
+              hash,
+              Date.now(),
+              i,
+              chunks.length,
+            );
 
-          // Store embedding as Buffer
-          const embeddingBuffer = Buffer.from(embeddings[i].buffer);
-          insertEmbedding.run(fileId, embeddingBuffer);
+            const fileId = result.lastInsertRowid;
+
+            // Store embedding as Buffer
+            const embeddingBuffer = Buffer.from(embeddings[i].buffer);
+            insertEmbedding.run(fileId, embeddingBuffer);
+          }
+        })();
+
+        logger.debug(
+          `Indexed ${filePath} (${chunks.length} chunks, ${content.length} chars)`,
+        );
+      } catch (dbError: any) {
+        // Handle UNIQUE constraint errors gracefully - this can happen if the file
+        // is being indexed concurrently by multiple processes
+        if (dbError?.code === "SQLITE_CONSTRAINT" && dbError?.message?.includes("UNIQUE")) {
+          logger.warn(`File ${filePath} is already being indexed, skipping duplicate indexing`);
+        } else {
+          throw dbError;
         }
-      })();
-
-      logger.debug(
-        `Indexed ${filePath} (${chunks.length} chunks, ${content.length} chars)`,
-      );
+      }
     } catch (error) {
       logger.error(`Error indexing file ${filePath}:`, error);
     }
