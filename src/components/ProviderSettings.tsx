@@ -69,14 +69,14 @@ export function ProviderSettingsGrid() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Card key={i} className="border-border">
-              <CardHeader className="p-4">
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
+      <div className="p-8">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Proveedores de IA</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-border rounded-2xl bg-muted/30">
+              <CardHeader className="p-6">
+                <Skeleton className="h-6 w-3/4 mb-3 rounded-lg" />
+                <Skeleton className="h-4 w-1/2 rounded-lg" />
               </CardHeader>
             </Card>
           ))}
@@ -87,13 +87,13 @@ export function ProviderSettingsGrid() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            Error al cargar los proveedores de IA: {error.message}
+      <div className="p-8">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Proveedores de IA</h2>
+        <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="text-lg font-bold">Error</AlertTitle>
+          <AlertDescription className="text-base">
+            No se pudieron cargar los proveedores: {error.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -101,70 +101,77 @@ export function ProviderSettingsGrid() {
   }
 
   return (
-    <div className="p-6">
-      <h2 className="text-lg font-medium mb-6">Proveedores de IA</h2>
-      <div className="grid grid-cols-1 gap-4">
+    <div className="p-8">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Proveedores de IA</h2>
+      <div className="grid grid-cols-1 gap-6">
         {providers
           ?.filter((p) => p.type !== "local" && p.id === "openrouter")
           .map((provider: LanguageModelProvider) => {
             const isCustom = provider.type === "custom";
+            const isSetup = isProviderSetup(provider.id);
 
             return (
               <Card
                 key={provider.id}
-                className="relative transition-all hover:shadow-md border-border w-full"
+                className="relative transition-all hover:bg-muted/50 border-border w-full rounded-2xl shadow-none overflow-hidden group cursor-pointer"
+                onClick={() => handleProviderClick(provider.id)}
               >
-                <CardHeader
-                  className="p-4 cursor-pointer"
-                  onClick={() => handleProviderClick(provider.id)}
-                >
-                  {isCustom && (
-                    <div
-                      className="flex items-center justify-end"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            data-testid="edit-custom-provider"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-muted rounded-md"
-                            onClick={() => handleEditProvider(provider)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Editar proveedor</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            data-testid="delete-custom-provider"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-md"
-                            onClick={() => setProviderToDelete(provider.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Eliminar proveedor</TooltipContent>
-                      </Tooltip>
+                <CardHeader className="p-8">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-xl font-bold flex items-center gap-4">
+                        {provider.name}
+                        {isSetup ? (
+                          <span className="text-[10px] font-black uppercase tracking-widest bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 px-3 py-1 rounded-lg">
+                            Listo
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black uppercase tracking-widest bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-3 py-1 rounded-lg">
+                            Requiere configuración
+                          </span>
+                        )}
+                      </CardTitle>
+                      <p className="text-base text-muted-foreground">
+                        Configura las credenciales y modelos para {provider.name}
+                      </p>
                     </div>
-                  )}
-                  <CardTitle className="text-lg font-medium mb-2">
-                    {provider.name}
-                    {isProviderSetup(provider.id) ? (
-                      <span className="ml-3 text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/30 border border-green-500/50 dark:border-green-500/50 px-2 py-1 rounded-full">
-                        Listo
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-500 bg-gray-50 dark:bg-gray-900 dark:text-gray-300 px-2 py-1 rounded-full">
-                        Requiere configuración
-                      </span>
+
+                    {isCustom && (
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-testid="edit-custom-provider"
+                              variant="ghost"
+                              size="sm"
+                              className="h-10 w-10 p-0 hover:bg-white dark:hover:bg-gray-800 rounded-xl"
+                              onClick={() => handleEditProvider(provider)}
+                            >
+                              <Edit className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Editar proveedor</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-testid="delete-custom-provider"
+                              variant="ghost"
+                              size="sm"
+                              className="h-10 w-10 p-0 text-destructive hover:bg-destructive/10 rounded-xl"
+                              onClick={() => setProviderToDelete(provider.id)}
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Eliminar proveedor</TooltipContent>
+                        </Tooltip>
+                      </div>
                     )}
-                  </CardTitle>
+                  </div>
                 </CardHeader>
               </Card>
             );
@@ -189,23 +196,24 @@ export function ProviderSettingsGrid() {
         open={!!providerToDelete}
         onOpenChange={(open) => !open && setProviderToDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-bold">
               Eliminar proveedor personalizado
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-base">
               Esto eliminará permanentemente este proveedor personalizado y
               todos sus modelos asociados. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl font-bold">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteProvider}
               disabled={isDeleting}
+              className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Eliminando..." : "Eliminar proveedor"}
             </AlertDialogAction>

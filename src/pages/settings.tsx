@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -51,8 +51,10 @@ import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
 import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
 import Fuse from "fuse.js";
 
+import { cn } from "@/lib/utils";
+
 // Settings search index
-interface SettingItem {
+interface SearchSettingItem {
   id: string;
   label: string;
   description: string;
@@ -61,7 +63,7 @@ interface SettingItem {
   sectionId: string;
 }
 
-const SETTINGS_SEARCH_INDEX: SettingItem[] = [
+const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   // General Settings
   {
     id: "theme",
@@ -381,6 +383,39 @@ const SETTINGS_SEARCH_INDEX: SettingItem[] = [
   },
 ];
 
+
+function SettingItem({
+  label,
+  description,
+  control,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  control: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        "flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border",
+        onClick ? "cursor-pointer" : ""
+      )}
+    >
+      <div className="flex-1">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          {label}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          {description}
+        </p>
+      </div>
+      <div onClick={(e) => e.stopPropagation()}>{control}</div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -455,19 +490,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen px-8 py-4">
-      <div className="max-w-5xl mx-auto">
-        <Button
-          onClick={() => router.history.back()}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 mb-4 bg-(--background-lightest) py-5"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Atrás
-        </Button>
-        <div className="flex justify-between items-center mb-4 gap-4">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+    <div className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto">
+      <div className="w-full mx-auto px-8 pt-12 pb-12">
+        <div className="flex justify-between items-center mb-12 gap-4">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
             Ajustes
           </h1>
 
@@ -479,7 +505,7 @@ export default function SettingsPage() {
               placeholder="Buscar ajustes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
+              className="pl-10 pr-10 bg-white/50 dark:bg-gray-800/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
             />
             {searchQuery && (
               <button
@@ -494,7 +520,7 @@ export default function SettingsPage() {
 
         {/* Search Results Dropdown */}
         {searchQuery && (
-          <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="mb-12 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-border overflow-hidden">
             {searchResults.length > 0 ? (
               <div className="p-2">
                 {searchResults.map((result) => (
@@ -504,18 +530,18 @@ export default function SettingsPage() {
                       handleSearchResultClick(result.sectionId);
                       clearSearch();
                     }}
-                    className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    className="w-full text-left p-4 rounded-xl hover:bg-muted transition-colors"
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="text-base font-medium text-gray-900 dark:text-white">
                           {result.label}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                           {result.description}
                         </div>
                       </div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-primary/60 whitespace-nowrap">
                         {result.section}
                       </div>
                     </div>
@@ -523,12 +549,12 @@ export default function SettingsPage() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center">
-                <Search className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <div className="p-12 text-center">
+                <Search className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-900 dark:text-white">
                   No se encontraron ajustes
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Intenta con otros términos de búsqueda
                 </p>
               </div>
@@ -536,7 +562,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-12 pb-24">
           <GeneralSettings
             appVersion={appVersion}
             isHighlighted={highlightedSection === "general-settings"}
@@ -551,9 +577,9 @@ export default function SettingsPage() {
 
           <div
             id="provider-settings"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 ${highlightedSection === "provider-settings"
-                ? "ring-4 ring-blue-500 ring-opacity-50"
-                : ""
+            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-border transition-all duration-300 ${highlightedSection === "provider-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
               }`}
           >
             <ProviderSettingsGrid />
@@ -562,15 +588,15 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "integrations"
-                ? "ring-4 ring-blue-500 ring-opacity-50"
-                : ""
+            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
               }`}
           >
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
               Integraciones
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <GitHubIntegration />
               <VercelIntegration />
               <SupabaseIntegration />
@@ -579,15 +605,14 @@ export default function SettingsPage() {
           </div>
 
           {/* Agent v2 Permissions */}
-
           <div
             id="agent-permissions"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "agent-permissions"
-                ? "ring-4 ring-blue-500 ring-opacity-50"
-                : ""
+            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
               }`}
           >
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
               Permisos del Agente
             </h2>
             <AgentToolsSettings />
@@ -596,17 +621,19 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "experiments"
-                ? "ring-4 ring-blue-500 ring-opacity-50"
-                : ""
+            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
               }`}
           >
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
               Experimentos
             </h2>
-            <div className="space-y-4">
-              <div className="space-y-1 mt-4">
-                <div className="flex items-center space-x-2">
+            <div className="space-y-8">
+              <SettingItem
+                label="Git nativo"
+                description="Esto no requiere ninguna instalación externa de Git y ofrece una experiencia de rendimiento Git nativa más rápida."
+                control={
                   <Switch
                     id="enable-native-git"
                     checked={!!settings?.enableNativeGit}
@@ -616,68 +643,57 @@ export default function SettingsPage() {
                       });
                     }}
                   />
-                  <Label htmlFor="enable-native-git">
-                    Habilitar Git nativo
-                  </Label>
-                </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Esto no requiere ninguna instalación externa de Git y ofrece
-                  una experiencia de rendimiento Git nativa más rápida.
-                </div>
-              </div>
+                }
+              />
 
-              <div className="space-y-1 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <Label className="text-base font-medium">
-                      Playground de Embeddings
-                    </Label>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Prueba el modelo MiniLM para búsqueda semántica en tu
-                      codebase
-                    </div>
-                  </div>
+              <SettingItem
+                label="Playground de Embeddings"
+                description="Prueba el modelo MiniLM para búsqueda semántica local de archivos en tu codebase"
+                control={
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => setIsEmbeddingsPlaygroundOpen(true)}
+                    className="h-10 px-4 font-bold border-border hover:bg-muted rounded-xl"
                   >
                     Abrir Playground
                   </Button>
-                </div>
-              </div>
+                }
+              />
             </div>
           </div>
 
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800 transition-all duration-300 ${highlightedSection === "danger-zone"
-                ? "ring-4 ring-blue-500 ring-opacity-50"
-                : ""
+            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
+              ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
+              : ""
               }`}
           >
-            <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
+            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-8">
               Zona peligrosa
             </h2>
 
-            <div className="space-y-4">
-              <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center gap-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            <div className="space-y-6">
+              <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-2xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Revertir todo
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     Esto eliminará todas tus aplicaciones, chats y
                     configuraciones. Esta acción no se puede deshacer.
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => setIsResetDialogOpen(true)}
                   disabled={isResetting}
-                  className="rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="outline"
+                  className="rounded-xl h-11 px-8 text-sm font-bold border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all active:scale-95 whitespace-nowrap"
                 >
                   {isResetting ? "Reseteando..." : "Resetear todo"}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -720,37 +736,36 @@ export function GeneralSettings({
     ) {
       setIntensity(settings.themeIntensity);
     }
-  }, [settings?.themeIntensity]);
+  }, [settings?.themeIntensity, intensity, setIntensity]);
 
   return (
     <div
       id="general-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-        }`}
+      className={cn(
+        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+      )}
     >
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
         Ajustes generales
       </h2>
 
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="space-y-12">
+        <div className="space-y-4">
+          <Label className="text-lg font-semibold text-gray-900 dark:text-white">
             Tema
           </Label>
-
-          <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex w-fit">
+          <div className="relative bg-muted/50 rounded-2xl p-1 flex w-fit border border-border">
             {(["system", "light", "dark"] as const).map((option) => (
               <button
                 key={option}
                 onClick={() => setTheme(option)}
-                className={`
-                px-4 py-1.5 text-sm font-medium rounded-md
-                transition-all duration-200
-                ${theme === option
-                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                  }
-              `}
+                className={cn(
+                  "px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
+                  theme === option
+                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-black/5"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50"
+                )}
               >
                 {option === "system"
                   ? "Sistema"
@@ -762,11 +777,16 @@ export function GeneralSettings({
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Intensidad del tema
-            </Label>
+            <div className="flex-1">
+              <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+                Intensidad del tema
+              </Label>
+              <p className="text-base text-muted-foreground mt-1">
+                Ajusta la luminosidad de los colores base para cada tema
+              </p>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -774,13 +794,13 @@ export function GeneralSettings({
                 setIntensity(0);
                 updateSettings({ themeIntensity: 0 });
               }}
-              className="h-7 px-2 text-xs text-gray-500 hover:text-primary"
+              className="h-9 px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/20"
             >
               Restablecer
             </Button>
           </div>
-          <div className="flex items-center gap-4 group">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 w-12 text-center">
+          <div className="flex items-center gap-6 p-6 rounded-2xl bg-muted/30 border border-border group">
+            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/40 w-14 text-center">
               Claro
             </span>
             <div className="relative flex-1 flex items-center">
@@ -798,29 +818,32 @@ export function GeneralSettings({
                   const val = parseFloat((e.target as HTMLInputElement).value);
                   updateSettings({ themeIntensity: val });
                 }}
-                className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary group-hover:accent-primary/80 transition-all"
               />
               <div
-                className="absolute left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gray-300 dark:bg-gray-600 pointer-events-none"
-                style={{ opacity: intensity === 0 ? 0 : 0.5 }}
+                className="absolute left-1/2 -translate-x-1/2 w-1 h-4 bg-foreground/10 pointer-events-none rounded-full"
+                style={{ opacity: intensity === 0 ? 0 : 1 }}
               />
             </div>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 w-12 text-center">
+            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/40 w-14 text-center">
               Oscuro
             </span>
           </div>
         </div>
+
+        <div className="pt-8 border-t border-border">
+          <ZoomSelector />
+        </div>
       </div>
 
-      <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-        <ZoomSelector />
-      </div>
-
-      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-6 pt-4 border-t border-gray-50 dark:border-gray-800/50">
-        <span className="mr-2 font-medium">Versión de la aplicación:</span>
-        <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
-          {appVersion ? appVersion : "-"}
-        </span>
+      <div className="mt-12 flex items-center justify-between text-sm text-muted-foreground pt-8 border-t border-border/50">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold uppercase tracking-widest text-[10px] opacity-60">Versión</span>
+          <span className="bg-muted px-3 py-1 rounded-lg text-foreground font-mono font-bold border border-border">
+            {appVersion ? appVersion : "-"}
+          </span>
+        </div>
+        <p className="text-xs italic opacity-40">Minube Vibes v1.0.0</p>
       </div>
     </div>
   );
@@ -851,119 +874,132 @@ export function WorkflowSettings({
   return (
     <div
       id="workflow-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-        }`}
+      className={cn(
+        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+      )}
     >
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        Configuración del flujo de trabajo
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+        Flujo de trabajo
       </h2>
 
-      <div className="mt-4">
-        <DefaultChatModeSelector />
-      </div>
-
-      <div className="space-y-1 mt-4">
-        <AutoApproveSwitch showToast={false} />
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Aprobará automáticamente los cambios de código y los ejecutará
-        </div>
-      </div>
-
-      <div className="space-y-1 mt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              Auto-fix de problemas en segundo plano
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Si está desactivado, aunque se detecten problemas no se gastará
-              tiempo arreglándolos mientras trabajas en otras tareas.
-            </p>
+      <div className="space-y-12">
+        <div className="space-y-4">
+          <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+            Modo de chat predeterminado
+          </Label>
+          <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+            <DefaultChatModeSelector />
           </div>
-          <Switch
-            checked={settings?.enableBackgroundProblemAutoFix ?? false}
-            onCheckedChange={handleToggleBackgroundProblemFix}
+        </div>
+
+        <div className="space-y-4 pt-8 border-t border-border">
+          <SettingItem
+            label="Auto-aprobar cambios"
+            description="Aprobará automáticamente los cambios de código y los ejecutará sin pedir confirmación"
+            onClick={() => updateSettings({ autoApproveChanges: !settings?.autoApproveChanges })}
+            control={
+              <Switch
+                checked={!!settings?.autoApproveChanges}
+                onCheckedChange={(checked) => updateSettings({ autoApproveChanges: checked })}
+              />
+            }
+          />
+
+          <SettingItem
+            label="Auto-fix en segundo plano"
+            description="Arregla automáticamente los errores detectados mientras trabajas en otras tareas"
+            onClick={() => handleToggleBackgroundProblemFix(!settings?.enableBackgroundProblemAutoFix)}
+            control={
+              <Switch
+                checked={settings?.enableBackgroundProblemAutoFix ?? false}
+                onCheckedChange={handleToggleBackgroundProblemFix}
+              />
+            }
+          />
+
+          <SettingItem
+            label="Expandir vista previa"
+            description="Abre automáticamente el panel de vista previa cuando el código cambia"
+            onClick={() => updateSettings({ autoExpandPreviewPanel: !settings?.autoExpandPreviewPanel })}
+            control={
+              <Switch
+                checked={!!settings?.autoExpandPreviewPanel}
+                onCheckedChange={(checked) => updateSettings({ autoExpandPreviewPanel: checked })}
+              />
+            }
+          />
+
+          <SettingItem
+            label="Notificaciones de respuesta"
+            description="Muestra una notificación nativa cuando el chat termina (si la app no está en primer plano)"
+            onClick={() => updateSettings({ enableChatCompletionNotifications: !settings?.enableChatCompletionNotifications })}
+            control={
+              <Switch
+                checked={!!settings?.enableChatCompletionNotifications}
+                onCheckedChange={(checked) => updateSettings({ enableChatCompletionNotifications: checked })}
+              />
+            }
           />
         </div>
-      </div>
 
-      <div className="space-y-3 mt-4">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-          Modelo y límites para auto-fix
-        </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y
-          limita tiempo/intentos para evitar consumo excesivo.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <AutoFixModelSelector />
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Tiempo máx. auto-fix (ms)
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              value={settings?.autoFixMaxDurationMs ?? 20000}
-              onChange={(e) =>
-                handleUpdateNumberSetting(
-                  "autoFixMaxDurationMs",
-                  Number(e.target.value),
-                  20000,
-                )
-              }
-            />
+        <div className="space-y-6 pt-8 border-t border-border">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Modelo y límites para auto-fix
+            </h3>
+            <p className="text-base text-muted-foreground mt-1">
+              Configura el comportamiento del sistema de corrección automática en segundo plano
+            </p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Intentos máx. auto-fix
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              value={settings?.autoFixMaxAttempts ?? 1}
-              onChange={(e) =>
-                handleUpdateNumberSetting(
-                  "autoFixMaxAttempts",
-                  Number(e.target.value),
-                  1,
-                )
-              }
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Nº máx. de issues para auto-fix
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              value={settings?.autoFixMaxIssues ?? 5}
-              onChange={(e) =>
-                handleUpdateNumberSetting(
-                  "autoFixMaxIssues",
-                  Number(e.target.value),
-                  5,
-                )
-              }
-            />
-          </div>
-        </div>
-      </div>
 
-      <div className="space-y-1 mt-4">
-        <AutoExpandPreviewSwitch />
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Expande automáticamente el panel de vista previa cuando se realizan
-          cambios en el código
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 rounded-2xl bg-muted/30 border border-border">
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                Modelo de corrección
+              </Label>
+              <AutoFixModelSelector />
+            </div>
 
-      <div className="space-y-1 mt-4">
-        <ChatCompletionNotificationSwitch />
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Mostrar notificación nativa cuando termine una respuesta (si la
-          ventana no está enfocada).
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Tiempo máx. (ms)
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={settings?.autoFixMaxDurationMs ?? 20000}
+                  className="rounded-xl border-border bg-white dark:bg-gray-800"
+                  onChange={(e) =>
+                    handleUpdateNumberSetting(
+                      "autoFixMaxDurationMs",
+                      Number(e.target.value),
+                      20000,
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Intentos máx.
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={settings?.autoFixMaxAttempts ?? 1}
+                  className="rounded-xl border-border bg-white dark:bg-gray-800"
+                  onChange={(e) =>
+                    handleUpdateNumberSetting(
+                      "autoFixMaxAttempts",
+                      Number(e.target.value),
+                      1,
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -997,7 +1033,7 @@ function TurboEditsV2Switch() {
           <h3 className="text-sm font-medium text-gray-900 dark:text-white">
             Turbo Edits (v2)
           </h3>
-          <span className="text-[10px] leading-none uppercase tracking-wide rounded-sm bg-blue-500/15 text-blue-700 dark:text-blue-300 px-2 py-0.5 border border-blue-500/25">
+          <span className="text-[10px] leading-none uppercase tracking-wide rounded-lg bg-primary/10 text-primary px-3 py-1 border border-primary/20">
             Beta
           </span>
         </div>
@@ -1023,7 +1059,8 @@ export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
     field:
       | "enableLocalSmartContext"
       | "enableTokenStats"
-      | "enableVerboseChatLogs",
+      | "enableVerboseChatLogs"
+      | "enableTurboEditsV2",
     value: boolean,
   ) => {
     await updateSettings({ [field]: value } as any);
@@ -1032,85 +1069,105 @@ export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
   return (
     <div
       id="ai-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-        }`}
+      className={cn(
+        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+      )}
     >
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
         Ajustes IA
       </h2>
 
-      <div className="mt-4">
-        <ThinkingBudgetSelector />
-      </div>
-
-      <div className="mt-4">
-        <TurboEditsV2Switch />
-      </div>
-
-      <div className="mt-4">
-        <MaxChatTurnsSelector />
-      </div>
-
-      <div className="mt-4">
-        <ChatLanguageSelector />
-      </div>
-
-      <div className="mt-4">
-        <SerperApiKeySettings />
-      </div>
-
-      <div className="mt-6 space-y-3">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-          Smart Context local
-        </h3>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1 pr-3">
-            <p className="text-sm font-medium text-foreground">
-              Ranking local (sin backend)
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Reduce el contexto eligiendo archivos relevantes según el prompt
-              cuando no hay engine remoto.
-            </p>
+      <div className="space-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+              Presupuesto de pensamiento
+            </Label>
+            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+              <ThinkingBudgetSelector />
+            </div>
           </div>
-          <Switch
-            checked={settings?.enableLocalSmartContext !== false}
-            onCheckedChange={(checked) =>
-              handleToggle("enableLocalSmartContext", checked)
+
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+              Turnos máximos de chat
+            </Label>
+            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+              <MaxChatTurnsSelector />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-border">
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+              Idioma del asistente
+            </Label>
+            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+              <ChatLanguageSelector />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+              Búsqueda Web (Serper)
+            </Label>
+            <SerperApiKeySettings />
+          </div>
+        </div>
+
+        <div className="space-y-4 pt-8 border-t border-border">
+          <SettingItem
+            label="Turbo Edits (v2)"
+            description="Modo de búsqueda y reemplazo inteligente para ediciones ultra rápidas"
+            onClick={() => handleToggle("enableTurboEditsV2", !(settings?.enableTurboEditsV2 ?? true))}
+            control={
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest rounded-lg bg-primary/10 text-primary px-3 py-1 border border-primary/20">
+                  Beta
+                </span>
+                <Switch
+                  checked={settings?.enableTurboEditsV2 ?? true}
+                  onCheckedChange={(checked) => handleToggle("enableTurboEditsV2", checked)}
+                />
+              </div>
             }
           />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1 pr-3">
-            <p className="text-sm font-medium text-foreground">
-              Guardar métricas de tokens
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Guarda el uso de tokens por turno para mostrar logs y gráficas en
-              Stats.
-            </p>
-          </div>
-          <Switch
-            checked={settings?.enableTokenStats !== false}
-            onCheckedChange={(checked) =>
-              handleToggle("enableTokenStats", checked)
+
+          <SettingItem
+            label="Smart Context local"
+            description="Ranking de archivos relevantes sin necesidad de servidor externo"
+            onClick={() => handleToggle("enableLocalSmartContext", settings?.enableLocalSmartContext !== false)}
+            control={
+              <Switch
+                checked={settings?.enableLocalSmartContext !== false}
+                onCheckedChange={(checked) => handleToggle("enableLocalSmartContext", checked)}
+              />
             }
           />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1 pr-3">
-            <p className="text-sm font-medium text-foreground">
-              Logs verbosos de chat
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Registra información detallada del procesamiento interno del chat
-              para debugging. Los logs se muestran en el panel del chat.
-            </p>
-          </div>
-          <Switch
-            checked={settings?.enableVerboseChatLogs === true}
-            onCheckedChange={(checked) =>
-              handleToggle("enableVerboseChatLogs", checked)
+
+          <SettingItem
+            label="Métricas de tokens"
+            description="Guarda el historial de consumo para visualizarlo en estadísticas"
+            onClick={() => handleToggle("enableTokenStats", settings?.enableTokenStats !== false)}
+            control={
+              <Switch
+                checked={settings?.enableTokenStats !== false}
+                onCheckedChange={(checked) => handleToggle("enableTokenStats", checked)}
+              />
+            }
+          />
+
+          <SettingItem
+            label="Logs verbosos"
+            description="Muestra información técnica detallada en el panel de chat"
+            onClick={() => handleToggle("enableVerboseChatLogs", !!settings?.enableVerboseChatLogs)}
+            control={
+              <Switch
+                checked={!!settings?.enableVerboseChatLogs}
+                onCheckedChange={(checked) => handleToggle("enableVerboseChatLogs", checked)}
+              />
             }
           />
         </div>
@@ -1190,22 +1247,25 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   return (
     <div
       id="stats-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-        }`}
+      className={cn(
+        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+      )}
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-12">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             Estadísticas Globales
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Uso de tokens en todos los chats
+          <p className="text-base text-muted-foreground mt-1">
+            Uso de tokens en todos los chats registrados
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <Button
             variant="outline"
             size="sm"
+            className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
             onClick={() => {
               const header = [
                 "timestamp",
@@ -1243,116 +1303,116 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           >
             Exportar CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={load}
+            disabled={loading}
+            className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
+          >
             {loading ? "Cargando..." : "Refrescar"}
           </Button>
         </div>
       </div>
 
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="flex flex-col items-center justify-center py-24 text-center">
           <TrendingUp
-            className="text-gray-400 dark:text-gray-600 mb-3"
-            size={48}
+            className="text-muted-foreground/20 mb-6"
+            size={64}
           />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Aún no hay datos.
+          <p className="text-xl font-semibold text-gray-900 dark:text-white">
+            Aún no hay datos
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Envía un mensaje para registrar tokens.
+          <p className="text-base text-muted-foreground mt-2">
+            Envía un mensaje para registrar tus estadísticas de uso
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-12">
           {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="text-blue-600 dark:text-blue-400" size={16} />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+              <div className="flex items-center gap-3 mb-4">
+                <Zap className="text-primary" size={20} />
+                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
                   Total
                 </span>
               </div>
-              <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+              <p className="text-4xl font-black text-gray-900 dark:text-white">
                 {totalStats.total.toLocaleString()}
               </p>
-              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-2">
                 tokens en {entries.length} mensajes
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp
-                  className="text-green-600 dark:text-green-400"
-                  size={16}
-                />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                  Input
+            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp className="text-primary" size={20} />
+                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Entrada
                 </span>
               </div>
-              <p className="text-3xl font-bold text-green-900 dark:text-green-100">
+              <p className="text-4xl font-black text-gray-900 dark:text-white">
                 {totalStats.input.toLocaleString()}
               </p>
-              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                tokens de entrada
+              <p className="text-sm text-muted-foreground mt-2">
+                tokens de prompt (contexto)
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp
-                  className="text-purple-600 dark:text-purple-400"
-                  size={16}
-                />
-                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                  Output
+            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp className="text-primary" size={20} />
+                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                  Salida
                 </span>
               </div>
-              <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
+              <p className="text-4xl font-black text-gray-900 dark:text-white">
                 {totalStats.output.toLocaleString()}
               </p>
-              <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                tokens de salida
+              <p className="text-sm text-muted-foreground mt-2">
+                tokens generados por la IA
               </p>
             </div>
           </div>
 
           {/* Hourly Chart */}
           {hourlyStats.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="text-gray-600 dark:text-gray-400" size={18} />
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Clock className="text-muted-foreground/60" size={20} />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                   Uso por Hora
                 </h3>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-4 p-8 rounded-2xl bg-muted/30 border border-border">
                 {hourlyStats.map((stat) => (
-                  <div key={stat.hour} className="flex items-center gap-3">
-                    <span className="text-sm font-mono text-gray-600 dark:text-gray-400 w-14">
+                  <div key={stat.hour} className="flex items-center gap-6">
+                    <span className="text-sm font-mono font-bold text-muted-foreground w-16">
                       {stat.hour}
                     </span>
-                    <div className="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 flex items-center justify-end pr-3"
+                        className="h-full bg-primary rounded-full transition-all duration-300 flex items-center justify-end pr-4"
                         style={{
                           width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
                         }}
                       >
                         {stat.tokens > maxHourlyTokens * 0.3 && (
-                          <span className="text-xs font-semibold text-white">
+                          <span className="text-[10px] font-black text-primary-foreground uppercase tracking-widest">
                             {stat.tokens.toLocaleString()}
                           </span>
                         )}
                       </div>
                     </div>
                     {stat.tokens <= maxHourlyTokens * 0.3 && (
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-24 text-right">
+                      <span className="text-sm font-bold text-foreground w-24">
                         {stat.tokens.toLocaleString()}
                       </span>
                     )}
-                    <span className="text-sm text-gray-500 dark:text-gray-400 w-20 text-right">
+                    <span className="text-xs font-bold text-muted-foreground/40 w-24 text-right">
                       {stat.count} msgs
                     </span>
                   </div>
@@ -1361,95 +1421,87 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
             </div>
           )}
 
-          {/* Top Models */}
-          {modelStats.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles
-                  className="text-gray-600 dark:text-gray-400"
-                  size={18}
-                />
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          {/* Top Models and Recent Activity */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Top Models */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Sparkles className="text-muted-foreground/60" size={20} />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                   Top Modelos
                 </h3>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-6 p-8 rounded-2xl bg-muted/30 border border-border h-full">
                 {modelStats.map((stat, idx) => (
-                  <div key={stat.model} className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 w-6">
-                      #{idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {stat.model}
+                  <div key={stat.model} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest">
+                          #{idx + 1}
+                        </span>
+                        <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                          {stat.model}
+                        </div>
                       </div>
-                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
-                        <div
-                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${(stat.tokens / maxModelTokens) * 100}%`,
-                          }}
-                        />
-                      </div>
+                      <span className="text-sm font-black text-primary/80">
+                        {stat.tokens.toLocaleString()}
+                      </span>
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-28 text-right">
-                      {stat.tokens.toLocaleString()}
-                    </span>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{
+                          width: `${(stat.tokens / maxModelTokens) * 100}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Recent Activity */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              Actividad Reciente
-            </h3>
-            <div className="space-y-2">
-              {entries.slice(0, 10).map((entry) => (
-                <button
-                  key={`${entry.timestamp}-${entry.messageId}`}
-                  onClick={() => setSelectedEntry(entry)}
-                  className="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
-                      Chat #{entry.chatId} · Mensaje {entry.messageId}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDistanceToNow(new Date(entry.timestamp), {
-                        addSuffix: true,
-                        locale: es,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
-                        style={{
-                          width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {entry.totalTokens.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {entry.model || "unknown"}
-                    </span>
-                    {entry.promptTokens && entry.completionTokens && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {entry.promptTokens.toLocaleString()} in ·{" "}
-                        {entry.completionTokens.toLocaleString()} out
+            {/* Recent Activity */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="text-muted-foreground/60" size={20} />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Actividad Reciente
+                </h3>
+              </div>
+              <div className="space-y-3 p-4 rounded-2xl bg-muted/30 border border-border max-h-[460px] overflow-y-auto">
+                {entries.slice(0, 10).map((entry) => (
+                  <button
+                    key={`${entry.timestamp}-${entry.messageId}`}
+                    onClick={() => setSelectedEntry(entry)}
+                    className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all border border-transparent hover:border-border group shadow-none hover:shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                        Chat #{entry.chatId} · {entry.model || "IA"}
                       </span>
-                    )}
-                  </div>
-                </button>
-              ))}
+                      <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                        {formatDistanceToNow(new Date(entry.timestamp), {
+                          addSuffix: true,
+                          locale: es,
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{
+                            width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-black text-gray-900 dark:text-white">
+                        {entry.totalTokens.toLocaleString()}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1489,7 +1541,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Total Tokens
                   </label>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                  <p className="text-2xl font-bold text-primary mt-1">
                     {selectedEntry.totalTokens.toLocaleString()}
                   </p>
                 </div>

@@ -140,7 +140,7 @@ export function AppSidebar() {
       }}
     >
       <SidebarContent className="overflow-hidden">
-        <div className="flex mt-8">
+        <div className="flex mt-8 w-full">
           {/* Left Column: Menu items */}
           <div className="">
             <SidebarTrigger
@@ -159,7 +159,7 @@ export function AppSidebar() {
             />
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="w-[405px]">
+          <div className="flex-1 min-w-0">
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <NotesList show={selectedItem === "Notas"} />
@@ -222,9 +222,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
+                      }`}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onTabChange("Aplicaciones");

@@ -35,36 +35,44 @@ export function GitHubIntegration() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Integración de GitHub
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Tu cuenta está conectada a GitHub.
-          </p>
+    <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-border">
+            <Github className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              GitHub
+            </h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Conectado como <span className="font-bold text-foreground">{(settings?.githubUser as any)?.email || settings?.githubUser || "usuario"}</span>
+            </p>
+          </div>
         </div>
 
         <Button
           onClick={handleDisconnectFromGithub}
-          variant="destructive"
+          variant="ghost"
           size="sm"
           disabled={isDisconnecting}
-          className="flex items-center gap-2"
+          className="rounded-xl h-10 px-4 font-bold text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
         >
-          {isDisconnecting ? "Desconectando..." : "Desconectar de GitHub"}
-          <Github className="h-4 w-4" />
+          {isDisconnecting ? "Desconectando..." : "Desconectar"}
         </Button>
       </div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="space-y-1 pr-4">
-          <p className="text-sm font-medium text-foreground">
-            Auto-commit antes de push/conectar
+
+      <div
+        className="flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border border-transparent hover:border-border"
+        onClick={() => updateSettings({ enableGithubAutoCommit: settings?.enableGithubAutoCommit === false })}
+      >
+        <div className="flex-1">
+          <p className="text-base font-semibold text-foreground">
+            Auto-commit inteligente
           </p>
-          <p className="text-xs text-muted-foreground">
-            Si lo desactivas, podrás revisar y hacer commit manual antes de
-            enviar a GitHub.
+          <p className="text-sm text-muted-foreground mt-1">
+            Realiza commits automáticos antes de enviar cambios al repositorio.
+            Si lo desactivas, podrás revisar cada cambio manualmente.
           </p>
         </div>
         <Switch
