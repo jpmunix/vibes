@@ -156,7 +156,7 @@ const config: ForgeConfig = {
         },
         {
           entry: "workers/context/context_worker.ts",
-          config: "vite.worker.config.mts",
+          config: "vite.context-worker.config.mts",
           target: "main"
         },
         {
