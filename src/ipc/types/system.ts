@@ -97,6 +97,9 @@ export const ForceCloseDetectedPayloadSchema = z.object({
       systemCpuPercent: z.number().optional(),
     })
     .optional(),
+  appVersion: z.string().optional(),
+  platform: z.string().optional(),
+  recentLogs: z.string().optional(),
 });
 
 export const OpenRouterCreditsSchema = z.object({

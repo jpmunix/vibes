@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
-import { ToolsMcpSettings } from "@/components/settings/ToolsMcpSettings";
 import { ZoomSelector } from "@/components/ZoomSelector";
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -41,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
+import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -131,13 +131,6 @@ export default function SettingsPage() {
               Permisos del Agente
             </h2>
             <AgentToolsSettings />
-
-            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-medium text-gray-900 dark:text-white mb-4">
-                Servidores MCP
-              </h3>
-              <ToolsMcpSettings />
-            </div>
           </div>
 
           {/* Experiments Section */}
@@ -311,23 +304,6 @@ export function WorkflowSettings() {
     });
   };
 
-  const handleUpdateAutoFixModel = async (
-    field: "name" | "provider",
-    value: string,
-  ) => {
-    const current = settings?.autoFixModel;
-    await updateSettings({
-      autoFixModel: {
-        name:
-          field === "name"
-            ? value
-            : (current?.name ?? "google/gemini-3-flash-preview"),
-        provider:
-          field === "provider" ? value : (current?.provider ?? "openrouter"),
-      },
-    });
-  };
-
   const handleUpdateNumberSetting = async (
     field: "autoFixMaxDurationMs" | "autoFixMaxAttempts" | "autoFixMaxIssues",
     value: number,
@@ -384,28 +360,7 @@ export function WorkflowSettings() {
           limita tiempo/intentos para evitar consumo excesivo.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Modelo (auto-fix)
-            </Label>
-            <Input
-              value={settings?.autoFixModel?.name ?? ""}
-              onChange={(e) =>
-                handleUpdateAutoFixModel("name", e.target.value.trim())
-              }
-              placeholder="p. ej. openai/gpt-4.1-mini"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Proveedor</Label>
-            <Input
-              value={settings?.autoFixModel?.provider ?? ""}
-              onChange={(e) =>
-                handleUpdateAutoFixModel("provider", e.target.value.trim())
-              }
-              placeholder="openrouter"
-            />
-          </div>
+          <AutoFixModelSelector />
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">
               Tiempo máx. auto-fix (ms)
@@ -531,7 +486,6 @@ export function AISettings() {
   const handleToggle = async (
     field:
       | "enableLocalSmartContext"
-      | "enableMcpSmartContext"
       | "enableTokenStats"
       | "enableVerboseChatLogs",
     value: boolean,
@@ -586,21 +540,6 @@ export function AISettings() {
             checked={settings?.enableLocalSmartContext !== false}
             onCheckedChange={(checked) =>
               handleToggle("enableLocalSmartContext", checked)
-            }
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="space-y-1 pr-3">
-            <p className="text-sm font-medium text-foreground">Usar MCP</p>
-            <p className="text-xs text-muted-foreground">
-              Si hay un servidor MCP configurado, úsalo para seleccionar
-              archivos antes de enviar el prompt.
-            </p>
-          </div>
-          <Switch
-            checked={settings?.enableMcpSmartContext === true}
-            onCheckedChange={(checked) =>
-              handleToggle("enableMcpSmartContext", checked)
             }
           />
         </div>

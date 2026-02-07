@@ -76,6 +76,22 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient("dyad");
 }
 
+/**
+ * Get recent logs from electron-log
+ * Returns the last N lines from the log file
+ */
+function getRecentLogs(lines: number = 50): string {
+  try {
+    const logPath = log.transports.file.getFile().path;
+    const logContent = fs.readFileSync(logPath, "utf-8");
+    const logLines = logContent.split("\n");
+    return logLines.slice(-lines).join("\n");
+  } catch (error) {
+    logger.error("Error reading recent logs:", error);
+    return "";
+  }
+}
+
 export async function onReady() {
   // Read settings first (quick operation)
   const settings = readSettings();
@@ -87,7 +103,12 @@ export async function onReady() {
     // Store performance data to send after window is created
     if (settings.lastKnownPerformance) {
       logger.warn("Last known performance:", settings.lastKnownPerformance);
-      pendingForceCloseData = settings.lastKnownPerformance;
+      pendingForceCloseData = {
+        performanceData: settings.lastKnownPerformance,
+        appVersion: app.getVersion(),
+        platform: `${process.platform} ${process.arch}`,
+        recentLogs: getRecentLogs(50),
+      };
     }
   }
 
@@ -222,9 +243,10 @@ const createWindow = () => {
   // Send force-close event if it was detected
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {
-      mainWindow?.webContents.send("force-close-detected", {
-        performanceData: pendingForceCloseData,
-      });
+      mainWindow?.webContents.send(
+        "force-close-detected",
+        pendingForceCloseData,
+      );
       pendingForceCloseData = null;
     });
   }

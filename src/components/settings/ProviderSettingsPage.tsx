@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ArrowLeft, AlertTriangle, Rabbit, Sparkles } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 
@@ -11,7 +11,6 @@ import {} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { showError } from "@/lib/toast";
-import { Input } from "@/components/ui/input";
 import {
   UserSettings,
   AzureProviderSetting,
@@ -22,6 +21,8 @@ import {
 import { ProviderSettingsHeader } from "./ProviderSettingsHeader";
 import { ApiKeyConfiguration } from "./ApiKeyConfiguration";
 import { ModelsSection } from "./ModelsSection";
+import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
+import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
 
 interface ProviderSettingsPageProps {
   provider: string;
@@ -341,56 +342,8 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
                 Modelos de Utilidad
               </h3>
             </div>
-            <div className="space-y-3">
-              <label
-                htmlFor="turboEditModel"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
-              >
-                <Rabbit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                Modelo para Turbo Edits
-              </label>
-              <Input
-                id="turboEditModel"
-                value={settings?.turboEditModel ?? ""}
-                onChange={(e) =>
-                  updateSettings({ turboEditModel: e.target.value })
-                }
-                placeholder="p. ej. openai/gpt-4.1"
-                className="bg-background border-border focus-visible:ring-blue-500"
-              />
-              <p className="text-xs text-muted-foreground">
-                Configura el modelo que OpenRouter utilizará para las ediciones
-                rápidas de archivos (Turbo Edit). Por defecto:{" "}
-                <code className="bg-muted px-1 rounded">openai/gpt-4.1</code>
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-4 border-t border-border">
-              <label
-                htmlFor="appTitleGenerationModel"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
-              >
-                <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                Modelo para Generación de Títulos
-              </label>
-              <Input
-                id="appTitleGenerationModel"
-                value={settings?.appTitleGenerationModel ?? ""}
-                onChange={(e) =>
-                  updateSettings({ appTitleGenerationModel: e.target.value })
-                }
-                placeholder="p. ej. openai/gpt-4.1-nano"
-                className="bg-background border-border focus-visible:ring-blue-500"
-              />
-              <p className="text-xs text-muted-foreground">
-                Configura el modelo que OpenRouter utilizará para generar el
-                título de la aplicación a partir de tu prompt inicial. Por
-                defecto:{" "}
-                <code className="bg-muted px-1 rounded">
-                  openai/gpt-4.1-nano
-                </code>
-              </p>
-            </div>
+            <TurboEditModelSelector />
+            <AppTitleModelSelector />
           </div>
         )}
 
