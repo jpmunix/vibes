@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -10,7 +10,15 @@ import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
 import { useSettings } from "@/hooks/useSettings";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, TrendingUp, Zap, Clock, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingUp,
+  Zap,
+  Clock,
+  Sparkles,
+  Search,
+  X,
+} from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -41,12 +49,347 @@ import {
 } from "@/components/ui/dialog";
 import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
 import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
+import Fuse from "fuse.js";
+
+// Settings search index
+interface SettingItem {
+  id: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  section: string;
+  sectionId: string;
+}
+
+const SETTINGS_SEARCH_INDEX: SettingItem[] = [
+  // General Settings
+  {
+    id: "theme",
+    label: "Tema",
+    description: "Cambiar entre modo claro, oscuro o sistema",
+    keywords: [
+      "tema",
+      "dark",
+      "light",
+      "oscuro",
+      "claro",
+      "apariencia",
+      "color",
+    ],
+    section: "Ajustes generales",
+    sectionId: "general-settings",
+  },
+  {
+    id: "zoom",
+    label: "Zoom",
+    description: "Ajustar el nivel de zoom de la aplicación",
+    keywords: ["zoom", "tamaño", "escala", "agrandar", "achicar"],
+    section: "Ajustes generales",
+    sectionId: "general-settings",
+  },
+  // Workflow Settings
+  {
+    id: "chat-mode",
+    label: "Modo de chat predeterminado",
+    description: "Seleccionar el modo de chat que se usa por defecto",
+    keywords: ["modo", "chat", "predeterminado", "default"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "auto-approve",
+    label: "Auto-aprobar cambios",
+    description: "Aprobar automáticamente los cambios de código y ejecutarlos",
+    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "background-autofix",
+    label: "Auto-fix de problemas en segundo plano",
+    description:
+      "Arreglar automáticamente problemas detectados mientras trabajas",
+    keywords: [
+      "autofix",
+      "auto",
+      "fix",
+      "arreglar",
+      "problemas",
+      "segundo plano",
+      "background",
+    ],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-model",
+    label: "Modelo para auto-fix",
+    description: "Seleccionar qué modelo usar para auto-fix en segundo plano",
+    keywords: ["modelo", "autofix", "ia", "ai"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-duration",
+    label: "Tiempo máximo auto-fix",
+    description: "Tiempo máximo en milisegundos para auto-fix",
+    keywords: ["tiempo", "duracion", "limite", "ms", "milisegundos", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-attempts",
+    label: "Intentos máximos auto-fix",
+    description: "Número máximo de intentos para auto-fix",
+    keywords: ["intentos", "reintentos", "attempts", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-issues",
+    label: "Número máximo de issues para auto-fix",
+    description: "Cantidad máxima de problemas a arreglar automáticamente",
+    keywords: ["issues", "problemas", "cantidad", "maximo", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "auto-expand-preview",
+    label: "Expandir vista previa automáticamente",
+    description: "Expandir el panel de vista previa cuando se hacen cambios",
+    keywords: ["expandir", "preview", "vista previa", "panel", "automatico"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "chat-completion-notification",
+    label: "Notificación de respuesta completada",
+    description: "Mostrar notificación cuando termine una respuesta del chat",
+    keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  // AI Settings
+  {
+    id: "thinking-budget",
+    label: "Presupuesto de pensamiento",
+    description: "Configurar el presupuesto de tokens para el modo thinking",
+    keywords: ["thinking", "pensamiento", "presupuesto", "tokens", "budget"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "turbo-edits",
+    label: "Turbo Edits (v2)",
+    description: "Modo de búsqueda y reemplazo automático para ediciones",
+    keywords: [
+      "turbo",
+      "edits",
+      "ediciones",
+      "rapido",
+      "busqueda",
+      "reemplazo",
+    ],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "max-chat-turns",
+    label: "Turnos máximos de chat",
+    description: "Número máximo de intercambios en una conversación",
+    keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "chat-language",
+    label: "Idioma del chat",
+    description: "Seleccionar el idioma para las respuestas del asistente",
+    keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "serper-api",
+    label: "Clave API de Serper",
+    description: "Configurar la clave API para búsquedas web con Serper",
+    keywords: ["serper", "api", "key", "clave", "busqueda", "web", "search"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "smart-context",
+    label: "Smart Context local",
+    description: "Ranking local de archivos sin backend",
+    keywords: [
+      "smart",
+      "context",
+      "local",
+      "ranking",
+      "archivos",
+      "relevantes",
+    ],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "token-stats",
+    label: "Guardar métricas de tokens",
+    description: "Guardar uso de tokens para logs y gráficas",
+    keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "verbose-logs",
+    label: "Logs verbosos de chat",
+    description: "Registrar información detallada del chat para debugging",
+    keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  // Stats
+  {
+    id: "stats",
+    label: "Estadísticas globales",
+    description: "Ver uso de tokens y estadísticas del sistema",
+    keywords: [
+      "estadisticas",
+      "stats",
+      "tokens",
+      "uso",
+      "graficas",
+      "metricas",
+    ],
+    section: "Estadísticas Globales",
+    sectionId: "stats-settings",
+  },
+  // Provider Settings
+  {
+    id: "provider-settings",
+    label: "Configuración de proveedores",
+    description: "Configurar proveedores de IA y sus credenciales",
+    keywords: [
+      "proveedor",
+      "provider",
+      "api",
+      "key",
+      "clave",
+      "openai",
+      "anthropic",
+      "claude",
+    ],
+    section: "Configuración de proveedores",
+    sectionId: "provider-settings",
+  },
+  // Integrations
+  {
+    id: "github",
+    label: "GitHub",
+    description: "Integración con GitHub",
+    keywords: ["github", "git", "repositorio", "repo", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "vercel",
+    label: "Vercel",
+    description: "Integración con Vercel para deploy",
+    keywords: ["vercel", "deploy", "deployment", "despliegue", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "supabase",
+    label: "Supabase",
+    description: "Integración con Supabase",
+    keywords: ["supabase", "database", "db", "base de datos", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "neon",
+    label: "Neon",
+    description: "Integración con Neon Database",
+    keywords: [
+      "neon",
+      "database",
+      "db",
+      "postgres",
+      "postgresql",
+      "integracion",
+    ],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  // Agent Permissions
+  {
+    id: "agent-permissions",
+    label: "Permisos del Agente",
+    description: "Configurar qué herramientas puede usar el agente",
+    keywords: [
+      "permisos",
+      "agente",
+      "agent",
+      "herramientas",
+      "tools",
+      "permissions",
+    ],
+    section: "Permisos del Agente",
+    sectionId: "agent-permissions",
+  },
+  // Experiments
+  {
+    id: "native-git",
+    label: "Git nativo",
+    description: "Usar implementación de Git nativa sin instalación externa",
+    keywords: ["git", "nativo", "native", "experimento", "experiment"],
+    section: "Experimentos",
+    sectionId: "experiments",
+  },
+  {
+    id: "embeddings-playground",
+    label: "Playground de Embeddings",
+    description: "Probar el modelo MiniLM para búsqueda semántica",
+    keywords: [
+      "embeddings",
+      "playground",
+      "minilm",
+      "busqueda",
+      "semantica",
+      "semantic",
+    ],
+    section: "Experimentos",
+    sectionId: "experiments",
+  },
+  // Danger Zone
+  {
+    id: "reset-all",
+    label: "Resetear todo",
+    description: "Eliminar todas las aplicaciones, chats y configuraciones",
+    keywords: [
+      "reset",
+      "resetear",
+      "eliminar",
+      "borrar",
+      "todo",
+      "danger",
+      "peligro",
+    ],
+    section: "Zona peligrosa",
+    sectionId: "danger-zone",
+  },
+];
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isEmbeddingsPlaygroundOpen, setIsEmbeddingsPlaygroundOpen] =
     useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(
+    null,
+  );
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -55,6 +398,43 @@ export default function SettingsPage() {
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
+
+  // Fuse.js search configuration
+  const fuse = useMemo(
+    () =>
+      new Fuse(SETTINGS_SEARCH_INDEX, {
+        keys: [
+          { name: "label", weight: 2 },
+          { name: "description", weight: 1 },
+          { name: "keywords", weight: 1.5 },
+          { name: "section", weight: 0.5 },
+        ],
+        threshold: 0.4,
+        includeScore: true,
+      }),
+    [],
+  );
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return fuse.search(searchQuery).map((result) => result.item);
+  }, [searchQuery, fuse]);
+
+  // Handle search result click
+  const handleSearchResultClick = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightedSection(sectionId);
+      setTimeout(() => setHighlightedSection(null), 2000);
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
 
   const handleResetEverything = async () => {
     setIsResetting(true);
@@ -86,21 +466,96 @@ export default function SettingsPage() {
           <ArrowLeft className="h-4 w-4" />
           Atrás
         </Button>
-        <div className="flex justify-between mb-4">
+        <div className="flex justify-between items-center mb-4 gap-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Ajustes
           </h1>
+
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Buscar ajustes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Search Results Dropdown */}
+        {searchQuery && (
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+            {searchResults.length > 0 ? (
+              <div className="p-2">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    onClick={() => {
+                      handleSearchResultClick(result.sectionId);
+                      clearSearch();
+                    }}
+                    className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {result.label}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {result.description}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                        {result.section}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <Search className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  No se encontraron ajustes
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Intenta con otros términos de búsqueda
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-6">
-          <GeneralSettings appVersion={appVersion} />
-          <WorkflowSettings />
-          <AISettings />
-          <StatsSettings />
+          <GeneralSettings
+            appVersion={appVersion}
+            isHighlighted={highlightedSection === "general-settings"}
+          />
+          <WorkflowSettings
+            isHighlighted={highlightedSection === "workflow-settings"}
+          />
+          <AISettings isHighlighted={highlightedSection === "ai-settings"} />
+          <StatsSettings
+            isHighlighted={highlightedSection === "stats-settings"}
+          />
 
           <div
             id="provider-settings"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 ${
+              highlightedSection === "provider-settings"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <ProviderSettingsGrid />
           </div>
@@ -108,7 +563,11 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "integrations"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Integraciones
@@ -125,7 +584,11 @@ export default function SettingsPage() {
 
           <div
             id="agent-permissions"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "agent-permissions"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Permisos del Agente
@@ -136,7 +599,11 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "experiments"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Experimentos
@@ -188,7 +655,11 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800 transition-all duration-300 ${
+              highlightedSection === "danger-zone"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
               Zona peligrosa
@@ -237,13 +708,21 @@ export default function SettingsPage() {
   );
 }
 
-export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
+export function GeneralSettings({
+  appVersion,
+  isHighlighted,
+}: {
+  appVersion: string | null;
+  isHighlighted?: boolean;
+}) {
   const { theme, setTheme } = useTheme();
 
   return (
     <div
       id="general-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes generales
@@ -295,7 +774,11 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
   );
 }
 
-export function WorkflowSettings() {
+export function WorkflowSettings({
+  isHighlighted,
+}: {
+  isHighlighted?: boolean;
+}) {
   const { settings, updateSettings } = useSettings();
 
   const handleToggleBackgroundProblemFix = async (value: boolean) => {
@@ -316,7 +799,9 @@ export function WorkflowSettings() {
   return (
     <div
       id="workflow-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Configuración del flujo de trabajo
@@ -480,7 +965,7 @@ function TurboEditsV2Switch() {
   );
 }
 
-export function AISettings() {
+export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
   const { settings, updateSettings } = useSettings();
 
   const handleToggle = async (
@@ -496,7 +981,9 @@ export function AISettings() {
   return (
     <div
       id="ai-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes IA
@@ -582,7 +1069,7 @@ export function AISettings() {
   );
 }
 
-function StatsSettings() {
+function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   const [entries, setEntries] = useState<TokenStatEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TokenStatEntry | null>(
@@ -653,7 +1140,9 @@ function StatsSettings() {
   return (
     <div
       id="stats-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <div className="flex items-center justify-between mb-6">
         <div>

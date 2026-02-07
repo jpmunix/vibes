@@ -251,8 +251,8 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               ¿Está seguro de que desea eliminar este modelo?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el
-              modelo personalizado "
+              Esta acción no se puede deshacer. Esto eliminará permanentemente
+              el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
                     ?.displayName || modelToDelete

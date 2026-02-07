@@ -184,7 +184,8 @@ export function ApiKeyConfiguration({
             </div>
             {saveError && <p className="text-xs text-red-600">{saveError}</p>}
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Establecer una clave aquí anulará la variable de entorno (si está establecida).stablecida).stablecida).stablecida).stablecida).
+              Establecer una clave aquí anulará la variable de entorno (si está
+              establecida).stablecida).stablecida).stablecida).stablecida).
             </p>
           </div>
         </AccordionContent>
@@ -202,20 +203,23 @@ export function ApiKeyConfiguration({
             {hasEnvKey ? (
               <Alert variant="default">
                 <KeyRound className="h-4 w-4" />
-                <AlertTitle>Clave de Variable de Entorno ({envVarName})</AlertTitle>
+                <AlertTitle>
+                  Clave de Variable de Entorno ({envVarName})
+                </AlertTitle>
                 <AlertDescription>
                   <p className="font-mono text-sm">
                     {maskEnvApiKey(envApiKey)}
                   </p>
                   {activeKeySource === "env" && (
                     <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      Esta clave está actualmente activa (no hay clave de configuración establecida).
+                      Esta clave está actualmente activa (no hay clave de
+                      configuración establecida).
                     </p>
                   )}
                   {activeKeySource === "settings" && (
                     <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                      Esta clave está siendo reemplazada actualmente por la clave establecida en
-                      Configuración.
+                      Esta clave está siendo reemplazada actualmente por la
+                      clave establecida en Configuración.
                     </p>
                   )}
                 </AlertDescription>
@@ -234,10 +238,9 @@ export function ApiKeyConfiguration({
               </Alert>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              Esta clave se establece fuera de la aplicación.
-""" If present, it will be
-              used only if no key is configured in the Settings section above.
-              Requires app restart to detect changes.
+              Esta clave se establece fuera de la aplicación. """ If present, it
+              will be used only if no key is configured in the Settings section
+              above. Requires app restart to detect changes.
             </p>
           </AccordionContent>
         </AccordionItem>
