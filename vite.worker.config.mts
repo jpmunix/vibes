@@ -14,6 +14,12 @@ const workersConfig: Record<string, string[]> = {
     "onnxruntime-node",
     "@xenova/transformers",
   ],
+  embeddings_worker: [
+    "node:worker_threads",
+    "electron-log",
+    "onnxruntime-node",
+    "@xenova/transformers",
+  ],
 };
 
 // Electron Forge VitePlugin calls this config multiple times with different entries
@@ -23,7 +29,9 @@ export default defineConfig(() => {
   const entry = process.env.VITE_WORKER_ENTRY || "workers/tsc/tsc_worker.ts";
   const workerName = entry.includes("context_worker")
     ? "context_worker"
-    : "tsc_worker";
+    : entry.includes("embeddings_worker")
+      ? "embeddings_worker"
+      : "tsc_worker";
   const external = workersConfig[workerName] || [];
 
   return {
