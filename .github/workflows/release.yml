@@ -36,6 +36,7 @@ jobs:
           APPLE_ID: ""
           APPLE_PASSWORD: ""
           APPLE_TEAM_ID: ""
+          NODE_OPTIONS: "--max-old-space-size=6144"
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
