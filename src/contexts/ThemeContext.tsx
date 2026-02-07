@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [intensity, setIntensity] = useState<number>(() => {
     const savedIntensity = localStorage.getItem("theme-intensity");
-    return savedIntensity ? parseFloat(savedIntensity) : 0;
+    return savedIntensity ? parseFloat(savedIntensity) : 0.58;
   });
 
   useEffect(() => {

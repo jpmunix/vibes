@@ -505,7 +505,7 @@ export default function SettingsPage() {
               placeholder="Buscar ajustes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 bg-white/50 dark:bg-gray-800/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
+              className="pl-10 pr-10 bg-card/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
             />
             {searchQuery && (
               <button
@@ -520,7 +520,7 @@ export default function SettingsPage() {
 
         {/* Search Results Dropdown */}
         {searchQuery && (
-          <div className="mb-12 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-border overflow-hidden">
+          <div className="mb-12 bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
             {searchResults.length > 0 ? (
               <div className="p-2">
                 {searchResults.map((result) => (
@@ -577,7 +577,7 @@ export default function SettingsPage() {
 
           <div
             id="provider-settings"
-            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-border transition-all duration-300 ${highlightedSection === "provider-settings"
+            className={`bg-card rounded-2xl shadow-sm border border-border transition-all duration-300 ${highlightedSection === "provider-settings"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -588,7 +588,7 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -607,7 +607,7 @@ export default function SettingsPage() {
           {/* Agent v2 Permissions */}
           <div
             id="agent-permissions"
-            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -621,7 +621,7 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -666,7 +666,7 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
               ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -736,13 +736,14 @@ export function GeneralSettings({
     ) {
       setIntensity(settings.themeIntensity);
     }
-  }, [settings?.themeIntensity, intensity, setIntensity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.themeIntensity, setIntensity]);
 
   return (
     <div
       id="general-settings"
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
         isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
       )}
     >
@@ -791,8 +792,8 @@ export function GeneralSettings({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setIntensity(0);
-                updateSettings({ themeIntensity: 0 });
+                setIntensity(0.58);
+                updateSettings({ themeIntensity: 0.58 });
               }}
               className="h-9 px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/20"
             >
@@ -814,9 +815,15 @@ export function GeneralSettings({
                   const val = parseFloat(e.target.value);
                   setIntensity(val);
                 }}
-                onMouseUp={(e) => {
+                onPointerUp={(e) => {
                   const val = parseFloat((e.target as HTMLInputElement).value);
                   updateSettings({ themeIntensity: val });
+                }}
+                onKeyUp={(e) => {
+                  if (e.key.startsWith("Arrow")) {
+                    const val = parseFloat((e.target as HTMLInputElement).value);
+                    updateSettings({ themeIntensity: val });
+                  }
                 }}
                 className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary group-hover:accent-primary/80 transition-all"
               />
@@ -875,7 +882,7 @@ export function WorkflowSettings({
     <div
       id="workflow-settings"
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
         isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
       )}
     >
@@ -970,7 +977,7 @@ export function WorkflowSettings({
                   type="number"
                   min={1}
                   value={settings?.autoFixMaxDurationMs ?? 20000}
-                  className="rounded-xl border-border bg-white dark:bg-gray-800"
+                  className="rounded-xl border-border bg-card"
                   onChange={(e) =>
                     handleUpdateNumberSetting(
                       "autoFixMaxDurationMs",
@@ -988,7 +995,7 @@ export function WorkflowSettings({
                   type="number"
                   min={0}
                   value={settings?.autoFixMaxAttempts ?? 1}
-                  className="rounded-xl border-border bg-white dark:bg-gray-800"
+                  className="rounded-xl border-border bg-card"
                   onChange={(e) =>
                     handleUpdateNumberSetting(
                       "autoFixMaxAttempts",
@@ -1070,7 +1077,7 @@ export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
     <div
       id="ai-settings"
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
         isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
       )}
     >
@@ -1248,7 +1255,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
     <div
       id="stats-settings"
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
         isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
       )}
     >

@@ -38,7 +38,7 @@ export function GitHubIntegration() {
     <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
       <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-border">
+          <div className="p-3 rounded-xl bg-card shadow-sm border border-border">
             <Github className="h-6 w-6" />
           </div>
           <div>
@@ -63,7 +63,7 @@ export function GitHubIntegration() {
       </div>
 
       <div
-        className="flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border border-transparent hover:border-border"
+        className="flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border"
         onClick={() => updateSettings({ enableGithubAutoCommit: settings?.enableGithubAutoCommit === false })}
       >
         <div className="flex-1">

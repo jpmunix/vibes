@@ -115,11 +115,10 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           {models.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className={`p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
-                selectedModel === model.apiName
-                  ? "ring-2 ring-blue-500 dark:ring-blue-400"
+              className={`p-4 bg-card border border-border rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow ${selectedModel === model.apiName
+                  ? "ring-2 ring-primary"
                   : ""
-              }`}
+                }`}
               onClick={() => handleModelClick(model.apiName)}
               onDoubleClick={() => handleModelDoubleClick(model)}
             >
@@ -136,7 +135,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                         e.stopPropagation();
                         handleEditClick(model);
                       }}
-                      className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 h-8 w-8"
+                      className="text-primary hover:bg-primary/10 h-8 w-8"
                     >
                       <svg
                         className="h-4 w-4"
@@ -188,12 +187,12 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                 )}
               </div>
               <div className="flex flex-wrap gap-x-2">
-                <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                <span className="mt-2 inline-block bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded-full">
                   {model.type === "cloud" ? "Integrado" : "Personalizado"}
                 </span>
 
                 {model.tag && (
-                  <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                  <span className="mt-2 inline-block bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded-full">
                     {model.tag}
                   </span>
                 )}
@@ -255,7 +254,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
-                    ?.displayName || modelToDelete
+                  ?.displayName || modelToDelete
                 : ""}
               " (API Name: {modelToDelete}).
             </AlertDialogDescription>

@@ -35,7 +35,7 @@ export function VercelIntegration() {
     <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
       <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-border">
+          <div className="p-3 rounded-xl bg-card shadow-sm border border-border">
             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M24 22.525H0l12-21.05 12 21.05z" />
             </svg>

@@ -49,7 +49,7 @@ export function ProviderSettingsGrid() {
 
   const handleProviderClick = (providerId: string) => {
     navigate({
-      to: providerSettingsRoute.id,
+      to: "/settings/providers/$provider",
       params: { provider: providerId },
     });
   };

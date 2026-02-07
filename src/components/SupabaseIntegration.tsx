@@ -116,7 +116,7 @@ export function SupabaseIntegration() {
     <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
       <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-border">
+          <div className="p-3 rounded-xl bg-card shadow-sm border border-border">
             <DatabaseZap className="h-6 w-6" />
           </div>
           <div>
@@ -150,7 +150,7 @@ export function SupabaseIntegration() {
             {organizations.map((org) => (
               <div
                 key={org.organizationSlug}
-                className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-gray-800 border border-border shadow-sm group"
+                className="flex items-center justify-between p-4 rounded-xl bg-card border border-border shadow-sm group"
               >
                 <div className="flex flex-col min-w-0 pr-4">
                   <span className="text-sm font-bold text-gray-900 dark:text-white truncate">

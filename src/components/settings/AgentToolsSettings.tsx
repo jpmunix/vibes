@@ -117,7 +117,7 @@ function ToolConsentRow({
         value={consent}
         onValueChange={(v) => onConsentChange(v as AgentToolConsent)}
       >
-        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-white dark:bg-gray-800/50 border-border">
+        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-card border-border">
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="rounded-xl">
