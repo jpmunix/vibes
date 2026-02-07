@@ -551,11 +551,10 @@ export default function SettingsPage() {
 
           <div
             id="provider-settings"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 ${
-              highlightedSection === "provider-settings"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 ${highlightedSection === "provider-settings"
                 ? "ring-4 ring-blue-500 ring-opacity-50"
                 : ""
-            }`}
+              }`}
           >
             <ProviderSettingsGrid />
           </div>
@@ -563,11 +562,10 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-              highlightedSection === "integrations"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "integrations"
                 ? "ring-4 ring-blue-500 ring-opacity-50"
                 : ""
-            }`}
+              }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Integraciones
@@ -584,11 +582,10 @@ export default function SettingsPage() {
 
           <div
             id="agent-permissions"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-              highlightedSection === "agent-permissions"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "agent-permissions"
                 ? "ring-4 ring-blue-500 ring-opacity-50"
                 : ""
-            }`}
+              }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Permisos del Agente
@@ -599,11 +596,10 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-              highlightedSection === "experiments"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${highlightedSection === "experiments"
                 ? "ring-4 ring-blue-500 ring-opacity-50"
                 : ""
-            }`}
+              }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Experimentos
@@ -655,11 +651,10 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800 transition-all duration-300 ${
-              highlightedSection === "danger-zone"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800 transition-all duration-300 ${highlightedSection === "danger-zone"
                 ? "ring-4 ring-blue-500 ring-opacity-50"
                 : ""
-            }`}
+              }`}
           >
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
               Zona peligrosa
@@ -715,26 +710,35 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, intensity, setIntensity } = useTheme();
+  const { settings, updateSettings } = useSettings();
+
+  useEffect(() => {
+    if (
+      settings?.themeIntensity !== undefined &&
+      settings.themeIntensity !== intensity
+    ) {
+      setIntensity(settings.themeIntensity);
+    }
+  }, [settings?.themeIntensity]);
 
   return (
     <div
       id="general-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-      }`}
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+        }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes generales
       </h2>
 
-      <div className="space-y-4 mb-4">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Tema
-          </label>
+          </Label>
 
-          <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
+          <div className="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex w-fit">
             {(["system", "light", "dark"] as const).map((option) => (
               <button
                 key={option}
@@ -742,11 +746,10 @@ export function GeneralSettings({
                 className={`
                 px-4 py-1.5 text-sm font-medium rounded-md
                 transition-all duration-200
-                ${
-                  theme === option
+                ${theme === option
                     ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                }
+                  }
               `}
               >
                 {option === "system"
@@ -758,13 +761,62 @@ export function GeneralSettings({
             ))}
           </div>
         </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Intensidad del tema
+            </Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIntensity(0);
+                updateSettings({ themeIntensity: 0 });
+              }}
+              className="h-7 px-2 text-xs text-gray-500 hover:text-primary"
+            >
+              Restablecer
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 group">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 w-12 text-center">
+              Claro
+            </span>
+            <div className="relative flex-1 flex items-center">
+              <input
+                type="range"
+                min="-1"
+                max="1"
+                step="0.01"
+                value={intensity}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setIntensity(val);
+                }}
+                onMouseUp={(e) => {
+                  const val = parseFloat((e.target as HTMLInputElement).value);
+                  updateSettings({ themeIntensity: val });
+                }}
+                className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 w-0.5 h-3 bg-gray-300 dark:bg-gray-600 pointer-events-none"
+                style={{ opacity: intensity === 0 ? 0 : 0.5 }}
+              />
+            </div>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 w-12 text-center">
+              Oscuro
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
         <ZoomSelector />
       </div>
 
-      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-6 pt-4 border-t border-gray-50 dark:border-gray-800/50">
         <span className="mr-2 font-medium">Versión de la aplicación:</span>
         <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-800 dark:text-gray-200 font-mono">
           {appVersion ? appVersion : "-"}
@@ -799,9 +851,8 @@ export function WorkflowSettings({
   return (
     <div
       id="workflow-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-      }`}
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+        }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Configuración del flujo de trabajo
@@ -981,9 +1032,8 @@ export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
   return (
     <div
       id="ai-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-      }`}
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+        }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes IA
@@ -1140,9 +1190,8 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   return (
     <div
       id="stats-settings"
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
-        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
-      }`}
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+        }`}
     >
       <div className="flex items-center justify-between mb-6">
         <div>

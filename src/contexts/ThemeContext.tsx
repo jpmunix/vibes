@@ -5,6 +5,8 @@ type Theme = "system" | "light" | "dark";
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  intensity: number;
+  setIntensity: (intensity: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -14,6 +16,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Try to get the saved theme from localStorage
     const savedTheme = localStorage.getItem("theme") as Theme;
     return savedTheme || "system";
+  });
+
+  const [intensity, setIntensity] = useState<number>(() => {
+    const savedIntensity = localStorage.getItem("theme-intensity");
+    return savedIntensity ? parseFloat(savedIntensity) : 0;
   });
 
   useEffect(() => {
@@ -41,8 +48,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mediaQuery.removeEventListener("change", listener);
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem("theme-intensity", intensity.toString());
+    window.document.documentElement.style.setProperty(
+      "--theme-intensity",
+      intensity.toString(),
+    );
+  }, [intensity]);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, intensity, setIntensity }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -54,7 +69,7 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme } = context;
+  const { theme, setTheme, intensity, setIntensity } = context;
 
   // Determine if dark mode is active when component mounts or theme changes
   useEffect(() => {
@@ -72,5 +87,5 @@ export function useTheme() {
       darkModeQuery.removeEventListener("change", updateTheme);
     };
   }, [theme]);
-  return { theme, isDarkMode, setTheme };
+  return { theme, isDarkMode, setTheme, intensity, setIntensity };
 }
