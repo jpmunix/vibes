@@ -280,7 +280,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     onSuccess: async (result) => {
       showSuccess(
         !hasAiRules
-          ? "App importada con éxito. Dyad generará un AI_RULES.md ahora."
+          ? "App importada con éxito. Vibes generará un AI_RULES.md ahora."
           : "App importada con éxito",
       );
       onClose();
@@ -510,14 +510,14 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">
-                                AI_RULES.md le dice a Dyad qué tecnologías usar
+                                AI_RULES.md le dice a Vibes qué tecnologías usar
                                 para editar la app
                               </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <AlertDescription className="text-xs sm:text-sm">
-                          No se encontró AI_RULES.md. Dyad generará uno
+                          No se encontró AI_RULES.md. Vibes generará uno
                           automáticamente después de importar.
                         </AlertDescription>
                       </Alert>

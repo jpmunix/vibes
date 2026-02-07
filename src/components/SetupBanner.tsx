@@ -377,7 +377,7 @@ function NodeInstallButton({
     case "finished-checking":
       return (
         <div className="mt-3 text-sm text-red-600 dark:text-red-400">
-          No se detecta Node.js. Cerrar y volver a abrir Dyad suele solucionar
+          No se detecta Node.js. Cerrar y volver a abrir Vibes suele solucionar
           esto.
         </div>
       );

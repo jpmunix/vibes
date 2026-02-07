@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableLocalSmartContext: true,
   enableMcpSmartContext: false,
   enableTokenStats: true,
-  enableVerboseChatLogs: false, // Disabled by default to avoid clutter
+  enableVerboseChatLogs: true,
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
   autoFixModel: {

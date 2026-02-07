@@ -22,18 +22,18 @@ export default function ThemesPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold mr-4">
             <Palette className="inline-block h-8 w-8 mr-2" />
-            Themes
+            Temas
           </h1>
           <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> New Theme
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Tema
           </Button>
         </div>
 
         {isLoading ? (
-          <div>Loading...</div>
+          <div>Cargando...</div>
         ) : customThemes.length === 0 ? (
           <div className="text-muted-foreground">
-            No custom themes yet. Create one to get started.
+            Aún no hay temas personalizados. Crea uno para empezar.
           </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
@@ -98,7 +98,7 @@ function ThemeCard({ theme }: { theme: CustomTheme }) {
             <EditThemeDialog theme={theme} onUpdateTheme={handleUpdate} />
             <DeleteConfirmationDialog
               itemName={theme.name}
-              itemType="Theme"
+              itemType="Tema"
               onDelete={handleDelete}
               isDeleting={isDeleting}
             />

@@ -67,7 +67,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
 
   // Use fetched data (or defaults for Dyad)
   const providerDisplayName = isDyad
-    ? "Dyad"
+    ? "Vibes"
     : (providerData?.name ?? "Unknown Provider");
   const providerWebsiteUrl = providerData?.websiteUrl;
   const hasFreeTier = isDyad ? false : providerData?.hasFreeTier;
@@ -190,7 +190,7 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
         enableDyadPro: enabled,
       });
     } catch (error: any) {
-      showError(`Error toggling Dyad Pro: ${error}`);
+      showError(`Error toggling Vibes Pro: ${error}`);
     } finally {
       setIsSaving(false);
     }
@@ -322,9 +322,9 @@ export function ProviderSettingsPage({ provider }: ProviderSettingsPageProps) {
         {isDyad && !settingsLoading && (
           <div className="mt-6 flex items-center justify-between p-4 bg-(--background-lightest) rounded-lg border">
             <div>
-              <h3 className="font-medium">Enable Dyad Pro</h3>
+              <h3 className="font-medium">Enable Vibes Pro</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Toggle to enable Dyad Pro
+                Toggle to enable Vibes Pro
               </p>
             </div>
             <Switch

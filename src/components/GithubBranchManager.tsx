@@ -517,7 +517,7 @@ export function GithubBranchManager({
                 disabled={isCreating || !newBranchName.trim()}
                 data-testid="create-branch-submit-button"
               >
-                {isCreating ? "Creating..." : "Create Branch"}
+                {isCreating ? "Creando..." : "Crear Rama"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -603,12 +603,14 @@ export function GithubBranchManager({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDeleteBranch}
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Branch"}
+              {isDeleting ? "Eliminando..." : "Eliminar Rama"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

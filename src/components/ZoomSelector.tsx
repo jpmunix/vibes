@@ -40,9 +40,9 @@ export function ZoomSelector() {
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-1">
-        <Label htmlFor="zoom-level">Zoom level</Label>
+        <Label htmlFor="zoom-level">Nivel de zoom</Label>
         <p className="text-sm text-muted-foreground">
-          Adjusts the zoom level to make content easier to read.
+          Ajustar el nivel de zoom para mejorar la lectura del contenido
         </p>
       </div>
       <Select

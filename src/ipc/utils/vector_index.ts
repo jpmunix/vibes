@@ -324,23 +324,64 @@ export class LocalVectorIndex {
   }
 
   /**
-   * Add multiple files to the index
-   * Processes in batches for better performance
+   * Process files with limited concurrency to avoid CPU overload
+   * @param files Files to process
+   * @param concurrency Maximum number of concurrent operations
    */
-  async addFiles(files: CodebaseFile[], batchSize: number = 10): Promise<void> {
-    logger.info(`Indexing ${files.length} files...`);
+  private async processFilesWithLimit(
+    files: CodebaseFile[],
+    concurrency: number = 3,
+  ): Promise<void> {
+    const queue = [...files];
+    const processing: Promise<void>[] = [];
 
-    for (let i = 0; i < files.length; i += batchSize) {
-      const batch = files.slice(i, i + batchSize);
+    while (queue.length > 0 || processing.length > 0) {
+      // Fill up to concurrency limit
+      while (processing.length < concurrency && queue.length > 0) {
+        const file = queue.shift()!;
+        const promise = this.addFile(file.path, file.content)
+          .then(() => {
+            // Remove from processing list when done
+            const index = processing.indexOf(promise);
+            if (index > -1) {
+              processing.splice(index, 1);
+            }
+          })
+          .catch((error) => {
+            logger.error(`Error processing ${file.path}:`, error);
+            // Remove from processing list even on error
+            const index = processing.indexOf(promise);
+            if (index > -1) {
+              processing.splice(index, 1);
+            }
+          });
 
-      await Promise.all(
-        batch.map((file) => this.addFile(file.path, file.content)),
-      );
+        processing.push(promise);
+      }
 
-      logger.debug(
-        `Indexed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(files.length / batchSize)}`,
-      );
+      // Wait for at least one to complete before continuing
+      if (processing.length > 0) {
+        await Promise.race(processing);
+      }
+
+      // Add small delay to prevent CPU saturation
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
+  }
+
+  /**
+   * Add multiple files to the index
+   * Processes with limited concurrency and throttling to prevent CPU overload
+   */
+  async addFiles(
+    files: CodebaseFile[],
+    maxConcurrency: number = 3,
+  ): Promise<void> {
+    logger.info(
+      `Indexing ${files.length} files with concurrency ${maxConcurrency}...`,
+    );
+
+    await this.processFilesWithLimit(files, maxConcurrency);
 
     logger.info(`Finished indexing ${files.length} files`);
   }

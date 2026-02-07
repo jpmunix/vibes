@@ -47,7 +47,7 @@ export function CustomErrorToast({
                     handleCopy();
                   }}
                   className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-all duration-150"
-                  title="Copy to clipboard"
+                  title="Copiar al portapapeles"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-green-500" />
@@ -61,7 +61,7 @@ export function CustomErrorToast({
                     handleClose();
                   }}
                   className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-all duration-150"
-                  title="Close"
+                  title="Cerrar"
                 >
                   <X className="w-4 h-4" />
                 </button>

@@ -64,7 +64,7 @@ export function DefaultChatModeSelector() {
           value={effectiveDefault}
           onValueChange={handleDefaultChatModeChange}
         >
-          <SelectTrigger className="w-40" id="default-chat-mode">
+          <SelectTrigger className="w-60" id="default-chat-mode">
             <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
           </SelectTrigger>
           <SelectContent>

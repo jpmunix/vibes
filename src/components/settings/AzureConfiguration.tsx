@@ -101,7 +101,7 @@ export function AzureConfiguration({
         variant: "default" as const,
         title: "Azure OpenAI configurado",
         description:
-          "Dyad utilizará las credenciales guardadas en Ajustes para los modelos de Azure OpenAI.",
+          "Vibes utilizará las credenciales guardadas en Ajustes para los modelos de Azure OpenAI.",
         icon: KeyRound,
         titleClassName: "",
         descriptionClassName: "",
@@ -261,11 +261,11 @@ export function AzureConfiguration({
               <p>
                 Puedes continuar configurando Azure a través de variables de
                 entorno. Si ambas variables están presentes y no hay ajustes
-                guardados, Dyad las utilizará automáticamente.
+                guardados, Vibes las utilizará automáticamente.
               </p>
               <p>
                 Los valores guardados en Ajustes tienen prioridad sobre las
-                variables de entorno. Reinicia Dyad después de cambiar las
+                variables de entorno. Reinicia Vibes después de cambiar las
                 variables de entorno.
               </p>
             </div>

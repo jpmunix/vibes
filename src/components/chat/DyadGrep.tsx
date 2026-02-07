@@ -96,7 +96,7 @@ export const DyadGrep: React.FC<DyadGrepProps> = ({ children, node }) => {
           {aborted && (
             <div className="flex items-center text-red-600 text-xs">
               <CircleX size={14} className="mr-1" />
-              <span>Did not finish</span>
+              <span>No terminado</span>
             </div>
           )}
         </div>

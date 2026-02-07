@@ -56,7 +56,7 @@ export const TURBO_EDITS_PROMO_MESSAGE: MessageConfig = {
     { type: "text", content: "¿Cansado de esperar a la IA?" },
     {
       type: "link",
-      content: " Consigue Dyad Pro",
+      content: " Consigue Vibes Pro",
       url: "https://dyad.sh/pro#ai",
     },
     { type: "text", content: " para ediciones más rápidas con Turbo Edits." },
@@ -68,7 +68,7 @@ export const SMART_CONTEXT_PROMO_MESSAGE: MessageConfig = {
     { type: "text", content: "Ahorra hasta 3 veces en costes de IA con " },
     {
       type: "link",
-      content: "Smart Context de Dyad Pro",
+      content: "Smart Context de Vibes Pro",
       url: "https://dyad.sh/pro#ai",
     },
   ],
@@ -93,7 +93,7 @@ export const REDDIT_TIP: MessageConfig = {
     },
     {
       type: "link",
-      content: "Subreddit de Dyad",
+      content: "Subreddit de Vibes",
       url: "https://www.reddit.com/r/dyadbuilders/",
     },
   ],
@@ -129,7 +129,7 @@ export const BUILD_A_BIBLE_APP_TIP: MessageConfig = {
     {
       type: "text",
       content:
-        " al creador de Dyad construye una aplicación de la Biblia paso a paso",
+        " al creador de Vibes construye una aplicación de la Biblia paso a paso",
     },
   ],
 };
@@ -192,7 +192,7 @@ export const GITHUB_TIP: MessageConfig = {
   spans: [
     {
       type: "text",
-      content: "¿Te gusta Dyad? Danos una estrella en ",
+      content: "¿Te gusta Vibes? Danos una estrella en ",
     },
     {
       type: "link",

@@ -163,7 +163,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Bot de ayuda de Dyad</DialogTitle>
+          <DialogTitle>Bot de ayuda de Vibes</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 h-[480px]">
           {error && (
@@ -186,7 +186,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
             {messages.length === 0 ? (
               <div className="space-y-3">
                 <div className="text-sm text-muted-foreground">
-                  Haz una pregunta sobre cómo usar Dyad.
+                  Haz una pregunta sobre cómo usar Vibes.
                 </div>
                 <div className="text-xs text-muted-foreground/70 bg-muted/50 rounded-md p-3">
                   Esta conversación puede ser registrada y utilizada para

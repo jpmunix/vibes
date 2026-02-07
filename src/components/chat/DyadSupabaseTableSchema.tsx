@@ -55,7 +55,7 @@ export function DyadSupabaseTableSchema({
             <span className="text-xs text-amber-600">Fetching...</span>
           )}
           {isAborted && (
-            <span className="text-xs text-red-500">Did not finish</span>
+            <span className="text-xs text-red-500">No terminado</span>
           )}
         </div>
         <div className="flex items-center">

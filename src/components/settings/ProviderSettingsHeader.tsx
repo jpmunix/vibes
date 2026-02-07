@@ -34,10 +34,10 @@ function getKeyButtonText({
 }) {
   if (isDyad) {
     return isConfigured
-      ? "Manage Dyad Pro Subscription"
-      : "Setup Dyad Pro Subscription";
+      ? "Administrar Suscripción de Vibes Pro"
+      : "Configurar Suscripción de Vibes Pro";
   }
-  return isConfigured ? "Manage API Keys" : "Setup API Key";
+  return isConfigured ? "Administrar Claves API" : "Configurar Clave API";
 }
 
 export function ProviderSettingsHeader({
@@ -76,13 +76,13 @@ export function ProviderSettingsHeader({
         className="flex items-center gap-2 mb-4 bg-(--background-lightest) py-5"
       >
         <ArrowLeft className="h-4 w-4" />
-        Go Back
+        Atrás
       </Button>
 
       <div className="mb-6">
         <div className="flex items-center mb-1">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mr-3">
-            Configure {providerDisplayName}
+            Configurar {providerDisplayName}
           </h1>
           {isLoading ? (
             <Skeleton className="h-6 w-6 rounded-full" />
@@ -116,7 +116,7 @@ export function ProviderSettingsHeader({
               className="w-fit py-2 px-3 bg-background text-primary shadow-lg ring-1 ring-primary/40"
             >
               <div className="text-sm font-semibold flex items-center gap-1">
-                <ArrowUp /> Create your API key with {providerDisplayName}
+                <ArrowUp /> Crear api key con {providerDisplayName}
               </div>
             </PopoverContent>
           </Popover>

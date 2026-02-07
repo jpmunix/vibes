@@ -86,7 +86,7 @@ export function HelpDialog({ isOpen, onClose }: HelpDialogProps) {
 <!-- Screenshot of the bug -->
 
 ## System Information
-- Dyad Version: ${debugInfo.dyadVersion}
+- Vibes Version: ${debugInfo.dyadVersion}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
 - Node Version: ${debugInfo.nodeVersion || "n/a"}
@@ -334,7 +334,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
             <div className="border rounded-md p-3">
               <h3 className="font-medium mb-2">Información del sistema</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                <p>Versión de Dyad: {chatLogsData.debugInfo.dyadVersion}</p>
+                <p>Versión de Vibes: {chatLogsData.debugInfo.dyadVersion}</p>
                 <p>Plataforma: {chatLogsData.debugInfo.platform}</p>
                 <p>Arquitectura: {chatLogsData.debugInfo.architecture}</p>
                 <p>
@@ -376,7 +376,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>¿Necesitas ayuda con Dyad?</DialogTitle>
+          <DialogTitle>¿Necesitas ayuda con Vibes?</DialogTitle>
         </DialogHeader>
         <DialogDescription className="">
           Si necesitas ayuda o quieres informar de un problema, aquí tienes
@@ -393,11 +393,11 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
                 className="w-full py-6 border-primary/50 shadow-sm shadow-primary/10 transition-all hover:shadow-md hover:shadow-primary/15"
               >
                 <SparklesIcon className="mr-2 h-5 w-5" /> Chatear con el bot de
-                ayuda de Dyad (Pro)
+                ayuda de Vibes (Pro)
               </Button>
               <p className="text-sm text-muted-foreground px-2">
                 Abre un asistente de chat de ayuda en la aplicación que busca en
-                la documentación de Dyad.
+                la documentación de Vibes.
               </p>
             </div>
           ) : (
