@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [
           { id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
-          { id: "macos", image: "macos-latest", command: "npm run clean && electron-forge make --platform darwin --arch x64" }
+          { id: "macos", image: "macos-latest", command: "npm run clean && npx electron-forge make --platform darwin --arch x64" }
         ]
     runs-on: ${{ matrix.os.image }}
 
