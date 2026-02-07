@@ -28,7 +28,7 @@ export function registerTodoHandlers() {
       orderBy: [asc(todos.order)],
     });
 
-    const maxOrder = existingTodos.length > 0 
+    const maxOrder = existingTodos.length > 0
       ? Math.max(...existingTodos.map(t => t.order))
       : -1;
 
@@ -37,6 +37,7 @@ export function registerTodoHandlers() {
       .values({
         appId,
         content,
+        description: params.description,
         order: maxOrder + 1,
       })
       .returning();
@@ -51,6 +52,9 @@ export function registerTodoHandlers() {
 
     if (content !== undefined) {
       updateData.content = content;
+    }
+    if (params.description !== undefined) {
+      (updateData as any).description = params.description;
     }
     if (completed !== undefined) {
       updateData.completed = completed;

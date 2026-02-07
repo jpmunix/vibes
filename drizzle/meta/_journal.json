@@ -204,6 +204,13 @@
       "when": 1770468933604,
       "tag": "0028_stormy_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1770501196239,
+      "tag": "0029_acoustic_bloodscream",
+      "breakpoints": true
     }
   ]
 }

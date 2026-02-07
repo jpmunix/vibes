@@ -12,6 +12,7 @@ export const TodoSchema = z.object({
   id: z.number(),
   appId: z.number(),
   content: z.string(),
+  description: z.string().optional().nullable(),
   completed: z.boolean(),
   order: z.number(),
   createdAt: z.union([z.date(), z.string()]),
@@ -26,6 +27,7 @@ export type Todo = z.infer<typeof TodoSchema>;
 export const CreateTodoParamsSchema = z.object({
   appId: z.number(),
   content: z.string(),
+  description: z.string().optional(),
 });
 
 export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
@@ -36,6 +38,7 @@ export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
 export const UpdateTodoParamsSchema = z.object({
   todoId: z.number(),
   content: z.string().optional(),
+  description: z.string().optional().nullable(),
   completed: z.boolean().optional(),
 });
 

@@ -19,12 +19,13 @@ import {
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { SortableTodoItem, TodoItem } from "./TodoItem";
+import { TodoEditModal } from "./TodoEditModal";
 
 interface TodoListProps {
   todos: Todo[];
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number) => void;
   onReorder: (todoIds: number[]) => void;
@@ -42,6 +43,7 @@ export function TodoList({
   isLoading,
 }: TodoListProps) {
   const [newTodo, setNewTodo] = useState("");
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -133,6 +135,7 @@ export function TodoList({
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     onDevelop={onDevelop}
+                    onEdit={() => setEditingTodo(todo)}
                   />
                 ))}
               </SortableContext>
@@ -151,6 +154,7 @@ export function TodoList({
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     onDevelop={onDevelop}
+                    onEdit={() => setEditingTodo(todo)}
                   />
                 ))}
               </div>
@@ -158,6 +162,16 @@ export function TodoList({
           </>
         )}
       </div>
+
+      <TodoEditModal
+        todo={editingTodo}
+        open={!!editingTodo}
+        onOpenChange={(open) => !open && setEditingTodo(null)}
+        onSave={(id, content, desc) => {
+          onUpdate(id, content, desc);
+          setEditingTodo(null);
+        }}
+      />
     </div>
   );
 }

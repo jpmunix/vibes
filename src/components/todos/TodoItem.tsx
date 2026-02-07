@@ -11,9 +11,10 @@ import { useState } from "react";
 interface SortableTodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number) => void;
+  onEdit: () => void;
 }
 
 export function SortableTodoItem({
@@ -22,6 +23,7 @@ export function SortableTodoItem({
   onUpdate,
   onDelete,
   onDevelop,
+  onEdit,
 }: SortableTodoItemProps) {
   const {
     attributes,
@@ -98,6 +100,11 @@ export function SortableTodoItem({
           onDoubleClick={() => setIsEditing(true)}
         >
           {todo.content}
+          {todo.description && (
+            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+              {todo.description}
+            </p>
+          )}
         </span>
       )}
 
@@ -115,7 +122,7 @@ export function SortableTodoItem({
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          onClick={() => setIsEditing(true)}
+          onClick={onEdit}
           title="Editar"
         >
           <Edit2 className="h-3.5 w-3.5" />
@@ -138,9 +145,10 @@ export function SortableTodoItem({
 interface TodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number) => void;
+  onEdit: () => void;
 }
 
 export function TodoItem({
@@ -149,6 +157,7 @@ export function TodoItem({
   onUpdate,
   onDelete,
   onDevelop,
+  onEdit,
 }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(todo.content);
@@ -202,6 +211,11 @@ export function TodoItem({
           onDoubleClick={() => setIsEditing(true)}
         >
           {todo.content}
+          {todo.description && (
+            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+              {todo.description}
+            </p>
+          )}
         </span>
       )}
 
@@ -219,7 +233,7 @@ export function TodoItem({
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          onClick={() => setIsEditing(true)}
+          onClick={onEdit}
           title="Editar"
         >
           <Edit2 className="h-3.5 w-3.5" />

@@ -32,13 +32,15 @@ export function useTodos(appId: number) {
     mutationFn: async ({
       todoId,
       content,
+      description,
       completed,
     }: {
       todoId: number;
       content?: string;
+      description?: string | null;
       completed?: boolean;
     }) => {
-      return await ipc.todo.updateTodo({ todoId, content, completed });
+      return await ipc.todo.updateTodo({ todoId, content, description, completed });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

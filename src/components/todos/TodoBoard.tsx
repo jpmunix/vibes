@@ -6,7 +6,7 @@ interface TodoBoardProps {
   appName: string;
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number) => void;
   onReorder: (todoIds: number[]) => void;

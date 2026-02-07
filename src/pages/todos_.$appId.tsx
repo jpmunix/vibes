@@ -34,8 +34,8 @@ export default function TodoDetailPage() {
     await updateTodo({ todoId, completed });
   };
 
-  const handleUpdate = async (todoId: number, content: string) => {
-    await updateTodo({ todoId, content });
+  const handleUpdate = async (todoId: number, content: string, description?: string | null) => {
+    await updateTodo({ todoId, content, description });
   };
 
   const handleDelete = async (todoId: number) => {
