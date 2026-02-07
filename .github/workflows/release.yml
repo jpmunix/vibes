@@ -11,8 +11,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          { id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
-          #{ id: "macos", image: "macos-latest", command: "npx electron-forge make --platform darwin --arch x64" }
+          #{ id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
+          { id: "macos", image: "macos-latest", command: "npx electron-forge make --platform darwin --arch x64" }
         ]
     runs-on: ${{ matrix.os.image }}
 

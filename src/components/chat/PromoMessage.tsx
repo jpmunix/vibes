@@ -57,7 +57,7 @@ export const TURBO_EDITS_PROMO_MESSAGE: MessageConfig = {
     {
       type: "link",
       content: " Consigue Vibes Pro",
-      url: "https://dyad.sh/pro#ai",
+      url: "https://github.com/minube/vibes#ai",
     },
     { type: "text", content: " para ediciones más rápidas con Turbo Edits." },
   ],
@@ -69,7 +69,7 @@ export const SMART_CONTEXT_PROMO_MESSAGE: MessageConfig = {
     {
       type: "link",
       content: "Smart Context de Vibes Pro",
-      url: "https://dyad.sh/pro#ai",
+      url: "https://github.com/minube/vibes#ai",
     },
   ],
 };

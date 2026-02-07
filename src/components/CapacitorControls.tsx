@@ -140,7 +140,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
               onClick={() => {
                 // TODO: Add actual help link
                 ipc.system.openExternalUrl(
-                  "https://dyad.sh/docs/guides/mobile-app#troubleshooting",
+                  "https://github.com/minube/vibes/guides/mobile-app#troubleshooting",
                 );
               }}
               className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"

@@ -8,7 +8,7 @@ interface AnnotatorOnlyForProProps {
 
 export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
   const handleGetPro = () => {
-    ipc.system.openExternalUrl("https://dyad.sh/pro");
+    ipc.system.openExternalUrl("https://github.com/minube/vibes");
   };
 
   return (
