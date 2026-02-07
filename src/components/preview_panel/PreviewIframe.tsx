@@ -109,7 +109,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
       {/* Add a little chip that says "Internal error" if source is "dyad-app" */}
       {error.source === "dyad-app" && (
         <div className="absolute top-1 right-1 p-1 bg-red-100 dark:bg-red-900 rounded-md text-xs font-medium text-red-700 dark:text-red-300">
-          Internal Dyad error
+          Internal error
         </div>
       )}
 

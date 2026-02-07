@@ -39,7 +39,7 @@ export function FreeAgentQuotaBanner({
     : "";
 
   const handleUpgrade = () => {
-    ipc.system.openExternalUrl("https://dyad.sh/pro");
+    ipc.system.openExternalUrl("https://github.com/minube/vibes");
   };
 
   return (
