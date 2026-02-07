@@ -7,89 +7,43 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import MakerZIP from "@electron-forge/maker-zip";
 
-// Based on https://github.com/electron/forge/blob/6b2d547a7216c30fde1e1fddd1118eee5d872945/packages/plugin/vite/src/VitePlugin.ts#L124
 const ignore = (file: string) => {
-  if (!file) return false;
-  // `file` always starts with `/`
-  // @see - https://github.com/electron/packager/blob/v18.1.3/src/copy-filter.ts#L89-L93
-  if (file === "/node_modules") {
-    return false;
-  }
-  if (file.startsWith("/drizzle")) {
-    return false;
-  }
-  if (file.startsWith("/scaffold")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/semver")) {
-    return false;
-  }
-  if (file.startsWith("/worker") && !file.startsWith("/workers")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/stacktrace-js")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/stacktrace-js/dist")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/html-to-image")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/better-sqlite3")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/onnxruntime-web")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/onnxruntime-node")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/onnxruntime-common")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/sharp")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/color")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/simple-swizzle")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/@img")) {
-    return false;
-  }
+  if (!file || file === "/") return false;
+
   if (
-    file.startsWith("/node_modules/@xenova")
+    file.includes("/node_modules/@img") ||
+    file.includes("/node_modules/@xenova") ||
+    file.includes("/node_modules/sharp")
   ) {
-    return false;
-  }
-  if (
-    file.startsWith("/node_modules/@huggingface")
-  ) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/bindings")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/file-uri-to-path")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/@mapbox")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/detect-libc")) {
-    return false;
-  }
-  if (file.startsWith("/node_modules/prebuild-install")) {
-    return false;
-  }
-  if (file.startsWith("/.vite")) {
     return false;
   }
 
-  return true;
+  if (file.includes("/node_modules/@xenova/transformers/node_modules")) {
+    return true;
+  }
+
+  // 2. LISTA DE PERMITIDOS: Cosas que SIEMPRE deben estar en la app
+  // Si el archivo empieza por alguna de estas rutas, devolvemos FALSE (NO ignorar)
+  const allowedPaths = [
+    "/node_modules",
+    "/.vite",
+    "/drizzle",
+    "/scaffold",
+    "/worker",
+    "/assets", // Asegúrate de incluir tus iconos/recursos aquí
+    "/package.json"
+  ];
+
+  if (allowedPaths.some(path => file.startsWith(path))) {
+    // Aquí puedes añadir excepciones si quieres borrar archivos pesados de node_modules
+    // Por ejemplo: no queremos archivos .cpp o .h que solo sirven para compilar
+    if (file.endsWith(".cpp") || file.endsWith(".h") || file.endsWith(".ts")) {
+      // Pero ojo, no borres archivos .js o .node (los binarios)
+      if (!file.includes("node_modules")) return true;
+    }
+
+    return false; // Se queda en la app
+  }
 };
 
 const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
@@ -119,29 +73,28 @@ const config: ForgeConfig = {
         teamId: process.env.APPLE_TEAM_ID!
       },
     asar: {
-      unpack: "{**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}"
+      unpack: "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}"
 
     },
     ignore,
     extraResource: [
-      "node_modules/better-sqlite3",
+      //   "node_modules/better-sqlite3",
       "node_modules/dugite/git",
-      "node_modules/@vscode",
-      "node_modules/@huggingface",
-      "node_modules/sharp",
-      "node_modules/color",
-      "node_modules/color-string",
-      "node_modules/color-name",
-      "node_modules/color-convert",
-      "node_modules/simple-swizzle",
-      "node_modules/onnxruntime-web",
-      "node_modules/onnxruntime-node"
+      "node_modules/@vscode",      //   "node_modules/@huggingface",
+      //   "node_modules/sharp",
+      //   "node_modules/color",
+      //   "node_modules/color-string",
+      //   "node_modules/color-name",
+      //   "node_modules/color-convert",
+      //   "node_modules/simple-swizzle",
+      //   "node_modules/onnxruntime-web",
+      //   "node_modules/onnxruntime-node"
     ]
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
     extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
-    //force: true
+    force: false
   },
   makers: [
     // new MakerSquirrel(

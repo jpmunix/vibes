@@ -1,9 +1,9 @@
 name: Create Release (Linux & Mac)
 on:
-  workflow_dispatch: # Lo lanzas tú manualmente
+  workflow_dispatch:
 
 permissions:
-  contents: write # Vital para que GitHub pueda crear la Release
+  contents: write
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [
           { id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
-          { id: "macos", image: "macos-latest", command: "npm run clean && npx electron-forge make --platform darwin --arch x64" }
+          #{ id: "macos", image: "macos-latest", command: "npx electron-forge make --platform darwin --arch x64" }
         ]
     runs-on: ${{ matrix.os.image }}
 
@@ -26,8 +26,15 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Install libvips (Linux only)
+        if: matrix.os.image == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvips-dev
+
       - name: Install dependencies
-        run: npm install
+        # Asegúrate de que package-lock.json esté en tu repo para usar 'ci'
+        run: npm ci
 
       - name: Build App (${{ matrix.os.id }})
         run: ${{ matrix.os.command }}
@@ -36,10 +43,13 @@ jobs:
           APPLE_ID: ""
           APPLE_PASSWORD: ""
           APPLE_TEAM_ID: ""
+          # Los 6GB de RAM son clave para la IA
           NODE_OPTIONS: "--max-old-space-size=6144"
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
+        # Solo se ejecuta si el build anterior tuvo éxito
+        if: success()
         with:
           tag_name: build-${{ github.run_number }}
           name: "Release Build #${{ github.run_number }}"
