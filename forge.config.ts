@@ -5,6 +5,7 @@ import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
+import MakerZIP from "@electron-forge/maker-zip";
 
 // Based on https://github.com/electron/forge/blob/6b2d547a7216c30fde1e1fddd1118eee5d872945/packages/plugin/vite/src/VitePlugin.ts#L124
 const ignore = (file: string) => {
@@ -158,7 +159,7 @@ const config: ForgeConfig = {
     //         setupIcon: "./assets/icon/logo.ico",
     //       },
     // ),
-    // new MakerZIP({}, ["darwin"]),
+    new MakerZIP({}, ["darwin"]),
     // new MakerRpm({
     //   options: {
     //     icon: "./assets/icon/logo.png",
