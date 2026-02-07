@@ -51,6 +51,7 @@ export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 export { freeAgentQuotaContracts } from "./free_agent_quota";
 export { noteContracts } from "./note";
+export { todoContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
 export { embeddingsContracts } from "./embeddings";
@@ -63,6 +64,7 @@ export { settingsClient } from "./settings";
 export { appClient } from "./app";
 export { chatClient, chatStreamClient } from "./chat";
 export { noteClient } from "./note";
+export { todoClient } from "./todo";
 export { agentClient, agentEventClient } from "./agent";
 export { githubClient, gitClient, githubEventClient } from "./github";
 export { mcpClient, mcpEventClient } from "./mcp";
@@ -299,6 +301,16 @@ export type { FreeAgentQuotaStatus } from "./free_agent_quota";
 // Note types
 export type { Note, NoteSummary, UpdateNoteParams } from "./note";
 
+// Todo types
+export type {
+  Todo,
+  CreateTodoParams,
+  UpdateTodoParams,
+  ReorderTodosParams,
+  DevelopTodoParams,
+  DevelopTodoResponse,
+} from "./todo";
+
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
 // =============================================================================
@@ -334,34 +346,35 @@ export type { ChatLogEntry } from "./chat_logs";
 // Aggregated IPC Client
 // =============================================================================
 
-import { settingsClient } from "./settings";
-import { appClient } from "./app";
-import { chatClient, chatStreamClient } from "./chat";
 import { agentClient, agentEventClient } from "./agent";
-import { githubClient, gitClient, githubEventClient } from "./github";
-import { mcpClient, mcpEventClient } from "./mcp";
-import { vercelClient } from "./vercel";
-import { supabaseClient } from "./supabase";
-import { neonClient } from "./neon";
-import { systemClient, systemEventClient } from "./system";
-import { versionClient } from "./version";
-import { languageModelClient } from "./language-model";
-import { promptClient } from "./prompts";
-import { templateClient } from "./templates";
-import { proposalClient } from "./proposals";
-import { importClient } from "./import";
-import { helpClient, helpStreamClient } from "./help";
+import { appClient } from "./app";
 import { capacitorClient } from "./capacitor";
-import { contextClient } from "./context";
-import { upgradeClient } from "./upgrade";
-import { visualEditingClient } from "./visual-editing";
-import { securityClient } from "./security";
-import { miscClient, miscEventClient } from "./misc";
-import { freeAgentQuotaClient } from "./free_agent_quota";
-import { noteClient } from "./note";
-import { tokenStatsClient } from "./token_stats";
+import { chatClient, chatStreamClient } from "./chat";
 import { chatLogsClient } from "./chat_logs";
+import { contextClient } from "./context";
 import { embeddingsClient } from "./embeddings";
+import { freeAgentQuotaClient } from "./free_agent_quota";
+import { gitClient, githubClient, githubEventClient } from "./github";
+import { helpClient, helpStreamClient } from "./help";
+import { importClient } from "./import";
+import { languageModelClient } from "./language-model";
+import { mcpClient, mcpEventClient } from "./mcp";
+import { miscClient, miscEventClient } from "./misc";
+import { neonClient } from "./neon";
+import { noteClient } from "./note";
+import { promptClient } from "./prompts";
+import { proposalClient } from "./proposals";
+import { securityClient } from "./security";
+import { settingsClient } from "./settings";
+import { supabaseClient } from "./supabase";
+import { systemClient, systemEventClient } from "./system";
+import { templateClient } from "./templates";
+import { todoClient } from "./todo";
+import { tokenStatsClient } from "./token_stats";
+import { upgradeClient } from "./upgrade";
+import { vercelClient } from "./vercel";
+import { versionClient } from "./version";
+import { visualEditingClient } from "./visual-editing";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -388,6 +401,7 @@ export const ipc = {
   app: appClient,
   chat: chatClient,
   note: noteClient,
+  todo: todoClient,
   agent: agentClient,
 
   // Streaming clients

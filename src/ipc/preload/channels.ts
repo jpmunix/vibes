@@ -13,35 +13,36 @@ import {
   getStreamChannels,
 } from "../contracts/core";
 
+import { agentContracts, agentEvents } from "../types/agent";
+import { appContracts } from "../types/app";
+import { capacitorContracts } from "../types/capacitor";
+import { chatContracts, chatStreamContract } from "../types/chat";
+import { chatLogsContracts } from "../types/chat_logs";
+import { contextContracts } from "../types/context";
+import { embeddingsContracts } from "../types/embeddings";
+import { freeAgentQuotaContracts } from "../types/free_agent_quota";
+import { gitContracts, githubContracts, githubEvents } from "../types/github";
+import { helpContracts, helpStreamContract } from "../types/help";
+import { importContracts } from "../types/import";
+import { languageModelContracts } from "../types/language-model";
+import { mcpContracts, mcpEvents } from "../types/mcp";
+import { miscContracts, miscEvents } from "../types/misc";
+import { neonContracts } from "../types/neon";
+import { noteContracts } from "../types/note";
+import { promptContracts } from "../types/prompts";
+import { proposalContracts } from "../types/proposals";
+import { securityContracts } from "../types/security";
 // Import all contracts
 import { settingsContracts } from "../types/settings";
-import { appContracts } from "../types/app";
-import { chatContracts, chatStreamContract } from "../types/chat";
-import { agentContracts, agentEvents } from "../types/agent";
-import { githubContracts, gitContracts, githubEvents } from "../types/github";
-import { mcpContracts, mcpEvents } from "../types/mcp";
-import { vercelContracts } from "../types/vercel";
 import { supabaseContracts } from "../types/supabase";
-import { neonContracts } from "../types/neon";
 import { systemContracts, systemEvents } from "../types/system";
-import { versionContracts } from "../types/version";
-import { languageModelContracts } from "../types/language-model";
-import { promptContracts } from "../types/prompts";
 import { templateContracts } from "../types/templates";
-import { proposalContracts } from "../types/proposals";
-import { importContracts } from "../types/import";
-import { helpContracts, helpStreamContract } from "../types/help";
-import { capacitorContracts } from "../types/capacitor";
-import { contextContracts } from "../types/context";
-import { upgradeContracts } from "../types/upgrade";
-import { visualEditingContracts } from "../types/visual-editing";
-import { securityContracts } from "../types/security";
-import { miscContracts, miscEvents } from "../types/misc";
-import { freeAgentQuotaContracts } from "../types/free_agent_quota";
-import { noteContracts } from "../types/note";
+import { todoContracts } from "../types/todo";
 import { tokenStatsContracts } from "../types/token_stats";
-import { chatLogsContracts } from "../types/chat_logs";
-import { embeddingsContracts } from "../types/embeddings";
+import { upgradeContracts } from "../types/upgrade";
+import { vercelContracts } from "../types/vercel";
+import { versionContracts } from "../types/version";
+import { visualEditingContracts } from "../types/visual-editing";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -66,6 +67,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(chatContracts),
   ...getInvokeChannels(noteContracts),
+  ...getInvokeChannels(todoContracts),
   ...getInvokeChannels(agentContracts),
 
   // Stream invoke channels

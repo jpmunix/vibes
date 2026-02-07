@@ -6,8 +6,6 @@ import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 
-console.log("AZURE_CODE_SIGNING_DLIB", process.env.AZURE_CODE_SIGNING_DLIB);
-
 // Based on https://github.com/electron/forge/blob/6b2d547a7216c30fde1e1fddd1118eee5d872945/packages/plugin/vite/src/VitePlugin.ts#L124
 const ignore = (file: string) => {
   if (!file) return false;
@@ -193,6 +191,11 @@ const config: ForgeConfig = {
         {
           entry: "workers/context/context_worker.ts",
           config: "vite.worker.config.mts",
+          target: "main",
+        },
+        {
+          entry: "workers/embeddings/embeddings_worker.ts",
+          config: "vite.embeddings-worker.config.mts",
           target: "main",
         },
       ],

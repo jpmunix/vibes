@@ -1,18 +1,13 @@
-import { useState, useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Search, FileText } from "lucide-react";
-import { ipc } from "@/ipc/types";
-import { showError } from "@/lib/toast";
-import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -20,7 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ipc } from "@/ipc/types";
 import type { ListedApp } from "@/ipc/types/app";
+import { showError } from "@/lib/toast";
+import { FileText, Loader2, RefreshCw, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface EmbeddingsPlaygroundProps {
   open: boolean;
@@ -50,9 +50,31 @@ export function EmbeddingsPlayground({
   const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
   const [loadingApps, setLoadingApps] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const appPath =
     apps.find((app) => app.id === selectedAppId)?.resolvedPath ?? null;
+
+  // Load index stats when appPath changes
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!appPath) {
+        setIndexStats(null);
+        return;
+      }
+
+      try {
+        const stats = await ipc.embeddings.getIndexStats(appPath);
+        setIndexStats(stats);
+      } catch (error) {
+        console.error("Error loading index stats:", error);
+        // Don't show error, just set empty stats
+        setIndexStats({ totalFiles: 0, totalChunks: 0, indexSize: 0 });
+      }
+    };
+
+    loadStats();
+  }, [appPath]);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) {
@@ -110,16 +132,11 @@ export function EmbeddingsPlayground({
 
     setIsIndexing(true);
     console.log(`[UI] Starting indexation for app: ${appPath}`);
-    console.log(`[UI] ipc.embeddings methods:`, Object.keys(ipc.embeddings));
 
     try {
       toast.info("Escaneando archivos...", { duration: 2000 });
 
-      console.log(`[UI] Calling ipc.embeddings.indexAllFiles...`);
       const result = await ipc.embeddings.indexAllFiles(appPath);
-      console.log(`[UI] Call completed successfully`);
-
-      console.log(`[UI] Indexation result:`, result);
 
       if (result.filesIndexed === 0) {
         toast.warning("No se encontraron archivos para indexar");
@@ -132,7 +149,6 @@ export function EmbeddingsPlayground({
 
       // Refresh stats
       const stats = await ipc.embeddings.getIndexStats(appPath);
-      console.log(`[UI] Updated stats:`, stats);
       setIndexStats(stats);
     } catch (error) {
       console.error("Error indexando archivos:", error);
@@ -141,6 +157,67 @@ export function EmbeddingsPlayground({
       );
     } finally {
       setIsIndexing(false);
+    }
+  }, [appPath]);
+
+  const handleClearAndReindex = useCallback(async () => {
+    if (!appPath) {
+      showError("Selecciona una aplicación primero");
+      return;
+    }
+
+    setIsIndexing(true);
+    console.log(`[UI] Clearing and reindexing for app: ${appPath}`);
+
+    try {
+      toast.info("Borrando índice y reindexando...", { duration: 2000 });
+
+      const result = await ipc.embeddings.clearAndReindex(appPath);
+
+      if (result.filesIndexed === 0) {
+        toast.warning("No se encontraron archivos para indexar");
+      } else {
+        toast.success(
+          `Reindexación completada: ${result.filesIndexed} archivos indexados`,
+          { duration: 5000 },
+        );
+      }
+
+      // Refresh stats
+      const stats = await ipc.embeddings.getIndexStats(appPath);
+      setIndexStats(stats);
+    } catch (error) {
+      console.error("Error reindexando:", error);
+      showError(
+        error instanceof Error ? error.message : "Error al reindexar archivos",
+      );
+    } finally {
+      setIsIndexing(false);
+    }
+  }, [appPath]);
+
+  const handleClearIndex = useCallback(async () => {
+    if (!appPath) {
+      showError("Selecciona una aplicación primero");
+      return;
+    }
+
+    setIsClearing(true);
+    console.log(`[UI] Clearing index for app: ${appPath}`);
+
+    try {
+      await ipc.embeddings.clearIndex(appPath);
+      toast.success("Índice eliminado correctamente");
+
+      // Refresh stats
+      setIndexStats({ totalFiles: 0, totalChunks: 0, indexSize: 0 });
+    } catch (error) {
+      console.error("Error clearing index:", error);
+      showError(
+        error instanceof Error ? error.message : "Error al eliminar el índice",
+      );
+    } finally {
+      setIsClearing(false);
     }
   }, [appPath]);
 
@@ -165,7 +242,7 @@ export function EmbeddingsPlayground({
           setLoadingApps(false);
         });
     }
-  }, [open]);
+  }, [open, selectedAppId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,24 +289,93 @@ export function EmbeddingsPlayground({
               </p>
             )}
             {appPath && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleIndexFiles}
-                disabled={isIndexing}
-                className="w-full"
-              >
-                {isIndexing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Indexando archivos...
-                  </>
-                ) : (
-                  "Indexar archivos de la aplicación"
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleIndexFiles}
+                  disabled={isIndexing}
+                  className="flex-1"
+                >
+                  {isIndexing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Indexando...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Indexar archivos
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAndReindex}
+                  disabled={isIndexing || isClearing}
+                  className="flex-1"
+                >
+                  {isIndexing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Reindexando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reindexar desde cero
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearIndex}
+                  disabled={isIndexing || isClearing}
+                  className="px-3"
+                >
+                  {isClearing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             )}
           </div>
+
+          {/* Index Stats - Always show if app is selected */}
+          {appPath && indexStats && (
+            <div className="bg-muted rounded-lg p-4 space-y-2">
+              <h3 className="text-sm font-medium">Estadísticas del índice</h3>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Archivos indexados</p>
+                  <p className="font-mono font-medium">
+                    {indexStats.totalFiles}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Chunks totales</p>
+                  <p className="font-mono font-medium">
+                    {indexStats.totalChunks}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tamaño del índice</p>
+                  <p className="font-mono font-medium">
+                    {(indexStats.indexSize / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+              {indexStats.totalFiles === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  No hay archivos indexados. Haz clic en "Indexar archivos" para empezar.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Search Input */}
           <div className="space-y-2">
@@ -265,33 +411,6 @@ export function EmbeddingsPlayground({
               </Button>
             </div>
           </div>
-
-          {/* Index Stats */}
-          {indexStats && (
-            <div className="bg-muted rounded-lg p-4 space-y-2">
-              <h3 className="text-sm font-medium">Estadísticas del índice</h3>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Archivos indexados</p>
-                  <p className="font-mono font-medium">
-                    {indexStats.totalFiles}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Chunks totales</p>
-                  <p className="font-mono font-medium">
-                    {indexStats.totalChunks}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Tamaño del índice</p>
-                  <p className="font-mono font-medium">
-                    {(indexStats.indexSize / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Embeddings Vector */}
           {embeddings && (

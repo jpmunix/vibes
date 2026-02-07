@@ -1,0 +1,100 @@
+import { ipc } from "@/ipc/types";
+import { queryKeys } from "@/lib/queryKeys";
+import { showError, showSuccess } from "@/lib/toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export function useTodos(appId: number) {
+  const queryClient = useQueryClient();
+
+  const { data: todos = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.todos.byApp({ appId }),
+    queryFn: async () => {
+      return await ipc.todo.getTodosByApp(appId);
+    },
+    enabled: !!appId,
+  });
+
+  const createTodo = useMutation({
+    mutationFn: async (content: string) => {
+      return await ipc.todo.createTodo({ appId, content });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
+    },
+    onError: (error) => {
+      showError(`Error al crear tarea: ${(error as Error).message}`);
+    },
+  });
+
+  const updateTodo = useMutation({
+    mutationFn: async ({
+      todoId,
+      content,
+      completed,
+    }: {
+      todoId: number;
+      content?: string;
+      completed?: boolean;
+    }) => {
+      return await ipc.todo.updateTodo({ todoId, content, completed });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
+    },
+    onError: (error) => {
+      showError(`Error al actualizar tarea: ${(error as Error).message}`);
+    },
+  });
+
+  const deleteTodo = useMutation({
+    mutationFn: async (todoId: number) => {
+      await ipc.todo.deleteTodo(todoId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
+      showSuccess("Tarea eliminada");
+    },
+    onError: (error) => {
+      showError(`Error al eliminar tarea: ${(error as Error).message}`);
+    },
+  });
+
+  const developTodo = useMutation({
+    mutationFn: async (todoId: number) => {
+      return await ipc.todo.developTodo({ todoId });
+    },
+    onError: (error) => {
+      showError(`Error al crear chat: ${(error as Error).message}`);
+    },
+  });
+
+  const reorderTodos = useMutation({
+    mutationFn: async (todoIds: number[]) => {
+      return await ipc.todo.reorderTodos({ appId, todoIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
+    },
+    onError: (error) => {
+      showError(`Error al reordenar tareas: ${(error as Error).message}`);
+    },
+  });
+
+  return {
+    todos,
+    loading,
+    createTodo: createTodo.mutateAsync,
+    updateTodo: updateTodo.mutateAsync,
+    deleteTodo: deleteTodo.mutateAsync,
+    developTodo: developTodo.mutateAsync,
+    reorderTodos: reorderTodos.mutateAsync,
+  };
+}

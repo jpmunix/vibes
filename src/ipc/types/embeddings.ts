@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { defineContract, createClient } from "../contracts/core";
+import { createClient, defineContract } from "../contracts/core";
 
 // =============================================================================
 // Input/Output Schemas
@@ -51,6 +51,23 @@ const IndexAllFilesOutputSchema = z.object({
   filesIndexed: z.number(),
 });
 
+const ClearIndexInputSchema = z.object({
+  appPath: z.string(),
+});
+
+const ClearIndexOutputSchema = z.object({
+  success: z.boolean(),
+});
+
+const ClearAndReindexInputSchema = z.object({
+  appPath: z.string(),
+});
+
+const ClearAndReindexOutputSchema = z.object({
+  success: z.boolean(),
+  filesIndexed: z.number(),
+});
+
 // =============================================================================
 // Contract Definitions
 // =============================================================================
@@ -76,6 +93,16 @@ export const embeddingsContracts = {
     input: IndexAllFilesInputSchema,
     output: IndexAllFilesOutputSchema,
   }),
+  clearIndex: defineContract({
+    channel: "embeddings:clearIndex",
+    input: ClearIndexInputSchema,
+    output: ClearIndexOutputSchema,
+  }),
+  clearAndReindex: defineContract({
+    channel: "embeddings:clearAndReindex",
+    input: ClearAndReindexInputSchema,
+    output: ClearAndReindexOutputSchema,
+  }),
 };
 
 // =============================================================================
@@ -94,6 +121,10 @@ export type GetIndexStatsInput = z.infer<typeof GetIndexStatsInputSchema>;
 export type GetIndexStatsOutput = z.infer<typeof GetIndexStatsOutputSchema>;
 export type IndexAllFilesInput = z.infer<typeof IndexAllFilesInputSchema>;
 export type IndexAllFilesOutput = z.infer<typeof IndexAllFilesOutputSchema>;
+export type ClearIndexInput = z.infer<typeof ClearIndexInputSchema>;
+export type ClearIndexOutput = z.infer<typeof ClearIndexOutputSchema>;
+export type ClearAndReindexInput = z.infer<typeof ClearAndReindexInputSchema>;
+export type ClearAndReindexOutput = z.infer<typeof ClearAndReindexOutputSchema>;
 
 // =============================================================================
 // Client Export
@@ -107,4 +138,6 @@ export const embeddingsClient = {
     baseClient.searchSimilarFiles(params),
   getIndexStats: (appPath: string) => baseClient.getIndexStats({ appPath }),
   indexAllFiles: (appPath: string) => baseClient.indexAllFiles({ appPath }),
+  clearIndex: (appPath: string) => baseClient.clearIndex({ appPath }),
+  clearAndReindex: (appPath: string) => baseClient.clearAndReindex({ appPath }),
 };

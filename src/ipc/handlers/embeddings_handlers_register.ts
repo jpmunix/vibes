@@ -5,10 +5,12 @@
 import { ipcMain } from "electron";
 import { embeddingsContracts } from "../types/embeddings";
 import {
+  handleClearAndReindex,
+  handleClearIndex,
   handleGetEmbeddings,
-  handleSearchSimilarFiles,
   handleGetIndexStats,
   handleIndexAllFiles,
+  handleSearchSimilarFiles,
 } from "./embeddings_handlers";
 
 export function registerEmbeddingsHandlers() {
@@ -46,6 +48,24 @@ export function registerEmbeddingsHandlers() {
       const validated = embeddingsContracts.indexAllFiles.input.parse(input);
       const result = await handleIndexAllFiles(event, validated);
       return embeddingsContracts.indexAllFiles.output.parse(result);
+    },
+  );
+
+  ipcMain.handle(
+    embeddingsContracts.clearIndex.channel,
+    async (event, input) => {
+      const validated = embeddingsContracts.clearIndex.input.parse(input);
+      const result = await handleClearIndex(event, validated);
+      return embeddingsContracts.clearIndex.output.parse(result);
+    },
+  );
+
+  ipcMain.handle(
+    embeddingsContracts.clearAndReindex.channel,
+    async (event, input) => {
+      const validated = embeddingsContracts.clearAndReindex.input.parse(input);
+      const result = await handleClearAndReindex(event, validated);
+      return embeddingsContracts.clearAndReindex.output.parse(result);
     },
   );
 }

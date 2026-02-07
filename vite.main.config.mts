@@ -14,6 +14,7 @@ export default defineConfig({
         "better-sqlite3",
         "onnxruntime-node",
         "onnxruntime-common",
+        '@xenova/transformers',
         "sharp",
         "semver",
         "bindings",

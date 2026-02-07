@@ -3,14 +3,15 @@
  * Stores file embeddings and enables fast similarity search
  */
 
-import Database from "better-sqlite3";
-import path from "node:path";
-import fs from "node:fs";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import type { CodebaseFile } from "@/utils/codebase";
+import Database from "better-sqlite3";
 import log from "electron-log";
-import { embed, cosineSimilarity } from "./embeddings";
-import { CodebaseFile } from "@/utils/codebase";
 import { getUserDataPath } from "../../paths/paths";
+import { generateEmbeddingsInWorker } from "../processors/embeddings_worker_client";
+import { cosineSimilarity, embed } from "./embeddings";
 
 const logger = log.scope("vector_index");
 
@@ -150,7 +151,7 @@ export class LocalVectorIndex {
    * Chunk content into smaller pieces for better embedding quality
    * Tries to split at function/class boundaries for code
    */
-  private chunkContent(content: string, maxChars: number = 1500): string[] {
+  private chunkContent(content: string, maxChars = 1500): string[] {
     const chunks: string[] = [];
 
     // If content is small enough, return as single chunk
@@ -210,8 +211,9 @@ export class LocalVectorIndex {
       // Chunk content for better embedding quality
       const chunks = this.chunkContent(content);
 
-      // Generate embeddings for all chunks
-      const embeddings = await Promise.all(chunks.map((chunk) => embed(chunk)));
+      // Generate embeddings in worker thread to avoid blocking the main thread
+      // This prevents UI freezing during file indexing
+      const embeddings = await generateEmbeddingsInWorker(chunks, filePath);
 
       // Insert new entries in transaction
       const insertMetadata = db.prepare(`
@@ -254,7 +256,7 @@ export class LocalVectorIndex {
    * Search for files similar to the query
    * Returns file paths sorted by relevance
    */
-  async search(query: string, maxResults: number = 15): Promise<string[]> {
+  async search(query: string, maxResults = 15): Promise<string[]> {
     try {
       const db = await this.ensureDbReady();
       // Generate query embedding
@@ -330,7 +332,7 @@ export class LocalVectorIndex {
    */
   private async processFilesWithLimit(
     files: CodebaseFile[],
-    concurrency: number = 3,
+    concurrency = 3,
   ): Promise<void> {
     const queue = [...files];
     const processing: Promise<void>[] = [];
@@ -375,7 +377,7 @@ export class LocalVectorIndex {
    */
   async addFiles(
     files: CodebaseFile[],
-    maxConcurrency: number = 3,
+    maxConcurrency = 3,
   ): Promise<void> {
     logger.info(
       `Indexing ${files.length} files with concurrency ${maxConcurrency}...`,
