@@ -2,19 +2,19 @@
  * IPC handlers for embeddings playground
  */
 
-import { IpcMainInvokeEvent } from "electron";
-import { embed } from "../utils/embeddings";
-import { getIncrementalIndexer } from "../utils/file_watcher";
-import {
+import type { IpcMainInvokeEvent } from "electron";
+import type {
   GetEmbeddingsInput,
   GetEmbeddingsOutput,
-  SearchSimilarFilesInput,
-  SearchSimilarFilesOutput,
   GetIndexStatsInput,
   GetIndexStatsOutput,
   IndexAllFilesInput,
   IndexAllFilesOutput,
+  SearchSimilarFilesInput,
+  SearchSimilarFilesOutput,
 } from "../types/embeddings";
+import { embed } from "../utils/embeddings";
+import { getIncrementalIndexer } from "../utils/file_watcher";
 
 // =============================================================================
 // Handler: Get Embeddings
@@ -187,6 +187,75 @@ export async function handleIndexAllFiles(
     console.error("Error indexando archivos:", error);
     throw new Error(
       `Error al indexar archivos: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+// =============================================================================
+// Handler: Clear Index
+// =============================================================================
+
+export async function handleClearIndex(
+  _event: IpcMainInvokeEvent,
+  input: { appPath: string },
+): Promise<{ success: boolean }> {
+  const { appPath } = input;
+
+  if (!appPath) {
+    throw new Error("appPath es requerido");
+  }
+
+  try {
+    console.log(`[embeddings] Clearing index for: ${appPath}`);
+
+    // Get or create indexer for this app
+    const indexer = getIncrementalIndexer(appPath);
+    await indexer.clearIndex();
+
+    console.log(`[embeddings] Index cleared for: ${appPath}`);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error clearing index:", error);
+    throw new Error(
+      `Error al eliminar el índice: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+// =============================================================================
+// Handler: Clear and Reindex
+// =============================================================================
+
+export async function handleClearAndReindex(
+  _event: IpcMainInvokeEvent,
+  input: { appPath: string },
+): Promise<{ success: boolean; filesIndexed: number }> {
+  const { appPath } = input;
+
+  if (!appPath) {
+    throw new Error("appPath es requerido");
+  }
+
+  try {
+    console.log(`[embeddings] Clearing and reindexing for: ${appPath}`);
+
+    // Get or create indexer for this app
+    const indexer = getIncrementalIndexer(appPath);
+    const filesIndexed = await indexer.clearAndReindex();
+
+    console.log(`[embeddings] Reindexed ${filesIndexed} files`);
+
+    return {
+      success: true,
+      filesIndexed,
+    };
+  } catch (error) {
+    console.error("Error reindexing:", error);
+    throw new Error(
+      `Error al reindexar: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

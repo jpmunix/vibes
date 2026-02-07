@@ -1,16 +1,19 @@
 import { createRouter } from "@tanstack/react-router";
-import { rootRoute } from "./routes/root";
-import { homeRoute } from "./routes/home";
-import { chatRoute } from "./routes/chat";
-import { notesRoute } from "./routes/notes";
-import { notesIndexRoute } from "./routes/notes_.index";
-import { noteDetailRoute } from "./routes/notes_.$noteId";
-import { settingsRoute } from "./routes/settings";
-import { providerSettingsRoute } from "./routes/settings/providers/$provider";
 import { appDetailsRoute } from "./routes/app-details";
+import { chatRoute } from "./routes/chat";
+import { homeRoute } from "./routes/home";
 import { hubRoute } from "./routes/hub";
 import { libraryRoute } from "./routes/library";
+import { notesRoute } from "./routes/notes";
+import { noteDetailRoute } from "./routes/notes_.$noteId";
+import { notesIndexRoute } from "./routes/notes_.index";
+import { rootRoute } from "./routes/root";
+import { settingsRoute } from "./routes/settings";
+import { providerSettingsRoute } from "./routes/settings/providers/$provider";
 import { themesRoute } from "./routes/themes";
+import { todosRoute } from "./routes/todos";
+import { todoDetailRoute } from "./routes/todos_.$appId";
+import { todosIndexRoute } from "./routes/todos_.index";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -19,13 +22,14 @@ const routeTree = rootRoute.addChildren([
   themesRoute,
   chatRoute,
   notesRoute.addChildren([notesIndexRoute, noteDetailRoute]),
+  todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
   settingsRoute.addChildren([providerSettingsRoute]),
 ]);
 
+import { useNavigate } from "@tanstack/react-router";
 // src/components/NotFoundRedirect.tsx
 import * as React from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export function NotFoundRedirect() {

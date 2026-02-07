@@ -1,9 +1,9 @@
-import { Home, Inbox, Settings, StickyNote } from "lucide-react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
-import { useEffect, useState, useRef } from "react";
-import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useAtom } from "jotai";
+import { CheckSquare, Home, Inbox, Settings, StickyNote } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
 import {
@@ -17,11 +17,12 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ChatList } from "./ChatList";
-import { NotesList } from "./NotesList";
 import { AppList } from "./AppList";
-import { SettingsList } from "./SettingsList";
+import { ChatList } from "./ChatList";
 import { LibraryList } from "./LibraryList";
+import { NotesList } from "./NotesList";
+import { SettingsList } from "./SettingsList";
+import { TodosList } from "./TodosList";
 
 // Menu items.
 const items = [
@@ -41,6 +42,11 @@ const items = [
     icon: StickyNote,
   },
   {
+    title: "Tareas",
+    to: "/todos",
+    icon: CheckSquare,
+  },
+  {
     title: "Ajustes",
     to: "/settings",
     icon: Settings,
@@ -52,6 +58,7 @@ type HoverState =
   | "start-hover:app"
   | "start-hover:chat"
   | "start-hover:notes"
+  | "start-hover:todos"
   | "start-hover:settings"
   | "start-hover:library"
   | "clear-hover"
@@ -75,6 +82,7 @@ export function AppSidebar() {
   const isLibraryRoute =
     routerState.location.pathname.startsWith("/library") ||
     routerState.location.pathname.startsWith("/themes");
+  const isTodosRoute = routerState.location.pathname.startsWith("/todos");
 
   // Sync activeTab with route changes
   useEffect(() => {
@@ -84,6 +92,8 @@ export function AppSidebar() {
       setActiveTab("Chat");
     } else if (routerState.location.pathname.startsWith("/notes")) {
       setActiveTab("Notas");
+    } else if (isTodosRoute) {
+      setActiveTab("Tareas");
     } else if (isSettingsRoute) {
       setActiveTab("Ajustes");
     } else if (isLibraryRoute) {
@@ -94,6 +104,7 @@ export function AppSidebar() {
     isChatRoute,
     isSettingsRoute,
     isLibraryRoute,
+    isTodosRoute,
     routerState.location.pathname,
   ]);
 
@@ -152,6 +163,7 @@ export function AppSidebar() {
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <NotesList show={selectedItem === "Notas"} />
+            <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
             <LibraryList show={selectedItem === "Biblioteca"} />
           </div>

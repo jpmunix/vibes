@@ -3,12 +3,12 @@
  * Watches for file changes and updates the vector index in background
  */
 
+import path from "node:path";
+import { readFileWithCache } from "@/utils/codebase";
 import type { FSWatcher } from "chokidar";
 import chokidar from "chokidar";
 import log from "electron-log";
 import { LocalVectorIndex } from "./vector_index";
-import { readFileWithCache } from "@/utils/codebase";
-import path from "node:path";
 
 const logger = log.scope("file_watcher");
 
@@ -20,7 +20,7 @@ export class IncrementalIndexer {
   private index: LocalVectorIndex;
   private pendingFiles: Set<string> = new Set();
   private indexTimer: NodeJS.Timeout | null = null;
-  private isIndexing: boolean = false;
+  private isIndexing = false;
   private appPath: string;
 
   constructor(appPath: string) {
@@ -44,6 +44,7 @@ export class IncrementalIndexer {
         /(^|[/\\])\../, // dot files
         "**/node_modules/**",
         "**/.git/**",
+        "**/.vite/**",
         "**/dist/**",
         "**/build/**",
         "**/.next/**",
@@ -96,9 +97,30 @@ export class IncrementalIndexer {
   }
 
   /**
+   * Directories to exclude from indexing
+   */
+  private excludedDirs = [
+    "node_modules",
+    ".git",
+    ".vite",
+    "dist",
+    "build",
+    ".next",
+    ".venv",
+    "venv",
+    ".dyad",
+  ];
+
+  /**
    * Handle file change event
    */
   private onFileChange(filePath: string): void {
+    // Skip files in excluded directories
+    const normalizedPath = filePath.toLowerCase();
+    if (this.excludedDirs.some((dir) => normalizedPath.includes(`/${dir}/`))) {
+      return;
+    }
+
     // Only index allowed extensions
     const ext = path.extname(filePath).toLowerCase();
     const allowedExtensions = [
@@ -206,8 +228,11 @@ export class IncrementalIndexer {
   /**
    * Index all existing files in the app directory
    * This is useful for initial indexing or re-indexing
+   * @param onProgress - Optional callback to report progress (current, total)
    */
-  async indexAllFiles(): Promise<number> {
+  async indexAllFiles(
+    onProgress?: (current: number, total: number) => void,
+  ): Promise<number> {
     logger.info(`Starting full indexing for ${this.appPath}...`);
 
     // Check if appPath exists
@@ -250,24 +275,45 @@ export class IncrementalIndexer {
     const patterns = allowedExtensions.map((ext) => `**/*${ext}`);
     let allFiles: string[] = [];
 
+    // Directories to always exclude from indexing
+    const excludeDirs = [
+      "node_modules",
+      ".git",
+      ".vite",
+      "dist",
+      "build",
+      ".next",
+      ".venv",
+      "venv",
+      ".dyad",
+    ];
+
     for (const pattern of patterns) {
       logger.debug(`Searching for pattern ${pattern} in ${this.appPath}`);
       const files = await glob(pattern, {
         cwd: this.appPath,
         absolute: true,
-        ignore: [
-          "**/node_modules/**",
-          "**/.git/**",
-          "**/dist/**",
-          "**/build/**",
-          "**/.next/**",
-          "**/.venv/**",
-          "**/venv/**",
-          "**/.dyad/**",
-        ],
+        ignore: excludeDirs.map((dir) => `**/${dir}/**`),
       });
-      logger.debug(`Pattern ${pattern} found ${files.length} files`);
-      allFiles = allFiles.concat(files);
+
+      // Extra safety filter - ensure no excluded directories slip through
+      const filteredFiles = files.filter((file) => {
+        const normalizedPath = file.toLowerCase();
+        return !excludeDirs.some((dir) =>
+          normalizedPath.includes(`/${dir}/`)
+        );
+      });
+
+      if (files.length !== filteredFiles.length) {
+        logger.warn(
+          `Filtered out ${files.length - filteredFiles.length} files from excluded directories`
+        );
+      }
+
+      logger.debug(
+        `Pattern ${pattern} found ${filteredFiles.length} files (filtered from ${files.length})`
+      );
+      allFiles = allFiles.concat(filteredFiles);
     }
 
     logger.info(`Found ${allFiles.length} files to index`);
@@ -277,43 +323,42 @@ export class IncrementalIndexer {
       return 0;
     }
 
-    // Process files in batches with small delays to keep UI responsive
-    const batchSize = 5;
+    // Process files one at a time with delays to keep UI responsive
+    // Using sequential processing instead of parallel to avoid blocking the main thread
     let indexedCount = 0;
 
-    for (let i = 0; i < allFiles.length; i += batchSize) {
-      const batch = allFiles.slice(i, i + batchSize);
+    for (let i = 0; i < allFiles.length; i++) {
+      const filePath = allFiles[i];
 
-      const results = await Promise.allSettled(
-        batch.map(async (filePath) => {
-          try {
-            const relativePath = path.relative(this.appPath, filePath);
-            const content = await readFileWithCache(filePath);
+      try {
+        const relativePath = path.relative(this.appPath, filePath);
+        const content = await readFileWithCache(filePath);
 
-            if (content != null && content.length > 0) {
-              await this.index.addFile(relativePath, content);
-              return true;
-            }
-            return false;
-          } catch (error) {
-            logger.error(`Error indexing file ${filePath}:`, error);
-            return false;
-          }
-        }),
-      );
+        if (content != null && content.length > 0) {
+          await this.index.addFile(relativePath, content);
+          indexedCount++;
+        }
+      } catch (error) {
+        logger.error(`Error indexing file ${filePath}:`, error);
+      }
 
-      indexedCount += results.filter(
-        (r) => r.status === "fulfilled" && r.value === true,
-      ).length;
+      // Report progress
+      if (onProgress) {
+        onProgress(i + 1, allFiles.length);
+      }
 
-      logger.debug(
-        `Indexed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allFiles.length / batchSize)} (${indexedCount}/${allFiles.length} files processed)`,
-      );
+      // Log progress every 5 files
+      if ((i + 1) % 10 === 0 || i === allFiles.length - 1) {
+        logger.debug(
+          `Indexed ${i + 1}/${allFiles.length} files (${indexedCount} successful)`,
+        );
+      }
 
-      // Small delay between batches to allow event loop to process other events
-      // This prevents completely blocking the main thread
-      if (i + batchSize < allFiles.length) {
-        await new Promise((resolve) => setImmediate(resolve));
+      // Yield to event loop after every file to keep UI responsive
+      // Use setTimeout with 200ms to give UI plenty of time to process events
+      // This is important during app generation when the user is actively using the UI
+      if (i < allFiles.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     }
 
@@ -336,6 +381,25 @@ export class IncrementalIndexer {
       isIndexing: this.isIndexing,
       indexStats: this.index.getStats(),
     };
+  }
+
+  /**
+   * Clear the entire index and reindex from scratch
+   */
+  async clearAndReindex(): Promise<number> {
+    logger.info(`Clearing index for ${this.appPath}...`);
+    await this.index.clear();
+    logger.info(`Index cleared, starting reindex...`);
+    return this.indexAllFiles();
+  }
+
+  /**
+   * Clear the entire index without reindexing
+   */
+  async clearIndex(): Promise<void> {
+    logger.info(`Clearing index for ${this.appPath}...`);
+    await this.index.clear();
+    logger.info(`Index cleared for ${this.appPath}`);
   }
 }
 

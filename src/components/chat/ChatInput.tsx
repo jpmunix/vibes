@@ -18,7 +18,7 @@ import {
   Lock,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSettings } from "@/hooks/useSettings";
 import { ipc } from "@/ipc/types";
@@ -76,7 +76,7 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function ChatInput({ chatId }: { chatId?: number }) {
+export function ChatInput({ chatId, autoStart }: { chatId?: number; autoStart?: boolean }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const { settings, updateSettings } = useSettings();
@@ -87,6 +87,7 @@ export function ChatInput({ chatId }: { chatId?: number }) {
   const [showError, setShowError] = useState(true);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
+  const hasAutoStartedRef = useRef(false);
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
@@ -170,6 +171,37 @@ export function ChatInput({ chatId }: { chatId?: number }) {
       setShowError(true);
     }
   }, [error]);
+
+  // Reset hasAutoStartedRef when chatId changes
+  useEffect(() => {
+    hasAutoStartedRef.current = false;
+  }, [chatId]);
+
+  // Auto-start the chat when autoStart is true
+  useEffect(() => {
+    if (autoStart && chatId && !isStreaming && !hasAutoStartedRef.current) {
+      const messages = messagesById.get(chatId) ?? [];
+
+      // Only proceed if messages are loaded
+      if (messages.length === 0) {
+        return;
+      }
+
+      // Check if the last message is from user and has no assistant response
+      const lastMessage = messages[messages.length - 1];
+
+      if (lastMessage && lastMessage.role === "user") {
+        // Only auto-start if there's no assistant response after the user message
+        // Use redo: true to avoid creating a duplicate message
+        hasAutoStartedRef.current = true;
+        streamMessage({
+          prompt: lastMessage.content,
+          chatId,
+          redo: true,
+        });
+      }
+    }
+  }, [autoStart, chatId, messagesById, isStreaming, streamMessage]);
 
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {

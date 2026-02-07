@@ -3,14 +3,15 @@
  * Stores file embeddings and enables fast similarity search
  */
 
-import Database from "better-sqlite3";
-import path from "node:path";
-import fs from "node:fs";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import type { CodebaseFile } from "@/utils/codebase";
+import Database from "better-sqlite3";
 import log from "electron-log";
-import { embed, cosineSimilarity } from "./embeddings";
-import { CodebaseFile } from "@/utils/codebase";
 import { getUserDataPath } from "../../paths/paths";
+import { generateEmbeddingsInWorker } from "../processors/embeddings_worker_client";
+import { cosineSimilarity, embed } from "./embeddings";
 
 const logger = log.scope("vector_index");
 
@@ -150,7 +151,7 @@ export class LocalVectorIndex {
    * Chunk content into smaller pieces for better embedding quality
    * Tries to split at function/class boundaries for code
    */
-  private chunkContent(content: string, maxChars: number = 1500): string[] {
+  private chunkContent(content: string, maxChars = 1500): string[] {
     const chunks: string[] = [];
 
     // If content is small enough, return as single chunk
@@ -204,16 +205,17 @@ export class LocalVectorIndex {
         return;
       }
 
-      // Delete old entries for this file
-      db.prepare("DELETE FROM file_metadata WHERE path = ?").run(filePath);
-
       // Chunk content for better embedding quality
       const chunks = this.chunkContent(content);
 
-      // Generate embeddings for all chunks
-      const embeddings = await Promise.all(chunks.map((chunk) => embed(chunk)));
+      // Generate embeddings in worker thread to avoid blocking the main thread
+      // This prevents UI freezing during file indexing
+      const embeddings = await generateEmbeddingsInWorker(chunks, filePath);
 
       // Insert new entries in transaction
+      // Use DELETE + INSERT wrapped in transaction to avoid race conditions
+      const deleteOld = db.prepare("DELETE FROM file_metadata WHERE path = ?");
+
       const insertMetadata = db.prepare(`
         INSERT INTO file_metadata (path, content_hash, last_indexed, chunk_index, total_chunks)
         VALUES (?, ?, ?, ?, ?)
@@ -224,27 +226,41 @@ export class LocalVectorIndex {
         VALUES (?, ?)
       `);
 
-      db.transaction(() => {
-        for (let i = 0; i < chunks.length; i++) {
-          const result = insertMetadata.run(
-            filePath,
-            hash,
-            Date.now(),
-            i,
-            chunks.length,
-          );
+      try {
+        db.transaction(() => {
+          // Delete all old chunks for this file first
+          deleteOld.run(filePath);
 
-          const fileId = result.lastInsertRowid;
+          // Then insert new chunks
+          for (let i = 0; i < chunks.length; i++) {
+            const result = insertMetadata.run(
+              filePath,
+              hash,
+              Date.now(),
+              i,
+              chunks.length,
+            );
 
-          // Store embedding as Buffer
-          const embeddingBuffer = Buffer.from(embeddings[i].buffer);
-          insertEmbedding.run(fileId, embeddingBuffer);
+            const fileId = result.lastInsertRowid;
+
+            // Store embedding as Buffer
+            const embeddingBuffer = Buffer.from(embeddings[i].buffer);
+            insertEmbedding.run(fileId, embeddingBuffer);
+          }
+        })();
+
+        logger.debug(
+          `Indexed ${filePath} (${chunks.length} chunks, ${content.length} chars)`,
+        );
+      } catch (dbError: any) {
+        // Handle UNIQUE constraint errors gracefully - this can happen if the file
+        // is being indexed concurrently by multiple processes
+        if (dbError?.code === "SQLITE_CONSTRAINT" && dbError?.message?.includes("UNIQUE")) {
+          logger.warn(`File ${filePath} is already being indexed, skipping duplicate indexing`);
+        } else {
+          throw dbError;
         }
-      })();
-
-      logger.debug(
-        `Indexed ${filePath} (${chunks.length} chunks, ${content.length} chars)`,
-      );
+      }
     } catch (error) {
       logger.error(`Error indexing file ${filePath}:`, error);
     }
@@ -254,7 +270,7 @@ export class LocalVectorIndex {
    * Search for files similar to the query
    * Returns file paths sorted by relevance
    */
-  async search(query: string, maxResults: number = 15): Promise<string[]> {
+  async search(query: string, maxResults = 15): Promise<string[]> {
     try {
       const db = await this.ensureDbReady();
       // Generate query embedding
@@ -330,7 +346,7 @@ export class LocalVectorIndex {
    */
   private async processFilesWithLimit(
     files: CodebaseFile[],
-    concurrency: number = 3,
+    concurrency = 3,
   ): Promise<void> {
     const queue = [...files];
     const processing: Promise<void>[] = [];
@@ -375,7 +391,7 @@ export class LocalVectorIndex {
    */
   async addFiles(
     files: CodebaseFile[],
-    maxConcurrency: number = 3,
+    maxConcurrency = 3,
   ): Promise<void> {
     logger.info(
       `Indexing ${files.length} files with concurrency ${maxConcurrency}...`,

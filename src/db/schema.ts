@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
 import type { ModelMessage } from "ai";
+import { sql } from "drizzle-orm";
+import { relations } from "drizzle-orm";
+import { integer, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 
 export const AI_MESSAGES_SDK_VERSION = "ai@v6" as const;
 
@@ -67,6 +67,7 @@ export const chats = sqliteTable("chats", {
   appId: integer("app_id")
     .notNull()
     .references(() => apps.id, { onDelete: "cascade" }),
+  todoId: integer("todo_id").references(() => todos.id, { onDelete: "set null" }),
   title: text("title"),
   initialCommitHash: text("initial_commit_hash"),
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -308,6 +309,23 @@ export const notes = sqliteTable("notes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull().default("Nueva nota"),
   content: text("content").notNull().default(""),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// --- Todos table ---
+export const todos = sqliteTable("todos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  appId: integer("app_id")
+    .notNull()
+    .references(() => apps.id, { onDelete: "cascade" }),
+  content: text("content").notNull().default(""),
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  order: integer("order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

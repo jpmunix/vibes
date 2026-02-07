@@ -21,12 +21,14 @@ import { isBasicAgentMode } from "@/lib/schemas";
 
 interface ChatPanelProps {
   chatId?: number;
+  autoStart?: boolean;
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
 }
 
 export function ChatPanel({
   chatId,
+  autoStart,
   isPreviewOpen,
   onTogglePreview,
 }: ChatPanelProps) {
@@ -261,7 +263,7 @@ export function ChatPanel({
               }
             />
           )}
-          <ChatInput chatId={chatId} />
+          <ChatInput chatId={chatId} autoStart={autoStart} />
         </div>
       </div>
     </div>

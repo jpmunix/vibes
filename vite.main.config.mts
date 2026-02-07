@@ -9,11 +9,16 @@ export default defineConfig({
     },
   },
   build: {
+    minify: false, // Desactiva la minificación de nombres de variables
+    sourcemap: true, // Te ayudará a ver errores reales en la consola
     rollupOptions: {
       external: [
         "better-sqlite3",
+        "onnxruntime-web",
         "onnxruntime-node",
         "onnxruntime-common",
+        '@xenova/transformers',
+        '@huggingface/jinja',
         "sharp",
         "semver",
         "bindings",
