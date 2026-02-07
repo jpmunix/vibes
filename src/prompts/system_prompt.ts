@@ -507,7 +507,7 @@ When tools are not used, simply state: **"Ok, looks like I don't need any tools,
 export const constructSystemPrompt = ({
   aiRules,
   chatMode = "build",
-  enableTurboEditsV2,
+  enableTurboEditsV2: _enableTurboEditsV2,
   themePrompt,
   readOnly,
   basicAgentMode,
@@ -534,7 +534,7 @@ export const constructSystemPrompt = ({
 
   let systemPrompt = getSystemPromptForChatMode({
     chatMode,
-    enableTurboEditsV2,
+    enableTurboEditsV2: _enableTurboEditsV2,
   });
   systemPrompt = systemPrompt.replace(
     "[[AI_RULES]]",
@@ -561,7 +561,7 @@ export const constructSystemPrompt = ({
 
 export const getSystemPromptForChatMode = ({
   chatMode,
-  enableTurboEditsV2,
+  enableTurboEditsV2: _enableTurboEditsV2,
 }: {
   chatMode: "build" | "ask" | "agent";
   enableTurboEditsV2: boolean;

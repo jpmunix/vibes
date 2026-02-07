@@ -51,6 +51,9 @@ export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 export { freeAgentQuotaContracts } from "./free_agent_quota";
 export { noteContracts } from "./note";
+export { tokenStatsContracts } from "./token_stats";
+export { chatLogsContracts } from "./chat_logs";
+export { embeddingsContracts } from "./embeddings";
 
 // =============================================================================
 // Client Exports
@@ -78,6 +81,9 @@ export { capacitorClient } from "./capacitor";
 export { contextClient } from "./context";
 export { upgradeClient } from "./upgrade";
 export { visualEditingClient } from "./visual-editing";
+export { tokenStatsClient } from "./token_stats";
+export { chatLogsClient } from "./chat_logs";
+export { embeddingsClient } from "./embeddings";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
@@ -150,6 +156,9 @@ export type {
   GithubSyncOptions,
   CloneRepoParams,
   GithubRepository,
+  GitDiffFile,
+  GitCommit,
+  GitPreview,
 } from "./github";
 
 // MCP types
@@ -207,6 +216,7 @@ export type {
   DoesReleaseNoteExistParams,
   UserBudgetInfo,
   TelemetryEventPayload,
+  OpenRouterCredits,
 } from "./system";
 
 // Version types
@@ -317,6 +327,9 @@ export {
 
 export { UserBudgetInfoSchema } from "./system";
 
+export { ChatLogEntrySchema } from "./chat_logs";
+export type { ChatLogEntry } from "./chat_logs";
+
 // =============================================================================
 // Aggregated IPC Client
 // =============================================================================
@@ -346,6 +359,9 @@ import { securityClient } from "./security";
 import { miscClient, miscEventClient } from "./misc";
 import { freeAgentQuotaClient } from "./free_agent_quota";
 import { noteClient } from "./note";
+import { tokenStatsClient } from "./token_stats";
+import { chatLogsClient } from "./chat_logs";
+import { embeddingsClient } from "./embeddings";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -402,6 +418,9 @@ export const ipc = {
   security: securityClient,
   misc: miscClient,
   freeAgentQuota: freeAgentQuotaClient,
+  tokenStats: tokenStatsClient,
+  chatLogs: chatLogsClient,
+  embeddings: embeddingsClient,
 
   // Event clients for main->renderer pub/sub
   events: {

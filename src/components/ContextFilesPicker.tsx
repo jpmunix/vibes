@@ -144,11 +144,11 @@ export function ContextFilesPicker() {
                   <TooltipContent className="max-w-[300px]">
                     {isSmartContextEnabled ? (
                       <p>
-                        Con el Contexto Inteligente, Dyad usa los archivos más
+                        Con el Contexto Inteligente, Vibes usa los archivos más
                         relevantes como contexto.
                       </p>
                     ) : (
-                      <p>Por defecto, Dyad usa todo tu código.</p>
+                      <p>Por defecto, Vibes usa todo tu código.</p>
                     )}
                   </TooltipContent>
                 </Tooltip>
@@ -219,8 +219,8 @@ export function ContextFilesPicker() {
               <div className="rounded-md border border-dashed p-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   {isSmartContextEnabled
-                    ? "Dyad usará el Contexto Inteligente para encontrar automáticamente los archivos más relevantes para usar como contexto."
-                    : "Dyad usará todo el código como contexto."}
+                    ? "Vibes usará el Contexto Inteligente para encontrar automáticamente los archivos más relevantes para usar como contexto."
+                    : "Vibes usará todo el código como contexto."}
                 </p>
               </div>
             )}

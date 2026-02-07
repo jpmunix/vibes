@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { useEffect, useState, useRef } from "react";
 import { useAtom } from "jotai";
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
+import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
 import {
   Sidebar,
@@ -88,7 +89,13 @@ export function AppSidebar() {
     } else if (isLibraryRoute) {
       setActiveTab("Biblioteca");
     }
-  }, [isAppRoute, isChatRoute, isSettingsRoute, isLibraryRoute]);
+  }, [
+    isAppRoute,
+    isChatRoute,
+    isSettingsRoute,
+    isLibraryRoute,
+    routerState.location.pathname,
+  ]);
 
   useEffect(() => {
     if (hoverState.startsWith("start-hover") && state === "collapsed") {
@@ -229,6 +236,9 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
               </SidebarMenuItem>
             );
           })}
+          <SidebarMenuItem>
+            <OpenRouterCreditsButton />
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

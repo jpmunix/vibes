@@ -16,8 +16,6 @@ import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
 
-// IF YOU NEED TO UPDATE THIS, YOU'RE PROBABLY DOING SOMETHING WRONG!
-// Need to maintain backwards compatibility!
 const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: {
     name: "google/gemini-3-flash-preview",
@@ -33,6 +31,12 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableProLazyEditsMode: true,
   enableTurboEditsV2: true,
   enableProSmartFilesContextMode: true,
+  enableLocalSmartContext: true,
+  enableMcpSmartContext: false,
+  enableTokenStats: true,
+  enableVerboseChatLogs: true,
+  enableGithubAutoCommit: true,
+  enableChatCompletionNotifications: true,
   autoFixModel: {
     name: "google/gemini-3-flash-preview",
     provider: "openrouter",
@@ -53,8 +57,6 @@ const DEFAULT_SETTINGS: UserSettings = {
   chatLanguage: "es",
   showTokenBar: false,
 };
-
-type Lang = "en" | "es";
 
 const SETTINGS_FILE = "user-settings.json";
 

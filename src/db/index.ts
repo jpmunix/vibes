@@ -15,6 +15,8 @@ const logger = log.scope("db");
 
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
+let _dbInitializing = false;
+let _dbInitPromise: Promise<void> | null = null;
 
 /**
  * Get the database path based on the current environment
@@ -25,6 +27,7 @@ export function getDatabasePath(): string {
 
 /**
  * Initialize the database connection
+ * Can be called multiple times safely - will return immediately if already initialized
  */
 export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
   $client: Database.Database;
@@ -67,19 +70,23 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
     logger.error("Migration error:", error);
   }
 
+  logger.log("Database initialized successfully");
   return _db as any;
 }
 
 /**
- * Get the database instance (throws if not initialized)
+ * Get the database instance (initializes if not already initialized)
+ * This ensures DB is always ready when accessed
  */
 export function getDb(): BetterSQLite3Database<typeof schema> & {
   $client: Database.Database;
 } {
   if (!_db) {
-    throw new Error(
-      "Database not initialized. Call initializeDatabase() first.",
+    // Auto-initialize if not already done
+    logger.warn(
+      "Database accessed before initialization - auto-initializing now",
     );
+    return initializeDatabase();
   }
   return _db as any;
 }

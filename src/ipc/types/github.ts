@@ -79,6 +79,29 @@ export const GitStateSchema = z.object({
   ahead: z.number().optional(),
 });
 
+export const GitDiffFileSchema = z.object({
+  path: z.string(),
+  status: z.enum(["added", "modified", "deleted", "renamed"]),
+  additions: z.number(),
+  deletions: z.number(),
+  diff: z.string(),
+});
+
+export const GitCommitSchema = z.object({
+  hash: z.string(),
+  message: z.string(),
+  author: z.string(),
+  date: z.string(),
+  shortHash: z.string(),
+});
+
+export const GitPreviewSchema = z.object({
+  uncommittedFiles: z.array(GitDiffFileSchema),
+  localCommits: z.array(GitCommitSchema),
+  totalAdditions: z.number(),
+  totalDeletions: z.number(),
+});
+
 export const LocalBranchesResultSchema = z.object({
   branches: z.array(z.string()),
   current: z.string().nullable(),
@@ -302,6 +325,18 @@ export const githubContracts = {
     input: CloneRepoParamsSchema,
     output: CloneRepoResultSchema,
   }),
+
+  getPreview: defineContract({
+    channel: "github:get-preview",
+    input: z.object({ appId: z.number() }),
+    output: GitPreviewSchema,
+  }),
+
+  generateCommitMessage: defineContract({
+    channel: "github:generate-commit-message",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ message: z.string() }),
+  }),
 } as const;
 
 // Git contracts (non-GitHub specific)
@@ -365,3 +400,6 @@ export type UncommittedFileStatus = UncommittedFile["status"];
 export type GithubSyncOptions = z.infer<typeof GithubSyncOptionsSchema>;
 export type CloneRepoParams = z.infer<typeof CloneRepoParamsSchema>;
 export type CloneRepoResult = z.infer<typeof CloneRepoResultSchema>;
+export type GitDiffFile = z.infer<typeof GitDiffFileSchema>;
+export type GitCommit = z.infer<typeof GitCommitSchema>;
+export type GitPreview = z.infer<typeof GitPreviewSchema>;

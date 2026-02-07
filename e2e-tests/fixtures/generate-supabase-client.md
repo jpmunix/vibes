@@ -9,6 +9,34 @@ const SUPABASE_PUBLISHABLE_KEY = "test-publishable-key";
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Simple lock implementation to prevent concurrent auth operations
+const lock = (() => {
+  let locked = false;
+  let queue: Array<() => void> = [];
+
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    while (locked) {
+      await new Promise<void>(resolve => queue.push(resolve));
+    }
+    locked = true;
+    try {
+      return await fn();
+    } finally {
+      locked = false;
+      const next = queue.shift();
+      if (next) next();
+    }
+  };
+})();
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    lock,
+  }
+});
 </dyad-write>
 END

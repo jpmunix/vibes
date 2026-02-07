@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
 import { useAtom } from "jotai";
+import { Button } from "../ui/button";
+import { useEffect, useState } from "react";
+import { tokenStatsClient } from "@/ipc/types";
+import type { TokenStatEntry } from "@/ipc/types/token_stats";
 
 interface TokenBarProps {
   chatId?: number;
@@ -23,6 +27,21 @@ interface TokenBarProps {
 export function TokenBar({ chatId }: TokenBarProps) {
   const [inputValue] = useAtom(chatInputValueAtom);
   const { result, error } = useCountTokens(chatId ?? null, inputValue);
+  const [showLog, setShowLog] = React.useState(false);
+  const [lastStat, setLastStat] = useState<TokenStatEntry | null>(null);
+
+  useEffect(() => {
+    if (!showLog || !chatId) return;
+    (async () => {
+      try {
+        const entries = await tokenStatsClient.getTokenStats();
+        const latest = entries.find((e) => e.chatId === chatId) ?? null;
+        setLastStat(latest);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [showLog, chatId]);
 
   if (!chatId || !result) {
     return null;
@@ -48,7 +67,7 @@ export function TokenBar({ chatId }: TokenBarProps) {
   const inputPercent = (inputTokens / contextWindow) * 100;
 
   return (
-    <div className="px-4 pb-2 text-xs" data-testid="token-bar">
+    <div className="px-4 pb-2 text-xs space-y-2" data-testid="token-bar">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -125,6 +144,57 @@ export function TokenBar({ chatId }: TokenBarProps) {
       </TooltipProvider>
       {error && (
         <div className="text-red-500 text-xs mt-1">Failed to count tokens</div>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="xs"
+          className="h-7 px-2 text-[11px]"
+          onClick={() => setShowLog((v) => !v)}
+        >
+          {showLog ? "Ocultar log" : "Ver log"}
+        </Button>
+        {result.actualMaxTokens && (
+          <span className="text-[11px] text-muted-foreground">
+            Máx. usados: {result.actualMaxTokens.toLocaleString()}
+          </span>
+        )}
+      </div>
+      {showLog && (
+        <div className="rounded border p-2 bg-muted/40 space-y-1 text-[11px]">
+          <div className="font-semibold text-xs">Log de tokens</div>
+          <div>Historial: {messageHistoryTokens.toLocaleString()}</div>
+          <div>Código base: {codebaseTokens.toLocaleString()}</div>
+          <div>Apps mencionadas: {mentionedAppsTokens.toLocaleString()}</div>
+          <div>System: {systemPromptTokens.toLocaleString()}</div>
+          <div>Input actual: {inputTokens.toLocaleString()}</div>
+          {result.actualMaxTokens && (
+            <div className="pt-1 border-t">
+              Real (modelo): {result.actualMaxTokens.toLocaleString()}
+            </div>
+          )}
+          {lastStat && (
+            <div className="pt-1 border-t space-y-1">
+              <div className="font-semibold text-[11px]">Pasos recientes</div>
+              <ul className="list-disc ml-4 space-y-0.5">
+                <li>{`Modelo: ${lastStat.model ?? "desconocido"}`}</li>
+                {lastStat.filesSent?.length ? (
+                  <li>
+                    {`Archivos enviados (${lastStat.filesSent.length}): ${lastStat.filesSent.slice(0, 5).join(", ")}${lastStat.filesSent.length > 5 ? "…" : ""}`}
+                  </li>
+                ) : (
+                  <li>Archivos: usando contexto por defecto</li>
+                )}
+                {lastStat.toolsUsed?.length ? (
+                  <li>{`Herramientas: ${lastStat.toolsUsed.join(", ")}`}</li>
+                ) : (
+                  <li>Herramientas: ninguna</li>
+                )}
+                <li>Solicitud enviada y respuesta recibida</li>
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

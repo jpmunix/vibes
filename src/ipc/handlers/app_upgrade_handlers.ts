@@ -17,16 +17,16 @@ const handle = createLoggedHandler(logger);
 const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
   {
     id: "component-tagger",
-    title: "Enable select component to edit",
+    title: "Habilitar edición de componentes seleccionados",
     description:
-      "Installs the Vibes component tagger Vite plugin and its dependencies.",
+      "Instala el complemento de etiquetado de componentes de Vibes Vite y sus dependencias.",
     manualUpgradeUrl: "https://dyad.sh/docs/upgrades/select-component",
   },
   {
     id: "capacitor",
-    title: "Upgrade to hybrid mobile app with Capacitor",
+    title: "Actualiza a Capacitor para una experiencia móvil híbrida",
     description:
-      "Adds Capacitor to your app lets it run on iOS and Android in addition to the web.",
+      "Añade Capacitor para permitir que tu app corra en iOS y Android además de la web.",
     manualUpgradeUrl: "https://dyad.sh/docs/guides/mobile-app#upgrade-your-app",
   },
 ];

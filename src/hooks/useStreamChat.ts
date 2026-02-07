@@ -14,7 +14,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
-import type { ChatResponseEnd } from "@/ipc/types";
+import type { ChatResponseEnd, App } from "@/ipc/types";
 import { useChats } from "./useChats";
 import { useLoadApp } from "./useLoadApp";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -30,6 +30,7 @@ import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
+import type { ChatSummary } from "@/lib/schemas";
 
 export function getRandomNumberId() {
   return Math.floor(Math.random() * 1_000_000_000_000_000);
@@ -201,6 +202,32 @@ export function useStreamChat({
             onEnd: (response: ChatResponseEnd) => {
               // Remove from pending set now that stream is complete
               pendingStreamChatIds.delete(chatId);
+
+              const notificationsEnabled =
+                settings?.enableChatCompletionNotifications === true;
+              if (
+                notificationsEnabled &&
+                Notification.permission === "granted" &&
+                !document.hasFocus()
+              ) {
+                const app = queryClient.getQueryData<App | null>(
+                  queryKeys.apps.detail({ appId: selectedAppId }),
+                );
+                const chats = queryClient.getQueryData<ChatSummary[]>(
+                  queryKeys.chats.list({ appId: selectedAppId }),
+                );
+                const chat = chats?.find((c) => c.id === chatId);
+                const appName = app?.name ?? "Dyad";
+                const rawTitle = response.chatSummary ?? chat?.title;
+                const body = rawTitle
+                  ? rawTitle.length > 80
+                    ? rawTitle.slice(0, 80) + "…"
+                    : rawTitle
+                  : "Respuesta completada";
+                new Notification(appName, {
+                  body,
+                });
+              }
 
               if (response.updatedFiles) {
                 if (settings?.autoExpandPreviewPanel) {

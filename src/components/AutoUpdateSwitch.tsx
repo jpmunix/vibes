@@ -20,9 +20,9 @@ export function AutoUpdateSwitch() {
           updateSettings({ enableAutoUpdate: checked });
           toast("Ajustes de auto-actualización cambiados", {
             description:
-              "Debes reiniciar Dyad para que los cambios surtan efecto.",
+              "Debes reiniciar Vibes para que los cambios surtan efecto.",
             action: {
-              label: "Reiniciar Dyad",
+              label: "Reiniciar Vibes",
               onClick: () => {
                 ipc.system.restartDyad();
               },

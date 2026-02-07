@@ -43,12 +43,14 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
   }, [isFullscreen]);
 
   if (loading) {
-    return <div className="text-center py-4">Loading files...</div>;
+    return <div className="text-center py-4">Cargando archivos...</div>;
   }
 
   if (!app) {
     return (
-      <div className="text-center py-4 text-gray-500">No app selected</div>
+      <div className="text-center py-4 text-gray-500">
+        No hay aplicación seleccionada
+      </div>
     );
   }
 
@@ -72,7 +74,9 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
           <button
             onClick={() => setIsFullscreen((value) => !value)}
             className="p-1 rounded hover:bg-gray-200"
-            title={isFullscreen ? "Exit full screen" : "Enter full screen"}
+            title={
+              isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"
+            }
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
@@ -92,7 +96,7 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
               />
             ) : (
               <div className="text-center py-4 text-gray-500">
-                Select a file to view
+                Selecciona un archivo para ver
               </div>
             )}
           </div>
@@ -101,5 +105,9 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
     );
   }
 
-  return <div className="text-center py-4 text-gray-500">No files found</div>;
+  return (
+    <div className="text-center py-4 text-gray-500">
+      No se encontraron archivos
+    </div>
+  );
 };

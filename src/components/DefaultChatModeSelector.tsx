@@ -33,7 +33,7 @@ export function DefaultChatModeSelector() {
   function NewBadge() {
     return (
       <span className="inline-flex items-center rounded-full px-2 text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-        minube pro
+        beta
       </span>
     );
   }
@@ -44,7 +44,7 @@ export function DefaultChatModeSelector() {
       case "agent":
         return "Build (MCP)";
       case "local-agent":
-        return "Pro Agent";
+        return "Agente inteligente";
       case "ask":
       default:
         throw new Error(`Unknown chat mode: ${mode}`);
@@ -64,14 +64,14 @@ export function DefaultChatModeSelector() {
           value={effectiveDefault}
           onValueChange={handleDefaultChatModeChange}
         >
-          <SelectTrigger className="w-40" id="default-chat-mode">
+          <SelectTrigger className="w-60" id="default-chat-mode">
             <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="local-agent">
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Pro Agent</span>
+                  <span className="font-medium">Agente inteligente</span>
                   <NewBadge />
                 </div>
                 <span className="text-xs text-muted-foreground">

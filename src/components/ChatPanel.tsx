@@ -12,6 +12,7 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 import { FreeAgentQuotaBanner } from "./chat/FreeAgentQuotaBanner";
+import { ChatLogsPanel } from "./chat/ChatLogsPanel";
 import { Button } from "@/components/ui/button";
 import { ArrowDown } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
@@ -45,6 +46,7 @@ export function ChatPanel({
   // Scroll-related state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
 
   // Refs for scroll tracking (both test and Virtuoso modes)
   const distanceFromBottomRef = useRef<number>(0);
@@ -208,10 +210,21 @@ export function ChatPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader
-        isPreviewOpen={isPreviewOpen}
-        onTogglePreview={onTogglePreview}
-      />
+      <div className="relative">
+        <ChatHeader
+          isPreviewOpen={isPreviewOpen}
+          onTogglePreview={onTogglePreview}
+          isLogsOpen={isLogsOpen}
+          onToggleLogs={() => setIsLogsOpen(!isLogsOpen)}
+        />
+        {chatId && (
+          <ChatLogsPanel
+            chatId={chatId}
+            isOpen={isLogsOpen}
+            onClose={() => setIsLogsOpen(false)}
+          />
+        )}
+      </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 relative overflow-hidden">

@@ -102,7 +102,7 @@ export function McpToolsPicker() {
                             setToolConsent(s.id, t.name, v as any)
                           }
                         >
-                          <SelectTrigger className="w-[140px] h-8">
+                          <SelectTrigger className="w-[180px] h-">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

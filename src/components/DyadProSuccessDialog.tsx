@@ -25,7 +25,7 @@ export function DyadProSuccessDialog({
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <span>¡Bienvenido a Dyad Pro!</span>
+            <span>¡Bienvenido a Vibes Pro!</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -55,7 +55,7 @@ export function DyadProSuccessDialog({
               <div>
                 <p className="font-medium">Modo Agente</p>
                 <p className="text-sm text-muted-foreground">
-                  Dyad puede trabajar en tareas más grandes y depurar problemas
+                  Vibes puede trabajar en tareas más grandes y depurar problemas
                 </p>
               </div>
             </div>

@@ -223,6 +223,9 @@
     sendSourcemappedErrorToParent(error, "unhandled-rejection");
   });
 
+  // Store observer globally to allow cleanup
+  let viteErrorObserver = null;
+
   (function watchForViteErrorOverlay() {
     // --- Configuration for the observer ---
     // We only care about direct children being added or removed.
@@ -285,8 +288,8 @@
         if (node) {
           reportViteErrorOverlay(node);
         }
-        const observer = new MutationObserver(observerCallback);
-        observer.observe(document.body, config);
+        viteErrorObserver = new MutationObserver(observerCallback);
+        viteErrorObserver.observe(document.body, config);
       });
       console.log(
         "Document loading, waiting for DOMContentLoaded to set up observer.",
@@ -300,8 +303,16 @@
       }
       // The DOM is already interactive or complete
       console.log("DOM already ready, setting up observer immediately.");
-      const observer = new MutationObserver(observerCallback);
-      observer.observe(document.body, config);
+      viteErrorObserver = new MutationObserver(observerCallback);
+      viteErrorObserver.observe(document.body, config);
     }
   })();
+
+  // Cleanup observers when page unloads
+  window.addEventListener("beforeunload", () => {
+    if (viteErrorObserver) {
+      viteErrorObserver.disconnect();
+      viteErrorObserver = null;
+    }
+  });
 })();

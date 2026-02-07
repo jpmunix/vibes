@@ -12,14 +12,16 @@ The user has Supabase available for their app so use it for any auth, database o
 
 Check if a Supabase client exists at \`src/integrations/supabase/client.ts\`.
 
-**If it doesn't exist**, do both of the following:
+**If it doesn't exist OR if you see errors like "this.lock is not a function"**, do BOTH of the following:
 
-1. **Create the client file** at \`src/integrations/supabase/client.ts\` (or the most appropriate path for the project structure) with this code:
+1. **Create/update the client file** at \`src/integrations/supabase/client.ts\` (or the most appropriate path for the project structure) with this EXACT code:
 \`\`\`typescript
 ${supabaseClientCode}
 \`\`\`
 
-2. **Add the dependency** \`@supabase/supabase-js\` to the project.
+IMPORTANT: This code includes a lock implementation required for Supabase auth v2.93+. Always use the complete code above, including the lock function.
+
+2. **Add the dependency** \`@supabase/supabase-js\` to the project if not already present.
 
 ## Auth
 

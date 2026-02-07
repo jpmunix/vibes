@@ -524,7 +524,7 @@ export default function AppDetailsPage() {
                 disabled={isRenamingFolder}
                 size="sm"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={handleRenameFolderOnly}
@@ -623,7 +623,7 @@ export default function AppDetailsPage() {
                 disabled={isRenaming}
                 size="sm"
               >
-                Cancel
+                Cancelar
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -742,7 +742,7 @@ export default function AppDetailsPage() {
                   disabled={copyAppMutation.isPending}
                   size="sm"
                 >
-                  Cancel
+                  Cancelar
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -769,7 +769,7 @@ export default function AppDetailsPage() {
                 disabled={changeLocationMutation.isPending}
                 size="sm"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={handleChangeLocation}
@@ -806,7 +806,7 @@ export default function AppDetailsPage() {
                 disabled={isDeleting}
                 size="sm"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button
                 variant="destructive"

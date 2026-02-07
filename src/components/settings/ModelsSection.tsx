@@ -91,9 +91,9 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
 
   return (
     <div className="mt-8 border-t pt-6">
-      <h2 className="text-2xl font-semibold mb-4">Models</h2>
+      <h2 className="text-2xl font-semibold mb-4">Modelos</h2>
       <p className="text-muted-foreground mb-4">
-        Manage specific models available through this provider.
+        Administre modelos específicos disponibles a través de este proveedor.
       </p>
 
       {/* Custom Models List Area */}
@@ -189,7 +189,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               </div>
               <div className="flex flex-wrap gap-x-2">
                 <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                  {model.type === "cloud" ? "Built-in" : "Custom"}
+                  {model.type === "cloud" ? "Integrado" : "Personalizado"}
                 </span>
 
                 {model.tag && (
@@ -204,7 +204,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
       )}
       {!modelsLoading && !modelsError && (!models || models.length === 0) && (
         <p className="text-muted-foreground mt-4">
-          No custom models have been added for this provider yet.
+          No se han agregado modelos personalizados para este proveedor aún.
         </p>
       )}
       {/* End Custom Models List Area */}
@@ -215,7 +215,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           variant="outline"
           className="mt-6"
         >
-          <PlusIcon className="mr-2 h-4 w-4" /> Add Custom Model
+          <PlusIcon className="mr-2 h-4 w-4" /> Añadir modelo personalizado
         </Button>
       )}
 
@@ -248,11 +248,11 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Are you sure you want to delete this model?
+              ¿Está seguro de que desea eliminar este modelo?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              custom model "
+              Esta acción no se puede deshacer. Esto eliminará permanentemente
+              el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
                     ?.displayName || modelToDelete
@@ -262,13 +262,13 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setModelToDelete(null)}>
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? "Deleting..." : "Yes, delete it"}
+              {isDeleting ? "Eliminando..." : "Sí, eliminarlo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

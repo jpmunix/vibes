@@ -34,13 +34,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
-import {
-  ActionProposal,
-  Proposal,
-  SuggestedAction,
-  FileChange,
-  SqlQuery,
-} from "@/lib/schemas";
+import { Proposal, SuggestedAction, FileChange, SqlQuery } from "@/lib/schemas";
 
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useRunApp } from "@/hooks/useRunApp";
@@ -702,15 +696,16 @@ export function mapActionToButton(action: SuggestedAction) {
   }
 }
 
-function ActionProposalActions({ proposal }: { proposal: ActionProposal }) {
-  return (
-    <div className="border-b border-border p-2 pb-0 flex items-center justify-between">
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-        {proposal.actions.map((action) => mapActionToButton(action))}
-      </div>
-    </div>
-  );
-}
+// Deshabilitado: Botones de sugerencias (Resumir en un nuevo chat, Continuar)
+// function ActionProposalActions({ proposal }: { proposal: ActionProposal }) {
+//   return (
+//     <div className="border-b border-border p-2 pb-0 flex items-center justify-between">
+//       <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+//         {proposal.actions.map((action) => mapActionToButton(action))}
+//       </div>
+//     </div>
+//   );
+// }
 
 interface ChatInputActionsProps {
   proposal: Proposal;
@@ -736,7 +731,8 @@ function ChatInputActions({
     return <div>Propuesta de consejo</div>;
   }
   if (proposal.type === "action-proposal") {
-    return <ActionProposalActions proposal={proposal}></ActionProposalActions>;
+    // Botones de sugerencias (Resumir en un nuevo chat, Continuar) deshabilitados
+    return null;
   }
 
   // Split files into server functions and other files - only for CodeProposal

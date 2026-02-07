@@ -66,8 +66,8 @@ export const TitleBar = () => {
   // Get selected app name
   const selectedApp = apps.find((app) => app.id === selectedAppId);
   const displayText = selectedApp
-    ? `App: ${selectedApp.name}`
-    : "(no app selected)";
+    ? `${selectedApp.name}`
+    : "No has seleccionado app";
 
   const handleAppClick = () => {
     if (selectedApp) {
@@ -88,7 +88,7 @@ export const TitleBar = () => {
           data-testid="title-bar-app-name-button"
           variant="outline"
           size="sm"
-          className={`hidden @2xl:block no-app-region-drag text-xs max-w-38 truncate font-medium ${
+          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${
             selectedApp ? "cursor-pointer" : ""
           }`}
           onClick={handleAppClick}

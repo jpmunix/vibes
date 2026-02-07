@@ -106,6 +106,26 @@ export const messages = sqliteTable("messages", {
     .default(sql`(unixepoch())`),
 });
 
+export const chatLogs = sqliteTable("chat_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  chatId: integer("chat_id")
+    .notNull()
+    .references(() => chats.id, { onDelete: "cascade" }),
+  messageId: integer("message_id").references(() => messages.id, {
+    onDelete: "cascade",
+  }),
+  level: text("level", { enum: ["debug", "info", "warn", "error"] }).notNull(),
+  category: text("category").notNull(), // e.g., "model-selection", "context-building", "streaming", etc.
+  message: text("message").notNull(),
+  metadata: text("metadata", { mode: "json" }).$type<Record<
+    string,
+    any
+  > | null>(),
+  timestamp: integer("timestamp", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export const versions = sqliteTable(
   "versions",
   {
@@ -136,16 +156,29 @@ export const appsRelations = relations(apps, ({ many }) => ({
 
 export const chatsRelations = relations(chats, ({ many, one }) => ({
   messages: many(messages),
+  logs: many(chatLogs),
   app: one(apps, {
     fields: [chats.appId],
     references: [apps.id],
   }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   chat: one(chats, {
     fields: [messages.chatId],
     references: [chats.id],
+  }),
+  logs: many(chatLogs),
+}));
+
+export const chatLogsRelations = relations(chatLogs, ({ one }) => ({
+  chat: one(chats, {
+    fields: [chatLogs.chatId],
+    references: [chats.id],
+  }),
+  message: one(messages, {
+    fields: [chatLogs.messageId],
+    references: [messages.id],
   }),
 }));
 

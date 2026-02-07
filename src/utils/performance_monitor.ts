@@ -132,6 +132,7 @@ function getSystemCpuUsagePercent(): number | null {
 
 /**
  * Capture and save current performance metrics
+ * Uses setImmediate to avoid blocking the main thread
  */
 function capturePerformanceMetrics() {
   try {
@@ -152,15 +153,22 @@ function capturePerformanceMetrics() {
       `Performance: Memory=${memoryUsageMB}MB, CPU=${cpuUsagePercent}%, System Memory=${systemMemory.usedMemoryMB}/${systemMemory.totalMemoryMB}MB (${systemMemory.usagePercent}%), System CPU=${systemCpuPercent}%`,
     );
 
-    writeSettings({
-      lastKnownPerformance: {
-        timestamp: Date.now(),
-        memoryUsageMB,
-        cpuUsagePercent,
-        systemMemoryUsageMB: systemMemory.usedMemoryMB,
-        systemMemoryTotalMB: systemMemory.totalMemoryMB,
-        systemCpuPercent,
-      },
+    // Write settings in next tick to avoid blocking
+    setImmediate(() => {
+      try {
+        writeSettings({
+          lastKnownPerformance: {
+            timestamp: Date.now(),
+            memoryUsageMB,
+            cpuUsagePercent,
+            systemMemoryUsageMB: systemMemory.usedMemoryMB,
+            systemMemoryTotalMB: systemMemory.totalMemoryMB,
+            systemCpuPercent,
+          },
+        });
+      } catch (error) {
+        logger.error("Error writing performance metrics:", error);
+      }
     });
   } catch (error) {
     logger.error("Error capturing performance metrics:", error);

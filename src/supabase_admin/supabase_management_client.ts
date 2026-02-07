@@ -704,6 +704,14 @@ export async function listSupabaseBranches({
     `List Supabase branches for ${supabaseProjectId}`,
   );
 
+  if (response.status === 403) {
+    // Free tier users don't have access to branches feature
+    logger.info(
+      `Branches not available for project ${supabaseProjectId} (likely free tier account)`,
+    );
+    return [];
+  }
+
   if (response.status !== 200) {
     throw await createResponseError(response, "list branches");
   }

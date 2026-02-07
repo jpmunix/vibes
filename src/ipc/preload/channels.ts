@@ -39,6 +39,9 @@ import { securityContracts } from "../types/security";
 import { miscContracts, miscEvents } from "../types/misc";
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
 import { noteContracts } from "../types/note";
+import { tokenStatsContracts } from "../types/token_stats";
+import { chatLogsContracts } from "../types/chat_logs";
+import { embeddingsContracts } from "../types/embeddings";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -93,6 +96,9 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(securityContracts),
   ...getInvokeChannels(miscContracts),
   ...getInvokeChannels(freeAgentQuotaContracts),
+  ...getInvokeChannels(tokenStatsContracts),
+  ...getInvokeChannels(chatLogsContracts),
+  ...getInvokeChannels(embeddingsContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,

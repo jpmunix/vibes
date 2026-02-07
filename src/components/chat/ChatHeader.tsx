@@ -6,6 +6,7 @@ import {
   Sparkles,
   Info,
   Save,
+  FileText,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -19,7 +20,7 @@ import {
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom, agentTodosByChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
@@ -39,11 +40,15 @@ import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
+  isLogsOpen?: boolean;
+  onToggleLogs?: () => void;
 }
 
 export function ChatHeader({
   isPreviewOpen,
   onTogglePreview,
+  isLogsOpen = false,
+  onToggleLogs,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
   const { navigate } = useRouter();
@@ -57,18 +62,12 @@ export function ChatHeader({
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
-  const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
 
   const {
     branchInfo,
     isLoading: branchInfoLoading,
     refetchBranchInfo,
   } = useCurrentBranch(appId);
-
-  // Get the in-progress task for the current chat
-  const currentChatTodos = selectedChatId
-    ? agentTodosByChatId.get(selectedChatId) || []
-    : [];
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
@@ -299,9 +298,20 @@ export function ChatHeader({
             onClick={async () => {
               if (!selectedChatId) return;
               try {
+                console.log(
+                  `[ChatHeader] Generating title for chatId=${selectedChatId}`,
+                );
                 setIsGeneratingTitle(true);
-                await ipc.chat.generateChatTitle({ chatId: selectedChatId });
-                invalidateChats();
+                const result = await ipc.chat.generateChatTitle({
+                  chatId: selectedChatId,
+                });
+                console.log(
+                  `[ChatHeader] Generated title result:`,
+                  result,
+                  `for chatId=${selectedChatId}`,
+                );
+                await invalidateChats();
+                console.log(`[ChatHeader] Invalidated chats cache`);
                 showSuccess("Título del chat actualizado");
               } catch (error) {
                 console.error("Failed to generate chat title:", error);
@@ -311,7 +321,7 @@ export function ChatHeader({
               }
             }}
             variant="ghost"
-            title="Generar título mágico"
+            title="Generar título automático"
             className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
             disabled={!selectedChatId || isStreaming || isGeneratingTitle}
           >
@@ -319,7 +329,7 @@ export function ChatHeader({
               size={16}
               className={isGeneratingTitle ? "animate-pulse" : ""}
             />
-            <span className="hidden @xs:inline">Título mágico</span>
+            <span className="hidden @xs:inline">Título automático</span>
           </Button>
           <Button
             onClick={handleSaveNote}
@@ -341,6 +351,22 @@ export function ChatHeader({
             <Eraser size={16} />
             <span className="hidden @xs:inline">Vaciar chat</span>
           </Button>
+          {onToggleLogs && (
+            <Button
+              onClick={onToggleLogs}
+              variant="ghost"
+              title="Logs del chat"
+              className={`flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md ${
+                isLogsOpen
+                  ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/30"
+              }`}
+              disabled={!selectedChatId}
+            >
+              <FileText size={16} />
+              <span className="hidden @xs:inline">Logs</span>
+            </Button>
+          )}
         </div>
 
         <button

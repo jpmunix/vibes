@@ -88,7 +88,7 @@ export function NodePathSelector() {
       // Recheck Node.js status
       await fetchSystemPath();
       await checkNodeStatus();
-      showSuccess("Reset to system Node.js path");
+      showSuccess("Restablecida la ruta de Node.js del sistema");
     } catch (error: any) {
       showError(`Failed to reset Node.js path: ${error.message}`);
     }

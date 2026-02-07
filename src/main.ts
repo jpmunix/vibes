@@ -76,31 +76,25 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient("dyad");
 }
 
-export async function onReady() {
+/**
+ * Get recent logs from electron-log
+ * Returns the last N lines from the log file
+ */
+function getRecentLogs(lines: number = 50): string {
   try {
-    const backupManager = new BackupManager({
-      settingsFile: getSettingsFilePath(),
-      dbFile: getDatabasePath(),
-    });
-    await backupManager.initialize();
-  } catch (e) {
-    logger.error("Error initializing backup manager", e);
+    const logPath = log.transports.file.getFile().path;
+    const logContent = fs.readFileSync(logPath, "utf-8");
+    const logLines = logContent.split("\n");
+    return logLines.slice(-lines).join("\n");
+  } catch (error) {
+    logger.error("Error reading recent logs:", error);
+    return "";
   }
-  initializeDatabase();
+}
 
-  // Cleanup old ai_messages_json entries to prevent database bloat
-  cleanupOldAiMessagesJson();
-
+export async function onReady() {
+  // Read settings first (quick operation)
   const settings = readSettings();
-
-  // Add dyad-apps directory to git safe.directory (required for Windows).
-  // The trailing /* allows access to all repositories under the named directory.
-  // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
-  if (settings.enableNativeGit) {
-    // Don't need to await because this only needs to run before
-    // the user starts interacting with Dyad app and uses a git-related feature.
-    gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
-  }
 
   // Check if app was force-closed
   if (settings.isRunning) {
@@ -109,19 +103,54 @@ export async function onReady() {
     // Store performance data to send after window is created
     if (settings.lastKnownPerformance) {
       logger.warn("Last known performance:", settings.lastKnownPerformance);
-      pendingForceCloseData = settings.lastKnownPerformance;
+      pendingForceCloseData = {
+        performanceData: settings.lastKnownPerformance,
+        appVersion: app.getVersion(),
+        platform: `${process.platform} ${process.arch}`,
+        recentLogs: getRecentLogs(50),
+      };
     }
   }
 
   // Set isRunning to true at startup
   writeSettings({ isRunning: true });
 
-  // Start performance monitoring
-  startPerformanceMonitoring();
-
+  // Create window FIRST to show UI quickly
   await onFirstRunMaybe(settings);
   createWindow();
   createApplicationMenu();
+
+  // Then do heavy operations in background (non-blocking)
+  setImmediate(async () => {
+    try {
+      // Initialize backup manager
+      const backupManager = new BackupManager({
+        settingsFile: getSettingsFilePath(),
+        dbFile: getDatabasePath(),
+      });
+      await backupManager.initialize();
+    } catch (e) {
+      logger.error("Error initializing backup manager", e);
+    }
+
+    // Initialize database (blocking but in background)
+    initializeDatabase();
+
+    // Cleanup old ai_messages_json entries to prevent database bloat
+    await cleanupOldAiMessagesJson();
+
+    // Add dyad-apps directory to git safe.directory (required for Windows).
+    // The trailing /* allows access to all repositories under the named directory.
+    // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
+    if (settings.enableNativeGit) {
+      await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
+    }
+
+    // Start performance monitoring after everything is initialized
+    startPerformanceMonitoring();
+
+    logger.info("Background initialization completed");
+  });
 
   // Auto-update disabled by request
 }
@@ -214,9 +243,10 @@ const createWindow = () => {
   // Send force-close event if it was detected
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {
-      mainWindow?.webContents.send("force-close-detected", {
-        performanceData: pendingForceCloseData,
-      });
+      mainWindow?.webContents.send(
+        "force-close-detected",
+        pendingForceCloseData,
+      );
       pendingForceCloseData = null;
     });
   }

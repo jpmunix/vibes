@@ -22,7 +22,9 @@ const ignore = (file: string) => {
   if (file.startsWith("/scaffold")) {
     return false;
   }
-
+  if (file.startsWith("/node_modules/semver")) {
+    return false;
+  }
   if (file.startsWith("/worker") && !file.startsWith("/workers")) {
     return false;
   }
@@ -38,10 +40,36 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/better-sqlite3")) {
     return false;
   }
+  if (file.startsWith("/node_modules/onnxruntime-node")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/onnxruntime-common")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/sharp")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/@img")) {
+    return false;
+  }
+  if (
+    file.startsWith("/node_modules/@xenova/transformers/node_modules/sharp")
+  ) {
+    return false;
+  }
   if (file.startsWith("/node_modules/bindings")) {
     return false;
   }
   if (file.startsWith("/node_modules/file-uri-to-path")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/@mapbox")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/detect-libc")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/prebuild-install")) {
     return false;
   }
   if (file.startsWith("/.vite")) {
@@ -77,13 +105,21 @@ const config: ForgeConfig = {
           appleIdPassword: process.env.APPLE_PASSWORD!,
           teamId: process.env.APPLE_TEAM_ID!,
         },
-    asar: true,
+    asar: {
+      unpack:
+        "**/node_modules/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,semver,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
+    },
     ignore,
-    extraResource: ["node_modules/dugite/git", "node_modules/@vscode"],
+    extraResource: [
+      "node_modules/better-sqlite3",
+      "node_modules/dugite/git",
+      "node_modules/@vscode",
+      "node_modules/sharp",
+    ],
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
-    extraModules: ["better-sqlite3"],
+    extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
     force: true,
   },
   makers: [
@@ -151,6 +187,11 @@ const config: ForgeConfig = {
         },
         {
           entry: "workers/tsc/tsc_worker.ts",
+          config: "vite.worker.config.mts",
+          target: "main",
+        },
+        {
+          entry: "workers/context/context_worker.ts",
           config: "vite.worker.config.mts",
           target: "main",
         },

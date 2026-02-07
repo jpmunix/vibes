@@ -72,7 +72,9 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {hasUnsavedChanges ? "Save changes" : "No unsaved changes"}
+              {hasUnsavedChanges
+                ? "Guardar cambios"
+                : "Sin cambios sin guardar"}
             </TooltipContent>
           </Tooltip>
           {hasUnsavedChanges && (
@@ -237,7 +239,7 @@ export const FileEditor = ({
   }
 
   if (!content) {
-    return <div className="p-4 text-gray-500">No content available</div>;
+    return <div className="p-4 text-gray-500">No hay contenido disponible</div>;
   }
 
   return (

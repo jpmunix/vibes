@@ -7,6 +7,8 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
 } from "lucide-react";
+import { useSettings } from "@/hooks/useSettings";
+import { t } from "@/lib/i18n";
 
 interface DyadStatusProps {
   node: {
@@ -19,7 +21,9 @@ interface DyadStatusProps {
 }
 
 export function DyadStatus({ node, children }: DyadStatusProps) {
-  const { title = "Processing...", state } = node.properties;
+  const { settings } = useSettings();
+  const language = settings?.chatLanguage || "es";
+  const { title = t("processing", language), state } = node.properties;
   const isInProgress = state === "pending";
   const isAborted = state === "aborted";
   const content = typeof children === "string" ? children : "";

@@ -2,6 +2,8 @@ import type React from "react";
 import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, FileCode, Loader } from "lucide-react";
 import { CustomTagState } from "./stateTypes";
+import { useSettings } from "@/hooks/useSettings";
+import { t } from "@/lib/i18n";
 
 interface DyadCodeSearchProps {
   children?: ReactNode;
@@ -12,6 +14,8 @@ export const DyadCodeSearch: React.FC<DyadCodeSearchProps> = ({
   children,
   node,
 }) => {
+  const { settings } = useSettings();
+  const language = settings?.chatLanguage || "es";
   const [isExpanded, setIsExpanded] = useState(false);
   const query =
     node?.properties?.query || (typeof children === "string" ? children : "");
@@ -37,11 +41,13 @@ export const DyadCodeSearch: React.FC<DyadCodeSearchProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileCode size={16} className="text-purple-600" />
-          <div className="text-xs text-purple-600 font-medium">Code Search</div>
+          <div className="text-xs text-purple-600 font-medium">
+            {t("codeSearch", language)}
+          </div>
           {inProgress && (
             <div className="flex items-center text-purple-600 text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
-              <span>Searching...</span>
+              <span>{t("searching", language)}</span>
             </div>
           )}
         </div>

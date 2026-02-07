@@ -38,6 +38,9 @@ import { registerVisualEditingHandlers } from "../pro/main/ipc/handlers/visual_e
 import { registerAgentToolHandlers } from "../pro/main/ipc/handlers/local_agent/agent_tool_handlers";
 import { registerFreeAgentQuotaHandlers } from "./handlers/free_agent_quota_handlers";
 import { registerNoteHandlers } from "./handlers/note_handlers";
+import { registerTokenStatsHandlers } from "./handlers/token_stats_handlers";
+import { registerChatLogsHandlers } from "./handlers/chat_logs_handlers";
+import { registerEmbeddingsHandlers } from "./handlers/embeddings_handlers_register";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -81,4 +84,7 @@ export function registerIpcHandlers() {
   registerVisualEditingHandlers();
   registerAgentToolHandlers();
   registerFreeAgentQuotaHandlers();
+  registerTokenStatsHandlers();
+  registerChatLogsHandlers();
+  registerEmbeddingsHandlers();
 }

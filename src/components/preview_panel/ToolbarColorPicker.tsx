@@ -11,14 +11,14 @@ export const ToolbarColorPicker = ({
     <label
       className="h-[16px] w-[16px] rounded-sm cursor-pointer transition-all overflow-hidden block self-center"
       style={{ backgroundColor: color }}
-      title="Choose color"
+      title="Elegir color"
     >
       <input
         type="color"
         value={color}
         onChange={(e) => onChange(e.target.value)}
         className="opacity-0 w-full h-full"
-        aria-label="Choose color"
+        aria-label="Elegir color"
       />
     </label>
   );

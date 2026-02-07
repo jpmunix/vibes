@@ -34,14 +34,13 @@ export const DyadEdit: React.FC<DyadEditProps> = ({
   const aborted = state === "aborted";
   const finished = state === "finished";
 
-  const badgeClass =
-    aborted
-      ? "bg-red-500/90 text-white"
-      : finished
-        ? "bg-emerald-500/75 text-white"
-        : inProgress
-          ? "bg-amber-500/90 text-white"
-          : "bg-blue-500 text-white";
+  const badgeClass = aborted
+    ? "bg-red-500/90 text-white"
+    : finished
+      ? "bg-emerald-500/75 text-white"
+      : inProgress
+        ? "bg-amber-500/90 text-white"
+        : "bg-blue-500 text-white";
 
   // Extract filename from path
   const fileName = path ? path.split("/").pop() : "";
@@ -57,17 +56,19 @@ export const DyadEdit: React.FC<DyadEditProps> = ({
       }`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center">
-              <Rabbit size={16} />
-              <span className={`${badgeClass} text-xs px-1.5 py-0.5 rounded ml-1 font-medium`}>
-                Turbo Edit
-              </span>
-            </div>
-            {fileName && (
-              <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
-                {fileName}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <Rabbit size={16} />
+            <span
+              className={`${badgeClass} text-xs px-1.5 py-0.5 rounded ml-1 font-medium`}
+            >
+              Turbo Edit
+            </span>
+          </div>
+          {fileName && (
+            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+              {fileName}
             </span>
           )}
           {inProgress && (

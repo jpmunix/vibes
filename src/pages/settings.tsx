@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -10,7 +10,15 @@ import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
 import { useSettings } from "@/hooks/useSettings";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingUp,
+  Zap,
+  Clock,
+  Sparkles,
+  Search,
+  X,
+} from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -28,10 +36,360 @@ import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { SerperApiKeySettings } from "@/components/SerperApiKeySettings";
 import { Input } from "@/components/ui/input";
+import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
+import { tokenStatsClient } from "@/ipc/types";
+import type { TokenStatEntry } from "@/ipc/types/token_stats";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
+import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
+import Fuse from "fuse.js";
+
+// Settings search index
+interface SettingItem {
+  id: string;
+  label: string;
+  description: string;
+  keywords: string[];
+  section: string;
+  sectionId: string;
+}
+
+const SETTINGS_SEARCH_INDEX: SettingItem[] = [
+  // General Settings
+  {
+    id: "theme",
+    label: "Tema",
+    description: "Cambiar entre modo claro, oscuro o sistema",
+    keywords: [
+      "tema",
+      "dark",
+      "light",
+      "oscuro",
+      "claro",
+      "apariencia",
+      "color",
+    ],
+    section: "Ajustes generales",
+    sectionId: "general-settings",
+  },
+  {
+    id: "zoom",
+    label: "Zoom",
+    description: "Ajustar el nivel de zoom de la aplicación",
+    keywords: ["zoom", "tamaño", "escala", "agrandar", "achicar"],
+    section: "Ajustes generales",
+    sectionId: "general-settings",
+  },
+  // Workflow Settings
+  {
+    id: "chat-mode",
+    label: "Modo de chat predeterminado",
+    description: "Seleccionar el modo de chat que se usa por defecto",
+    keywords: ["modo", "chat", "predeterminado", "default"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "auto-approve",
+    label: "Auto-aprobar cambios",
+    description: "Aprobar automáticamente los cambios de código y ejecutarlos",
+    keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "background-autofix",
+    label: "Auto-fix de problemas en segundo plano",
+    description:
+      "Arreglar automáticamente problemas detectados mientras trabajas",
+    keywords: [
+      "autofix",
+      "auto",
+      "fix",
+      "arreglar",
+      "problemas",
+      "segundo plano",
+      "background",
+    ],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-model",
+    label: "Modelo para auto-fix",
+    description: "Seleccionar qué modelo usar para auto-fix en segundo plano",
+    keywords: ["modelo", "autofix", "ia", "ai"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-duration",
+    label: "Tiempo máximo auto-fix",
+    description: "Tiempo máximo en milisegundos para auto-fix",
+    keywords: ["tiempo", "duracion", "limite", "ms", "milisegundos", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-attempts",
+    label: "Intentos máximos auto-fix",
+    description: "Número máximo de intentos para auto-fix",
+    keywords: ["intentos", "reintentos", "attempts", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "autofix-issues",
+    label: "Número máximo de issues para auto-fix",
+    description: "Cantidad máxima de problemas a arreglar automáticamente",
+    keywords: ["issues", "problemas", "cantidad", "maximo", "autofix"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "auto-expand-preview",
+    label: "Expandir vista previa automáticamente",
+    description: "Expandir el panel de vista previa cuando se hacen cambios",
+    keywords: ["expandir", "preview", "vista previa", "panel", "automatico"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  {
+    id: "chat-completion-notification",
+    label: "Notificación de respuesta completada",
+    description: "Mostrar notificación cuando termine una respuesta del chat",
+    keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
+  // AI Settings
+  {
+    id: "thinking-budget",
+    label: "Presupuesto de pensamiento",
+    description: "Configurar el presupuesto de tokens para el modo thinking",
+    keywords: ["thinking", "pensamiento", "presupuesto", "tokens", "budget"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "turbo-edits",
+    label: "Turbo Edits (v2)",
+    description: "Modo de búsqueda y reemplazo automático para ediciones",
+    keywords: [
+      "turbo",
+      "edits",
+      "ediciones",
+      "rapido",
+      "busqueda",
+      "reemplazo",
+    ],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "max-chat-turns",
+    label: "Turnos máximos de chat",
+    description: "Número máximo de intercambios en una conversación",
+    keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "chat-language",
+    label: "Idioma del chat",
+    description: "Seleccionar el idioma para las respuestas del asistente",
+    keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "serper-api",
+    label: "Clave API de Serper",
+    description: "Configurar la clave API para búsquedas web con Serper",
+    keywords: ["serper", "api", "key", "clave", "busqueda", "web", "search"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "smart-context",
+    label: "Smart Context local",
+    description: "Ranking local de archivos sin backend",
+    keywords: [
+      "smart",
+      "context",
+      "local",
+      "ranking",
+      "archivos",
+      "relevantes",
+    ],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "token-stats",
+    label: "Guardar métricas de tokens",
+    description: "Guardar uso de tokens para logs y gráficas",
+    keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  {
+    id: "verbose-logs",
+    label: "Logs verbosos de chat",
+    description: "Registrar información detallada del chat para debugging",
+    keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
+    section: "Ajustes IA",
+    sectionId: "ai-settings",
+  },
+  // Stats
+  {
+    id: "stats",
+    label: "Estadísticas globales",
+    description: "Ver uso de tokens y estadísticas del sistema",
+    keywords: [
+      "estadisticas",
+      "stats",
+      "tokens",
+      "uso",
+      "graficas",
+      "metricas",
+    ],
+    section: "Estadísticas Globales",
+    sectionId: "stats-settings",
+  },
+  // Provider Settings
+  {
+    id: "provider-settings",
+    label: "Configuración de proveedores",
+    description: "Configurar proveedores de IA y sus credenciales",
+    keywords: [
+      "proveedor",
+      "provider",
+      "api",
+      "key",
+      "clave",
+      "openai",
+      "anthropic",
+      "claude",
+    ],
+    section: "Configuración de proveedores",
+    sectionId: "provider-settings",
+  },
+  // Integrations
+  {
+    id: "github",
+    label: "GitHub",
+    description: "Integración con GitHub",
+    keywords: ["github", "git", "repositorio", "repo", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "vercel",
+    label: "Vercel",
+    description: "Integración con Vercel para deploy",
+    keywords: ["vercel", "deploy", "deployment", "despliegue", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "supabase",
+    label: "Supabase",
+    description: "Integración con Supabase",
+    keywords: ["supabase", "database", "db", "base de datos", "integracion"],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "neon",
+    label: "Neon",
+    description: "Integración con Neon Database",
+    keywords: [
+      "neon",
+      "database",
+      "db",
+      "postgres",
+      "postgresql",
+      "integracion",
+    ],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  // Agent Permissions
+  {
+    id: "agent-permissions",
+    label: "Permisos del Agente",
+    description: "Configurar qué herramientas puede usar el agente",
+    keywords: [
+      "permisos",
+      "agente",
+      "agent",
+      "herramientas",
+      "tools",
+      "permissions",
+    ],
+    section: "Permisos del Agente",
+    sectionId: "agent-permissions",
+  },
+  // Experiments
+  {
+    id: "native-git",
+    label: "Git nativo",
+    description: "Usar implementación de Git nativa sin instalación externa",
+    keywords: ["git", "nativo", "native", "experimento", "experiment"],
+    section: "Experimentos",
+    sectionId: "experiments",
+  },
+  {
+    id: "embeddings-playground",
+    label: "Playground de Embeddings",
+    description: "Probar el modelo MiniLM para búsqueda semántica",
+    keywords: [
+      "embeddings",
+      "playground",
+      "minilm",
+      "busqueda",
+      "semantica",
+      "semantic",
+    ],
+    section: "Experimentos",
+    sectionId: "experiments",
+  },
+  // Danger Zone
+  {
+    id: "reset-all",
+    label: "Resetear todo",
+    description: "Eliminar todas las aplicaciones, chats y configuraciones",
+    keywords: [
+      "reset",
+      "resetear",
+      "eliminar",
+      "borrar",
+      "todo",
+      "danger",
+      "peligro",
+    ],
+    section: "Zona peligrosa",
+    sectionId: "danger-zone",
+  },
+];
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isEmbeddingsPlaygroundOpen, setIsEmbeddingsPlaygroundOpen] =
+    useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(
+    null,
+  );
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -40,6 +398,43 @@ export default function SettingsPage() {
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
+
+  // Fuse.js search configuration
+  const fuse = useMemo(
+    () =>
+      new Fuse(SETTINGS_SEARCH_INDEX, {
+        keys: [
+          { name: "label", weight: 2 },
+          { name: "description", weight: 1 },
+          { name: "keywords", weight: 1.5 },
+          { name: "section", weight: 0.5 },
+        ],
+        threshold: 0.4,
+        includeScore: true,
+      }),
+    [],
+  );
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return fuse.search(searchQuery).map((result) => result.item);
+  }, [searchQuery, fuse]);
+
+  // Handle search result click
+  const handleSearchResultClick = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightedSection(sectionId);
+      setTimeout(() => setHighlightedSection(null), 2000);
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
 
   const handleResetEverything = async () => {
     setIsResetting(true);
@@ -71,20 +466,96 @@ export default function SettingsPage() {
           <ArrowLeft className="h-4 w-4" />
           Atrás
         </Button>
-        <div className="flex justify-between mb-4">
+        <div className="flex justify-between items-center mb-4 gap-4">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Ajustes
           </h1>
+
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Buscar ajustes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Search Results Dropdown */}
+        {searchQuery && (
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+            {searchResults.length > 0 ? (
+              <div className="p-2">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    onClick={() => {
+                      handleSearchResultClick(result.sectionId);
+                      clearSearch();
+                    }}
+                    className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {result.label}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {result.description}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                        {result.section}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <Search className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  No se encontraron ajustes
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Intenta con otros términos de búsqueda
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-6">
-          <GeneralSettings appVersion={appVersion} />
-          <WorkflowSettings />
-          <AISettings />
+          <GeneralSettings
+            appVersion={appVersion}
+            isHighlighted={highlightedSection === "general-settings"}
+          />
+          <WorkflowSettings
+            isHighlighted={highlightedSection === "workflow-settings"}
+          />
+          <AISettings isHighlighted={highlightedSection === "ai-settings"} />
+          <StatsSettings
+            isHighlighted={highlightedSection === "stats-settings"}
+          />
 
           <div
             id="provider-settings"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300 ${
+              highlightedSection === "provider-settings"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <ProviderSettingsGrid />
           </div>
@@ -92,7 +563,11 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "integrations"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Integraciones
@@ -109,7 +584,11 @@ export default function SettingsPage() {
 
           <div
             id="agent-permissions"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "agent-permissions"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Permisos del Agente
@@ -120,7 +599,11 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+              highlightedSection === "experiments"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Experimentos
@@ -146,13 +629,37 @@ export default function SettingsPage() {
                   una experiencia de rendimiento Git nativa más rápida.
                 </div>
               </div>
+
+              <div className="space-y-1 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <Label className="text-base font-medium">
+                      Playground de Embeddings
+                    </Label>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Prueba el modelo MiniLM para búsqueda semántica en tu
+                      codebase
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEmbeddingsPlaygroundOpen(true)}
+                  >
+                    Abrir Playground
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800"
+            className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-red-200 dark:border-red-800 transition-all duration-300 ${
+              highlightedSection === "danger-zone"
+                ? "ring-4 ring-blue-500 ring-opacity-50"
+                : ""
+            }`}
           >
             <h2 className="text-lg font-medium text-red-600 dark:text-red-400 mb-4">
               Zona peligrosa
@@ -191,17 +698,31 @@ export default function SettingsPage() {
         onConfirm={handleResetEverything}
         onCancel={() => setIsResetDialogOpen(false)}
       />
+
+      {/* Embeddings Playground Dialog */}
+      <EmbeddingsPlayground
+        open={isEmbeddingsPlaygroundOpen}
+        onOpenChange={setIsEmbeddingsPlaygroundOpen}
+      />
     </div>
   );
 }
 
-export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
+export function GeneralSettings({
+  appVersion,
+  isHighlighted,
+}: {
+  appVersion: string | null;
+  isHighlighted?: boolean;
+}) {
   const { theme, setTheme } = useTheme();
 
   return (
     <div
       id="general-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes generales
@@ -253,22 +774,16 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
   );
 }
 
-export function WorkflowSettings() {
+export function WorkflowSettings({
+  isHighlighted,
+}: {
+  isHighlighted?: boolean;
+}) {
   const { settings, updateSettings } = useSettings();
 
   const handleToggleBackgroundProblemFix = async (value: boolean) => {
     await updateSettings({
       enableBackgroundProblemAutoFix: value,
-    });
-  };
-
-  const handleUpdateAutoFixModel = async (field: "name" | "provider", value: string) => {
-    const current = settings?.autoFixModel;
-    await updateSettings({
-      autoFixModel: {
-        name: field === "name" ? value : current?.name ?? "google/gemini-3-flash-preview",
-        provider: field === "provider" ? value : current?.provider ?? "openrouter",
-      },
     });
   };
 
@@ -284,7 +799,9 @@ export function WorkflowSettings() {
   return (
     <div
       id="workflow-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Configuración del flujo de trabajo
@@ -324,33 +841,11 @@ export function WorkflowSettings() {
           Modelo y límites para auto-fix
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y limita tiempo/intentos para evitar consumo excesivo.
+          Estas llamadas se ejecutan en segundo plano. Usa un modelo barato y
+          limita tiempo/intentos para evitar consumo excesivo.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Modelo (auto-fix)
-            </Label>
-            <Input
-              value={settings?.autoFixModel?.name ?? ""}
-              onChange={(e) =>
-                handleUpdateAutoFixModel("name", e.target.value.trim())
-              }
-              placeholder="p. ej. openai/gpt-4.1-mini"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              Proveedor
-            </Label>
-            <Input
-              value={settings?.autoFixModel?.provider ?? ""}
-              onChange={(e) =>
-                handleUpdateAutoFixModel("provider", e.target.value.trim())
-              }
-              placeholder="openrouter"
-            />
-          </div>
+          <AutoFixModelSelector />
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">
               Tiempo máx. auto-fix (ms)
@@ -412,6 +907,14 @@ export function WorkflowSettings() {
           cambios en el código
         </div>
       </div>
+
+      <div className="space-y-1 mt-4">
+        <ChatCompletionNotificationSwitch />
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Mostrar notificación nativa cuando termine una respuesta (si la
+          ventana no está enfocada).
+        </div>
+      </div>
     </div>
   );
 }
@@ -462,11 +965,25 @@ function TurboEditsV2Switch() {
   );
 }
 
-export function AISettings() {
+export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
+  const { settings, updateSettings } = useSettings();
+
+  const handleToggle = async (
+    field:
+      | "enableLocalSmartContext"
+      | "enableTokenStats"
+      | "enableVerboseChatLogs",
+    value: boolean,
+  ) => {
+    await updateSettings({ [field]: value } as any);
+  };
+
   return (
     <div
       id="ai-settings"
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
     >
       <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Ajustes IA
@@ -491,6 +1008,508 @@ export function AISettings() {
       <div className="mt-4">
         <SerperApiKeySettings />
       </div>
+
+      <div className="mt-6 space-y-3">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+          Smart Context local
+        </h3>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">
+              Ranking local (sin backend)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Reduce el contexto eligiendo archivos relevantes según el prompt
+              cuando no hay engine remoto.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableLocalSmartContext !== false}
+            onCheckedChange={(checked) =>
+              handleToggle("enableLocalSmartContext", checked)
+            }
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">
+              Guardar métricas de tokens
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Guarda el uso de tokens por turno para mostrar logs y gráficas en
+              Stats.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableTokenStats !== false}
+            onCheckedChange={(checked) =>
+              handleToggle("enableTokenStats", checked)
+            }
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1 pr-3">
+            <p className="text-sm font-medium text-foreground">
+              Logs verbosos de chat
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Registra información detallada del procesamiento interno del chat
+              para debugging. Los logs se muestran en el panel del chat.
+            </p>
+          </div>
+          <Switch
+            checked={settings?.enableVerboseChatLogs === true}
+            onCheckedChange={(checked) =>
+              handleToggle("enableVerboseChatLogs", checked)
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
+  const [entries, setEntries] = useState<TokenStatEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<TokenStatEntry | null>(
+    null,
+  );
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await tokenStatsClient.getTokenStats();
+      setEntries(data || []);
+    } catch (error) {
+      console.error("Failed to load token stats", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  // Calculate total stats
+  const totalStats = entries.reduce(
+    (acc, entry) => ({
+      total: acc.total + entry.totalTokens,
+      input: acc.input + (entry.promptTokens ?? 0),
+      output: acc.output + (entry.completionTokens ?? 0),
+    }),
+    { total: 0, input: 0, output: 0 },
+  );
+
+  // Group by hour
+  const hourlyStats = (() => {
+    const stats = new Map<string, { tokens: number; count: number }>();
+    entries.forEach((entry) => {
+      const date = new Date(entry.timestamp);
+      const hourKey = `${date.getHours()}:00`;
+      if (!stats.has(hourKey)) {
+        stats.set(hourKey, { tokens: 0, count: 0 });
+      }
+      const s = stats.get(hourKey)!;
+      s.tokens += entry.totalTokens;
+      s.count += 1;
+    });
+    return Array.from(stats.entries())
+      .map(([hour, data]) => ({ hour, ...data }))
+      .sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
+  })();
+
+  const maxHourlyTokens = Math.max(...hourlyStats.map((h) => h.tokens), 1);
+
+  // Group by model
+  const modelStats = (() => {
+    const stats = new Map<string, number>();
+    entries.forEach((entry) => {
+      const model = entry.model || "unknown";
+      stats.set(model, (stats.get(model) || 0) + entry.totalTokens);
+    });
+    return Array.from(stats.entries())
+      .map(([model, tokens]) => ({ model, tokens }))
+      .sort((a, b) => b.tokens - a.tokens)
+      .slice(0, 5);
+  })();
+
+  const maxModelTokens = Math.max(...modelStats.map((m) => m.tokens), 1);
+
+  return (
+    <div
+      id="stats-settings"
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300 ${
+        isHighlighted ? "ring-4 ring-blue-500 ring-opacity-50" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Estadísticas Globales
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Uso de tokens en todos los chats
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const header = [
+                "timestamp",
+                "chatId",
+                "messageId",
+                "totalTokens",
+                "promptTokens",
+                "completionTokens",
+                "model",
+                "filesSent",
+                "toolsUsed",
+              ].join(",");
+              const lines = entries.map((e) =>
+                [
+                  new Date(e.timestamp).toISOString(),
+                  e.chatId,
+                  e.messageId,
+                  e.totalTokens,
+                  e.promptTokens ?? "",
+                  e.completionTokens ?? "",
+                  e.model ?? "",
+                  (e.filesSent || []).join("|"),
+                  (e.toolsUsed || []).join("|"),
+                ].join(","),
+              );
+              const csv = [header, ...lines].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "token-stats.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            {loading ? "Cargando..." : "Refrescar"}
+          </Button>
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <TrendingUp
+            className="text-gray-400 dark:text-gray-600 mb-3"
+            size={48}
+          />
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aún no hay datos.
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Envía un mensaje para registrar tokens.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="text-blue-600 dark:text-blue-400" size={16} />
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  Total
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+                {totalStats.total.toLocaleString()}
+              </p>
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                tokens en {entries.length} mensajes
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp
+                  className="text-green-600 dark:text-green-400"
+                  size={16}
+                />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                  Input
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-green-900 dark:text-green-100">
+                {totalStats.input.toLocaleString()}
+              </p>
+              <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                tokens de entrada
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp
+                  className="text-purple-600 dark:text-purple-400"
+                  size={16}
+                />
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                  Output
+                </span>
+              </div>
+              <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
+                {totalStats.output.toLocaleString()}
+              </p>
+              <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
+                tokens de salida
+              </p>
+            </div>
+          </div>
+
+          {/* Hourly Chart */}
+          {hourlyStats.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="text-gray-600 dark:text-gray-400" size={18} />
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Uso por Hora
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {hourlyStats.map((stat) => (
+                  <div key={stat.hour} className="flex items-center gap-3">
+                    <span className="text-sm font-mono text-gray-600 dark:text-gray-400 w-14">
+                      {stat.hour}
+                    </span>
+                    <div className="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300 flex items-center justify-end pr-3"
+                        style={{
+                          width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
+                        }}
+                      >
+                        {stat.tokens > maxHourlyTokens * 0.3 && (
+                          <span className="text-xs font-semibold text-white">
+                            {stat.tokens.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {stat.tokens <= maxHourlyTokens * 0.3 && (
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-24 text-right">
+                        {stat.tokens.toLocaleString()}
+                      </span>
+                    )}
+                    <span className="text-sm text-gray-500 dark:text-gray-400 w-20 text-right">
+                      {stat.count} msgs
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top Models */}
+          {modelStats.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles
+                  className="text-gray-600 dark:text-gray-400"
+                  size={18}
+                />
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Top Modelos
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {modelStats.map((stat, idx) => (
+                  <div key={stat.model} className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 w-6">
+                      #{idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {stat.model}
+                      </div>
+                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(stat.tokens / maxModelTokens) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 w-28 text-right">
+                      {stat.tokens.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Activity */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Actividad Reciente
+            </h3>
+            <div className="space-y-2">
+              {entries.slice(0, 10).map((entry) => (
+                <button
+                  key={`${entry.timestamp}-${entry.messageId}`}
+                  onClick={() => setSelectedEntry(entry)}
+                  className="w-full text-left p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                      Chat #{entry.chatId} · Mensaje {entry.messageId}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatDistanceToNow(new Date(entry.timestamp), {
+                        addSuffix: true,
+                        locale: es,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                        style={{
+                          width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {entry.totalTokens.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {entry.model || "unknown"}
+                    </span>
+                    {entry.promptTokens && entry.completionTokens && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {entry.promptTokens.toLocaleString()} in ·{" "}
+                        {entry.completionTokens.toLocaleString()} out
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Dialog */}
+      <Dialog
+        open={!!selectedEntry}
+        onOpenChange={() => setSelectedEntry(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles del Token Stat</DialogTitle>
+          </DialogHeader>
+          {selectedEntry && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Chat ID
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                    #{selectedEntry.chatId}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Message ID
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                    {selectedEntry.messageId}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Total Tokens
+                  </label>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                    {selectedEntry.totalTokens.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Input Tokens
+                  </label>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                    {selectedEntry.promptTokens?.toLocaleString() ?? "?"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Output Tokens
+                  </label>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+                    {selectedEntry.completionTokens?.toLocaleString() ?? "?"}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Modelo
+                </label>
+                <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                  {selectedEntry.model || "unknown"}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Timestamp
+                </label>
+                <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                  {new Date(selectedEntry.timestamp).toLocaleString()}
+                </p>
+              </div>
+              {selectedEntry.filesSent &&
+                selectedEntry.filesSent.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Archivos Enviados ({selectedEntry.filesSent.length})
+                    </label>
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-2 overflow-x-auto max-h-40">
+                      {selectedEntry.filesSent.join("\n")}
+                    </pre>
+                  </div>
+                )}
+              {selectedEntry.toolsUsed &&
+                selectedEntry.toolsUsed.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Herramientas Usadas
+                    </label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedEntry.toolsUsed.map((tool) => (
+                        <span
+                          key={tool}
+                          className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

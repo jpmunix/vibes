@@ -315,6 +315,22 @@ export const UserSettingsSchema = z
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),
     enableProSmartFilesContextMode: z.boolean().optional(),
+    // Local smart context ranking (no remote engine)
+    enableLocalSmartContext: z.boolean().optional(),
+    // Allow using MCP server for smart context/file ranking
+    enableMcpSmartContext: z.boolean().optional(),
+    // Enable semantic search with local embeddings (vector search)
+    enableSemanticSearch: z.boolean().optional(),
+    // Maximum files to include in context (reduces tokens)
+    maxContextFiles: z.number().optional(),
+    // Persist token stats for charts/logging
+    enableTokenStats: z.boolean().optional(),
+    // Enable verbose internal chat logs (debugging/diagnostics)
+    enableVerboseChatLogs: z.boolean().optional(),
+    // Notifications when el chat termina
+    enableChatCompletionNotifications: z.boolean().optional(),
+    // Control GitHub auto-commit behavior
+    enableGithubAutoCommit: z.boolean().optional(),
     enableProWebSearch: z.boolean().optional(),
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
@@ -364,11 +380,11 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-export function isDyadProEnabled(settings: UserSettings): boolean {
+export function isDyadProEnabled(_settings: UserSettings): boolean {
   return true;
 }
 
-export function hasDyadProKey(settings: UserSettings): boolean {
+export function hasDyadProKey(_settings: UserSettings): boolean {
   return true;
 }
 

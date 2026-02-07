@@ -1,10 +1,4 @@
-export const OnboardingBanner = ({
-  isVisible,
-  setIsVisible,
-}: {
-  isVisible: boolean;
-  setIsVisible: (isVisible: boolean) => void;
-}) => {
+export const OnboardingBanner = ({ isVisible }: { isVisible: boolean }) => {
   if (!isVisible) return null;
 
   return "";

@@ -1,12 +1,6 @@
 import { z } from "zod";
 import log from "electron-log";
-import {
-  ToolDefinition,
-  AgentContext,
-  escapeXmlAttr,
-  escapeXmlContent,
-} from "./types";
-import { engineFetch } from "./engine_fetch";
+import { ToolDefinition, AgentContext, escapeXmlAttr } from "./types";
 import { readSettings } from "@/main/settings";
 
 const logger = log.scope("web_search");
@@ -38,60 +32,6 @@ Nombres de modelos de la API de OpenAI GPT-5
 NextJS 14 app router middleware auth
 </example>
 `;
-
-/**
- * Parse SSE events from a buffer and extract content deltas.
- * Returns the remaining unparsed buffer.
- * Throws an error if an SSE error event is received.
- */
-function parseSSEEvents(
-  buffer: string,
-  onContent: (content: string) => void,
-): string {
-  const lines = buffer.split("\n");
-  // Keep the last potentially incomplete line
-  const remaining = lines.pop() ?? "";
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith("data: ")) {
-      continue;
-    }
-
-    const data = trimmed.slice(6); // Remove "data: " prefix
-
-    // Check for stream end marker
-    if (data === "[DONE]") {
-      continue;
-    }
-
-    try {
-      const json = JSON.parse(data);
-
-      // Check for OpenAI-style SSE error: { error: { message: "...", type: "...", code: "..." } }
-      if (json.error) {
-        const errorMessage =
-          json.error.message || json.error.type || "Unknown SSE error";
-        throw new Error(`Web search SSE error: ${errorMessage}`);
-      }
-
-      // OpenAI-style SSE format: { choices: [{ delta: { content: "..." } }] }
-      const content = json.choices?.[0]?.delta?.content;
-      if (content) {
-        onContent(content);
-      }
-    } catch (e) {
-      // Re-throw SSE errors
-      if (e instanceof Error && e.message.startsWith("Web search SSE error:")) {
-        throw e;
-      }
-      // Skip malformed JSON lines
-      logger.warn("Failed to parse SSE JSON:", data);
-    }
-  }
-
-  return remaining;
-}
 
 /**
  * Call Serper.dev API for web search
@@ -168,69 +108,6 @@ async function callSerperSearch(
   return result;
 }
 
-/**
- * Call the web search SSE endpoint and stream results (legacy Dyad Pro)
- */
-async function callWebSearchSSE(
-  query: string,
-  ctx: AgentContext,
-): Promise<string> {
-  ctx.onXmlStream(`<dyad-web-search query="${escapeXmlAttr(query)}">`);
-
-  const response = await engineFetch(ctx, "/tools/web-search", {
-    method: "POST",
-    headers: {
-      Accept: "text/event-stream",
-    },
-    body: JSON.stringify({ query }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Web search failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
-  }
-
-  if (!response.body) {
-    throw new Error("Web search response has no body");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let accumulated = "";
-  let buffer = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      // Parse SSE events and accumulate content
-      buffer = parseSSEEvents(buffer, (content) => {
-        accumulated += content;
-        // Stream intermediate results to UI with dyad-web-search prefix
-        ctx.onXmlStream(
-          `<dyad-web-search query="${escapeXmlAttr(query)}">${escapeXmlContent(accumulated)}`,
-        );
-      });
-    }
-
-    // Handle any remaining buffer content
-    if (buffer.trim()) {
-      parseSSEEvents(buffer + "\n", (content) => {
-        accumulated += content;
-      });
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  return accumulated;
-}
-
 export const webSearchTool: ToolDefinition<z.infer<typeof webSearchSchema>> = {
   name: "web_search",
   description: DESCRIPTION,
@@ -238,7 +115,7 @@ export const webSearchTool: ToolDefinition<z.infer<typeof webSearchSchema>> = {
   defaultConsent: "ask",
 
   // Enable only if Serper API key is configured
-  isEnabled: (ctx) => {
+  isEnabled: (_ctx) => {
     const settings = readSettings();
     return !!settings.serperApiKey?.value;
   },

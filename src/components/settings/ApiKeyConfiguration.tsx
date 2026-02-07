@@ -101,14 +101,14 @@ export function ApiKeyConfiguration({
         className="border rounded-lg px-4 bg-(--background-lightest)"
       >
         <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
-          API Key from Settings
+          Clave API desde Configuración
         </AccordionTrigger>
         <AccordionContent className="pt-4 ">
           {isValidUserKey && (
             <Alert variant="default" className="mb-4">
               <KeyRound className="h-4 w-4" />
               <AlertTitle className="flex justify-between items-center">
-                <span>Current Key (Settings)</span>
+                <span>Clave Actual (Configuración)</span>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -117,14 +117,14 @@ export function ApiKeyConfiguration({
                   className="flex items-center gap-1 h-7 px-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  {isSaving ? "Deleting..." : "Delete"}
+                  {isSaving ? "Eliminando..." : "Eliminar"}
                 </Button>
               </AlertTitle>
               <AlertDescription>
                 <p className="font-mono text-sm">{userApiKey}</p>
                 {activeKeySource === "settings" && (
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                    This key is currently active.
+                    Key activa
                   </p>
                 )}
               </AlertDescription>
@@ -136,14 +136,15 @@ export function ApiKeyConfiguration({
               htmlFor="apiKeyInput"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
-              {isValidUserKey ? "Update" : "Set"} {providerDisplayName} API Key
+              {isValidUserKey ? "Actualizar" : "Configurar"} API Key de{" "}
+              {providerDisplayName}
             </label>
             <div className="flex items-start space-x-2">
               <Input
                 id="apiKeyInput"
                 value={apiKeyInput}
                 onChange={(e) => onApiKeyInputChange(e.target.value)}
-                placeholder={`Enter new ${providerDisplayName} API Key here`}
+                placeholder={`Introduce la nueva API Key de ${providerDisplayName} aquí`}
                 className={`flex-grow ${saveError ? "border-red-500" : ""}`}
               />
               <Tooltip>
@@ -156,20 +157,22 @@ export function ApiKeyConfiguration({
                           onSaveKey(text);
                         }
                       } catch (error) {
-                        showError("Failed to paste from clipboard");
+                        showError("Error al pegar del portapapeles");
                         console.error("Failed to paste from clipboard", error);
                       }
                     }}
                     disabled={isSaving}
                     variant="outline"
                     size="icon"
-                    title="Paste from clipboard and save"
-                    aria-label="Paste from clipboard and save"
+                    title="Pegar del portapapeles y guardar"
+                    aria-label="Pegar del portapapeles y guardar"
                   >
                     <Clipboard className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Paste from clipboard and save</TooltipContent>
+                <TooltipContent>
+                  Pegar del portapapeles y guardar
+                </TooltipContent>
               </Tooltip>
 
               <Button
@@ -181,8 +184,8 @@ export function ApiKeyConfiguration({
             </div>
             {saveError && <p className="text-xs text-red-600">{saveError}</p>}
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Setting a key here will override the environment variable (if
-              set).
+              Establecer una clave aquí anulará la variable de entorno (si está
+              establecida).stablecida).stablecida).stablecida).stablecida).
             </p>
           </div>
         </AccordionContent>
@@ -194,26 +197,29 @@ export function ApiKeyConfiguration({
           className="border rounded-lg px-4 bg-(--background-lightest)"
         >
           <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
-            API Key from Environment Variable
+            Clave API de variable de entornotorno
           </AccordionTrigger>
           <AccordionContent className="pt-4">
             {hasEnvKey ? (
               <Alert variant="default">
                 <KeyRound className="h-4 w-4" />
-                <AlertTitle>Environment Variable Key ({envVarName})</AlertTitle>
+                <AlertTitle>
+                  Clave de Variable de Entorno ({envVarName})
+                </AlertTitle>
                 <AlertDescription>
                   <p className="font-mono text-sm">
                     {maskEnvApiKey(envApiKey)}
                   </p>
                   {activeKeySource === "env" && (
                     <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      This key is currently active (no settings key set).
+                      Esta clave está actualmente activa (no hay clave de
+                      configuración establecida).
                     </p>
                   )}
                   {activeKeySource === "settings" && (
                     <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                      This key is currently being overridden by the key set in
-                      Settings.
+                      Esta clave está siendo reemplazada actualmente por la
+                      clave establecida en Configuración.
                     </p>
                   )}
                 </AlertDescription>
@@ -221,20 +227,20 @@ export function ApiKeyConfiguration({
             ) : (
               <Alert variant="default">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Environment Variable Not Set</AlertTitle>
+                <AlertTitle>Variable de Entorno No Establecida</AlertTitle>
                 <AlertDescription>
-                  The{" "}
+                  La variable de entorno{" "}
                   <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">
                     {envVarName}
                   </code>{" "}
-                  environment variable is not set.
+                  no está establecida.
                 </AlertDescription>
               </Alert>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              This key is set outside the application. If present, it will be
-              used only if no key is configured in the Settings section above.
-              Requires app restart to detect changes.
+              Esta clave se establece fuera de la aplicación. """ If present, it
+              will be used only if no key is configured in the Settings section
+              above. Requires app restart to detect changes.
             </p>
           </AccordionContent>
         </AccordionItem>

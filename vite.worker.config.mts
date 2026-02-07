@@ -1,29 +1,48 @@
 import { defineConfig } from "vite";
 import path from "path";
 
-// https://vitejs.dev/config
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+// Configuration for different workers
+const workersConfig: Record<string, string[]> = {
+  tsc_worker: ["node:fs", "node:path", "node:worker_threads", "typescript"],
+  context_worker: [
+    "node:fs",
+    "node:fs/promises",
+    "node:path",
+    "node:worker_threads",
+    "electron-log",
+    "glob",
+    "onnxruntime-node",
+    "@xenova/transformers",
+  ],
+};
+
+// Electron Forge VitePlugin calls this config multiple times with different entries
+// We use a function config to detect which worker is being built
+export default defineConfig(() => {
+  // Default to tsc_worker if not specified
+  const entry = process.env.VITE_WORKER_ENTRY || "workers/tsc/tsc_worker.ts";
+  const workerName = entry.includes("context_worker")
+    ? "context_worker"
+    : "tsc_worker";
+  const external = workersConfig[workerName] || [];
+
+  return {
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  build: {
-    sourcemap: true,
-    // target: "node16",
-    lib: {
-      entry: path.resolve(__dirname, "workers/tsc/tsc_worker.ts"),
-      name: "tsc_worker",
-      fileName: "tsc_worker",
-      formats: ["cjs"],
+    build: {
+      sourcemap: true,
+      lib: {
+        entry: path.resolve(__dirname, entry),
+        name: workerName,
+        fileName: workerName,
+        formats: ["cjs"],
+      },
+      rollupOptions: {
+        external,
+      },
     },
-    rollupOptions: {
-      external: ["node:fs", "node:path", "node:worker_threads", "typescript"],
-      //   output: {
-      //     dir: "dist/workers/tsc",
-      //   },
-    },
-    // outDir: "dist/workers/tsc",
-    // emptyOutDir: true,
-  },
+  };
 });

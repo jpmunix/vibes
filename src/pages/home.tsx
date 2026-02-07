@@ -45,7 +45,12 @@ export default function HomePage() {
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [forceCloseDialogOpen, setForceCloseDialogOpen] = useState(false);
-  const [performanceData, setPerformanceData] = useState<any>(undefined);
+  const [forceCloseData, setForceCloseData] = useState<{
+    performanceData?: any;
+    appVersion?: string;
+    platform?: string;
+    recentLogs?: string;
+  }>({});
   const { streamMessage } = useStreamChat({ hasChatId: false });
   const posthog = usePostHog();
   const appVersion = useAppVersion();
@@ -57,7 +62,7 @@ export default function HomePage() {
   // Listen for force-close events
   useEffect(() => {
     const unsubscribe = ipc.events.system.onForceCloseDetected((data) => {
-      setPerformanceData(data.performanceData);
+      setForceCloseData(data);
       setForceCloseDialogOpen(true);
     });
     return () => unsubscribe();
@@ -247,7 +252,10 @@ export default function HomePage() {
       <ForceCloseDialog
         isOpen={forceCloseDialogOpen}
         onClose={() => setForceCloseDialogOpen(false)}
-        performanceData={performanceData}
+        performanceData={forceCloseData.performanceData}
+        appVersion={forceCloseData.appVersion}
+        platform={forceCloseData.platform}
+        recentLogs={forceCloseData.recentLogs}
       />
       <SetupBanner />
 

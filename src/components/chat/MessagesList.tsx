@@ -85,24 +85,10 @@ function FooterComponent({ context }: { context?: FooterContext }) {
     settings,
     userBudget,
     renderSetupBanner,
-    isSelectingModel,
-    autoRouterModelInfo,
   } = context;
-
-  // Get auto-router model info for current chat
-  const currentAutoRouterInfo =
-    selectedChatId && autoRouterModelInfo.get(selectedChatId);
 
   return (
     <>
-      {/* Show auto-router card (selecting or selected) */}
-      {(isSelectingModel || currentAutoRouterInfo) && (
-        <AutoRouterSelectedMessage
-          modelInfo={currentAutoRouterInfo}
-          isSelecting={isSelectingModel}
-        />
-      )}
-
       {/* Show context limit banner when close to token limit */}
       {!isStreaming && tokenCountResult && (
         <ContextLimitBanner
@@ -345,16 +331,47 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         const isLastMessage = index === messages.length - 1;
         const messageKey = message.id;
 
+        // Check if we should show auto-router card after this message
+        // Show it only after the last user message when:
+        // 1. Model is being selected (isSelectingModel = true), OR
+        // 2. Model was selected but assistant hasn't responded yet (no assistant message after this user message)
+        const isLastUserMessage = message.role === "user" && isLastMessage;
+        const hasAssistantResponseAfter =
+          isLastMessage &&
+          messages.length > index + 1 &&
+          messages[index + 1]?.role === "assistant";
+        const shouldShowAutoRouter =
+          isLastUserMessage &&
+          !hasAssistantResponseAfter &&
+          (isSelectingModel || autoRouterModelInfo.get(selectedChatId ?? 0));
+        const currentAutoRouterInfo = selectedChatId
+          ? autoRouterModelInfo.get(selectedChatId)
+          : undefined;
+
         return (
-          <div className="px-4" key={messageKey}>
-            <MemoizedChatMessage
-              message={message}
-              isLastMessage={isLastMessage}
-            />
+          <div key={messageKey}>
+            <div className="px-4">
+              <MemoizedChatMessage
+                message={message}
+                isLastMessage={isLastMessage}
+              />
+            </div>
+            {shouldShowAutoRouter && (
+              <AutoRouterSelectedMessage
+                modelInfo={currentAutoRouterInfo}
+                isSelecting={isSelectingModel}
+              />
+            )}
           </div>
         );
       },
-      [messages.length],
+      [
+        messages.length,
+        isSelectingModel,
+        autoRouterModelInfo,
+        selectedChatId,
+        messages,
+      ],
     );
 
     // Create context object for Footer component with stable references
@@ -443,9 +460,34 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         >
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
+            const isLastUserMessage = message.role === "user" && isLastMessage;
+            const hasAssistantResponseAfter =
+              isLastMessage &&
+              messages.length > index + 1 &&
+              messages[index + 1]?.role === "assistant";
+            const shouldShowAutoRouter =
+              isLastUserMessage &&
+              !hasAssistantResponseAfter &&
+              (isSelectingModel ||
+                autoRouterModelInfo.get(selectedChatId ?? 0));
+            const currentAutoRouterInfo = selectedChatId
+              ? autoRouterModelInfo.get(selectedChatId)
+              : undefined;
+
             return (
-              <div className="px-4" key={message.id}>
-                <ChatMessage message={message} isLastMessage={isLastMessage} />
+              <div key={message.id}>
+                <div className="px-4">
+                  <ChatMessage
+                    message={message}
+                    isLastMessage={isLastMessage}
+                  />
+                </div>
+                {shouldShowAutoRouter && (
+                  <AutoRouterSelectedMessage
+                    modelInfo={currentAutoRouterInfo}
+                    isSelecting={isSelectingModel}
+                  />
+                )}
               </div>
             );
           })}

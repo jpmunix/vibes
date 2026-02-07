@@ -10,7 +10,18 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ["better-sqlite3"],
+      external: [
+        "better-sqlite3",
+        "onnxruntime-node",
+        "onnxruntime-common",
+        "sharp",
+        "semver",
+        "bindings",
+        "file-uri-to-path",
+        "@mapbox/node-pre-gyp",
+        "detect-libc",
+        "prebuild-install",
+      ],
     },
   },
   plugins: [

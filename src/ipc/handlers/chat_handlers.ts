@@ -175,6 +175,7 @@ export function registerChatHandlers() {
   createTypedHandler(
     chatContracts.generateChatTitle,
     async (_, { chatId, prompt }) => {
+      logger.info(`generateChatTitle called for chatId=${chatId}`);
       const { readSettings } = await import("../../main/settings");
       const settings = readSettings();
       const apiKey =
@@ -193,6 +194,9 @@ export function registerChatHandlers() {
 
         // If no prompt provided, fetch from DB (legacy/manual behavior)
         if (!messageContent) {
+          logger.info(
+            `No prompt provided, fetching first message for chatId=${chatId}`,
+          );
           // Fetch the first message from this chat
           const firstMessage = await db
             .select({
@@ -204,9 +208,13 @@ export function registerChatHandlers() {
             .limit(1);
 
           if (!firstMessage.length) {
+            logger.warn(`No messages found for chatId=${chatId}`);
             return { title: "Nuevo chat" };
           }
           messageContent = firstMessage[0].content;
+          logger.info(
+            `Found first message (${messageContent.slice(0, 100)}...) for chatId=${chatId}`,
+          );
         }
 
         // If it's a summarize command, don't generate title
@@ -231,7 +239,7 @@ export function registerChatHandlers() {
             body: JSON.stringify({
               model,
               temperature: 0.3,
-              max_tokens: 15,
+              max_tokens: 40,
               messages: [
                 {
                   role: "system",
@@ -261,11 +269,21 @@ export function registerChatHandlers() {
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 50);
 
+        logger.info(
+          `Generated title for chatId=${chatId}: "${sanitizedTitle}"`,
+        );
+
         // Update the chat title in the database
-        await db
+        const updateResult = await db
           .update(chats)
           .set({ title: sanitizedTitle })
-          .where(eq(chats.id, chatId));
+          .where(eq(chats.id, chatId))
+          .returning({ id: chats.id, title: chats.title });
+
+        logger.info(
+          `Updated chat title in DB for chatId=${chatId}:`,
+          updateResult,
+        );
 
         return { title: sanitizedTitle };
       } catch (error) {

@@ -34,6 +34,9 @@ import { getOllamaApiUrl } from "../handlers/local_model_ollama_handler";
 import { createFallback } from "./fallback_ai_model";
 
 const dyadEngineUrl = process.env.DYAD_ENGINE_URL;
+const disableRemoteEngine =
+  process.env.DYAD_DISABLE_REMOTE_ENGINE === "true" ||
+  process.env.DYAD_ENABLE_REMOTE_ENGINE === "false";
 
 const AUTO_MODELS = [
   {
@@ -80,8 +83,14 @@ export async function getModelClient(
     throw new Error(`Configuration not found for provider: ${model.provider}`);
   }
 
+  if (disableRemoteEngine) {
+    logger.warn(
+      "Remote Dyad engine disabled via env (DYAD_DISABLE_REMOTE_ENGINE=true or DYAD_ENABLE_REMOTE_ENGINE=false); using direct provider clients.",
+    );
+  }
+
   // Handle Dyad Pro override
-  if (dyadApiKey && settings.enableDyadPro) {
+  if (dyadApiKey && settings.enableDyadPro && !disableRemoteEngine) {
     // Check if the selected provider supports Dyad Pro (has a gateway prefix) OR
     // we're using local engine.
     // IMPORTANT: some providers like OpenAI have an empty string gateway prefix,

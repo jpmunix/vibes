@@ -7,9 +7,6 @@ import {
   escapeXmlContent,
 } from "./types";
 import { extractCodebase } from "../../../../../../utils/codebase";
-import { engineFetch } from "./engine_fetch";
-
-const logger = log.scope("code_search");
 
 const codeSearchSchema = z.object({
   query: z.string().describe("Search query to find relevant files"),
@@ -20,37 +17,46 @@ const FileContextSchema = z.object({
   content: z.string(),
 });
 
-const codeSearchResponseSchema = z.object({
-  relevantFiles: z.array(z.string()).describe("Paths of relevant files"),
-});
+const logger = log.scope("code_search");
 
-async function callCodeSearch(
-  params: {
-    query: string;
-    filesContext: z.infer<typeof FileContextSchema>[];
-  },
-  ctx: AgentContext,
-): Promise<string[]> {
-  // Stream initial state to UI
-  ctx.onXmlStream(`<dyad-code-search query="${escapeXmlAttr(params.query)}">`);
+function rankFilesLocally({
+  query,
+  files,
+  maxResults = 20,
+}: {
+  query: string;
+  files: z.infer<typeof FileContextSchema>[];
+  maxResults?: number;
+}): string[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
 
-  const response = await engineFetch(ctx, "/tools/code-search", {
-    method: "POST",
-    body: JSON.stringify({
-      query: params.query,
-      filesContext: params.filesContext,
-    }),
+  const scored = files.map((file) => {
+    const pathLower = file.path.toLowerCase();
+    const contentLower = file.content.toLowerCase();
+    let score = 0;
+
+    for (const term of terms) {
+      if (pathLower.includes(term)) {
+        score += 5; // path match is strong
+      }
+      // Count occurrences in content (cheap heuristic, capped)
+      const matches = contentLower.split(term).length - 1;
+      score += Math.min(matches, 5);
+    }
+
+    // Light bonus for shorter files (often more focused)
+    const lengthBonus = Math.max(0, 3 - Math.floor(file.content.length / 5000));
+    score += lengthBonus;
+
+    return { path: file.path, score };
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Code search failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
-  }
-
-  const data = codeSearchResponseSchema.parse(await response.json());
-  return data.relevantFiles;
+  return scored
+    .filter((f) => f.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults)
+    .map((f) => f.path);
 }
 
 const DESCRIPTION = `Search the codebase semantically to find files relevant to a query. Use this tool when you need to discover which files contain code related to a specific concept, feature, or functionality. Returns a list of file paths that are most relevant to the search query.
@@ -77,7 +83,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
     defaultConsent: "always",
 
     // Disable in Basic Agent mode (free tier) - requires engine
-    isEnabled: (ctx) => true,
+    isEnabled: () => true,
 
     getConsentPreview: (args) => `Search for "${args.query}"`,
 
@@ -90,7 +96,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
     execute: async (args, ctx: AgentContext) => {
       logger.log(`Executing code search: ${args.query}`);
 
-      // Gather all files from the project
+      // Gather all files from the project (respecting chatContext includes/excludes)
       const { files } = await extractCodebase({
         appPath: ctx.appPath,
         chatContext: {
@@ -100,24 +106,20 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
         },
       });
 
-      // Map files to FileContext format
+      // Map files to FileContext format (content may be trimmed/omitted upstream)
       const filesContext = files.map((file) => ({
         path: file.path,
         content: file.content,
       }));
 
-      logger.log(
-        `Searching ${filesContext.length} files for query: "${args.query}"`,
-      );
+      logger.log(`Locally searching ${filesContext.length} files`);
 
-      // Call the code-search endpoint
-      const relevantFiles = await callCodeSearch(
-        {
-          query: args.query,
-          filesContext,
-        },
-        ctx,
-      );
+      // Local ranking (MCP/engine-free)
+      const relevantFiles = rankFilesLocally({
+        query: args.query,
+        files: filesContext,
+        maxResults: 30,
+      });
 
       // Format results
       const resultText =
@@ -130,7 +132,9 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
         `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</dyad-code-search>`,
       );
 
-      logger.log(`Code search completed for query: ${args.query}`);
+      logger.log(
+        `Code search completed for query: ${args.query}, ${relevantFiles.length} hits`,
+      );
 
       if (relevantFiles.length === 0) {
         return "No relevant files found for the given query.";

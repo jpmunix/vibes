@@ -14,8 +14,6 @@ import { Button } from "@/components/ui/button";
 import { ContextFilesPicker } from "@/components/ContextFilesPicker";
 import { FileAttachmentDropdown } from "./FileAttachmentDropdown";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { useCustomThemes } from "@/hooks/useCustomThemes";
-import { useSettings } from "@/hooks/useSettings";
 
 interface AuxiliaryActionsMenuProps {
   onFileSelect: (
@@ -39,8 +37,7 @@ export function AuxiliaryActionsMenu({
   const [] = useState(false);
   const [] = useState(false);
 
-  const { themeId: appThemeId } = useAppTheme(appId);
-  const { settings } = useSettings();
+  useAppTheme(appId);
 
   // Determine current theme: use app theme if appId exists, otherwise use settings
   // Note: settings stores empty string for "no theme", convert to null
