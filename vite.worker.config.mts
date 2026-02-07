@@ -11,13 +11,16 @@ const workersConfig: Record<string, string[]> = {
     "node:worker_threads",
     "electron-log",
     "glob",
+    "onnxruntime-web",
     "onnxruntime-node",
+    "@huggingface/jinja",
     "@xenova/transformers",
   ],
   embeddings_worker: [
     "node:worker_threads",
     "electron-log",
     "onnxruntime-node",
+    "@huggingface/jinja",
     "@xenova/transformers",
   ],
 };

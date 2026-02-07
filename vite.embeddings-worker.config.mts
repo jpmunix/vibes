@@ -8,7 +8,8 @@ export default defineConfig({
     },
   },
   build: {
-    sourcemap: true,
+    minify: false, // Desactiva la minificación de nombres de variables
+    sourcemap: true, // Te ayudará a ver errores reales en la consola
     lib: {
       entry: path.resolve(__dirname, "workers/embeddings/embeddings_worker.ts"),
       name: "embeddings_worker",

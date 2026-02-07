@@ -7,6 +7,7 @@ import {
   Info,
   Save,
   FileText,
+  MoreHorizontal,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -36,6 +37,12 @@ import { useRenameBranch } from "@/hooks/useRenameBranch";
 import { isAnyCheckoutVersionInProgressAtom } from "@/store/appAtoms";
 import { LoadingBar } from "../ui/LoadingBar";
 import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
@@ -284,89 +291,79 @@ export function ChatHeader({
             <PlusCircle size={16} />
             <span>Nuevo chat</span>
           </Button>
-          <Button
-            onClick={handleSummarize}
-            variant="ghost"
-            title="Resumir chat"
-            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-            disabled={!selectedChatId || isStreaming}
-          >
-            <Sparkles size={16} />
-            <span className="hidden @xs:inline">Resumir chat</span>
-          </Button>
-          <Button
-            onClick={async () => {
-              if (!selectedChatId) return;
-              try {
-                console.log(
-                  `[ChatHeader] Generating title for chatId=${selectedChatId}`,
-                );
-                setIsGeneratingTitle(true);
-                const result = await ipc.chat.generateChatTitle({
-                  chatId: selectedChatId,
-                });
-                console.log(
-                  `[ChatHeader] Generated title result:`,
-                  result,
-                  `for chatId=${selectedChatId}`,
-                );
-                await invalidateChats();
-                console.log(`[ChatHeader] Invalidated chats cache`);
-                showSuccess("Título del chat actualizado");
-              } catch (error) {
-                console.error("Failed to generate chat title:", error);
-                showError("Error al generar el título del chat");
-              } finally {
-                setIsGeneratingTitle(false);
-              }
-            }}
-            variant="ghost"
-            title="Generar título automático"
-            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-            disabled={!selectedChatId || isStreaming || isGeneratingTitle}
-          >
-            <Sparkles
-              size={16}
-              className={isGeneratingTitle ? "animate-pulse" : ""}
-            />
-            <span className="hidden @xs:inline">Título automático</span>
-          </Button>
-          <Button
-            onClick={handleSaveNote}
-            variant="ghost"
-            title="Guardar nota"
-            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
-            disabled={!selectedChatId || isStreaming || isSavingNote}
-          >
-            <Save size={16} className={isSavingNote ? "animate-pulse" : ""} />
-            <span className="hidden @xs:inline">Guardar nota</span>
-          </Button>
-          <Button
-            onClick={() => setIsConfirmEmptyDialogOpen(true)}
-            variant="ghost"
-            title="Vaciar chat"
-            className="flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-            disabled={!selectedChatId || isStreaming}
-          >
-            <Eraser size={16} />
-            <span className="hidden @xs:inline">Vaciar chat</span>
-          </Button>
-          {onToggleLogs && (
-            <Button
-              onClick={onToggleLogs}
-              variant="ghost"
-              title="Logs del chat"
-              className={`flex cursor-pointer items-center gap-1 text-sm px-2 py-1 rounded-md ${
-                isLogsOpen
-                  ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900/30"
-              }`}
-              disabled={!selectedChatId}
-            >
-              <FileText size={16} />
-              <span className="hidden @xs:inline">Logs</span>
-            </Button>
-          )}
+
+          {/* Menú desplegable con las demás opciones */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-1 text-sm px-2 py-1 rounded-md">
+                <MoreHorizontal size={16} />
+                <span className="hidden @xs:inline">Opciones</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[200px]">
+              <DropdownMenuItem
+                onClick={handleSummarize}
+                disabled={!selectedChatId || isStreaming}
+              >
+                <Sparkles size={16} className="mr-2" />
+                Resumir chat
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (!selectedChatId) return;
+                  try {
+                    console.log(
+                      `[ChatHeader] Generating title for chatId=${selectedChatId}`,
+                    );
+                    setIsGeneratingTitle(true);
+                    const result = await ipc.chat.generateChatTitle({
+                      chatId: selectedChatId,
+                    });
+                    console.log(
+                      `[ChatHeader] Generated title result:`,
+                      result,
+                      `for chatId=${selectedChatId}`,
+                    );
+                    await invalidateChats();
+                    console.log(`[ChatHeader] Invalidated chats cache`);
+                    showSuccess("Título del chat actualizado");
+                  } catch (error) {
+                    console.error("Failed to generate chat title:", error);
+                    showError("Error al generar el título del chat");
+                  } finally {
+                    setIsGeneratingTitle(false);
+                  }
+                }}
+                disabled={!selectedChatId || isStreaming || isGeneratingTitle}
+              >
+                <Sparkles size={16} className="mr-2" />
+                Título automático
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleSaveNote}
+                disabled={!selectedChatId || isStreaming || isSavingNote}
+              >
+                <Save size={16} className="mr-2" />
+                Guardar nota
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsConfirmEmptyDialogOpen(true)}
+                disabled={!selectedChatId || isStreaming}
+              >
+                <Eraser size={16} className="mr-2" />
+                Vaciar chat
+              </DropdownMenuItem>
+              {onToggleLogs && (
+                <DropdownMenuItem
+                  onClick={onToggleLogs}
+                  disabled={!selectedChatId}
+                >
+                  <FileText size={16} className="mr-2" />
+                  Logs
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <button

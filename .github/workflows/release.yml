@@ -1,0 +1,52 @@
+name: Create Release (Linux & Mac)
+on:
+  workflow_dispatch: # Lo lanzas tú manualmente
+
+permissions:
+  contents: write # Vital para que GitHub pueda crear la Release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          { id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
+          { id: "macos", image: "macos-latest", command: "npm run clean && electron-forge make --platform darwin --arch x64" }
+        ]
+    runs-on: ${{ matrix.os.image }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build App (${{ matrix.os.id }})
+        run: ${{ matrix.os.command }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ""
+          APPLE_PASSWORD: ""
+          APPLE_TEAM_ID: ""
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Release Build #${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: |
+            out/make/**/*.deb
+            out/make/**/*.zip
+            out/make/**/*.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
