@@ -80,7 +80,7 @@ export function NoteEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[calc(100vh-250px)] px-4 py-3 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 prose-headings:font-semibold prose-h1:text-3xl prose-h1:mb-4 prose-h2:text-2xl prose-h2:mb-3 prose-h3:text-xl prose-h3:mb-2 prose-p:mb-3 prose-ul:mb-3 prose-ul:list-disc prose-ul:pl-5 prose-ol:mb-3 prose-ol:list-decimal prose-ol:pl-5 prose-li:mb-1 prose-strong:font-bold prose-em:italic",
+          "prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[calc(100vh-250px)] px-4 py-3 bg-background text-foreground prose-headings:font-semibold prose-h1:text-3xl prose-h1:mb-4 prose-h2:text-2xl prose-h2:mb-3 prose-h3:text-xl prose-h3:mb-2 prose-p:mb-3 prose-ul:mb-3 prose-ul:list-disc prose-ul:pl-5 prose-ol:mb-3 prose-ol:list-decimal prose-ol:pl-5 prose-li:mb-1 prose-strong:font-bold prose-em:italic",
       },
     },
   });
