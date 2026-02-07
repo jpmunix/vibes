@@ -1,16 +1,16 @@
 {
   "name": "minube-vibes",
-  "version": "2.1.1",
-  "description": "AI app builder",
+  "version": "2.1.2",
+  "description": "Generador de aplicaciones AI de minube",
   "keywords": [],
   "license": "MIT",
   "author": {
-    "name": "Munix",
+    "name": "munix",
     "email": "pablo@minube.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/minube/dyad.git"
+    "url": "https://github.com/minube/vibes.git"
   },
   "main": ".vite/build/main.js",
   "scripts": {
@@ -112,7 +112,7 @@
     "fix-path": "^4.0.0",
     "framer-motion": "^12.6.3",
     "geist": "^1.3.1",
-    "glob": "^11.0.2",
+    "glob": "11.1.0",
     "html-to-image": "^1.11.13",
     "isomorphic-git": "^1.30.1",
     "jotai": "^2.12.2",
