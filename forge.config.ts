@@ -60,18 +60,8 @@ const config: ForgeConfig = {
     ],
     icon: "./assets/icon/logo",
 
-    osxSign: isEndToEndTestBuild
-      ? undefined
-      : {
-        identity: process.env.APPLE_TEAM_ID
-      },
-    osxNotarize: isEndToEndTestBuild
-      ? undefined
-      : {
-        appleId: process.env.APPLE_ID!,
-        appleIdPassword: process.env.APPLE_PASSWORD!,
-        teamId: process.env.APPLE_TEAM_ID!
-      },
+    osxSign: undefined,
+    osxNotarize: undefined,
     asar: {
       unpack: "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}"
 
