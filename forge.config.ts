@@ -38,6 +38,9 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/better-sqlite3")) {
     return false;
   }
+  if (file.startsWith("/node_modules/onnxruntime-web")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/onnxruntime-node")) {
     return false;
   }
@@ -47,11 +50,22 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/sharp")) {
     return false;
   }
+  if (file.startsWith("/node_modules/color")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/simple-swizzle")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/@img")) {
     return false;
   }
   if (
-    file.startsWith("/node_modules/@xenova/transformers/node_modules/sharp")
+    file.startsWith("/node_modules/@xenova")
+  ) {
+    return false;
+  }
+  if (
+    file.startsWith("/node_modules/@huggingface")
   ) {
     return false;
   }
@@ -86,39 +100,47 @@ const config: ForgeConfig = {
     protocols: [
       {
         name: "Dyad",
-        schemes: ["dyad"],
-      },
+        schemes: ["dyad"]
+      }
     ],
     icon: "./assets/icon/logo",
 
     osxSign: isEndToEndTestBuild
       ? undefined
       : {
-          identity: process.env.APPLE_TEAM_ID,
-        },
+        identity: process.env.APPLE_TEAM_ID
+      },
     osxNotarize: isEndToEndTestBuild
       ? undefined
       : {
-          appleId: process.env.APPLE_ID!,
-          appleIdPassword: process.env.APPLE_PASSWORD!,
-          teamId: process.env.APPLE_TEAM_ID!,
-        },
+        appleId: process.env.APPLE_ID!,
+        appleIdPassword: process.env.APPLE_PASSWORD!,
+        teamId: process.env.APPLE_TEAM_ID!
+      },
     asar: {
-      unpack:
-        "**/node_modules/{onnxruntime-node,onnxruntime-common,better-sqlite3,sharp,semver,@img,bindings,file-uri-to-path,@mapbox,detect-libc,prebuild-install}/**",
+      unpack: "{**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}"
+
     },
     ignore,
     extraResource: [
       "node_modules/better-sqlite3",
       "node_modules/dugite/git",
       "node_modules/@vscode",
+      "node_modules/@huggingface",
       "node_modules/sharp",
-    ],
+      "node_modules/color",
+      "node_modules/color-string",
+      "node_modules/color-name",
+      "node_modules/color-convert",
+      "node_modules/simple-swizzle",
+      "node_modules/onnxruntime-web",
+      "node_modules/onnxruntime-node"
+    ]
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
     extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
-    force: true,
+    //force: true
   },
   makers: [
     // new MakerSquirrel(
@@ -145,9 +167,9 @@ const config: ForgeConfig = {
     new MakerDeb({
       options: {
         mimeType: ["x-scheme-handler/dyad"],
-        icon: "./assets/icon/logo.png",
-      },
-    }),
+        icon: "./assets/icon/logo.png"
+      }
+    })
     // new MakerAppImage({
     //   icon: "./assets/icon/logo.png",
     // }),
@@ -158,13 +180,13 @@ const config: ForgeConfig = {
       config: {
         repository: {
           owner: "dyad-sh",
-          name: "dyad",
+          name: "dyad"
         },
         draft: true,
         force: true,
-        prerelease: true,
-      },
-    },
+        prerelease: true
+      }
+    }
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
@@ -176,35 +198,35 @@ const config: ForgeConfig = {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: "src/main.ts",
           config: "vite.main.config.mts",
-          target: "main",
+          target: "main"
         },
         {
           entry: "src/preload.ts",
           config: "vite.preload.config.mts",
-          target: "preload",
+          target: "preload"
         },
         {
           entry: "workers/tsc/tsc_worker.ts",
           config: "vite.worker.config.mts",
-          target: "main",
+          target: "main"
         },
         {
           entry: "workers/context/context_worker.ts",
           config: "vite.worker.config.mts",
-          target: "main",
+          target: "main"
         },
         {
           entry: "workers/embeddings/embeddings_worker.ts",
           config: "vite.embeddings-worker.config.mts",
-          target: "main",
-        },
+          target: "main"
+        }
       ],
       renderer: [
         {
           name: "main_window",
-          config: "vite.renderer.config.mts",
-        },
-      ],
+          config: "vite.renderer.config.mts"
+        }
+      ]
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
@@ -215,9 +237,9 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: isEndToEndTestBuild,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    }),
-  ],
+      [FuseV1Options.OnlyLoadAppFromAsar]: true
+    })
+  ]
 };
 
 export default config;
