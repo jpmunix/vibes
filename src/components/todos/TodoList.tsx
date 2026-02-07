@@ -92,11 +92,9 @@ export function TodoList({
     );
   }
 
-  const hasTodos = todos.length > 0;
-
   return (
-    <div className="space-y-4">
-      <div className={`flex gap-2 ${!hasTodos ? "w-3/4" : ""}`}>
+    <div className="space-y-4 w-full max-w-4xl">
+      <div className={`flex gap-2`}>
         <Input
           placeholder="Añadir nueva tarea..."
           value={newTodo}

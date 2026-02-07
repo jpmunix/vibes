@@ -69,7 +69,7 @@ export default function TodoDetailPage() {
   }
 
   return (
-    <div className="h-full p-6">
+    <div className="h-full w-full p-6">
       <Button
         variant="ghost"
         className="mb-4"
