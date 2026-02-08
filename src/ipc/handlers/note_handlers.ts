@@ -10,13 +10,13 @@ import { noteContracts } from "../types/note";
 const logger = log.scope("note_handlers");
 
 export function registerNoteHandlers() {
-  createTypedHandler(noteContracts.createNote, async () => {
+  createTypedHandler(noteContracts.createNote, async (_, params) => {
     // Create a new note with default values
     const [note] = await db
       .insert(notes)
       .values({
-        title: "Nueva nota",
-        content: "",
+        title: params?.title || "Nueva nota",
+        content: params?.content || "",
       })
       .returning();
     logger.info("Created note:", note.id);
@@ -40,6 +40,7 @@ export function registerNoteHandlers() {
       columns: {
         id: true,
         title: true,
+        content: true,
         createdAt: true,
         updatedAt: true,
       },

@@ -18,6 +18,7 @@ export interface ModelOption {
 export const GPT_5_2_MODEL_NAME = "gpt-5.2";
 export const SONNET_4_5 = "claude-sonnet-4-5-20250929";
 export const GEMINI_3_FLASH = "gemini-3-flash-preview";
+export const GPT_5_MINI = "openai/gpt-5-mini";
 
 export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
   // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
@@ -133,6 +134,17 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       temperature: 0,
       dollarSigns: 1,
       brainSigns: 1,
+    },
+    {
+      name: GPT_5_MINI,
+      displayName: "GPT-5 Mini",
+      description:
+        "Versión compacta de GPT-5 para razonamiento ligero. Ofrece la misma precisión y seguridad que GPT-5 con menor latencia y costo. Sucesor de o4-mini.",
+      maxOutputTokens: 65_000,
+      contextWindow: 400_000,
+      temperature: 0,
+      dollarSigns: 1,
+      brainSigns: 2,
     },
     {
       name: "qwen/qwen-plus-2025-07-28",

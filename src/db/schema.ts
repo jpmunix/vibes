@@ -356,3 +356,85 @@ export const todos = sqliteTable("todos", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+// --- Debates tables ---
+export const debates = sqliteTable("debates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const debateMessages = sqliteTable("debate_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  debateId: integer("debate_id")
+    .notNull()
+    .references(() => debates.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
+  content: text("content").notNull(),
+  // For injected items
+  injectedItems: text("injected_items", { mode: "json" }).$type<{
+    type: "chat" | "note" | "todo";
+    id: number;
+    title: string;
+    content: string;
+    fragment?: string; // For specific fragments
+  }[] | null>(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export const debateTags = sqliteTable("debate_tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  color: text("color"),
+});
+
+export const debateToTags = sqliteTable(
+  "debate_to_tags",
+  {
+    debateId: integer("debate_id")
+      .notNull()
+      .references(() => debates.id, { onDelete: "cascade" }),
+    tagId: integer("tag_id")
+      .notNull()
+      .references(() => debateTags.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    unique("debate_tag_unique").on(table.debateId, table.tagId),
+  ],
+);
+
+// Define relations for debates
+export const debatesRelations = relations(debates, ({ many }) => ({
+  messages: many(debateMessages),
+  tags: many(debateToTags),
+}));
+
+export const debateMessagesRelations = relations(debateMessages, ({ one }) => ({
+  debate: one(debates, {
+    fields: [debateMessages.debateId],
+    references: [debates.id],
+  }),
+}));
+
+export const debateTagsRelations = relations(debateTags, ({ many }) => ({
+  debates: many(debateToTags),
+}));
+
+export const debateToTagsRelations = relations(debateToTags, ({ one }) => ({
+  debate: one(debates, {
+    fields: [debateToTags.debateId],
+    references: [debates.id],
+  }),
+  tag: one(debateTags, {
+    fields: [debateToTags.tagId],
+    references: [debateTags.id],
+  }),
+}));

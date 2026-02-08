@@ -203,6 +203,12 @@ export const todoContracts = {
     output: z.array(TodoSchema),
   }),
 
+  getTodos: defineContract({
+    channel: "get-todos",
+    input: z.void(),
+    output: z.array(TodoSchema),
+  }),
+
   getTodoSectionsByApp: defineContract({
     channel: "get-todo-sections-by-app",
     input: z.number(), // appId
@@ -268,11 +274,13 @@ export const todoContracts = {
     input: RefineTodoPromptParamsSchema,
     output: RefineTodoPromptResponseSchema,
   }),
+
   analyzeTodoFiles: defineContract({
     channel: "analyze-todo-files",
     input: AnalyzeTodoFilesParamsSchema,
     output: AnalyzeTodoFilesResponseSchema,
   }),
+
   selectTodoFiles: defineContract({
     channel: "select-todo-files",
     input: z.void(),

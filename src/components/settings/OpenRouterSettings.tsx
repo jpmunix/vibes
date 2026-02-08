@@ -22,6 +22,8 @@ import { showError, showSuccess } from "@/lib/toast";
 import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
 import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
 import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
+import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
+import { SummaryModelSelector } from "@/components/debate/SummaryModelSelector";
 import { ModelsSection } from "./ModelsSection";
 import { cn } from "@/lib/utils";
 
@@ -224,7 +226,7 @@ export function OpenRouterSettings({
                   className={cn(
                     "rounded-xl h-12 border-border bg-muted/30 focus-visible:ring-primary/20",
                     saveError &&
-                      "border-destructive focus-visible:ring-destructive/20",
+                    "border-destructive focus-visible:ring-destructive/20",
                   )}
                 />
               </div>
@@ -267,27 +269,51 @@ export function OpenRouterSettings({
               <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
                 <AppTitleModelSelector />
                 <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                  Configura el modelo que OpenRouter utilizará para generar el
-                  título de la aplicación a partir de tu prompt inicial. Por
-                  defecto:{" "}
-                  <code className="bg-muted px-1 rounded text-[10px]">
-                    openai/gpt-4.1-nano
-                  </code>
+                  Genera el título de la aplicación a partir de tu prompt inicial.
                 </p>
               </div>
             </div>
             <div className="space-y-4">
               <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                Análisis de Tareas (Smart Import)
+                Turbo Edits
+              </Label>
+              <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
+                <TurboEditModelSelector />
+                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                  Modelo optimizado para ediciones rápidas de archivos.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                Análisis de Tareas
               </Label>
               <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
                 <TodoAnalysisModelSelector />
                 <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                  Este modelo extrae automáticamente tareas de archivos adjuntos
-                  (PDF, imágenes, etc.). Por defecto:{" "}
-                  <code className="bg-muted px-1 rounded text-[10px]">
-                    google/gemini-3-flash-preview
-                  </code>
+                  Extrae tareas de archivos adjuntos (PDF, imágenes, etc.).
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                Módulo de Debate
+              </Label>
+              <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
+                <DebateModelSelector />
+                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                  Modelo principal para los hilos de debate.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                Resúmenes de Debates
+              </Label>
+              <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
+                <SummaryModelSelector />
+                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                  Modelo ligero para generar los puntos clave de un debate.
                 </p>
               </div>
             </div>

@@ -55,6 +55,7 @@ export { todoContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
 export { embeddingsContracts } from "./embeddings";
+export { debateContracts, debateStreamContract } from "./debate";
 
 // =============================================================================
 // Client Exports
@@ -86,6 +87,7 @@ export { visualEditingClient } from "./visual-editing";
 export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
 export { embeddingsClient } from "./embeddings";
+export { debateClient, debateStreamClient } from "./debate";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
@@ -314,6 +316,14 @@ export type {
   UpdateTodoSectionParams,
 } from "./todo";
 
+// Debate types
+export type {
+  InjectedItem,
+  DebateMessage,
+  DebateTag,
+  Debate,
+} from "./debate";
+
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
 // =============================================================================
@@ -378,6 +388,7 @@ import { upgradeClient } from "./upgrade";
 import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
+import { debateClient, debateStreamClient } from "./debate";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -406,10 +417,12 @@ export const ipc = {
   note: noteClient,
   todo: todoClient,
   agent: agentClient,
+  debate: debateClient,
 
   // Streaming clients
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
+  debateStream: debateStreamClient,
 
   // Integrations
   github: githubClient,

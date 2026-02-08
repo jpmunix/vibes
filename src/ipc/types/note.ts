@@ -24,11 +24,22 @@ export type Note = z.infer<typeof NoteSchema>;
 export const NoteSummarySchema = z.object({
   id: z.number(),
   title: z.string(),
+  content: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
 
 export type NoteSummary = z.infer<typeof NoteSummarySchema>;
+
+/**
+ * Schema for create note params.
+ */
+export const CreateNoteParamsSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+}).optional();
+
+export type CreateNoteParams = z.infer<typeof CreateNoteParamsSchema>;
 
 /**
  * Schema for update note params.
@@ -60,7 +71,7 @@ export const noteContracts = {
 
   createNote: defineContract({
     channel: "create-note",
-    input: z.void(),
+    input: CreateNoteParamsSchema,
     output: z.number(), // noteId
   }),
 
