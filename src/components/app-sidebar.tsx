@@ -140,23 +140,28 @@ export function AppSidebar() {
       }}
     >
       <SidebarContent className="overflow-hidden">
-        <div className="flex mt-8 w-full">
+        <div className="flex mt-8 w-full flex-1">
           {/* Left Column: Menu items */}
-          <div className="">
-            <SidebarTrigger
-              onMouseEnter={() => {
-                setHoverState("clear-hover");
-              }}
-            />
-            <AppIcons
-              onTabChange={(tab) => {
-                setActiveTab(tab);
-                // If collapsed, expand immediately on click
-                if (state === "collapsed") {
-                  toggleSidebar();
-                }
-              }}
-            />
+          <div className="flex flex-col justify-between pb-4 h-full">
+            <div>
+              <SidebarTrigger
+                onMouseEnter={() => {
+                  setHoverState("clear-hover");
+                }}
+              />
+              <AppIcons
+                onTabChange={(tab) => {
+                  setActiveTab(tab);
+                  // If collapsed, expand immediately on click
+                  if (state === "collapsed") {
+                    toggleSidebar();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-center mb-4">
+              <OpenRouterCreditsButton />
+            </div>
           </div>
           {/* Right Column: Chat List Section */}
           <div className="flex-1 min-w-0">
@@ -169,26 +174,6 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarContent>
-
-      {/*<SidebarFooter>*/}
-      {/*  <SidebarMenu>*/}
-      {/*    <SidebarMenuItem>*/}
-      {/*      /!* Change button to open dialog instead of linking *!/*/}
-      {/*      <SidebarMenuButton*/}
-      {/*        size="sm"*/}
-      {/*        className="font-medium w-14 flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl"*/}
-      {/*        onClick={() => setIsHelpDialogOpen(true)} // Open dialog on click*/}
-      {/*      >*/}
-      {/*        <HelpCircle className="h-5 w-5" />*/}
-      {/*        <span className={"text-xs"}>Ayuda</span>*/}
-      {/*      </SidebarMenuButton>*/}
-      {/*      <HelpDialog*/}
-      {/*        isOpen={isHelpDialogOpen}*/}
-      {/*        onClose={() => setIsHelpDialogOpen(false)}*/}
-      {/*      />*/}
-      {/*    </SidebarMenuItem>*/}
-      {/*  </SidebarMenu>*/}
-      {/*</SidebarFooter>*/}
 
       <SidebarRail />
     </Sidebar>
@@ -247,9 +232,6 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
               </SidebarMenuItem>
             );
           })}
-          <SidebarMenuItem>
-            <OpenRouterCreditsButton />
-          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
