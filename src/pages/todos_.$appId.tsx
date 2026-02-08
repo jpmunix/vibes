@@ -76,14 +76,14 @@ export default function TodoDetailPage() {
 
   return (
     <div className="h-full w-full p-6">
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => navigate({ to: "/" })}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver
-      </Button>
+      {/*<Button*/}
+      {/*  variant="ghost"*/}
+      {/*  className="mb-4"*/}
+      {/*  onClick={() => navigate({ to: "/" })}*/}
+      {/*>*/}
+      {/*  <ArrowLeft className="h-4 w-4 mr-2" />*/}
+      {/*  Volver*/}
+      {/*</Button>*/}
 
       <TodoBoard
         todos={todos}
