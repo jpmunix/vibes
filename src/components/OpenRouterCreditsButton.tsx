@@ -21,17 +21,17 @@ export function OpenRouterCreditsButton() {
 
   return (
     <button
-      className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl text-xs font-medium flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 mb-2"
+      className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 mb-2 text-foreground"
       title={`Créditos disponibles en OpenRouter\nTotal: $${data.totalCredits.toFixed(2)}\nUsados: $${data.totalUsage.toFixed(2)}\n\nClick para actualizar`}
       onClick={() => refetch()}
       disabled={isFetching}
     >
       {isFetching ? (
-        <RefreshCw size={14} className="animate-spin" />
+        <RefreshCw size={20} className="animate-spin" />
       ) : (
-        <DollarSign size={14} />
+        <DollarSign size={20} className="opacity-100" />
       )}
-      <span className="text-[11px]">
+      <span className="text-xs font-bold leading-none mt-0.5">
         {isLoading ? "..." : formattedBalance}
       </span>
     </button>
