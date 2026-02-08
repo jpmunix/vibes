@@ -60,6 +60,7 @@ import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 import { AppSearchResult } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
+import { openRouterCompletion } from "../utils/openrouter";
 
 import { getAppPort } from "../../../shared/ports";
 import {
@@ -253,8 +254,7 @@ async function executeAppLocalNode({
       .join(", ");
 
     logger.error(
-      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -558,8 +558,7 @@ RUN npm install -g pnpm
       .join(", ");
 
     logger.error(
-      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -1216,7 +1215,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-            error,
+          error,
         );
       }
     }
@@ -1976,9 +1975,7 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
     const settings = readSettings();
-    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-    if (!apiKey) {
+    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
       logger.warn(
         "OpenRouter API key not found, using cute app name as fallback",
       );
@@ -1989,48 +1986,28 @@ export function registerAppHandlers() {
       settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
     try {
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://dyad.sh", // Optional, for OpenRouter analytics
-            "X-Title": "Dyad", // Optional
+      const data = await openRouterCompletion({
+        model,
+        temperature: 0.3,
+        max_tokens: 20,
+        messages: [
+          {
+            role: "system",
+            content:
+              settings.chatLanguage === "en"
+                ? "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters."
+                : "Eres un asistente útil que genera títulos de aplicaciones cortos y atractivos en español. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 30 caracteres.",
           },
-          body: JSON.stringify({
-            model,
-            temperature: 0.3, // Lower temperature for faster, more deterministic responses
-            max_tokens: 20, // Limit tokens since we only need a short app name
-            messages: [
-              {
-                role: "system",
-                content:
-                  settings.chatLanguage === "en"
-                    ? "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters."
-                    : "Eres un asistente útil que genera títulos de aplicaciones cortos y atractivos en español. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 30 caracteres.",
-              },
-              {
-                role: "user",
-                content:
-                  settings.chatLanguage === "en"
-                    ? `Generate a title in English for this app idea: "${prompt}"`
-                    : `Genera un título en español para esta idea de aplicación: "${prompt}"`,
-              },
-            ],
-          }),
-        },
-      );
+          {
+            role: "user",
+            content:
+              settings.chatLanguage === "en"
+                ? `Generate a title in English for this app idea: "${prompt}"`
+                : `Genera un título en español para esta idea de aplicación: "${prompt}"`,
+          },
+        ],
+      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
-        );
-      }
-
-      const data = await response.json();
       const title =
         data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
 
@@ -2047,10 +2024,7 @@ export function registerAppHandlers() {
     appContracts.generateAppTitleFromHistory,
     async (_, { appId }) => {
       const settings = readSettings();
-      const apiKey =
-        settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-      if (!apiKey) {
+      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
         logger.warn(
           "OpenRouter API key not found, using cute app name as fallback",
         );
@@ -2078,48 +2052,28 @@ export function registerAppHandlers() {
 
         const userPrompt = firstUserMessage[0].content;
 
-        const response = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-              "HTTP-Referer": "https://dyad.sh",
-              "X-Title": "Dyad",
+        const data = await openRouterCompletion({
+          model,
+          temperature: 0.3,
+          max_tokens: 20,
+          messages: [
+            {
+              role: "system",
+              content:
+                settings.chatLanguage === "en"
+                  ? "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be strictly functional and deterministic. Do not use marketing adjectives like 'Ultimate', 'Best', 'Simple', 'Super', 'Pro'. Just describe what it does (e.g., 'Todo Manager', 'Invoice Generator')."
+                  : "Eres un asistente útil que genera nombres de aplicaciones descriptivos y profesionales en español. El nombre debe reflejar claramente el propósito y la funcionalidad de la aplicación. Devuelve SOLO el nombre de la aplicación, sin comillas, sin texto adicional. Máximo 40 caracteres. Sé estrictamente funcional y determinista. No uses adjetivos de marketing como 'Definitivo', 'Mejor', 'Simple', 'Super', 'Pro'. Solo describe lo que hace (ej., 'Gestor de Tareas', 'Generador de Facturas').",
             },
-            body: JSON.stringify({
-              model,
-              temperature: 0.3, // Lower temperature for faster, more deterministic responses
-              max_tokens: 20, // Limit tokens since we only need a short app name
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    settings.chatLanguage === "en"
-                      ? "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be strictly functional and deterministic. Do not use marketing adjectives like 'Ultimate', 'Best', 'Simple', 'Super', 'Pro'. Just describe what it does (e.g., 'Todo Manager', 'Invoice Generator')."
-                      : "Eres un asistente útil que genera nombres de aplicaciones descriptivos y profesionales en español. El nombre debe reflejar claramente el propósito y la funcionalidad de la aplicación. Devuelve SOLO el nombre de la aplicación, sin comillas, sin texto adicional. Máximo 40 caracteres. Sé estrictamente funcional y determinista. No uses adjetivos de marketing como 'Definitivo', 'Mejor', 'Simple', 'Super', 'Pro'. Solo describe lo que hace (ej., 'Gestor de Tareas', 'Generador de Facturas').",
-                },
-                {
-                  role: "user",
-                  content:
-                    settings.chatLanguage === "en"
-                      ? `Generate a strictly functional and deterministic app name in English for this application idea: "${userPrompt}"`
-                      : `Genera un nombre de aplicación estrictamente funcional y determinista en español para esta idea de aplicación: "${userPrompt}"`,
-                },
-              ],
-            }),
-          },
-        );
+            {
+              role: "user",
+              content:
+                settings.chatLanguage === "en"
+                  ? `Generate a strictly functional and deterministic app name in English for this application idea: "${userPrompt}"`
+                  : `Genera un nombre de aplicación estrictamente funcional y determinista en español para esta idea de aplicación: "${userPrompt}"`,
+            },
+          ],
+        });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
-          );
-        }
-
-        const data = await response.json();
         const title =
           data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
 

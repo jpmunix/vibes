@@ -325,6 +325,7 @@ export const todos = sqliteTable("todos", {
     .references(() => apps.id, { onDelete: "cascade" }),
   content: text("content").notNull().default(""),
   description: text("description"),
+  prompt: text("prompt"),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
   order: integer("order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })

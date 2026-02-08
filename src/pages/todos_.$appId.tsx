@@ -24,6 +24,7 @@ export default function TodoDetailPage() {
     deleteTodo,
     developTodo,
     reorderTodos,
+    refinePrompt,
   } = useTodos(numericAppId);
 
   const handleAdd = async (content: string) => {
@@ -34,16 +35,16 @@ export default function TodoDetailPage() {
     await updateTodo({ todoId, completed });
   };
 
-  const handleUpdate = async (todoId: number, content: string, description?: string | null) => {
-    await updateTodo({ todoId, content, description });
+  const handleUpdate = async (todoId: number, content: string, description?: string | null, prompt?: string | null) => {
+    await updateTodo({ todoId, content, description, prompt });
   };
 
   const handleDelete = async (todoId: number) => {
     await deleteTodo(todoId);
   };
 
-  const handleDevelop = async (todoId: number) => {
-    const result = await developTodo(todoId);
+  const handleDevelop = async (todoId: number, prompt?: string) => {
+    const result = await developTodo({ todoId, prompt });
     // Set the selected app before navigating
     setSelectedAppId(numericAppId);
     // Navigate to the new chat with autoStart enabled
@@ -92,6 +93,7 @@ export default function TodoDetailPage() {
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onDevelop={handleDevelop}
+        onRefine={async (todoId: number) => refinePrompt({ todoId })}
         onReorder={handleReorder}
         isLoading={loading}
       />

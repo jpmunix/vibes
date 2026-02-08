@@ -33,14 +33,16 @@ export function useTodos(appId: number) {
       todoId,
       content,
       description,
+      prompt,
       completed,
     }: {
       todoId: number;
       content?: string;
       description?: string | null;
+      prompt?: string | null;
       completed?: boolean;
     }) => {
-      return await ipc.todo.updateTodo({ todoId, content, description, completed });
+      return await ipc.todo.updateTodo({ todoId, content, description, prompt, completed });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -68,8 +70,8 @@ export function useTodos(appId: number) {
   });
 
   const developTodo = useMutation({
-    mutationFn: async (todoId: number) => {
-      return await ipc.todo.developTodo({ todoId });
+    mutationFn: async ({ todoId, prompt }: { todoId: number; prompt?: string }) => {
+      return await ipc.todo.developTodo({ todoId, prompt });
     },
     onError: (error) => {
       showError(`Error al crear chat: ${(error as Error).message}`);
@@ -90,6 +92,16 @@ export function useTodos(appId: number) {
     },
   });
 
+  const refinePrompt = useMutation({
+    mutationFn: async ({ todoId }: { todoId: number }) => {
+      const response = await ipc.todo.refineTodoPrompt({ todoId });
+      return response.prompt;
+    },
+    onError: (error) => {
+      showError(`Error al refinar prompt: ${(error as Error).message}`);
+    },
+  });
+
   return {
     todos,
     loading,
@@ -98,5 +110,6 @@ export function useTodos(appId: number) {
     deleteTodo: deleteTodo.mutateAsync,
     developTodo: developTodo.mutateAsync,
     reorderTodos: reorderTodos.mutateAsync,
+    refinePrompt: refinePrompt.mutateAsync,
   };
 }

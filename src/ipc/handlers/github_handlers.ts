@@ -40,6 +40,7 @@ import { withLock } from "../utils/lock_utils";
 import { createTypedHandler } from "./base";
 import { githubContracts } from "../types/github";
 import type { CloneRepoParams, CloneRepoResult } from "../types/github";
+import { openRouterCompletion } from "../utils/openrouter";
 
 const logger = log.scope("github_handlers");
 
@@ -176,13 +177,13 @@ export async function prepareLocalBranch({
         if (isGitMergeInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a merge is in progress. " +
-              "Please complete or abort the merge and try again.",
+            "Please complete or abort the merge and try again.",
           );
         }
         if (isGitRebaseInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a rebase is in progress. " +
-              "Please complete or abort the rebase and try again.",
+            "Please complete or abort the rebase and try again.",
           );
         }
 
@@ -257,8 +258,8 @@ export async function prepareLocalBranch({
               } catch (innerErr: any) {
                 throw new Error(
                   `Failed to resolve remote branch 'origin/${targetBranch}' to a commit. ` +
-                    "Ensure 'git fetch' succeeded and the remote branch exists. " +
-                    `${innerErr?.message || String(innerErr)}`,
+                  "Ensure 'git fetch' succeeded and the remote branch exists. " +
+                  `${innerErr?.message || String(innerErr)}`,
                 );
               }
             }
@@ -283,7 +284,7 @@ export async function prepareLocalBranch({
               } else {
                 logger.warn(
                   "[GitHub Handler] Previous branch unknown; repository may remain in detached HEAD at " +
-                    `${commitSha}.`,
+                  `${commitSha}.`,
                 );
               }
               throw error;
@@ -316,7 +317,7 @@ export async function prepareLocalBranch({
     ) {
       throw new Error(
         `Failed to prepare local branch: uncommitted changes detected. ` +
-          "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
+        "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
       );
     }
     throw new Error(errorMessage);
@@ -425,9 +426,8 @@ async function pollForAccessToken(event: IpcMainInvokeEvent) {
   } catch (error) {
     logger.error("Error polling for GitHub access token:", error);
     event.sender.send("github:flow-error", {
-      error: `Network or unexpected error during polling: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      error: `Network or unexpected error during polling: ${error instanceof Error ? error.message : String(error)
+        }`,
     });
     stopPolling();
   }
@@ -861,13 +861,13 @@ async function handlePushToGithub(
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a merge is in progress. " +
-            "Please complete or abort the merge and try again.",
+          "Please complete or abort the merge and try again.",
         );
       }
       if (isGitRebaseInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a rebase is in progress. " +
-            "Please complete or abort the rebase and try again.",
+          "Please complete or abort the rebase and try again.",
         );
       }
 
@@ -1041,7 +1041,7 @@ export async function ensureCleanWorkspace(
   if (isClean) return;
   throw new Error(
     `Workspace is not clean before ${operationDescription}. ` +
-      "Please commit or stash your changes manually and try again.",
+    "Please commit or stash your changes manually and try again.",
   );
 }
 
@@ -1178,7 +1178,7 @@ async function handleInviteCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-          `Failed to invite collaborator: ${response.status} ${response.statusText}`,
+        `Failed to invite collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1218,7 +1218,7 @@ async function handleRemoveCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-          `Failed to remove collaborator: ${response.status} ${response.statusText}`,
+        `Failed to remove collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1494,9 +1494,7 @@ async function handleGenerateCommitMessage(
 ): Promise<{ message: string }> {
   try {
     const settings = readSettings();
-    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-    if (!apiKey) {
+    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
       throw new Error("OpenRouter API key not found");
     }
 
@@ -1562,40 +1560,18 @@ ${diffsContext}
 Return ONLY the commit message, nothing else.`;
 
     // Call OpenRouter API
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://dyad.sh",
-          "X-Title": "Dyad - Git Commit Message Generator",
+    const data = await openRouterCompletion({
+      model,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 100,
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error("OpenRouter API error:", {
-        status: response.status,
-        body: errorText,
-      });
-      throw new Error(`OpenRouter API error: ${response.status}`);
-    }
-
-    const data = await response.json();
+      ],
+      temperature: 0.7,
+      max_tokens: 100,
+      title: "Dyad - Git Commit Message Generator",
+    });
     const generatedMessage =
       data.choices?.[0]?.message?.content?.trim() ||
       "Actualizar archivos del proyecto";

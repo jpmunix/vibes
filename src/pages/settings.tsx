@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
-import { ProviderSettingsGrid } from "@/components/ProviderSettings";
+import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
+import { AutomationSettings } from "@/components/settings/AutomationSettings";
+import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
@@ -120,40 +122,40 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "segundo plano",
       "background",
     ],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "autofix-model",
     label: "Modelo para auto-fix",
     description: "Seleccionar qué modelo usar para auto-fix en segundo plano",
     keywords: ["modelo", "autofix", "ia", "ai"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "autofix-duration",
     label: "Tiempo máximo auto-fix",
     description: "Tiempo máximo en milisegundos para auto-fix",
     keywords: ["tiempo", "duracion", "limite", "ms", "milisegundos", "autofix"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "autofix-attempts",
     label: "Intentos máximos auto-fix",
     description: "Número máximo de intentos para auto-fix",
     keywords: ["intentos", "reintentos", "attempts", "autofix"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "autofix-issues",
     label: "Número máximo de issues para auto-fix",
     description: "Cantidad máxima de problemas a arreglar automáticamente",
     keywords: ["issues", "problemas", "cantidad", "maximo", "autofix"],
-    section: "Configuración del flujo de trabajo",
-    sectionId: "workflow-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "auto-expand-preview",
@@ -177,8 +179,8 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Presupuesto de pensamiento",
     description: "Configurar el presupuesto de tokens para el modo thinking",
     keywords: ["thinking", "pensamiento", "presupuesto", "tokens", "budget"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   {
     id: "turbo-edits",
@@ -192,32 +194,32 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "busqueda",
       "reemplazo",
     ],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Automatización",
+    sectionId: "automation-settings",
   },
   {
     id: "max-chat-turns",
     label: "Turnos máximos de chat",
     description: "Número máximo de intercambios en una conversación",
     keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   {
     id: "chat-language",
     label: "Idioma del chat",
     description: "Seleccionar el idioma para las respuestas del asistente",
     keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   {
     id: "serper-api",
     label: "Clave API de Serper",
     description: "Configurar la clave API para búsquedas web con Serper",
     keywords: ["serper", "api", "key", "clave", "busqueda", "web", "search"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Modelos y Conectividad",
+    sectionId: "models-connectivity",
   },
   {
     id: "smart-context",
@@ -231,24 +233,24 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "archivos",
       "relevantes",
     ],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   {
     id: "token-stats",
     label: "Guardar métricas de tokens",
     description: "Guardar uso de tokens para logs y gráficas",
     keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   {
     id: "verbose-logs",
     label: "Logs verbosos de chat",
     description: "Registrar información detallada del chat para debugging",
     keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
-    section: "Ajustes IA",
-    sectionId: "ai-settings",
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
   },
   // Stats
   {
@@ -269,20 +271,17 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   // Provider Settings
   {
     id: "provider-settings",
-    label: "Configuración de proveedores",
-    description: "Configurar proveedores de IA y sus credenciales",
+    label: "Configuración de OpenRouter",
+    description: "Configurar clave API de OpenRouter y modelos",
     keywords: [
-      "proveedor",
-      "provider",
+      "openrouter",
       "api",
       "key",
       "clave",
-      "openai",
-      "anthropic",
-      "claude",
+      "ia",
     ],
-    section: "Configuración de proveedores",
-    sectionId: "provider-settings",
+    section: "Modelos y Conectividad",
+    sectionId: "models-connectivity",
   },
   // Integrations
   {
@@ -490,7 +489,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto">
+    <div id="settings-scroll-container" className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto">
       <div className="w-full mx-auto px-8 pt-12 pb-12">
         <div className="flex justify-between items-center mb-12 gap-4">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
@@ -567,23 +566,22 @@ export default function SettingsPage() {
             appVersion={appVersion}
             isHighlighted={highlightedSection === "general-settings"}
           />
+
+          <ModelsAndConnectivity
+            isHighlighted={highlightedSection === "models-connectivity"}
+          />
+
+          <AIBehaviorSettings
+            isHighlighted={highlightedSection === "ai-behavior"}
+          />
+
+          <AutomationSettings
+            isHighlighted={highlightedSection === "automation-settings"}
+          />
+
           <WorkflowSettings
             isHighlighted={highlightedSection === "workflow-settings"}
           />
-          <AISettings isHighlighted={highlightedSection === "ai-settings"} />
-          <StatsSettings
-            isHighlighted={highlightedSection === "stats-settings"}
-          />
-
-          <div
-            id="provider-settings"
-            className={`bg-card rounded-2xl shadow-sm border border-border transition-all duration-300 ${highlightedSection === "provider-settings"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
-          >
-            <ProviderSettingsGrid />
-          </div>
 
           {/* Integrations Section */}
           <div
@@ -593,9 +591,12 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Integraciones
             </h2>
+            <p className="text-sm text-muted-foreground mb-8">
+              Conecta servicios externos para automatizar despliegues y bases de datos.
+            </p>
             <div className="space-y-6">
               <GitHubIntegration />
               <VercelIntegration />
@@ -612,11 +613,18 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-              Permisos del Agente
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Seguridad y Permisos del Agente
             </h2>
+            <p className="text-sm text-muted-foreground mb-8">
+              Controla los permisos de lectura y escritura para las herramientas que usa el asistente.
+            </p>
             <AgentToolsSettings />
           </div>
+
+          <StatsSettings
+            isHighlighted={highlightedSection === "stats-settings"}
+          />
 
           {/* Experiments Section */}
           <div
@@ -626,26 +634,13 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-              Experimentos
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Laboratorio y Experimentos
             </h2>
+            <p className="text-sm text-muted-foreground mb-8">
+              Funcionalidades en fase de prueba que pueden cambiar o desaparecer.
+            </p>
             <div className="space-y-8">
-              <SettingItem
-                label="Git nativo"
-                description="Esto no requiere ninguna instalación externa de Git y ofrece una experiencia de rendimiento Git nativa más rápida."
-                control={
-                  <Switch
-                    id="enable-native-git"
-                    checked={!!settings?.enableNativeGit}
-                    onCheckedChange={(checked) => {
-                      updateSettings({
-                        enableNativeGit: checked,
-                      });
-                    }}
-                  />
-                }
-              />
-
               <SettingItem
                 label="Playground de Embeddings"
                 description="Prueba el modelo MiniLM para búsqueda semántica local de archivos en tu codebase"
@@ -863,21 +858,6 @@ export function WorkflowSettings({
 }) {
   const { settings, updateSettings } = useSettings();
 
-  const handleToggleBackgroundProblemFix = async (value: boolean) => {
-    await updateSettings({
-      enableBackgroundProblemAutoFix: value,
-    });
-  };
-
-  const handleUpdateNumberSetting = async (
-    field: "autoFixMaxDurationMs" | "autoFixMaxAttempts" | "autoFixMaxIssues",
-    value: number,
-    fallback: number,
-  ) => {
-    const parsed = Number.isFinite(value) && value > 0 ? value : fallback;
-    await updateSettings({ [field]: parsed } as any);
-  };
-
   return (
     <div
       id="workflow-settings"
@@ -886,9 +866,12 @@ export function WorkflowSettings({
         isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
       )}
     >
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-        Flujo de trabajo
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        Flujo de Trabajo
       </h2>
+      <p className="text-sm text-muted-foreground mb-8">
+        Configura cómo interactúas con la aplicación y el comportamiento de las herramientas de desarrollo.
+      </p>
 
       <div className="space-y-12">
         <div className="space-y-4">
@@ -902,8 +885,20 @@ export function WorkflowSettings({
 
         <div className="space-y-4 pt-8 border-t border-border">
           <SettingItem
+            label="Git nativo"
+            description="Usa una implementación de Git integrada para mayor velocidad y menos dependencias externas."
+            onClick={() => updateSettings({ enableNativeGit: !settings?.enableNativeGit })}
+            control={
+              <Switch
+                checked={!!settings?.enableNativeGit}
+                onCheckedChange={(checked) => updateSettings({ enableNativeGit: checked })}
+              />
+            }
+          />
+
+          <SettingItem
             label="Auto-aprobar cambios"
-            description="Aprobará automáticamente los cambios de código y los ejecutará sin pedir confirmación"
+            description="Aprobará automáticamente los cambios de código sugeridos por la IA sin pedir confirmación."
             onClick={() => updateSettings({ autoApproveChanges: !settings?.autoApproveChanges })}
             control={
               <Switch
@@ -914,20 +909,8 @@ export function WorkflowSettings({
           />
 
           <SettingItem
-            label="Auto-fix en segundo plano"
-            description="Arregla automáticamente los errores detectados mientras trabajas en otras tareas"
-            onClick={() => handleToggleBackgroundProblemFix(!settings?.enableBackgroundProblemAutoFix)}
-            control={
-              <Switch
-                checked={settings?.enableBackgroundProblemAutoFix ?? false}
-                onCheckedChange={handleToggleBackgroundProblemFix}
-              />
-            }
-          />
-
-          <SettingItem
             label="Expandir vista previa"
-            description="Abre automáticamente el panel de vista previa cuando el código cambia"
+            description="Abre automáticamente el panel de vista previa lateral cuando el código cambia."
             onClick={() => updateSettings({ autoExpandPreviewPanel: !settings?.autoExpandPreviewPanel })}
             control={
               <Switch
@@ -939,7 +922,7 @@ export function WorkflowSettings({
 
           <SettingItem
             label="Notificaciones de respuesta"
-            description="Muestra una notificación nativa cuando el chat termina (si la app no está en primer plano)"
+            description="Muestra una notificación nativa del sistema cuando el chat termina de generar."
             onClick={() => updateSettings({ enableChatCompletionNotifications: !settings?.enableChatCompletionNotifications })}
             control={
               <Switch
@@ -949,239 +932,11 @@ export function WorkflowSettings({
             }
           />
         </div>
-
-        <div className="space-y-6 pt-8 border-t border-border">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Modelo y límites para auto-fix
-            </h3>
-            <p className="text-base text-muted-foreground mt-1">
-              Configura el comportamiento del sistema de corrección automática en segundo plano
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 rounded-2xl bg-muted/30 border border-border">
-            <div className="space-y-4">
-              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                Modelo de corrección
-              </Label>
-              <AutoFixModelSelector />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
-                  Tiempo máx. (ms)
-                </Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={settings?.autoFixMaxDurationMs ?? 20000}
-                  className="rounded-xl border-border bg-card"
-                  onChange={(e) =>
-                    handleUpdateNumberSetting(
-                      "autoFixMaxDurationMs",
-                      Number(e.target.value),
-                      20000,
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
-                  Intentos máx.
-                </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={settings?.autoFixMaxAttempts ?? 1}
-                  className="rounded-xl border-border bg-card"
-                  onChange={(e) =>
-                    handleUpdateNumberSetting(
-                      "autoFixMaxAttempts",
-                      Number(e.target.value),
-                      1,
-                    )
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-function TurboEditsV2Switch() {
-  const { settings, updateSettings } = useSettings();
-  const [saving, setSaving] = useState(false);
-  const isEnabled = settings?.enableTurboEditsV2 ?? true;
-
-  const handleToggle = async (value: boolean) => {
-    setSaving(true);
-    try {
-      await updateSettings({ enableTurboEditsV2: value });
-    } catch (error) {
-      showError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo actualizar Turbo Edits",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-            Turbo Edits (v2)
-          </h3>
-          <span className="text-[10px] leading-none uppercase tracking-wide rounded-lg bg-primary/10 text-primary px-3 py-1 border border-primary/20">
-            Beta
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Activa o desactiva el modo de búsqueda y reemplazo automático que
-          intenta arreglar cambios fallidos antes de escribir los archivos.
-        </p>
-      </div>
-      <Switch
-        checked={isEnabled}
-        onCheckedChange={handleToggle}
-        disabled={saving}
-        aria-label="Activar Turbo Edits"
-      />
-    </div>
-  );
-}
-
-export function AISettings({ isHighlighted }: { isHighlighted?: boolean }) {
-  const { settings, updateSettings } = useSettings();
-
-  const handleToggle = async (
-    field:
-      | "enableLocalSmartContext"
-      | "enableTokenStats"
-      | "enableVerboseChatLogs"
-      | "enableTurboEditsV2",
-    value: boolean,
-  ) => {
-    await updateSettings({ [field]: value } as any);
-  };
-
-  return (
-    <div
-      id="ai-settings"
-      className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
-        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
-      )}
-    >
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-        Ajustes IA
-      </h2>
-
-      <div className="space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Presupuesto de pensamiento
-            </Label>
-            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
-              <ThinkingBudgetSelector />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Turnos máximos de chat
-            </Label>
-            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
-              <MaxChatTurnsSelector />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-border">
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Idioma del asistente
-            </Label>
-            <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
-              <ChatLanguageSelector />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Búsqueda Web (Serper)
-            </Label>
-            <SerperApiKeySettings />
-          </div>
-        </div>
-
-        <div className="space-y-4 pt-8 border-t border-border">
-          <SettingItem
-            label="Turbo Edits (v2)"
-            description="Modo de búsqueda y reemplazo inteligente para ediciones ultra rápidas"
-            onClick={() => handleToggle("enableTurboEditsV2", !(settings?.enableTurboEditsV2 ?? true))}
-            control={
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-widest rounded-lg bg-primary/10 text-primary px-3 py-1 border border-primary/20">
-                  Beta
-                </span>
-                <Switch
-                  checked={settings?.enableTurboEditsV2 ?? true}
-                  onCheckedChange={(checked) => handleToggle("enableTurboEditsV2", checked)}
-                />
-              </div>
-            }
-          />
-
-          <SettingItem
-            label="Smart Context local"
-            description="Ranking de archivos relevantes sin necesidad de servidor externo"
-            onClick={() => handleToggle("enableLocalSmartContext", settings?.enableLocalSmartContext !== false)}
-            control={
-              <Switch
-                checked={settings?.enableLocalSmartContext !== false}
-                onCheckedChange={(checked) => handleToggle("enableLocalSmartContext", checked)}
-              />
-            }
-          />
-
-          <SettingItem
-            label="Métricas de tokens"
-            description="Guarda el historial de consumo para visualizarlo en estadísticas"
-            onClick={() => handleToggle("enableTokenStats", settings?.enableTokenStats !== false)}
-            control={
-              <Switch
-                checked={settings?.enableTokenStats !== false}
-                onCheckedChange={(checked) => handleToggle("enableTokenStats", checked)}
-              />
-            }
-          />
-
-          <SettingItem
-            label="Logs verbosos"
-            description="Muestra información técnica detallada en el panel de chat"
-            onClick={() => handleToggle("enableVerboseChatLogs", !!settings?.enableVerboseChatLogs)}
-            control={
-              <Switch
-                checked={!!settings?.enableVerboseChatLogs}
-                onCheckedChange={(checked) => handleToggle("enableVerboseChatLogs", checked)}
-              />
-            }
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   const [entries, setEntries] = useState<TokenStatEntry[]>([]);
@@ -1438,19 +1193,19 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   Top Modelos
                 </h3>
               </div>
-              <div className="space-y-6 p-8 rounded-2xl bg-muted/30 border border-border h-full">
+              <div className="space-y-6 p-6 rounded-2xl bg-muted/30 border border-border h-full overflow-hidden">
                 {modelStats.map((stat, idx) => (
                   <div key={stat.model} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest flex-shrink-0">
                           #{idx + 1}
                         </span>
                         <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
                           {stat.model}
                         </div>
                       </div>
-                      <span className="text-sm font-black text-primary/80">
+                      <span className="text-sm font-black text-primary/80 flex-shrink-0">
                         {stat.tokens.toLocaleString()}
                       </span>
                     </div>

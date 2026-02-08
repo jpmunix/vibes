@@ -1,0 +1,96 @@
+import { readSettings } from "../../main/settings";
+import log from "electron-log";
+
+const logger = log.scope("openrouter_client");
+
+export interface OpenRouterMessage {
+    role: "user" | "assistant" | "system";
+    content: string;
+}
+
+export interface OpenRouterCompletionOptions {
+    model?: string;
+    messages: OpenRouterMessage[];
+    temperature?: number;
+    max_tokens?: number;
+    referer?: string;
+    title?: string;
+    signal?: AbortSignal;
+}
+
+/**
+ * Common utility for making generic requests to OpenRouter.
+ */
+export async function openRouterRequest(endpoint: string, options: RequestInit = {}) {
+    const settings = readSettings();
+    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+
+    if (!apiKey) {
+        throw new Error("OpenRouter API key not found. Please configure it in settings.");
+    }
+
+    const { headers: extraHeaders, ...rest } = options;
+
+    const response = await fetch(`https://openrouter.ai/api/v1${endpoint}`, {
+        ...rest,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            ...extraHeaders,
+        },
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        logger.error(`OpenRouter request to ${endpoint} failed: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(
+            `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
+        );
+    }
+
+    return response;
+}
+
+/**
+ * Common utility for making chat completion requests to OpenRouter.
+ * Automatically handles API key from settings and provides common headers.
+ */
+export async function openRouterCompletion(options: OpenRouterCompletionOptions) {
+    const settings = readSettings();
+
+    const {
+        model, // optional, will default to settings.appTitleGenerationModel or a fallback
+        messages,
+        temperature = 0.3,
+        max_tokens,
+        referer,
+        title,
+        signal,
+    } = options;
+
+    const defaultModel = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+    const finalModel = model || defaultModel;
+
+    const body: any = {
+        model: finalModel,
+        messages,
+        temperature,
+    };
+
+    if (max_tokens !== undefined) {
+        body.max_tokens = max_tokens;
+    }
+
+    const headers: Record<string, string> = {};
+    if (referer) headers["HTTP-Referer"] = referer;
+    if (title) headers["X-Title"] = title;
+
+    const response = await openRouterRequest("/chat/completions", {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers,
+        signal,
+    });
+
+    return await response.json();
+}

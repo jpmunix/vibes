@@ -90,9 +90,9 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
   };
 
   return (
-    <div className="mt-8 border-t pt-6">
-      <h2 className="text-2xl font-semibold mb-4">Modelos</h2>
-      <p className="text-muted-foreground mb-4">
+    <div className="mt-4">
+      <h2 className="text-xl font-semibold mb-2">Modelos</h2>
+      <p className="text-sm text-muted-foreground mb-4">
         Administre modelos específicos disponibles a través de este proveedor.
       </p>
 
@@ -111,23 +111,23 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
         </Alert>
       )}
       {!modelsLoading && !modelsError && models && models.length > 0 && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {models.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className={`p-4 bg-card border border-border rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow ${selectedModel === model.apiName
-                  ? "ring-2 ring-primary"
-                  : ""
+              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${selectedModel === model.apiName
+                ? "ring-2 ring-primary"
+                : ""
                 }`}
               onClick={() => handleModelClick(model.apiName)}
               onDoubleClick={() => handleModelDoubleClick(model)}
             >
-              <div className="flex justify-between items-center">
-                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              <div className="flex justify-between items-start gap-2">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-1">
                   {model.displayName}
                 </h4>
                 {model.type === "custom" && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -135,10 +135,10 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                         e.stopPropagation();
                         handleEditClick(model);
                       }}
-                      className="text-primary hover:bg-primary/10 h-8 w-8"
+                      className="text-primary hover:bg-primary/10 h-6 w-6"
                     >
                       <svg
-                        className="h-4 w-4"
+                        className="h-3 w-3"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -159,40 +159,27 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                         handleDeleteClick(model.apiName);
                       }}
                       disabled={isDeleting}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50 h-8 w-8"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50 h-6 w-6"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      <TrashIcon className="h-3 w-3" />
                     </Button>
                   </div>
                 )}
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+              <p className="text-xs text-muted-foreground italic truncate mt-1">
                 {model.apiName}
               </p>
               {model.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-1">
                   {model.description}
                 </p>
               )}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {model.contextWindow && (
-                  <span>
-                    Context: {model.contextWindow.toLocaleString()} tokens
-                  </span>
-                )}
-                {model.maxOutputTokens && (
-                  <span>
-                    Max Output: {model.maxOutputTokens.toLocaleString()} tokens
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-x-2">
-                <span className="mt-2 inline-block bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded-full">
+              <div className="flex flex-wrap gap-1 mt-auto pt-2">
+                <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
                   {model.type === "cloud" ? "Integrado" : "Personalizado"}
                 </span>
-
                 {model.tag && (
-                  <span className="mt-2 inline-block bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
                     {model.tag}
                   </span>
                 )}

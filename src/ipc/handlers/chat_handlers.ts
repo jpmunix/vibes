@@ -8,6 +8,7 @@ import { getDyadAppPath } from "../../paths/paths";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
+import { openRouterCompletion } from "../utils/openrouter";
 
 const logger = log.scope("chat_handlers");
 
@@ -83,24 +84,24 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-          where: eq(chats.appId, appId),
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        })
+        where: eq(chats.appId, appId),
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      })
       : db.query.chats.findMany({
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        });
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      });
 
     const allChats = await query;
     return allChats as ChatSummary[];
@@ -178,10 +179,7 @@ export function registerChatHandlers() {
       logger.info(`generateChatTitle called for chatId=${chatId}`);
       const { readSettings } = await import("../../main/settings");
       const settings = readSettings();
-      const apiKey =
-        settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-      if (!apiKey) {
+      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
         logger.warn("OpenRouter API key not found, using default title");
         return { title: "Nuevo chat" };
       }
@@ -226,43 +224,23 @@ export function registerChatHandlers() {
           return { title: "Nuevo chat" };
         }
 
-        const response = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-              "HTTP-Referer": "https://dyad.sh",
-              "X-Title": "Dyad",
+        const data = await openRouterCompletion({
+          model,
+          temperature: 0.3,
+          max_tokens: 40,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
             },
-            body: JSON.stringify({
-              model,
-              temperature: 0.3,
-              max_tokens: 40,
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
-                },
-                {
-                  role: "user",
-                  content: `Genera un título corto en español en formato objetivo (sin primera persona) para este chat: "${messageContent.slice(0, 500)}"`,
-                },
-              ],
-            }),
-          },
-        );
+            {
+              role: "user",
+              content: `Genera un título corto en español en formato objetivo (sin primera persona) para este chat: "${messageContent.slice(0, 500)}"`,
+            },
+          ],
+        });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
-          );
-        }
-
-        const data = await response.json();
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
@@ -310,9 +288,7 @@ export function registerChatHandlers() {
   createTypedHandler(chatContracts.summarizeTodaysChats, async (_, appId) => {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
-    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-    if (!apiKey) {
+    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
       throw new Error("OpenRouter API key not found");
     }
 
@@ -374,43 +350,23 @@ export function registerChatHandlers() {
       .join("\n\n---\n\n");
 
     try {
-      const response = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://dyad.sh",
-            "X-Title": "Dyad",
+      const data = await openRouterCompletion({
+        model,
+        temperature: 0.3,
+        max_tokens: 500,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Eres un asistente que resume el trabajo del día a nivel de features y funcionalidades principales. NO entres en detalles técnicos de archivos, componentes o implementación. Crea un resumen con grandes titulares de las features desarrolladas, bugs corregidos y cambios importantes. Usa viñetas con títulos descriptivos y concisos. IMPORTANTE: No uses frases introductorias como 'Aquí tienes el resumen' o similares. Empieza directamente con el contenido del resumen. FORMATO: Siempre responde en formato markdown, usando viñetas (-), encabezados (##), y saltos de línea apropiados.",
           },
-          body: JSON.stringify({
-            model,
-            temperature: 0.3,
-            max_tokens: 500,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "Eres un asistente que resume el trabajo del día a nivel de features y funcionalidades principales. NO entres en detalles técnicos de archivos, componentes o implementación. Crea un resumen con grandes titulares de las features desarrolladas, bugs corregidos y cambios importantes. Usa viñetas con títulos descriptivos y concisos. IMPORTANTE: No uses frases introductorias como 'Aquí tienes el resumen' o similares. Empieza directamente con el contenido del resumen. FORMATO: Siempre responde en formato markdown, usando viñetas (-), encabezados (##), y saltos de línea apropiados.",
-              },
-              {
-                role: "user",
-                content: `Resume las features y funcionalidades principales trabajadas hoy (NO menciones archivos ni componentes específicos, solo las features a alto nivel):\n\n${chatsContext}`,
-              },
-            ],
-          }),
-        },
-      );
+          {
+            role: "user",
+            content: `Resume las features y funcionalidades principales trabajadas hoy (NO menciones archivos ni componentes específicos, solo las features a alto nivel):\n\n${chatsContext}`,
+          },
+        ],
+      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter failed: ${response.status} ${response.statusText} - ${errorText}`,
-        );
-      }
-
-      const data = await response.json();
       const summary =
         data?.choices?.[0]?.message?.content?.trim() ||
         "No se pudo generar el resumen.";

@@ -12,12 +12,13 @@ type SettingsSection = {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "General" },
+  { id: "models-connectivity", label: "Modelos y Conectividad" },
+  { id: "ai-behavior", label: "Configuración Asistente" },
+  { id: "automation-settings", label: "Automatización" },
   { id: "workflow-settings", label: "Flujo de trabajo" },
-  { id: "ai-settings", label: "Ajustes IA" },
-  { id: "stats-settings", label: "Stats" },
-  { id: "provider-settings", label: "OpenRouter" },
   { id: "integrations", label: "Integraciones" },
   { id: "agent-permissions", label: "Permisos del agente" },
+  { id: "stats-settings", label: "Estadísticas" },
   { id: "experiments", label: "Experimentos" },
   { id: "danger-zone", label: "Zona peligrosa" },
 ];
@@ -33,27 +34,96 @@ export function SettingsList({ show }: { show: boolean }) {
   const settingsSections = SETTINGS_SECTIONS;
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-            return;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let scrollHandler: (() => void) | null = null;
+    let scrollContainer: HTMLElement | null = null;
+
+    const calculateActiveSection = () => {
+      if (!scrollContainer) return;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const containerTop = containerRect.top;
+      const targetLine = containerTop + containerRect.height * 0.25; // 25% from top of container
+
+      let closestSection: string | null = null;
+      let closestDistance = Infinity;
+
+      for (const section of settingsSections) {
+        const el = document.getElementById(section.id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const distance = Math.abs(rect.top - targetLine);
+
+          // Check if section is at or above the target line (scrolled into view)
+          if (rect.top <= targetLine && distance < closestDistance) {
+            closestDistance = distance;
+            closestSection = section.id;
           }
         }
-      },
-      { rootMargin: "-20% 0px -80% 0px", threshold: 0 },
-    );
-
-    for (const section of settingsSections) {
-      const el = document.getElementById(section.id);
-      if (el) {
-        observer.observe(el);
       }
+
+      // Fallback: if nothing is above the line, select the first visible section
+      if (!closestSection) {
+        for (const section of settingsSections) {
+          const el = document.getElementById(section.id);
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            if (rect.bottom > containerTop) {
+              closestSection = section.id;
+              break;
+            }
+          }
+        }
+      }
+
+      if (closestSection) {
+        setActiveSection(closestSection);
+      }
+    };
+
+    const initScrollListener = () => {
+      scrollContainer = document.getElementById("settings-scroll-container");
+
+      if (!scrollContainer) {
+        return false;
+      }
+
+      // Remove previous listener if exists
+      if (scrollHandler) {
+        scrollContainer.removeEventListener("scroll", scrollHandler);
+      }
+
+      scrollHandler = () => {
+        requestAnimationFrame(calculateActiveSection);
+      };
+
+      scrollContainer.addEventListener("scroll", scrollHandler, { passive: true });
+
+      // Calculate initial active section
+      calculateActiveSection();
+
+      return true;
+    };
+
+    // Try immediately
+    const success = initScrollListener();
+
+    // If not successful, poll until we find the container
+    if (!success) {
+      let attempts = 0;
+      pollInterval = setInterval(() => {
+        attempts++;
+        if (initScrollListener() || attempts >= 40) {
+          if (pollInterval) clearInterval(pollInterval);
+        }
+      }, 250);
     }
 
     return () => {
-      observer.disconnect();
+      if (pollInterval) clearInterval(pollInterval);
+      if (scrollContainer && scrollHandler) {
+        scrollContainer.removeEventListener("scroll", scrollHandler);
+      }
     };
   }, [settingsSections, setActiveSection]);
 

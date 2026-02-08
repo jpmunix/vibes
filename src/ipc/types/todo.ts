@@ -13,6 +13,7 @@ export const TodoSchema = z.object({
   appId: z.number(),
   content: z.string(),
   description: z.string().optional().nullable(),
+  prompt: z.string().optional().nullable(),
   completed: z.boolean(),
   order: z.number(),
   createdAt: z.union([z.date(), z.string()]),
@@ -28,6 +29,7 @@ export const CreateTodoParamsSchema = z.object({
   appId: z.number(),
   content: z.string(),
   description: z.string().optional(),
+  prompt: z.string().optional(),
 });
 
 export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
@@ -39,6 +41,7 @@ export const UpdateTodoParamsSchema = z.object({
   todoId: z.number(),
   content: z.string().optional(),
   description: z.string().optional().nullable(),
+  prompt: z.string().optional().nullable(),
   completed: z.boolean().optional(),
 });
 
@@ -59,6 +62,7 @@ export type ReorderTodosParams = z.infer<typeof ReorderTodosParamsSchema>;
  */
 export const DevelopTodoParamsSchema = z.object({
   todoId: z.number(),
+  prompt: z.string().optional(),
 });
 
 export type DevelopTodoParams = z.infer<typeof DevelopTodoParamsSchema>;
@@ -71,6 +75,24 @@ export const DevelopTodoResponseSchema = z.object({
 });
 
 export type DevelopTodoResponse = z.infer<typeof DevelopTodoResponseSchema>;
+
+/**
+ * Schema for refine todo prompt params.
+ */
+export const RefineTodoPromptParamsSchema = z.object({
+  todoId: z.number(),
+});
+
+export type RefineTodoPromptParams = z.infer<typeof RefineTodoPromptParamsSchema>;
+
+/**
+ * Schema for refine todo prompt response.
+ */
+export const RefineTodoPromptResponseSchema = z.object({
+  prompt: z.string(),
+});
+
+export type RefineTodoPromptResponse = z.infer<typeof RefineTodoPromptResponseSchema>;
 
 // =============================================================================
 // Todo Contracts (Invoke/Response)
@@ -111,6 +133,12 @@ export const todoContracts = {
     channel: "develop-todo",
     input: DevelopTodoParamsSchema,
     output: DevelopTodoResponseSchema,
+  }),
+
+  refineTodoPrompt: defineContract({
+    channel: "refine-todo-prompt",
+    input: RefineTodoPromptParamsSchema,
+    output: RefineTodoPromptResponseSchema,
   }),
 } as const;
 

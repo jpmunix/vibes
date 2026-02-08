@@ -6,6 +6,7 @@
 import { readSettings } from "@/main/settings";
 import log from "electron-log";
 import type { AgentContext } from "./types";
+import { openRouterCompletion, type OpenRouterMessage } from "@/ipc/utils/openrouter";
 
 export const DYAD_ENGINE_URL =
   process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -15,7 +16,6 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const logger = log.scope("engine_fetch");
 const TURBO_EDIT_TIMEOUT_MS = 20_000;
 
@@ -53,7 +53,7 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   return apiKey;
 }
 
-function buildTurboEditMessages(body: TurboFileEditRequestBody) {
+function buildTurboEditMessages(body: TurboFileEditRequestBody): OpenRouterMessage[] {
   const instructions = body.instructions?.trim();
   const instructionsBlock = instructions
     ? `Instructions:\n${instructions}\n\n`
@@ -122,42 +122,28 @@ async function callTurboFileEditViaOpenRouter(
   const model = settings.turboEditModel || "openai/gpt-4.1-mini";
   const body = parseTurboFileEditBody(options.body);
 
-  const baseRequest = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      messages: buildTurboEditMessages(body),
-    }),
-  } satisfies RequestInit;
-
-  let response: Response | null = null;
+  let data: any;
   try {
-    response = await fetchWithTimeout(
-      `${OPENROUTER_BASE_URL}/chat/completions`,
-      baseRequest,
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TURBO_EDIT_TIMEOUT_MS);
+    try {
+      data = await openRouterCompletion({
+        model,
+        temperature: 0,
+        messages: buildTurboEditMessages(body),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
     logger.error("OpenRouter turbo edit request timed out or failed", error);
     throw new Error(
-      `OpenRouter turbo file edit failed: ${
-        error instanceof Error ? error.message : String(error)
+      `OpenRouter turbo file edit failed: ${error instanceof Error ? error.message : String(error)
       }`,
     );
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `OpenRouter turbo file edit failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
-  }
-
-  const data = await response.json();
   const rawContent = data?.choices?.[0]?.message?.content ?? "";
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");

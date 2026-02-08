@@ -211,6 +211,13 @@
       "when": 1770501196239,
       "tag": "0029_acoustic_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1770507648390,
+      "tag": "0030_closed_lionheart",
+      "breakpoints": true
     }
   ]
 }

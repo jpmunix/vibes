@@ -25,9 +25,10 @@ interface TodoListProps {
   todos: Todo[];
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
   onDelete: (todoId: number) => void;
-  onDevelop: (todoId: number) => void;
+  onDevelop: (todoId: number, prompt?: string) => void;
+  onRefine: (todoId: number) => Promise<string>;
   onReorder: (todoIds: number[]) => void;
   isLoading?: boolean;
 }
@@ -39,6 +40,7 @@ export function TodoList({
   onUpdate,
   onDelete,
   onDevelop,
+  onRefine,
   onReorder,
   isLoading,
 }: TodoListProps) {
@@ -167,10 +169,21 @@ export function TodoList({
         todo={editingTodo}
         open={!!editingTodo}
         onOpenChange={(open) => !open && setEditingTodo(null)}
-        onSave={(id, content, desc) => {
-          onUpdate(id, content, desc);
+        onSave={(id, content, desc, prompt, closeModal = false) => {
+          onUpdate(id, content, desc, prompt);
+          if (closeModal) {
+            setEditingTodo(null);
+          }
+        }}
+        onDelete={(id) => {
+          onDelete(id);
           setEditingTodo(null);
         }}
+        onDevelop={(id, prompt) => {
+          onDevelop(id, prompt);
+          setEditingTodo(null);
+        }}
+        onRefine={onRefine}
       />
     </div>
   );

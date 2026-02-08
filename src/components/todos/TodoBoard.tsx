@@ -6,9 +6,10 @@ interface TodoBoardProps {
   appName: string;
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
   onDelete: (todoId: number) => void;
-  onDevelop: (todoId: number) => void;
+  onDevelop: (todoId: number, prompt?: string) => void;
+  onRefine: (todoId: number) => Promise<string>;
   onReorder: (todoIds: number[]) => void;
   isLoading?: boolean;
 }
@@ -21,6 +22,7 @@ export function TodoBoard({
   onUpdate,
   onDelete,
   onDevelop,
+  onRefine,
   onReorder,
   isLoading,
 }: TodoBoardProps) {
@@ -44,6 +46,7 @@ export function TodoBoard({
           onUpdate={onUpdate}
           onDelete={onDelete}
           onDevelop={onDevelop}
+          onRefine={onRefine}
           onReorder={onReorder}
           isLoading={isLoading}
         />

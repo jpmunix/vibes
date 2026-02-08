@@ -6,6 +6,7 @@ import { getDyadAppPath } from "../../paths/paths";
 import { todoContracts } from "../types/todo";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
+import { openRouterCompletion } from "../utils/openrouter";
 
 const logger = log.scope("todo_handlers");
 
@@ -38,6 +39,7 @@ export function registerTodoHandlers() {
         appId,
         content,
         description: params.description,
+        prompt: params.prompt,
         order: maxOrder + 1,
       })
       .returning();
@@ -55,6 +57,9 @@ export function registerTodoHandlers() {
     }
     if (params.description !== undefined) {
       (updateData as any).description = params.description;
+    }
+    if (params.prompt !== undefined) {
+      (updateData as any).prompt = params.prompt;
     }
     if (completed !== undefined) {
       updateData.completed = completed;
@@ -141,10 +146,15 @@ export function registerTodoHandlers() {
       .returning();
 
     // Create the initial message with the todo content
+    const baseContent = `Desarrollar la siguiente tarea: ${todo.content}`;
+    const initialContent = params.prompt
+      ? `${baseContent}\n\nInstrucciones adicionales:\n${params.prompt}`
+      : baseContent;
+
     await db.insert(messages).values({
       chatId: chat.id,
       role: "user",
-      content: `Desarrollar la siguiente tarea: ${todo.content}`,
+      content: initialContent,
     });
 
     logger.info(
@@ -158,6 +168,69 @@ export function registerTodoHandlers() {
 
     return { chatId: chat.id };
   });
+
+  createTypedHandler(
+    todoContracts.refineTodoPrompt,
+    async (_, params) => {
+      logger.info("refineTodoPrompt called with params:", params);
+      const { todoId } = params;
+
+      // Get the todo
+      const todo = await db.query.todos.findFirst({
+        where: eq(todos.id, todoId),
+      });
+
+      if (!todo) {
+        logger.error("Todo not found:", todoId);
+        throw new Error("Todo not found");
+      }
+
+      logger.info("Found todo:", todo.id, todo.content);
+
+      const { readSettings } = await import("../../main/settings");
+      const settings = readSettings();
+      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+        logger.error("OpenRouter API key not found");
+        throw new Error("OpenRouter API key not found");
+      }
+
+      const model =
+        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+      logger.info("Using model:", model);
+
+      try {
+        const todoTitle = todo.content;
+        const todoDescription = todo.description || "";
+        const todoContext = `Título: ${todoTitle}\nDescripción: ${todoDescription}`;
+
+        const data = await openRouterCompletion({
+          model,
+          temperature: 0.7,
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Genera un prompt para desarrollar la tarea proporcionada. Describe lo que se especifica en la tarea, sin asumir características o funcionalidades adicionales pero pensando en cómo la IA puede comprender mejor la idea del usuario que, eventualmente, puede ser vaga o imprecisa. No incluyas descripciones del rol de la IA ni instrucciones sobre cómo debe comportarse. Responde ÚNICAMENTE con el prompt generado. El idioma del prompt debe coincidir con el de la tarea.",
+            },
+            {
+              role: "user",
+              content: `Genera un prompt de desarrollo para la siguiente tarea:\n\n${todoContext}`,
+            },
+          ],
+        });
+
+        const generatedPrompt =
+          data?.choices?.[0]?.message?.content?.trim() || "";
+
+        return { prompt: generatedPrompt };
+      } catch (error) {
+        logger.error("Error generating todo prompt:", error);
+        throw new Error("Error al generar el prompt para la tarea");
+      }
+    },
+  );
 
   logger.debug("Registered todo IPC handlers");
 }

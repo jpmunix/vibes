@@ -5,15 +5,15 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Code, Edit2, GripVertical, Trash2 } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
   onDelete: (todoId: number) => void;
-  onDevelop: (todoId: number) => void;
+  onDevelop: (todoId: number, prompt?: string) => void;
   onEdit: () => void;
 }
 
@@ -92,12 +92,12 @@ export function SortableTodoItem({
           className="flex-1"
         />
       ) : (
-        <span
+        <div
           className={cn(
-            "flex-1 text-sm",
+            "flex-1 text-sm cursor-pointer py-1",
             todo.completed && "line-through text-muted-foreground"
           )}
-          onDoubleClick={() => setIsEditing(true)}
+          onClick={onEdit}
         >
           {todo.content}
           {todo.description && (
@@ -105,38 +105,8 @@ export function SortableTodoItem({
               {todo.description}
             </p>
           )}
-        </span>
+        </div>
       )}
-
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => onDevelop(todo.id)}
-          title="Desarrollar"
-        >
-          <Code className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onEdit}
-          title="Editar"
-        >
-          <Edit2 className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
-          onClick={() => onDelete(todo.id)}
-          title="Eliminar"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
     </div>
   );
 }
@@ -145,9 +115,9 @@ export function SortableTodoItem({
 interface TodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null) => void;
+  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
   onDelete: (todoId: number) => void;
-  onDevelop: (todoId: number) => void;
+  onDevelop: (todoId: number, prompt?: string) => void;
   onEdit: () => void;
 }
 
@@ -203,12 +173,12 @@ export function TodoItem({
           className="flex-1"
         />
       ) : (
-        <span
+        <div
           className={cn(
-            "flex-1 text-sm",
+            "flex-1 text-sm cursor-pointer py-1",
             todo.completed && "line-through text-muted-foreground"
           )}
-          onDoubleClick={() => setIsEditing(true)}
+          onClick={onEdit}
         >
           {todo.content}
           {todo.description && (
@@ -216,38 +186,9 @@ export function TodoItem({
               {todo.description}
             </p>
           )}
-        </span>
+        </div>
       )}
-
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => onDevelop(todo.id)}
-          title="Desarrollar"
-        >
-          <Code className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onEdit}
-          title="Editar"
-        >
-          <Edit2 className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
-          onClick={() => onDelete(todo.id)}
-          title="Eliminar"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
     </div>
   );
 }
+
