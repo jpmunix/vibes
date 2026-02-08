@@ -78,7 +78,7 @@ export default function NoteDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto overflow-x-hidden">
+    <div className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto overflow-x-hidden">
       <div className="w-full mx-auto px-8 pt-12 pb-4">
         <input
           type="text"
