@@ -11,9 +11,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [
-          #{ id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
-          { id: "macos", image: "macos-latest", command: "npx electron-forge make --platform darwin --arch x64" }
-        ]
+            #{ id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
+            {
+              id: "macos",
+              image: "macos-latest",
+              command: "npx electron-forge make --platform darwin --arch x64",
+            },
+          ]
     runs-on: ${{ matrix.os.image }}
 
     steps:
@@ -24,7 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install libvips (Linux only)
         if: matrix.os.image == 'ubuntu-latest'

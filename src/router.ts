@@ -18,7 +18,6 @@ import { todosIndexRoute } from "./routes/todos_.index";
 import { settingsIndexRoute } from "./routes/settings/index";
 import { promptsSettingsRoute } from "./routes/settings/prompts";
 
-
 const routeTree = rootRoute.addChildren([
   homeRoute,
   hubRoute,
@@ -30,7 +29,6 @@ const routeTree = rootRoute.addChildren([
   appDetailsRoute,
   settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute]),
 ]);
-
 
 import { useNavigate } from "@tanstack/react-router";
 // src/components/NotFoundRedirect.tsx

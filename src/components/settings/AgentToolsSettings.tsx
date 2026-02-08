@@ -65,7 +65,7 @@ export function AgentToolsSettings() {
           <ChevronRight
             className={cn(
               "size-4 transition-transform text-muted-foreground/40 group-hover:text-foreground",
-              showAutoApproved ? "rotate-90" : ""
+              showAutoApproved ? "rotate-90" : "",
             )}
           />
           <span className="uppercase tracking-widest text-[10px]">

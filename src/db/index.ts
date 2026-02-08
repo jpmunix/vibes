@@ -59,7 +59,16 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
   _db = drizzle(sqlite, { schema });
 
   try {
-    const migrationsFolder = path.join(__dirname, "..", "..", "drizzle");
+    // In development: drizzle folder is at project root
+    // In production (packaged): drizzle folder is in resources/ (extraResource)
+    let migrationsFolder = path.join(__dirname, "..", "..", "drizzle");
+
+    // Check if we're in a packaged app
+    if (!fs.existsSync(migrationsFolder)) {
+      // Try the resources folder location (when packaged)
+      migrationsFolder = path.join(process.resourcesPath, "drizzle");
+    }
+
     if (!fs.existsSync(migrationsFolder)) {
       logger.error("Migrations folder not found:", migrationsFolder);
     } else {

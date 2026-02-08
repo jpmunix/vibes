@@ -97,7 +97,9 @@ export function SettingsList({ show }: { show: boolean }) {
         requestAnimationFrame(calculateActiveSection);
       };
 
-      scrollContainer.addEventListener("scroll", scrollHandler, { passive: true });
+      scrollContainer.addEventListener("scroll", scrollHandler, {
+        passive: true,
+      });
 
       // Calculate initial active section
       calculateActiveSection();

@@ -47,12 +47,15 @@ export default function TodoDetailPage() {
       completed?: boolean;
       sectionId?: number | null;
       order?: number;
-    }
+    },
   ) => {
     await updateTodo({ todoId, ...params });
   };
 
-  const handleReorderTodos = async (todoIds: number[], sectionId?: number | null) => {
+  const handleReorderTodos = async (
+    todoIds: number[],
+    sectionId?: number | null,
+  ) => {
     await reorderTodos({ todoIds, sectionId });
   };
 
@@ -93,7 +96,9 @@ export default function TodoDetailPage() {
         onReorderTodos={handleReorderTodos}
         onReorderSections={reorderSections}
         onAddSection={(title) => createSection(title)}
-        onUpdateSection={(sectionId, title) => updateSection({ sectionId, title })}
+        onUpdateSection={(sectionId, title) =>
+          updateSection({ sectionId, title })
+        }
         onDeleteSection={deleteSection}
         onDevelop={handleDevelop}
         onRefine={async (todoId: number) => refinePrompt({ todoId })}

@@ -27,7 +27,9 @@ export function useTodos(appId: number) {
       return await ipc.todo.createTodoSection({ appId, title });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
     },
     onError: (error) => {
       showError(`Error al crear sección: ${(error as Error).message}`);
@@ -35,11 +37,21 @@ export function useTodos(appId: number) {
   });
 
   const updateSection = useMutation({
-    mutationFn: async ({ sectionId, title, order }: { sectionId: number; title?: string; order?: number }) => {
+    mutationFn: async ({
+      sectionId,
+      title,
+      order,
+    }: {
+      sectionId: number;
+      title?: string;
+      order?: number;
+    }) => {
       return await ipc.todo.updateTodoSection({ sectionId, title, order });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
     },
   });
 
@@ -48,17 +60,29 @@ export function useTodos(appId: number) {
       await ipc.todo.deleteTodoSection(sectionId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
     },
   });
 
   const createTodo = useMutation({
-    mutationFn: async ({ content, sectionId }: { content: string; sectionId?: number }) => {
+    mutationFn: async ({
+      content,
+      sectionId,
+    }: {
+      content: string;
+      sectionId?: number;
+    }) => {
       return await ipc.todo.createTodo({ appId, content, sectionId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
     },
     onError: (error) => {
       showError(`Error al crear tarea: ${(error as Error).message}`);
@@ -78,7 +102,9 @@ export function useTodos(appId: number) {
       return await ipc.todo.updateTodo(params);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
     },
     onError: (error) => {
       showError(`Error al actualizar tarea: ${(error as Error).message}`);
@@ -90,7 +116,9 @@ export function useTodos(appId: number) {
       await ipc.todo.deleteTodo(todoId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
       showSuccess("Tarea eliminada");
     },
     onError: (error) => {
@@ -99,28 +127,38 @@ export function useTodos(appId: number) {
   });
 
   const reorderTodos = useMutation({
-    mutationFn: async ({ todoIds, sectionId }: { todoIds: number[]; sectionId?: number | null }) => {
+    mutationFn: async ({
+      todoIds,
+      sectionId,
+    }: {
+      todoIds: number[];
+      sectionId?: number | null;
+    }) => {
       return await ipc.todo.reorderTodos({ appId, todoIds, sectionId });
     },
     onMutate: async ({ todoIds, sectionId }) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
 
       // Snapshot the previous value
-      const previousTodos = queryClient.getQueryData<Todo[]>(queryKeys.todos.byApp({ appId }));
+      const previousTodos = queryClient.getQueryData<Todo[]>(
+        queryKeys.todos.byApp({ appId }),
+      );
 
       // Optimistically update to the new value
       if (previousTodos) {
         // Create a map of the new positions for quick lookup
         const orderMap = new Map(todoIds.map((id, index) => [id, index]));
 
-        const resultTodos = previousTodos.map(todo => {
+        const resultTodos = previousTodos.map((todo) => {
           // If the item is in the list being reordered
           if (orderMap.has(todo.id)) {
             return {
               ...todo,
               sectionId: sectionId ?? null,
-              order: orderMap.get(todo.id)!
+              order: orderMap.get(todo.id)!,
             };
           }
           return todo;
@@ -133,12 +171,17 @@ export function useTodos(appId: number) {
     },
     onError: (error, __, context) => {
       if (context?.previousTodos) {
-        queryClient.setQueryData(queryKeys.todos.byApp({ appId }), context.previousTodos);
+        queryClient.setQueryData(
+          queryKeys.todos.byApp({ appId }),
+          context.previousTodos,
+        );
       }
       showError(`Error al reordenar tareas: ${(error as Error).message}`);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
     },
   });
 
@@ -147,36 +190,54 @@ export function useTodos(appId: number) {
       return await ipc.todo.reorderTodoSections({ appId, sectionIds });
     },
     onMutate: async (sectionIds) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.todos.sections({ appId }) });
-      const previousSections = queryClient.getQueryData<any[]>(queryKeys.todos.sections({ appId }));
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
+      const previousSections = queryClient.getQueryData<any[]>(
+        queryKeys.todos.sections({ appId }),
+      );
 
       if (previousSections) {
         const orderMap = new Map(sectionIds.map((id, index) => [id, index]));
         const resultSections = previousSections
-          .map(section => ({
+          .map((section) => ({
             ...section,
-            order: orderMap.get(section.id) ?? section.order
+            order: orderMap.get(section.id) ?? section.order,
           }))
           .sort((a, b) => a.order - b.order);
 
-        queryClient.setQueryData(queryKeys.todos.sections({ appId }), resultSections);
+        queryClient.setQueryData(
+          queryKeys.todos.sections({ appId }),
+          resultSections,
+        );
       }
 
       return { previousSections };
     },
     onError: (error, __, context) => {
       if (context?.previousSections) {
-        queryClient.setQueryData(queryKeys.todos.sections({ appId }), context.previousSections);
+        queryClient.setQueryData(
+          queryKeys.todos.sections({ appId }),
+          context.previousSections,
+        );
       }
       showError(`Error al reordenar secciones: ${(error as Error).message}`);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
     },
   });
 
   const developTodo = useMutation({
-    mutationFn: async ({ todoId, prompt }: { todoId: number; prompt?: string }) => {
+    mutationFn: async ({
+      todoId,
+      prompt,
+    }: {
+      todoId: number;
+      prompt?: string;
+    }) => {
       return await ipc.todo.developTodo({ todoId, prompt });
     },
     onError: (error) => {
@@ -202,7 +263,10 @@ export function useTodos(appId: number) {
       const analysis = await ipc.todo.analyzeTodoFiles({ appId, files });
 
       // Create new section
-      const section = await ipc.todo.createTodoSection({ appId, title: analysis.listTitle });
+      const section = await ipc.todo.createTodoSection({
+        appId,
+        title: analysis.listTitle,
+      });
 
       // Create todos in that section
       for (const task of analysis.tasks) {
@@ -218,8 +282,12 @@ export function useTodos(appId: number) {
       return section;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.sections({ appId }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.todos.byApp({ appId }),
+      });
       showSuccess("Lista de tareas importada con éxito");
     },
     onError: (error) => {

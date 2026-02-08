@@ -33,7 +33,6 @@ export const registerSessionHandlers = () => {
         method: "GET",
       });
 
-
       const body = await response.json();
       const totalCredits = body.data?.total_credits ?? 0;
       const totalUsage = body.data?.total_usage ?? 0;

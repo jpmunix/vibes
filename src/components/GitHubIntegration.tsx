@@ -46,7 +46,12 @@ export function GitHubIntegration() {
               GitHub
             </h3>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Conectado como <span className="font-bold text-foreground">{(settings?.githubUser as any)?.email || settings?.githubUser || "usuario"}</span>
+              Conectado como{" "}
+              <span className="font-bold text-foreground">
+                {(settings?.githubUser as any)?.email ||
+                  settings?.githubUser ||
+                  "usuario"}
+              </span>
             </p>
           </div>
         </div>
@@ -64,7 +69,11 @@ export function GitHubIntegration() {
 
       <div
         className="flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border"
-        onClick={() => updateSettings({ enableGithubAutoCommit: settings?.enableGithubAutoCommit === false })}
+        onClick={() =>
+          updateSettings({
+            enableGithubAutoCommit: settings?.enableGithubAutoCommit === false,
+          })
+        }
       >
         <div className="flex-1">
           <p className="text-base font-semibold text-foreground">

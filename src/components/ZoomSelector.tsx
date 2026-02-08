@@ -23,7 +23,7 @@ const ZOOM_LEVEL_DESCRIPTIONS: Record<ZoomLevel, string> = {
   "100": "Nivel de zoom por defecto.",
   "110": "Acercamiento ligero para facilitar la lectura.",
   "125": "Zoom grande para mejorar la legibilidad.",
-  "150": "Zoom máximo para máxima accesibilidad."
+  "150": "Zoom máximo para máxima accesibilidad.",
 };
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";

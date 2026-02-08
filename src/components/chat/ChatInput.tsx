@@ -76,7 +76,13 @@ import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-export function ChatInput({ chatId, autoStart }: { chatId?: number; autoStart?: boolean }) {
+export function ChatInput({
+  chatId,
+  autoStart,
+}: {
+  chatId?: number;
+  autoStart?: boolean;
+}) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const { settings, updateSettings } = useSettings();
@@ -449,7 +455,9 @@ export function ChatInput({ chatId, autoStart }: { chatId?: number; autoStart?: 
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => {
-                          ipc.system.openExternalUrl("https://github.com/minube/vibes");
+                          ipc.system.openExternalUrl(
+                            "https://github.com/minube/vibes",
+                          );
                         }}
                         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                       >

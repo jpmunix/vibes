@@ -94,14 +94,17 @@ function FooterComponent({ context }: { context?: FooterContext }) {
   // Fetch todo completion status
   React.useEffect(() => {
     if (todoId) {
-      ipc.todo.getTodosByApp(appId ?? 0).then((todos) => {
-        const todo = todos.find((t) => t.id === todoId);
-        if (todo) {
-          setIsTodoCompleted(todo.completed);
-        }
-      }).catch((error) => {
-        console.error("Error fetching todo:", error);
-      });
+      ipc.todo
+        .getTodosByApp(appId ?? 0)
+        .then((todos) => {
+          const todo = todos.find((t) => t.id === todoId);
+          if (todo) {
+            setIsTodoCompleted(todo.completed);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching todo:", error);
+        });
     }
   }, [todoId, appId]);
 
@@ -263,7 +266,11 @@ function FooterComponent({ context }: { context?: FooterContext }) {
               variant="outline"
               size="sm"
               disabled={isTodoCompleted}
-              className={isTodoCompleted ? "bg-green-500/20 border-green-500/30 text-white hover:bg-green-500/20" : ""}
+              className={
+                isTodoCompleted
+                  ? "bg-green-500/20 border-green-500/30 text-white hover:bg-green-500/20"
+                  : ""
+              }
               onClick={async () => {
                 if (!todoId) return;
                 try {
@@ -271,7 +278,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                   setIsTodoCompleted(true);
                   showSuccess("Tarea marcada como completada");
                 } catch (error) {
-                  showError(`Error al marcar tarea: ${(error as Error).message}`);
+                  showError(
+                    `Error al marcar tarea: ${(error as Error).message}`,
+                  );
                 }
               }}
             >
@@ -327,11 +336,14 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     // Fetch todoId from chat
     React.useEffect(() => {
       if (selectedChatId) {
-        ipc.chat.getChat(selectedChatId).then((chat) => {
-          setTodoId(chat.todoId ?? null);
-        }).catch((error) => {
-          console.error("Error fetching chat:", error);
-        });
+        ipc.chat
+          .getChat(selectedChatId)
+          .then((chat) => {
+            setTodoId(chat.todoId ?? null);
+          })
+          .catch((error) => {
+            console.error("Error fetching chat:", error);
+          });
       }
     }, [selectedChatId]);
 

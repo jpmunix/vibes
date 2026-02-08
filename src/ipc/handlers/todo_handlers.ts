@@ -34,7 +34,8 @@ export function registerTodoHandlers() {
     const existing = await db.query.todoSections.findMany({
       where: eq(todoSections.appId, appId),
     });
-    const maxOrder = existing.length > 0 ? Math.max(...existing.map((s) => s.order)) : -1;
+    const maxOrder =
+      existing.length > 0 ? Math.max(...existing.map((s) => s.order)) : -1;
 
     const [section] = await db
       .insert(todoSections)
@@ -74,11 +75,16 @@ export function registerTodoHandlers() {
     const { appId, content, sectionId } = params;
 
     const existingTodos = await db.query.todos.findMany({
-      where: sectionId ? and(eq(todos.appId, appId), eq(todos.sectionId, sectionId)) : eq(todos.appId, appId),
+      where: sectionId
+        ? and(eq(todos.appId, appId), eq(todos.sectionId, sectionId))
+        : eq(todos.appId, appId),
       orderBy: [asc(todos.order)],
     });
 
-    const maxOrder = existingTodos.length > 0 ? Math.max(...existingTodos.map((t) => t.order)) : -1;
+    const maxOrder =
+      existingTodos.length > 0
+        ? Math.max(...existingTodos.map((t) => t.order))
+        : -1;
 
     const [todo] = await db
       .insert(todos)
@@ -105,7 +111,8 @@ export function registerTodoHandlers() {
 
     if (content !== undefined) updateData.content = content;
     if (sectionId !== undefined) updateData.sectionId = sectionId;
-    if (params.description !== undefined) updateData.description = params.description;
+    if (params.description !== undefined)
+      updateData.description = params.description;
     if (params.prompt !== undefined) updateData.prompt = params.prompt;
     if (completed !== undefined) updateData.completed = completed;
     if (order !== undefined) updateData.order = order;
@@ -147,7 +154,12 @@ export function registerTodoHandlers() {
       await db
         .update(todoSections)
         .set({ order: i })
-        .where(and(eq(todoSections.id, sectionIds[i]), eq(todoSections.appId, appId)));
+        .where(
+          and(
+            eq(todoSections.id, sectionIds[i]),
+            eq(todoSections.appId, appId),
+          ),
+        );
     }
 
     logger.info("Reordered sections for app:", appId);
@@ -197,7 +209,14 @@ export function registerTodoHandlers() {
       content: initialContent,
     });
 
-    logger.info("Created chat:", chat.id, "from todo:", todoId, "for app:", app.id);
+    logger.info(
+      "Created chat:",
+      chat.id,
+      "from todo:",
+      todoId,
+      "for app:",
+      app.id,
+    );
 
     return { chatId: chat.id };
   });
@@ -217,7 +236,8 @@ export function registerTodoHandlers() {
 
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
-    const model = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+    const model =
+      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
     try {
       const todoTitle = todo.content;
@@ -243,16 +263,22 @@ export function registerTodoHandlers() {
         ],
       });
 
-      const generatedPrompt = data?.choices?.[0]?.message?.content?.trim() || "";
+      const generatedPrompt =
+        data?.choices?.[0]?.message?.content?.trim() || "";
       const usage = data?.usage;
       if (usage) {
-        void logChatInfo(todoId, "token-usage", `Refine Todo Prompt - Total tokens: ${usage.total_tokens}`, {
-          totalTokens: usage.total_tokens,
-          inputTokens: usage.prompt_tokens,
-          outputTokens: usage.completion_tokens,
-          model,
-          type: "refine-todo-prompt",
-        });
+        void logChatInfo(
+          todoId,
+          "token-usage",
+          `Refine Todo Prompt - Total tokens: ${usage.total_tokens}`,
+          {
+            totalTokens: usage.total_tokens,
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            model,
+            type: "refine-todo-prompt",
+          },
+        );
       }
 
       return { prompt: generatedPrompt };
@@ -266,16 +292,18 @@ export function registerTodoHandlers() {
     const { appId, files } = params;
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
-    const model = settings.todoAnalysisModel && settings.todoAnalysisModel !== "SAME_AS_CHAT"
-      ? settings.todoAnalysisModel
-      : (settings.todoAnalysisModel === "SAME_AS_CHAT" ? settings.selectedModel.name : "google/gemini-3-flash-preview");
+    const model =
+      settings.todoAnalysisModel &&
+      settings.todoAnalysisModel !== "SAME_AS_CHAT"
+        ? settings.todoAnalysisModel
+        : settings.todoAnalysisModel === "SAME_AS_CHAT"
+          ? settings.selectedModel.name
+          : "google/gemini-3-flash-preview";
 
     const { getEffectivePrompt } = await import("../../prompts");
     const systemPrompt = getEffectivePrompt("todo_analysis", settings);
 
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     let userContent = "Analiza estos archivos para extraer tareas:\n\n";
     let hasImages = false;
@@ -318,7 +346,11 @@ export function registerTodoHandlers() {
       }
     }
 
-    if (!hasImages || userContent.length > "Analiza estos archivos para extraer tareas:\n\n".length) {
+    if (
+      !hasImages ||
+      userContent.length >
+        "Analiza estos archivos para extraer tareas:\n\n".length
+    ) {
       messages.push({ role: "user", content: userContent });
     }
 
@@ -335,13 +367,18 @@ export function registerTodoHandlers() {
 
       const usage = data?.usage;
       if (usage) {
-        void logChatInfo(appId, "token-usage", `Analyze Todo Files - Total tokens: ${usage.total_tokens}`, {
-          totalTokens: usage.total_tokens,
-          inputTokens: usage.prompt_tokens,
-          outputTokens: usage.completion_tokens,
-          model,
-          type: "analyze-todo-files",
-        });
+        void logChatInfo(
+          appId,
+          "token-usage",
+          `Analyze Todo Files - Total tokens: ${usage.total_tokens}`,
+          {
+            totalTokens: usage.total_tokens,
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            model,
+            type: "analyze-todo-files",
+          },
+        );
       }
 
       return result;
@@ -357,7 +394,16 @@ export function registerTodoHandlers() {
       filters: [
         {
           name: "Archivos permitidos",
-          extensions: ["pdf", "docx", "txt", "md", "png", "jpg", "jpeg", "webp"],
+          extensions: [
+            "pdf",
+            "docx",
+            "txt",
+            "md",
+            "png",
+            "jpg",
+            "jpeg",
+            "webp",
+          ],
         },
       ],
     });

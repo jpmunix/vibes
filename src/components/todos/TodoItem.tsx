@@ -10,7 +10,12 @@ import { useState } from "react";
 interface SortableTodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
+  onUpdate: (
+    todoId: number,
+    content: string,
+    description?: string | null,
+    prompt?: string | null,
+  ) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number, prompt?: string) => void;
   onEdit: () => void;
@@ -68,7 +73,9 @@ export function SortableTodoItem({
         className="w-full bg-primary/5 border-2 border-dashed border-primary/20 rounded-lg p-3"
       >
         <div className="invisible py-1">
-          <p className="text-sm font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+          <p className="text-sm font-medium whitespace-pre-wrap break-words">
+            {todo.content}
+          </p>
           {todo.description && (
             <p className="text-[10px] mt-0.5 italic whitespace-pre-wrap break-words">
               {todo.description}
@@ -88,7 +95,8 @@ export function SortableTodoItem({
       className={cn(
         "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing overflow-hidden",
         todo.completed && "opacity-60",
-        isDraggingOverlay && "shadow-2xl ring-2 ring-primary border-primary rotate-1"
+        isDraggingOverlay &&
+          "shadow-2xl ring-2 ring-primary border-primary rotate-1",
       )}
     >
       {/* Checkbox Overlay */}
@@ -117,11 +125,13 @@ export function SortableTodoItem({
           <div
             className={cn(
               "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground"
+              todo.completed && "line-through text-muted-foreground",
             )}
             onClick={onEdit}
           >
-            <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+            <p className="font-medium whitespace-pre-wrap break-words">
+              {todo.content}
+            </p>
             {todo.description && (
               <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
                 {todo.description}
@@ -138,7 +148,12 @@ export function SortableTodoItem({
 interface TodoItemProps {
   todo: Todo;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
+  onUpdate: (
+    todoId: number,
+    content: string,
+    description?: string | null,
+    prompt?: string | null,
+  ) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number, prompt?: string) => void;
   onEdit: () => void;
@@ -175,7 +190,7 @@ export function TodoItem({
     <div
       className={cn(
         "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden",
-        todo.completed && "opacity-60"
+        todo.completed && "opacity-60",
       )}
     >
       {/* Checkbox Overlay */}
@@ -203,11 +218,13 @@ export function TodoItem({
           <div
             className={cn(
               "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground"
+              todo.completed && "line-through text-muted-foreground",
             )}
             onClick={onEdit}
           >
-            <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+            <p className="font-medium whitespace-pre-wrap break-words">
+              {todo.content}
+            </p>
             {todo.description && (
               <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
                 {todo.description}

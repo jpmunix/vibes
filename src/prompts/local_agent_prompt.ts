@@ -5,7 +5,6 @@
 import { UserSettings } from "../lib/schemas";
 import { getEffectivePrompt } from "./index";
 
-
 // ============================================================================
 // Shared Prompt Blocks (used by both Pro and Basic Agent modes)
 // ============================================================================
@@ -261,7 +260,6 @@ export function constructLocalAgentPrompt(
     chatLanguage?: "es" | "en";
     settings?: UserSettings;
   },
-
 ): string {
   // Select the appropriate base prompt
   let basePrompt: string;
@@ -272,7 +270,6 @@ export function constructLocalAgentPrompt(
   } else {
     basePrompt = getEffectivePrompt("agent_mode_system", options?.settings);
   }
-
 
   let prompt = basePrompt.replace("[[AI_RULES]]", aiRules ?? DEFAULT_AI_RULES);
 

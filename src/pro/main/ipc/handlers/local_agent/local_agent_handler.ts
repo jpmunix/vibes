@@ -341,8 +341,8 @@ export async function handleLocalAgentStream(
     const messageHistory: ModelMessage[] = messageOverride
       ? messageOverride
       : chat.messages
-        .filter((msg) => msg.content || msg.aiMessagesJson)
-        .flatMap((msg) => parseAiMessagesJson(msg));
+          .filter((msg) => msg.content || msg.aiMessagesJson)
+          .flatMap((msg) => parseAiMessagesJson(msg));
     logger.log(
       `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
     );

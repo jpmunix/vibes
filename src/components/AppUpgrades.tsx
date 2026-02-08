@@ -133,7 +133,8 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
                         onClick={(e) => {
                           e.stopPropagation();
                           ipc.system.openExternalUrl(
-                            upgrade.manualUpgradeUrl ?? "https://github.com/jpmunix",
+                            upgrade.manualUpgradeUrl ??
+                              "https://github.com/jpmunix",
                           );
                         }}
                         className="underline font-medium hover:dark:text-red-200"

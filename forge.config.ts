@@ -31,10 +31,10 @@ const ignore = (file: string) => {
     "/scaffold",
     "/worker",
     "/assets", // Asegúrate de incluir tus iconos/recursos aquí
-    "/package.json"
+    "/package.json",
   ];
 
-  if (allowedPaths.some(path => file.startsWith(path))) {
+  if (allowedPaths.some((path) => file.startsWith(path))) {
     // Aquí puedes añadir excepciones si quieres borrar archivos pesados de node_modules
     // Por ejemplo: no queremos archivos .cpp o .h que solo sirven para compilar
     if (file.endsWith(".cpp") || file.endsWith(".h") || file.endsWith(".ts")) {
@@ -55,22 +55,23 @@ const config: ForgeConfig = {
     protocols: [
       {
         name: "Dyad",
-        schemes: ["dyad"]
-      }
+        schemes: ["dyad"],
+      },
     ],
     icon: "./assets/icon/logo",
 
     osxSign: undefined,
     osxNotarize: undefined,
     asar: {
-      unpack: "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}"
-
+      unpack:
+        "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}",
     },
     ignore,
     extraResource: [
       //   "node_modules/better-sqlite3",
       "node_modules/dugite/git",
-      "node_modules/@vscode",      //   "node_modules/@huggingface",
+      "node_modules/@vscode",
+      "drizzle", //   "node_modules/@huggingface",
       //   "node_modules/sharp",
       //   "node_modules/color",
       //   "node_modules/color-string",
@@ -79,12 +80,12 @@ const config: ForgeConfig = {
       //   "node_modules/simple-swizzle",
       //   "node_modules/onnxruntime-web",
       //   "node_modules/onnxruntime-node"
-    ]
+    ],
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
     extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
-    force: false
+    force: false,
   },
   makers: [
     // new MakerSquirrel(
@@ -111,9 +112,9 @@ const config: ForgeConfig = {
     new MakerDeb({
       options: {
         mimeType: ["x-scheme-handler/dyad"],
-        icon: "./assets/icon/logo.png"
-      }
-    })
+        icon: "./assets/icon/logo.png",
+      },
+    }),
     // new MakerAppImage({
     //   icon: "./assets/icon/logo.png",
     // }),
@@ -124,13 +125,13 @@ const config: ForgeConfig = {
       config: {
         repository: {
           owner: "dyad-sh",
-          name: "dyad"
+          name: "dyad",
         },
         draft: true,
         force: true,
-        prerelease: true
-      }
-    }
+        prerelease: true,
+      },
+    },
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
@@ -142,35 +143,35 @@ const config: ForgeConfig = {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: "src/main.ts",
           config: "vite.main.config.mts",
-          target: "main"
+          target: "main",
         },
         {
           entry: "src/preload.ts",
           config: "vite.preload.config.mts",
-          target: "preload"
+          target: "preload",
         },
         {
           entry: "workers/tsc/tsc_worker.ts",
           config: "vite.worker.config.mts",
-          target: "main"
+          target: "main",
         },
         {
           entry: "workers/context/context_worker.ts",
           config: "vite.context-worker.config.mts",
-          target: "main"
+          target: "main",
         },
         {
           entry: "workers/embeddings/embeddings_worker.ts",
           config: "vite.embeddings-worker.config.mts",
-          target: "main"
-        }
+          target: "main",
+        },
       ],
       renderer: [
         {
           name: "main_window",
-          config: "vite.renderer.config.mts"
-        }
-      ]
+          config: "vite.renderer.config.mts",
+        },
+      ],
     }),
     // Fuses are used to enable/disable various Electron functionality
     // at package time, before code signing the application
@@ -181,9 +182,9 @@ const config: ForgeConfig = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: isEndToEndTestBuild,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true
-    })
-  ]
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
+  ],
 };
 
 export default config;

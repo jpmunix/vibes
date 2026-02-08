@@ -56,9 +56,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
 
       // Create the GitHub issue URL with the pre-filled body
       const encodedBody = encodeURIComponent(issueBody);
-      const encodedTitle = encodeURIComponent(
-        "[bug] Error in application",
-      );
+      const encodedTitle = encodeURIComponent("[bug] Error in application");
       const githubIssueUrl = `https://github.com/minube/vibes/issues/new?title=${encodedTitle}&labels=bug,filed-from-app,client-error&body=${encodedBody}`;
 
       // Open the pre-filled GitHub issue page

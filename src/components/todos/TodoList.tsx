@@ -25,7 +25,12 @@ interface TodoListProps {
   todos: Todo[];
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string, description?: string | null, prompt?: string | null) => void;
+  onUpdate: (
+    todoId: number,
+    content: string,
+    description?: string | null,
+    prompt?: string | null,
+  ) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number, prompt?: string) => void;
   onRefine: (todoId: number) => Promise<string>;
@@ -51,7 +56,7 @@ export function TodoList({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleAdd = () => {
@@ -79,7 +84,9 @@ export function TodoList({
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedPending = arrayMove(pendingTodos, oldIndex, newIndex);
-        const newOrder = [...reorderedPending, ...completedTodos].map((t) => t.id);
+        const newOrder = [...reorderedPending, ...completedTodos].map(
+          (t) => t.id,
+        );
         onReorder(newOrder);
       }
     }

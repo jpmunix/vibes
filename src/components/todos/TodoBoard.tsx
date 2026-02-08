@@ -31,7 +31,17 @@ interface TodoBoardProps {
   todos: Todo[];
   sections: TodoSection[];
   onAddTodo: (content: string, sectionId?: number) => void;
-  onUpdateTodo: (todoId: number, params: { content?: string; description?: string | null; prompt?: string | null; completed?: boolean; sectionId?: number | null; order?: number }) => void;
+  onUpdateTodo: (
+    todoId: number,
+    params: {
+      content?: string;
+      description?: string | null;
+      prompt?: string | null;
+      completed?: boolean;
+      sectionId?: number | null;
+      order?: number;
+    },
+  ) => void;
   onDeleteTodo: (todoId: number) => void;
   onReorderTodos: (todoIds: number[], sectionId?: number | null) => void;
   onReorderSections: (sectionIds: number[]) => void;
@@ -71,7 +81,9 @@ export function TodoBoard({
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
   const dragStartSectionOrder = useRef<string[]>([]);
 
   // Initialize and sync cloned items
@@ -79,18 +91,25 @@ export function TodoBoard({
     if (!activeId) {
       // Create the structure from props
       const map: Record<string, Todo[]> = {
-        unsectioned: todos.filter((t) => !t.sectionId).sort((a, b) => a.order - b.order),
+        unsectioned: todos
+          .filter((t) => !t.sectionId)
+          .sort((a, b) => a.order - b.order),
       };
       sections.forEach((s) => {
-        map[`section-${s.id}`] = todos.filter((t) => t.sectionId === s.id).sort((a, b) => a.order - b.order);
+        map[`section-${s.id}`] = todos
+          .filter((t) => t.sectionId === s.id)
+          .sort((a, b) => a.order - b.order);
       });
 
       // Check if we need to update clonedItems
-      setClonedItems(prev => {
+      setClonedItems((prev) => {
         const prevKeys = Object.keys(prev).sort();
         const nextKeys = Object.keys(map).sort();
 
-        if (prevKeys.length !== nextKeys.length || !prevKeys.every((k, i) => k === nextKeys[i])) {
+        if (
+          prevKeys.length !== nextKeys.length ||
+          !prevKeys.every((k, i) => k === nextKeys[i])
+        ) {
           return map;
         }
 
@@ -102,10 +121,14 @@ export function TodoBoard({
           }
 
           // Compare IDs and versions (updatedAt/completed) ignoring order
-          const prevVersions = new Set(prev[key].map(t => `${t.id}-${t.updatedAt}-${t.completed}`));
-          const nextVersions = map[key].map(t => `${t.id}-${t.updatedAt}-${t.completed}`);
+          const prevVersions = new Set(
+            prev[key].map((t) => `${t.id}-${t.updatedAt}-${t.completed}`),
+          );
+          const nextVersions = map[key].map(
+            (t) => `${t.id}-${t.updatedAt}-${t.completed}`,
+          );
 
-          if (!nextVersions.every(v => prevVersions.has(v))) {
+          if (!nextVersions.every((v) => prevVersions.has(v))) {
             hasSubstantialChange = true;
             break;
           }
@@ -116,11 +139,16 @@ export function TodoBoard({
       });
 
       // Handle orderedSectionKeys
-      const nextKeys = ["unsectioned", ...sections.map(s => `section-${s.id}`)];
-      setOrderedSectionKeys(prev => {
+      const nextKeys = [
+        "unsectioned",
+        ...sections.map((s) => `section-${s.id}`),
+      ];
+      setOrderedSectionKeys((prev) => {
         const prevSet = new Set(prev);
         const nextSet = new Set(nextKeys);
-        const setsEqual = prevSet.size === nextSet.size && [...prevSet].every(k => nextSet.has(k));
+        const setsEqual =
+          prevSet.size === nextSet.size &&
+          [...prevSet].every((k) => nextSet.has(k));
 
         if (setsEqual) return prev;
         return nextKeys;
@@ -131,7 +159,7 @@ export function TodoBoard({
   const activeTodo = useMemo(() => {
     if (!activeId || activeType !== "todo") return null;
     for (const key in clonedItems) {
-      const found = clonedItems[key].find(t => t.id === activeId);
+      const found = clonedItems[key].find((t) => t.id === activeId);
       if (found) return found;
     }
     return null;
@@ -139,7 +167,7 @@ export function TodoBoard({
 
   const activeSection = useMemo(() => {
     if (!activeId || activeType !== "section") return null;
-    return sections.find(s => `section-${s.id}` === activeId);
+    return sections.find((s) => `section-${s.id}` === activeId);
   }, [sections, activeId, activeType]);
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -184,7 +212,12 @@ export function TodoBoard({
         ? overContainerString
         : findContainer(overId as any);
 
-      if (!activeContainer || !overContainer || activeContainer === overContainer) return;
+      if (
+        !activeContainer ||
+        !overContainer ||
+        activeContainer === overContainer
+      )
+        return;
 
       setClonedItems((prev) => {
         const activeItems = prev[activeContainer] || [];
@@ -198,9 +231,16 @@ export function TodoBoard({
           : overItems.findIndex((t) => t.id === overId);
 
         const newItem = activeItems[activeIndex];
-        const newSectionId = overContainer === "unsectioned" ? null : Number(overContainer.replace("section-", ""));
+        const newSectionId =
+          overContainer === "unsectioned"
+            ? null
+            : Number(overContainer.replace("section-", ""));
 
-        if (newItem.sectionId === newSectionId && activeContainer === overContainer) return prev;
+        if (
+          newItem.sectionId === newSectionId &&
+          activeContainer === overContainer
+        )
+          return prev;
 
         return {
           ...prev,
@@ -223,19 +263,26 @@ export function TodoBoard({
       const overId = over.id;
 
       if (activeType === "section") {
-        const overSectionId = String(overId).startsWith("section-") || overId === "unsectioned"
-          ? String(overId)
-          : null;
+        const overSectionId =
+          String(overId).startsWith("section-") || overId === "unsectioned"
+            ? String(overId)
+            : null;
 
         if (overSectionId && orderedSectionKeys.includes(overSectionId)) {
-          const oldIndex = dragStartSectionOrder.current.indexOf(String(activeId));
+          const oldIndex = dragStartSectionOrder.current.indexOf(
+            String(activeId),
+          );
           const newIndex = orderedSectionKeys.indexOf(overSectionId);
 
           if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-            const reordered = arrayMove(dragStartSectionOrder.current, oldIndex, newIndex);
+            const reordered = arrayMove(
+              dragStartSectionOrder.current,
+              oldIndex,
+              newIndex,
+            );
             const latestIds = reordered
-              .filter(key => key.startsWith("section-"))
-              .map(key => Number(key.replace("section-", "")));
+              .filter((key) => key.startsWith("section-"))
+              .map((key) => Number(key.replace("section-", "")));
             onReorderSections(latestIds);
           }
         }
@@ -246,17 +293,29 @@ export function TodoBoard({
         if (containerId) {
           let columnTodos = [...clonedItems[containerId]];
           const oldIndex = columnTodos.findIndex((t) => t.id === activeTodoId);
-          const overIndex = String(overId).startsWith("section-") || overId === "unsectioned"
-            ? columnTodos.length - 1
-            : columnTodos.findIndex((t) => t.id === overId);
+          const overIndex =
+            String(overId).startsWith("section-") || overId === "unsectioned"
+              ? columnTodos.length - 1
+              : columnTodos.findIndex((t) => t.id === overId);
 
-          if (oldIndex !== -1 && overIndex !== -1 && (oldIndex !== overIndex || containerId !== findContainer(activeTodoId))) {
+          if (
+            oldIndex !== -1 &&
+            overIndex !== -1 &&
+            (oldIndex !== overIndex ||
+              containerId !== findContainer(activeTodoId))
+          ) {
             columnTodos = arrayMove(columnTodos, oldIndex, overIndex);
           }
 
-          const sectionId = containerId === "unsectioned" ? null : Number(containerId.replace("section-", ""));
+          const sectionId =
+            containerId === "unsectioned"
+              ? null
+              : Number(containerId.replace("section-", ""));
 
-          onReorderTodos(columnTodos.map(t => t.id), sectionId);
+          onReorderTodos(
+            columnTodos.map((t) => t.id),
+            sectionId,
+          );
         }
       }
     }
@@ -293,7 +352,10 @@ export function TodoBoard({
     );
   }
 
-  const sortedSectionKeys = ["unsectioned", ...sections.map(s => `section-${s.id}`)];
+  const sortedSectionKeys = [
+    "unsectioned",
+    ...sections.map((s) => `section-${s.id}`),
+  ];
 
   return (
     <div className="h-full flex flex-col">
@@ -305,7 +367,8 @@ export function TodoBoard({
           <div>
             <h2 className="text-2xl font-bold tracking-tight">{appName}</h2>
             <p className="text-xs text-muted-foreground">
-              {todos.filter(t => !t.completed).length} tareas pendientes · {sections.length} listas
+              {todos.filter((t) => !t.completed).length} tareas pendientes ·{" "}
+              {sections.length} listas
             </p>
           </div>
         </div>
@@ -320,8 +383,16 @@ export function TodoBoard({
               autoFocus
               className="h-9 w-48"
             />
-            <Button size="sm" onClick={handleAddSection}>Crear</Button>
-            <Button size="sm" variant="ghost" onClick={() => setIsAddingSection(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleAddSection}>
+              Crear
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsAddingSection(false)}
+            >
+              Cancelar
+            </Button>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -339,7 +410,12 @@ export function TodoBoard({
               )}
               Smart Import
             </Button>
-            <Button onClick={() => setIsAddingSection(true)} variant="outline" size="sm" className="gap-2">
+            <Button
+              onClick={() => setIsAddingSection(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
               <Plus className="h-4 w-4" />
               Nueva lista
             </Button>
@@ -355,9 +431,12 @@ export function TodoBoard({
               if (activeType === "section") {
                 // When dragging a section, ONLY consider other sections as targets
                 const columnContainers = args.droppableContainers.filter((c) =>
-                  orderedSectionKeys.includes(String(c.id))
+                  orderedSectionKeys.includes(String(c.id)),
                 );
-                return closestCenter({ ...args, droppableContainers: columnContainers });
+                return closestCenter({
+                  ...args,
+                  droppableContainers: columnContainers,
+                });
               }
               // When dragging a todo, use standard closest corners
               return closestCorners(args);
@@ -370,10 +449,18 @@ export function TodoBoard({
               items={orderedSectionKeys}
               strategy={horizontalListSortingStrategy}
             >
-              {orderedSectionKeys.map(key => {
-                if (key === "unsectioned" && clonedItems.unsectioned?.length === 0 && sections.length > 0) return null;
+              {orderedSectionKeys.map((key) => {
+                if (
+                  key === "unsectioned" &&
+                  clonedItems.unsectioned?.length === 0 &&
+                  sections.length > 0
+                )
+                  return null;
 
-                const section = key === "unsectioned" ? undefined : sections.find(s => `section-${s.id}` === key);
+                const section =
+                  key === "unsectioned"
+                    ? undefined
+                    : sections.find((s) => `section-${s.id}` === key);
                 return (
                   <TodoColumn
                     key={key}
@@ -391,24 +478,26 @@ export function TodoBoard({
               })}
             </SortableContext>
 
-            <DragOverlay dropAnimation={{
-              sideEffects: defaultDropAnimationSideEffects({
-                styles: {
-                  active: {
-                    opacity: "0.5",
+            <DragOverlay
+              dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({
+                  styles: {
+                    active: {
+                      opacity: "0.5",
+                    },
                   },
-                },
-              }),
-            }}>
+                }),
+              }}
+            >
               {activeId && activeType === "todo" && activeTodo ? (
                 <div className="w-80 opacity-90 rotate-1">
                   <SortableTodoItem
                     todo={activeTodo}
-                    onToggle={() => { }}
-                    onUpdate={() => { }}
-                    onDelete={() => { }}
-                    onDevelop={() => { }}
-                    onEdit={() => { }}
+                    onToggle={() => {}}
+                    onUpdate={() => {}}
+                    onDelete={() => {}}
+                    onDevelop={() => {}}
+                    onEdit={() => {}}
                     isDraggingOverlay
                   />
                 </div>
@@ -417,11 +506,11 @@ export function TodoBoard({
                   <TodoColumn
                     section={activeSection || undefined}
                     todos={clonedItems[activeId as string] || []}
-                    onAddTodo={() => { }}
-                    onUpdateTodo={() => { }}
-                    onDeleteTodo={() => { }}
-                    onEditTodo={() => { }}
-                    onDevelop={() => { }}
+                    onAddTodo={() => {}}
+                    onUpdateTodo={() => {}}
+                    onDeleteTodo={() => {}}
+                    onEditTodo={() => {}}
+                    onDevelop={() => {}}
                     isDraggingOverlay
                   />
                 </div>
@@ -429,13 +518,17 @@ export function TodoBoard({
             </DragOverlay>
           </DndContext>
 
-          {sections.length === 0 && clonedItems.unsectioned?.length === 0 && !isLoading && (
-            <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed rounded-2xl opacity-50 h-full min-h-[400px]">
-              <Layout className="h-12 w-12 mb-4" />
-              <p>No hay tareas ni listas</p>
-              <Button variant="link" onClick={() => setIsAddingSection(true)}>Crea la primera lista</Button>
-            </div>
-          )}
+          {sections.length === 0 &&
+            clonedItems.unsectioned?.length === 0 &&
+            !isLoading && (
+              <div className="flex flex-col items-center justify-center flex-1 border-2 border-dashed rounded-2xl opacity-50 h-full min-h-[400px]">
+                <Layout className="h-12 w-12 mb-4" />
+                <p>No hay tareas ni listas</p>
+                <Button variant="link" onClick={() => setIsAddingSection(true)}>
+                  Crea la primera lista
+                </Button>
+              </div>
+            )}
         </div>
       </div>
 

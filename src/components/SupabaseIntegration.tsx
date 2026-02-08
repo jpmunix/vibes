@@ -182,7 +182,11 @@ export function SupabaseIntegration() {
         <SettingItem
           label="Escribir archivos de migración SQL"
           description="Genera archivos de migración SQL al modificar el esquema de Supabase para control de versiones"
-          onClick={() => handleMigrationSettingChange(!settings?.enableSupabaseWriteSqlMigration)}
+          onClick={() =>
+            handleMigrationSettingChange(
+              !settings?.enableSupabaseWriteSqlMigration,
+            )
+          }
           control={
             <Switch
               checked={!!settings?.enableSupabaseWriteSqlMigration}
@@ -194,7 +198,9 @@ export function SupabaseIntegration() {
         <SettingItem
           label="Mantener funciones de borde adicionales"
           description="Evita que se eliminen automáticamente las funciones desplegadas en Supabase no presentes localmente"
-          onClick={() => handleSkipPruneSettingChange(!settings?.skipPruneEdgeFunctions)}
+          onClick={() =>
+            handleSkipPruneSettingChange(!settings?.skipPruneEdgeFunctions)
+          }
           control={
             <Switch
               checked={!!settings?.skipPruneEdgeFunctions}

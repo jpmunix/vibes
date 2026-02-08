@@ -255,8 +255,13 @@ export class LocalVectorIndex {
       } catch (dbError: any) {
         // Handle UNIQUE constraint errors gracefully - this can happen if the file
         // is being indexed concurrently by multiple processes
-        if (dbError?.code === "SQLITE_CONSTRAINT" && dbError?.message?.includes("UNIQUE")) {
-          logger.warn(`File ${filePath} is already being indexed, skipping duplicate indexing`);
+        if (
+          dbError?.code === "SQLITE_CONSTRAINT" &&
+          dbError?.message?.includes("UNIQUE")
+        ) {
+          logger.warn(
+            `File ${filePath} is already being indexed, skipping duplicate indexing`,
+          );
         } else {
           throw dbError;
         }
@@ -389,10 +394,7 @@ export class LocalVectorIndex {
    * Add multiple files to the index
    * Processes with limited concurrency and throttling to prevent CPU overload
    */
-  async addFiles(
-    files: CodebaseFile[],
-    maxConcurrency = 3,
-  ): Promise<void> {
+  async addFiles(files: CodebaseFile[], maxConcurrency = 3): Promise<void> {
     logger.info(
       `Indexing ${files.length} files with concurrency ${maxConcurrency}...`,
     );

@@ -295,7 +295,10 @@ export function ChatHeader({
           {/* Menú desplegable con las demás opciones */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-1 text-sm px-2 py-1 rounded-md">
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
+              >
                 <MoreHorizontal size={16} />
                 <span className="hidden @xs:inline">Opciones</span>
               </Button>

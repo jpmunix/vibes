@@ -85,24 +85,24 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-        where: eq(chats.appId, appId),
-        columns: {
-          id: true,
-          title: true,
-          createdAt: true,
-          appId: true,
-        },
-        orderBy: [desc(chats.createdAt)],
-      })
+          where: eq(chats.appId, appId),
+          columns: {
+            id: true,
+            title: true,
+            createdAt: true,
+            appId: true,
+          },
+          orderBy: [desc(chats.createdAt)],
+        })
       : db.query.chats.findMany({
-        columns: {
-          id: true,
-          title: true,
-          createdAt: true,
-          appId: true,
-        },
-        orderBy: [desc(chats.createdAt)],
-      });
+          columns: {
+            id: true,
+            title: true,
+            createdAt: true,
+            appId: true,
+          },
+          orderBy: [desc(chats.createdAt)],
+        });
 
     const allChats = await query;
     return allChats as ChatSummary[];
@@ -258,7 +258,7 @@ export function registerChatHandlers() {
               outputTokens: usage.completion_tokens,
               model,
               type: "chat-title-generation",
-            }
+            },
           );
         }
 

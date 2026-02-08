@@ -371,7 +371,8 @@ export function EmbeddingsPlayground({
               </div>
               {indexStats.totalFiles === 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  No hay archivos indexados. Haz clic en "Indexar archivos" para empezar.
+                  No hay archivos indexados. Haz clic en "Indexar archivos" para
+                  empezar.
                 </p>
               )}
             </div>

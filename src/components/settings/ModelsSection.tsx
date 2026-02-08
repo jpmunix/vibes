@@ -115,10 +115,9 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           {models.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${selectedModel === model.apiName
-                ? "ring-2 ring-primary"
-                : ""
-                }`}
+              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${
+                selectedModel === model.apiName ? "ring-2 ring-primary" : ""
+              }`}
               onClick={() => handleModelClick(model.apiName)}
               onDoubleClick={() => handleModelDoubleClick(model)}
             >
@@ -241,7 +240,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
-                  ?.displayName || modelToDelete
+                    ?.displayName || modelToDelete
                 : ""}
               " (API Name: {modelToDelete}).
             </AlertDialogDescription>

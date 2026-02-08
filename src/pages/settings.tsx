@@ -273,13 +273,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "provider-settings",
     label: "Configuración de OpenRouter",
     description: "Configurar clave API de OpenRouter y modelos",
-    keywords: [
-      "openrouter",
-      "api",
-      "key",
-      "clave",
-      "ia",
-    ],
+    keywords: ["openrouter", "api", "key", "clave", "ia"],
     section: "Modelos y Conectividad",
     sectionId: "models-connectivity",
   },
@@ -384,13 +378,18 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     id: "prompts",
     label: "Prompts",
     description: "Configurar instrucciones del sistema y plantillas de IA",
-    keywords: ["prompts", "sistema", "instrucciones", "plantillas", "ia", "custom"],
+    keywords: [
+      "prompts",
+      "sistema",
+      "instrucciones",
+      "plantillas",
+      "ia",
+      "custom",
+    ],
     section: "Configuración Asistente",
     sectionId: "ai-behavior",
   },
 ];
-
-
 
 function SettingItem({
   label,
@@ -408,7 +407,7 @@ function SettingItem({
       onClick={onClick}
       className={cn(
         "flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border",
-        onClick ? "cursor-pointer" : ""
+        onClick ? "cursor-pointer" : "",
       )}
     >
       <div className="flex-1">
@@ -498,7 +497,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div id="settings-scroll-container" className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto">
+    <div
+      id="settings-scroll-container"
+      className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto"
+    >
       <div className="w-full mx-auto px-8 pt-12 pb-12">
         <div className="flex justify-between items-center mb-12 gap-4">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
@@ -595,16 +597,18 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
+              highlightedSection === "integrations"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Integraciones
             </h2>
             <p className="text-sm text-muted-foreground mb-8">
-              Conecta servicios externos para automatizar despliegues y bases de datos.
+              Conecta servicios externos para automatizar despliegues y bases de
+              datos.
             </p>
             <div className="space-y-6">
               <GitHubIntegration />
@@ -617,16 +621,18 @@ export default function SettingsPage() {
           {/* Agent v2 Permissions */}
           <div
             id="agent-permissions"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
+              highlightedSection === "agent-permissions"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Seguridad y Permisos del Agente
             </h2>
             <p className="text-sm text-muted-foreground mb-8">
-              Controla los permisos de lectura y escritura para las herramientas que usa el asistente.
+              Controla los permisos de lectura y escritura para las herramientas
+              que usa el asistente.
             </p>
             <AgentToolsSettings />
           </div>
@@ -638,16 +644,18 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
+              highlightedSection === "experiments"
+                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Laboratorio y Experimentos
             </h2>
             <p className="text-sm text-muted-foreground mb-8">
-              Funcionalidades en fase de prueba que pueden cambiar o desaparecer.
+              Funcionalidades en fase de prueba que pueden cambiar o
+              desaparecer.
             </p>
             <div className="space-y-8">
               <SettingItem
@@ -670,10 +678,11 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
-              ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${
+              highlightedSection === "danger-zone"
+                ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
+                : ""
+            }`}
           >
             <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-8">
               Zona peligrosa
@@ -748,7 +757,9 @@ export function GeneralSettings({
       id="general-settings"
       className={cn(
         "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
-        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+        isHighlighted
+          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+          : "",
       )}
     >
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
@@ -769,7 +780,7 @@ export function GeneralSettings({
                   "px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
                   theme === option
                     ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-black/5"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
                 )}
               >
                 {option === "system"
@@ -825,7 +836,9 @@ export function GeneralSettings({
                 }}
                 onKeyUp={(e) => {
                   if (e.key.startsWith("Arrow")) {
-                    const val = parseFloat((e.target as HTMLInputElement).value);
+                    const val = parseFloat(
+                      (e.target as HTMLInputElement).value,
+                    );
                     updateSettings({ themeIntensity: val });
                   }
                 }}
@@ -849,7 +862,9 @@ export function GeneralSettings({
 
       <div className="mt-12 flex items-center justify-between text-sm text-muted-foreground pt-8 border-t border-border/50">
         <div className="flex items-center gap-3">
-          <span className="font-semibold uppercase tracking-widest text-[10px] opacity-60">Versión</span>
+          <span className="font-semibold uppercase tracking-widest text-[10px] opacity-60">
+            Versión
+          </span>
           <span className="bg-muted px-3 py-1 rounded-lg text-foreground font-mono font-bold border border-border">
             {appVersion ? appVersion : "-"}
           </span>
@@ -872,14 +887,17 @@ export function WorkflowSettings({
       id="workflow-settings"
       className={cn(
         "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
-        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+        isHighlighted
+          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+          : "",
       )}
     >
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
         Flujo de Trabajo
       </h2>
       <p className="text-sm text-muted-foreground mb-8">
-        Configura cómo interactúas con la aplicación y el comportamiento de las herramientas de desarrollo.
+        Configura cómo interactúas con la aplicación y el comportamiento de las
+        herramientas de desarrollo.
       </p>
 
       <div className="space-y-12">
@@ -896,11 +914,15 @@ export function WorkflowSettings({
           <SettingItem
             label="Git nativo"
             description="Usa una implementación de Git integrada para mayor velocidad y menos dependencias externas."
-            onClick={() => updateSettings({ enableNativeGit: !settings?.enableNativeGit })}
+            onClick={() =>
+              updateSettings({ enableNativeGit: !settings?.enableNativeGit })
+            }
             control={
               <Switch
                 checked={!!settings?.enableNativeGit}
-                onCheckedChange={(checked) => updateSettings({ enableNativeGit: checked })}
+                onCheckedChange={(checked) =>
+                  updateSettings({ enableNativeGit: checked })
+                }
               />
             }
           />
@@ -908,11 +930,17 @@ export function WorkflowSettings({
           <SettingItem
             label="Auto-aprobar cambios"
             description="Aprobará automáticamente los cambios de código sugeridos por la IA sin pedir confirmación."
-            onClick={() => updateSettings({ autoApproveChanges: !settings?.autoApproveChanges })}
+            onClick={() =>
+              updateSettings({
+                autoApproveChanges: !settings?.autoApproveChanges,
+              })
+            }
             control={
               <Switch
                 checked={!!settings?.autoApproveChanges}
-                onCheckedChange={(checked) => updateSettings({ autoApproveChanges: checked })}
+                onCheckedChange={(checked) =>
+                  updateSettings({ autoApproveChanges: checked })
+                }
               />
             }
           />
@@ -920,11 +948,17 @@ export function WorkflowSettings({
           <SettingItem
             label="Expandir vista previa"
             description="Abre automáticamente el panel de vista previa lateral cuando el código cambia."
-            onClick={() => updateSettings({ autoExpandPreviewPanel: !settings?.autoExpandPreviewPanel })}
+            onClick={() =>
+              updateSettings({
+                autoExpandPreviewPanel: !settings?.autoExpandPreviewPanel,
+              })
+            }
             control={
               <Switch
                 checked={!!settings?.autoExpandPreviewPanel}
-                onCheckedChange={(checked) => updateSettings({ autoExpandPreviewPanel: checked })}
+                onCheckedChange={(checked) =>
+                  updateSettings({ autoExpandPreviewPanel: checked })
+                }
               />
             }
           />
@@ -932,11 +966,18 @@ export function WorkflowSettings({
           <SettingItem
             label="Notificaciones de respuesta"
             description="Muestra una notificación nativa del sistema cuando el chat termina de generar."
-            onClick={() => updateSettings({ enableChatCompletionNotifications: !settings?.enableChatCompletionNotifications })}
+            onClick={() =>
+              updateSettings({
+                enableChatCompletionNotifications:
+                  !settings?.enableChatCompletionNotifications,
+              })
+            }
             control={
               <Switch
                 checked={!!settings?.enableChatCompletionNotifications}
-                onCheckedChange={(checked) => updateSettings({ enableChatCompletionNotifications: checked })}
+                onCheckedChange={(checked) =>
+                  updateSettings({ enableChatCompletionNotifications: checked })
+                }
               />
             }
           />
@@ -945,7 +986,6 @@ export function WorkflowSettings({
     </div>
   );
 }
-
 
 function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   const [entries, setEntries] = useState<TokenStatEntry[]>([]);
@@ -1020,7 +1060,9 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
       id="stats-settings"
       className={cn(
         "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
-        isHighlighted ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30" : ""
+        isHighlighted
+          ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+          : "",
       )}
     >
       <div className="flex items-center justify-between mb-12">
@@ -1088,10 +1130,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
 
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <TrendingUp
-            className="text-muted-foreground/20 mb-6"
-            size={64}
-          />
+          <TrendingUp className="text-muted-foreground/20 mb-6" size={64} />
           <p className="text-xl font-semibold text-gray-900 dark:text-white">
             Aún no hay datos
           </p>

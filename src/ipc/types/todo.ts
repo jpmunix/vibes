@@ -45,7 +45,9 @@ export const CreateTodoSectionParamsSchema = z.object({
   title: z.string(),
 });
 
-export type CreateTodoSectionParams = z.infer<typeof CreateTodoSectionParamsSchema>;
+export type CreateTodoSectionParams = z.infer<
+  typeof CreateTodoSectionParamsSchema
+>;
 
 /**
  * Schema for update todo section params.
@@ -56,7 +58,9 @@ export const UpdateTodoSectionParamsSchema = z.object({
   order: z.number().optional(),
 });
 
-export type UpdateTodoSectionParams = z.infer<typeof UpdateTodoSectionParamsSchema>;
+export type UpdateTodoSectionParams = z.infer<
+  typeof UpdateTodoSectionParamsSchema
+>;
 
 /**
  * Schema for create todo params.
@@ -106,7 +110,9 @@ export const ReorderTodoSectionsParamsSchema = z.object({
   sectionIds: z.array(z.number()),
 });
 
-export type ReorderTodoSectionsParams = z.infer<typeof ReorderTodoSectionsParamsSchema>;
+export type ReorderTodoSectionsParams = z.infer<
+  typeof ReorderTodoSectionsParamsSchema
+>;
 
 /**
  * Schema for develop todo params.
@@ -134,7 +140,9 @@ export const RefineTodoPromptParamsSchema = z.object({
   todoId: z.number(),
 });
 
-export type RefineTodoPromptParams = z.infer<typeof RefineTodoPromptParamsSchema>;
+export type RefineTodoPromptParams = z.infer<
+  typeof RefineTodoPromptParamsSchema
+>;
 
 /**
  * Schema for refine todo prompt response.
@@ -143,36 +151,46 @@ export const RefineTodoPromptResponseSchema = z.object({
   prompt: z.string(),
 });
 
-export type RefineTodoPromptResponse = z.infer<typeof RefineTodoPromptResponseSchema>;
+export type RefineTodoPromptResponse = z.infer<
+  typeof RefineTodoPromptResponseSchema
+>;
 
 /**
  * Schema for analyze todo files params.
  */
 export const AnalyzeTodoFilesParamsSchema = z.object({
   appId: z.number(),
-  files: z.array(z.object({
-    name: z.string(),
-    path: z.string(),
-    type: z.string(),
-    data: z.string().optional(), // Base64 data for images
-  })),
+  files: z.array(
+    z.object({
+      name: z.string(),
+      path: z.string(),
+      type: z.string(),
+      data: z.string().optional(), // Base64 data for images
+    }),
+  ),
 });
 
-export type AnalyzeTodoFilesParams = z.infer<typeof AnalyzeTodoFilesParamsSchema>;
+export type AnalyzeTodoFilesParams = z.infer<
+  typeof AnalyzeTodoFilesParamsSchema
+>;
 
 /**
  * Schema for analyze todo files response.
  */
 export const AnalyzeTodoFilesResponseSchema = z.object({
   listTitle: z.string(),
-  tasks: z.array(z.object({
-    content: z.string(),
-    description: z.string().optional().nullable(),
-    completed: z.boolean().optional(),
-  })),
+  tasks: z.array(
+    z.object({
+      content: z.string(),
+      description: z.string().optional().nullable(),
+      completed: z.boolean().optional(),
+    }),
+  ),
 });
 
-export type AnalyzeTodoFilesResponse = z.infer<typeof AnalyzeTodoFilesResponseSchema>;
+export type AnalyzeTodoFilesResponse = z.infer<
+  typeof AnalyzeTodoFilesResponseSchema
+>;
 
 // =============================================================================
 // Todo Contracts (Invoke/Response)
@@ -258,12 +276,14 @@ export const todoContracts = {
   selectTodoFiles: defineContract({
     channel: "select-todo-files",
     input: z.void(),
-    output: z.array(z.object({
-      name: z.string(),
-      path: z.string(),
-      type: z.string(),
-      data: z.string().optional(),
-    })),
+    output: z.array(
+      z.object({
+        name: z.string(),
+        path: z.string(),
+        type: z.string(),
+        data: z.string().optional(),
+      }),
+    ),
   }),
 } as const;
 

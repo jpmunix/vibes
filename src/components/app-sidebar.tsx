@@ -207,8 +207,9 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
-                      }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
+                      isActive ? "bg-sidebar-accent" : ""
+                    }`}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onTabChange("Aplicaciones");

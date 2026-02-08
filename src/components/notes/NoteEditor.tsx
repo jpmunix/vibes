@@ -71,17 +71,17 @@ const FontSize = Extension.create({
     return {
       setFontSize:
         (fontSize: string) =>
-          ({ chain }: any) => {
-            return chain().setMark("textStyle", { fontSize }).run();
-          },
+        ({ chain }: any) => {
+          return chain().setMark("textStyle", { fontSize }).run();
+        },
       unsetFontSize:
         () =>
-          ({ chain }: any) => {
-            return chain()
-              .setMark("textStyle", { fontSize: null })
-              .removeEmptyTextStyle()
-              .run();
-          },
+        ({ chain }: any) => {
+          return chain()
+            .setMark("textStyle", { fontSize: null })
+            .removeEmptyTextStyle()
+            .run();
+        },
     } as any;
   },
 });
@@ -249,7 +249,11 @@ export function NoteEditor({
           {/* Font Size Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="rounded-full h-8 px-2 flex gap-1 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full h-8 px-2 flex gap-1 shrink-0"
+              >
                 <Type className="h-4 w-4" />
                 <span className="text-xs hidden sm:inline">Size</span>
               </Button>
@@ -258,7 +262,9 @@ export function NoteEditor({
               {FONT_SIZES.map((size) => (
                 <DropdownMenuItem
                   key={size.value}
-                  onClick={() => (editor.commands as any).setFontSize(size.value)}
+                  onClick={() =>
+                    (editor.commands as any).setFontSize(size.value)
+                  }
                 >
                   <span style={{ fontSize: size.value }}>{size.label}</span>
                 </DropdownMenuItem>
@@ -269,7 +275,11 @@ export function NoteEditor({
           {/* Color Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="rounded-full h-8 w-8 p-0 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full h-8 w-8 p-0 shrink-0"
+              >
                 <Palette className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -281,8 +291,13 @@ export function NoteEditor({
                     size="sm"
                     variant="ghost"
                     className="h-6 w-6 rounded-full p-0 border border-border/50"
-                    style={{ backgroundColor: color.value === 'inherit' ? 'transparent' : color.value }}
-                    onClick={() => editor.chain().focus().setColor(color.value).run()}
+                    style={{
+                      backgroundColor:
+                        color.value === "inherit" ? "transparent" : color.value,
+                    }}
+                    onClick={() =>
+                      editor.chain().focus().setColor(color.value).run()
+                    }
                   />
                 ))}
               </div>
@@ -292,7 +307,11 @@ export function NoteEditor({
           {/* Highlight Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="rounded-full h-8 w-8 p-0 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full h-8 w-8 p-0 shrink-0"
+              >
                 <Highlighter className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -305,7 +324,13 @@ export function NoteEditor({
                     variant="ghost"
                     className="h-6 w-6 rounded-sm p-0 border border-border/50"
                     style={{ backgroundColor: h.value }}
-                    onClick={() => editor.chain().focus().setHighlight({ color: h.value }).run()}
+                    onClick={() =>
+                      editor
+                        .chain()
+                        .focus()
+                        .setHighlight({ color: h.value })
+                        .run()
+                    }
                   />
                 ))}
               </div>
@@ -316,16 +341,24 @@ export function NoteEditor({
 
           <Button
             size="sm"
-            variant={editor.isActive("heading", { level: 1 }) ? "secondary" : "ghost"}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            variant={
+              editor.isActive("heading", { level: 1 }) ? "secondary" : "ghost"
+            }
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 1 }).run()
+            }
             className="rounded-full h-8 w-8 p-0 shrink-0"
           >
             <Heading1 className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
-            variant={editor.isActive("heading", { level: 2 }) ? "secondary" : "ghost"}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            variant={
+              editor.isActive("heading", { level: 2 }) ? "secondary" : "ghost"
+            }
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
             className="rounded-full h-8 w-8 p-0 shrink-0"
           >
             <Heading2 className="h-4 w-4" />
@@ -364,7 +397,11 @@ export function NoteEditor({
           {/* Emoji Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" className="rounded-full h-8 w-8 p-0 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-full h-8 w-8 p-0 shrink-0"
+              >
                 <Smile className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -376,7 +413,9 @@ export function NoteEditor({
                     size="sm"
                     variant="ghost"
                     className="h-8 w-8 text-lg p-0"
-                    onClick={() => editor.chain().focus().insertContent(emoji).run()}
+                    onClick={() =>
+                      editor.chain().focus().insertContent(emoji).run()
+                    }
                   >
                     {emoji}
                   </Button>

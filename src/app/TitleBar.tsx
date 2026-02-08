@@ -87,8 +87,9 @@ export const TitleBar = () => {
           data-testid="title-bar-app-name-button"
           variant="outline"
           size="sm"
-          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${selectedApp ? "cursor-pointer" : ""
-            }`}
+          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${
+            selectedApp ? "cursor-pointer" : ""
+          }`}
           onClick={handleAppClick}
         >
           {displayText}

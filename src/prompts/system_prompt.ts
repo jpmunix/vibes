@@ -6,7 +6,6 @@ import { constructLocalAgentPrompt } from "./local_agent_prompt";
 import { getEffectivePrompt } from "./index";
 import { UserSettings } from "../lib/schemas";
 
-
 const logger = log.scope("system_prompt");
 
 export const THINKING_PROMPT = `
@@ -577,7 +576,10 @@ export const getSystemPromptForChatMode = ({
   settings?: UserSettings;
 }) => {
   if (chatMode === "agent") {
-    return getEffectivePrompt("agent_mode_system", settings) + TURBO_EDITS_V2_SYSTEM_PROMPT;
+    return (
+      getEffectivePrompt("agent_mode_system", settings) +
+      TURBO_EDITS_V2_SYSTEM_PROMPT
+    );
   }
   if (chatMode === "ask") {
     return ASK_MODE_SYSTEM_PROMPT; // Potencialmente editable en el futuro
@@ -586,13 +588,14 @@ export const getSystemPromptForChatMode = ({
   const prefix = getEffectivePrompt("build_system_prefix", settings);
   const postfix = getEffectivePrompt("build_system_postfix", settings);
 
-  return `${prefix}
+  return (
+    `${prefix}
 
 [[AI_RULES]]
 
-${postfix}` + TURBO_EDITS_V2_SYSTEM_PROMPT;
+${postfix}` + TURBO_EDITS_V2_SYSTEM_PROMPT
+  );
 };
-
 
 export const readAiRules = async (dyadAppPath: string) => {
   const aiRulesPath = path.join(dyadAppPath, "AI_RULES.md");

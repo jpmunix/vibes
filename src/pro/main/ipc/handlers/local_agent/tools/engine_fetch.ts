@@ -6,9 +6,11 @@
 import { readSettings } from "@/main/settings";
 import log from "electron-log";
 import type { AgentContext } from "./types";
-import { openRouterCompletion, type OpenRouterMessage } from "@/ipc/utils/openrouter";
+import {
+  openRouterCompletion,
+  type OpenRouterMessage,
+} from "@/ipc/utils/openrouter";
 import { getEffectivePrompt } from "@/prompts";
-
 
 export const DYAD_ENGINE_URL =
   process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -59,7 +61,6 @@ function buildTurboEditMessages(
   body: TurboFileEditRequestBody,
   settings: ReturnType<typeof readSettings>,
 ): OpenRouterMessage[] {
-
   const instructions = body.instructions?.trim();
   const instructionsBlock = instructions
     ? `Instructions:\n${instructions}\n\n`
@@ -132,7 +133,6 @@ async function callTurboFileEditViaOpenRouter(
         temperature: 0,
         messages: buildTurboEditMessages(body, settings),
         signal: controller.signal,
-
       });
     } finally {
       clearTimeout(timeout);
@@ -140,7 +140,8 @@ async function callTurboFileEditViaOpenRouter(
   } catch (error) {
     logger.error("OpenRouter turbo edit request timed out or failed", error);
     throw new Error(
-      `OpenRouter turbo file edit failed: ${error instanceof Error ? error.message : String(error)
+      `OpenRouter turbo file edit failed: ${
+        error instanceof Error ? error.message : String(error)
       }`,
     );
   }

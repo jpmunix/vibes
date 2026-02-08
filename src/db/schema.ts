@@ -67,7 +67,9 @@ export const chats = sqliteTable("chats", {
   appId: integer("app_id")
     .notNull()
     .references(() => apps.id, { onDelete: "cascade" }),
-  todoId: integer("todo_id").references(() => todos.id, { onDelete: "set null" }),
+  todoId: integer("todo_id").references(() => todos.id, {
+    onDelete: "set null",
+  }),
   title: text("title"),
   initialCommitHash: text("initial_commit_hash"),
   createdAt: integer("created_at", { mode: "timestamp" })

@@ -19,8 +19,8 @@ export function AppTitleModelSelector() {
 
   const currentValue =
     settings?.appTitleGenerationModel === "SAME_AS_CHAT" ||
-      !settings?.appTitleGenerationModel ||
-      settings?.appTitleGenerationModel === ""
+    !settings?.appTitleGenerationModel ||
+    settings?.appTitleGenerationModel === ""
       ? SAME_AS_CHAT_VALUE
       : settings?.appTitleGenerationModel;
 
