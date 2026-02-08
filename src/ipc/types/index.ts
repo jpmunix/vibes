@@ -304,11 +304,14 @@ export type { Note, NoteSummary, UpdateNoteParams } from "./note";
 // Todo types
 export type {
   Todo,
+  TodoSection,
   CreateTodoParams,
   UpdateTodoParams,
   ReorderTodosParams,
   DevelopTodoParams,
   DevelopTodoResponse,
+  CreateTodoSectionParams,
+  UpdateTodoSectionParams,
 } from "./todo";
 
 // =============================================================================

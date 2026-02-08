@@ -15,6 +15,7 @@ interface SortableTodoItemProps {
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number, prompt?: string) => void;
   onEdit: () => void;
+  isDraggingOverlay?: boolean;
 }
 
 export function SortableTodoItem({
@@ -24,6 +25,7 @@ export function SortableTodoItem({
   onDelete,
   onDevelop,
   onEdit,
+  isDraggingOverlay,
 }: SortableTodoItemProps) {
   const {
     attributes,
@@ -38,7 +40,7 @@ export function SortableTodoItem({
   const [editContent, setEditContent] = useState(todo.content);
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
   };
 
@@ -58,6 +60,17 @@ export function SortableTodoItem({
     }
   };
 
+  // If this item is being dragged in the list, show as placeholder
+  if (isDragging && !isDraggingOverlay) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="min-h-[72px] w-full bg-primary/5 border-2 border-dashed border-primary/20 rounded-lg"
+      />
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -65,13 +78,13 @@ export function SortableTodoItem({
       className={cn(
         "group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors",
         todo.completed && "opacity-60",
-        isDragging && "opacity-50 ring-2 ring-primary"
+        isDraggingOverlay && "shadow-2xl ring-2 ring-primary border-primary rotate-1"
       )}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
       >
         <GripVertical className="h-4 w-4" />
       </div>
@@ -89,19 +102,19 @@ export function SortableTodoItem({
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           autoFocus
-          className="flex-1"
+          className="flex-1 h-8 text-sm"
         />
       ) : (
         <div
           className={cn(
-            "flex-1 text-sm cursor-pointer py-1",
+            "flex-1 text-sm cursor-pointer py-1 min-w-0",
             todo.completed && "line-through text-muted-foreground"
           )}
           onClick={onEdit}
         >
-          {todo.content}
+          <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
           {todo.description && (
-            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
               {todo.description}
             </p>
           )}
@@ -170,19 +183,19 @@ export function TodoItem({
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           autoFocus
-          className="flex-1"
+          className="flex-1 h-8 text-sm"
         />
       ) : (
         <div
           className={cn(
-            "flex-1 text-sm cursor-pointer py-1",
+            "flex-1 text-sm cursor-pointer py-1 min-w-0",
             todo.completed && "line-through text-muted-foreground"
           )}
           onClick={onEdit}
         >
-          {todo.content}
+          <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
           {todo.description && (
-            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
               {todo.description}
             </p>
           )}
@@ -191,4 +204,3 @@ export function TodoItem({
     </div>
   );
 }
-

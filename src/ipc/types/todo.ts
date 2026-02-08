@@ -6,11 +6,26 @@ import { createClient, defineContract } from "../contracts/core";
 // =============================================================================
 
 /**
+ * Schema for a Todo Section object.
+ */
+export const TodoSectionSchema = z.object({
+  id: z.number(),
+  appId: z.number(),
+  title: z.string(),
+  order: z.number(),
+  createdAt: z.union([z.date(), z.string()]),
+  updatedAt: z.union([z.date(), z.string()]),
+});
+
+export type TodoSection = z.infer<typeof TodoSectionSchema>;
+
+/**
  * Schema for a Todo object.
  */
 export const TodoSchema = z.object({
   id: z.number(),
   appId: z.number(),
+  sectionId: z.number().optional().nullable(),
   content: z.string(),
   description: z.string().optional().nullable(),
   prompt: z.string().optional().nullable(),
@@ -23,10 +38,32 @@ export const TodoSchema = z.object({
 export type Todo = z.infer<typeof TodoSchema>;
 
 /**
+ * Schema for create todo section params.
+ */
+export const CreateTodoSectionParamsSchema = z.object({
+  appId: z.number(),
+  title: z.string(),
+});
+
+export type CreateTodoSectionParams = z.infer<typeof CreateTodoSectionParamsSchema>;
+
+/**
+ * Schema for update todo section params.
+ */
+export const UpdateTodoSectionParamsSchema = z.object({
+  sectionId: z.number(),
+  title: z.string().optional(),
+  order: z.number().optional(),
+});
+
+export type UpdateTodoSectionParams = z.infer<typeof UpdateTodoSectionParamsSchema>;
+
+/**
  * Schema for create todo params.
  */
 export const CreateTodoParamsSchema = z.object({
   appId: z.number(),
+  sectionId: z.number().optional(),
   content: z.string(),
   description: z.string().optional(),
   prompt: z.string().optional(),
@@ -39,10 +76,12 @@ export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
  */
 export const UpdateTodoParamsSchema = z.object({
   todoId: z.number(),
+  sectionId: z.number().optional().nullable(),
   content: z.string().optional(),
   description: z.string().optional().nullable(),
   prompt: z.string().optional().nullable(),
   completed: z.boolean().optional(),
+  order: z.number().optional(),
 });
 
 export type UpdateTodoParams = z.infer<typeof UpdateTodoParamsSchema>;
@@ -52,6 +91,7 @@ export type UpdateTodoParams = z.infer<typeof UpdateTodoParamsSchema>;
  */
 export const ReorderTodosParamsSchema = z.object({
   appId: z.number(),
+  sectionId: z.number().optional().nullable(),
   todoIds: z.array(z.number()),
 });
 
@@ -105,6 +145,30 @@ export const todoContracts = {
     output: z.array(TodoSchema),
   }),
 
+  getTodoSectionsByApp: defineContract({
+    channel: "get-todo-sections-by-app",
+    input: z.number(), // appId
+    output: z.array(TodoSectionSchema),
+  }),
+
+  createTodoSection: defineContract({
+    channel: "create-todo-section",
+    input: CreateTodoSectionParamsSchema,
+    output: TodoSectionSchema,
+  }),
+
+  updateTodoSection: defineContract({
+    channel: "update-todo-section",
+    input: UpdateTodoSectionParamsSchema,
+    output: TodoSectionSchema,
+  }),
+
+  deleteTodoSection: defineContract({
+    channel: "delete-todo-section",
+    input: z.number(), // sectionId
+    output: z.void(),
+  }),
+
   createTodo: defineContract({
     channel: "create-todo",
     input: CreateTodoParamsSchema,
@@ -149,9 +213,5 @@ export const todoContracts = {
 /**
  * Type-safe client for todo IPC operations.
  * Auto-generated from contracts.
- *
- * @example
- * const todos = await todoClient.getTodosByApp(appId);
- * const todo = await todoClient.createTodo({ appId, content: "New task" });
  */
 export const todoClient = createClient(todoContracts);
