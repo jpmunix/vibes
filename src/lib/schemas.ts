@@ -296,6 +296,7 @@ export const UserSettingsSchema = z
     providerSettings: z.record(z.string(), ProviderSettingSchema),
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
+    todoAnalysisModel: z.string().optional(),
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
@@ -370,6 +371,8 @@ export const UserSettingsSchema = z
     hideLocalAgentNewChatToast: z.boolean().optional(),
     chatLanguage: ChatLanguageSchema.optional(),
     serperApiKey: SecretSchema.optional(),
+    themeIntensity: z.number().optional(),
+    customPrompts: z.record(z.string(), z.string()).optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

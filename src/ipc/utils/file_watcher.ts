@@ -299,19 +299,17 @@ export class IncrementalIndexer {
       // Extra safety filter - ensure no excluded directories slip through
       const filteredFiles = files.filter((file) => {
         const normalizedPath = file.toLowerCase();
-        return !excludeDirs.some((dir) =>
-          normalizedPath.includes(`/${dir}/`)
-        );
+        return !excludeDirs.some((dir) => normalizedPath.includes(`/${dir}/`));
       });
 
       if (files.length !== filteredFiles.length) {
         logger.warn(
-          `Filtered out ${files.length - filteredFiles.length} files from excluded directories`
+          `Filtered out ${files.length - filteredFiles.length} files from excluded directories`,
         );
       }
 
       logger.debug(
-        `Pattern ${pattern} found ${filteredFiles.length} files (filtered from ${files.length})`
+        `Pattern ${pattern} found ${filteredFiles.length} files (filtered from ${files.length})`,
       );
       allFiles = allFiles.concat(filteredFiles);
     }

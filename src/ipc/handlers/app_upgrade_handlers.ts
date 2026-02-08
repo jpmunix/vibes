@@ -20,14 +20,16 @@ const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
     title: "Habilitar edición de componentes seleccionados",
     description:
       "Instala el complemento de etiquetado de componentes de Vibes Vite y sus dependencias.",
-    manualUpgradeUrl: "https://github.com/minube/vibes/upgrades/select-component",
+    manualUpgradeUrl:
+      "https://github.com/minube/vibes/upgrades/select-component",
   },
   {
     id: "capacitor",
     title: "Actualiza a Capacitor para una experiencia móvil híbrida",
     description:
       "Añade Capacitor para permitir que tu app corra en iOS y Android además de la web.",
-    manualUpgradeUrl: "https://github.com/minube/vibes/guides/mobile-app#upgrade-your-app",
+    manualUpgradeUrl:
+      "https://github.com/minube/vibes/guides/mobile-app#upgrade-your-app",
   },
 ];
 

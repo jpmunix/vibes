@@ -3,6 +3,8 @@ import fs from "node:fs";
 import log from "electron-log";
 import { TURBO_EDITS_V2_SYSTEM_PROMPT } from "../pro/main/prompts/turbo_edits_v2_prompt";
 import { constructLocalAgentPrompt } from "./local_agent_prompt";
+import { getEffectivePrompt } from "./index";
+import { UserSettings } from "../lib/schemas";
 
 const logger = log.scope("system_prompt");
 
@@ -452,7 +454,7 @@ IF YOU USE ANY OF THESE TAGS, YOU WILL BE FIRED.
 
 Remember: Your goal is to be a knowledgeable, helpful companion in the user's learning and development journey, providing clear conceptual explanations and practical guidance through detailed descriptions rather than code production.`;
 
-const AGENT_MODE_SYSTEM_PROMPT = `
+export const AGENT_MODE_SYSTEM_PROMPT = `
 You are an AI App Builder Agent. Your role is to analyze app development requests and gather all necessary information before the actual coding phase begins.
 
 ## Core Mission
@@ -512,6 +514,7 @@ export const constructSystemPrompt = ({
   readOnly,
   basicAgentMode,
   chatLanguage = "es",
+  settings,
 }: {
   aiRules: string | undefined;
   chatMode?: "build" | "ask" | "agent" | "local-agent";
@@ -523,19 +526,23 @@ export const constructSystemPrompt = ({
   basicAgentMode?: boolean;
   /** Language for chat responses */
   chatLanguage?: "es" | "en";
+  settings?: UserSettings;
 }) => {
   if (chatMode === "local-agent") {
     return constructLocalAgentPrompt(aiRules, themePrompt, {
       readOnly,
       basicAgentMode,
       chatLanguage,
+      settings,
     });
   }
 
   let systemPrompt = getSystemPromptForChatMode({
     chatMode,
     enableTurboEditsV2: _enableTurboEditsV2,
+    settings,
   });
+
   systemPrompt = systemPrompt.replace(
     "[[AI_RULES]]",
     aiRules ?? DEFAULT_AI_RULES,
@@ -562,17 +569,32 @@ export const constructSystemPrompt = ({
 export const getSystemPromptForChatMode = ({
   chatMode,
   enableTurboEditsV2: _enableTurboEditsV2,
+  settings,
 }: {
   chatMode: "build" | "ask" | "agent";
   enableTurboEditsV2: boolean;
+  settings?: UserSettings;
 }) => {
   if (chatMode === "agent") {
-    return AGENT_MODE_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT;
+    return (
+      getEffectivePrompt("agent_mode_system", settings) +
+      TURBO_EDITS_V2_SYSTEM_PROMPT
+    );
   }
   if (chatMode === "ask") {
-    return ASK_MODE_SYSTEM_PROMPT;
+    return ASK_MODE_SYSTEM_PROMPT; // Potencialmente editable en el futuro
   }
-  return BUILD_SYSTEM_PROMPT + TURBO_EDITS_V2_SYSTEM_PROMPT;
+
+  const prefix = getEffectivePrompt("build_system_prefix", settings);
+  const postfix = getEffectivePrompt("build_system_postfix", settings);
+
+  return (
+    `${prefix}
+
+[[AI_RULES]]
+
+${postfix}` + TURBO_EDITS_V2_SYSTEM_PROMPT
+  );
 };
 
 export const readAiRules = async (dyadAppPath: string) => {

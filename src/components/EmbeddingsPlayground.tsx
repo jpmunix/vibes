@@ -246,7 +246,7 @@ export function EmbeddingsPlayground({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="min-w-5xl min-h-[60vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Playground de Embeddings MiniLM</DialogTitle>
           <DialogDescription>
@@ -371,7 +371,8 @@ export function EmbeddingsPlayground({
               </div>
               {indexStats.totalFiles === 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  No hay archivos indexados. Haz clic en "Indexar archivos" para empezar.
+                  No hay archivos indexados. Haz clic en "Indexar archivos" para
+                  empezar.
                 </p>
               )}
             </div>

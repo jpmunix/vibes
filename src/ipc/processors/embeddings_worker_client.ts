@@ -1,4 +1,3 @@
-
 import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 import log from "electron-log";
@@ -31,7 +30,9 @@ export async function generateEmbeddingsInWorker(
     // Worker is built to the same directory as this file
     const workerPath = path.join(__dirname, "embeddings_worker.js");
 
-    logger.debug(`[EMBEDDINGS CLIENT] Starting worker for ${filePath} (${chunks.length} chunks)`);
+    logger.debug(
+      `[EMBEDDINGS CLIENT] Starting worker for ${filePath} (${chunks.length} chunks)`,
+    );
     logger.debug(`[EMBEDDINGS CLIENT] Worker path: ${workerPath}`);
 
     // Pass cache directory to worker via workerData
@@ -45,11 +46,16 @@ export async function generateEmbeddingsInWorker(
     // Handle worker messages
     worker.on("message", (output: EmbeddingsWorkerOutput) => {
       if (output.error) {
-        logger.error(`[EMBEDDINGS CLIENT] Worker error for ${filePath}:`, output.error);
+        logger.error(
+          `[EMBEDDINGS CLIENT] Worker error for ${filePath}:`,
+          output.error,
+        );
         worker.terminate();
         reject(new Error(output.error));
       } else {
-        logger.debug(`[EMBEDDINGS CLIENT] Worker completed for ${filePath}: ${output.embeddings.length} embeddings`);
+        logger.debug(
+          `[EMBEDDINGS CLIENT] Worker completed for ${filePath}: ${output.embeddings.length} embeddings`,
+        );
         // Remove exit handler before terminating to avoid race condition
         worker.removeAllListeners("exit");
         worker.terminate();
@@ -68,7 +74,9 @@ export async function generateEmbeddingsInWorker(
     // Handle worker exit (unexpected termination)
     worker.on("exit", (code) => {
       if (code !== 0) {
-        logger.error(`[EMBEDDINGS CLIENT] Worker exited unexpectedly with code ${code}`);
+        logger.error(
+          `[EMBEDDINGS CLIENT] Worker exited unexpectedly with code ${code}`,
+        );
         reject(new Error(`Worker exited unexpectedly with code ${code}`));
       }
     });

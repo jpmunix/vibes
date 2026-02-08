@@ -19,14 +19,21 @@ import {
 import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { SortableTodoItem, TodoItem } from "./TodoItem";
+import { TodoEditModal } from "./TodoEditModal";
 
 interface TodoListProps {
   todos: Todo[];
   onAdd: (content: string) => void;
   onToggle: (todoId: number, completed: boolean) => void;
-  onUpdate: (todoId: number, content: string) => void;
+  onUpdate: (
+    todoId: number,
+    content: string,
+    description?: string | null,
+    prompt?: string | null,
+  ) => void;
   onDelete: (todoId: number) => void;
-  onDevelop: (todoId: number) => void;
+  onDevelop: (todoId: number, prompt?: string) => void;
+  onRefine: (todoId: number) => Promise<string>;
   onReorder: (todoIds: number[]) => void;
   isLoading?: boolean;
 }
@@ -38,16 +45,18 @@ export function TodoList({
   onUpdate,
   onDelete,
   onDevelop,
+  onRefine,
   onReorder,
   isLoading,
 }: TodoListProps) {
   const [newTodo, setNewTodo] = useState("");
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleAdd = () => {
@@ -75,7 +84,9 @@ export function TodoList({
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedPending = arrayMove(pendingTodos, oldIndex, newIndex);
-        const newOrder = [...reorderedPending, ...completedTodos].map((t) => t.id);
+        const newOrder = [...reorderedPending, ...completedTodos].map(
+          (t) => t.id,
+        );
         onReorder(newOrder);
       }
     }
@@ -133,6 +144,7 @@ export function TodoList({
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     onDevelop={onDevelop}
+                    onEdit={() => setEditingTodo(todo)}
                   />
                 ))}
               </SortableContext>
@@ -151,6 +163,7 @@ export function TodoList({
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     onDevelop={onDevelop}
+                    onEdit={() => setEditingTodo(todo)}
                   />
                 ))}
               </div>
@@ -158,6 +171,27 @@ export function TodoList({
           </>
         )}
       </div>
+
+      <TodoEditModal
+        todo={editingTodo}
+        open={!!editingTodo}
+        onOpenChange={(open) => !open && setEditingTodo(null)}
+        onSave={(id, content, desc, prompt, closeModal = false) => {
+          onUpdate(id, content, desc, prompt);
+          if (closeModal) {
+            setEditingTodo(null);
+          }
+        }}
+        onDelete={(id) => {
+          onDelete(id);
+          setEditingTodo(null);
+        }}
+        onDevelop={(id, prompt) => {
+          onDevelop(id, prompt);
+          setEditingTodo(null);
+        }}
+        onRefine={onRefine}
+      />
     </div>
   );
 }

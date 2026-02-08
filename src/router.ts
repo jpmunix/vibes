@@ -9,11 +9,14 @@ import { noteDetailRoute } from "./routes/notes_.$noteId";
 import { notesIndexRoute } from "./routes/notes_.index";
 import { rootRoute } from "./routes/root";
 import { settingsRoute } from "./routes/settings";
-import { providerSettingsRoute } from "./routes/settings/providers/$provider";
+
 import { themesRoute } from "./routes/themes";
 import { todosRoute } from "./routes/todos";
 import { todoDetailRoute } from "./routes/todos_.$appId";
 import { todosIndexRoute } from "./routes/todos_.index";
+
+import { settingsIndexRoute } from "./routes/settings/index";
+import { promptsSettingsRoute } from "./routes/settings/prompts";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -24,7 +27,7 @@ const routeTree = rootRoute.addChildren([
   notesRoute.addChildren([notesIndexRoute, noteDetailRoute]),
   todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
-  settingsRoute.addChildren([providerSettingsRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute]),
 ]);
 
 import { useNavigate } from "@tanstack/react-router";

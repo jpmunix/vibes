@@ -49,12 +49,12 @@ export const ChatLanguageSelector: React.FC = () => {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-4">
-        <label
-          htmlFor="chat-language"
-          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Idioma del chat
-        </label>
+        {/*<label*/}
+        {/*  htmlFor="chat-language"*/}
+        {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300"*/}
+        {/*>*/}
+        {/*  Idioma del chat*/}
+        {/*</label>*/}
         <Select value={currentValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-[180px]" id="chat-language">
             <SelectValue placeholder="Selecciona idioma" />

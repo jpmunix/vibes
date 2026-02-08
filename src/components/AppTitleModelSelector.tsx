@@ -33,14 +33,7 @@ export function AppTitleModelSelector() {
   };
 
   return (
-    <div className="space-y-3 pt-4 border-t border-border">
-      <Label
-        htmlFor="appTitleGenerationModel"
-        className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
-      >
-        <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-        Modelo para Generación de Títulos
-      </Label>
+    <div className="space-y-3">
       <Select
         value={currentValue}
         onValueChange={handleChange}
@@ -58,11 +51,6 @@ export function AppTitleModelSelector() {
           ))}
         </SelectContent>
       </Select>
-      <p className="text-xs text-muted-foreground">
-        Configura el modelo que OpenRouter utilizará para generar el título de
-        la aplicación a partir de tu prompt inicial. Por defecto:{" "}
-        <code className="bg-muted px-1 rounded">openai/gpt-4.1-nano</code>
-      </p>
     </div>
   );
 }

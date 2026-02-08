@@ -204,6 +204,27 @@
       "when": 1770468933604,
       "tag": "0028_stormy_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1770501196239,
+      "tag": "0029_acoustic_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1770507648390,
+      "tag": "0030_closed_lionheart",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1770540464274,
+      "tag": "0031_perfect_titanium_man",
+      "breakpoints": true
     }
   ]
 }

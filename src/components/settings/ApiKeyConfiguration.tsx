@@ -98,7 +98,7 @@ export function ApiKeyConfiguration({
     >
       <AccordionItem
         value="settings-key"
-        className="border rounded-lg px-4 bg-(--background-lightest)"
+        className="border rounded-lg px-4 bg-card"
       >
         <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
           Clave API desde Configuración
@@ -194,7 +194,7 @@ export function ApiKeyConfiguration({
       {!isDyad && envVarName && (
         <AccordionItem
           value="env-key"
-          className="border rounded-lg px-4 bg-(--background-lightest)"
+          className="border rounded-lg px-4 bg-card"
         >
           <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
             Clave API de variable de entornotorno
@@ -230,7 +230,7 @@ export function ApiKeyConfiguration({
                 <AlertTitle>Variable de Entorno No Establecida</AlertTitle>
                 <AlertDescription>
                   La variable de entorno{" "}
-                  <code className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">
+                  <code className="font-mono bg-muted px-1 rounded text-xs">
                     {envVarName}
                   </code>{" "}
                   no está establecida.

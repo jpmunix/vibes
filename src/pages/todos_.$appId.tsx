@@ -18,43 +18,54 @@ export default function TodoDetailPage() {
 
   const {
     todos,
+    sections,
     loading,
     createTodo,
     updateTodo,
     deleteTodo,
     developTodo,
     reorderTodos,
+    reorderSections,
+    refinePrompt,
+    createSection,
+    updateSection,
+    deleteSection,
+    smartImport,
+    isImporting,
   } = useTodos(numericAppId);
 
-  const handleAdd = async (content: string) => {
-    await createTodo(content);
+  const handleAddTodo = async (content: string, sectionId?: number) => {
+    await createTodo({ content, sectionId });
   };
 
-  const handleToggle = async (todoId: number, completed: boolean) => {
-    await updateTodo({ todoId, completed });
+  const handleUpdateTodo = async (
+    todoId: number,
+    params: {
+      content?: string;
+      description?: string | null;
+      prompt?: string | null;
+      completed?: boolean;
+      sectionId?: number | null;
+      order?: number;
+    },
+  ) => {
+    await updateTodo({ todoId, ...params });
   };
 
-  const handleUpdate = async (todoId: number, content: string) => {
-    await updateTodo({ todoId, content });
+  const handleReorderTodos = async (
+    todoIds: number[],
+    sectionId?: number | null,
+  ) => {
+    await reorderTodos({ todoIds, sectionId });
   };
 
-  const handleDelete = async (todoId: number) => {
-    await deleteTodo(todoId);
-  };
-
-  const handleDevelop = async (todoId: number) => {
-    const result = await developTodo(todoId);
-    // Set the selected app before navigating
+  const handleDevelop = async (todoId: number, prompt?: string) => {
+    const result = await developTodo({ todoId, prompt });
     setSelectedAppId(numericAppId);
-    // Navigate to the new chat with autoStart enabled
     navigate({
       to: "/chat",
       search: { id: result.chatId, autoStart: true },
     });
-  };
-
-  const handleReorder = async (todoIds: number[]) => {
-    await reorderTodos(todoIds);
   };
 
   if (!app) {
@@ -74,26 +85,26 @@ export default function TodoDetailPage() {
   }
 
   return (
-    <div className="h-full w-full p-6">
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => navigate({ to: "/" })}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver
-      </Button>
-
+    <div className="h-full w-full p-6 overflow-hidden">
       <TodoBoard
         todos={todos}
+        sections={sections}
         appName={app.name}
-        onAdd={handleAdd}
-        onToggle={handleToggle}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
+        onAddTodo={handleAddTodo}
+        onUpdateTodo={handleUpdateTodo}
+        onDeleteTodo={deleteTodo}
+        onReorderTodos={handleReorderTodos}
+        onReorderSections={reorderSections}
+        onAddSection={(title) => createSection(title)}
+        onUpdateSection={(sectionId, title) =>
+          updateSection({ sectionId, title })
+        }
+        onDeleteSection={deleteSection}
         onDevelop={handleDevelop}
-        onReorder={handleReorder}
+        onRefine={async (todoId: number) => refinePrompt({ todoId })}
+        onSmartImport={smartImport}
         isLoading={loading}
+        isImporting={isImporting}
       />
     </div>
   );

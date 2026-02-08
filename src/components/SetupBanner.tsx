@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useScrollAndNavigateTo } from "@/hooks/useScrollAndNavigateTo";
 import {
   CheckCircle,
   AlertCircle,
@@ -6,7 +7,6 @@ import {
   Loader2,
   Folder,
 } from "lucide-react";
-import { providerSettingsRoute } from "@/routes/settings/providers/$provider";
 
 import SetupProviderCard from "@/components/SetupProviderCard";
 
@@ -40,6 +40,7 @@ type NodeInstallStep =
 export function SetupBanner() {
   const posthog = usePostHog();
   const navigate = useNavigate();
+  const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   const [isOnboardingVisible, setIsOnboardingVisible] = useState(true);
   const { isAnyProviderSetup, isLoading: loading } =
     useLanguageModelProviders();
@@ -94,10 +95,7 @@ export function SetupBanner() {
 
   const handleOpenRouterSetupClick = () => {
     posthog.capture("setup-flow:ai-provider-setup:openrouter:click");
-    navigate({
-      to: providerSettingsRoute.id,
-      params: { provider: "openrouter" },
-    });
+    scrollAndNavigateTo("models-connectivity");
   };
 
   const handleNodeInstallClick = useCallback(async () => {
@@ -392,17 +390,14 @@ export const OpenRouterSetupBanner = ({
   className?: string;
 }) => {
   const posthog = usePostHog();
-  const navigate = useNavigate();
+  const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
   return (
     <SetupProviderCard
       className={cn("mt-2", className)}
       variant="openrouter"
       onClick={() => {
         posthog.capture("setup-flow:ai-provider-setup:openrouter:click");
-        navigate({
-          to: providerSettingsRoute.id,
-          params: { provider: "openrouter" },
-        });
+        scrollAndNavigateTo("models-connectivity");
       }}
       tabIndex={0}
       leadingIcon={

@@ -86,35 +86,40 @@ body[data-scroll-locked] .app-region-drag {
 .h-screenish {
   height: calc(100vh - 64px);
 }
+
 :root {
+  --theme-intensity: 0;
+  --l-offset: calc(var(--theme-intensity) * -0.15);
+  --fg-l-offset: calc(var(--theme-intensity) * -0.05);
+
   --docs-bg: #f5f5f5;
   --default-font-family: "Geist", sans-serif;
   --default-mono-font-family: "Geist Mono", monospace;
   /* --background: oklch(1 0 0); */
-  --background-lightest: #fff;
-  --background-lighter: oklch(0.995 0.0188 292.61);
-  --background: oklch(0.985 0.0188 292.61);
-  --background-darker: oklch(0.955 0.0188 292.61);
-  --background-darkest: oklch(0.925 0.0188 292.61);
+  --background-lightest: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
+  --background-lighter: oklch(clamp(0, 0.995 + var(--l-offset), 1) 0 0);
+  --background: oklch(clamp(0, 0.985 + var(--l-offset), 1) 0 0);
+  --background-darker: oklch(clamp(0, 0.955 + var(--l-offset), 1) 0 0);
+  --background-darkest: oklch(clamp(0, 0.925 + var(--l-offset), 1) 0 0);
 
-  --foreground: oklch(0.25 0.0679 293.36);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --foreground: oklch(clamp(0, 0.25 + var(--fg-l-offset), 1) 0 0);
+  --card: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
+  --card-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
+  --popover: oklch(clamp(0, 1 + var(--l-offset), 1) 0 0);
+  --popover-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
   --primary: oklch(0.59 0.16 287.69);
   /* --primary: oklch(0.205 0 0); */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
+  --secondary-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
+  --muted: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
+  --muted-foreground: oklch(clamp(0, 0.556 + var(--fg-l-offset), 1) 0 0);
+  --accent: oklch(clamp(0, 0.97 + var(--l-offset), 1) 0 0);
+  --accent-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
+  --input: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -122,62 +127,64 @@ body[data-scroll-locked] .app-region-drag {
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.0188 292.61);
+  --sidebar: oklch(clamp(0, 0.96 + var(--l-offset), 1) 0 0);
   /* --sidebar: oklch(0.975 0.0188 292.61); */
   /* --sidebar: oklch(0.985 0 0); */
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-foreground: oklch(clamp(0, 0.145 + var(--fg-l-offset), 1) 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   /* --sidebar-accent: oklch(0.97 0 0); */
-  --sidebar-accent: oklch(0.88 0.07 291.44);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: var(--sidebar);
-  /* --sidebar-border: oklch(0.922 0 0); */
+  --sidebar-accent: oklch(clamp(0, 0.88 + var(--l-offset), 1) 0 0);
+  --sidebar-accent-foreground: oklch(
+    clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0
+  );
+  --sidebar-border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
 .prose {
   --tw-prose-pre-bg: var(--background);
 }
-.dark {
-  --docs-bg: #121212;
 
-  --background-lightest: oklch(0.285 0 0);
-  --background-lighter: oklch(0.185 0 0);
-  --background: oklch(0.145 0 0);
-  --background-darker: oklch(0.125 0 0);
-  --background-darkest: oklch(0.105 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+.dark {
+  --docs-bg: #2b2d30;
+
+  --background-lightest: oklch(clamp(0, 0.42 + var(--l-offset), 1) 0 0);
+  --background-lighter: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
+  --background: oklch(clamp(0, 0.28 + var(--l-offset), 1) 0 0);
+  --background-darker: oklch(clamp(0, 0.22 + var(--l-offset), 1) 0 0);
+  --background-darkest: oklch(clamp(0, 0.18 + var(--l-offset), 1) 0 0);
+  --foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --card: oklch(clamp(0, 0.28 + var(--l-offset), 1) 0 0);
+  --card-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --popover: oklch(clamp(0, 0.28 + var(--l-offset), 1) 0 0);
+  --popover-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --primary: oklch(0.58 0.09 260);
+  --primary-foreground: oklch(0.99 0.01 260);
+  --secondary: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
+  --secondary-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --muted: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
+  --muted-foreground: oklch(clamp(0, 0.65 + var(--fg-l-offset), 1) 0 0);
+  --accent: oklch(clamp(0, 0.35 + var(--l-offset), 1) 0 0);
+  --accent-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --destructive: oklch(0.55 0.15 25);
+  --destructive-foreground: oklch(0.95 0.05 25);
+  --border: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
+  --input: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
+  --ring: oklch(0.58 0.09 260);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar: oklch(clamp(0, 0.32 + var(--l-offset), 1) 0 0);
+  --sidebar-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --sidebar-primary: oklch(0.58 0.09 260);
+  --sidebar-primary-foreground: oklch(0.99 0.01 260);
+  --sidebar-accent: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
+  --sidebar-accent-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
+  --sidebar-border: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
+  --sidebar-ring: oklch(0.58 0.09 260);
 }
 
 @theme inline {
@@ -227,32 +234,9 @@ body[data-scroll-locked] .app-region-drag {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer base {
-  :root {
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -299,6 +283,7 @@ body[data-scroll-locked] .app-region-drag {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(200%);
   }
@@ -308,6 +293,7 @@ body[data-scroll-locked] .app-region-drag {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -320,4 +306,116 @@ body[data-scroll-locked] .app-region-drag {
 /* In-between text-xs and text-sm */
 .text-xs-sm {
   font-size: 0.82rem;
+}
+
+/* Hide scrollbar for toolbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tiptap Styles */
+.prose pre {
+  @apply bg-zinc-900 text-zinc-100 p-4 rounded-lg font-mono text-sm;
+}
+
+.prose code {
+  @apply bg-muted/50 text-foreground px-1 py-0.5 rounded font-mono text-sm;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+
+/* Syntax Highlighting */
+.hljs-comment,
+.hljs-quote {
+  @apply text-zinc-500 italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  @apply text-blue-400 font-semibold;
+}
+
+.hljs-number,
+.hljs-string,
+.hljs-meta .hljs-meta-string,
+.hljs-literal,
+.hljs-doctag,
+.hljs-regexp {
+  @apply text-emerald-400;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  @apply text-amber-400;
+}
+
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title,
+.hljs-type {
+  @apply text-orange-400;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-meta,
+.hljs-link {
+  @apply text-sky-400;
+}
+
+.hljs-keyword,
+.hljs-selector-tag {
+  @apply text-purple-400;
+}
+
+.hljs-deletion {
+  @apply text-red-400;
+}
+
+.hljs-formula {
+  @apply bg-zinc-800;
+}
+
+.hljs-emphasis {
+  @apply italic;
+}
+
+.hljs-strong {
+  @apply font-bold;
+}
+
+/* Task List Styles */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
 }

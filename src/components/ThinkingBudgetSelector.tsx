@@ -54,12 +54,12 @@ export const ThinkingBudgetSelector: React.FC = () => {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-4">
-        <label
-          htmlFor="thinking-budget"
-          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Presupuesto de razonamiento
-        </label>
+        {/*<label*/}
+        {/*  htmlFor="thinking-budget"*/}
+        {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300"*/}
+        {/*>*/}
+        {/*  Presupuesto de razonamiento*/}
+        {/*</label>*/}
         <Select value={currentValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-[180px]" id="thinking-budget">
             <SelectValue placeholder="Selecciona presupuesto" />

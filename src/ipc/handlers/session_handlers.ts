@@ -5,6 +5,7 @@ import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
+import { openRouterRequest } from "../utils/openrouter";
 
 const logger = log.scope("session_handlers");
 
@@ -27,23 +28,10 @@ export const registerSessionHandlers = () => {
 
   createTypedHandler(systemContracts.getOpenRouterCredits, async () => {
     const settings = readSettings();
-    const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
-
-    if (!apiKey) {
-      throw new Error("OpenRouter API key not found");
-    }
-
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/credits", {
+      const response = await openRouterRequest("/credits", {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
       });
-
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.status}`);
-      }
 
       const body = await response.json();
       const totalCredits = body.data?.total_credits ?? 0;

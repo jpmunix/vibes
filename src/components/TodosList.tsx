@@ -22,10 +22,9 @@ export function TodosList({ show }: { show?: boolean }) {
 
   // Get current app ID from route
   const pathname = routerState.location.pathname;
-  const currentAppId =
-    pathname.startsWith("/todos/")
-      ? Number.parseInt(pathname.split("/")[2])
-      : null;
+  const currentAppId = pathname.startsWith("/todos/")
+    ? Number.parseInt(pathname.split("/")[2])
+    : null;
 
   useEffect(() => {
     const loadCounts = async () => {
@@ -72,7 +71,7 @@ export function TodosList({ show }: { show?: boolean }) {
                   variant="ghost"
                   className={cn(
                     "w-full justify-between",
-                    currentAppId === app.id && "bg-accent"
+                    currentAppId === app.id && "bg-accent",
                   )}
                   onClick={() => handleAppClick(app.id)}
                 >

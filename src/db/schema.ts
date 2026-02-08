@@ -67,7 +67,9 @@ export const chats = sqliteTable("chats", {
   appId: integer("app_id")
     .notNull()
     .references(() => apps.id, { onDelete: "cascade" }),
-  todoId: integer("todo_id").references(() => todos.id, { onDelete: "set null" }),
+  todoId: integer("todo_id").references(() => todos.id, {
+    onDelete: "set null",
+  }),
   title: text("title"),
   initialCommitHash: text("initial_commit_hash"),
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -317,13 +319,34 @@ export const notes = sqliteTable("notes", {
     .default(sql`(unixepoch())`),
 });
 
+// --- Todo Sections table ---
+export const todoSections = sqliteTable("todo_sections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  appId: integer("app_id")
+    .notNull()
+    .references(() => apps.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("Nueva sección"),
+  order: integer("order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // --- Todos table ---
 export const todos = sqliteTable("todos", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   appId: integer("app_id")
     .notNull()
     .references(() => apps.id, { onDelete: "cascade" }),
+  sectionId: integer("section_id").references(() => todoSections.id, {
+    onDelete: "set null",
+  }),
   content: text("content").notNull().default(""),
+  description: text("description"),
+  prompt: text("prompt"),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
   order: integer("order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })

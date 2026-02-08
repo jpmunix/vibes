@@ -78,15 +78,17 @@ export default function NoteDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen p-6 max-w-[1400px] w-full mx-auto">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Título de la nota"
-        className="text-3xl font-bold border-none focus:outline-none px-0 mb-4 bg-transparent"
-      />
-      <div className="flex-1 overflow-auto">
+    <div className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto overflow-x-hidden">
+      <div className="w-full mx-auto px-8 pt-12 pb-4">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Sin título"
+          className="w-full text-4xl font-bold border-none focus:outline-none px-0 bg-transparent text-foreground placeholder:text-muted-foreground/40"
+        />
+      </div>
+      <div className="flex-1 w-full flex flex-col items-center pb-12">
         <NoteEditor content={content} onUpdate={setContent} />
       </div>
     </div>

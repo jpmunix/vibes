@@ -51,6 +51,8 @@ export const queryKeys = {
   todos: {
     all: ["todos"] as const,
     byApp: ({ appId }: { appId: number }) => ["todos", "app", appId] as const,
+    sections: ({ appId }: { appId: number }) =>
+      ["todos", "sections", appId] as const,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────

@@ -516,9 +516,7 @@ function ConnectedGitHubConnector({
             <a
               onClick={(e) => {
                 e.preventDefault();
-                ipc.system.openExternalUrl(
-                  "https://github.com/minube/vibes/",
-                );
+                ipc.system.openExternalUrl("https://github.com/minube/vibes/");
               }}
               className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
               target="_blank"

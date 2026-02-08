@@ -25,6 +25,10 @@ type SidebarContextProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+  width: string;
+  setWidth: (width: string) => void;
+  isResizing: boolean;
+  setIsResizing: (isResizing: boolean) => void;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -75,6 +79,21 @@ function SidebarProvider({
     setOpen((open) => !open);
   }, [setOpen]);
 
+  const [width, _setWidth] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      const savedWidth = localStorage.getItem("sidebar_width");
+      if (savedWidth) return savedWidth;
+    }
+    return SIDEBAR_WIDTH;
+  });
+
+  const setWidth = React.useCallback((newWidth: string) => {
+    _setWidth(newWidth);
+    localStorage.setItem("sidebar_width", newWidth);
+  }, []);
+
+  const [isResizing, setIsResizing] = React.useState(false);
+
   // Auto-collapse on small screens
   React.useEffect(() => {
     const mql = window.matchMedia("(max-width: 480px)");
@@ -116,8 +135,21 @@ function SidebarProvider({
       open,
       setOpen,
       toggleSidebar,
+      width,
+      setWidth,
+      isResizing,
+      setIsResizing,
     }),
-    [state, open, setOpen, toggleSidebar],
+    [
+      state,
+      open,
+      setOpen,
+      toggleSidebar,
+      width,
+      setWidth,
+      isResizing,
+      setIsResizing,
+    ],
   );
 
   return (
@@ -127,7 +159,7 @@ function SidebarProvider({
           data-slot="sidebar-wrapper"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": width,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -158,7 +190,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { state } = useSidebar();
+  const { state, isResizing } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -194,6 +226,7 @@ function Sidebar({
           variant === "floating" || variant === "inset"
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
+          isResizing && "transition-none",
         )}
       />
       <div
@@ -207,6 +240,7 @@ function Sidebar({
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l border-sidebar-border",
+          isResizing && "transition-none",
           className,
         )}
         {...props}
@@ -257,7 +291,41 @@ function SidebarTrigger({
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, setWidth, setIsResizing } = useSidebar();
+  const draggingRef = React.useRef(false);
+
+  const onMouseDown = React.useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      setIsResizing(true);
+      draggingRef.current = false;
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        if (
+          !draggingRef.current &&
+          Math.abs(moveEvent.clientX - event.clientX) > 5
+        ) {
+          draggingRef.current = true;
+        }
+        const newWidth = Math.max(280, Math.min(800, moveEvent.clientX));
+        setWidth(`${newWidth}px`);
+      };
+
+      const onMouseUp = () => {
+        setIsResizing(false);
+        // Small delay to prevent click event if we were dragging
+        setTimeout(() => {
+          draggingRef.current = false;
+        }, 100);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [setWidth, setIsResizing],
+  );
 
   return (
     <button
@@ -265,11 +333,16 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       data-slot="sidebar-rail"
       aria-label="Alternar barra lateral"
       tabIndex={-1}
-      onClick={toggleSidebar}
+      onClick={(e) => {
+        if (draggingRef.current) return;
+        if (props.onClick) props.onClick(e);
+        else toggleSidebar();
+      }}
+      onMouseDown={onMouseDown}
       title="Alternar barra lateral"
       className={cn(
         "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
-        "in-data-[side=left][data-state=collapsed]_&]:cursor-e-resize in-data-[side=right][data-state=collapsed]_&]:cursor-w-resize",
+        "in-data-[side=left][data-state=collapsed]_&]:cursor-e-resize in-data-[side=right][data-state=collapsed]_&]:cursor-w-resize cursor-col-resize",
         "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
@@ -490,7 +563,7 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button";
-  const { state } = useSidebar();
+  const { state, isResizing } = useSidebar();
 
   const button = (
     <Comp

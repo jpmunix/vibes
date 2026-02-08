@@ -6,6 +6,11 @@
 import { readSettings } from "@/main/settings";
 import log from "electron-log";
 import type { AgentContext } from "./types";
+import {
+  openRouterCompletion,
+  type OpenRouterMessage,
+} from "@/ipc/utils/openrouter";
+import { getEffectivePrompt } from "@/prompts";
 
 export const DYAD_ENGINE_URL =
   process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -15,7 +20,6 @@ export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const logger = log.scope("engine_fetch");
 const TURBO_EDIT_TIMEOUT_MS = 20_000;
 
@@ -53,7 +57,10 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   return apiKey;
 }
 
-function buildTurboEditMessages(body: TurboFileEditRequestBody) {
+function buildTurboEditMessages(
+  body: TurboFileEditRequestBody,
+  settings: ReturnType<typeof readSettings>,
+): OpenRouterMessage[] {
   const instructions = body.instructions?.trim();
   const instructionsBlock = instructions
     ? `Instructions:\n${instructions}\n\n`
@@ -62,15 +69,9 @@ function buildTurboEditMessages(body: TurboFileEditRequestBody) {
   return [
     {
       role: "system",
-      content: [
-        "You are a precise code-editing assistant.",
-        "Apply the requested edit to the original file content.",
-        "Return the full updated file content only.",
-        "Preserve unchanged content exactly.",
-        'The edit snippet may contain "// ... existing code ..." markers that represent unchanged sections.',
-        "Do not include explanations or code fences.",
-      ].join(" "),
+      content: getEffectivePrompt("turbo_edit_system", settings),
     },
+
     {
       role: "user",
       content: [
@@ -122,25 +123,20 @@ async function callTurboFileEditViaOpenRouter(
   const model = settings.turboEditModel || "openai/gpt-4.1-mini";
   const body = parseTurboFileEditBody(options.body);
 
-  const baseRequest = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      messages: buildTurboEditMessages(body),
-    }),
-  } satisfies RequestInit;
-
-  let response: Response | null = null;
+  let data: any;
   try {
-    response = await fetchWithTimeout(
-      `${OPENROUTER_BASE_URL}/chat/completions`,
-      baseRequest,
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TURBO_EDIT_TIMEOUT_MS);
+    try {
+      data = await openRouterCompletion({
+        model,
+        temperature: 0,
+        messages: buildTurboEditMessages(body, settings),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
     logger.error("OpenRouter turbo edit request timed out or failed", error);
     throw new Error(
@@ -150,20 +146,12 @@ async function callTurboFileEditViaOpenRouter(
     );
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `OpenRouter turbo file edit failed: ${response.status} ${response.statusText} - ${errorText}`,
-    );
-  }
-
-  const data = await response.json();
   const rawContent = data?.choices?.[0]?.message?.content ?? "";
   if (!rawContent) {
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
 
-  logger.log(buildTurboEditMessages(body));
+  logger.log(buildTurboEditMessages(body, settings));
   logger.warn(data.choices[0].message.content);
   const result = sanitizeTurboEditResponse(rawContent);
   logger.info(result);

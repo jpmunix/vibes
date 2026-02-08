@@ -5,16 +5,29 @@ import path from "path";
 const workersConfig: Record<string, string[]> = {
   tsc_worker: ["node:fs", "node:path", "node:worker_threads", "typescript"],
   context_worker: [
-    "node:fs", "node:fs/promises", "node:path", "node:worker_threads",
-    "electron-log", "glob", "onnxruntime-web", "onnxruntime-node",
-    "@huggingface/jinja", "@xenova/transformers",
-    "sharp", "@img/sharp-linux-x64", "@img/sharp-libvips-linux-x64" // <--- AÑADE ESTO
+    "node:fs",
+    "node:fs/promises",
+    "node:path",
+    "node:worker_threads",
+    "electron-log",
+    "glob",
+    "onnxruntime-web",
+    "onnxruntime-node",
+    "@huggingface/jinja",
+    "@xenova/transformers",
+    "sharp",
+    "@img/sharp-linux-x64",
+    "@img/sharp-libvips-linux-x64", // <--- AÑADE ESTO
   ],
   embeddings_worker: [
-    "node:worker_threads", "electron-log", "onnxruntime-node",
-    "@huggingface/jinja", "@xenova/transformers",
-    "sharp", "@img/sharp-linux-x64" // <--- AÑADE ESTO
-  ]
+    "node:worker_threads",
+    "electron-log",
+    "onnxruntime-node",
+    "@huggingface/jinja",
+    "@xenova/transformers",
+    "sharp",
+    "@img/sharp-linux-x64", // <--- AÑADE ESTO
+  ],
 };
 
 // Electron Forge VitePlugin calls this config multiple times with different entries
@@ -32,8 +45,8 @@ export default defineConfig(() => {
   return {
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src")
-      }
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
     build: {
       sourcemap: true,
@@ -42,15 +55,15 @@ export default defineConfig(() => {
         entry: path.resolve(__dirname, entry),
         name: workerName,
         fileName: () => `${workerName}.js`,
-        formats: ["cjs"]
+        formats: ["cjs"],
       },
       rollupOptions: {
         external,
         output: {
-          entryFileNames: `[name].js`
-        }
+          entryFileNames: `[name].js`,
+        },
       },
       emptyOutDir: false,
-    }
+    },
   };
 });

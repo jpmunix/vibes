@@ -22,6 +22,7 @@ import {
   constructSystemPrompt,
   readAiRules,
 } from "../../prompts/system_prompt";
+import { getEffectivePrompt } from "../../prompts";
 import { getThemePromptById } from "../utils/theme_utils";
 import {
   getSupabaseAvailableSystemPrompt,
@@ -956,10 +957,11 @@ ${componentSnippet}
             settings.selectedChatMode === "agent"
               ? "build"
               : settings.selectedChatMode,
-          enableTurboEditsV2: true,
+          enableTurboEditsV2: isTurboEditsV2Enabled(settings),
           themePrompt,
           basicAgentMode: isBasicAgentMode(settings),
           chatLanguage: settings.chatLanguage || "es",
+          settings,
         });
 
         // Add information about mentioned apps if any
@@ -1025,7 +1027,7 @@ ${componentSnippet}
         }
         // Use the isSummarizeIntent variable declared earlier
         if (isSummarizeIntent) {
-          systemPrompt = SUMMARIZE_CHAT_SYSTEM_PROMPT;
+          systemPrompt = getEffectivePrompt("summarize_chat_system", settings);
           if (settings.chatLanguage === "es") {
             systemPrompt += SUMMARIZE_IN_SPANISH_PROMPT;
           }
@@ -1459,6 +1461,7 @@ This conversation includes one or more image attachments. When the user uploads 
             themePrompt,
             readOnly: true,
             chatLanguage: settings.chatLanguage || "es",
+            settings,
           });
 
           await handleLocalAgentStream(event, req, abortController, {
@@ -1656,7 +1659,9 @@ This conversation includes one or more image attachments. When the user uploads 
               chatMode: "agent",
               enableTurboEditsV2: false,
               chatLanguage: settings.chatLanguage || "es",
+              settings,
             }),
+
             files: files,
             dyadDisableFiles: true,
           });

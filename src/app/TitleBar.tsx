@@ -7,7 +7,6 @@ import { useVersions } from "@/hooks/useVersions";
 import { Button } from "@/components/ui/button";
 // @ts-ignore
 import logo from "../../assets/logo.svg";
-import { providerSettingsRoute } from "@/routes/settings/providers/$provider";
 import { cn } from "@/lib/utils";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { useEffect, useState } from "react";
@@ -210,8 +209,7 @@ export function DyadProButton({
       data-testid="title-bar-dyad-pro-button"
       onClick={() => {
         navigate({
-          to: providerSettingsRoute.id,
-          params: { provider: "auto" },
+          to: "/settings",
         });
       }}
       variant="outline"

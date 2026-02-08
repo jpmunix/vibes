@@ -15,7 +15,9 @@ import { useChats } from "@/hooks/useChats";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 export default function ChatPage() {
-  let { id: chatId, autoStart: autoStartFromUrl } = useSearch({ from: "/chat" });
+  let { id: chatId, autoStart: autoStartFromUrl } = useSearch({
+    from: "/chat",
+  });
   const navigate = useNavigate();
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const [isResizing, setIsResizing] = useState(false);

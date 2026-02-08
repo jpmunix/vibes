@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,37 @@ import { useSettings } from "@/hooks/useSettings";
 import { useSupabase } from "@/hooks/useSupabase";
 import { showSuccess, showError } from "@/lib/toast";
 import { isSupabaseConnected } from "@/lib/schemas";
+
+// This is defined in settings.tsx, we can't easily import it without moving it to a shared place.
+// For now, I'll define a local version or just use the same pattern.
+function SettingItem({
+  label,
+  description,
+  control,
+  onClick,
+}: {
+  label: string;
+  description: string;
+  control: React.ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border cursor-pointer"
+    >
+      <div className="flex-1">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          {label}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          {description}
+        </p>
+      </div>
+      <div onClick={(e) => e.stopPropagation()}>{control}</div>
+    </div>
+  );
+}
 
 export function SupabaseIntegration() {
   const { settings, updateSettings } = useSettings();
@@ -82,106 +113,101 @@ export function SupabaseIntegration() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Integración de Supabase
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {organizations.length} organización
-            {organizations.length !== 1 ? "es" : ""} conectada a Supabase.
-          </p>
+    <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-card shadow-sm border border-border">
+            <DatabaseZap className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Supabase
+            </h3>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {organizations.length} organización
+              {organizations.length !== 1 ? "es" : ""} conectada
+            </p>
+          </div>
         </div>
+
         <Button
           onClick={handleDisconnectAllFromSupabase}
-          variant="destructive"
+          variant="ghost"
           size="sm"
           disabled={isDisconnecting}
-          className="flex items-center gap-2"
+          className="rounded-xl h-10 px-4 font-bold text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
         >
           {isDisconnecting ? "Desconectando..." : "Desconectar todo"}
-          <DatabaseZap className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Connected organizations list */}
-      <div className="mt-3 space-y-1">
-        {organizations.map((org) => (
-          <div
-            key={org.organizationSlug}
-            className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm gap-2"
-          >
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-gray-700 dark:text-gray-300 font-medium truncate">
-                {org.name || `Organization ${org.organizationSlug.slice(0, 8)}`}
-              </span>
-              {org.ownerEmail && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {org.ownerEmail}
-                </span>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-muted-foreground hover:text-destructive shrink-0"
-              onClick={() => handleDeleteOrganization(org.organizationSlug)}
-              title="Desconectar organización"
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">Desconectar</span>
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4">
-        <div className="flex items-center space-x-3">
-          <Switch
-            id="supabase-migrations"
-            checked={!!settings?.enableSupabaseWriteSqlMigration}
-            onCheckedChange={handleMigrationSettingChange}
-          />
-          <div className="space-y-1">
-            <Label
-              htmlFor="supabase-migrations"
-              className="text-sm font-medium"
-            >
-              Escribir archivos de migración SQL
-            </Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Genera archivos de migración SQL al modificar el esquema de
-              Supabase. Esto te ayuda a rastrear los cambios de la base de datos
-              en el control de versiones, aunque estos archivos no se usan para
-              el contexto del chat, que usa el esquema en vivo.
-            </p>
+      {organizations.length > 0 && (
+        <div className="space-y-3">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+            Organizaciones conectadas
+          </Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {organizations.map((org) => (
+              <div
+                key={org.organizationSlug}
+                className="flex items-center justify-between p-4 rounded-xl bg-card border border-border shadow-sm group"
+              >
+                <div className="flex flex-col min-w-0 pr-4">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                    {org.name || org.organizationSlug}
+                  </span>
+                  {org.ownerEmail && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      {typeof org.ownerEmail === "string"
+                        ? org.ownerEmail
+                        : (org.ownerEmail as any).email}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg group-hover:opacity-100 opacity-40 transition-opacity"
+                  onClick={() => handleDeleteOrganization(org.organizationSlug)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="mt-4">
-        <div className="flex items-center space-x-3">
-          <Switch
-            id="skip-prune-edge-functions"
-            checked={!!settings?.skipPruneEdgeFunctions}
-            onCheckedChange={handleSkipPruneSettingChange}
-          />
-          <div className="space-y-1">
-            <Label
-              htmlFor="skip-prune-edge-functions"
-              className="text-sm font-medium"
-            >
-              Mantener funciones de borde adicionales de Supabase
-            </Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Cuando está desactivado, las funciones de borde desplegadas en
-              Supabase pero no presentes en tu código se eliminarán
-              automáticamente durante las operaciones de sincronización (por
-              ejemplo, después de revertir o modificar módulos compartidos).
-            </p>
-          </div>
-        </div>
+      <div className="space-y-4 pt-8 border-t border-border">
+        <SettingItem
+          label="Escribir archivos de migración SQL"
+          description="Genera archivos de migración SQL al modificar el esquema de Supabase para control de versiones"
+          onClick={() =>
+            handleMigrationSettingChange(
+              !settings?.enableSupabaseWriteSqlMigration,
+            )
+          }
+          control={
+            <Switch
+              checked={!!settings?.enableSupabaseWriteSqlMigration}
+              onCheckedChange={handleMigrationSettingChange}
+            />
+          }
+        />
+
+        <SettingItem
+          label="Mantener funciones de borde adicionales"
+          description="Evita que se eliminen automáticamente las funciones desplegadas en Supabase no presentes localmente"
+          onClick={() =>
+            handleSkipPruneSettingChange(!settings?.skipPruneEdgeFunctions)
+          }
+          control={
+            <Switch
+              checked={!!settings?.skipPruneEdgeFunctions}
+              onCheckedChange={handleSkipPruneSettingChange}
+            />
+          }
+        />
       </div>
     </div>
   );

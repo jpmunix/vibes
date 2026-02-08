@@ -19,11 +19,11 @@ const ZOOM_LEVEL_LABELS: Record<ZoomLevel, string> = {
 };
 
 const ZOOM_LEVEL_DESCRIPTIONS: Record<ZoomLevel, string> = {
-  "90": "Slightly zoomed out to fit more content on screen.",
-  "100": "Default zoom level.",
-  "110": "Zoom in a little for easier reading.",
-  "125": "Large zoom for improved readability.",
-  "150": "Maximum zoom for maximum accessibility.",
+  "90": "Ligeramente alejado para mostrar más contenido en pantalla.",
+  "100": "Nivel de zoom por defecto.",
+  "110": "Acercamiento ligero para facilitar la lectura.",
+  "125": "Zoom grande para mejorar la legibilidad.",
+  "150": "Zoom máximo para máxima accesibilidad.",
 };
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
@@ -51,7 +51,7 @@ export function ZoomSelector() {
           updateSettings({ zoomLevel: value as ZoomLevel })
         }
       >
-        <SelectTrigger id="zoom-level" className="w-[220px]">
+        <SelectTrigger id="zoom-level" className="py-6 px-8">
           <SelectValue placeholder="Seleccionar nivel de zoom" />
         </SelectTrigger>
         <SelectContent>
