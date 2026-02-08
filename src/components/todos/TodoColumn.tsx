@@ -13,6 +13,16 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TodoColumnProps {
     section?: TodoSection;
@@ -43,6 +53,7 @@ export function TodoColumn({
     const [newTodoTitle, setNewTodoTitle] = useState("");
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editTitle, setEditTitle] = useState(section?.title || "");
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const columnId = section ? `section-${section.id}` : "unsectioned";
 
@@ -157,9 +168,7 @@ export function TodoColumn({
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => {
                                     if (todos.length > 0) {
-                                        if (window.confirm(`Esta lista tiene ${todos.length} tareas. ¿Estás seguro de que quieres eliminarla y borrar todas sus tareas?`)) {
-                                            onDeleteSection?.(section.id);
-                                        }
+                                        setIsDeleteDialogOpen(true);
                                     } else {
                                         onDeleteSection?.(section.id);
                                     }
@@ -172,6 +181,28 @@ export function TodoColumn({
                     </DropdownMenu>
                 )}
             </div>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar esta lista?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta lista tiene {todos.length} {todos.length === 1 ? 'tarea' : 'tareas'}. ¿Estás seguro de que quieres eliminarla y borrar todo su contenido? Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (section) onDeleteSection?.(section.id);
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <div
                 className={cn(

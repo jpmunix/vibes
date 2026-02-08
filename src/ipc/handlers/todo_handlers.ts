@@ -88,6 +88,7 @@ export function registerTodoHandlers() {
         content,
         description: params.description,
         prompt: params.prompt,
+        completed: params.completed ?? false,
         order: maxOrder + 1,
       })
       .returning();
@@ -223,18 +224,21 @@ export function registerTodoHandlers() {
       const todoDescription = todo.description || "";
       const todoContext = `Título: ${todoTitle}\nDescripción: ${todoDescription}`;
 
+      const { getEffectivePrompt } = await import("../../prompts");
+      const systemPrompt = getEffectivePrompt("todo_refinement", settings);
+
       const data = await openRouterCompletion({
         model,
-        temperature: 0.7,
-        max_tokens: 1000,
+        temperature: 0.1, // Lower temperature for more deterministic output
+        max_tokens: 1500,
         messages: [
           {
             role: "system",
-            content: "Genera un prompt para desarrollar la tarea proporcionada...",
+            content: systemPrompt,
           },
           {
             role: "user",
-            content: `Genera un prompt de desarrollo para la siguiente tarea:\n\n${todoContext}`,
+            content: `Tarea:\n${todoContext}`,
           },
         ],
       });

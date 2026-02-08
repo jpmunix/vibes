@@ -67,6 +67,7 @@ export const CreateTodoParamsSchema = z.object({
   content: z.string(),
   description: z.string().optional(),
   prompt: z.string().optional(),
+  completed: z.boolean().optional(),
 });
 
 export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
@@ -167,6 +168,7 @@ export const AnalyzeTodoFilesResponseSchema = z.object({
   tasks: z.array(z.object({
     content: z.string(),
     description: z.string().optional().nullable(),
+    completed: z.boolean().optional(),
   })),
 });
 

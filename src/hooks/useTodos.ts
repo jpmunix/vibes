@@ -211,6 +211,7 @@ export function useTodos(appId: number) {
           content: task.content,
           sectionId: section.id,
           description: task.description || undefined,
+          completed: task.completed ?? false,
         });
       }
 
