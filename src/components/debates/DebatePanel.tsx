@@ -10,11 +10,15 @@ import { useNotes } from "@/hooks/useNotes";
 import { showError, showSuccess } from "@/lib/toast";
 import ReactMarkdown from "react-markdown";
 
+import { useAtomValue } from "jotai";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
+
 interface DebatePanelProps {
     debateId: number;
 }
 
 export function DebatePanel({ debateId }: DebatePanelProps) {
+    const selectedAppId = useAtomValue(selectedAppIdAtom);
     const [debate, setDebate] = useState<Debate | null>(null);
     const [loading, setLoading] = useState(true);
     const [input, setInput] = useState("");
@@ -87,6 +91,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     debateId,
                     prompt: currentInput,
                     injectedItems: currentInjected,
+                    appId: selectedAppId ?? undefined,
                 },
                 {
                     onChunk: (data) => {

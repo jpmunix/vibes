@@ -167,6 +167,7 @@ export const debateStreamContract = defineStream({
         debateId: z.number(),
         prompt: z.string(),
         injectedItems: z.array(InjectedItemSchema).optional(),
+        appId: z.number().optional(),
     }),
     keyField: "debateId",
     events: {
