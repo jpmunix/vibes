@@ -5,6 +5,7 @@ import {
   BUILD_SYSTEM_POSTFIX,
   AGENT_MODE_SYSTEM_PROMPT,
 } from "./system_prompt";
+import { LOCAL_AGENT_SYSTEM_PROMPT } from "./local_agent_prompt";
 import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "./summarize_chat_system_prompt";
 
 export type PromptId =
@@ -24,7 +25,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   build_system_prefix: BUILD_SYSTEM_PREFIX,
   build_system_postfix: BUILD_SYSTEM_POSTFIX,
   summarize_chat_system: SUMMARIZE_CHAT_SYSTEM_PROMPT,
-  agent_mode_system: AGENT_MODE_SYSTEM_PROMPT,
+  agent_mode_system: LOCAL_AGENT_SYSTEM_PROMPT,
   turbo_edit_system: [
     "You are a precise code-editing assistant.",
     "Apply the requested edit to the original file content.",
@@ -95,7 +96,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   build_system_prefix: "Build System Prefix (Rol Principal)",
   build_system_postfix: "Build System Postfix (Formato y Reglas)",
   summarize_chat_system: "Resumen de Chat",
-  agent_mode_system: "Modo Agente (Análisis)",
+  agent_mode_system: "Modo Agente (Desarrollo y Análisis)",
   turbo_edit_system: "Turbo Edit (Edición Precisa)",
   app_title_short: "Generador de Títulos Cortos",
   app_name_pro: "Generador de Nombres Profesionales",
@@ -113,7 +114,7 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   summarize_chat_system:
     "Instrucciones para generar el resumen técnico de la conversación.",
   agent_mode_system:
-    "Cómo debe comportarse el agente al analizar herramientas externas.",
+    "Controla el comportamiento del agente al usar herramientas y realizar cambios en el código.",
   turbo_edit_system:
     "Instrucciones para el modelo rápido de edición de archivos.",
   app_title_short:
