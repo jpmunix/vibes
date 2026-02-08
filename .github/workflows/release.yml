@@ -40,6 +40,9 @@ jobs:
         # Asegúrate de que package-lock.json esté en tu repo para usar 'ci'
         run: npm ci
 
+      - name: Rebuild native modules for Electron
+        run: npm run rebuild
+
       - name: Build App (${{ matrix.os.id }})
         run: ${{ matrix.os.command }}
         env:

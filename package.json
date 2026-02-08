@@ -19,7 +19,7 @@
     "make:linux": "npm run clean && electron-forge make --platform linux --arch x64",
     "make:mac": "npm run clean && electron-forge make --platform darwin --arch x64",
     "clean": "rimraf out scaffold/node_modules",
-    "rebuild": "electron-rebuild -f -w sharp",
+    "rebuild": "electron-rebuild -f -w better-sqlite3,sharp,onnxruntime-node",
     "dev:engine": "cross-env DYAD_ENGINE_URL=http://localhost:8080/v1 npm start",
     "staging:engine": "cross-env DYAD_ENGINE_URL=https://staging---dyad-llm-engine-kq7pivehnq-uc.a.run.app/v1 npm start",
     "package": "electron-forge package",
