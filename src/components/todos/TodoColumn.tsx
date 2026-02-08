@@ -155,7 +155,15 @@ export function TodoColumn({
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => onDeleteSection?.(section.id)}
+                                onClick={() => {
+                                    if (todos.length > 0) {
+                                        if (window.confirm(`Esta lista tiene ${todos.length} tareas. ¿Estás seguro de que quieres eliminarla y borrar todas sus tareas?`)) {
+                                            onDeleteSection?.(section.id);
+                                        }
+                                    } else {
+                                        onDeleteSection?.(section.id);
+                                    }
+                                }}
                             >
                                 <Trash2 className="h-3.5 w-3.5 mr-2" />
                                 Eliminar lista

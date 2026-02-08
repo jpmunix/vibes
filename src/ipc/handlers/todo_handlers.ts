@@ -64,6 +64,9 @@ export function registerTodoHandlers() {
   });
 
   createTypedHandler(todoContracts.deleteTodoSection, async (_, sectionId) => {
+    // Delete all todos in this section first
+    await db.delete(todos).where(eq(todos.sectionId, sectionId));
+    // Then delete the section
     await db.delete(todoSections).where(eq(todoSections.id, sectionId));
   });
 

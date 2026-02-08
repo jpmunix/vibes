@@ -232,16 +232,22 @@ export function OpenRouterSettings({ isHighlighted }: { isHighlighted?: boolean 
                             <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                 Títulos de Apps
                             </Label>
-                            <div className="p-1 rounded-2xl bg-muted/30 border border-border">
+                            <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
                                 <AppTitleModelSelector />
+                                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                                    Configura el modelo que OpenRouter utilizará para generar el título de la aplicación a partir de tu prompt inicial. Por defecto: <code className="bg-muted px-1 rounded text-[10px]">openai/gpt-4.1-nano</code>
+                                </p>
                             </div>
                         </div>
                         <div className="space-y-4">
                             <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                 Análisis de Tareas (Smart Import)
                             </Label>
-                            <div className="p-1 rounded-2xl bg-muted/30 border border-border">
+                            <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
                                 <TodoAnalysisModelSelector />
+                                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                                    Este modelo extrae automáticamente tareas de archivos adjuntos (PDF, imágenes, etc.). Por defecto: <code className="bg-muted px-1 rounded text-[10px]">google/gemini-3-flash-preview</code>
+                                </p>
                             </div>
                         </div>
                     </div>

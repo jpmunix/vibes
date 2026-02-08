@@ -77,14 +77,45 @@ export function TodoBoard({
   // Initialize and sync cloned items
   useEffect(() => {
     if (!activeId) {
+      // Create the structure from props
       const map: Record<string, Todo[]> = {
         unsectioned: todos.filter((t) => !t.sectionId).sort((a, b) => a.order - b.order),
       };
       sections.forEach((s) => {
         map[`section-${s.id}`] = todos.filter((t) => t.sectionId === s.id).sort((a, b) => a.order - b.order);
       });
-      setClonedItems(map);
 
+      // Check if we need to update clonedItems
+      setClonedItems(prev => {
+        const prevKeys = Object.keys(prev).sort();
+        const nextKeys = Object.keys(map).sort();
+
+        if (prevKeys.length !== nextKeys.length || !prevKeys.every((k, i) => k === nextKeys[i])) {
+          return map;
+        }
+
+        let hasSubstantialChange = false;
+        for (const key of nextKeys) {
+          if (prev[key].length !== map[key].length) {
+            hasSubstantialChange = true;
+            break;
+          }
+
+          // Compare IDs and versions (updatedAt/completed) ignoring order
+          const prevVersions = new Set(prev[key].map(t => `${t.id}-${t.updatedAt}-${t.completed}`));
+          const nextVersions = map[key].map(t => `${t.id}-${t.updatedAt}-${t.completed}`);
+
+          if (!nextVersions.every(v => prevVersions.has(v))) {
+            hasSubstantialChange = true;
+            break;
+          }
+        }
+
+        if (hasSubstantialChange) return map;
+        return prev;
+      });
+
+      // Handle orderedSectionKeys
       const nextKeys = ["unsectioned", ...sections.map(s => `section-${s.id}`)];
       setOrderedSectionKeys(prev => {
         const prevSet = new Set(prev);
