@@ -2,6 +2,9 @@
  * System prompt for Local Agent v2 mode
  * Tool-based agent with parallel execution support
  */
+import { UserSettings } from "../lib/schemas";
+import { getEffectivePrompt } from "./index";
+
 
 // ============================================================================
 // Shared Prompt Blocks (used by both Pro and Basic Agent modes)
@@ -256,7 +259,9 @@ export function constructLocalAgentPrompt(
     readOnly?: boolean;
     basicAgentMode?: boolean;
     chatLanguage?: "es" | "en";
+    settings?: UserSettings;
   },
+
 ): string {
   // Select the appropriate base prompt
   let basePrompt: string;
@@ -265,8 +270,9 @@ export function constructLocalAgentPrompt(
     //  } else if (options?.basicAgentMode) {
     //    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
   } else {
-    basePrompt = LOCAL_AGENT_SYSTEM_PROMPT;
+    basePrompt = getEffectivePrompt("agent_mode_system", options?.settings);
   }
+
 
   let prompt = basePrompt.replace("[[AI_RULES]]", aiRules ?? DEFAULT_AI_RULES);
 

@@ -371,6 +371,7 @@ export const UserSettingsSchema = z
     chatLanguage: ChatLanguageSchema.optional(),
     serperApiKey: SecretSchema.optional(),
     themeIntensity: z.number().optional(),
+    customPrompts: z.record(z.string(), z.string()).optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

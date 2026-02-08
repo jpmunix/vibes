@@ -7,6 +7,8 @@ import { readSettings } from "@/main/settings";
 import log from "electron-log";
 import type { AgentContext } from "./types";
 import { openRouterCompletion, type OpenRouterMessage } from "@/ipc/utils/openrouter";
+import { getEffectivePrompt } from "@/prompts";
+
 
 export const DYAD_ENGINE_URL =
   process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -53,7 +55,11 @@ function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
   return apiKey;
 }
 
-function buildTurboEditMessages(body: TurboFileEditRequestBody): OpenRouterMessage[] {
+function buildTurboEditMessages(
+  body: TurboFileEditRequestBody,
+  settings: ReturnType<typeof readSettings>,
+): OpenRouterMessage[] {
+
   const instructions = body.instructions?.trim();
   const instructionsBlock = instructions
     ? `Instructions:\n${instructions}\n\n`
@@ -62,15 +68,9 @@ function buildTurboEditMessages(body: TurboFileEditRequestBody): OpenRouterMessa
   return [
     {
       role: "system",
-      content: [
-        "You are a precise code-editing assistant.",
-        "Apply the requested edit to the original file content.",
-        "Return the full updated file content only.",
-        "Preserve unchanged content exactly.",
-        'The edit snippet may contain "// ... existing code ..." markers that represent unchanged sections.',
-        "Do not include explanations or code fences.",
-      ].join(" "),
+      content: getEffectivePrompt("turbo_edit_system", settings),
     },
+
     {
       role: "user",
       content: [
@@ -130,8 +130,9 @@ async function callTurboFileEditViaOpenRouter(
       data = await openRouterCompletion({
         model,
         temperature: 0,
-        messages: buildTurboEditMessages(body),
+        messages: buildTurboEditMessages(body, settings),
         signal: controller.signal,
+
       });
     } finally {
       clearTimeout(timeout);
@@ -149,7 +150,7 @@ async function callTurboFileEditViaOpenRouter(
     throw new Error("OpenRouter turbo file edit returned no content.");
   }
 
-  logger.log(buildTurboEditMessages(body));
+  logger.log(buildTurboEditMessages(body, settings));
   logger.warn(data.choices[0].message.content);
   const result = sanitizeTurboEditResponse(rawContent);
   logger.info(result);

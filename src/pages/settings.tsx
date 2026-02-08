@@ -380,7 +380,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Zona peligrosa",
     sectionId: "danger-zone",
   },
+  {
+    id: "prompts",
+    label: "Prompts",
+    description: "Configurar instrucciones del sistema y plantillas de IA",
+    keywords: ["prompts", "sistema", "instrucciones", "plantillas", "ia", "custom"],
+    section: "Configuración Asistente",
+    sectionId: "ai-behavior",
+  },
 ];
+
 
 
 function SettingItem({

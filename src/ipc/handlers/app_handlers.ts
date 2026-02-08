@@ -61,6 +61,8 @@ import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils"
 import { AppSearchResult } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion } from "../utils/openrouter";
+import { getEffectivePrompt } from "../../prompts";
+
 
 import { getAppPort } from "../../../shared/ports";
 import {
@@ -1993,17 +1995,11 @@ export function registerAppHandlers() {
         messages: [
           {
             role: "system",
-            content:
-              settings.chatLanguage === "en"
-                ? "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters."
-                : "Eres un asistente útil que genera títulos de aplicaciones cortos y atractivos en español. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 30 caracteres.",
+            content: getEffectivePrompt("app_title_short", settings),
           },
           {
             role: "user",
-            content:
-              settings.chatLanguage === "en"
-                ? `Generate a title in English for this app idea: "${prompt}"`
-                : `Genera un título en español para esta idea de aplicación: "${prompt}"`,
+            content: `Generate a short title for this app idea: ${prompt}`,
           },
         ],
       });
@@ -2059,17 +2055,11 @@ export function registerAppHandlers() {
           messages: [
             {
               role: "system",
-              content:
-                settings.chatLanguage === "en"
-                  ? "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be strictly functional and deterministic. Do not use marketing adjectives like 'Ultimate', 'Best', 'Simple', 'Super', 'Pro'. Just describe what it does (e.g., 'Todo Manager', 'Invoice Generator')."
-                  : "Eres un asistente útil que genera nombres de aplicaciones descriptivos y profesionales en español. El nombre debe reflejar claramente el propósito y la funcionalidad de la aplicación. Devuelve SOLO el nombre de la aplicación, sin comillas, sin texto adicional. Máximo 40 caracteres. Sé estrictamente funcional y determinista. No uses adjetivos de marketing como 'Definitivo', 'Mejor', 'Simple', 'Super', 'Pro'. Solo describe lo que hace (ej., 'Gestor de Tareas', 'Generador de Facturas').",
+              content: getEffectivePrompt("app_name_pro", settings),
             },
             {
               role: "user",
-              content:
-                settings.chatLanguage === "en"
-                  ? `Generate a strictly functional and deterministic app name in English for this application idea: "${userPrompt}"`
-                  : `Genera un nombre de aplicación estrictamente funcional y determinista en español para esta idea de aplicación: "${userPrompt}"`,
+              content: `Suggest a professional app name for this idea: ${userPrompt}`,
             },
           ],
         });

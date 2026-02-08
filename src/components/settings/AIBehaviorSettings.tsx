@@ -6,9 +6,14 @@ import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "@tanstack/react-router";
+
 
 export function AIBehaviorSettings({ isHighlighted }: { isHighlighted?: boolean }) {
     const { settings, updateSettings } = useSettings();
+    const navigate = useNavigate();
+
 
     const handleToggle = async (
         field: "enableLocalSmartContext" | "enableTokenStats" | "enableVerboseChatLogs",
@@ -110,7 +115,29 @@ export function AIBehaviorSettings({ isHighlighted }: { isHighlighted?: boolean 
                         />
                     </div>
                 </div>
+
+                {/* Prompts Navigation */}
+                <div className="pt-8 border-t border-border">
+                    <div
+                        className="flex items-center justify-between p-6 rounded-2xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer group"
+                        onClick={() => navigate({ to: "/settings/prompts" })}
+                    >
+                        <div>
+                            <h3 className="text-lg font-bold text-primary">Prompts del Asistente</h3>
+                            <p className="text-sm text-primary/70 mt-1">
+                                Personaliza las instrucciones del sistema y las plantillas de IA.
+                            </p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            className="text-primary hover:text-primary hover:bg-transparent font-bold"
+                        >
+                            Configurar →
+                        </Button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
+
