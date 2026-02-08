@@ -1,5 +1,5 @@
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Todo, TodoSection } from "@/ipc/types";
 import { SortableTodoItem } from "./TodoItem";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ interface TodoColumnProps {
     onDeleteSection?: (sectionId: number) => void;
     onEditTodo: (todo: Todo) => void;
     onDevelop: (todoId: number, prompt?: string) => void;
+    isDraggingOverlay?: boolean;
 }
 
 export function TodoColumn({
@@ -36,15 +37,60 @@ export function TodoColumn({
     onDeleteSection,
     onEditTodo,
     onDevelop,
+    isDraggingOverlay,
 }: TodoColumnProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newTodoTitle, setNewTodoTitle] = useState("");
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editTitle, setEditTitle] = useState(section?.title || "");
 
-    const { setNodeRef, isOver } = useDroppable({
-        id: section ? `section-${section.id}` : "unsectioned",
+    const columnId = section ? `section-${section.id}` : "unsectioned";
+
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+        isOver,
+    } = useSortable({
+        id: columnId,
+        data: {
+            type: "section",
+        },
+        disabled: isDraggingOverlay,
     });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+    };
+
+    if (isDragging && !isDraggingOverlay) {
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className="w-80 shrink-0 bg-primary/5 border-2 border-dashed border-primary/20 rounded-xl overflow-hidden"
+            >
+                <div className="p-3 border-b invisible">
+                    <div className="h-5" />
+                </div>
+                <div className="p-2 space-y-2 invisible">
+                    {todos.map((todo) => (
+                        <div key={todo.id} className="p-3 border rounded-lg">
+                            <div className="py-1">
+                                <p className="text-sm font-medium">{todo.content}</p>
+                                {todo.description && <p className="text-[10px] mt-0.5">{todo.description}</p>}
+                            </div>
+                        </div>
+                    ))}
+                    <div className="h-9" />
+                </div>
+            </div>
+        );
+    }
 
     const handleAddTodo = () => {
         if (newTodoTitle.trim()) {
@@ -62,8 +108,19 @@ export function TodoColumn({
     };
 
     return (
-        <div className="flex flex-col w-80 shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-all duration-200">
-            <div className="p-3 flex items-center justify-between group bg-background/50 backdrop-blur-sm border-b">
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={cn(
+                "flex flex-col w-80 shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-all duration-200",
+                isDraggingOverlay && "shadow-2xl ring-2 ring-primary border-primary rotate-1 opacity-90"
+            )}
+        >
+            <div
+                {...attributes}
+                {...listeners}
+                className="p-3 flex items-center justify-between group bg-background/50 backdrop-blur-sm border-b cursor-grab active:cursor-grabbing"
+            >
                 {isEditingTitle && section ? (
                     <Input
                         value={editTitle}
@@ -109,7 +166,6 @@ export function TodoColumn({
             </div>
 
             <div
-                ref={setNodeRef}
                 className={cn(
                     "flex-1 overflow-y-auto p-2 space-y-2 min-h-[150px] pb-4 transition-colors duration-200",
                     isOver && "bg-primary/5"

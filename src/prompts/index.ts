@@ -10,6 +10,7 @@ export type PromptId =
     | "turbo_edit_system"
     | "app_title_short"
     | "app_name_pro"
+    | "todo_analysis"
     | "agent_mode_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
@@ -28,6 +29,13 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     ].join(" "),
     app_title_short: "You are a helpful assistant that generates short and attractive app titles in English. Return ONLY the title, no quotes, no additional text. Maximum 30 characters.",
     app_name_pro: "You are a helpful assistant that generates descriptive and professional app names in English. The name should clearly reflect the app's purpose and functionality. Return ONLY the app name, no quotes, no extra text. Maximum 40 characters. Be strictly functional and deterministic. Do not use marketing adjectives like 'Ultimate', 'Best', 'Simple', 'Super', 'Pro'. Just describe what it does (e.g., 'Todo Manager', 'Invoice Generator').",
+    todo_analysis: [
+        "Analiza el contenido proporcionado (texto o imágenes) y extrae una lista de tareas accionables.",
+        "Genera un título corto para la lista (máximo 30 caracteres) y una lista de tareas.",
+        "Responde EXCLUSIVAMENTE en formato JSON con la siguiente estructura:",
+        '{ "listTitle": "Título de la lista", "tasks": [ { "content": "Contenido de la tarea", "description": "Descripción opcional o null" } ] }',
+        "No incluyas explicaciones ni bloques de código markdown.",
+    ].join(" "),
 };
 
 export function getEffectivePrompt(id: PromptId, settings?: UserSettings): string {
@@ -46,6 +54,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
     turbo_edit_system: "Turbo Edit (Edición Precisa)",
     app_title_short: "Generador de Títulos Cortos",
     app_name_pro: "Generador de Nombres Profesionales",
+    todo_analysis: "Analizador de Tareas (Smart Import)",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -57,4 +66,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     turbo_edit_system: "Instrucciones para el modelo rápido de edición de archivos.",
     app_title_short: "Prompt usado para generar títulos atractivos en el selector.",
     app_name_pro: "Prompt usado para generar nombres funcionales al crear apps.",
+    todo_analysis: "Instrucciones para extraer tareas a partir de archivos (PDF, Word, imágenes, etc.).",
 };

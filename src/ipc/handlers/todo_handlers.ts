@@ -1,4 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
+import { dialog } from "electron";
+import path from "path";
 import log from "electron-log";
 import { logChatInfo } from "../utils/chat_logger";
 import { db } from "../../db";
@@ -8,6 +10,7 @@ import { todoContracts } from "../types/todo";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { openRouterCompletion } from "../utils/openrouter";
+import fs from "fs/promises";
 
 const logger = log.scope("todo_handlers");
 
@@ -133,6 +136,19 @@ export function registerTodoHandlers() {
     logger.info("Reordered todos for app/section:", appId, sectionId);
   });
 
+  createTypedHandler(todoContracts.reorderTodoSections, async (_, params) => {
+    const { appId, sectionIds } = params;
+
+    for (let i = 0; i < sectionIds.length; i++) {
+      await db
+        .update(todoSections)
+        .set({ order: i })
+        .where(and(eq(todoSections.id, sectionIds[i]), eq(todoSections.appId, appId)));
+    }
+
+    logger.info("Reordered sections for app:", appId);
+  });
+
   // Keep existing developTodo and refineTodoPrompt handlers as they are
   createTypedHandler(todoContracts.developTodo, async (_, params) => {
     const { todoId } = params;
@@ -237,6 +253,131 @@ export function registerTodoHandlers() {
       logger.error("Error generating todo prompt:", error);
       throw new Error("Error al generar el prompt para la tarea");
     }
+  });
+
+  createTypedHandler(todoContracts.analyzeTodoFiles, async (_, params) => {
+    const { appId, files } = params;
+    const { readSettings } = await import("../../main/settings");
+    const settings = readSettings();
+    const model = settings.todoAnalysisModel && settings.todoAnalysisModel !== "SAME_AS_CHAT"
+      ? settings.todoAnalysisModel
+      : (settings.todoAnalysisModel === "SAME_AS_CHAT" ? settings.selectedModel.name : "google/gemini-3-flash-preview");
+
+    const { getEffectivePrompt } = await import("../../prompts");
+    const systemPrompt = getEffectivePrompt("todo_analysis", settings);
+
+    const messages: any[] = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    let userContent = "Analiza estos archivos para extraer tareas:\n\n";
+    let hasImages = false;
+
+    for (const file of files) {
+      if (file.type.startsWith("image/")) {
+        hasImages = true;
+        messages.push({
+          role: "user",
+          content: [
+            { type: "text", text: `Archivo: ${file.name}` },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${file.type};base64,${file.data}`,
+              },
+            },
+          ],
+        });
+      } else {
+        let content = "";
+        try {
+          const buffer = await fs.readFile(file.path);
+          if (file.name.toLowerCase().endsWith(".pdf")) {
+            const pdfModule = await import("pdf-parse");
+            const pdf = (pdfModule as any).default || pdfModule;
+            const data = await pdf(buffer);
+            content = data.text;
+          } else if (file.name.toLowerCase().endsWith(".docx")) {
+            const mammoth = await import("mammoth");
+            const result = await mammoth.extractRawText({ buffer });
+            content = result.value;
+          } else {
+            content = buffer.toString("utf-8");
+          }
+        } catch (err) {
+          logger.error(`Error reading file ${file.path}:`, err);
+        }
+        userContent += `--- ARCHIVO: ${file.name} ---\n${content}\n\n`;
+      }
+    }
+
+    if (!hasImages || userContent.length > "Analiza estos archivos para extraer tareas:\n\n".length) {
+      messages.push({ role: "user", content: userContent });
+    }
+
+    try {
+      const data = await openRouterCompletion({
+        model,
+        temperature: 0.1,
+        messages,
+        response_format: { type: "json_object" },
+      });
+
+      const responseContent = data?.choices?.[0]?.message?.content || "{}";
+      const result = JSON.parse(responseContent);
+
+      const usage = data?.usage;
+      if (usage) {
+        void logChatInfo(appId, "token-usage", `Analyze Todo Files - Total tokens: ${usage.total_tokens}`, {
+          totalTokens: usage.total_tokens,
+          inputTokens: usage.prompt_tokens,
+          outputTokens: usage.completion_tokens,
+          model,
+          type: "analyze-todo-files",
+        });
+      }
+
+      return result;
+    } catch (error) {
+      logger.error("Error analyzing todo files:", error);
+      throw new Error("Error al analizar los archivos y extraer tareas");
+    }
+  });
+
+  createTypedHandler(todoContracts.selectTodoFiles, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile", "multiSelections"],
+      filters: [
+        {
+          name: "Archivos permitidos",
+          extensions: ["pdf", "docx", "txt", "md", "png", "jpg", "jpeg", "webp"],
+        },
+      ],
+    });
+
+    if (result.canceled) return [];
+
+    const fileInfos = [];
+    for (const filePath of result.filePaths) {
+      const fileName = path.basename(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      let type = "text/plain";
+      if ([".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
+        type = `image/${ext.replace(".", "")}`;
+        if (type === "image/jpg") type = "image/jpeg";
+      }
+
+      const info: any = { name: fileName, path: filePath, type };
+
+      // If image, we need data
+      if (type.startsWith("image/")) {
+        const buffer = await fs.readFile(filePath);
+        info.data = buffer.toString("base64");
+      }
+
+      fileInfos.push(info);
+    }
+    return fileInfos;
   });
 
   logger.debug("Registered todo IPC handlers");

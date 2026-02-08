@@ -5,7 +5,6 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
@@ -66,8 +65,17 @@ export function SortableTodoItem({
       <div
         ref={setNodeRef}
         style={style}
-        className="min-h-[72px] w-full bg-primary/5 border-2 border-dashed border-primary/20 rounded-lg"
-      />
+        className="w-full bg-primary/5 border-2 border-dashed border-primary/20 rounded-lg p-3"
+      >
+        <div className="invisible py-1">
+          <p className="text-sm font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+          {todo.description && (
+            <p className="text-[10px] mt-0.5 italic whitespace-pre-wrap break-words">
+              {todo.description}
+            </p>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -75,51 +83,53 @@ export function SortableTodoItem({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors",
+        "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing overflow-hidden",
         todo.completed && "opacity-60",
         isDraggingOverlay && "shadow-2xl ring-2 ring-primary border-primary rotate-1"
       )}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
-      >
-        <GripVertical className="h-4 w-4" />
+      {/* Checkbox Overlay */}
+      <div className="absolute inset-y-0 left-0 w-16 flex items-center pl-3 bg-gradient-to-r from-card via-card via-card/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
+        <div className="pointer-events-auto">
+          <Checkbox
+            checked={todo.completed}
+            onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
+            className="shrink-0 border-primary bg-background shadow-sm"
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
       </div>
 
-      <Checkbox
-        checked={todo.completed}
-        onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
-        className="shrink-0"
-      />
-
-      {isEditing ? (
-        <Input
-          value={editContent}
-          onChange={(e) => setEditContent(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          className="flex-1 h-8 text-sm"
-        />
-      ) : (
-        <div
-          className={cn(
-            "flex-1 text-sm cursor-pointer py-1 min-w-0",
-            todo.completed && "line-through text-muted-foreground"
-          )}
-          onClick={onEdit}
-        >
-          <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
-          {todo.description && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-              {todo.description}
-            </p>
-          )}
-        </div>
-      )}
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <Input
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            className="flex-1 h-8 text-sm"
+          />
+        ) : (
+          <div
+            className={cn(
+              "flex-1 text-sm cursor-pointer py-1 min-w-0",
+              todo.completed && "line-through text-muted-foreground"
+            )}
+            onClick={onEdit}
+          >
+            <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+            {todo.description && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                {todo.description}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -164,43 +174,48 @@ export function TodoItem({
   return (
     <div
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors",
+        "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden",
         todo.completed && "opacity-60"
       )}
     >
-      <div className="w-6" /> {/* Spacer for alignment */}
-
-      <Checkbox
-        checked={todo.completed}
-        onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
-        className="shrink-0"
-      />
-
-      {isEditing ? (
-        <Input
-          value={editContent}
-          onChange={(e) => setEditContent(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          className="flex-1 h-8 text-sm"
-        />
-      ) : (
-        <div
-          className={cn(
-            "flex-1 text-sm cursor-pointer py-1 min-w-0",
-            todo.completed && "line-through text-muted-foreground"
-          )}
-          onClick={onEdit}
-        >
-          <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
-          {todo.description && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-              {todo.description}
-            </p>
-          )}
+      {/* Checkbox Overlay */}
+      <div className="absolute inset-y-0 left-0 w-16 flex items-center pl-3 bg-gradient-to-r from-card via-card via-card/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
+        <div className="pointer-events-auto">
+          <Checkbox
+            checked={todo.completed}
+            onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
+            className="shrink-0 border-primary bg-background shadow-sm"
+          />
         </div>
-      )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <Input
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            className="flex-1 h-8 text-sm"
+          />
+        ) : (
+          <div
+            className={cn(
+              "flex-1 text-sm cursor-pointer py-1 min-w-0",
+              todo.completed && "line-through text-muted-foreground"
+            )}
+            onClick={onEdit}
+          >
+            <p className="font-medium whitespace-pre-wrap break-words">{todo.content}</p>
+            {todo.description && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                {todo.description}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

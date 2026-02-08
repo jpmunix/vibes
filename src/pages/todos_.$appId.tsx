@@ -25,10 +25,13 @@ export default function TodoDetailPage() {
     deleteTodo,
     developTodo,
     reorderTodos,
+    reorderSections,
     refinePrompt,
     createSection,
     updateSection,
     deleteSection,
+    smartImport,
+    isImporting,
   } = useTodos(numericAppId);
 
   const handleAddTodo = async (content: string, sectionId?: number) => {
@@ -88,12 +91,15 @@ export default function TodoDetailPage() {
         onUpdateTodo={handleUpdateTodo}
         onDeleteTodo={deleteTodo}
         onReorderTodos={handleReorderTodos}
+        onReorderSections={reorderSections}
         onAddSection={(title) => createSection(title)}
         onUpdateSection={(sectionId, title) => updateSection({ sectionId, title })}
         onDeleteSection={deleteSection}
         onDevelop={handleDevelop}
         onRefine={async (todoId: number) => refinePrompt({ todoId })}
+        onSmartImport={smartImport}
         isLoading={loading}
+        isImporting={isImporting}
       />
     </div>
   );

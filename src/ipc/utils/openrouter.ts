@@ -16,6 +16,7 @@ export interface OpenRouterCompletionOptions {
     referer?: string;
     title?: string;
     signal?: AbortSignal;
+    response_format?: { type: "json_object" | "text" };
 }
 
 /**
@@ -76,6 +77,10 @@ export async function openRouterCompletion(options: OpenRouterCompletionOptions)
         messages,
         temperature,
     };
+
+    if (options.response_format) {
+        body.response_format = options.response_format;
+    }
 
     if (max_tokens !== undefined) {
         body.max_tokens = max_tokens;

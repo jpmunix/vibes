@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, RotateCcw, Save, Search, Sparkles, MessageSquare, Terminal, Lightbulb, ShieldCheck, Zap, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RotateCcw, Save, Search, Sparkles, MessageSquare, Terminal, Lightbulb, ShieldCheck, Zap, AlertTriangle, FileSearch } from "lucide-react";
 
 import { useRef } from "react";
 
@@ -23,6 +23,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
     turbo_edit_system: <Zap className="w-4 h-4" />,
     app_title_short: <Sparkles className="w-4 h-4" />,
     app_name_pro: <ShieldCheck className="w-4 h-4" />,
+    todo_analysis: <FileSearch className="w-4 h-4" />,
 };
 
 export function PromptsSettings() {

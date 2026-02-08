@@ -73,7 +73,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen p-6">
+    <div className="flex flex-col items-center justify-center h-full w-full p-6">
       <div className="max-w-md w-full bg-background p-6 rounded-lg shadow-lg">
         <h2 className="text-xl font-bold mb-4">
           ¡Lo sentimos, eso no debería haber pasado!

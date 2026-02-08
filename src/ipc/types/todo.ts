@@ -98,6 +98,16 @@ export const ReorderTodosParamsSchema = z.object({
 export type ReorderTodosParams = z.infer<typeof ReorderTodosParamsSchema>;
 
 /**
+ * Schema for reorder todo sections params.
+ */
+export const ReorderTodoSectionsParamsSchema = z.object({
+  appId: z.number(),
+  sectionIds: z.array(z.number()),
+});
+
+export type ReorderTodoSectionsParams = z.infer<typeof ReorderTodoSectionsParamsSchema>;
+
+/**
  * Schema for develop todo params.
  */
 export const DevelopTodoParamsSchema = z.object({
@@ -133,6 +143,34 @@ export const RefineTodoPromptResponseSchema = z.object({
 });
 
 export type RefineTodoPromptResponse = z.infer<typeof RefineTodoPromptResponseSchema>;
+
+/**
+ * Schema for analyze todo files params.
+ */
+export const AnalyzeTodoFilesParamsSchema = z.object({
+  appId: z.number(),
+  files: z.array(z.object({
+    name: z.string(),
+    path: z.string(),
+    type: z.string(),
+    data: z.string().optional(), // Base64 data for images
+  })),
+});
+
+export type AnalyzeTodoFilesParams = z.infer<typeof AnalyzeTodoFilesParamsSchema>;
+
+/**
+ * Schema for analyze todo files response.
+ */
+export const AnalyzeTodoFilesResponseSchema = z.object({
+  listTitle: z.string(),
+  tasks: z.array(z.object({
+    content: z.string(),
+    description: z.string().optional().nullable(),
+  })),
+});
+
+export type AnalyzeTodoFilesResponse = z.infer<typeof AnalyzeTodoFilesResponseSchema>;
 
 // =============================================================================
 // Todo Contracts (Invoke/Response)
@@ -193,6 +231,12 @@ export const todoContracts = {
     output: z.void(),
   }),
 
+  reorderTodoSections: defineContract({
+    channel: "reorder-todo-sections",
+    input: ReorderTodoSectionsParamsSchema,
+    output: z.void(),
+  }),
+
   developTodo: defineContract({
     channel: "develop-todo",
     input: DevelopTodoParamsSchema,
@@ -203,6 +247,21 @@ export const todoContracts = {
     channel: "refine-todo-prompt",
     input: RefineTodoPromptParamsSchema,
     output: RefineTodoPromptResponseSchema,
+  }),
+  analyzeTodoFiles: defineContract({
+    channel: "analyze-todo-files",
+    input: AnalyzeTodoFilesParamsSchema,
+    output: AnalyzeTodoFilesResponseSchema,
+  }),
+  selectTodoFiles: defineContract({
+    channel: "select-todo-files",
+    input: z.void(),
+    output: z.array(z.object({
+      name: z.string(),
+      path: z.string(),
+      type: z.string(),
+      data: z.string().optional(),
+    })),
   }),
 } as const;
 

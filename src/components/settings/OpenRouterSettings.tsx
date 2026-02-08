@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { showError, showSuccess } from "@/lib/toast";
 import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
 import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
+import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
 import { ModelsSection } from "./ModelsSection";
 import { cn } from "@/lib/utils";
 
@@ -225,13 +226,23 @@ export function OpenRouterSettings({ isHighlighted }: { isHighlighted?: boolean 
                 </div>
 
                 {/* Utility Models Section */}
-                <div className="pt-8 border-border">
-                    <div className="space-y-4">
-                        <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                            Títulos de Apps
-                        </Label>
-                        <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit min-w-[300px]">
-                            <AppTitleModelSelector />
+                <div className="pt-8 border-t border-border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                                Títulos de Apps
+                            </Label>
+                            <div className="p-1 rounded-2xl bg-muted/30 border border-border">
+                                <AppTitleModelSelector />
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                                Análisis de Tareas (Smart Import)
+                            </Label>
+                            <div className="p-1 rounded-2xl bg-muted/30 border border-border">
+                                <TodoAnalysisModelSelector />
+                            </div>
                         </div>
                     </div>
                 </div>

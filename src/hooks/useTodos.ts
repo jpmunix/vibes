@@ -142,6 +142,39 @@ export function useTodos(appId: number) {
     },
   });
 
+  const reorderSections = useMutation({
+    mutationFn: async (sectionIds: number[]) => {
+      return await ipc.todo.reorderTodoSections({ appId, sectionIds });
+    },
+    onMutate: async (sectionIds) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+      const previousSections = queryClient.getQueryData<any[]>(queryKeys.todos.sections({ appId }));
+
+      if (previousSections) {
+        const orderMap = new Map(sectionIds.map((id, index) => [id, index]));
+        const resultSections = previousSections
+          .map(section => ({
+            ...section,
+            order: orderMap.get(section.id) ?? section.order
+          }))
+          .sort((a, b) => a.order - b.order);
+
+        queryClient.setQueryData(queryKeys.todos.sections({ appId }), resultSections);
+      }
+
+      return { previousSections };
+    },
+    onError: (error, __, context) => {
+      if (context?.previousSections) {
+        queryClient.setQueryData(queryKeys.todos.sections({ appId }), context.previousSections);
+      }
+      showError(`Error al reordenar secciones: ${(error as Error).message}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+    },
+  });
+
   const developTodo = useMutation({
     mutationFn: async ({ todoId, prompt }: { todoId: number; prompt?: string }) => {
       return await ipc.todo.developTodo({ todoId, prompt });
@@ -161,6 +194,38 @@ export function useTodos(appId: number) {
     },
   });
 
+  const smartImport = useMutation({
+    mutationFn: async () => {
+      const files = await ipc.todo.selectTodoFiles();
+      if (files.length === 0) return;
+
+      const analysis = await ipc.todo.analyzeTodoFiles({ appId, files });
+
+      // Create new section
+      const section = await ipc.todo.createTodoSection({ appId, title: analysis.listTitle });
+
+      // Create todos in that section
+      for (const task of analysis.tasks) {
+        await ipc.todo.createTodo({
+          appId,
+          content: task.content,
+          sectionId: section.id,
+          description: task.description || undefined,
+        });
+      }
+
+      return section;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.todos.sections({ appId }) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.todos.byApp({ appId }) });
+      showSuccess("Lista de tareas importada con éxito");
+    },
+    onError: (error) => {
+      showError(`Error en Smart Import: ${(error as Error).message}`);
+    },
+  });
+
   return {
     todos,
     sections,
@@ -172,7 +237,10 @@ export function useTodos(appId: number) {
     updateTodo: updateTodo.mutateAsync,
     deleteTodo: deleteTodo.mutateAsync,
     reorderTodos: reorderTodos.mutateAsync,
+    reorderSections: reorderSections.mutateAsync,
     developTodo: developTodo.mutateAsync,
     refinePrompt: refinePrompt.mutateAsync,
+    smartImport: smartImport.mutateAsync,
+    isImporting: smartImport.isPending,
   };
 }
