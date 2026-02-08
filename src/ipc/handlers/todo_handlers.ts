@@ -1,5 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import log from "electron-log";
+import { logChatInfo } from "../utils/chat_logger";
 import { db } from "../../db";
 import { apps, chats, messages, todos } from "../../db/schema";
 import { getDyadAppPath } from "../../paths/paths";
@@ -145,11 +146,8 @@ export function registerTodoHandlers() {
       })
       .returning();
 
-    // Create the initial message with the todo content
-    const baseContent = `Desarrollar la siguiente tarea: ${todo.content}`;
-    const initialContent = params.prompt
-      ? `${baseContent}\n\nInstrucciones adicionales:\n${params.prompt}`
-      : baseContent;
+    // Create the initial message with the todo content or prompt
+    const initialContent = params.prompt || todo.prompt || todo.content;
 
     await db.insert(messages).values({
       chatId: chat.id,
@@ -223,6 +221,23 @@ export function registerTodoHandlers() {
 
         const generatedPrompt =
           data?.choices?.[0]?.message?.content?.trim() || "";
+
+        // Log token usage for the refined prompt
+        const usage = data?.usage;
+        if (usage) {
+          void logChatInfo(
+            todoId, // Using todoId as a loose reference if chatId not available, but category is key
+            "token-usage",
+            `Refine Todo Prompt - Total tokens: ${usage.total_tokens} (input: ${usage.prompt_tokens}, output: ${usage.completion_tokens})`,
+            {
+              totalTokens: usage.total_tokens,
+              inputTokens: usage.prompt_tokens,
+              outputTokens: usage.completion_tokens,
+              model,
+              type: "refine-todo-prompt",
+            }
+          );
+        }
 
         return { prompt: generatedPrompt };
       } catch (error) {

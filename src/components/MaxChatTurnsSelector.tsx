@@ -72,12 +72,12 @@ export const MaxChatTurnsSelector: React.FC = () => {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-4">
-        <label
-          htmlFor="max-chat-turns"
-          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Número máximo de turnos de chat en el contexto
-        </label>
+        {/*<label*/}
+        {/*  htmlFor="max-chat-turns"*/}
+        {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300"*/}
+        {/*>*/}
+        {/*  Número máximo de turnos de chat en el contexto*/}
+        {/*</label>*/}
         <Select value={currentValue} onValueChange={handleValueChange}>
           <SelectTrigger className="w-[180px]" id="max-chat-turns">
             <SelectValue placeholder="Selecciona turnos" />

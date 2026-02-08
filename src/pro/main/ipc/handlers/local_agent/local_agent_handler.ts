@@ -25,6 +25,8 @@ import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
 import { getProviderOptions, getAiHeaders } from "@/ipc/utils/provider_options";
+import { logChatInfo } from "@/ipc/utils/chat_logger";
+import { logTokenUsage } from "@/ipc/utils/token_stats_logger";
 // DESHABILITADO TEMPORALMENTE - Auto-router imports
 // import { analyzeAndRouteModel } from "@/ipc/utils/model_router";
 // import { getLanguageModelsByProviders } from "@/ipc/shared/language_model_helpers";
@@ -339,8 +341,8 @@ export async function handleLocalAgentStream(
     const messageHistory: ModelMessage[] = messageOverride
       ? messageOverride
       : chat.messages
-          .filter((msg) => msg.content || msg.aiMessagesJson)
-          .flatMap((msg) => parseAiMessagesJson(msg));
+        .filter((msg) => msg.content || msg.aiMessagesJson)
+        .flatMap((msg) => parseAiMessagesJson(msg));
     logger.log(
       `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
     );
@@ -400,6 +402,36 @@ export async function handleLocalAgentStream(
             .set({ maxTokensUsed: totalTokens })
             .where(eq(messages.id, placeholderMessageId))
             .catch((err) => logger.error("Failed to save token count", err));
+
+          // Log token usage for verbose chat logs and token stats panel
+          void logChatInfo(
+            ctx.chatId,
+            "token-usage",
+            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${response.usage.outputTokens ?? "?"})`,
+            {
+              totalTokens,
+              inputTokens,
+              outputTokens: response.usage.outputTokens,
+              model: selectedModel.name,
+              cachedInputTokens,
+              type: "local-agent",
+            },
+            placeholderMessageId,
+          );
+
+          if (settings.enableTokenStats !== false) {
+            logTokenUsage({
+              chatId: ctx.chatId,
+              messageId: placeholderMessageId,
+              totalTokens,
+              promptTokens: inputTokens,
+              completionTokens: response.usage.outputTokens,
+              model: selectedModel.name,
+              timestamp: Date.now(),
+              appId: chat.app.id,
+              toolsUsed: Object.keys(allTools),
+            });
+          }
         }
       },
       onError: (error: any) => {

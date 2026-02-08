@@ -34,13 +34,13 @@ export function TurboEditModelSelector() {
 
   return (
     <div className="space-y-3">
-      <Label
-        htmlFor="turboEditModel"
-        className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
-      >
-        <Rabbit className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        Modelo para Turbo Edits
-      </Label>
+      {/*<Label*/}
+      {/*  htmlFor="turboEditModel"*/}
+      {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"*/}
+      {/*>*/}
+      {/*  <Rabbit className="h-4 w-4 text-blue-600 dark:text-blue-400" />*/}
+      {/*  Modelo para Turbo Edits*/}
+      {/*</Label>*/}
       <Select
         value={currentValue}
         onValueChange={handleChange}
@@ -58,11 +58,11 @@ export function TurboEditModelSelector() {
           ))}
         </SelectContent>
       </Select>
-      <p className="text-xs text-muted-foreground">
-        Configura el modelo que OpenRouter utilizará para las ediciones rápidas
-        de archivos (Turbo Edit). Por defecto:{" "}
-        <code className="bg-muted px-1 rounded">openai/gpt-4.1</code>
-      </p>
+      {/*<p className="text-xs text-muted-foreground">*/}
+      {/*  Configura el modelo que OpenRouter utilizará para las ediciones rápidas*/}
+      {/*  de archivos (Turbo Edit). Por defecto:{" "}*/}
+      {/*  <code className="bg-muted px-1 rounded">openai/gpt-4.1</code>*/}
+      {/*</p>*/}
     </div>
   );
 }

@@ -41,7 +41,7 @@ export function AutoFixModelSelector() {
 
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">Modelo (auto-fix)</Label>
+      {/*<Label className="text-xs text-muted-foreground">Modelo (auto-fix)</Label>*/}
       <Select
         value={currentValue}
         onValueChange={handleChange}

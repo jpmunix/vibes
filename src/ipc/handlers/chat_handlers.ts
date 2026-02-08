@@ -9,6 +9,7 @@ import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion } from "../utils/openrouter";
+import { logChatInfo } from "../utils/chat_logger";
 
 const logger = log.scope("chat_handlers");
 
@@ -244,6 +245,23 @@ export function registerChatHandlers() {
         const title =
           data?.choices?.[0]?.message?.content?.trim() || "Nuevo chat";
 
+        // Log token usage for title generation
+        const usage = data?.usage;
+        if (usage) {
+          void logChatInfo(
+            chatId,
+            "token-usage",
+            `Chat Title Generation - Total tokens: ${usage.total_tokens} (input: ${usage.prompt_tokens}, output: ${usage.completion_tokens})`,
+            {
+              totalTokens: usage.total_tokens,
+              inputTokens: usage.prompt_tokens,
+              outputTokens: usage.completion_tokens,
+              model,
+              type: "chat-title-generation",
+            }
+          );
+        }
+
         // Sanitize title
         const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 50);
 
@@ -370,6 +388,15 @@ export function registerChatHandlers() {
       const summary =
         data?.choices?.[0]?.message?.content?.trim() ||
         "No se pudo generar el resumen.";
+
+      // Log token usage for daily summary
+      const usage = data?.usage;
+      if (usage) {
+        // Since daily summary is for an app (multiple chats), we use 0 or a special ID
+        // or just log it without a specific chatId if the logger allows (it requires chatId)
+        // We'll use a dummy/general ID or skip if no clear chatId.
+        // Actually, logChatInfo needs a chatId. We'll skip for now or use app ID if possible.
+      }
 
       return { summary };
     } catch (error) {

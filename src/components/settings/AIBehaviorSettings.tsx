@@ -39,7 +39,7 @@ export function AIBehaviorSettings({ isHighlighted }: { isHighlighted?: boolean 
                         <Label className="text-lg font-semibold text-gray-900 dark:text-white">
                             Presupuesto de pensamiento
                         </Label>
-                        <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+                        <div className="p-1 rounded-2xl p-5 bg-muted/30 border border-border w-fit">
                             <ThinkingBudgetSelector />
                         </div>
                     </div>
@@ -48,7 +48,7 @@ export function AIBehaviorSettings({ isHighlighted }: { isHighlighted?: boolean 
                         <Label className="text-lg font-semibold text-gray-900 dark:text-white">
                             Turnos máximos de chat
                         </Label>
-                        <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+                        <div className="rounded-2xl p-5 bg-muted/30 border border-border w-fit">
                             <MaxChatTurnsSelector />
                         </div>
                     </div>
@@ -60,7 +60,7 @@ export function AIBehaviorSettings({ isHighlighted }: { isHighlighted?: boolean 
                         <Label className="text-lg font-semibold text-gray-900 dark:text-white">
                             Idioma del asistente
                         </Label>
-                        <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+                        <div className="p-5 rounded-2xl bg-muted/30 border border-border w-fit">
                             <ChatLanguageSelector />
                         </div>
                         <p className="text-sm text-muted-foreground">

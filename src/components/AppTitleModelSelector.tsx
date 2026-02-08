@@ -33,14 +33,14 @@ export function AppTitleModelSelector() {
   };
 
   return (
-    <div className="space-y-3 pt-4 border-t border-border">
-      <Label
-        htmlFor="appTitleGenerationModel"
-        className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"
-      >
-        <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-        Modelo para Generación de Títulos
-      </Label>
+    <div className="space-y-3 p-5">
+      {/*<Label*/}
+      {/*  htmlFor="appTitleGenerationModel"*/}
+      {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2"*/}
+      {/*>*/}
+      {/*  <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400" />*/}
+      {/*  Modelo para generación de Títulos*/}
+      {/*</Label>*/}
       <Select
         value={currentValue}
         onValueChange={handleChange}

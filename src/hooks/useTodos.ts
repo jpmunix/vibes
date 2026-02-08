@@ -48,6 +48,7 @@ export function useTodos(appId: number) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.todos.byApp({ appId }),
       });
+      showSuccess("Tarea actualizada");
     },
     onError: (error) => {
       showError(`Error al actualizar tarea: ${(error as Error).message}`);

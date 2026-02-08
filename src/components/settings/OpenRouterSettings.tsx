@@ -225,7 +225,7 @@ export function OpenRouterSettings({ isHighlighted }: { isHighlighted?: boolean 
                 </div>
 
                 {/* Utility Models Section */}
-                <div className="pt-8 border-t border-border">
+                <div className="pt-8 border-border">
                     <div className="space-y-4">
                         <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                             Títulos de Apps
@@ -233,9 +233,6 @@ export function OpenRouterSettings({ isHighlighted }: { isHighlighted?: boolean 
                         <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit min-w-[300px]">
                             <AppTitleModelSelector />
                         </div>
-                        <p className="text-xs text-muted-foreground px-1">
-                            Modelo utilizado para generar nombres creativos a tus apps.
-                        </p>
                     </div>
                 </div>
 

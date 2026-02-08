@@ -54,12 +54,12 @@ export function DefaultChatModeSelector() {
   return (
     <div className="space-y-1">
       <div className="flex items-center space-x-2">
-        <label
-          htmlFor="default-chat-mode"
-          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Modo de chat por defecto
-        </label>
+        {/*<label*/}
+        {/*  htmlFor="default-chat-mode"*/}
+        {/*  className="text-sm font-medium text-gray-700 dark:text-gray-300"*/}
+        {/*>*/}
+        {/*  Modo de chat por defecto*/}
+        {/*</label>*/}
         <Select
           value={effectiveDefault}
           onValueChange={handleDefaultChatModeChange}

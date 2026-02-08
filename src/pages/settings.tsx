@@ -878,7 +878,7 @@ export function WorkflowSettings({
           <Label className="text-lg font-semibold text-gray-900 dark:text-white">
             Modo de chat predeterminado
           </Label>
-          <div className="p-1 rounded-2xl bg-muted/30 border border-border w-fit">
+          <div className="p-5 rounded-2xl bg-muted/30 border border-border w-fit">
             <DefaultChatModeSelector />
           </div>
         </div>
@@ -1186,7 +1186,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           {/* Top Models and Recent Activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Top Models */}
-            <div className="space-y-6">
+            <div className="space-y-6 flex flex-col h-full">
               <div className="flex items-center gap-3">
                 <Sparkles className="text-muted-foreground/60" size={20} />
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">

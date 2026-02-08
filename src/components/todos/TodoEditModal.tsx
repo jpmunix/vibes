@@ -49,7 +49,7 @@ export function TodoEditModal({
 
     const handleSave = () => {
         if (todo && content.trim()) {
-            onSave(todo.id, content.trim(), description.trim() || null, developPrompt.trim() || null, true);
+            onSave(todo.id, content.trim(), description.trim() || null, developPrompt.trim() || null, false);
         }
     };
 
@@ -91,7 +91,7 @@ export function TodoEditModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-5xl h-[95vh] max-h-[95vh] flex flex-col p-0">
+            <DialogContent className="sm:max-w-5xl max-h-[95vh] flex flex-col p-0">
                 <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
                     <DialogTitle className="text-2xl">Editar Tarea</DialogTitle>
                 </DialogHeader>
@@ -116,7 +116,7 @@ export function TodoEditModal({
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Añade más detalles..."
-                                    className="min-h-[300px] resize-none text-base"
+                                    className="min-h-[150px] resize-none text-base"
                                 />
                             </div>
                         </div>
@@ -137,7 +137,7 @@ export function TodoEditModal({
                                         value={developPrompt}
                                         onChange={(e) => setDevelopPrompt(e.target.value)}
                                         placeholder="prompt para esta tarea"
-                                        className="min-h-[350px] resize-none bg-background"
+                                        className="min-h-[200px] resize-none bg-background"
                                     />
                                 </div>
                                 <div className="flex gap-4">
