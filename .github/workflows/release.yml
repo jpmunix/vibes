@@ -12,10 +12,15 @@ jobs:
       matrix:
         os: [
             #{ id: "linux", image: "ubuntu-latest", command: "npm run distribute" },
+#            {
+#              id: "macos-intel",
+#              image: "macos-13", # Intel runner
+#              command: "npx electron-forge make --platform darwin --arch x64",
+#            },
             {
-              id: "macos",
-              image: "macos-latest",
-              command: "npx electron-forge make --platform darwin --arch x64",
+              id: "macos-arm64",
+              image: "macos-latest", # Apple Silicon runner (M1)
+              command: "npx electron-forge make --platform darwin --arch arm64",
             },
           ]
     runs-on: ${{ matrix.os.image }}
@@ -52,13 +57,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Sharp with native libraries for macOS
-        if: matrix.os.id == 'macos'
+        if: startsWith(matrix.os.id, 'macos')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Detectar arquitectura del runner de GitHub Actions
           RUNNER_ARCH=$(uname -m)
           echo "Runner architecture: $RUNNER_ARCH"
+          echo "Building for: ${{ matrix.os.id }}"
 
           # Limpiar cache de npm y Sharp completamente
           npm cache clean --force
@@ -68,13 +74,12 @@ jobs:
           # Para @xenova/transformers que tiene su propia copia de Sharp
           rm -rf node_modules/@xenova/transformers/node_modules/sharp 2>/dev/null || true
 
-          # Reinstalar Sharp FORZANDO descarga de binarios nativos
-          # --platform y --arch se detectan automáticamente pero los forzamos explícitamente
-          if [ "$RUNNER_ARCH" = "arm64" ]; then
-            echo "Installing Sharp for macOS arm64..."
-            npm install --no-save --force sharp@latest
+          # Reinstalar Sharp FORZANDO descarga de binarios nativos según arquitectura del build
+          if [[ "${{ matrix.os.id }}" == "macos-arm64" ]]; then
+            echo "Installing Sharp for macOS ARM64..."
+            npm install --no-save --force --platform=darwin --arch=arm64 sharp@latest
           else
-            echo "Installing Sharp for macOS x64..."
+            echo "Installing Sharp for macOS x64 (Intel)..."
             npm install --no-save --force --platform=darwin --arch=x64 sharp@latest
           fi
 
