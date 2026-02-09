@@ -3,14 +3,28 @@
  * Does not import Electron modules that are unavailable in workers
  */
 
-import {
-  pipeline,
-  env,
-  type FeatureExtractionPipeline,
-} from "@xenova/transformers";
 import log from "electron-log";
+import path from "node:path";
+import type { FeatureExtractionPipeline } from "@xenova/transformers";
 
 const logger = log.scope("embeddings");
+
+// Lazy import transformers to handle asar paths correctly
+let transformers: typeof import("@xenova/transformers") | null = null;
+
+async function getTransformers() {
+  if (transformers) return transformers;
+
+  try {
+    // Always use dynamic import for ES modules
+    transformers = await import("@xenova/transformers");
+    logger.info("[WORKER] Loaded @xenova/transformers successfully");
+    return transformers;
+  } catch (error) {
+    logger.error("[WORKER] Failed to load @xenova/transformers:", error);
+    throw error;
+  }
+}
 
 let embedder: FeatureExtractionPipeline | null = null;
 let initPromise: Promise<FeatureExtractionPipeline> | null = null;
@@ -19,10 +33,14 @@ let initPromise: Promise<FeatureExtractionPipeline> | null = null;
  * Configure transformers cache directory
  * Must be called before first embedding generation
  */
-export function configureCacheDir(cacheDir: string): void {
-  env.cacheDir = cacheDir;
-  env.allowLocalModels = true;
-  env.allowRemoteModels = true;
+export async function configureCacheDir(cacheDir: string): Promise<void> {
+  const t = await getTransformers();
+  if (!t) {
+    throw new Error("[WORKER] Failed to load transformers library");
+  }
+  t.env.cacheDir = cacheDir;
+  t.env.allowLocalModels = true;
+  t.env.allowRemoteModels = true;
 }
 
 /**
@@ -41,16 +59,22 @@ export async function initEmbeddings(): Promise<FeatureExtractionPipeline> {
   }
 
   logger.info(
-    "Initializing embeddings model (first run will download ~80MB)...",
+    "[WORKER] Initializing embeddings model (first run will download ~80MB)...",
   );
 
-  initPromise = pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2").then(
-    (model) => {
-      embedder = model;
-      logger.info("Embeddings model initialized successfully");
-      return model;
-    },
-  );
+  initPromise = (async () => {
+    const t = await getTransformers();
+    if (!t) {
+      throw new Error("[WORKER] Failed to load transformers library");
+    }
+    const model = await t.pipeline(
+      "feature-extraction",
+      "Xenova/all-MiniLM-L6-v2",
+    );
+    embedder = model;
+    logger.info("[WORKER] Embeddings model initialized successfully");
+    return model;
+  })();
 
   return initPromise;
 }
