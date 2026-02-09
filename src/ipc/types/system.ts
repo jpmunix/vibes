@@ -218,6 +218,12 @@ export const systemContracts = {
     output: DoesReleaseNoteExistResultSchema,
   }),
 
+  getReleaseNotesContent: defineContract({
+    channel: "get-release-notes-content",
+    input: z.void(),
+    output: z.string(),
+  }),
+
   // Upload
   uploadToSignedUrl: defineContract({
     channel: "upload-to-signed-url",

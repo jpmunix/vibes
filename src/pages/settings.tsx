@@ -52,6 +52,7 @@ import {
 import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
 import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
 import Fuse from "fuse.js";
+import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 import { cn } from "@/lib/utils";
 
@@ -432,6 +433,7 @@ export default function SettingsPage() {
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null,
   );
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -576,6 +578,12 @@ export default function SettingsPage() {
           <GeneralSettings
             appVersion={appVersion}
             isHighlighted={highlightedSection === "general-settings"}
+            onShowReleaseNotes={() => setReleaseNotesOpen(true)}
+          />
+
+          <ReleaseNotesDialog
+            isOpen={releaseNotesOpen}
+            onOpenChange={setReleaseNotesOpen}
           />
 
           <ModelsAndConnectivity
@@ -597,11 +605,10 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
-              highlightedSection === "integrations"
-                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-                : ""
-            }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Integraciones
@@ -621,11 +628,10 @@ export default function SettingsPage() {
           {/* Agent v2 Permissions */}
           <div
             id="agent-permissions"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
-              highlightedSection === "agent-permissions"
-                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-                : ""
-            }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Seguridad y Permisos del Agente
@@ -644,11 +650,10 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${
-              highlightedSection === "experiments"
-                ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-                : ""
-            }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Laboratorio y Experimentos
@@ -678,11 +683,10 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${
-              highlightedSection === "danger-zone"
-                ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
-                : ""
-            }`}
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
+              ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
           >
             <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-8">
               Zona peligrosa
@@ -735,9 +739,11 @@ export default function SettingsPage() {
 export function GeneralSettings({
   appVersion,
   isHighlighted,
+  onShowReleaseNotes,
 }: {
   appVersion: string | null;
   isHighlighted?: boolean;
+  onShowReleaseNotes?: () => void;
 }) {
   const { theme, setTheme, intensity, setIntensity } = useTheme();
   const { settings, updateSettings } = useSettings();
@@ -793,7 +799,24 @@ export function GeneralSettings({
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 pt-6 border-t border-border">
+          <SettingItem
+            label="Novedades"
+            description={`Estás en la versión v${appVersion}. Mira qué hay de nuevo en esta actualización.`}
+            control={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onShowReleaseNotes}
+                className="h-10 px-4 font-bold border-border hover:bg-muted rounded-xl"
+              >
+                Ver novedades
+              </Button>
+            }
+          />
+        </div>
+
+        <div className="space-y-6 pt-6 border-t border-border">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -858,18 +881,6 @@ export function GeneralSettings({
         <div className="pt-8 border-t border-border">
           <ZoomSelector />
         </div>
-      </div>
-
-      <div className="mt-12 flex items-center justify-between text-sm text-muted-foreground pt-8 border-t border-border/50">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold uppercase tracking-widest text-[10px] opacity-60">
-            Versión
-          </span>
-          <span className="bg-muted px-3 py-1 rounded-lg text-foreground font-mono font-bold border border-border">
-            {appVersion ? appVersion : "-"}
-          </span>
-        </div>
-        <p className="text-xs italic opacity-40">Minube Vibes v1.0.0</p>
       </div>
     </div>
   );

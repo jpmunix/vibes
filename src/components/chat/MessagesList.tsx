@@ -146,9 +146,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                         versionId: currentMessage.sourceCommitHash,
                         currentChatMessageId: userMessage
                           ? {
-                              chatId: selectedChatId,
-                              messageId: userMessage.id,
-                            }
+                            chatId: selectedChatId,
+                            messageId: userMessage.id,
+                          }
                           : undefined,
                       });
                       const chat = await ipc.chat.getChat(selectedChatId);
@@ -276,7 +276,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                 try {
                   await ipc.todo.updateTodo({ todoId, completed: true });
                   setIsTodoCompleted(true);
-                  showSuccess("Tarea marcada como completada");
+                  // Generate development summary
+                  await ipc.todo.generateTodoSummary(todoId);
+                  showSuccess("Tarea marcada como completada y resumen generado");
                 } catch (error) {
                   showError(
                     `Error al marcar tarea: ${(error as Error).message}`,

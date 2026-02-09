@@ -5,6 +5,7 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Bot } from "lucide-react";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
@@ -96,7 +97,7 @@ export function SortableTodoItem({
         "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing overflow-hidden",
         todo.completed && "opacity-60",
         isDraggingOverlay &&
-          "shadow-2xl ring-2 ring-primary border-primary rotate-1",
+        "shadow-2xl ring-2 ring-primary border-primary rotate-1",
       )}
     >
       {/* Checkbox Overlay */}
@@ -122,20 +123,28 @@ export function SortableTodoItem({
             className="flex-1 h-8 text-sm"
           />
         ) : (
-          <div
-            className={cn(
-              "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground",
-            )}
-            onClick={onEdit}
-          >
-            <p className="font-medium whitespace-pre-wrap break-words">
-              {todo.content}
-            </p>
-            {todo.description && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-                {todo.description}
+          <div className="flex flex-col relative">
+            <div
+              className={cn(
+                "flex-1 text-sm cursor-pointer py-1 min-w-0 pr-6",
+                todo.completed && "line-through text-muted-foreground",
+              )}
+              onClick={onEdit}
+            >
+              <p className="font-medium whitespace-pre-wrap break-words">
+                {todo.content}
               </p>
+              {todo.description && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                  {todo.description}
+                </p>
+              )}
+            </div>
+
+            {todo.developmentSummary && (
+              <div className="absolute bottom-0 right-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                <Bot size={14} className="text-primary" />
+              </div>
             )}
           </div>
         )}
@@ -215,20 +224,28 @@ export function TodoItem({
             className="flex-1 h-8 text-sm"
           />
         ) : (
-          <div
-            className={cn(
-              "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground",
-            )}
-            onClick={onEdit}
-          >
-            <p className="font-medium whitespace-pre-wrap break-words">
-              {todo.content}
-            </p>
-            {todo.description && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-                {todo.description}
+          <div className="flex flex-col relative">
+            <div
+              className={cn(
+                "flex-1 text-sm cursor-pointer py-1 min-w-0 pr-6",
+                todo.completed && "line-through text-muted-foreground",
+              )}
+              onClick={onEdit}
+            >
+              <p className="font-medium whitespace-pre-wrap break-words">
+                {todo.content}
               </p>
+              {todo.description && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                  {todo.description}
+                </p>
+              )}
+            </div>
+
+            {todo.developmentSummary && (
+              <div className="absolute bottom-0 right-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                <Bot size={14} className="text-primary" />
+              </div>
             )}
           </div>
         )}

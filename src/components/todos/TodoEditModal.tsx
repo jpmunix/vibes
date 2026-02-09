@@ -12,8 +12,17 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Todo } from "@/ipc/types";
 import { useEffect, useState } from "react";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
-import { Code, Loader2, Sparkles, Trash2 } from "lucide-react";
+import {
+  Code,
+  FileText,
+  Loader2,
+  Sparkles,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { VanillaMarkdownParser } from "@/components/chat/DyadMarkdownParser";
 
 interface TodoEditModalProps {
   todo: Todo | null;
@@ -44,6 +53,7 @@ export function TodoEditModal({
   const [description, setDescription] = useState("");
   const [developPrompt, setDevelopPrompt] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
   useEffect(() => {
     if (todo) {
@@ -148,6 +158,31 @@ export function TodoEditModal({
                 />
               </div>
             </div>
+
+            {todo.developmentSummary && (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+                  className="flex items-center gap-2 w-full hover:bg-accent/10 p-1 rounded-md transition-colors group"
+                >
+                  <FileText className="h-5 w-5 text-primary" />
+                  <Label className="text-xl font-semibold cursor-pointer flex-1 text-left">
+                    Resumen de Desarrollo
+                  </Label>
+                  {isSummaryExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  )}
+                </button>
+                {isSummaryExpanded && (
+                  <div className="p-6 rounded-xl border bg-accent/20 prose prose-invert prose-p:leading-relaxed prose-pre:bg-background/50 max-w-none max-h-[400px] overflow-y-auto shadow-inner text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                    <VanillaMarkdownParser content={todo.developmentSummary} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <Separator className="my-2" />
 

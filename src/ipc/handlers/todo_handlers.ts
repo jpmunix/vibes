@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { dialog } from "electron";
 import path from "path";
 import log from "electron-log";
@@ -122,6 +122,8 @@ export function registerTodoHandlers() {
     if (params.prompt !== undefined) updateData.prompt = params.prompt;
     if (completed !== undefined) updateData.completed = completed;
     if (order !== undefined) updateData.order = order;
+    if (params.developmentSummary !== undefined)
+      updateData.developmentSummary = params.developmentSummary;
 
     const [todo] = await db
       .update(todos)
@@ -300,7 +302,7 @@ export function registerTodoHandlers() {
     const settings = readSettings();
     const model =
       settings.todoAnalysisModel &&
-      settings.todoAnalysisModel !== "SAME_AS_CHAT"
+        settings.todoAnalysisModel !== "SAME_AS_CHAT"
         ? settings.todoAnalysisModel
         : settings.todoAnalysisModel === "SAME_AS_CHAT"
           ? settings.selectedModel.name
@@ -355,7 +357,7 @@ export function registerTodoHandlers() {
     if (
       !hasImages ||
       userContent.length >
-        "Analiza estos archivos para extraer tareas:\n\n".length
+      "Analiza estos archivos para extraer tareas:\n\n".length
     ) {
       messages.push({ role: "user", content: userContent });
     }
@@ -437,6 +439,76 @@ export function registerTodoHandlers() {
       fileInfos.push(info);
     }
     return fileInfos;
+  });
+  createTypedHandler(todoContracts.generateTodoSummary, async (_, todoId) => {
+    logger.info("generateTodoSummary called for todoId:", todoId);
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId),
+    });
+    if (!todo) throw new Error("Todo not found");
+
+    // Find the last chat associated with this todo
+    const chat = await db.query.chats.findFirst({
+      where: eq(chats.todoId, todoId),
+      orderBy: [desc(chats.createdAt)],
+      with: {
+        messages: {
+          orderBy: [asc(messages.createdAt)],
+        },
+      },
+    });
+
+    if (!chat || !chat.messages.length) {
+      return "No hay conversación para resumir.";
+    }
+
+    const { readSettings } = await import("../../main/settings");
+    const settings = readSettings();
+    const model =
+      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+
+    const chatsContext = chat.messages
+      .map((msg) => `${msg.role}: ${msg.content}`)
+      .join("\n");
+
+    const { getEffectivePrompt } = await import("../../prompts");
+    const systemPrompt = getEffectivePrompt("summarize_chat_system", settings);
+
+    try {
+      const data = await openRouterCompletion({
+        model,
+        temperature: 0.3,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: `Resume el desarrollo realizado en este chat para la tarea "${todo.content}":\n\n${chatsContext}`,
+          },
+        ],
+      });
+
+      const summary = data?.choices?.[0]?.message?.content?.trim() || "";
+
+      // Update the todo with the new summary
+      // If there's already a summary, we could append it, but the user said "nos genere un resumen... y lo añada"
+      // Let's append if it exists, or just set it.
+      const newSummary = todo.developmentSummary
+        ? `${todo.developmentSummary}\n\n---\n\n### Actualización de desarrollo (${new Date().toLocaleDateString()})\n\n${summary}`
+        : summary;
+
+      await db
+        .update(todos)
+        .set({ developmentSummary: newSummary, updatedAt: new Date() })
+        .where(eq(todos.id, todoId));
+
+      return newSummary;
+    } catch (error) {
+      logger.error("Error generating todo summary:", error);
+      throw new Error("Error al generar el resumen de desarrollo");
+    }
   });
 
   logger.debug("Registered todo IPC handlers");
