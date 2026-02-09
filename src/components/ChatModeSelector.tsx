@@ -38,9 +38,9 @@ export function ChatModeSelector() {
   const chatId = routerState.location.search.id as number | undefined;
   const currentChatMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
 
-  const selectedMode = settings?.selectedChatMode || "local-agent";
+  const selectedMode = settings?.selectedChatMode || "build";
   const isProEnabled = settings ? isDyadProEnabled(settings) : false;
-  const {} = useFreeAgentQuota();
+  const { } = useFreeAgentQuota();
 
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;

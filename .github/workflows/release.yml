@@ -40,6 +40,12 @@ jobs:
         # Asegúrate de que package-lock.json esté en tu repo para usar 'ci'
         run: npm ci
 
+      - name: Reinstall sharp for macOS (ensures libvips is bundled)
+        if: matrix.os.id == 'macos'
+        run: |
+          npm uninstall sharp
+          npm install sharp --platform=darwin
+
       - name: Rebuild native modules for Electron
         run: npm run rebuild
 

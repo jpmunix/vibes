@@ -1,6 +1,6 @@
 {
   "name": "minube-vibes",
-  "version": "2.5",
+  "version": "2.5.1",
   "description": "Generador de aplicaciones AI de minube",
   "keywords": [],
   "license": "MIT",
@@ -17,7 +17,9 @@
     "start": "electron-forge start",
     "distribute": "npm run clean && electron-forge make",
     "make:linux": "npm run clean && electron-forge make --platform linux --arch x64",
-    "make:mac": "npm run clean && electron-forge make --platform darwin --arch x64",
+    "make:mac": "npm run clean && npm run install:mac-deps && electron-forge make --platform darwin --arch x64",
+    "make:mac-arm64": "npm run clean && npm run install:mac-deps && electron-forge make --platform darwin --arch arm64",
+    "install:mac-deps": "npm install --platform=darwin --arch=x64 @img/sharp-darwin-x64 @img/sharp-libvips-darwin-x64 && npm install --platform=darwin --arch=arm64 @img/sharp-darwin-arm64 @img/sharp-libvips-darwin-arm64 --ignore-scripts",
     "clean": "rimraf out scaffold/node_modules",
     "rebuild": "electron-rebuild -f -w better-sqlite3,sharp,onnxruntime-node",
     "dev:engine": "cross-env DYAD_ENGINE_URL=http://localhost:8080/v1 npm start",

@@ -63,6 +63,7 @@ const config: ForgeConfig = {
     osxSign: undefined,
     osxNotarize: undefined,
     asar: {
+      // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
       unpack:
         "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}",
     },

@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   providerSettings: {},
   turboEditModel: "openai/gpt-4.1",
   appTitleGenerationModel: "openai/gpt-5-mini",
-  debateModel: "SAME_AS_CHAT",
+  debateModel: "openai/gpt-5-mini",
   summaryModel: "openai/gpt-5-mini",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
