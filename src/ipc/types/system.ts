@@ -224,6 +224,12 @@ export const systemContracts = {
     output: z.string(),
   }),
 
+  getDocumentationContent: defineContract({
+    channel: "get-documentation-content",
+    input: z.void(),
+    output: z.string(),
+  }),
+
   // Upload
   uploadToSignedUrl: defineContract({
     channel: "upload-to-signed-url",

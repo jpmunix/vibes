@@ -9,9 +9,11 @@ import {
   Settings,
   StickyNote,
   MessageCircle,
+  HelpCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
+import { DocumentationDialog } from "./DocumentationDialog";
 
 import {
   Sidebar,
@@ -85,6 +87,7 @@ export function AppSidebar() {
   const [hoverState, setHoverState] = useState<HoverState>("no-hover");
   const expandedByHover = useRef(false);
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
 
   const routerState = useRouterState();
   const isAppRoute =
@@ -174,8 +177,18 @@ export function AppSidebar() {
                 }}
               />
             </div>
-            <div className="flex justify-center mb-4">
+            <div className="flex items-center flex-col gap-2 mb-4">
               <OpenRouterCreditsButton />
+              <button
+                className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
+                title="Documentación"
+                onClick={() => setIsDocsOpen(true)}
+              >
+                <HelpCircle size={20} />
+                <span className="text-[10px] font-bold leading-none mt-1">
+                  Docs
+                </span>
+              </button>
             </div>
           </div>
           {/* Right Column: Chat List Section */}
@@ -192,6 +205,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarRail />
+      <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
     </Sidebar>
   );
 }
@@ -223,11 +237,10 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
+                      }`}
                     onClick={() => {
-                      if (item.title === "Aplicaciones") {
+                      if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
                       } else if (item.title === "Chat") {
                         onTabChange("Chat");

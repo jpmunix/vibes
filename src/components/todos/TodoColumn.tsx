@@ -161,7 +161,7 @@ export function TodoColumn({
               {section?.title || "Sin lista"}
             </h3>
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
-              {todos.length}
+              {todos.filter((t) => !t.completed).length}
             </span>
           </div>
         )}

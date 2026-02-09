@@ -14,6 +14,10 @@ function getReleaseNotesPath() {
   return path.join(app.getAppPath(), "assets", "RELEASE_NOTES.md");
 }
 
+function getDocumentationPath() {
+  return path.join(app.getAppPath(), "assets", "DOCUMENTATION.md");
+}
+
 export function registerReleaseNoteHandlers() {
   createTypedHandler(
     systemContracts.doesReleaseNoteExist,
@@ -49,5 +53,19 @@ export function registerReleaseNoteHandlers() {
     }
   });
 
-  logger.debug("Registered release note IPC handlers (local)");
+  createTypedHandler(systemContracts.getDocumentationContent, async () => {
+    try {
+      const filePath = getDocumentationPath();
+      if (!fs.existsSync(filePath)) {
+        return "# Documentación\n\nNo se encontró el archivo de documentación.";
+      }
+      const content = fs.readFileSync(filePath, "utf-8");
+      return content;
+    } catch (error) {
+      logger.error(`Error reading documentation content:`, error);
+      return "# Error al cargar la documentación.";
+    }
+  });
+
+  logger.debug("Registered release note and documentation IPC handlers (local)");
 }

@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface SimpleAvatarProps {
   src?: string;
   alt?: string;
-  fallbackText?: string;
+  fallbackText?: ReactNode;
+  className?: string;
 }
 
-export function SimpleAvatar({ src, alt, fallbackText }: SimpleAvatarProps) {
+export function SimpleAvatar({ src, alt, fallbackText, className }: SimpleAvatarProps) {
   const [hasError, setHasError] = useState(false);
 
   // Reset error state when src changes so new images can be attempted
@@ -17,7 +19,10 @@ export function SimpleAvatar({ src, alt, fallbackText }: SimpleAvatarProps) {
   const showImage = src && !hasError;
 
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium">
+    <div className={cn(
+      "flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium",
+      className
+    )}>
       {showImage ? (
         <img
           src={src}
@@ -26,7 +31,9 @@ export function SimpleAvatar({ src, alt, fallbackText }: SimpleAvatarProps) {
           onError={() => setHasError(true)}
         />
       ) : (
-        <span>{fallbackText}</span>
+        <span className="flex items-center justify-center w-full h-full text-center">
+          {fallbackText}
+        </span>
       )}
     </div>
   );
