@@ -34,6 +34,15 @@ Error: Cannot find module 'better-sqlite3'
 
 **Causa raíz**: Los bindings nativos `.node` de SQLite no se copian correctamente al bundle.
 
+### 4. GitHub API rate limiting en CI (403 errors)
+
+```
+npm error Error: Request failed: 403
+npm error Downloading ripgrep failed after multiple retries
+```
+
+**Causa raíz**: El paquete `@vscode/ripgrep` descarga binarios desde GitHub releases. Sin autenticación, GitHub limita las peticiones API (rate limiting) en CI/CD.
+
 ## Solución implementada
 
 ### 1. Script afterPack mejorado (`scripts/afterPack.js`)
@@ -73,7 +82,20 @@ Actualicé el hook de Electron Forge para que verifique TODAS las dependencias n
 - Comprueba bindings nativos en `bin/`
 - No falla si no está presente (es una dependencia opcional)
 
-### 2. Mejoras en GitHub Actions (`.github/workflows/release.yml`)
+### 2. Configuración de GitHub token para evitar rate limiting
+
+Agregué un paso para configurar `GITHUB_TOKEN` y `GH_TOKEN` como variables de entorno:
+
+```yaml
+- name: Configure GitHub token for package downloads
+  run: |
+    echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+    echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+```
+
+**Por qué funciona**: Paquetes como `@vscode/ripgrep` descargan binarios desde GitHub releases. Con el token, las peticiones están autenticadas y no sufren rate limiting (60 req/hora sin auth → 5000 req/hora con auth).
+
+### 3. Mejoras en GitHub Actions (`.github/workflows/release.yml`)
 
 Modifiqué el paso de instalación de Sharp para:
 
@@ -160,7 +182,7 @@ Eliminé el script complejo `install:mac-deps` que intentaba instalar paquetes `
 - Rutas relativas que no coinciden exactamente (poco probable, usamos las rutas estándar de Sharp)
 - Versiones de Sharp incompatibles con la versión de libvips (usamos `sharp@latest` que debería ser compatible)
 
-**Cambios en esta versión (2.5.2)**:
+**Cambios en esta versión (2.5.3)**:
 
 - ✅ Detecta arm64 vs x64 automáticamente
 - ✅ Limpia cache antes de reinstalar
@@ -171,5 +193,6 @@ Eliminé el script complejo `install:mac-deps` que intentaba instalar paquetes `
 - ✅ **NUEVO**: Verifica onnxruntime-node bindings (opcional)
 - ✅ **NUEVO**: Logs detallados para cada dependencia nativa
 - ✅ **NUEVO**: Falla rápidamente si alguna dependencia crítica está incompleta
+- ✅ **NUEVO**: Configura GITHUB_TOKEN para evitar rate limiting de ripgrep y otros paquetes
 
 Si no funciona al primer intento, el script de debugging nos dirá exactamente qué falta.

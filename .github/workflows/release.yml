@@ -30,6 +30,14 @@ jobs:
           node-version: 20
           cache: "npm"
 
+      - name: Configure GitHub token for package downloads
+        run: |
+          # Set GitHub token for packages that download from GitHub releases
+          # This is used by @vscode/ripgrep and other packages
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          # Alternative env vars that some packages use
+          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
       - name: Install libvips (Linux only)
         if: matrix.os.image == 'ubuntu-latest'
         run: |
@@ -39,9 +47,14 @@ jobs:
       - name: Install dependencies
         # Asegúrate de que package-lock.json esté en tu repo para usar 'ci'
         run: npm ci
+        env:
+          # Use GitHub token to avoid rate limiting when downloading binaries
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Sharp with native libraries for macOS
         if: matrix.os.id == 'macos'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Detectar arquitectura del runner de GitHub Actions
           RUNNER_ARCH=$(uname -m)
