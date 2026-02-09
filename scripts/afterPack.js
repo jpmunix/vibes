@@ -58,19 +58,76 @@ exports.default = async function afterPack(context) {
 
     // Encontrar el Sharp local que tenga vendor/
     let sourceSharpPath = null;
+    let sourceVendorPath = null;
+
+    console.log(
+      `[afterPack] Searching for Sharp with platform: ${sharpPlatform}`,
+    );
+
     for (const sharpPath of sharpLocalPaths) {
-      const vendorPath = path.join(sharpPath, "vendor");
-      if (fs.existsSync(vendorPath)) {
-        sourceSharpPath = sharpPath;
-        console.log(`[afterPack] Found Sharp vendor at: ${sharpPath}`);
-        break;
+      console.log(`[afterPack] Checking: ${sharpPath}`);
+      if (fs.existsSync(sharpPath)) {
+        const vendorPath = path.join(sharpPath, "vendor");
+        if (fs.existsSync(vendorPath)) {
+          sourceSharpPath = sharpPath;
+          sourceVendorPath = vendorPath;
+          console.log(`[afterPack] ✓ Found Sharp vendor at: ${sharpPath}`);
+          break;
+        } else {
+          console.log(`[afterPack]   Sharp exists but no vendor/ subdirectory`);
+        }
+      } else {
+        console.log(`[afterPack]   Path does not exist`);
       }
     }
 
-    if (!sourceSharpPath) {
-      console.error("[afterPack] ERROR: Could not find Sharp vendor directory");
+    // Si no encontramos vendor/, buscar recursivamente en node_modules
+    if (!sourceVendorPath) {
+      console.log(
+        "[afterPack] Vendor not found in expected paths, searching recursively...",
+      );
+      const { execSync } = require("child_process");
+      try {
+        const findResult = execSync(
+          `find "${localNodeModules}" -path "*/sharp/vendor" -type d 2>/dev/null | head -1`,
+          { encoding: "utf-8" },
+        ).trim();
+
+        if (findResult) {
+          sourceVendorPath = findResult;
+          sourceSharpPath = path.dirname(findResult);
+          console.log(
+            `[afterPack] ✓ Found Sharp vendor via recursive search: ${sourceVendorPath}`,
+          );
+        }
+      } catch (err) {
+        console.log(`[afterPack] Recursive search failed: ${err.message}`);
+      }
+    }
+
+    if (!sourceVendorPath) {
+      console.error(
+        "[afterPack] ERROR: Could not find Sharp vendor directory anywhere",
+      );
       console.error("[afterPack] Searched paths:", sharpLocalPaths);
-      throw new Error("Sharp vendor directory not found");
+      console.error("[afterPack] Platform:", sharpPlatform);
+      console.error("[afterPack] Arch:", arch);
+
+      // Listar lo que SÍ existe en node_modules/sharp para debug
+      const mainSharp = path.join(localNodeModules, "sharp");
+      if (fs.existsSync(mainSharp)) {
+        console.error("[afterPack] Contents of node_modules/sharp:");
+        try {
+          const contents = fs.readdirSync(mainSharp);
+          console.error(contents.join(", "));
+        } catch {
+          console.error("Could not read directory");
+        }
+      }
+
+      throw new Error(
+        `Sharp vendor directory not found. Expected platform: ${sharpPlatform}`,
+      );
     }
 
     // Copiar vendor/ a ambas ubicaciones de Sharp en el bundle

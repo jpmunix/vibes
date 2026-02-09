@@ -1,5 +1,9 @@
 # Fix para Sharp/libvips en macOS
 
+## ⚠️ Actualización importante
+
+Los runners de GitHub Actions para macOS ahora son **arm64** (Apple Silicon M1/M2) por defecto, no x64. Esto cambia cómo Sharp debe instalarse.
+
 ## Problema
 
 La app compilada para macOS falla al iniciar con este error:
@@ -30,9 +34,13 @@ Creé un hook de Electron Forge que se ejecuta después del empaquetado y:
 
 Modifiqué el paso de instalación de Sharp para:
 
-- Reinstalar Sharp con `--foreground-scripts` (asegura descarga de binarios nativos)
-- Verificar que el directorio `vendor/` existe y contiene archivos `.dylib`
-- Fallar temprano si algo está mal, antes de perder tiempo compilando
+- **Limpiar completamente** cache de npm y Sharp antes de reinstalar
+- **Detectar arquitectura** del runner (arm64 vs x64) automáticamente
+- **Reinstalar Sharp** forzadamente con binarios nativos correctos para la arquitectura
+- **Reinstalar @xenova/transformers** para que use el Sharp correcto
+- **Verificar exhaustivamente** que el directorio `vendor/` existe y contiene archivos `.dylib`
+- **Búsqueda recursiva** de Sharp como fallback si no está donde se espera
+- **Fallar temprano** con información detallada de debug si algo está mal
 
 ### 3. Simplificación de scripts npm
 
@@ -85,7 +93,7 @@ Eliminé el script complejo `install:mac-deps` que intentaba instalar paquetes `
 
 ## Notas adicionales
 
-- **Arquitectura**: GitHub Actions usa runners x64 por defecto. Si necesitas builds arm64 nativos, tendrías que usar runners M1/M2 (más caros) o hacer cross-compilation (más complejo).
+- **Arquitectura**: GitHub Actions ahora usa runners **arm64** (Apple Silicon) por defecto para macOS. El workflow detecta esto automáticamente e instala la versión correcta de Sharp para arm64.
 - **Tamaño del bundle**: Las librerías `libvips` añaden ~8-10 MB al bundle final, es normal.
 - **Alternativas no intentadas**:
   - Usar `electron-builder` en vez de `electron-forge` (diferentes defaults)
@@ -103,10 +111,17 @@ Eliminé el script complejo `install:mac-deps` que intentaba instalar paquetes `
 
 ## Confianza de que funciona
 
-**80-90%**. Esta es la solución estándar para problemas de Sharp en Electron. Los riesgos:
+**85-90%**. Esta es la solución estándar para problemas de Sharp en Electron, actualizada para runners arm64. Los riesgos restantes:
 
-- Diferencias entre arquitecturas (runner x64 compilando para app que se ejecuta en arm64)
-- Rutas relativas que no coinciden exactamente
-- Versiones de Sharp incompatibles con la versión de libvips
+- Sharp podría no descargar el directorio `vendor/` correctamente en el CI (el nuevo workflow tiene verificaciones exhaustivas para esto)
+- Rutas relativas que no coinciden exactamente (poco probable, usamos las rutas estándar de Sharp)
+- Versiones de Sharp incompatibles con la versión de libvips (usamos `sharp@latest` que debería ser compatible)
+
+**Cambios respecto a versión anterior**:
+
+- ✅ Detecta arm64 vs x64 automáticamente
+- ✅ Limpia cache antes de reinstalar
+- ✅ Reinstala @xenova/transformers para forzar uso del Sharp correcto
+- ✅ Búsqueda recursiva como fallback en afterPack
 
 Si no funciona al primer intento, el script de debugging nos dirá exactamente qué falta.
