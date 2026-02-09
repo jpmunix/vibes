@@ -232,6 +232,13 @@
       "when": 1770590011011,
       "tag": "0032_windy_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1770627829766,
+      "tag": "0033_lucky_stranger",
+      "breakpoints": true
     }
   ]
 }

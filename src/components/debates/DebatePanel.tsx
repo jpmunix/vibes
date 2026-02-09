@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,10 +15,11 @@ import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
 interface DebatePanelProps {
-    debateId: number;
+    debateId?: number;
 }
 
 export function DebatePanel({ debateId }: DebatePanelProps) {
+    const navigate = useNavigate();
     const selectedAppId = useAtomValue(selectedAppIdAtom);
     const [debate, setDebate] = useState<Debate | null>(null);
     const [loading, setLoading] = useState(true);
@@ -67,6 +69,20 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
     const loadDebate = async () => {
         setLoading(true);
         try {
+            if (!debateId) {
+                // Mock empty debate for new session
+                setDebate({
+                    id: 0,
+                    title: "Nuevo Debate",
+                    messages: [],
+                    tags: [],
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    summary: undefined
+                } as any);
+                setLoading(false);
+                return;
+            }
             const d = await ipc.debate.getDebate(debateId);
             setDebate(d);
         } catch (e: any) {
@@ -79,6 +95,20 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
     const handleSendMessage = async () => {
         if (!input.trim() && injectedItems.length === 0) return;
 
+        let activeDebateId = debateId;
+
+        // Create debate if it doesn't exist
+        if (!activeDebateId) {
+            try {
+                activeDebateId = await ipc.debate.createDebate({ title: "Nuevo Debate" });
+                // We update the URL silently
+                navigate({ search: { id: activeDebateId }, replace: true });
+            } catch (e: any) {
+                showError(`Error al crear debate: ${e.message}`);
+                return;
+            }
+        }
+
         setIsStreaming(true);
         const currentInput = input;
         const currentInjected = [...injectedItems];
@@ -88,7 +118,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
         try {
             ipc.debateStream.start(
                 {
-                    debateId,
+                    debateId: activeDebateId,
                     prompt: currentInput,
                     injectedItems: currentInjected,
                     appId: selectedAppId ?? undefined,
@@ -101,7 +131,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                         setIsStreaming(false);
                         invalidateDebates();
                         // Just refresh data to be sure
-                        loadDebate();
+                        // If we just created it, we might want to reload fully next time, but for now state is updated via chunk
                     },
                     onError: (data) => {
                         showError(`Error: ${data.error}`);
@@ -142,6 +172,8 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             showError(`Error al resumir: ${e.message}`);
         } finally {
             setIsSummarizing(false);
+            setLoading(false);
+            await loadDebate(); // Reload to get the new message
         }
     };
 
@@ -248,40 +280,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             {/* Messages Scroll Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar" ref={scrollRef}>
                 <div className="max-w-3xl mx-auto px-4 py-8 space-y-12">
-                    {debate.summary && (
-                        <div
-                            ref={summaryRef}
-                            className="bg-amber-500/5 border border-amber-500/10 p-6 rounded-2xl relative group/summary shadow-sm animate-in fade-in slide-in-from-top-4 duration-500"
-                        >
-                            <div className="flex items-center gap-2 mb-3 text-amber-600 dark:text-amber-400 font-bold text-xs tracking-widest uppercase">
-                                <Sparkles size={14} /> Resumen del Debate
-                            </div>
-                            <p className="text-sm text-foreground/80 leading-relaxed italic pr-8">
-                                {debate.summary}
-                            </p>
 
-                            <div className="mt-4 flex justify-end">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSaveAsNote}
-                                    className="gap-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 rounded-xl transition-all"
-                                >
-                                    <FileText size={12} />
-                                    Guardar como nota
-                                </Button>
-                            </div>
-
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-4 right-4 opacity-0 group-hover/summary:opacity-100 h-8 w-8 rounded-full text-muted-foreground hover:bg-amber-500/10 transition-all"
-                                onClick={() => ipc.debate.updateDebate({ id: debateId, summary: "" }).then(loadDebate)}
-                            >
-                                <X size={14} />
-                            </Button>
-                        </div>
-                    )}
 
                     {debate.messages.length === 0 && !isStreaming && (
                         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground/30 space-y-4">
@@ -305,7 +304,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                             <div className="flex-1 space-y-4 overflow-hidden">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-bold tracking-tight">
-                                        {m.role === "user" ? "Tú" : "Vibes"}
+                                        {m.isSummary ? "Resumen" : (m.role === "user" ? "Tú" : "Vibes")}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground/40 font-medium">
                                         {new Date(m.createdAt!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -314,22 +313,47 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
 
                                 <div className="space-y-4">
                                     {m.injectedItems && m.injectedItems.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {m.injectedItems.map((item, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="bg-secondary/50 backdrop-blur-sm rounded-lg px-3 py-1.5 text-[10px] flex items-center gap-2 border border-border/50"
-                                                >
-                                                    <Hash size={12} className="opacity-50" />
-                                                    <span className="font-bold truncate max-w-[150px]">{item.title}</span>
-                                                    <span className="opacity-50 text-[8px] uppercase">{item.type}</span>
-                                                </div>
-                                            ))}
+                                        <div className="flex flex-col gap-2 mb-2 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-xl relative overflow-hidden group/context">
+                                            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
+                                            <div className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+                                                <Sparkles size={12} /> Contexto Inyectado ({m.injectedItems.length})
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 pl-2">
+                                                {m.injectedItems.map((item, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 text-[10px] flex items-center gap-2 border border-border/50 shadow-sm hover:border-indigo-500/30 transition-colors"
+                                                    >
+                                                        <Hash size={10} className="text-indigo-500/70" />
+                                                        <span className="font-medium truncate max-w-[150px]">{item.title}</span>
+                                                        <span className="text-muted-foreground/50 text-[8px] uppercase">{item.type}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 
-                                    <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50">
-                                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                                    <div className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg" : ""}`}>
+                                        {m.isSummary && (
+                                            <div className="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-70">
+                                                <Sparkles size={12} /> Resumen Generado
+                                            </div>
+                                        )}
+                                        <ReactMarkdown>{m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]}</ReactMarkdown>
+
+                                        {m.isSummary && (
+                                            <div className="mt-3 flex justify-end">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    // We handle save as note for specific message summary if needed, or re-implement handleSaveAsNote to take content
+                                                    onClick={() => ipc.note.createNote({ title: `Resumen: ${debate.title}`, content: m.content }).then(() => { invalidateNotes(); showSuccess("Resumen guardado como nota"); })}
+                                                    className="gap-2 text-xs hover:bg-amber-500/20 h-7"
+                                                >
+                                                    <FileText size={10} /> Guardar Nota
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

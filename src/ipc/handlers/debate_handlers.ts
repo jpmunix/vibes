@@ -6,6 +6,7 @@ import { createTypedHandler } from "./base";
 import { debateContracts } from "../types/debate";
 import { openRouterCompletion } from "../utils/openrouter";
 import { readSettings } from "../../main/settings";
+import { getEffectivePrompt } from "../../prompts";
 
 const logger = log.scope("debate_handlers");
 
@@ -53,6 +54,7 @@ export function registerDebateHandlers() {
                 ...m,
                 role: m.role as "user" | "assistant" | "system",
                 injectedItems: m.injectedItems as any,
+                isSummary: m.isSummary ?? undefined,
             })),
             tags: debate.tags.map((t) => t.tag),
         };
@@ -152,17 +154,29 @@ export function registerDebateHandlers() {
                 messages: [
                     {
                         role: "system",
-                        content: "Resume el siguiente debate de forma concisa pero capturando los puntos clave.",
+                        content: getEffectivePrompt("debate_summary_system", settings),
                     },
                     { role: "user", content },
                 ],
             });
             const summary = data?.choices?.[0]?.message?.content?.trim() || "No se pudo generar el resumen.";
-            await db.update(debates).set({ summary }).where(eq(debates.id, debateId));
+
+            // Insert summary as a message
+            const [message] = await db.insert(debateMessages).values({
+                debateId,
+                role: "assistant",
+                content: summary,
+                isSummary: true,
+                createdAt: new Date(),
+            }).returning();
+
+            // We no longer update the debate summary column
+            // await db.update(debates).set({ summary }).where(eq(debates.id, debateId));
+
             return summary;
         } catch (e) {
             logger.error("Error summarizing debate", e);
-            return "Error al generar el resumen.";
+            throw e; // Let frontend handle error
         }
     });
 

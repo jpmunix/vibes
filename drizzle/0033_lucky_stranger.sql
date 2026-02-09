@@ -1,0 +1,1 @@
+ALTER TABLE `debate_messages` ADD `is_summary` integer DEFAULT false;

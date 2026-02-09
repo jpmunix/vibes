@@ -25,6 +25,7 @@ export const DebateMessageSchema = z.object({
     role: z.enum(["user", "assistant", "system"]),
     content: z.string(),
     injectedItems: z.array(InjectedItemSchema).nullable().optional(),
+    isSummary: z.boolean().optional(),
     createdAt: z.union([z.date(), z.string()]).optional(),
 });
 
@@ -190,6 +191,13 @@ export const debateStreamContract = defineStream({
             payload: z.object({
                 debateId: z.number(),
                 error: z.string(),
+            }),
+        },
+        titleUpdated: {
+            channel: "debate:title:updated",
+            payload: z.object({
+                debateId: z.number(),
+                title: z.string(),
             }),
         },
     },

@@ -20,6 +20,16 @@ import {
     SidebarMenuItem,
     SidebarMenuAction,
 } from "@/components/ui/sidebar";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useDebates } from "@/hooks/useDebates";
 import { atom } from "jotai";
@@ -35,6 +45,7 @@ export function DebatesList({ show }: { show?: boolean }) {
 
     // Filter state
     const [searchQuery, setSearchQuery] = useState("");
+    const [debateToDelete, setDebateToDelete] = useState<number | null>(null);
 
     useEffect(() => {
         if (isDebateRoute) {
@@ -55,32 +66,31 @@ export function DebatesList({ show }: { show?: boolean }) {
         });
     };
 
-    const handleNewDebate = async () => {
-        try {
-            const id = await ipc.debate.createDebate({ title: "Nuevo Debate" });
-            setSelectedDebateId(id);
-            await invalidateDebates();
-            navigate({
-                to: "/debates",
-                search: { id },
-            });
-        } catch (e: any) {
-            showError(`Error al crear debate: ${e.message}`);
-        }
+    const handleNewDebate = () => {
+        setSelectedDebateId(null);
+        navigate({ to: "/debates" });
     };
 
-    const handleDeleteDebate = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteClick = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
+        setDebateToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!debateToDelete) return;
+
         try {
-            await ipc.debate.deleteDebate(id);
+            await ipc.debate.deleteDebate(debateToDelete);
             showSuccess("Debate eliminado");
-            if (selectedDebateId === id) {
+            if (selectedDebateId === debateToDelete) {
                 setSelectedDebateId(null);
                 navigate({ to: "/debates" });
             }
             await invalidateDebates();
         } catch (e: any) {
             showError(`Error al eliminar: ${e.message}`);
+        } finally {
+            setDebateToDelete(null);
         }
     };
 
@@ -129,8 +139,8 @@ export function DebatesList({ show }: { show?: boolean }) {
                                             variant="ghost"
                                             onClick={() => handleDebateClick(debate.id)}
                                             className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 ${selectedDebateId === debate.id
-                                                    ? "border-l-4 border-primary bg-primary/5 text-primary"
-                                                    : ""
+                                                ? "border-l-4 border-primary bg-primary/5 text-primary"
+                                                : ""
                                                 }`}
                                         >
                                             <div className="flex flex-col gap-1 w-full overflow-hidden">
@@ -156,7 +166,7 @@ export function DebatesList({ show }: { show?: boolean }) {
                                             </div>
                                         </Button>
                                         <button
-                                            onClick={(e) => handleDeleteDebate(e, debate.id)}
+                                            onClick={(e) => handleDeleteClick(e, debate.id)}
                                             className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
                                         >
                                             <Trash2 size={14} />
@@ -166,6 +176,21 @@ export function DebatesList({ show }: { show?: boolean }) {
                             ))}
                         </SidebarMenu>
                     )}
+
+                    <AlertDialog open={!!debateToDelete} onOpenChange={(open) => !open && setDebateToDelete(null)}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar debate?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. Esto eliminará permanentemente el debate y todo su historial.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </SidebarGroupContent>
         </SidebarGroup>

@@ -377,6 +377,7 @@ export const debateMessages = sqliteTable("debate_messages", {
     .references(() => debates.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
   content: text("content").notNull(),
+  isSummary: integer("is_summary", { mode: "boolean" }).default(false),
   // For injected items
   injectedItems: text("injected_items", { mode: "json" }).$type<{
     type: "chat" | "note" | "todo";

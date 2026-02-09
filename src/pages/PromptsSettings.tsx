@@ -44,6 +44,8 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   app_name_pro: <ShieldCheck className="w-4 h-4" />,
   todo_analysis: <FileSearch className="w-4 h-4" />,
   todo_refinement: <Wand2 className="w-4 h-4" />,
+  debate_chat_system: <MessageSquare className="w-4 h-4" />,
+  debate_summary_system: <Lightbulb className="w-4 h-4" />,
 };
 
 export function PromptsSettings() {
@@ -241,7 +243,7 @@ export function PromptsSettings() {
                     disabled={
                       loading ||
                       localPrompts[activeTab] ===
-                        settings?.customPrompts?.[activeTab]
+                      settings?.customPrompts?.[activeTab]
                     }
                   >
                     <Save className="w-4 h-4" />

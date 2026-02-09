@@ -1,13 +1,15 @@
 import { ipcMain } from "electron";
 import { db } from "../../db";
-import { debates, debateMessages, todos, notes, chats, apps, messages } from "../../db/schema";
+import { debates, debateMessages } from "../../db/schema";
 import { eq } from "drizzle-orm";
-import { z } from "zod";
+
 import log from "electron-log";
 import { readSettings } from "../../main/settings";
 import { getModelClient } from "../utils/get_model_client";
 import { streamText } from "ai";
 import { safeSend } from "../utils/safe_sender";
+import { logTokenUsage } from "../utils/token_stats_logger";
+import { getEffectivePrompt } from "../../prompts";
 
 const logger = log.scope("debate_stream_handlers");
 
@@ -67,6 +69,41 @@ export function registerDebateStreamHandlers() {
                 messages: messagesAfterUser,
             });
 
+            // Auto-generate title if it's a new debate
+            if (debate.title === "Nuevo Debate" && (!debate.messages || debate.messages.length === 0)) {
+                try {
+                    const settings = readSettings();
+                    const titleModel = settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite"; // Fast model
+                    const { getLanguageModelProviders, getLanguageModels } = await import("../shared/language_model_helpers");
+                    const allModels = await getLanguageModels({ providerId: "openrouter" });
+
+                    let bestModel = { name: "google/gemini-2.5-flash-lite", provider: "openrouter" }; // Fallback
+
+                    // Try to find configured model
+                    const found = allModels.find(m => m.apiName === titleModel);
+                    if (found) {
+                        bestModel = { name: found.apiName, provider: "openrouter" };
+                    } else if (settings.selectedModel) {
+                        bestModel = settings.selectedModel;
+                    }
+
+                    const { modelClient: titleClient } = await getModelClient(bestModel, settings);
+
+                    const { text: newTitle } = await import("ai").then(ai => ai.generateText({
+                        model: titleClient.model,
+                        prompt: `Genera un título muy breve (máximo 5-6 palabras) y conciso para un debate que comienza con este mensaje: "${userPrompt}". Devuelve SOLO el título, sin comillas ni explicaciones.`,
+                    }));
+
+                    if (newTitle && newTitle.trim()) {
+                        await db.update(debates).set({ title: newTitle.trim() }).where(eq(debates.id, debateId));
+                        safeSend(event.sender, "ipc-event", { channel: "debates:updated" }); // Notify list to refresh
+                        safeSend(event.sender, "debate:title:updated", { debateId, title: newTitle.trim() });
+                    }
+                } catch (err) {
+                    logger.warn("Failed to auto-generate debate title", err);
+                }
+            }
+
             const settings = readSettings();
             let selectedModel = settings.selectedModel;
 
@@ -101,130 +138,44 @@ export function registerDebateStreamHandlers() {
                 messages: [
                     {
                         role: "system",
-                        content:
-                            `Eres un asistente de debate experto en el módulo 'mini ChatGPT'. Ayuda a los usuarios a explorar diferentes perspectivas sobre un tema de manera objetiva, crítica y constructiva. Utiliza el contexto inyectado (chats, notas, tareas) si es relevante para enriquecer el debate. Mantén un tono profesional y fluido.
-
-                            Tienes acceso a herramientas para crear tareas, notas o iniciar el desarrollo de una funcionalidad. Úsalas SOLO cuando el usuario te lo pida explícitamente.
-                            - Para "crear una tarea" o "añadir a todos", usa 'create_todo'.
-                            - Para "crear una nota" o "guardar resumen", usa 'create_note'.
-                            - Para "mandar a desarrollar", "implementar esto" o "empezar a programar", usa 'start_development'.`,
+                        content: getEffectivePrompt("debate_chat_system", settings),
                     },
                     ...history,
                     { role: "user", content: userPrompt },
                 ],
-                tools: {
-                    create_todo: {
-                        description: "Crear una nueva tarea en la lista de todos",
-                        parameters: z.object({
-                            content: z.string().describe("El contenido o título de la tarea"),
-                            description: z.string().optional().describe("Descripción detallada de la tarea"),
-                        }),
-                        execute: async ({ content, description }) => {
-                            if (!req.appId) return "Error: No hay una aplicación seleccionada para crear la tarea.";
-                            try {
-                                const [todo] = await db.insert(todos).values({
-                                    appId: req.appId,
-                                    content,
-                                    description: description,
-                                    completed: false,
-                                    createdAt: new Date(),
-                                    updatedAt: new Date(),
-                                }).returning();
-                                safeSend(event.sender, "ipc-event", { channel: "todos:updated", payload: { appId: req.appId } }); // Notify frontend
-                                return `Tarea creada: "${content}" (ID: ${todo.id})`;
-                            } catch (e: any) {
-                                return `Error al crear tarea: ${e.message}`;
-                            }
-                        },
-                    },
-                    create_note: {
-                        description: "Crear una nueva nota",
-                        parameters: z.object({
-                            title: z.string().describe("El título de la nota"),
-                            content: z.string().describe("El contenido de la nota"),
-                        }),
-                        execute: async ({ title, content }) => {
-                            try {
-                                const [note] = await db.insert(notes).values({
-                                    title,
-                                    content,
-                                }).returning();
-                                safeSend(event.sender, "ipc-event", { channel: "notes:updated" }); // Notify frontend (if listener exists)
-                                return `Nota creada: "${title}" (ID: ${note.id})`;
-                            } catch (e: any) {
-                                return `Error al crear nota: ${e.message}`;
-                            }
-                        },
-                    },
-                    start_development: {
-                        description: "Iniciar el desarrollo de una funcionalidad creando un nuevo chat de desarrollo",
-                        parameters: z.object({
-                            title: z.string().describe("Título breve de la funcionalidad a desarrollar"),
-                            description: z.string().describe("Descripción técnica detallada de lo que se debe implementar"),
-                        }),
-                        execute: async ({ title, description }) => {
-                            if (!req.appId) return "Error: No hay una aplicación seleccionada para iniciar el desarrollo.";
-                            try {
-                                // 1. Create a logical Todo for tracking (optional but good for consistency)
-                                const [todo] = await db.insert(todos).values({
-                                    appId: req.appId,
-                                    content: title,
-                                    description: description,
-                                    completed: false,
-                                }).returning();
-
-                                // 2. Get App Info for path (needed for git commit hash)
-                                const app = await db.query.apps.findFirst({
-                                    where: eq(apps.id, req.appId),
-                                });
-                                if (!app) return "Error: Aplicación no encontrada.";
-
-                                // 3. Get generic git revision
-                                let initialCommitHash = null;
-                                try {
-                                    const { getDyadAppPath } = await import("../../paths/paths");
-                                    const { getCurrentCommitHash } = await import("../utils/git_utils");
-                                    initialCommitHash = await getCurrentCommitHash({
-                                        path: getDyadAppPath(app.path),
-                                    });
-                                } catch (error) {
-                                    logger.warn("Could not get git hash for new chat", error);
-                                }
-
-                                // 4. Create Chat
-                                const [chat] = await db.insert(chats).values({
-                                    appId: req.appId,
-                                    todoId: todo.id,
-                                    title: `Desarrollar: ${title}`,
-                                    initialCommitHash,
-                                }).returning();
-
-                                // 5. Add initial system/user message to the chat
-                                await db.insert(messages).values({
-                                    chatId: chat.id,
-                                    role: "user",
-                                    content: `Quiero desarrollar la siguiente funcionalidad:\n\n**${title}**\n\n${description}\n\nPor favor, analiza los archivos necesarios y propón un plan de implementación.`,
-                                });
-
-                                safeSend(event.sender, "ipc-event", { channel: "chats:updated", payload: { appId: req.appId } });
-                                safeSend(event.sender, "ipc-event", { channel: "todos:updated", payload: { appId: req.appId } });
-
-                                return `Desarrollo iniciado. Se ha creado el chat "${chat.title}" y la tarea asociada.`;
-                            } catch (e: any) {
-                                return `Error al iniciar desarrollo: ${e.message}`;
-                            }
-                        },
-                    },
-                },
             });
 
             for await (const delta of result.textStream) {
                 fullResponse += delta;
 
-                // Send chunk to frontend
                 safeSend(event.sender, "debate:response:chunk", {
                     debateId,
                     messages: [...messagesAfterUser, { ...assistantMsg, content: fullResponse }],
+                });
+            }
+
+            if (!fullResponse.trim()) {
+                fullResponse = "*Acción completada*";
+            }
+
+            const usage = await result.usage;
+            if (usage) {
+                const usageAny = usage as any;
+                const promptTokens = usageAny.promptTokens ?? usageAny.inputTokens ?? 0;
+                const completionTokens = usageAny.completionTokens ?? usageAny.outputTokens ?? 0;
+                const totalTokens = usage.totalTokens ?? (promptTokens + completionTokens);
+
+                logTokenUsage({
+                    debateId,
+                    source: "debate",
+                    messageId: assistantMsg.id,
+                    totalTokens,
+                    promptTokens,
+                    completionTokens,
+                    model: selectedModel?.name || "unknown",
+                    timestamp: Date.now(),
+                    appId: req.appId || null,
+                    toolsUsed: [],
                 });
             }
 
