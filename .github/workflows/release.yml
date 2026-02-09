@@ -47,16 +47,61 @@ jobs:
           RUNNER_ARCH=$(uname -m)
           echo "Runner architecture: $RUNNER_ARCH"
 
-          # Reinstalar Sharp con todas las dependencias nativas
-          npm uninstall sharp
-          npm install --no-save --foreground-scripts sharp
+          # Limpiar cache de npm y Sharp completamente
+          npm cache clean --force
+          rm -rf node_modules/sharp node_modules/.bin/sharp* 2>/dev/null || true
+          rm -rf node_modules/@img 2>/dev/null || true
 
-          # Verificar que vendor/ existe y contiene libvips
-          if [ -d "node_modules/sharp/vendor" ]; then
-            echo "✓ Sharp vendor directory found"
-            find node_modules/sharp/vendor -name "*.dylib" || echo "WARNING: No .dylib files found"
+          # Para @xenova/transformers que tiene su propia copia de Sharp
+          rm -rf node_modules/@xenova/transformers/node_modules/sharp 2>/dev/null || true
+
+          # Reinstalar Sharp FORZANDO descarga de binarios nativos
+          # --platform y --arch se detectan automáticamente pero los forzamos explícitamente
+          if [ "$RUNNER_ARCH" = "arm64" ]; then
+            echo "Installing Sharp for macOS arm64..."
+            npm install --no-save --force sharp@latest
           else
-            echo "ERROR: Sharp vendor directory not found"
+            echo "Installing Sharp for macOS x64..."
+            npm install --no-save --force --platform=darwin --arch=x64 sharp@latest
+          fi
+
+          # Verificar instalación de Sharp principal
+          echo ""
+          echo "=== Checking main Sharp installation ==="
+          if [ -d "node_modules/sharp" ]; then
+            echo "✓ Sharp installed"
+            ls -la node_modules/sharp/ | head -20
+
+            if [ -d "node_modules/sharp/vendor" ]; then
+              echo "✓ Sharp vendor directory found"
+              find node_modules/sharp/vendor -name "*.dylib" -o -name "*.so" | head -10
+            else
+              echo "✗ Sharp vendor directory NOT found"
+              echo "Attempting to download Sharp binaries manually..."
+              cd node_modules/sharp && npm install --ignore-scripts=false && cd ../..
+            fi
+          else
+            echo "✗ Sharp not installed"
+            exit 1
+          fi
+
+          # Reinstalar @xenova/transformers para que use el Sharp correcto
+          echo ""
+          echo "=== Reinstalling @xenova/transformers to use correct Sharp ==="
+          npm uninstall @xenova/transformers
+          npm install --no-save @xenova/transformers
+
+          # Verificación final
+          echo ""
+          echo "=== Final verification ==="
+          SHARP_VENDOR=$(find node_modules -path "*/sharp/vendor" -type d 2>/dev/null | head -1)
+          if [ -n "$SHARP_VENDOR" ]; then
+            echo "✓ Found Sharp vendor at: $SHARP_VENDOR"
+            find "$SHARP_VENDOR" -name "*.dylib" | head -5
+          else
+            echo "✗ ERROR: No Sharp vendor directory found anywhere"
+            echo "Searching for Sharp installations..."
+            find node_modules -name "sharp" -type d
             exit 1
           fi
 
