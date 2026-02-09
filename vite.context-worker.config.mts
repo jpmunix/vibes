@@ -30,8 +30,14 @@ export default defineConfig({
         "@huggingface/jinja",
         "@xenova/transformers",
         "sharp",
+        // Linux
         "@img/sharp-linux-x64",
         "@img/sharp-libvips-linux-x64",
+        // macOS
+        "@img/sharp-darwin-x64",
+        "@img/sharp-libvips-darwin-x64",
+        "@img/sharp-darwin-arm64",
+        "@img/sharp-libvips-darwin-arm64",
       ],
     },
   },

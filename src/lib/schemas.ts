@@ -400,9 +400,7 @@ export function hasDyadProKey(_settings: UserSettings): boolean {
  *   - If free agent quota available AND OpenAI/Anthropic is set up, use "local-agent" (basic agent mode)
  *   - Otherwise, fall back to "build"
  * - If defaultChatMode is NOT set:
- *   - Pro users: use "local-agent"
- *   - Non-Pro users with quota AND OpenAI/Anthropic set up: use "local-agent" (basic agent mode)
- *   - Non-Pro users without quota or provider: use "build"
+ *   - Default to "build" because local-agent is still unreliable
  */
 export function getEffectiveDefaultChatMode(
   settings: UserSettings,
@@ -428,9 +426,7 @@ export function getEffectiveDefaultChatMode(
     return settings.defaultChatMode;
   }
 
-  // No explicit default set
-  if (isPro) return "local-agent";
-  if (freeAgentQuotaAvailable && hasPaidProviderSetup) return "local-agent";
+  // No explicit default set - default to "build" because local-agent is still unreliable
   return "build";
 }
 
