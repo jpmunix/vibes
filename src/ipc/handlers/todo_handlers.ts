@@ -101,6 +101,7 @@ export function registerTodoHandlers() {
         description: params.description,
         prompt: params.prompt,
         completed: params.completed ?? false,
+        checklist: params.checklist ?? [],
         order: maxOrder + 1,
       })
       .returning();
@@ -124,6 +125,8 @@ export function registerTodoHandlers() {
     if (order !== undefined) updateData.order = order;
     if (params.developmentSummary !== undefined)
       updateData.developmentSummary = params.developmentSummary;
+    if (params.checklist !== undefined)
+      updateData.checklist = params.checklist;
 
     const [todo] = await db
       .update(todos)

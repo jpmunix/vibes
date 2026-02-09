@@ -47,6 +47,7 @@ export default function TodoDetailPage() {
       completed?: boolean;
       sectionId?: number | null;
       order?: number;
+      checklist?: { id: string; content: string; completed: boolean }[] | null;
     },
   ) => {
     await updateTodo({ todoId, ...params });

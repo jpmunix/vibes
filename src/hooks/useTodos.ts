@@ -98,6 +98,7 @@ export function useTodos(appId: number) {
       prompt?: string | null;
       completed?: boolean;
       order?: number;
+      checklist?: { id: string; content: string; completed: boolean }[] | null;
     }) => {
       return await ipc.todo.updateTodo(params);
     },

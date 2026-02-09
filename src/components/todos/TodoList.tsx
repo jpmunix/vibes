@@ -30,6 +30,7 @@ interface TodoListProps {
     content: string,
     description?: string | null,
     prompt?: string | null,
+    checklist?: { id: string; content: string; completed: boolean }[] | null,
   ) => void;
   onDelete: (todoId: number) => void;
   onDevelop: (todoId: number, prompt?: string) => void;
@@ -176,8 +177,8 @@ export function TodoList({
         todo={editingTodo}
         open={!!editingTodo}
         onOpenChange={(open) => !open && setEditingTodo(null)}
-        onSave={(id, content, desc, prompt, closeModal = false) => {
-          onUpdate(id, content, desc, prompt);
+        onSave={(id, content, desc, prompt, checklist, closeModal = false) => {
+          onUpdate(id, content, desc, prompt, checklist);
           if (closeModal) {
             setEditingTodo(null);
           }

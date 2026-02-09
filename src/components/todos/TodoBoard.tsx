@@ -40,6 +40,7 @@ interface TodoBoardProps {
       completed?: boolean;
       sectionId?: number | null;
       order?: number;
+      checklist?: { id: string; content: string; completed: boolean }[] | null;
     },
   ) => void;
   onDeleteTodo: (todoId: number) => void;
@@ -490,27 +491,27 @@ export function TodoBoard({
               }}
             >
               {activeId && activeType === "todo" && activeTodo ? (
-                <div className="w-80 opacity-90 rotate-1">
+                <div className="w-[420px] opacity-90 rotate-1">
                   <SortableTodoItem
                     todo={activeTodo}
-                    onToggle={() => {}}
-                    onUpdate={() => {}}
-                    onDelete={() => {}}
-                    onDevelop={() => {}}
-                    onEdit={() => {}}
+                    onToggle={() => { }}
+                    onUpdate={() => { }}
+                    onDelete={() => { }}
+                    onDevelop={() => { }}
+                    onEdit={() => { }}
                     isDraggingOverlay
                   />
                 </div>
               ) : activeId && activeType === "section" ? (
-                <div className="w-80 opacity-90 rotate-1">
+                <div className="w-[420px] opacity-90 rotate-1">
                   <TodoColumn
                     section={activeSection || undefined}
                     todos={clonedItems[activeId as string] || []}
-                    onAddTodo={() => {}}
-                    onUpdateTodo={() => {}}
-                    onDeleteTodo={() => {}}
-                    onEditTodo={() => {}}
-                    onDevelop={() => {}}
+                    onAddTodo={() => { }}
+                    onUpdateTodo={() => { }}
+                    onDeleteTodo={() => { }}
+                    onEditTodo={() => { }}
+                    onDevelop={() => { }}
                     isDraggingOverlay
                   />
                 </div>
@@ -536,8 +537,8 @@ export function TodoBoard({
         todo={editingTodo}
         open={!!editingTodo}
         onOpenChange={(open) => !open && setEditingTodo(null)}
-        onSave={(id, content, desc, prompt) => {
-          onUpdateTodo(id, { content, description: desc, prompt });
+        onSave={(id, content, desc, prompt, checklist) => {
+          onUpdateTodo(id, { content, description: desc, prompt, checklist });
         }}
         onDelete={(id) => {
           onDeleteTodo(id);
