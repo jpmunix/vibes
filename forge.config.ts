@@ -13,7 +13,9 @@ const ignore = (file: string) => {
   if (
     file.includes("/node_modules/@img") ||
     file.includes("/node_modules/@xenova") ||
-    file.includes("/node_modules/sharp")
+    file.includes("/node_modules/sharp") ||
+    file.includes("/node_modules/styled-jsx") ||
+    file.includes("/node_modules/geist")
   ) {
     return false;
   }
@@ -64,8 +66,9 @@ const config: ForgeConfig = {
     osxNotarize: undefined,
     asar: {
       // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
+      // styled-jsx se desempaqueta para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
-        "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}",
+        "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,

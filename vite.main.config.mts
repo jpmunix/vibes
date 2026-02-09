@@ -26,6 +26,12 @@ export default defineConfig({
         "@mapbox/node-pre-gyp",
         "detect-libc",
         "prebuild-install",
+        // Externalize AST tools to avoid bundling issues
+        "recast",
+        "ast-types",
+        "@babel/parser",
+        "@babel/traverse",
+        "@babel/types",
       ],
     },
   },
