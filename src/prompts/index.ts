@@ -143,6 +143,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones para convertir una tarea simple en un prompt de desarrollo detallado.",
   debate_chat_system:
     "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
-  debate_summary_system:
-    "Instrucciones para generar el resumen de un debate.",
+  debate_summary_system: "Instrucciones para generar el resumen de un debate.",
 };

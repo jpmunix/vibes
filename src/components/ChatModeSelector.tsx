@@ -40,7 +40,7 @@ export function ChatModeSelector() {
 
   const selectedMode = settings?.selectedChatMode || "build";
   const isProEnabled = settings ? isDyadProEnabled(settings) : false;
-  const { } = useFreeAgentQuota();
+  const {} = useFreeAgentQuota();
 
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;

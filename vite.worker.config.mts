@@ -23,7 +23,7 @@ const workersConfig: Record<string, string[]> = {
     "@img/sharp-darwin-x64",
     "@img/sharp-libvips-darwin-x64",
     "@img/sharp-darwin-arm64",
-    "@img/sharp-libvips-darwin-arm64"
+    "@img/sharp-libvips-darwin-arm64",
   ],
   embeddings_worker: [
     "node:worker_threads",
@@ -39,7 +39,7 @@ const workersConfig: Record<string, string[]> = {
     "@img/sharp-darwin-x64",
     "@img/sharp-libvips-darwin-x64",
     "@img/sharp-darwin-arm64",
-    "@img/sharp-libvips-darwin-arm64"
+    "@img/sharp-libvips-darwin-arm64",
   ],
 };
 

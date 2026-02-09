@@ -2,7 +2,14 @@ import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom } from "jotai";
-import { CheckSquare, Home, Inbox, Settings, StickyNote, MessageCircle } from "lucide-react";
+import {
+  CheckSquare,
+  Home,
+  Inbox,
+  Settings,
+  StickyNote,
+  MessageCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
@@ -216,8 +223,9 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
-                      }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
+                      isActive ? "bg-sidebar-accent" : ""
+                    }`}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onTabChange("Aplicaciones");

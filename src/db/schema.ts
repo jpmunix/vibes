@@ -379,13 +379,16 @@ export const debateMessages = sqliteTable("debate_messages", {
   content: text("content").notNull(),
   isSummary: integer("is_summary", { mode: "boolean" }).default(false),
   // For injected items
-  injectedItems: text("injected_items", { mode: "json" }).$type<{
-    type: "chat" | "note" | "todo";
-    id: number;
-    title: string;
-    content: string;
-    fragment?: string; // For specific fragments
-  }[] | null>(),
+  injectedItems: text("injected_items", { mode: "json" }).$type<
+    | {
+        type: "chat" | "note" | "todo";
+        id: number;
+        title: string;
+        content: string;
+        fragment?: string; // For specific fragments
+      }[]
+    | null
+  >(),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -407,9 +410,7 @@ export const debateToTags = sqliteTable(
       .notNull()
       .references(() => debateTags.id, { onDelete: "cascade" }),
   },
-  (table) => [
-    unique("debate_tag_unique").on(table.debateId, table.tagId),
-  ],
+  (table) => [unique("debate_tag_unique").on(table.debateId, table.tagId)],
 );
 
 // Define relations for debates

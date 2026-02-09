@@ -300,7 +300,7 @@ export function registerTodoHandlers() {
     const settings = readSettings();
     const model =
       settings.todoAnalysisModel &&
-        settings.todoAnalysisModel !== "SAME_AS_CHAT"
+      settings.todoAnalysisModel !== "SAME_AS_CHAT"
         ? settings.todoAnalysisModel
         : settings.todoAnalysisModel === "SAME_AS_CHAT"
           ? settings.selectedModel.name
@@ -355,7 +355,7 @@ export function registerTodoHandlers() {
     if (
       !hasImages ||
       userContent.length >
-      "Analiza estos archivos para extraer tareas:\n\n".length
+        "Analiza estos archivos para extraer tareas:\n\n".length
     ) {
       messages.push({ role: "user", content: userContent });
     }

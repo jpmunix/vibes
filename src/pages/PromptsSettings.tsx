@@ -243,7 +243,7 @@ export function PromptsSettings() {
                     disabled={
                       loading ||
                       localPrompts[activeTab] ===
-                      settings?.customPrompts?.[activeTab]
+                        settings?.customPrompts?.[activeTab]
                     }
                   >
                     <Save className="w-4 h-4" />
