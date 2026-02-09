@@ -27,6 +27,7 @@ import { userAtom } from "@/atoms/authAtoms";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { ProfileModal } from "@/components/ProfileModal";
+import { BackupModal } from "@/components/BackupModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon, Palette } from "lucide-react";
+import { LogOut, User as UserIcon, Palette, CloudUpload, ScrollText } from "lucide-react";
 
 export const TitleBar = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -47,6 +48,7 @@ export const TitleBar = () => {
   const [showWindowControls, setShowWindowControls] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const user = useAtomValue(userAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
 
@@ -128,6 +130,7 @@ export const TitleBar = () => {
                 <div className="cursor-pointer">
                   <SimpleAvatar
                     src={user.photoURL || undefined}
+                    className="h-6 w-6"
                     fallbackText={(
                       user.displayName?.[0] ||
                       user.email?.[0] ||
@@ -168,10 +171,13 @@ export const TitleBar = () => {
                   <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Editar Perfil</span>
                 </DropdownMenuItem>
-                {/*<DropdownMenuItem className="py-2 cursor-pointer focus:bg-accent">*/}
-                {/*  <Palette className="mr-3 h-4 w-4 text-muted-foreground" />*/}
-                {/*  <span className="text-sm font-medium">Tema</span>*/}
-                {/*</DropdownMenuItem>*/}
+                <DropdownMenuItem
+                  className="py-2 cursor-pointer focus:bg-accent"
+                  onClick={() => setIsBackupModalOpen(true)}
+                >
+                  <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Copias de seguridad</span>
+                </DropdownMenuItem>
 
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent text-foreground"
@@ -189,7 +195,7 @@ export const TitleBar = () => {
                   className="cursor-pointer"
                   onClick={() => setIsAuthModalOpen(true)}
                 >
-                  <SimpleAvatar fallbackText={<UserIcon className="h-4 w-4" />} />
+                  <SimpleAvatar className="h-6 w-6" fallbackText={<UserIcon className="h-4 w-4" />} />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -223,11 +229,17 @@ export const TitleBar = () => {
       />
 
       {user && (
-        <ProfileModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-          user={user}
-        />
+        <>
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            user={user}
+          />
+          <BackupModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+          />
+        </>
       )}
     </>
   );

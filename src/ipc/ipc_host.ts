@@ -44,6 +44,7 @@ import { registerVersionHandlers } from "./handlers/version_handlers";
 import { registerWindowHandlers } from "./handlers/window_handlers";
 import { registerDebateHandlers } from "./handlers/debate_handlers";
 import { registerDebateStreamHandlers } from "./handlers/debate_stream_handlers";
+import { registerBackupHandlers } from "./handlers/backup_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -93,4 +94,5 @@ export function registerIpcHandlers() {
   registerEmbeddingsHandlers();
   registerDebateHandlers();
   registerDebateStreamHandlers();
+  registerBackupHandlers();
 }

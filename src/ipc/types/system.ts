@@ -106,6 +106,7 @@ export const OpenRouterCreditsSchema = z.object({
   totalCredits: z.number(),
   totalUsage: z.number(),
   availableCredits: z.number(),
+  label: z.string().optional(),
 });
 
 export type OpenRouterCredits = z.infer<typeof OpenRouterCreditsSchema>;

@@ -5,27 +5,31 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   KeyRound,
   Trash2,
-  Clipboard,
-  AlertTriangle,
+  Valid, // Wait, Lucide might not have Valid. Check or use Check.
+  Check,
+  Plus,
   ExternalLink,
+  MoreVertical,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { showError, showSuccess } from "@/lib/toast";
+import { ModelsSection } from "./ModelsSection";
+import { cn } from "@/lib/utils";
 import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
 import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
 import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
 import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
 import { SummaryModelSelector } from "@/components/debate/SummaryModelSelector";
-import { ModelsSection } from "./ModelsSection";
-import { cn } from "@/lib/utils";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -34,7 +38,6 @@ export function OpenRouterSettings({
 }) {
   const {
     settings,
-    envVars,
     loading: settingsLoading,
     updateSettings,
   } = useSettings();
@@ -44,64 +47,121 @@ export function OpenRouterSettings({
 
   const providerId = "openrouter";
   const providerData = allProviders?.find((p) => p.id === providerId);
-  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  const [newKeyInput, setNewKeyInput] = useState("");
+  const [newKeyAlias, setNewKeyAlias] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const envVarName = providerData?.envVarName;
-  const userApiKey = settings?.providerSettings?.[providerId]?.apiKey?.value;
-  const envApiKey = envVarName ? envVars[envVarName] : undefined;
+  // Cast to any to access new custom properties if TS doesn't pick them up immediately
+  const openRouterSettings = settings?.providerSettings?.[providerId] as any;
+  const keys = (openRouterSettings?.keys || []) as Array<{ id: string; key: { value: string }; alias?: string }>;
+  const selectedKeyId = openRouterSettings?.selectedKeyId;
+  const legacyApiKey = openRouterSettings?.apiKey?.value;
 
-  const isValidUserKey =
-    !!userApiKey &&
-    !userApiKey.startsWith("Invalid Key") &&
-    userApiKey !== "Not Set";
-  const hasEnvKey = !!envApiKey;
+  // Auto-migrate legacy key
+  useEffect(() => {
+    if (legacyApiKey && (!keys || keys.length === 0)) {
+      const newId = crypto.randomUUID();
+      updateSettings({
+        providerSettings: {
+          ...settings?.providerSettings,
+          [providerId]: {
+            ...openRouterSettings,
+            keys: [{ id: newId, key: { value: legacyApiKey }, alias: "Clave Principal" }],
+            selectedKeyId: newId,
+            apiKey: undefined,
+          },
+        },
+      });
+    }
+  }, [legacyApiKey, keys, updateSettings, settings, openRouterSettings]);
 
-  const handleSaveKey = async (value: string) => {
-    if (!value.trim()) {
-      setSaveError("La clave API no puede estar vacía.");
+  const handleAddKey = async () => {
+    if (!newKeyInput.trim()) {
+      showError("La clave API no puede estar vacía.");
       return;
     }
+
     setIsSaving(true);
-    setSaveError(null);
     try {
+      const newId = crypto.randomUUID();
+      const newKeyEntry = {
+        id: newId,
+        key: { value: newKeyInput.trim() },
+        alias: newKeyAlias.trim() || `Clave ${keys.length + 1}`,
+      };
+
+      const newKeys = [...keys, newKeyEntry];
+      // If it's the first key, make it selected
+      const newSelectedId = keys.length === 0 ? newId : selectedKeyId;
+
       await updateSettings({
         providerSettings: {
           ...settings?.providerSettings,
           [providerId]: {
-            ...settings?.providerSettings?.[providerId],
-            apiKey: {
-              value: value.trim(),
-            },
+            ...openRouterSettings,
+            keys: newKeys,
+            selectedKeyId: newSelectedId,
           },
         },
       });
-      setApiKeyInput("");
-      showSuccess("Clave API guardada con éxito");
+
+      setNewKeyInput("");
+      setNewKeyAlias("");
+      setShowAddForm(false);
+      showSuccess("Clave API añadida con éxito");
     } catch (error: any) {
-      setSaveError(error.message || "Error al guardar la clave API.");
-      showError("Error al guardar la clave API.");
+      showError(error.message || "Error al añadir la clave API.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteKey = async () => {
+  const handleDeleteKey = async (id: string) => {
     setIsSaving(true);
     try {
+      const newKeys = keys.filter((k) => k.id !== id);
+      let newSelectedId = selectedKeyId;
+
+      // If we deleted the selected key, select another one if available
+      if (id === selectedKeyId) {
+        newSelectedId = newKeys.length > 0 ? newKeys[0].id : undefined;
+      }
+
       await updateSettings({
         providerSettings: {
           ...settings?.providerSettings,
           [providerId]: {
-            ...settings?.providerSettings?.[providerId],
-            apiKey: undefined,
+            ...openRouterSettings,
+            keys: newKeys,
+            selectedKeyId: newSelectedId,
           },
         },
       });
       showSuccess("Clave API eliminada");
     } catch (error: any) {
       showError("Error al eliminar la clave API");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSelectKey = async (id: string) => {
+    setIsSaving(true);
+    try {
+      await updateSettings({
+        providerSettings: {
+          ...settings?.providerSettings,
+          [providerId]: {
+            ...openRouterSettings,
+            selectedKeyId: id,
+          },
+        },
+      });
+      showSuccess("Clave API seleccionada como predeterminada");
+    } catch (error: any) {
+      showError("Error al seleccionar la clave API");
     } finally {
       setIsSaving(false);
     }
@@ -132,8 +192,7 @@ export function OpenRouterSettings({
             OpenRouter
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Configura tu acceso a cientos de modelos de IA a través de
-            OpenRouter
+            Configura tu acceso a cientos de modelos de IA a través de OpenRouter
           </p>
         </div>
         {providerData?.websiteUrl && (
@@ -156,107 +215,155 @@ export function OpenRouterSettings({
       </div>
 
       <div className="space-y-8">
-        {/* API Key Section */}
+        {/* API Keys List Section */}
         <div className="space-y-4">
           <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-            Configuración de Clave API
+            Mis Claves API
           </Label>
 
-          <div className="space-y-4">
-            {isValidUserKey ? (
-              <Alert className="bg-primary/5 border-primary/20 rounded-2xl p-6">
-                <KeyRound className="h-5 w-5 text-primary" />
-                <div className="flex justify-between items-center w-full">
-                  <div className="ml-3">
-                    <AlertTitle className="text-base font-bold text-primary">
-                      Clave Activa
-                    </AlertTitle>
-                    <AlertDescription className="font-mono text-sm opacity-70 mt-1">
-                      {userApiKey.substring(0, 8)}...
-                      {userApiKey.substring(userApiKey.length - 4)}
-                    </AlertDescription>
+          {keys.length === 0 ? (
+            <Alert className="bg-amber-500/5 border-amber-500/20 rounded-2xl p-6">
+              <KeyRound className="h-5 w-5 text-amber-600" />
+              <div className="ml-3">
+                <AlertTitle className="text-base font-bold text-amber-600">
+                  Sin claves configuradas
+                </AlertTitle>
+                <AlertDescription className="text-sm opacity-70 mt-1">
+                  Añade una clave API para comenzar a usar los servicios.
+                </AlertDescription>
+              </div>
+            </Alert>
+          ) : (
+            <div className="space-y-3">
+              {keys.map((key) => {
+                const isSelected = key.id === selectedKeyId;
+                return (
+                  <div
+                    key={key.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-xl border transition-all",
+                      isSelected
+                        ? "bg-primary/5 border-primary/30 shadow-sm"
+                        : "bg-card border-border hover:border-border/80"
+                    )}
+                  >
+                    <div className="flex items-center gap-4 overflow-hidden">
+                      <div className={cn(
+                        "flex items-center justify-center w-10 h-10 rounded-full shrink-0",
+                        isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                      )}>
+                        <KeyRound className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm truncate">
+                            {key.alias || "Sin nombre"}
+                          </p>
+                          {isSelected && (
+                            <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
+                              Predeterminada
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-muted-foreground truncate">
+                          {key.key.value.substring(0, 8)}...{key.key.value.substring(key.key.value.length - 4)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!isSelected && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectKey(key.id)}
+                          disabled={isSaving}
+                          className="h-8 px-3 text-xs"
+                        >
+                          Usar
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive cursor-pointer"
+                            onClick={() => handleDeleteKey(key.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Eliminar</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Add New Key Section */}
+        <div className="p-6 rounded-2xl bg-muted/30 border border-border space-y-4">
+
+          {!showAddForm ? (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-primary"
+              onClick={() => setShowAddForm(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Añadir Nueva Clave
+            </Button>
+          ) : (
+            <>
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Añadir Nueva Clave
+              </h3>
+              <div className="grid gap-4 md:grid-cols-[1fr,2fr,auto]">
+                <div className="space-y-2">
+                  <Label htmlFor="alias" className="text-xs">Alias (Opcional)</Label>
+                  <Input
+                    id="alias"
+                    placeholder="Ej: Clave Personal"
+                    value={newKeyAlias}
+                    onChange={(e) => setNewKeyAlias(e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey" className="text-xs">API Key</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder="sk-or-v1-..."
+                    value={newKeyInput}
+                    onChange={(e) => setNewKeyInput(e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="flex items-end gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={handleDeleteKey}
-                    disabled={isSaving}
-                    className="text-destructive hover:bg-destructive/10 rounded-xl h-10 px-4 font-bold"
+                    onClick={() => setShowAddForm(false)}
+                    className="h-10 px-4"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
+                    Cancelar
                   </Button>
-                </div>
-              </Alert>
-            ) : hasEnvKey ? (
-              <Alert className="bg-green-500/5 border-green-500/20 rounded-2xl p-6">
-                <KeyRound className="h-5 w-5 text-green-600" />
-                <div className="ml-3">
-                  <AlertTitle className="text-base font-bold text-green-600">
-                    Usando Variable de Entorno
-                  </AlertTitle>
-                  <AlertDescription className="text-sm opacity-70 mt-1">
-                    Se ha detectado una clave en la variable{" "}
-                    <code>{envVarName}</code>.
-                  </AlertDescription>
-                </div>
-              </Alert>
-            ) : (
-              <Alert className="bg-amber-500/5 border-amber-500/20 rounded-2xl p-6">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <div className="ml-3">
-                  <AlertTitle className="text-base font-bold text-amber-600">
-                    Configuración Pendiente
-                  </AlertTitle>
-                  <AlertDescription className="text-sm opacity-70 mt-1">
-                    Necesitas una clave API de OpenRouter para usar las
-                    funciones de IA.
-                  </AlertDescription>
-                </div>
-              </Alert>
-            )}
-
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  type="password"
-                  placeholder="Introduce tu OpenRouter API Key"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  className={cn(
-                    "rounded-xl h-12 border-border bg-muted/30 focus-visible:ring-primary/20",
-                    saveError &&
-                      "border-destructive focus-visible:ring-destructive/20",
-                  )}
-                />
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Button
-                    onClick={async () => {
-                      const text = await navigator.clipboard.readText();
-                      if (text) handleSaveKey(text);
-                    }}
-                    variant="outline"
-                    className="rounded-xl h-12 w-12 p-0 border-border hover:bg-muted"
+                    onClick={handleAddKey}
+                    disabled={isSaving || !newKeyInput}
+                    className="h-10 px-6 font-bold"
                   >
-                    <Clipboard className="h-4 w-4" />
+                    {isSaving ? "Guardando..." : "Añadir"}
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>Pegar y guardar</TooltipContent>
-              </Tooltip>
-              <Button
-                onClick={() => handleSaveKey(apiKeyInput)}
-                disabled={isSaving || !apiKeyInput}
-                className="rounded-xl h-12 px-6 font-bold"
-              >
-                {isSaving ? "Guardando..." : "Guardar"}
-              </Button>
-            </div>
-            {saveError && (
-              <p className="text-xs text-destructive px-1">{saveError}</p>
-            )}
-          </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Utility Models Section */}
