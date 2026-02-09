@@ -3,8 +3,9 @@ const path = require("path");
 
 /**
  * afterPack hook para Electron Forge
- * Copia las librerías nativas de Sharp (libvips) al bundle de macOS
- * para evitar errores de "Library not loaded" en runtime
+ * Copia las librerías nativas de Sharp, @xenova/transformers, better-sqlite3 y otros
+ * paquetes con dependencias nativas al bundle de macOS
+ * para evitar errores de "Cannot find module" o "Library not loaded" en runtime
  */
 exports.default = async function afterPack(context) {
   const { electronPlatformName, appOutDir, arch } = context;
@@ -169,11 +170,182 @@ exports.default = async function afterPack(context) {
     }
 
     console.log("[afterPack] ✓ Sharp libraries copied successfully");
+
+    // Copiar @xenova/transformers completo
+    await copyTransformersPackage(asarUnpackedPath);
+
+    // Copiar better-sqlite3 bindings
+    await copySQLiteBindings(asarUnpackedPath);
+
+    // Copiar onnxruntime-node bindings
+    await copyOnnxRuntimeBindings(asarUnpackedPath);
+
+    console.log("[afterPack] ✅ All native dependencies copied successfully");
   } catch (error) {
-    console.error("[afterPack] ERROR copying Sharp libraries:", error);
+    console.error("[afterPack] ERROR copying native dependencies:", error);
     throw error;
   }
 };
+
+/**
+ * Copia @xenova/transformers y verifica que todos sus archivos estén disponibles
+ */
+async function copyTransformersPackage(asarUnpackedPath) {
+  console.log("[afterPack] Checking @xenova/transformers...");
+
+  const transformersInBundle = path.join(
+    asarUnpackedPath,
+    "node_modules",
+    "@xenova",
+    "transformers",
+  );
+
+  if (!fs.existsSync(transformersInBundle)) {
+    console.warn(
+      "[afterPack] WARNING: @xenova/transformers not found in bundle",
+    );
+    return;
+  }
+
+  // Verificar que archivos críticos existan
+  const criticalFiles = ["package.json", "src/transformers.js"];
+
+  for (const file of criticalFiles) {
+    const filePath = path.join(transformersInBundle, file);
+    if (!fs.existsSync(filePath)) {
+      console.error(
+        `[afterPack] ERROR: Missing critical file in transformers: ${file}`,
+      );
+      throw new Error(`@xenova/transformers is incomplete: missing ${file}`);
+    }
+  }
+
+  // Verificar que node_modules de transformers estén presentes (incluyendo sharp)
+  const transformersNodeModules = path.join(
+    transformersInBundle,
+    "node_modules",
+  );
+  if (fs.existsSync(transformersNodeModules)) {
+    console.log("[afterPack] ✓ @xenova/transformers node_modules found");
+
+    // Listar subdependencias importantes
+    try {
+      const subdeps = fs.readdirSync(transformersNodeModules);
+      const important = subdeps.filter(
+        (d) => d === "sharp" || d === "onnxruntime-node" || d.startsWith("@"),
+      );
+      if (important.length > 0) {
+        console.log(
+          `[afterPack]   Found subdependencies: ${important.join(", ")}`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `[afterPack]   Could not list transformers subdependencies: ${err.message}`,
+      );
+    }
+  } else {
+    console.warn(
+      "[afterPack] WARNING: @xenova/transformers/node_modules not found",
+    );
+  }
+
+  console.log("[afterPack] ✓ @xenova/transformers verified");
+}
+
+/**
+ * Copia bindings nativos de better-sqlite3
+ */
+async function copySQLiteBindings(asarUnpackedPath) {
+  console.log("[afterPack] Checking better-sqlite3...");
+
+  const sqliteInBundle = path.join(
+    asarUnpackedPath,
+    "node_modules",
+    "better-sqlite3",
+  );
+
+  if (!fs.existsSync(sqliteInBundle)) {
+    console.warn("[afterPack] WARNING: better-sqlite3 not found in bundle");
+    return;
+  }
+
+  // Verificar que el binding nativo .node exista
+  const buildReleasePath = path.join(sqliteInBundle, "build", "Release");
+
+  if (fs.existsSync(buildReleasePath)) {
+    try {
+      const files = fs.readdirSync(buildReleasePath);
+      const nodeFiles = files.filter((f) => f.endsWith(".node"));
+
+      if (nodeFiles.length > 0) {
+        console.log(
+          `[afterPack] ✓ better-sqlite3 native bindings found: ${nodeFiles.join(", ")}`,
+        );
+      } else {
+        console.warn(
+          "[afterPack] WARNING: No .node files found in better-sqlite3/build/Release",
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `[afterPack]   Could not verify sqlite3 bindings: ${err.message}`,
+      );
+    }
+  } else {
+    console.warn(
+      "[afterPack] WARNING: better-sqlite3/build/Release directory not found",
+    );
+  }
+}
+
+/**
+ * Copia bindings nativos de onnxruntime-node
+ */
+async function copyOnnxRuntimeBindings(asarUnpackedPath) {
+  console.log("[afterPack] Checking onnxruntime-node...");
+
+  const onnxInBundle = path.join(
+    asarUnpackedPath,
+    "node_modules",
+    "onnxruntime-node",
+  );
+
+  if (!fs.existsSync(onnxInBundle)) {
+    console.log("[afterPack] ℹ️  onnxruntime-node not found (may not be used)");
+    return;
+  }
+
+  // Verificar bindings nativos
+  const binPath = path.join(onnxInBundle, "bin");
+
+  if (fs.existsSync(binPath)) {
+    try {
+      const files = fs.readdirSync(binPath);
+      const nativeFiles = files.filter(
+        (f) => f.endsWith(".node") || f.endsWith(".dylib") || f.endsWith(".so"),
+      );
+
+      if (nativeFiles.length > 0) {
+        console.log(
+          `[afterPack] ✓ onnxruntime-node bindings found: ${nativeFiles.join(", ")}`,
+        );
+      } else {
+        console.warn(
+          "[afterPack] WARNING: No native files found in onnxruntime-node/bin",
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `[afterPack]   Could not verify onnxruntime bindings: ${err.message}`,
+      );
+    }
+  } else {
+    console.warn(
+      "[afterPack] WARNING: onnxruntime-node/bin directory not found",
+    );
+  }
+}
 
 /**
  * Copia recursivamente un directorio

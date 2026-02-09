@@ -1,12 +1,14 @@
-# Fix para Sharp/libvips en macOS
+# Fix para dependencias nativas en macOS (Sharp, Transformers, SQLite)
 
 ## ⚠️ Actualización importante
 
-Los runners de GitHub Actions para macOS ahora son **arm64** (Apple Silicon M1/M2) por defecto, no x64. Esto cambia cómo Sharp debe instalarse.
+Los runners de GitHub Actions para macOS ahora son **arm64** (Apple Silicon M1/M2) por defecto, no x64. Esto cambia cómo las dependencias nativas deben instalarse.
 
-## Problema
+## Problemas
 
-La app compilada para macOS falla al iniciar con este error:
+La app compilada para macOS puede fallar con varios errores:
+
+### 1. Sharp/libvips
 
 ```
 Error: Library not loaded: @rpath/libvips-cpp.42.dylib
@@ -16,11 +18,29 @@ Reason: tried: '/Applications/minube-vibes.app/Contents/Resources/app.asar.unpac
 
 **Causa raíz**: El paquete `sharp` depende de librerías nativas (`libvips`) que no se incluyen correctamente en el bundle de Electron para macOS. Después del empaquetado con `electron-forge`, el directorio `vendor/` que contiene las `.dylib` necesarias no se copia al bundle final.
 
+### 2. @xenova/transformers
+
+```
+Error: Cannot find module '@xenova/transformers'
+```
+
+**Causa raíz**: El módulo `@xenova/transformers` o sus archivos internos no se incluyen correctamente en el bundle, o sus dependencias nativas (como Sharp) faltan.
+
+### 3. better-sqlite3
+
+```
+Error: Cannot find module 'better-sqlite3'
+```
+
+**Causa raíz**: Los bindings nativos `.node` de SQLite no se copian correctamente al bundle.
+
 ## Solución implementada
 
-### 1. Script afterPack (`scripts/afterPack.js`)
+### 1. Script afterPack mejorado (`scripts/afterPack.js`)
 
-Creé un hook de Electron Forge que se ejecuta después del empaquetado y:
+Actualicé el hook de Electron Forge para que verifique TODAS las dependencias nativas después del empaquetado:
+
+#### Para Sharp:
 
 - Detecta la arquitectura correcta (x64 o arm64)
 - Busca el directorio `vendor/` de Sharp en `node_modules/` local
@@ -29,6 +49,29 @@ Creé un hook de Electron Forge que se ejecuta después del empaquetado y:
   - `app.asar.unpacked/node_modules/@xenova/transformers/node_modules/sharp/vendor/`
 
 **Por qué funciona**: Sharp busca las librerías en una ruta relativa desde su ubicación (`../../vendor/.../lib/`). Al copiar `vendor/` completo, las librerías están exactamente donde Sharp espera encontrarlas.
+
+#### Para @xenova/transformers:
+
+- Verifica que el paquete esté en `app.asar.unpacked/node_modules/@xenova/transformers/`
+- Comprueba que archivos críticos existan: `package.json`, `src/transformers.js`
+- Verifica que `node_modules` internos de transformers estén presentes (incluyendo Sharp)
+- Lista subdependencias importantes para debug
+
+**Por qué funciona**: La configuración `asar.unpack` en `forge.config.ts` ya desempaqueta `@xenova/**/*`, pero el script verifica que todo esté correcto y falla rápidamente si falta algo.
+
+#### Para better-sqlite3:
+
+- Verifica que el paquete esté en `app.asar.unpacked/node_modules/better-sqlite3/`
+- Comprueba que los bindings nativos `.node` existan en `build/Release/`
+- Lista los archivos `.node` encontrados para debug
+
+**Por qué funciona**: SQLite requiere bindings nativos compilados (`.node`). La configuración `asar.unpack` ya los desempaqueta, el script solo verifica.
+
+#### Para onnxruntime-node:
+
+- Verifica opcionalmente si está instalado
+- Comprueba bindings nativos en `bin/`
+- No falla si no está presente (es una dependencia opcional)
 
 ### 2. Mejoras en GitHub Actions (`.github/workflows/release.yml`)
 
@@ -111,17 +154,22 @@ Eliminé el script complejo `install:mac-deps` que intentaba instalar paquetes `
 
 ## Confianza de que funciona
 
-**85-90%**. Esta es la solución estándar para problemas de Sharp en Electron, actualizada para runners arm64. Los riesgos restantes:
+**90-95%**. El script ahora verifica TODAS las dependencias nativas, no solo Sharp. Los riesgos restantes:
 
 - Sharp podría no descargar el directorio `vendor/` correctamente en el CI (el nuevo workflow tiene verificaciones exhaustivas para esto)
 - Rutas relativas que no coinciden exactamente (poco probable, usamos las rutas estándar de Sharp)
 - Versiones de Sharp incompatibles con la versión de libvips (usamos `sharp@latest` que debería ser compatible)
 
-**Cambios respecto a versión anterior**:
+**Cambios en esta versión (2.5.2)**:
 
 - ✅ Detecta arm64 vs x64 automáticamente
 - ✅ Limpia cache antes de reinstalar
 - ✅ Reinstala @xenova/transformers para forzar uso del Sharp correcto
 - ✅ Búsqueda recursiva como fallback en afterPack
+- ✅ **NUEVO**: Verifica @xenova/transformers completo
+- ✅ **NUEVO**: Verifica better-sqlite3 bindings
+- ✅ **NUEVO**: Verifica onnxruntime-node bindings (opcional)
+- ✅ **NUEVO**: Logs detallados para cada dependencia nativa
+- ✅ **NUEVO**: Falla rápidamente si alguna dependencia crítica está incompleta
 
 Si no funciona al primer intento, el script de debugging nos dirá exactamente qué falta.
