@@ -68,6 +68,7 @@ const config: ForgeConfig = {
         "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*}",
     },
     ignore,
+    afterPack: require("./scripts/afterPack").default,
     extraResource: [
       //   "node_modules/better-sqlite3",
       "node_modules/dugite/git",

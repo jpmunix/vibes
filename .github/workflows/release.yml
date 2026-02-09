@@ -40,11 +40,25 @@ jobs:
         # Asegúrate de que package-lock.json esté en tu repo para usar 'ci'
         run: npm ci
 
-      - name: Reinstall sharp for macOS (ensures libvips is bundled)
+      - name: Install Sharp with native libraries for macOS
         if: matrix.os.id == 'macos'
         run: |
+          # Detectar arquitectura del runner de GitHub Actions
+          RUNNER_ARCH=$(uname -m)
+          echo "Runner architecture: $RUNNER_ARCH"
+
+          # Reinstalar Sharp con todas las dependencias nativas
           npm uninstall sharp
-          npm install sharp --platform=darwin
+          npm install --no-save --foreground-scripts sharp
+
+          # Verificar que vendor/ existe y contiene libvips
+          if [ -d "node_modules/sharp/vendor" ]; then
+            echo "✓ Sharp vendor directory found"
+            find node_modules/sharp/vendor -name "*.dylib" || echo "WARNING: No .dylib files found"
+          else
+            echo "ERROR: Sharp vendor directory not found"
+            exit 1
+          fi
 
       - name: Rebuild native modules for Electron
         run: npm run rebuild

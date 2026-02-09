@@ -39,9 +39,7 @@ function fixOrphanedMigrations(sqlite: Database.Database): void {
     )) {
       // Check if the table exists
       const tableExists = sqlite
-        .prepare(
-          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-        )
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
         .get(tableName);
 
       if (!tableExists) continue;
@@ -64,7 +62,9 @@ function fixOrphanedMigrations(sqlite: Database.Database): void {
     }
   } catch (error) {
     // If __drizzle_migrations doesn't exist yet, that's fine - migrations will create it
-    logger.log("Orphaned migration check skipped (migrations table may not exist yet)");
+    logger.log(
+      "Orphaned migration check skipped (migrations table may not exist yet)",
+    );
   }
 }
 

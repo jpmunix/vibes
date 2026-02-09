@@ -317,12 +317,7 @@ export type {
 } from "./todo";
 
 // Debate types
-export type {
-  InjectedItem,
-  DebateMessage,
-  DebateTag,
-  Debate,
-} from "./debate";
+export type { InjectedItem, DebateMessage, DebateTag, Debate } from "./debate";
 
 // =============================================================================
 // Schema Exports (for validation in handlers/components)

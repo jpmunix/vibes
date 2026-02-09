@@ -34,10 +34,12 @@ export type NoteSummary = z.infer<typeof NoteSummarySchema>;
 /**
  * Schema for create note params.
  */
-export const CreateNoteParamsSchema = z.object({
-  title: z.string().optional(),
-  content: z.string().optional(),
-}).optional();
+export const CreateNoteParamsSchema = z
+  .object({
+    title: z.string().optional(),
+    content: z.string().optional(),
+  })
+  .optional();
 
 export type CreateNoteParams = z.infer<typeof CreateNoteParamsSchema>;
 

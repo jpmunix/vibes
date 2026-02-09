@@ -226,7 +226,7 @@ export function OpenRouterSettings({
                   className={cn(
                     "rounded-xl h-12 border-border bg-muted/30 focus-visible:ring-primary/20",
                     saveError &&
-                    "border-destructive focus-visible:ring-destructive/20",
+                      "border-destructive focus-visible:ring-destructive/20",
                   )}
                 />
               </div>
@@ -269,7 +269,8 @@ export function OpenRouterSettings({
               <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
                 <AppTitleModelSelector />
                 <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                  Genera el título de la aplicación a partir de tu prompt inicial.
+                  Genera el título de la aplicación a partir de tu prompt
+                  inicial.
                 </p>
               </div>
             </div>
