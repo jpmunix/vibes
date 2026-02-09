@@ -9,14 +9,18 @@ if (!parentPort) {
 }
 
 // Configure cache directory from workerData
-if (workerData?.cacheDir) {
-  configureCacheDir(workerData.cacheDir);
-  logger.debug(
-    `[EMBEDDINGS WORKER] Cache directory set to: ${workerData.cacheDir}`,
-  );
-} else {
-  logger.warn("[EMBEDDINGS WORKER] No cache directory provided in workerData");
-}
+(async () => {
+  if (workerData?.cacheDir) {
+    await configureCacheDir(workerData.cacheDir);
+    logger.debug(
+      `[EMBEDDINGS WORKER] Cache directory set to: ${workerData.cacheDir}`,
+    );
+  } else {
+    logger.warn(
+      "[EMBEDDINGS WORKER] No cache directory provided in workerData",
+    );
+  }
+})();
 
 interface EmbeddingsWorkerInput {
   type: "generateEmbeddings";
