@@ -19,6 +19,7 @@ import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
 import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
+import { debateContracts, debateStreamContract } from "../types/debate";
 import { embeddingsContracts } from "../types/embeddings";
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
@@ -50,6 +51,7 @@ import { visualEditingContracts } from "../types/visual-editing";
 
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
+const DEBATE_STREAM_CHANNELS = getStreamChannels(debateStreamContract);
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
 const TEST_INVOKE_CHANNELS = [
@@ -69,10 +71,12 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(noteContracts),
   ...getInvokeChannels(todoContracts),
   ...getInvokeChannels(agentContracts),
+  ...getInvokeChannels(debateContracts),
 
   // Stream invoke channels
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
+  DEBATE_STREAM_CHANNELS.invoke,
 
   // Integrations
   ...getInvokeChannels(githubContracts),
@@ -118,6 +122,7 @@ export const VALID_RECEIVE_CHANNELS = [
   // Stream receive channels
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
+  ...DEBATE_STREAM_CHANNELS.receive,
 
   // Event channels
   ...getReceiveChannels(agentEvents),

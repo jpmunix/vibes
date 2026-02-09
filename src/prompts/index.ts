@@ -5,6 +5,7 @@ import {
   BUILD_SYSTEM_POSTFIX,
   AGENT_MODE_SYSTEM_PROMPT,
 } from "./system_prompt";
+import { LOCAL_AGENT_SYSTEM_PROMPT } from "./local_agent_prompt";
 import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "./summarize_chat_system_prompt";
 
 export type PromptId =
@@ -17,14 +18,16 @@ export type PromptId =
   | "app_name_pro"
   | "todo_analysis"
   | "todo_refinement"
-  | "agent_mode_system";
+  | "agent_mode_system"
+  | "debate_chat_system"
+  | "debate_summary_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
   build_system_prefix: BUILD_SYSTEM_PREFIX,
   build_system_postfix: BUILD_SYSTEM_POSTFIX,
   summarize_chat_system: SUMMARIZE_CHAT_SYSTEM_PROMPT,
-  agent_mode_system: AGENT_MODE_SYSTEM_PROMPT,
+  agent_mode_system: LOCAL_AGENT_SYSTEM_PROMPT,
   turbo_edit_system: [
     "You are a precise code-editing assistant.",
     "Apply the requested edit to the original file content.",
@@ -78,6 +81,19 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "No incluyas introducciones ('Claro, aquí tienes...'), explicaciones, opiniones, ni bloques de código markdown.",
     "Tu respuesta debe empezar directamente con el contenido del prompt.",
   ].join(" "),
+  debate_chat_system: [
+    "Eres un Senior Staff Engineer y experto en Prompt Engineering con una mentalidad extremadamente pragmática y orientada a la acción.",
+    "",
+    "TUS REGLAS DE ORO:",
+    "1. **NO PIDAS ACLARACIONES**: Si el usuario te pide algo (código, prompt, arquitectura), ASUME las mejores prácticas y GENERA LA SOLUCIÓN INMEDIATAMENTE. No respondas con una lista de preguntas.",
+    "2. **SÉ DIRECTO**: Evita introducciones, saludos o conclusiones innecesarias. Ve directo al código o a la solución técnica.",
+    "3. **PROACTIVIDAD**: Si ves un error o una mejora obvia, impleméntala o sugiérela directamente.",
+    "4. **DETERMINISMO**: Ante la duda, toma una decisión técnica sólida y justifícala brevemente después, pero nunca bloquees la respuesta preguntando '¿qué prefieres?'.",
+    "",
+    "Tu objetivo es acelerar el flujo de trabajo del usuario, no ralentizarlo con burocracia conversacional.",
+  ].join("\n"),
+  debate_summary_system:
+    "Resume el siguiente debate de forma concisa pero capturando los puntos clave. Devuelve el resumen en formato Markdown con secciones claras.",
 };
 
 export function getEffectivePrompt(
@@ -95,12 +111,14 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   build_system_prefix: "Build System Prefix (Rol Principal)",
   build_system_postfix: "Build System Postfix (Formato y Reglas)",
   summarize_chat_system: "Resumen de Chat",
-  agent_mode_system: "Modo Agente (Análisis)",
+  agent_mode_system: "Modo Agente (Desarrollo y Análisis)",
   turbo_edit_system: "Turbo Edit (Edición Precisa)",
   app_title_short: "Generador de Títulos Cortos",
   app_name_pro: "Generador de Nombres Profesionales",
   todo_analysis: "Analizador de Tareas (Smart Import)",
   todo_refinement: "Refinador de Prompts de Tareas",
+  debate_chat_system: "Chat de Debate (Sistema)",
+  debate_summary_system: "Resumen de Debate",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -113,7 +131,7 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   summarize_chat_system:
     "Instrucciones para generar el resumen técnico de la conversación.",
   agent_mode_system:
-    "Cómo debe comportarse el agente al analizar herramientas externas.",
+    "Controla el comportamiento del agente al usar herramientas y realizar cambios en el código.",
   turbo_edit_system:
     "Instrucciones para el modelo rápido de edición de archivos.",
   app_title_short:
@@ -123,4 +141,8 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones para extraer tareas a partir de archivos (PDF, Word, imágenes, etc.).",
   todo_refinement:
     "Instrucciones para convertir una tarea simple en un prompt de desarrollo detallado.",
+  debate_chat_system:
+    "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
+  debate_summary_system:
+    "Instrucciones para generar el resumen de un debate.",
 };

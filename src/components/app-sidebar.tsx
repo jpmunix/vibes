@@ -2,7 +2,7 @@ import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom } from "jotai";
-import { CheckSquare, Home, Inbox, Settings, StickyNote } from "lucide-react";
+import { CheckSquare, Home, Inbox, Settings, StickyNote, MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 
@@ -23,6 +23,7 @@ import { LibraryList } from "./LibraryList";
 import { NotesList } from "./NotesList";
 import { SettingsList } from "./SettingsList";
 import { TodosList } from "./TodosList";
+import { DebatesList } from "./DebatesList";
 
 // Menu items.
 const items = [
@@ -45,6 +46,11 @@ const items = [
     title: "Tareas",
     to: "/todos",
     icon: CheckSquare,
+  },
+  {
+    title: "Debates",
+    to: "/debates",
+    icon: MessageCircle,
   },
   {
     title: "Ajustes",
@@ -98,6 +104,8 @@ export function AppSidebar() {
       setActiveTab("Ajustes");
     } else if (isLibraryRoute) {
       setActiveTab("Biblioteca");
+    } else if (routerState.location.pathname.startsWith("/debates")) {
+      setActiveTab("Debates");
     }
   }, [
     isAppRoute,
@@ -171,6 +179,7 @@ export function AppSidebar() {
             <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
             <LibraryList show={selectedItem === "Biblioteca"} />
+            <DebatesList show={selectedItem === "Debates"} />
           </div>
         </div>
       </SidebarContent>
@@ -207,9 +216,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${
-                      isActive ? "bg-sidebar-accent" : ""
-                    }`}
+                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
+                      }`}
                     onClick={() => {
                       if (item.title === "Aplicaciones") {
                         onTabChange("Aplicaciones");
@@ -221,6 +229,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                         onTabChange("Ajustes");
                       } else if (item.title === "Biblioteca") {
                         onTabChange("Biblioteca");
+                      } else if (item.title === "Debates") {
+                        onTabChange("Debates");
                       }
                     }}
                   >

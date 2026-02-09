@@ -22,6 +22,12 @@ export function registerTodoHandlers() {
     });
   });
 
+  createTypedHandler(todoContracts.getTodos, async () => {
+    return await db.query.todos.findMany({
+      orderBy: [asc(todos.createdAt)],
+    });
+  });
+
   createTypedHandler(todoContracts.getTodoSectionsByApp, async (_, appId) => {
     return await db.query.todoSections.findMany({
       where: eq(todoSections.appId, appId),
@@ -294,7 +300,7 @@ export function registerTodoHandlers() {
     const settings = readSettings();
     const model =
       settings.todoAnalysisModel &&
-      settings.todoAnalysisModel !== "SAME_AS_CHAT"
+        settings.todoAnalysisModel !== "SAME_AS_CHAT"
         ? settings.todoAnalysisModel
         : settings.todoAnalysisModel === "SAME_AS_CHAT"
           ? settings.selectedModel.name
@@ -349,7 +355,7 @@ export function registerTodoHandlers() {
     if (
       !hasImages ||
       userContent.length >
-        "Analiza estos archivos para extraer tareas:\n\n".length
+      "Analiza estos archivos para extraer tareas:\n\n".length
     ) {
       messages.push({ role: "user", content: userContent });
     }

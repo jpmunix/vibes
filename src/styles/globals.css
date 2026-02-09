@@ -419,3 +419,13 @@ ul[data-type="taskList"] li > label {
 ul[data-type="taskList"] li > div {
   flex: 1 1 auto;
 }
+
+/* Mega global rule to remove focus/focus-visible rings and outlines */
+*:focus,
+*:focus-visible,
+[data-state="open"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-width: 0px !important;
+  --tw-ring-offset-width: 0px !important;
+}

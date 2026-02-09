@@ -225,6 +225,20 @@
       "when": 1770540464274,
       "tag": "0031_perfect_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1770590011011,
+      "tag": "0032_windy_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1770627829766,
+      "tag": "0033_lucky_stranger",
+      "breakpoints": true
     }
   ]
 }

@@ -127,7 +127,7 @@ export function SettingsList({ show }: { show: boolean }) {
         scrollContainer.removeEventListener("scroll", scrollHandler);
       }
     };
-  }, [settingsSections, setActiveSection]);
+  }, [settingsSections, setActiveSection, show]);
 
   if (!show) {
     return null;

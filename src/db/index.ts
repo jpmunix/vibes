@@ -13,6 +13,61 @@ import log from "electron-log";
 
 const logger = log.scope("db");
 
+/**
+ * Known migrations that might have been applied without recording
+ * Format: { tableName: { hash: string, created_at: number } }
+ */
+const ORPHANED_MIGRATION_FIXES: Record<
+  string,
+  { hash: string; created_at: number }
+> = {
+  // Migration 0031_perfect_titanium_man.sql - creates todo_sections table
+  todo_sections: {
+    hash: "81998c23b15504ffb86df0e9e6d3bcd1c3c4487e0fce304d82e66fe49e14a293",
+    created_at: 1770540464274,
+  },
+};
+
+/**
+ * Fix orphaned migrations where tables exist but migration records are missing.
+ * This can happen if the app crashed mid-migration or database was restored.
+ */
+function fixOrphanedMigrations(sqlite: Database.Database): void {
+  try {
+    for (const [tableName, migrationInfo] of Object.entries(
+      ORPHANED_MIGRATION_FIXES,
+    )) {
+      // Check if the table exists
+      const tableExists = sqlite
+        .prepare(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+        )
+        .get(tableName);
+
+      if (!tableExists) continue;
+
+      // Check if migration record exists
+      const migrationExists = sqlite
+        .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+        .get(migrationInfo.hash);
+
+      if (!migrationExists) {
+        logger.log(
+          `Fixing orphaned migration for table "${tableName}" - adding migration record`,
+        );
+        sqlite
+          .prepare(
+            `INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`,
+          )
+          .run(migrationInfo.hash, migrationInfo.created_at);
+      }
+    }
+  } catch (error) {
+    // If __drizzle_migrations doesn't exist yet, that's fine - migrations will create it
+    logger.log("Orphaned migration check skipped (migrations table may not exist yet)");
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -61,22 +116,31 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
   try {
     // In development: drizzle folder is at project root
     // In production (packaged): drizzle folder is in resources/ (extraResource)
-    let migrationsFolder = path.join(__dirname, "..", "..", "drizzle");
 
-    // Check if we're in a packaged app
+    // DEFAULT: Try to use the resources folder first (Production/Packaged priority)
+    // This allows creating new migrations in the external folder which overrides internal/asar ones
+    let migrationsFolder = path.join(process.resourcesPath, "drizzle");
+
+    // FALLBACK: If not found (Likely Development), look at project root using __dirname
     if (!fs.existsSync(migrationsFolder)) {
-      // Try the resources folder location (when packaged)
-      migrationsFolder = path.join(process.resourcesPath, "drizzle");
+      migrationsFolder = path.join(__dirname, "..", "..", "drizzle");
     }
 
     if (!fs.existsSync(migrationsFolder)) {
-      logger.error("Migrations folder not found:", migrationsFolder);
+      logger.error("Migrations folder not found (Critical):", migrationsFolder);
+      throw new Error(`Migrations folder not found at: ${migrationsFolder}`);
     } else {
+      // Fix orphaned migrations before running migrate()
+      // This handles the case where a table exists but the migration record is missing
+      fixOrphanedMigrations(sqlite);
+
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });
     }
   } catch (error) {
     logger.error("Migration error:", error);
+    // Rethrow the error to prevent the app from starting with a broken database state
+    throw error;
   }
 
   logger.log("Database initialized successfully");

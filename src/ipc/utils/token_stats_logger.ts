@@ -6,7 +6,9 @@ import log from "electron-log";
 const logger = log.scope("token_stats_logger");
 
 export type TokenStatEntry = {
-  chatId: number;
+  chatId?: number;
+  debateId?: number;
+  source?: "chat" | "debate";
   messageId: number;
   totalTokens: number;
   promptTokens?: number;

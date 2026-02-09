@@ -71,17 +71,17 @@ const FontSize = Extension.create({
     return {
       setFontSize:
         (fontSize: string) =>
-        ({ chain }: any) => {
-          return chain().setMark("textStyle", { fontSize }).run();
-        },
+          ({ chain }: any) => {
+            return chain().setMark("textStyle", { fontSize }).run();
+          },
       unsetFontSize:
         () =>
-        ({ chain }: any) => {
-          return chain()
-            .setMark("textStyle", { fontSize: null })
-            .removeEmptyTextStyle()
-            .run();
-        },
+          ({ chain }: any) => {
+            return chain()
+              .setMark("textStyle", { fontSize: null })
+              .removeEmptyTextStyle()
+              .run();
+          },
     } as any;
   },
 });
@@ -129,32 +129,19 @@ export function NoteEditor({
   const processedContent = useMemo(() => {
     if (!content) return content;
 
-    // Check if content looks like Markdown (contains markdown syntax)
-    const markdownPatterns = [
-      /^#{1,6}\s/m, // Headers
-      /^\*\*.*\*\*/m, // Bold
-      /^\*.*\*/m, // Italic
-      /^-\s/m, // Unordered list
-      /^\d+\.\s/m, // Ordered list
-      /^>\s/m, // Blockquote
-    ];
-
-    const looksLikeMarkdown = markdownPatterns.some((pattern) =>
-      pattern.test(content),
-    );
+    // Check if content is already HTML
     const isHTML = /<[^>]+>/.test(content);
+    if (isHTML) return content;
 
-    // If it looks like Markdown and is not HTML, convert it
-    if (looksLikeMarkdown && !isHTML) {
-      try {
-        return marked.parse(content) as string;
-      } catch (e) {
-        console.error("Error parsing markdown:", e);
-        return content;
-      }
+    // If not HTML, we assume it's Markdown or plain text from a debate summary
+    // and convert it. We'll use a slightly broader detection for Markdown
+    // or just always parse it if it's not HTML and coming from our specific flow
+    try {
+      return marked.parse(content) as string;
+    } catch (e) {
+      console.error("Error parsing markdown:", e);
+      return content;
     }
-
-    return content;
   }, [content]);
 
   const editor = useEditor({

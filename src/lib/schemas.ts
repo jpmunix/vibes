@@ -297,6 +297,8 @@ export const UserSettingsSchema = z
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
+    debateModel: z.string().optional(),
+    summaryModel: z.string().optional(),
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
