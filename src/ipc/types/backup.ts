@@ -19,6 +19,16 @@ export const backupContracts = {
             })),
         }),
     }),
+    restoreBackup: defineContract({
+        channel: "backup:restore",
+        input: z.object({
+            downloadUrl: z.string(), // Signed Firebase Storage public URL
+        }),
+        output: z.object({
+            success: z.boolean(),
+            message: z.string(),
+        }),
+    }),
 } as const;
 
 export const backupClient = createClient(backupContracts);

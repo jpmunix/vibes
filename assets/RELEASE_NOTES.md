@@ -37,7 +37,7 @@ Consulta la nueva documentación para aprender a sacarle todo el potencial a Vib
 
 ### 👤 Registro de usuario
 - Ya puedes crear una cuenta en Vibes y personalizarla
-- Copias de seguridad primitivas en la nube con un historial de hasta tres versiones
+- Copias de seguridad en la nube con un historial de hasta tres versiones que almacenan nuestro historial de trabajo, preferencias y llaves configuradas
 
 ### 📢 Notas de versión
 Esta es la primera entrega que incluye notas de versión completas para estar al día con las novedades.

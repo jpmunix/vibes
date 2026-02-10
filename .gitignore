@@ -108,3 +108,4 @@ out/
 
 # Python
 __pycache__/
+userData/
