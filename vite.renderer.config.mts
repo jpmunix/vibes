@@ -20,9 +20,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  server: {
-    watch: {
-      ignored: ["**/userData/**", "**/*.db*", "**/*.db-wal", "**/*.db-shm"],
-    },
-  },
 });
