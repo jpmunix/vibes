@@ -1537,7 +1537,7 @@ This conversation includes one or more image attachments. When the user uploads 
                   logger.log(`[AGENT MODE] Added ${relevantPaths.length} relevant paths (no content) to prompt`);
                 }
               } else {
-                localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use `list_files`, `code_search`, or `grep` to explore the codebase and find the files needed to solve the task.";
+                localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find the files needed to solve the task.";
               }
             } catch (error) {
               logger.warn("[AGENT MODE] Failed to add semantic path context:", error);
