@@ -6,16 +6,22 @@ import { eq } from "drizzle-orm";
 import log from "electron-log";
 import { readSettings } from "../../main/settings";
 import { getModelClient } from "../utils/get_model_client";
-import { streamText } from "ai";
+import { streamText, TextStreamPart } from "ai";
 import { safeSend } from "../utils/safe_sender";
 import { logTokenUsage } from "../utils/token_stats_logger";
 import { getEffectivePrompt } from "../../prompts";
 
 const logger = log.scope("debate_stream_handlers");
+const activeStreams = new Map<number, boolean>();
 
 export function registerDebateStreamHandlers() {
+  ipcMain.handle("debate:abort", async (_, { debateId }) => {
+    logger.debug(`Aborting stream for debate ${debateId}`);
+    activeStreams.set(debateId, false);
+  });
+
   ipcMain.handle("debate:stream", async (event, req) => {
-    const { debateId, prompt, injectedItems } = req;
+    const { debateId, prompt, injectedItems, mode, skipSaveUserMessage } = req;
     try {
       // Notify renderer that stream is starting
       safeSend(event.sender, "debate:stream:start", { debateId });
@@ -38,27 +44,31 @@ export function registerDebateStreamHandlers() {
         content: m.content,
       }));
 
-      // Construct injected content string
-      let injectedContent = "";
+      // In regenerate mode, we use the prompt but don't save it as a new message
+      // and we don't append it to history because it should already be the last message
+      // OR if it's an edit, the user message was already updated in DB.
+
+      let userPrompt = prompt;
       if (injectedItems && injectedItems.length > 0) {
-        injectedContent = "\n\n--- CONTEXTO INYECTADO ---\n";
+        let injectedContent = "\n\n--- CONTEXTO INYECTADO ---\n";
         injectedItems.forEach((item: any) => {
           injectedContent += `[${item.type.toUpperCase()}] ${item.title}:\n${item.fragment || item.content}\n\n`;
         });
+        userPrompt += injectedContent;
       }
 
-      const userPrompt = prompt + injectedContent;
+      if (!skipSaveUserMessage) {
+        // Save user message
+        await db.insert(debateMessages).values({
+          debateId,
+          role: "user",
+          content: userPrompt,
+          injectedItems: injectedItems || [],
+        });
+      }
 
-      // Save user message
-      await db.insert(debateMessages).values({
-        debateId,
-        role: "user",
-        content: userPrompt,
-        injectedItems: injectedItems || [],
-      });
-
-      // Fetch all messages including the new user message
-      const messagesAfterUser = await db.query.debateMessages.findMany({
+      // Fetch all messages including the new (or updated) user message
+      const currentMessages = await db.query.debateMessages.findMany({
         where: eq(debateMessages.debateId, debateId),
         orderBy: (messages, { asc }) => [asc(messages.createdAt)],
       });
@@ -66,8 +76,16 @@ export function registerDebateStreamHandlers() {
       // Send updated messages to frontend
       safeSend(event.sender, "debate:response:chunk", {
         debateId,
-        messages: messagesAfterUser,
+        messages: currentMessages,
       });
+
+      // Prepare final history for LLM
+      const finalHistory = currentMessages.map((m) => ({
+        role: m.role as "user" | "assistant" | "system",
+        content: m.content,
+      }));
+
+      const messagesAfterUser = currentMessages; // Reference for chunk updates
 
       // Auto-generate title if it's a new debate
       if (
@@ -142,6 +160,7 @@ export function registerDebateStreamHandlers() {
       }
 
       const { modelClient } = await getModelClient(selectedModel, settings);
+      activeStreams.set(debateId, true);
 
       // Create placeholder assistant message
       const [assistantMsg] = await db
@@ -162,14 +181,59 @@ export function registerDebateStreamHandlers() {
             role: "system",
             content: getEffectivePrompt("debate_chat_system", settings),
           },
-          ...history,
-          { role: "user", content: userPrompt },
+          ...finalHistory,
         ],
       });
 
-      for await (const delta of result.textStream) {
-        fullResponse += delta;
+      const fullStream = result.fullStream as AsyncIterable<TextStreamPart<any>>;
+      let inThinkingBlock = false;
 
+      for await (const part of fullStream) {
+        if (activeStreams.get(debateId) === false) {
+          logger.debug(`Stream aborted for debate ${debateId}`);
+          break;
+        }
+        let chunk = "";
+
+        if (
+          inThinkingBlock &&
+          part.type !== "reasoning-delta"
+        ) {
+          chunk = "</dyad-think>\n";
+          inThinkingBlock = false;
+        }
+
+        if (part.type === "text-delta") {
+          chunk += part.text;
+        } else if (part.type === "reasoning-delta") {
+          const text = part.text;
+
+          if (!inThinkingBlock) {
+            chunk = "<dyad-think>\n";
+            inThinkingBlock = true;
+          }
+          chunk += text;
+        } else if (part.type === "error") {
+          logger.error("Error in stream part:", part.error);
+          // We continue, but loop might end
+        }
+
+        if (chunk) {
+          fullResponse += chunk;
+
+          safeSend(event.sender, "debate:response:chunk", {
+            debateId,
+            messages: [
+              ...messagesAfterUser,
+              { ...assistantMsg, content: fullResponse },
+            ],
+          });
+        }
+      }
+
+      // Close thinking block if still open
+      if (inThinkingBlock) {
+        fullResponse += "\n</dyad-think>";
         safeSend(event.sender, "debate:response:chunk", {
           debateId,
           messages: [
@@ -225,6 +289,8 @@ export function registerDebateStreamHandlers() {
         debateId: debateId,
         error: e.message,
       });
+    } finally {
+      activeStreams.delete(debateId);
     }
   });
 }

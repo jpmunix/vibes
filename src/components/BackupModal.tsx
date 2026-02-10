@@ -13,7 +13,7 @@ import { Database, Settings, BarChart3, CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import { backupClient } from "@/ipc/types/backup";
 import { storage, auth } from "@/lib/firebase";
-import { ref, uploadString } from "firebase/storage";
+import { ref, uploadString, listAll, deleteObject } from "firebase/storage";
 
 interface BackupModalProps {
     isOpen: boolean;
@@ -60,6 +60,28 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             });
 
             await Promise.all(uploadPromises);
+
+            // 3. Rotación de copias: mantener solo las 3 más recientes en la nube
+            try {
+                const backupsRootRef = ref(storage, `backups/${user.uid}`);
+                const res = await listAll(backupsRootRef);
+
+                if (res.prefixes.length > 3) {
+                    // Ordenar por nombre (los timestamps ISO se ordenan bien alfabéticamente) de antiguo a nuevo
+                    const sortedPrefixes = [...res.prefixes].sort((a, b) => a.name.localeCompare(b.name));
+
+                    // Seleccionar los que sobran (los más antiguos)
+                    const toDelete = sortedPrefixes.slice(0, sortedPrefixes.length - 3);
+
+                    for (const prefix of toDelete) {
+                        const folderRes = await listAll(prefix);
+                        const deletePromises = folderRes.items.map(item => deleteObject(item));
+                        await Promise.all(deletePromises);
+                    }
+                }
+            } catch (rotationError) {
+                console.error("Error al rotar copias antiguas:", rotationError);
+            }
 
             toast.success("Copia de seguridad subida a la nube correctamente");
             onClose();

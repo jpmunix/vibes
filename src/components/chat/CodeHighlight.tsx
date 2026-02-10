@@ -98,40 +98,48 @@ export const CodeHighlight = memo(
 
     return !isInline ? (
       <div
-        className="shiki not-prose relative [&_pre]:overflow-auto 
-      [&_pre]:rounded-lg [&_pre]:px-6 [&_pre]:py-7"
+        className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code"
       >
         {language ? (
-          <div className="absolute top-2 left-0 right-0 px-6 text-xs flex items-center gap-2 justify-between">
-            <span className="tracking-tighter text-muted-foreground/85 truncate min-w-0">
-              {language}
-            </span>
+          <div className="flex items-center justify-between px-4 py-2 bg-(--background-lighter) dark:bg-zinc-900/80 backdrop-blur-sm border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1.5 mr-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/30" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/30" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/30" />
+              </div>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/70">
+                {language}
+              </span>
+            </div>
             {code && (
               <button
-                className="flex items-center text-xs cursor-pointer flex-shrink-0"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer border border-transparent hover:border-primary/10"
                 onClick={handleCopy}
                 type="button"
               >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span className="ml-1">{copied ? "Copied" : "Copy"}</span>
+                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                <span>{copied ? "Copiado" : "Copiar"}</span>
               </button>
             )}
           </div>
         ) : null}
-        {highlighter ? (
-          <ShikiHighlighter
-            highlighter={highlighter}
-            language={language}
-            theme={isDarkMode ? "github-dark-default" : "github-light-default"}
-            delay={150}
-          >
-            {code}
-          </ShikiHighlighter>
-        ) : (
-          <pre>
-            <code>{code}</code>
-          </pre>
-        )}
+        <div className="[&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:!rounded-none [&_pre]:px-6 [&_pre]:py-4 overflow-auto max-h-[60vh]">
+          {highlighter ? (
+            <ShikiHighlighter
+              highlighter={highlighter}
+              language={language}
+              theme={isDarkMode ? "github-dark-default" : "github-light-default"}
+              delay={150}
+            >
+              {code}
+            </ShikiHighlighter>
+          ) : (
+            <pre>
+              <code>{code}</code>
+            </pre>
+          )}
+        </div>
       </div>
     ) : (
       <code className={className} {...props}>

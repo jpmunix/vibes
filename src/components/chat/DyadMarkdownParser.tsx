@@ -69,6 +69,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-supabase-table-schema",
   "dyad-supabase-project-info",
   "dyad-status",
+  "dyad-think",
 ];
 
 interface DyadMarkdownParserProps {
@@ -120,14 +121,25 @@ export const VanillaMarkdownParser = ({ content }: { content: string }) => {
   );
 };
 
+interface DyadMarkdownParserProps {
+  content: string;
+  isStreaming?: boolean;
+  chatId?: number;
+}
+
 /**
  * Custom component to parse markdown content with Dyad-specific tags
  */
 export const DyadMarkdownParser: React.FC<DyadMarkdownParserProps> = ({
   content,
+  isStreaming: forceStreaming,
+  chatId: forceChatId,
 }) => {
-  const chatId = useAtomValue(selectedChatIdAtom);
-  const isStreaming = useAtomValue(isStreamingByIdAtom).get(chatId!) ?? false;
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
+  const chatId = forceChatId ?? selectedChatId;
+  const isStreamingMap = useAtomValue(isStreamingByIdAtom);
+  const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
+
   // Extract content pieces (markdown and custom tags)
   const contentPieces = useMemo(() => {
     return parseCustomTags(content);
@@ -167,16 +179,16 @@ export const DyadMarkdownParser: React.FC<DyadMarkdownParserProps> = ({
         <React.Fragment key={index}>
           {piece.type === "markdown"
             ? piece.content && (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code: CodeHighlight,
-                    a: customLink,
-                  }}
-                >
-                  {piece.content}
-                </ReactMarkdown>
-              )
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code: CodeHighlight,
+                  a: customLink,
+                }}
+              >
+                {piece.content}
+              </ReactMarkdown>
+            )
             : renderCustomTag(piece.tagInfo, { isStreaming })}
           {index === lastErrorIndex &&
             errorCount > 1 &&
@@ -410,6 +422,7 @@ function renderCustomTag(
         </DyadWebSearchResult>
       );
     case "think":
+    case "dyad-think":
       return (
         <DyadThink
           node={{

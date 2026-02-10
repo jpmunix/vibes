@@ -105,7 +105,7 @@ export async function getModelClient(
             settings.selectedChatMode === "ask"
               ? false
               : settings.enableProLazyEditsMode &&
-                settings.proLazyEditsMode !== "v2",
+              settings.proLazyEditsMode !== "v2",
           enableSmartFilesContext,
           enableWebSearch: settings.enableProWebSearch,
         },
@@ -256,11 +256,27 @@ function getRegularModelClient(
   backupModelClients: ModelClient[];
 } {
   // Get API key for the specific provider
-  const apiKey =
+  let apiKey =
     settings.providerSettings?.[model.provider]?.apiKey?.value ||
     (providerConfig.envVarName
       ? getEnvVar(providerConfig.envVarName)
       : undefined);
+
+  // Special handling for OpenRouter multiple keys
+  if (model.provider === "openrouter") {
+    const openRouterSettings = settings.providerSettings?.openrouter as any;
+    if (
+      openRouterSettings?.selectedKeyId &&
+      openRouterSettings?.keys?.length > 0
+    ) {
+      const selectedKey = openRouterSettings.keys.find(
+        (k: any) => k.id === openRouterSettings.selectedKeyId,
+      );
+      if (selectedKey?.key?.value) {
+        apiKey = selectedKey.key.value;
+      }
+    }
+  }
 
   const providerId = providerConfig.id;
   // Create client based on provider ID or type
@@ -324,9 +340,9 @@ function getRegularModelClient(
         baseURL,
         googleAuthOptions: serviceAccountKey
           ? {
-              // Expecting the user to paste the full JSON of the service account key
-              credentials: JSON.parse(serviceAccountKey),
-            }
+            // Expecting the user to paste the full JSON of the service account key
+            credentials: JSON.parse(serviceAccountKey),
+          }
           : undefined,
       });
       return {

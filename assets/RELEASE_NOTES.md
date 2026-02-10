@@ -1,22 +1,39 @@
 ## 🔥 Novedades principales
 
-### 📝 Notas de resumen de desarrollo en el tablero de tareas (kanban)
-Ahora si envías a desarrollar una tarea de tu tablero kanban y la marcas como completada en el chat, además de sincronizar el estado como completado te generará un resumen de desarrollo en la propia tarea. En la card verás un pequeño icono de bot azul que indica que hay notas
+### 📝 Resumen automático de desarrollo en el tablero Kanban
+Cuando envíes una tarea del kanban a desarrollo y la marques como completada desde el chat, ahora:
+- Se sincroniza su estado como *completado*.
+- Se genera un resumen automático de desarrollo dentro de la tarjeta.
+- Verás un ícono azul de bot indicando que la card tiene notas generadas.
 
-### ✅ Subtareas en el kanban
-Ahora podrás añadir subtareas a tus tarjetas de kanban para organizar mejor tus tareas y mejorar la visibilidad de tus proyectos. Además el Smart Import si detecta subtareas las añadirá automáticamente a tus tarjetas.
+### ✅ Subtareas en el Kanban
+Ahora puedes añadir subtareas a tus tarjetas para mejorar la organización y la visibilidad de tus proyectos.  
+Además, **Smart Import** detecta subtareas automáticamente y las añade a tus cards.
 
-### 🔑 Múltiples keys de OpenRouter
-Si necesitas trabajar en tus proyectos personales y en los del trabajo puedes gestionar los gastos por separado. Además desde el botón de crédito restante podrás ver tu gasto total, el dinero restante y el total recargado a lo largo del tiempo
+### 🔑 Soporte para múltiples API keys de OpenRouter
+Perfecto si trabajas con proyectos personales y laborales:
+- Gestiona los gastos por separado usando varias keys.
+- Desde el panel de crédito restante puedes ver tu gasto total, saldo disponible y el histórico recargado.
+
+### 💬 Mejoras en Debates
+- Edición y reenvío de mensajes.
+- Etiquetas para organizar tus chats.
+- Botón para detener respuestas en generación.
+- Optimización de la velocidad de respuesta.
 
 ### 📑 Nueva sección de documentación
-Aprende a sacarle todo el partido a vibes a través de su documentación
+Consulta la nueva documentación para aprender a sacarle todo el potencial a Vibes.
+
+### 🧠 Nuevo modelo
+- Se ha añadido Grok 4.1 Fast con un contexto de 2 millones de tokens
 
 ### 👤 Registro de usuario
-¡Ahora puedes registrarte en vibes! En el futuro podrás guardar una copia de seguridad de tus datos
+- Ya puedes crear una cuenta en Vibes y personalizarla  
+- Copias de seguridad primitivas en la nube con un historial de hasta tres versiones
 
-### 📢 Novedades de la versión
-Esta es la primera versión que tiene notas de versión para aprender de todas las novedades
+### 📢 Notas de versión
+Esta es la primera entrega que incluye notas de versión completas para estar al día con las novedades.
 
 ---
-#### ✨ ¡Disfruta las vibraciones! ✨ 
+
+#### ✨ ¡Disfruta las vibraciones! ✨

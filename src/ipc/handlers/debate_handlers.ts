@@ -5,7 +5,7 @@ import {
   debateTags,
   debateToTags,
 } from "../../db/schema";
-import { desc, eq, and } from "drizzle-orm";
+import { desc, eq, and, gt } from "drizzle-orm";
 import log from "electron-log";
 import { createTypedHandler } from "./base";
 import { debateContracts } from "../types/debate";
@@ -108,6 +108,15 @@ export function registerDebateHandlers() {
     await db.delete(debateMessages).where(eq(debateMessages.id, messageId));
   });
 
+  createTypedHandler(debateContracts.deleteMessagesAfter, async (_, { debateId, messageId }) => {
+    await db.delete(debateMessages).where(
+      and(
+        eq(debateMessages.debateId, debateId),
+        gt(debateMessages.id, messageId)
+      )
+    );
+  });
+
   createTypedHandler(
     debateContracts.updateMessage,
     async (_, { id, content, injectedItems }) => {
@@ -156,6 +165,13 @@ export function registerDebateHandlers() {
         );
     },
   );
+
+  createTypedHandler(debateContracts.deleteTag, async (_, { tagId }) => {
+    // Delete the tag itself. Associations in debateToTags should be handled by 
+    // ON DELETE CASCADE if defined, or we can delete them manually.
+    await db.delete(debateToTags).where(eq(debateToTags.tagId, tagId));
+    await db.delete(debateTags).where(eq(debateTags.id, tagId));
+  });
 
   createTypedHandler(debateContracts.summarizeDebate, async (_, debateId) => {
     const debate = await db.query.debates.findFirst({

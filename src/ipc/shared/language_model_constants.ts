@@ -157,6 +157,17 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       dollarSigns: 2,
       brainSigns: 2,
     },
+    {
+      name: "x-ai/grok-4.1-fast",
+      displayName: "Grok 4.1 Fast",
+      description:
+        "Velocidad extrema y razonamiento agudo con una ventana de contexto de 2M; el futuro del tiempo real de xAI.",
+      maxOutputTokens: 30_000,
+      contextWindow: 2_000_000,
+      temperature: 0,
+      dollarSigns: 1,
+      brainSigns: 1,
+    },
   ],
 };
 

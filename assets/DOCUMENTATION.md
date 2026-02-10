@@ -1,11 +1,5 @@
-# Documentación de Minube Vibes
-
-¡Bienvenido a la documentación oficial de Vibes! Esta guía detalla las principales funcionalidades y herramientas disponibles para potenciar tu desarrollo con inteligencia artificial.
-
 ## 🚀 Gestión de Aplicaciones (Apps)
-
 Vibes te permite crear, desarrollar y desplegar aplicaciones de forma integral.
-
 - **Creación desde Plantillas**: Inicia proyectos rápidamente usando plantillas preconfiguradas.
 - **Panel de Previsualización**: Visualiza tu aplicación en tiempo real mientras realizas cambios.
 - **Consola Integrada**: Monitorea la salida de tu aplicación y depura errores directamente.
@@ -15,68 +9,74 @@ Vibes te permite crear, desarrollar y desplegar aplicaciones de forma integral.
 - **Controles móviles**: Soporte para Capacitor, permitiendo previsualizar y configurar tu app para plataformas móviles.
 
 ## 💬 Chat e Inteligencia Artificial
-
 El corazón de Vibes es su potente sistema de chat, diseñado específicamente para programadores.
-
 - **Selección de Modelos**: Acceso a los mejores modelos del mercado a través de OpenRouter.
 - **Auto-Router**: Deja que Vibes elija el modelo más eficiente para cada tarea.
 - **Contexto del Código**: El chat tiene conocimiento de tu codebase. Puedes añadir archivos específicos al contexto para consultas precisas.
 - **Herramientas Avanzadas**:
-    - **Web Search**: Búsqueda en internet para obtener información actualizada utilizando tu api de serper.dev.
-    - **Code Search con Grep e inteligencia artificial**: Busca patrones y archivos en todo tu proyecto gracias a la integración de MiniLM.
-    - **Execute SQL**: Ejecuta consultas directamente en tus bases de datos integradas.
+  - **Web Search**: Búsqueda en internet para obtener información actualizada utilizando tu API de serper.dev.
+  - **Code Search con Grep e inteligencia artificial**: Busca patrones y archivos en todo tu proyecto gracias a la integración de MiniLM.
+  - **Execute SQL**: Ejecuta consultas directamente en tus bases de datos integradas.
 - **Presupuesto de "Pensamiento"**: Controla el límite de tokens de razonamiento (`Thinking Budget`) para modelos avanzados.
 - **Resumen Diario y Logs**:
-    - **Botón de Resumen**: Genera un resumen de tus avances del día.
-    - **Panel de Logs**: Accede a los logs detallados de las interacciones con la IA para depuración avanzada.
-    - **Resumir en Nuevo Chat**: Limpia el historial manteniendo lo esencial en una nueva conversación.
+  - **Botón de Resumen**: Genera un resumen de tus avances del día.
+  - **Panel de Logs**: Accede a los logs detallados de las interacciones con la IA para depuración avanzada.
+  - **Resumir en Nuevo Chat**: Limpia el historial manteniendo lo esencial en una nueva conversación.
 
 ## 📝 Notas y Tareas
-
 Herramientas integradas para organizar tu flujo de trabajo sin salir de la app.
-
 - **Editor de Notas**: Un espacio para guardar fragmentos de código, ideas o documentación personal.
 - **Tablero de Tareas (Todos/Kanban)**: Gestiona tus tareas pendientes de forma visual y organizada en listas personalizables.
-- **Smart Import (Detección Inteligente)**: No pierdas tiempo transcribiendo requerimientos. Vibes puede analizar archivos externos y crear automáticamente una lista de tareas estructurada:
-    - **Formatos soportados**: Documentos PDF, Microsoft Word (.docx), archivos de texto (.txt) e incluso imágenes con texto.
-    - **Cómo usarlo**: Haz clic en el botón `Smart Import` dentro de cualquier tablero de tareas y selecciona los archivos. La IA detectará los objetivos, las descripciones y el estado, creando una nueva sección con todo organizado.
-- **Análisis Inteligente de Tareas**: Usa IA para desglosar tareas complejas o refinar los prompts de desarrollo para cada tarea individualmente.
+- **Subtareas en el Kanban**: Puedes añadir subtareas dentro de cada tarjeta para una mejor estructuración.  
+  Smart Import detecta y genera estas subtareas automáticamente.
+- **Resumen Automático de Desarrollo**:  
+  Cuando muevas una tarjeta del kanban a desarrollo y la completes desde el chat:
+  - Su estado se marcará como *completado* automáticamente.
+  - Se generará un resumen automático de desarrollo dentro de la tarjeta.
+  - Un ícono azul de bot indicará que la card contiene notas generadas.
+- **Smart Import (Detección Inteligente)**: Vibes puede analizar archivos externos y crear automáticamente una lista de tareas estructurada:
+  - **Formatos soportados**: PDF, Word (.docx), texto (.txt) e imágenes con texto.
+  - **Cómo usarlo**: Desde cualquier tablero de tareas, haz clic en `Smart Import` y selecciona tus archivos.
+- **Análisis Inteligente de Tareas**: Usa IA para desglosar tareas complejas o refinar prompts de desarrollo.
 
 ## ⚖️ Debates
-
 Pon a prueba tus ideas o arquitecturas con la función de Debates.
-
-- **Multimodelo**: Configura desde los ajustes el modelo que mejor se adapte a tu manera de trabajar
+- **Multimodelo**: Configura desde los ajustes el modelo que mejor se adapte a tu manera de trabajar.
 - **Resumen de Debate**: Obtén una síntesis de las conclusiones alcanzadas por los agentes.
+- **Mejoras adicionales**:
+  - Edición y reenvío de mensajes.
+  - Etiquetas para organizar tus chats.
+  - Botón para detener respuestas en generación.
+  - Optimización de la velocidad de respuesta.
 
 ## ⚙️ Configuración y Personalización
-
 El panel de Ajustes permite adaptar Vibes a tu flujo de trabajo específico:
-
-- **Configuración de Modelos por Tarea**: Puedes elegir modelos específicos para diferentes funciones desde la sección de OpenRouter:
-    - **Turbo Edits**: Optimiza la velocidad de edición de archivos.
-    - **Análisis de Tareas**: Modelo especializado en extraer requerimientos de archivos adjuntos.
-    - **Debates y Resúmenes**: Configura qué IA lidera la discusión y cuál sintetiza los resultados.
+- **Configuración de Modelos por Tarea**:
+  - **Turbo Edits**: Optimiza la velocidad de edición de archivos.
+  - **Análisis de Tareas**: Modelo especializado en extraer requerimientos de archivos adjuntos.
+  - **Debates y Resúmenes**: Configura qué IA lidera la discusión y cuál sintetiza los resultados.
+- **Soporte para múltiples API keys de OpenRouter**:
+  - Útil para separar ambientes personales y laborales.
+  - Desde el panel de crédito restante puedes visualizar gasto total, saldo disponible e histórico de recargas.
 - **Comportamiento del Asistente**:
-    - **Idioma de Preferencia**: Fuerza al asistente a responder siempre en el idioma elegido.
-    - **Smart Context Local**: Habilita el ranking de archivos relevantes de forma local para mayor privacidad.
-    - **Turnos Máximos**: Controla la longitud de las conversaciones para optimizar el consumo.
+  - **Idioma de Preferencia**: Fuerza al asistente a responder siempre en el idioma elegido.
+  - **Smart Context Local**: Ranking local de archivos relevantes para máxima privacidad.
+  - **Turnos Máximos**: Controla la longitud de las conversaciones.
 
 ## 🗂️ Organización y Productividad
+Vibes incluye herramientas diseñadas para que tu historial de trabajo sea útil a largo plazo.
+- **Títulos Automáticos (Auto-titles)**: Genera nombres descriptivos para tus nuevos chats automáticamente.
+- **Exportar Chat a Nota**: Guarda cualquier conversación como nota persistente para consulta futura.
+- **Vaciado de Chat**: Limpia los mensajes visibles sin borrar la conversación del historial.
 
-Vibes incluye herramientas para que tu historial de trabajo sea útil a largo plazo:
-
-- **Títulos Automáticos (Auto-titles)**: Olvídate de los "Nuevo chat". Vibes utiliza IA para generar títulos descriptivos y objetivos basados en el contenido de tu primera pregunta, manteniendo tu panel lateral siempre organizado.
-- **Exportar Chat a Nota**: ¿Has llegado a una solución brillante o una investigación útil? Usa el botón **Guardar Nota** en el menú de opciones del chat para convertir toda la conversación en una nota persistente. Esto permite:
-    - Consultar soluciones técnicas más tarde.
-    - Editar y refinar la información en el editor de notas.
-    - Mantener un registro limpio de decisiones arquitectónicas.
-- **Vaciado de Chat**: Limpia los mensajes de un chat actual sin borrar la conversación del historial, ideal para empezar de cero sobre el mismo contexto.
+## 👤 Registro de Usuario
+- Puedes crear una cuenta en Vibes y personalizar tu entorno de trabajo.
+- Dispones de **copias de seguridad primitivas en la nube**, con un historial de hasta tres versiones.
 
 ## ⚙️ Ajustes de Sistema
-
-- **Consumo de Créditos**: Monitoriza tu gasto en OpenRouter en tiempo real desde el sidebar.
-- **Logs Técnicos**: Activa los logs verbosos en ajustes para ver exactamente qué está enviando y recibiendo el asistente en cada turno.
+- **Consumo de Créditos**: Monitoriza el gasto en OpenRouter en tiempo real.
+- **Logs Técnicos**: Activa logs verbosos para ver exactamente qué envía y recibe el asistente.
 
 ---
+
 *Esta documentación se actualiza dinámicamente con las nuevas funcionalidades de la plataforma.*
