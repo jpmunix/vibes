@@ -21,6 +21,7 @@ import {
   isSelectingModelByIdAtom,
 } from "./atoms/chatAtoms";
 import { queryKeys } from "./lib/queryKeys";
+import { useBackupScheduler } from "./hooks/useBackupScheduler";
 
 // @ts-ignore
 console.log("Running in mode:", import.meta.env.MODE);
@@ -98,6 +99,8 @@ const posthogClient = posthog.init(
 );
 
 function App() {
+  useBackupScheduler();
+
   useEffect(() => {
     // Subscribe to navigation state changes
     const unsubscribe = router.subscribe("onResolved", (navigation) => {

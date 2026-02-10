@@ -108,12 +108,12 @@
   "autoFixMaxIssues": 5,
   "isRunning": true,
   "lastKnownPerformance": {
-    "timestamp": 1770743963301,
-    "memoryUsageMB": 517,
-    "cpuUsagePercent": 7.82,
-    "systemMemoryUsageMB": 25991,
+    "timestamp": 1770745509260,
+    "memoryUsageMB": 382,
+    "cpuUsagePercent": 2.07,
+    "systemMemoryUsageMB": 25806,
     "systemMemoryTotalMB": 64190,
-    "systemCpuPercent": 44.62
+    "systemCpuPercent": 21.04
   },
   "chatLanguage": "es",
   "serperApiKey": {
