@@ -1,6 +1,6 @@
 import { z } from "zod";
 import log from "electron-log";
-import { ToolDefinition, AgentContext, escapeXmlAttr } from "./types";
+import { ToolDefinition, AgentContext, escapeXmlAttr, escapeXmlContent } from "./types";
 import { readSettings } from "@/main/settings";
 
 const logger = log.scope("web_search");
@@ -97,6 +97,22 @@ async function callSerperSearch(
     }
     if (data.knowledgeGraph.description) {
       result += `${data.knowledgeGraph.description}\n`;
+    }
+    result += "\n";
+  }
+
+  // Add people also ask if present
+  if (data.peopleAlsoAsk && Array.isArray(data.peopleAlsoAsk)) {
+    result += "## Preguntas frecuentes:\n\n";
+    for (const item of data.peopleAlsoAsk.slice(0, 3)) {
+      result += `### ${item.question}\n`;
+      if (item.snippet) {
+        result += `${item.snippet}\n`;
+      }
+      if (item.link) {
+        result += `[Leer más](${item.link})\n`;
+      }
+      result += "\n";
     }
   }
 
