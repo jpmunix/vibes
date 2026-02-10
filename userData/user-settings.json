@@ -1,0 +1,127 @@
+{
+  "selectedModel": {
+    "name": "google/gemini-3-flash-preview",
+    "provider": "openrouter"
+  },
+  "providerSettings": {
+    "openrouter": {
+      "keys": [
+        {
+          "id": "97b3f591-e309-48ce-9b29-e81a86d44620",
+          "key": {
+            "value": "djExX3a78YiZdM/R8ctCeFRXqwmEdx3lS+65SriAdPTOoQa2yMalmyuY59R+bmU/MyShbpCvgDH5K8VHLqqzbqBs6YQT6h0ju4wBis6U/nMDUPY=",
+            "encryptionType": "electron-safe-storage"
+          },
+          "alias": "Personal"
+        },
+        {
+          "id": "ed5b6674-258b-41b7-963b-4605579fbb03",
+          "key": {
+            "value": "djExLsjqmjIQ/Hc/7E99hSZ8l37EqRv7ir5saKvdHI/EmXeZ+X7O+ddJpWDZrqz4go83MK136dNU3b+Z5Ue72oVOMknHHm3xosDHl/ZiTnn6WKM=",
+            "encryptionType": "electron-safe-storage"
+          },
+          "alias": "Minube"
+        },
+        {
+          "id": "9ecbc9d1-edb3-459b-861d-ae62b19f9a47",
+          "key": {
+            "value": "djExcNvo73rKMuYE26UlNhFL284fVD9mF2Ohl9LrQmlwUxD+cMn3yE9wuSrh6O9ty04ZRlMYE2/bm/E7ZlcjnxOz+3sq+8J+e9S/RTWiJrw17Cw=",
+            "encryptionType": "electron-safe-storage"
+          },
+          "alias": "Test"
+        }
+      ],
+      "selectedKeyId": "ed5b6674-258b-41b7-963b-4605579fbb03"
+    }
+  },
+  "turboEditModel": "google/gemini-3-flash-preview",
+  "appTitleGenerationModel": "openai/gpt-4.1-mini",
+  "todoAnalysisModel": "google/gemini-3-flash-preview",
+  "debateModel": "x-ai/grok-4.1-fast",
+  "summaryModel": "openai/gpt-5-mini",
+  "agentToolConsents": {
+    "add_dependency": "always",
+    "execute_sql": "always",
+    "web_search": "always"
+  },
+  "githubUser": {
+    "email": "pablo@minube.com"
+  },
+  "githubAccessToken": {
+    "value": "djExtWFTKhgKG0uTovCG7/PVQUdi7oHeu3nKkHBm/5FrFLpzptGGuyGfkqi9RsCDUbub",
+    "encryptionType": "electron-safe-storage"
+  },
+  "vercelAccessToken": {
+    "value": "djExjyQ3XBBlElTlIN5eItO/VyKokZZXJ/somjIJrzdQLLk=",
+    "encryptionType": "electron-safe-storage"
+  },
+  "supabase": {
+    "organizations": {
+      "lkyvjhdfmgqdxtywhyru": {
+        "accessToken": {
+          "value": "djExj3tHKOQydsEyIgvH1jTaRiSEL4R3wu260rbhIK8fMdX47cRKCdzTMrcqfYgilwJ3gmuDRMRqwQHfPGgXiZgepw==",
+          "encryptionType": "electron-safe-storage"
+        },
+        "refreshToken": {
+          "value": "djExvzn80gCTxbP4ruBW0Py8Wkkc36WOxwot7a14/7/Z5FQ=",
+          "encryptionType": "electron-safe-storage"
+        },
+        "expiresIn": 86400,
+        "tokenTimestamp": 1770672545
+      }
+    }
+  },
+  "autoApproveChanges": true,
+  "telemetryConsent": "unset",
+  "telemetryUserId": "ca9b7fe5-710e-4704-9644-dd3d898012b0",
+  "hasRunBefore": true,
+  "experiments": {},
+  "lastShownReleaseNotesVersion": "2.7",
+  "maxChatTurnsInContext": 2,
+  "enableProLazyEditsMode": true,
+  "enableTurboEditsV2": true,
+  "enableProSmartFilesContextMode": true,
+  "enableLocalSmartContext": true,
+  "enableMcpSmartContext": false,
+  "enableTokenStats": true,
+  "enableVerboseChatLogs": true,
+  "enableChatCompletionNotifications": true,
+  "enableGithubAutoCommit": false,
+  "selectedTemplateId": "react",
+  "selectedThemeId": "default",
+  "selectedChatMode": "build",
+  "defaultChatMode": "local-agent",
+  "zoomLevel": "100",
+  "enableAutoFixProblems": false,
+  "enableBackgroundProblemAutoFix": false,
+  "autoExpandPreviewPanel": false,
+  "showTokenBar": true,
+  "enableNativeGit": true,
+  "enableAutoUpdate": true,
+  "releaseChannel": "stable",
+  "autoFixModel": {
+    "name": "google/gemini-3-flash-preview",
+    "provider": "openrouter"
+  },
+  "autoFixMaxDurationMs": 20000,
+  "autoFixMaxAttempts": 1,
+  "autoFixMaxIssues": 5,
+  "isRunning": true,
+  "lastKnownPerformance": {
+    "timestamp": 1770743242718,
+    "memoryUsageMB": 492,
+    "cpuUsagePercent": 0.09,
+    "systemMemoryUsageMB": 28651,
+    "systemMemoryTotalMB": 64190,
+    "systemCpuPercent": 23.07
+  },
+  "chatLanguage": "es",
+  "serperApiKey": {
+    "value": "3005f4373b6a6a178b985eb3633d8a4f3c4472c0"
+  },
+  "themeIntensity": 0.58,
+  "customPrompts": {
+    "todo_analysis": "Analiza el contenido proporcionado (Fotos, Word, PDF, TXT o Markdown) y extrae una lista de tareas de desarrollo con precisión extrema.\nTu misión es realizar una ingeniería inversa del contenido para generar un backlog de tareas accionables.\n\nANÁLISIS MULTIMODAL (Imágenes/Capturas/CMS):\n- Sé MEGA PRECISO: Si es una captura de pantalla de un software (CMS, Dashboard, Web):\n  - Detecta la FUNDACIÓN: Identifica qué sistema es (ej: 'CMS de gestión de contenidos', 'Panel de administración de usuarios') y su arquitectura base.\n  - Identifica TODOS los elementos: botones, inputs, modales, tablas, menús, estados, validaciones.\n  - Transforma cada componente visual en una tarea técnica (ej: 'Replicar tabla de estadísticas con ordenación', 'Implementar logout en sidebar').\n  - No dejes nada fuera: si aparece en la imagen, es un requerimiento potencial.\n\nINSTRUCCIONES DE EXTRACCIÓN:\n1. Identificación de tareas:\n- Ítems con checkboxes [ ] o [x], listas de 'Tareas', subtareas, y acciones implícitas ejecutables.\n- Elementos de UI: Convierte cada widget o funcionalidad detectada en una tarea.\n- Ignora: Texto descriptivo sin carga funcional o técnica.\n\n2. Estado de la tarea:\n- 'completed: true' si tiene [x], tachado, o visualmente indica 'hecho'.\n- 'completed: false' si tiene [ ] o no hay indicador de progreso.\n\n3. Normalización y Estructura:\n- Frases claras, cortas y PROFESIONALES. Elimina redundancias.\n- Si una tarea depende claramente de una fase o módulo, inclúyelo entre paréntesis: '(Auth) Añadir recuperación de contraseña'.\n\n4. Criterios Editoriales:\n- Mega precisión: No resumas, transporta la información técnica íntegra.\n- No añadas tareas fuera de contexto, pero sí deduce las subtareas lógicas para completar una acción principal detectada.\n- Respuesta en español técnico puro.\n\n5. Formato de salida (OBLIGATORIO):\nResponde ÚNICAMENTE en JSON con esta estructura (sin bloques de código):\n{ \"listTitle\": \"Título (ej: Arquitectura CMS / Plan de Proyecto)\", \"tasks\": [ { \"content\": \"Tarea\", \"description\": \"Detalles técnicos exhaustivos extraídos\", \"completed\": true|false } ] }",
+    "debate_summary_system": "Resume el siguiente debate de forma concisa pero capturando los puntos clave. Devuelve el resumen en formato Markdown con secciones claras."
+  }
+}

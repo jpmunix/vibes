@@ -60,7 +60,7 @@ import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 import { AppSearchResult } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
-import { openRouterCompletion } from "../utils/openrouter";
+import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 
 import { getAppPort } from "../../../shared/ports";
@@ -255,8 +255,7 @@ async function executeAppLocalNode({
       .join(", ");
 
     logger.error(
-      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -560,8 +559,7 @@ RUN npm install -g pnpm
       .join(", ");
 
     logger.error(
-      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -1218,7 +1216,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-            error,
+          error,
         );
       }
     }
@@ -1978,7 +1976,7 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
     const settings = readSettings();
-    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+    if (!hasOpenRouterApiKey()) {
       logger.warn(
         "OpenRouter API key not found, using cute app name as fallback",
       );
@@ -2021,7 +2019,7 @@ export function registerAppHandlers() {
     appContracts.generateAppTitleFromHistory,
     async (_, { appId }) => {
       const settings = readSettings();
-      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+      if (!hasOpenRouterApiKey()) {
         logger.warn(
           "OpenRouter API key not found, using cute app name as fallback",
         );

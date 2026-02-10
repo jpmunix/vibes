@@ -98,6 +98,7 @@ import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
 import { buildCodebaseXml } from "../utils/local_ranker";
 import { getSemanticContext } from "../utils/semantic_context";
+import { getIncrementalIndexer } from "../utils/file_watcher";
 import {
   isDyadProEnabled,
   isBasicAgentMode,
@@ -723,14 +724,14 @@ ${componentSnippet}
         // we handle this specially below.
         const chatContext =
           req.selectedComponents &&
-          req.selectedComponents.length > 0 &&
-          !isSmartContextEnabled
+            req.selectedComponents.length > 0 &&
+            !isSmartContextEnabled
             ? {
-                contextPaths: req.selectedComponents.map((component) => ({
-                  globPath: component.relativePath,
-                })),
-                smartContextAutoIncludes: [],
-              }
+              contextPaths: req.selectedComponents.map((component) => ({
+                globPath: component.relativePath,
+              })),
+              smartContextAutoIncludes: [],
+            }
             : validateChatContext(updatedChat.app.chatContext);
 
         // Skip codebase extraction for summarize intent to save tokens
@@ -1011,10 +1012,10 @@ ${componentSnippet}
             (settings.selectedChatMode === "local-agent"
               ? ""
               : await getSupabaseContext({
-                  supabaseProjectId: updatedChat.app.supabaseProjectId,
-                  organizationSlug:
-                    updatedChat.app.supabaseOrganizationSlug ?? null,
-                }));
+                supabaseProjectId: updatedChat.app.supabaseProjectId,
+                organizationSlug:
+                  updatedChat.app.supabaseOrganizationSlug ?? null,
+              }));
         } else if (
           // Neon projects don't need Supabase.
           !updatedChat.app?.neonProjectId &&
@@ -1094,32 +1095,32 @@ This conversation includes one or more image attachments. When the user uploads 
 
         const codebasePrefix = isEngineEnabled
           ? // No codebase prefix if engine is set, we will take of it there.
-            []
+          []
           : ([
-              {
-                role: "user",
-                content: createCodebasePrompt(codebaseInfo),
-              },
-              {
-                role: "assistant",
-                content: "OK, got it. I'm ready to help",
-              },
-            ] as const);
+            {
+              role: "user",
+              content: createCodebasePrompt(codebaseInfo),
+            },
+            {
+              role: "assistant",
+              content: "OK, got it. I'm ready to help",
+            },
+          ] as const);
 
         // If engine is enabled, we will send the other apps codebase info to the engine
         // and process it with smart context.
         const otherCodebasePrefix =
           otherAppsCodebaseInfo && !isEngineEnabled
             ? ([
-                {
-                  role: "user",
-                  content: createOtherAppsCodebasePrompt(otherAppsCodebaseInfo),
-                },
-                {
-                  role: "assistant",
-                  content: "OK.",
-                },
-              ] as const)
+              {
+                role: "user",
+                content: createOtherAppsCodebasePrompt(otherAppsCodebaseInfo),
+              },
+              {
+                role: "assistant",
+                content: "OK.",
+              },
+            ] as const)
             : [];
 
         const limitedHistoryChatMessages = limitedMessageHistory.map((msg) => ({
@@ -1519,100 +1520,32 @@ This conversation includes one or more image attachments. When the user uploads 
           let localAgentSystemPrompt = systemPrompt;
 
           if (!isSummarizeIntent) {
+            // AGENT MODE OPTIMIZATION: Start with minimal codebase context to save tokens.
+            // The agent is instructed to use tools (read_file, code_search, grep, etc.)
+            // to explore the codebase agentically.
             try {
-              const chatContext = validateChatContext(
-                updatedChat.app.chatContext,
-              );
-              logger.log(
-                `[AGENT MODE] Extracting codebase from ${appPath} with chatContext:`,
-                chatContext,
-              );
-              const { files } = await extractCodebase({
-                appPath,
-                chatContext,
-              });
-              logger.log(
-                `[AGENT MODE] Extracted ${files.length} files from codebase`,
-              );
-
-              // Use semantic search if enabled (default: true)
               const useSemanticSearch = settings.enableSemanticSearch !== false;
-              logger.log(
-                `[AGENT MODE] useSemanticSearch: ${useSemanticSearch}, files: ${files.length}`,
-              );
+              if (useSemanticSearch) {
+                logger.log("[AGENT MODE] Searching for relevant paths using semantic index...");
+                const indexer = getIncrementalIndexer(appPath);
+                const index = indexer.getIndex();
+                // We only get paths, NO content. This is extremely token-efficient.
+                const relevantPaths = await index.search(req.prompt, 15);
 
-              if (useSemanticSearch && files.length > 0) {
-                const maxFiles = settings.maxContextFiles ?? 20;
-                logger.log(
-                  `[AGENT MODE] Starting smart context with maxFiles: ${maxFiles}`,
-                );
-                let ranked: CodebaseFile[] | null = null;
-
-                // Try MCP ranking first if enabled
-                if (settings.enableMcpSmartContext) {
-                  logger.log(
-                    `[AGENT MODE] Attempting MCP ranking for ${files.length} files...`,
-                  );
-                  ranked = await tryMcpRankFiles({
-                    prompt: req.prompt,
-                    files,
-                    maxResults: maxFiles,
-                  });
-                  if (ranked) {
-                    logger.log(
-                      `[AGENT MODE] ✓ MCP ranking succeeded: ${ranked.length} files`,
-                    );
-                    logger.log(
-                      `[AGENT MODE] MCP selected files: ${ranked.map((f) => f.path).join(", ")}`,
-                    );
-                  } else {
-                    logger.log(`[AGENT MODE] ✗ MCP ranking returned null`);
-                  }
-                }
-
-                // If MCP didn't work, try semantic search
-                if (!ranked) {
-                  logger.log(
-                    `[AGENT MODE] Attempting semantic search using mini model (all-MiniLM-L6-v2)...`,
-                  );
-                  ranked = await getSemanticContext({
-                    appPath,
-                    prompt: req.prompt,
-                    files,
-                    maxFiles,
-                    useSemanticSearch: true,
-                    buildIndexIfNeeded: true,
-                  });
-                  logger.log(
-                    `[AGENT MODE] ✓ Semantic search completed: ${ranked.length} files selected`,
-                  );
-                  logger.log(
-                    `[AGENT MODE] Semantically selected files: ${ranked.map((f) => f.path).join(", ")}`,
-                  );
-                }
-
-                if (ranked && ranked.length > 0) {
-                  const codebaseInfo = buildCodebaseXml(ranked);
-                  localAgentSystemPrompt += `\n\n# Relevant Codebase Context\nBased on your prompt, here are the most relevant files in the codebase. You can use the read_file and other tools to explore additional files as needed.\n\n${codebaseInfo}`;
-                  logger.log(
-                    `[AGENT MODE] Added ${ranked.length} files to system prompt as initial context`,
-                  );
+                if (relevantPaths.length > 0) {
+                  localAgentSystemPrompt += `\n\n# Potential Relevant Files\nBased on your request, these files might be relevant. Use the \`read_file\` tool to examine those you need:\n${relevantPaths.map(p => `- ${p}`).join("\n")}`;
+                  logger.log(`[AGENT MODE] Added ${relevantPaths.length} relevant paths (no content) to prompt`);
                 }
               } else {
-                logger.log(
-                  `[AGENT MODE] Semantic search disabled or no files available`,
-                );
+                localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find the files needed to solve the task.";
               }
             } catch (error) {
-              // Best-effort: if semantic context fails, continue without it
-              logger.warn(
-                "[AGENT MODE] Failed to add semantic context to Agente inteligente:",
-                error,
-              );
+              logger.warn("[AGENT MODE] Failed to add semantic path context:", error);
+              localAgentSystemPrompt += "\n\n# Codebase Context\nUse your tools to explore the codebase and find the files needed to solve the task.";
             }
           } else {
             logger.log(
-              `[AGENT MODE] Skipping codebase extraction for summarize intent`,
+              `[AGENT MODE] Skipping codebase context for summarize intent`,
             );
           }
 
@@ -1932,11 +1865,11 @@ ${formattedSearchReplaceIssues}`,
                 }
                 fullResponse += `<dyad-problem-report summary="${problemReport.problems.length} problems">
 ${problemReport.problems
-  .map(
-    (problem) =>
-      `<problem file="${escapeXmlAttr(problem.file)}" line="${problem.line}" column="${problem.column}" code="${problem.code}">${escapeXmlContent(problem.message)}</problem>`,
-  )
-  .join("\n")}
+                    .map(
+                      (problem) =>
+                        `<problem file="${escapeXmlAttr(problem.file)}" line="${problem.line}" column="${problem.column}" code="${problem.code}">${escapeXmlContent(problem.message)}</problem>`,
+                    )
+                    .join("\n")}
 </dyad-problem-report>`;
 
                 logger.info(

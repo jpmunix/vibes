@@ -92,14 +92,14 @@ typings/
 # Webpack
 .webpack/
 
+embeddings-indexes
+
 # Vite
 .vite/
 
 # Electron-Forge
 out/
 
-sqlite.db
-userData/
 .env.local
 .idea/
 

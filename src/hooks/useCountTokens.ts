@@ -6,9 +6,12 @@ import {
 import { ipc, type TokenCountResult } from "@/ipc/types";
 import { useCallback, useEffect, useState } from "react";
 import { queryKeys } from "@/lib/queryKeys";
+import { useSettings } from "./useSettings";
 
 export function useCountTokens(chatId: number | null, input: string = "") {
   const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const selectedChatMode = settings?.selectedChatMode || "build";
 
   // Debounce input so we don't call the token counting IPC on every keystroke.
   const [debouncedInput, setDebouncedInput] = useState(input);
@@ -33,12 +36,17 @@ export function useCountTokens(chatId: number | null, input: string = "") {
     error,
     refetch,
   } = useQuery<TokenCountResult | null>({
-    queryKey: queryKeys.tokenCount.forChat({ chatId, input: debouncedInput }),
+    queryKey: queryKeys.tokenCount.forChat({
+      chatId,
+      input: debouncedInput,
+      chatMode: selectedChatMode,
+    }),
     queryFn: async () => {
       if (chatId === null) return null;
       return ipc.chat.countTokens({
         chatId,
         input: debouncedInput,
+        chatMode: selectedChatMode,
       });
     },
     placeholderData: keepPreviousData,
@@ -58,3 +66,4 @@ export function useCountTokens(chatId: number | null, input: string = "") {
     invalidateTokenCount,
   };
 }
+

@@ -3,6 +3,29 @@ import log from "electron-log";
 
 const logger = log.scope("openrouter_client");
 
+/**
+ * Check if an OpenRouter API key is available (supports both legacy single-key and multi-key system).
+ */
+export function hasOpenRouterApiKey(): boolean {
+  const settings = readSettings();
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+
+  // Check multi-key system first
+  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+    if (selectedKey?.key?.value?.trim()) {
+      return true;
+    }
+  }
+
+  // Fallback to legacy single-key
+  if (openRouterSettings?.apiKey?.value?.trim()) {
+    return true;
+  }
+
+  return false;
+}
+
 export interface OpenRouterMessage {
   role: "user" | "assistant" | "system";
   content: string;

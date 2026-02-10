@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { apps, chats, messages } from "../../db/schema";
-import { desc, eq, and, like, ne, gte } from "drizzle-orm";
+import { desc, eq, and, like, ne, gte, sql } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
 import log from "electron-log";
@@ -8,7 +8,7 @@ import { getDyadAppPath } from "../../paths/paths";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
-import { openRouterCompletion } from "../utils/openrouter";
+import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { logChatInfo } from "../utils/chat_logger";
 
 const logger = log.scope("chat_handlers");
@@ -85,24 +85,24 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-          where: eq(chats.appId, appId),
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        })
+        where: eq(chats.appId, appId),
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      })
       : db.query.chats.findMany({
-          columns: {
-            id: true,
-            title: true,
-            createdAt: true,
-            appId: true,
-          },
-          orderBy: [desc(chats.createdAt)],
-        });
+        columns: {
+          id: true,
+          title: true,
+          createdAt: true,
+          appId: true,
+        },
+        orderBy: [desc(chats.createdAt)],
+      });
 
     const allChats = await query;
     return allChats as ChatSummary[];
@@ -178,12 +178,12 @@ export function registerChatHandlers() {
     chatContracts.generateChatTitle,
     async (_, { chatId, prompt }) => {
       logger.info(`generateChatTitle called for chatId=${chatId}`);
-      const { readSettings } = await import("../../main/settings");
-      const settings = readSettings();
-      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+      if (!hasOpenRouterApiKey()) {
         logger.warn("OpenRouter API key not found, using default title");
         return { title: "Nuevo chat" };
       }
+      const { readSettings } = await import("../../main/settings");
+      const settings = readSettings();
 
       const model =
         settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
@@ -304,22 +304,29 @@ export function registerChatHandlers() {
   );
 
   createTypedHandler(chatContracts.summarizeTodaysChats, async (_, appId) => {
-    const { readSettings } = await import("../../main/settings");
-    const settings = readSettings();
-    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+    if (!hasOpenRouterApiKey()) {
       throw new Error("OpenRouter API key not found");
     }
+    const { readSettings } = await import("../../main/settings");
+    const settings = readSettings();
 
     const model =
       settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
 
-    // Get today's start timestamp (midnight)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's start timestamp (midnight local time)
+    const todayLocalMidnight = new Date();
+    todayLocalMidnight.setHours(0, 0, 0, 0);
+
+    // SQLite's unixepoch() returns seconds. 
+    // Drizzle's mode: 'timestamp' for SQLite also expects seconds in some configurations.
+    // To be safe, we'll use seconds for the query.
+    const todaySeconds = Math.floor(todayLocalMidnight.getTime() / 1000);
+
+    logger.info(`Summarizing chats since ${todayLocalMidnight.toISOString()} (unix: ${todaySeconds})`);
 
     // Fetch all chats that have messages created today for this app
     const todaysChats = await db.query.chats.findMany({
-      where: (chats, { exists, and, eq }) =>
+      where: (chats, { exists, and, eq, gte }) =>
         and(
           eq(chats.appId, appId),
           exists(
@@ -329,7 +336,8 @@ export function registerChatHandlers() {
               .where(
                 and(
                   eq(messages.chatId, chats.id),
-                  gte(messages.createdAt, today),
+                  // Explicitly compare as seconds to match unixepoch() default
+                  sql`${messages.createdAt} >= ${todaySeconds}`,
                 ),
               ),
           ),
@@ -341,7 +349,7 @@ export function registerChatHandlers() {
       },
       with: {
         messages: {
-          where: gte(messages.createdAt, today),
+          where: sql`${messages.createdAt} >= ${todaySeconds}`,
           columns: {
             role: true,
             content: true,
@@ -352,20 +360,62 @@ export function registerChatHandlers() {
       orderBy: [desc(chats.createdAt)],
     });
 
+    logger.info(`Found ${todaysChats.length} chats from today for appId=${appId}`);
+    for (const chat of todaysChats) {
+      logger.info(` - Chat "${chat.title}" has ${chat.messages?.length || 0} messages today`);
+    }
+
     if (todaysChats.length === 0) {
+      // Diagnostic log: check if any chats exist for this app at all
+      const totalChats = await db.query.chats.findMany({
+        where: eq(chats.appId, appId),
+        limit: 1,
+      });
+      logger.info(`Total chats for app ${appId}: ${totalChats.length}`);
+
       return { summary: "No hay chats del día de hoy para resumir." };
     }
 
-    // Build the context for the AI
+    // Build the context for the AI, stripping verbose tags to save tokens and focus on content
     const chatsContext = todaysChats
       .map((chat) => {
         const chatTitle = chat.title || "Sin título";
         const messagesText = chat.messages
-          .map((msg) => `${msg.role}: ${msg.content}`)
+          .map((msg) => {
+            // Strip dyad tags for the summary to focus on the intent/result
+            const cleanContent = msg.content
+              .replace(/<dyad-think>[\s\S]*?<\/dyad-think>/g, "")
+              .replace(/<dyad-[a-z-]+[\s\S]*?>[\s\S]*?<\/dyad-[a-z-]+>/g, "")
+              .trim();
+            return cleanContent ? `${msg.role}: ${cleanContent}` : "";
+          })
+          .filter(Boolean)
           .join("\n");
-        return `## Chat: ${chatTitle}\n${messagesText}`;
+        return messagesText ? `## Chat: ${chatTitle}\n${messagesText}` : "";
       })
+      .filter(Boolean)
       .join("\n\n---\n\n");
+
+    // Safety check: if all content was stripped, return early
+    if (!chatsContext.trim()) {
+      logger.warn("All chat content was empty after cleaning tags");
+      return {
+        summary:
+          "Los chats de hoy no contienen contenido suficiente para generar un resumen.",
+      };
+    }
+
+    // Limit context size to prevent overwhelming the model (max ~8000 chars)
+    const maxContextLength = 8000;
+    const truncatedContext =
+      chatsContext.length > maxContextLength
+        ? chatsContext.slice(0, maxContextLength) +
+        "\n\n[...contenido truncado por límite de tamaño...]"
+        : chatsContext;
+
+    logger.info(
+      `Summarizing ${todaysChats.length} chats, context length: ${truncatedContext.length} chars`,
+    );
 
     try {
       const data = await openRouterCompletion({
@@ -380,7 +430,7 @@ export function registerChatHandlers() {
           },
           {
             role: "user",
-            content: `Resume las features y funcionalidades principales trabajadas hoy (NO menciones archivos ni componentes específicos, solo las features a alto nivel):\n\n${chatsContext}`,
+            content: `Resume las features y funcionalidades principales trabajadas hoy (NO menciones archivos ni componentes específicos, solo las features a alto nivel):\n\n${truncatedContext}`,
           },
         ],
       });
@@ -389,13 +439,20 @@ export function registerChatHandlers() {
         data?.choices?.[0]?.message?.content?.trim() ||
         "No se pudo generar el resumen.";
 
+      // Validate that we got actual content
+      if (!summary || summary === "No se pudo generar el resumen.") {
+        logger.warn("Model returned empty or default summary");
+        return {
+          summary: `Se encontraron ${todaysChats.length} chat(s) de hoy, pero no se pudo generar un resumen automático. Por favor, revisa los chats manualmente.`,
+        };
+      }
+
       // Log token usage for daily summary
       const usage = data?.usage;
       if (usage) {
-        // Since daily summary is for an app (multiple chats), we use 0 or a special ID
-        // or just log it without a specific chatId if the logger allows (it requires chatId)
-        // We'll use a dummy/general ID or skip if no clear chatId.
-        // Actually, logChatInfo needs a chatId. We'll skip for now or use app ID if possible.
+        logger.info(
+          `Daily summary token usage: ${usage.total_tokens} (input: ${usage.prompt_tokens}, output: ${usage.completion_tokens})`,
+        );
       }
 
       return { summary };

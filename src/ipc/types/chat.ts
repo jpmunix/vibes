@@ -157,6 +157,7 @@ export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;
 export const TokenCountParamsSchema = z.object({
   chatId: z.number(),
   input: z.string(),
+  chatMode: z.string().optional(),
 });
 
 export type TokenCountParams = z.infer<typeof TokenCountParamsSchema>;
