@@ -131,17 +131,16 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     <div
       className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
     >
-      <div className={`mt-2 w-full max-w-3xl mx-auto group`}>
+      <div className={`mt-4 mb-4 w-full max-w-3xl mx-auto group`}>
         <div
-          className={`rounded-lg p-2 ${
-            message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
-          }`}
+          className={`rounded-lg p-2 ${message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
+            }`}
         >
           {message.role === "assistant" &&
-          !message.content &&
-          isStreaming &&
-          isLastMessage &&
-          !isSelectingModel ? (
+            !message.content &&
+            isStreaming &&
+            isLastMessage &&
+            !isSelectingModel ? (
             <StreamingLoadingAnimation
               variant="initial"
               label={loadingPhrases[loadingPhraseIndex]}
@@ -167,13 +166,12 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             </div>
           ) : null}
           {(message.role === "assistant" && message.content && !isStreaming) ||
-          message.approvalState ? (
+            message.approvalState ? (
             <div
-              className={`mt-2 flex items-center ${
-                message.role === "assistant" && message.content && !isStreaming
-                  ? "justify-between"
-                  : ""
-              } text-xs`}
+              className={`mt-2 flex items-center ${message.role === "assistant" && message.content && !isStreaming
+                ? "justify-between"
+                : ""
+                } text-xs`}
             >
               {message.role === "assistant" &&
                 message.content &&
@@ -219,7 +217,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                 {message.role === "assistant" && message.model && (
                   <>
                     {selectedChatId &&
-                    autoRouterModelInfo.get(selectedChatId) ? (
+                      autoRouterModelInfo.get(selectedChatId) ? (
                       <AutoRouterModelBadge
                         modelInfo={autoRouterModelInfo.get(selectedChatId)!}
                         showInline={false}
@@ -238,7 +236,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
         </div>
         {/* Timestamp and commit info for assistant messages - only visible on hover */}
         {message.role === "assistant" && message.createdAt && (
-          <div className="mt-1 flex flex-wrap items-center justify-start space-x-2 text-xs text-gray-500 dark:text-gray-400 ">
+          <div className="mt-3 flex flex-wrap items-center justify-start space-x-2 text-xs text-gray-500 dark:text-gray-400 ">
             <div className="flex items-center space-x-1">
               <Clock className="h-3 w-3" />
               <span>{formatTimestamp(message.createdAt)}</span>
@@ -252,7 +250,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                       <span className="max-w-50 truncate font-medium">
                         {
                           messageVersion.message
-                            .replace(/^\[dyad\]\s*/i, "")
+                            .replace(/^\[(dyad|vibes)\]\s*/i, "")
                             .split("\n")[0]
                         }
                       </span>

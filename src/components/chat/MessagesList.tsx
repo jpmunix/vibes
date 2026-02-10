@@ -12,7 +12,7 @@ import {
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
-import { CheckCircle2, Loader2, RefreshCw, Undo } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Undo, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVersions } from "@/hooks/useVersions";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -119,7 +119,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
       )}
 
       {!isStreaming && (
-        <div className="flex max-w-3xl mx-auto gap-2 mt-4">
+        <div className="flex max-w-3xl mx-auto gap-2 mt-12 mb-8">
           {!!messages.length &&
             messages[messages.length - 1].role === "assistant" && (
               <Button
@@ -259,6 +259,29 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                 <RefreshCw size={16} />
               )}
               Reintentar
+            </Button>
+          )}
+          {!!messages.length && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              onClick={async () => {
+                if (!appId) {
+                  showError("No se pudo identificar la aplicación para reiniciar");
+                  return;
+                }
+                try {
+                  await ipc.app.restartApp({ appId });
+                  showSuccess("Aplicación reiniciada");
+                } catch (error) {
+                  console.error("Error al reiniciar la aplicación:", error);
+                  showError("Error al reiniciar la aplicación");
+                }
+              }}
+            >
+              <RotateCcw size={16} className="mr-1" />
+              Reiniciar
             </Button>
           )}
           {!!messages.length && todoId && (

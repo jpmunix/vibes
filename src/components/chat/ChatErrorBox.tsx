@@ -20,16 +20,7 @@ export function ChatErrorBox({
   if (error.includes("doesn't have a free quota tier")) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
-        {error}
-        <span className="ml-1">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=free-quota-error"
-            variant="primary"
-          >
-            Access with Vibes Pro
-          </ExternalLink>
-        </span>{" "}
-        or switch to another model.
+        {error} or switch to another model.
       </ChatErrorContainer>
     );
   }
@@ -50,13 +41,6 @@ export function ChatErrorBox({
       <ChatErrorContainer onDismiss={onDismiss}>
         {error}
         <div className="mt-2 space-y-2 space-x-2">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=rate-limit-error"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>
-
           <ExternalLink href="https://github.com/minube/vibes/help/ai-rate-limit">
             Troubleshooting guide
           </ExternalLink>
@@ -69,14 +53,7 @@ export function ChatErrorBox({
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
         <span>
-          Looks like you don't have a valid Vibes Pro key.{" "}
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=invalid-pro-key-error"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>{" "}
-          today.
+          Looks like you don't have a valid Vibes Pro key.
         </span>
       </ChatInfoContainer>
     );
@@ -85,14 +62,7 @@ export function ChatErrorBox({
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
         <span>
-          You have used all of your Vibes AI credits this month.{" "}
-          <ExternalLink
-            href="https://academy.dyad.sh/subscription?utm_source=dyad-app&utm_medium=app&utm_campaign=exceeded-budget-error"
-            variant="primary"
-          >
-            Reload or upgrade your subscription
-          </ExternalLink>{" "}
-          and get more AI credits
+          You have used all of your Vibes AI credits this month.
         </span>
       </ChatInfoContainer>
     );
@@ -110,16 +80,7 @@ export function ChatErrorBox({
   if (error.includes("FREE_AGENT_QUOTA_EXCEEDED")) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
-        You have used all 5 free Agent messages for today. Please upgrade to
-        Vibes Pro for unlimited access or switch to Build mode.
-        <div className="mt-2 space-y-2 space-x-2">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=free-agent-quota-exceeded"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>
-        </div>
+        You have used all 5 free Agent messages for today. Please switch to Build mode for unlimited access.
       </ChatErrorContainer>
     );
   }
@@ -127,21 +88,10 @@ export function ChatErrorBox({
   return (
     <ChatErrorContainer onDismiss={onDismiss}>
       {error}
-      {!isDyadProEnabled &&
-        error.includes(AI_STREAMING_ERROR_MESSAGE_PREFIX) &&
-        !error.includes("TypeError: terminated") && (
-          <div className="mt-2">
-            <ExternalLink
-              href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=general-error"
-              variant="primary"
-            >
-              Upgrade to Vibes Pro
-            </ExternalLink>
-          </div>
-        )}
     </ChatErrorContainer>
   );
 }
+
 
 function ExternalLink({
   href,

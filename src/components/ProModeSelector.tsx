@@ -88,23 +88,7 @@ export function ProModeSelector() {
           </div>
           {!hasProKey && (
             <div className="text-sm text-center text-muted-foreground">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    className="inline-flex items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
-                    onClick={() => {
-                      ipc.system.openExternalUrl(
-                        "https://github.com/minube/vibes#ai",
-                      );
-                    }}
-                  >
-                    Unlock Pro modes
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Visit dyad.sh/pro to unlock Pro features
-                </TooltipContent>
-              </Tooltip>
+              Please configure an API key in settings to enable Pro modes.
             </div>
           )}
           <div className="flex flex-col gap-5">
