@@ -120,6 +120,29 @@ function FooterComponent({ context }: { context?: FooterContext }) {
 
       {!isStreaming && (
         <div className="flex max-w-3xl mx-auto gap-2 mt-12 mb-8">
+          {!!messages.length && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              onClick={async () => {
+                if (!appId) {
+                  showError("No se pudo identificar la aplicación para reiniciar");
+                  return;
+                }
+                try {
+                  await ipc.app.restartApp({ appId });
+                  showSuccess("Aplicación reiniciada");
+                } catch (error) {
+                  console.error("Error al reiniciar la aplicación:", error);
+                  showError("Error al reiniciar la aplicación");
+                }
+              }}
+            >
+              <RotateCcw size={16} className="mr-1" />
+              Reiniciar
+            </Button>
+          )}
           {!!messages.length &&
             messages[messages.length - 1].role === "assistant" && (
               <Button
@@ -261,29 +284,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
               Reintentar
             </Button>
           )}
-          {!!messages.length && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              onClick={async () => {
-                if (!appId) {
-                  showError("No se pudo identificar la aplicación para reiniciar");
-                  return;
-                }
-                try {
-                  await ipc.app.restartApp({ appId });
-                  showSuccess("Aplicación reiniciada");
-                } catch (error) {
-                  console.error("Error al reiniciar la aplicación:", error);
-                  showError("Error al reiniciar la aplicación");
-                }
-              }}
-            >
-              <RotateCcw size={16} className="mr-1" />
-              Reiniciar
-            </Button>
-          )}
+
           {!!messages.length && todoId && (
             <Button
               variant="outline"
@@ -588,7 +589,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
     return (
       <div
-        className="absolute inset-0 overflow-y-auto p-4"
+        className="absolute inset-0 overflow-y-auto px-4 pt-4 pb-20"
         ref={ref}
         data-testid="messages-list"
       >
@@ -606,7 +607,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
               isStreaming &&
               distanceFromBottomRef &&
               distanceFromBottomRef.current <= 280;
-            return shouldAutoScroll ? "auto" : false;
+            return shouldAutoScroll ? "smooth" : false;
           }}
         />
       </div>

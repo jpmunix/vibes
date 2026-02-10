@@ -89,7 +89,7 @@
   "enableGithubAutoCommit": false,
   "selectedTemplateId": "react",
   "selectedThemeId": "default",
-  "selectedChatMode": "build",
+  "selectedChatMode": "local-agent",
   "defaultChatMode": "local-agent",
   "zoomLevel": "100",
   "enableAutoFixProblems": false,
@@ -108,12 +108,12 @@
   "autoFixMaxIssues": 5,
   "isRunning": true,
   "lastKnownPerformance": {
-    "timestamp": 1770743242718,
-    "memoryUsageMB": 492,
-    "cpuUsagePercent": 0.09,
-    "systemMemoryUsageMB": 28651,
+    "timestamp": 1770743963301,
+    "memoryUsageMB": 517,
+    "cpuUsagePercent": 7.82,
+    "systemMemoryUsageMB": 25991,
     "systemMemoryTotalMB": 64190,
-    "systemCpuPercent": 23.07
+    "systemCpuPercent": 44.62
   },
   "chatLanguage": "es",
   "serperApiKey": {

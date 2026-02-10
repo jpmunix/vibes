@@ -30,8 +30,9 @@ Consulta la nueva documentación para aprender a sacarle todo el potencial a Vib
 ### 🛠️ Mejoras en el Agente inteligente
 - Reducción del 95% de la ventana de contexto gracias a la implementación de técnicas de búsquedas de código y utilización avanzada de herramientas locales.
 
-### 🚀 Botón de Reinicio Directo
-Añadido un botón de **Reiniciar** directamente en las acciones del chat.
+### 🎨 Mejoras en la interfaz
+- Añadido un botón de **Reiniciar** directamente en las acciones del chat.
+- Mejoras en el scroll y espaciado de elementos del chat
 
 
 ### 👤 Registro de usuario
