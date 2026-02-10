@@ -1,63 +1,71 @@
 import log from "electron-log";
-import fetch from "node-fetch";
+import fs from "node:fs";
+import path from "node:path";
+import { app } from "electron";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
 
 const logger = log.scope("release_note_handlers");
 
+function getReleaseNotesPath() {
+  // En desarrollo y build, el archivo estará en la carpeta assets relativa al root
+  // app.getAppPath() nos da la ruta base.
+  return path.join(app.getAppPath(), "assets", "RELEASE_NOTES.md");
+}
+
+function getDocumentationPath() {
+  return path.join(app.getAppPath(), "assets", "DOCUMENTATION.md");
+}
+
 export function registerReleaseNoteHandlers() {
   createTypedHandler(
     systemContracts.doesReleaseNoteExist,
     async (_, params) => {
-      const { version } = params;
-
-      if (!version || typeof version !== "string") {
-        throw new Error("Invalid version provided");
-      }
-
       // For E2E tests, we don't want to check for release notes
-      // or show release notes, as it interferes with the tests.
       if (IS_TEST_BUILD) {
         return { exists: false };
       }
-      const releaseNoteUrl = `https://www.dyad.sh/docs/releases/${version}`;
-
-      logger.debug(`Checking for release note at: ${releaseNoteUrl}`);
 
       try {
-        const response = await fetch(releaseNoteUrl, { method: "HEAD" }); // Use HEAD to check existence without downloading content
-        if (response.ok) {
-          logger.debug(
-            `Release note found for version ${version} at ${releaseNoteUrl}`,
-          );
-          return { exists: true, url: releaseNoteUrl };
-        } else if (response.status === 404) {
-          logger.debug(
-            `Release note not found for version ${version} at ${releaseNoteUrl}`,
-          );
-          return { exists: false };
-        } else {
-          // Log other non-404 errors but still treat as "not found" for the client,
-          // as the primary goal is to check existence.
-          logger.warn(
-            `Unexpected status code ${response.status} when checking for release note: ${releaseNoteUrl}`,
-          );
-          return { exists: false };
-        }
+        const filePath = getReleaseNotesPath();
+        const exists = fs.existsSync(filePath);
+        logger.debug(`Checking for release note at: ${filePath}. Exists: ${exists}`);
+        return { exists };
       } catch (error) {
-        logger.error(
-          `Error fetching release note for version ${version} at ${releaseNoteUrl}:`,
-          error,
-        );
-        // In case of network errors, etc., assume it doesn't exist or is inaccessible.
-        // Throwing an error here would propagate to the client and might be too disruptive
-        // if the check is just for UI purposes (e.g., showing a link).
-        // Consider if specific errors should be thrown based on requirements.
+        logger.error(`Error checking for local release note:`, error);
         return { exists: false };
       }
     },
   );
 
-  logger.debug("Registered release note IPC handlers");
+  createTypedHandler(systemContracts.getReleaseNotesContent, async () => {
+    try {
+      const filePath = getReleaseNotesPath();
+      if (!fs.existsSync(filePath)) {
+        return "# No hay notas de lanzamiento disponibles.";
+      }
+      const content = fs.readFileSync(filePath, "utf-8");
+      return content;
+    } catch (error) {
+      logger.error(`Error reading release notes content:`, error);
+      return "# Error al cargar las notas de lanzamiento.";
+    }
+  });
+
+  createTypedHandler(systemContracts.getDocumentationContent, async () => {
+    try {
+      const filePath = getDocumentationPath();
+      if (!fs.existsSync(filePath)) {
+        return "# Documentación\n\nNo se encontró el archivo de documentación.";
+      }
+      const content = fs.readFileSync(filePath, "utf-8");
+      return content;
+    } catch (error) {
+      logger.error(`Error reading documentation content:`, error);
+      return "# Error al cargar la documentación.";
+    }
+  });
+
+  logger.debug("Registered release note and documentation IPC handlers (local)");
 }

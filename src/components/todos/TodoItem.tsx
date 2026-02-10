@@ -5,6 +5,7 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Bot } from "lucide-react";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
@@ -93,22 +94,19 @@ export function SortableTodoItem({
       {...attributes}
       {...listeners}
       className={cn(
-        "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing overflow-hidden",
+        "group relative flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing overflow-hidden",
         todo.completed && "opacity-60",
         isDraggingOverlay &&
-          "shadow-2xl ring-2 ring-primary border-primary rotate-1",
+        "shadow-2xl ring-2 ring-primary border-primary rotate-1",
       )}
     >
-      {/* Checkbox Overlay */}
-      <div className="absolute inset-y-0 left-0 w-16 flex items-center pl-3 bg-gradient-to-r from-card via-card via-card/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
-        <div className="pointer-events-auto">
-          <Checkbox
-            checked={todo.completed}
-            onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
-            className="shrink-0 border-primary bg-background shadow-sm"
-            onPointerDown={(e) => e.stopPropagation()}
-          />
-        </div>
+      <div className="pt-1">
+        <Checkbox
+          checked={todo.completed}
+          onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
+          className="shrink-0 border-primary bg-background shadow-sm"
+          onPointerDown={(e) => e.stopPropagation()}
+        />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -122,24 +120,58 @@ export function SortableTodoItem({
             className="flex-1 h-8 text-sm"
           />
         ) : (
-          <div
-            className={cn(
-              "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground",
-            )}
-            onClick={onEdit}
-          >
-            <p className="font-medium whitespace-pre-wrap break-words">
-              {todo.content}
-            </p>
-            {todo.description && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-                {todo.description}
+          <div className="flex flex-col relative">
+            <div
+              className={cn(
+                "flex-1 text-sm cursor-pointer py-1 min-w-0 pr-6",
+                todo.completed && "line-through text-muted-foreground",
+              )}
+              onClick={onEdit}
+            >
+              <p className="font-medium whitespace-pre-wrap break-words">
+                {todo.content}
               </p>
-            )}
+              {todo.description && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                  {todo.description}
+                </p>
+              )}
+
+              {todo.checklist && todo.checklist.length > 0 && (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{
+                        width: `${(todo.checklist.filter((s) => s.completed).length /
+                          todo.checklist.length) *
+                          100
+                          }%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
+                    {todo.checklist.filter((s) => s.completed).length}/
+                    {todo.checklist.length} (
+                    {Math.round(
+                      (todo.checklist.filter((s) => s.completed).length /
+                        todo.checklist.length) *
+                      100,
+                    )}
+                    %)
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      {todo.developmentSummary && (
+        <div className="absolute bottom-3 right-3 opacity-40 group-hover:opacity-100 transition-opacity">
+          <Bot size={14} className="text-primary" />
+        </div>
+      )}
     </div>
   );
 }
@@ -189,19 +221,16 @@ export function TodoItem({
   return (
     <div
       className={cn(
-        "group relative flex items-center p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden",
+        "group relative flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors overflow-hidden",
         todo.completed && "opacity-60",
       )}
     >
-      {/* Checkbox Overlay */}
-      <div className="absolute inset-y-0 left-0 w-16 flex items-center pl-3 bg-gradient-to-r from-card via-card via-card/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
-        <div className="pointer-events-auto">
-          <Checkbox
-            checked={todo.completed}
-            onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
-            className="shrink-0 border-primary bg-background shadow-sm"
-          />
-        </div>
+      <div className="pt-1">
+        <Checkbox
+          checked={todo.completed}
+          onCheckedChange={(checked) => onToggle(todo.id, checked as boolean)}
+          className="shrink-0 border-primary bg-background shadow-sm"
+        />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -215,24 +244,58 @@ export function TodoItem({
             className="flex-1 h-8 text-sm"
           />
         ) : (
-          <div
-            className={cn(
-              "flex-1 text-sm cursor-pointer py-1 min-w-0",
-              todo.completed && "line-through text-muted-foreground",
-            )}
-            onClick={onEdit}
-          >
-            <p className="font-medium whitespace-pre-wrap break-words">
-              {todo.content}
-            </p>
-            {todo.description && (
-              <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
-                {todo.description}
+          <div className="flex flex-col relative">
+            <div
+              className={cn(
+                "flex-1 text-sm cursor-pointer py-1 min-w-0 pr-6",
+                todo.completed && "line-through text-muted-foreground",
+              )}
+              onClick={onEdit}
+            >
+              <p className="font-medium whitespace-pre-wrap break-words">
+                {todo.content}
               </p>
-            )}
+              {todo.description && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                  {todo.description}
+                </p>
+              )}
+
+              {todo.checklist && todo.checklist.length > 0 && (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{
+                        width: `${(todo.checklist.filter((s) => s.completed).length /
+                          todo.checklist.length) *
+                          100
+                          }%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
+                    {todo.checklist.filter((s) => s.completed).length}/
+                    {todo.checklist.length} (
+                    {Math.round(
+                      (todo.checklist.filter((s) => s.completed).length /
+                        todo.checklist.length) *
+                      100,
+                    )}
+                    %)
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      {todo.developmentSummary && (
+        <div className="absolute bottom-3 right-3 opacity-40 group-hover:opacity-100 transition-opacity">
+          <Bot size={14} className="text-primary" />
+        </div>
+      )}
     </div>
   );
 }

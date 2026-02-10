@@ -38,10 +38,21 @@ export const registerSessionHandlers = () => {
       const totalUsage = body.data?.total_usage ?? 0;
       const availableCredits = totalCredits - totalUsage;
 
+      // Determine label
+      const openRouterSettings = settings.providerSettings?.openrouter as any;
+      let label = "OpenRouter";
+      if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+        const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+        if (selectedKey && selectedKey.alias) {
+          label = selectedKey.alias;
+        }
+      }
+
       return {
         totalCredits,
         totalUsage,
         availableCredits,
+        label,
       };
     } catch (error: any) {
       logger.error("Failed to get OpenRouter credits:", error);

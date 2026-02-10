@@ -24,9 +24,9 @@ import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 
 import type { FileAttachment } from "@/ipc/types";
 import { NEON_TEMPLATE_IDS } from "@/shared/templates";
-import { neonTemplateHook } from "@/client_logic/template_hook";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
+import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 // Adding an export for attachments
 export interface HomeSubmitOptions {
@@ -54,8 +54,7 @@ export default function HomePage() {
   const { streamMessage } = useStreamChat({ hasChatId: false });
   const posthog = usePostHog();
   const appVersion = useAppVersion();
-  const [, setReleaseNotesOpen] = useState(false);
-  const [, setReleaseUrl] = useState("");
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const { theme } = useTheme();
   const queryClient = useQueryClient();
 
@@ -90,8 +89,7 @@ export default function HomePage() {
             version: appVersion,
           });
 
-          if (result.exists && result.url) {
-            setReleaseUrl(result.url + "?hideHeader=true&theme=" + theme);
+          if (result.exists) {
             setReleaseNotesOpen(true);
           }
         } catch (err) {
@@ -324,38 +322,10 @@ export default function HomePage() {
       </div>
       {/*<PrivacyBanner />*/}
 
-      {/* Release Notes Dialog */}
-      {/*<Dialog open={releaseNotesOpen} onOpenChange={setReleaseNotesOpen}>*/}
-      {/*  <DialogContent className="max-w-4xl bg-(--docs-bg) pr-0 pt-4 pl-4 gap-1">*/}
-      {/*    <DialogHeader>*/}
-      {/*      <DialogTitle>¿Qué hay de nuevo en v{appVersion}?</DialogTitle>*/}
-      {/*      <Button*/}
-      {/*        variant="ghost"*/}
-      {/*        size="sm"*/}
-      {/*        className="absolute right-10 top-2 focus-visible:ring-0 focus-visible:ring-offset-0"*/}
-      {/*        onClick={() =>*/}
-      {/*          window.open(*/}
-      {/*            releaseUrl.replace("?hideHeader=true&theme=" + theme, ""),*/}
-      {/*            "_blank",*/}
-      {/*          )*/}
-      {/*        }*/}
-      {/*      >*/}
-      {/*        <ExternalLink className="w-4 h-4" />*/}
-      {/*      </Button>*/}
-      {/*    </DialogHeader>*/}
-      {/*    <div className="overflow-auto h-[70vh] flex flex-col ">*/}
-      {/*      {releaseUrl && (*/}
-      {/*        <div className="flex-1">*/}
-      {/*          <iframe*/}
-      {/*            src={releaseUrl}*/}
-      {/*            className="w-full h-full border-0 rounded-lg"*/}
-      {/*            title={`Release notes for v${appVersion}`}*/}
-      {/*          />*/}
-      {/*        </div>*/}
-      {/*      )}*/}
-      {/*    </div>*/}
-      {/*  </DialogContent>*/}
-      {/*</Dialog>*/}
+      <ReleaseNotesDialog
+        isOpen={releaseNotesOpen}
+        onOpenChange={setReleaseNotesOpen}
+      />
     </div>
   );
 }

@@ -94,7 +94,7 @@ export function TodoColumn({
       <div
         ref={setNodeRef}
         style={style}
-        className="w-80 shrink-0 bg-primary/5 border-2 border-dashed border-primary/20 rounded-xl overflow-hidden"
+        className="w-[420px] shrink-0 bg-primary/5 border-2 border-dashed border-primary/20 rounded-xl overflow-hidden"
       >
         <div className="p-3 border-b invisible">
           <div className="h-5" />
@@ -136,9 +136,9 @@ export function TodoColumn({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex flex-col w-80 shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-all duration-200",
+        "flex flex-col w-[420px] shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-all duration-200",
         isDraggingOverlay &&
-          "shadow-2xl ring-2 ring-primary border-primary rotate-1 opacity-90",
+        "shadow-2xl ring-2 ring-primary border-primary rotate-1 opacity-90",
       )}
     >
       <div
@@ -161,7 +161,7 @@ export function TodoColumn({
               {section?.title || "Sin lista"}
             </h3>
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
-              {todos.length}
+              {todos.filter((t) => !t.completed).length}
             </span>
           </div>
         )}

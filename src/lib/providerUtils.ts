@@ -47,8 +47,13 @@ export function isProviderSetup(
     for (const p of providers) {
       const providerSettings = settings.providerSettings[p];
 
-      // Check API key in settings
-      if (providerSettings?.apiKey?.value) {
+      // Check API key in settings or new keys array for OpenRouter
+      if (p === "openrouter") {
+        const orSettings = providerSettings as any;
+        if (orSettings?.keys?.length > 0 || orSettings?.apiKey?.value) {
+          return true;
+        }
+      } else if (providerSettings?.apiKey?.value) {
         return true;
       }
 
@@ -94,7 +99,12 @@ export function isProviderSetup(
   }
 
   // Check API key in settings
-  if (providerSettings?.apiKey?.value) {
+  if (provider === "openrouter") {
+    const orSettings = providerSettings as any;
+    if (orSettings?.keys?.length > 0 || orSettings?.apiKey?.value) {
+      return true;
+    }
+  } else if (providerSettings?.apiKey?.value) {
     return true;
   }
 

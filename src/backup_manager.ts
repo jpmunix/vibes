@@ -157,6 +157,10 @@ export class BackupManager {
       );
 
       logger.info(`Backup created successfully: ${backupName}`);
+
+      // Clean up old backups to maintain the limit
+      await this.cleanupOldBackups();
+
       return backupPath;
     } catch (error) {
       logger.error("Backup failed:", error);

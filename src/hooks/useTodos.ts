@@ -98,6 +98,7 @@ export function useTodos(appId: number) {
       prompt?: string | null;
       completed?: boolean;
       order?: number;
+      checklist?: { id: string; content: string; completed: boolean }[] | null;
     }) => {
       return await ipc.todo.updateTodo(params);
     },
@@ -276,6 +277,13 @@ export function useTodos(appId: number) {
           sectionId: section.id,
           description: task.description || undefined,
           completed: task.completed ?? false,
+          checklist: task.checklist
+            ? task.checklist.map((item) => ({
+              id: crypto.randomUUID(),
+              content: item.content,
+              completed: item.completed,
+            }))
+            : undefined,
         });
       }
 

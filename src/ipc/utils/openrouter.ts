@@ -27,7 +27,18 @@ export async function openRouterRequest(
   options: RequestInit = {},
 ) {
   const settings = readSettings();
-  const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+
+  let apiKey = openRouterSettings?.apiKey?.value;
+
+  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+    if (selectedKey) {
+      apiKey = selectedKey.key.value;
+    }
+  }
+
+  apiKey = apiKey?.trim();
 
   if (!apiKey) {
     throw new Error(

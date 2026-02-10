@@ -132,6 +132,18 @@ export const VertexProviderSettingSchema = z.object({
   serviceAccountKey: SecretSchema.optional(),
 });
 
+export const OpenRouterKeySchema = z.object({
+  id: z.string(),
+  key: SecretSchema,
+  alias: z.string().optional(),
+});
+
+export const OpenRouterProviderSettingSchema = z.object({
+  apiKey: SecretSchema.optional(), // Legacy/Fallback
+  keys: z.array(OpenRouterKeySchema).optional(),
+  selectedKeyId: z.string().optional(),
+});
+
 export const ProviderSettingSchema = z.union([
   // Must use more specific type first!
   // Zod uses the first type that matches.
@@ -146,6 +158,8 @@ export const ProviderSettingSchema = z.union([
   VertexProviderSettingSchema.passthrough(),
   RegularProviderSettingSchema.passthrough(),
 ]);
+
+
 
 /**
  * Type derived from the ProviderSettingSchema

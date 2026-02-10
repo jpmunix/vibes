@@ -21,6 +21,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import { AuthModal } from "@/components/AuthModal";
+import { userAtom } from "@/atoms/authAtoms";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { ProfileModal } from "@/components/ProfileModal";
+import { BackupModal } from "@/components/BackupModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, User as UserIcon, Palette, CloudUpload, ScrollText } from "lucide-react";
 
 export const TitleBar = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -30,7 +46,19 @@ export const TitleBar = () => {
   const { settings, refreshSettings } = useSettings();
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const user = useAtomValue(userAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   useEffect(() => {
     // Check if we're running on Windows
@@ -87,14 +115,95 @@ export const TitleBar = () => {
           data-testid="title-bar-app-name-button"
           variant="outline"
           size="sm"
-          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${
-            selectedApp ? "cursor-pointer" : ""
-          }`}
+          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${selectedApp ? "cursor-pointer" : ""
+            }`}
           onClick={handleAppClick}
         >
           {displayText}
         </Button>
         {isDyadPro && <DyadProButton isDyadProEnabled={isDyadProEnabled} />}
+
+        <div className="ml-2 no-app-region-drag flex items-center">
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="cursor-pointer">
+                  <SimpleAvatar
+                    src={user.photoURL || undefined}
+                    className="h-6 w-6"
+                    fallbackText={(
+                      user.displayName?.[0] ||
+                      user.email?.[0] ||
+                      "U"
+                    ).toUpperCase()}
+                  />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64 p-2 shadow-xl border-border/50">
+                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                  Cuenta
+                </DropdownMenuLabel>
+                <div className="flex items-center gap-3 px-2 py-3">
+                  <div className="h-10 w-10">
+                    <SimpleAvatar
+                      src={user.photoURL || undefined}
+                      fallbackText={(
+                        user.displayName?.[0] ||
+                        user.email?.[0] ||
+                        "U"
+                      ).toUpperCase()}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-bold truncate">
+                      {user.displayName || "Usuario"}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </span>
+                  </div>
+                </div>
+
+                <DropdownMenuItem
+                  className="py-2 cursor-pointer focus:bg-accent"
+                  onClick={() => setIsProfileModalOpen(true)}
+                >
+                  <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Editar Perfil</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="py-2 cursor-pointer focus:bg-accent"
+                  onClick={() => setIsBackupModalOpen(true)}
+                >
+                  <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Copias de seguridad</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  className="py-2 cursor-pointer focus:bg-accent text-foreground"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-3 h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Cerrar sesión</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="cursor-pointer"
+                  onClick={() => setIsAuthModalOpen(true)}
+                >
+                  <SimpleAvatar className="h-6 w-6" fallbackText={<UserIcon className="h-4 w-4" />} />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Iniciar sesión / Registrarse</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
 
         {/* Preview Header */}
         {location.pathname === "/chat" && (
@@ -113,6 +222,25 @@ export const TitleBar = () => {
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
       />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {user && (
+        <>
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            user={user}
+          />
+          <BackupModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+          />
+        </>
+      )}
     </>
   );
 };

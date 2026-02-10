@@ -31,6 +31,17 @@ export const TodoSchema = z.object({
   prompt: z.string().optional().nullable(),
   completed: z.boolean(),
   order: z.number(),
+  developmentSummary: z.string().optional().nullable(),
+  checklist: z
+    .array(
+      z.object({
+        id: z.string(),
+        content: z.string(),
+        completed: z.boolean(),
+      }),
+    )
+    .optional()
+    .nullable(),
   createdAt: z.union([z.date(), z.string()]),
   updatedAt: z.union([z.date(), z.string()]),
 });
@@ -72,6 +83,16 @@ export const CreateTodoParamsSchema = z.object({
   description: z.string().optional(),
   prompt: z.string().optional(),
   completed: z.boolean().optional(),
+  developmentSummary: z.string().optional(),
+  checklist: z
+    .array(
+      z.object({
+        id: z.string(),
+        content: z.string(),
+        completed: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 export type CreateTodoParams = z.infer<typeof CreateTodoParamsSchema>;
@@ -87,6 +108,17 @@ export const UpdateTodoParamsSchema = z.object({
   prompt: z.string().optional().nullable(),
   completed: z.boolean().optional(),
   order: z.number().optional(),
+  developmentSummary: z.string().optional().nullable(),
+  checklist: z
+    .array(
+      z.object({
+        id: z.string(),
+        content: z.string(),
+        completed: z.boolean(),
+      }),
+    )
+    .optional()
+    .nullable(),
 });
 
 export type UpdateTodoParams = z.infer<typeof UpdateTodoParamsSchema>;
@@ -184,6 +216,14 @@ export const AnalyzeTodoFilesResponseSchema = z.object({
       content: z.string(),
       description: z.string().optional().nullable(),
       completed: z.boolean().optional(),
+      checklist: z
+        .array(
+          z.object({
+            content: z.string(),
+            completed: z.boolean(),
+          }),
+        )
+        .optional(),
     }),
   ),
 });
@@ -292,6 +332,11 @@ export const todoContracts = {
         data: z.string().optional(),
       }),
     ),
+  }),
+  generateTodoSummary: defineContract({
+    channel: "generate-todo-summary",
+    input: z.number(), // todoId
+    output: z.string(), // summary
   }),
 } as const;
 

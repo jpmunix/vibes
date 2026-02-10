@@ -24,8 +24,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   providerSettings: {},
   turboEditModel: "openai/gpt-4.1",
   appTitleGenerationModel: "openai/gpt-5-mini",
-  debateModel: "openai/gpt-5-mini",
-  summaryModel: "openai/gpt-5-mini",
+  debateModel: "x-ai/grok-4.1-fast",
+  summaryModel: "x-ai/grok-4.1-fast",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
@@ -179,6 +179,19 @@ export function readSettings(): UserSettings {
           encryptionType,
         };
       }
+      // Decrypt OpenRouter keys if present
+      const p = combinedSettings.providerSettings[provider] as any;
+      if (p.keys && Array.isArray(p.keys)) {
+        for (const keyEntry of p.keys) {
+          if (keyEntry.key) {
+            const encryptionType = keyEntry.key.encryptionType;
+            keyEntry.key = {
+              value: decrypt(keyEntry.key),
+              encryptionType,
+            };
+          }
+        }
+      }
     }
 
     // Validate and merge with defaults
@@ -256,6 +269,15 @@ export function writeSettings(settings: Partial<UserSettings>): void {
       const v = newSettings.providerSettings[provider] as VertexProviderSetting;
       if (provider === "vertex" && v?.serviceAccountKey) {
         v.serviceAccountKey = encrypt(v.serviceAccountKey.value);
+      }
+      // Encrypt OpenRouter keys if present
+      const p = newSettings.providerSettings[provider] as any;
+      if (p.keys && Array.isArray(p.keys)) {
+        for (const keyEntry of p.keys) {
+          if (keyEntry.key) {
+            keyEntry.key = encrypt(keyEntry.key.value);
+          }
+        }
       }
     }
     const validatedSettings = UserSettingsSchema.parse(newSettings);

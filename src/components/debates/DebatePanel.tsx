@@ -15,13 +15,20 @@ import {
   Bot,
   MessageSquare,
   FileText,
+  StopCircle,
+  Check,
 } from "lucide-react";
 import { InjectedItemPicker } from "./InjectedItemPicker";
+import { DebateTagPicker } from "./DebateTagPicker";
 import type { Debate, DebateMessage, InjectedItem } from "@/ipc/types/debate";
 import { useDebates } from "@/hooks/useDebates";
 import { useNotes } from "@/hooks/useNotes";
 import { showError, showSuccess } from "@/lib/toast";
-import ReactMarkdown from "react-markdown";
+import {
+  DyadMarkdownParser,
+  VanillaMarkdownParser,
+} from "@/components/chat/DyadMarkdownParser";
+import { auth } from "@/lib/firebase";
 
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -41,10 +48,13 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [injectedItems, setInjectedItems] = useState<InjectedItem[]>([]);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
   const { invalidateDebates } = useDebates();
   const { invalidateNotes } = useNotes();
   const scrollRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     loadDebate();
@@ -57,12 +67,12 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
   }, [debate?.title]);
 
   const handleSaveTitle = async () => {
-    if (!editTitle.trim() || editTitle === debate?.title) {
+    if (!debateId || !editTitle.trim() || editTitle === debate?.title) {
       setIsEditingTitle(false);
       return;
     }
     try {
-      await ipc.debate.updateDebate({ id: debateId, title: editTitle });
+      await ipc.debate.updateDebate({ id: debateId!, title: editTitle });
       setDebate((prev) => (prev ? { ...prev, title: editTitle } : null));
       setIsEditingTitle(false);
       invalidateDebates();
@@ -78,8 +88,8 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
     }
   }, [debate?.messages, isStreaming]);
 
-  const loadDebate = async () => {
-    setLoading(true);
+  const loadDebate = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       if (!debateId) {
         // Mock empty debate for new session
@@ -104,7 +114,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (skipSave: boolean | any = false) => {
     if (!input.trim() && injectedItems.length === 0) return;
 
     let activeDebateId = debateId;
@@ -116,7 +126,10 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
           title: "Nuevo Debate",
         });
         // We update the URL silently
-        navigate({ search: { id: activeDebateId }, replace: true });
+        navigate({
+          search: (prev: any) => ({ ...prev, id: activeDebateId }),
+          replace: true
+        });
       } catch (e: any) {
         showError(`Error al crear debate: ${e.message}`);
         return;
@@ -129,12 +142,87 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
     setInput("");
     setInjectedItems([]);
 
+    // Create abort controller for this stream
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    const isSkip = typeof skipSave === 'boolean' ? skipSave : false;
+
     try {
       ipc.debateStream.start(
         {
           debateId: activeDebateId,
           prompt: currentInput,
+          mode: "append",
           injectedItems: currentInjected,
+          appId: selectedAppId ?? undefined,
+          skipSaveUserMessage: isSkip,
+        },
+        {
+          onChunk: (data) => {
+            setDebate((prev) =>
+              prev ? { ...prev, messages: data.messages } : null,
+            );
+          },
+          onEnd: () => {
+            setIsStreaming(false);
+            abortControllerRef.current = null;
+            invalidateDebates();
+          },
+          onError: (data) => {
+            showError(`Error: ${data.error}`);
+            setIsStreaming(false);
+            abortControllerRef.current = null;
+          },
+        },
+      );
+    } catch (e: any) {
+      showError(e.message);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStopStream = () => {
+    if (debateId) {
+      ipc.debate.abortStream({ debateId });
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    showSuccess("Generación detenida");
+  };
+
+  const handleEditMessage = (message: DebateMessage) => {
+    if (message.role !== "user") return;
+    setEditingMessageId(message.id);
+    const cleanContent =
+      message.content.split("\n\n--- CONTEXTO INYECTADO ---")[0];
+    setEditingContent(cleanContent);
+  };
+
+  const handleSendEditedMessage = async () => {
+    if (!editingContent.trim() || !debateId) return;
+
+    const finalContent = editingContent;
+    setEditingMessageId(null);
+    setEditingContent("");
+
+    setIsStreaming(true);
+
+    // Create abort controller for this stream
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
+      ipc.debateStream.start(
+        {
+          debateId: debateId,
+          prompt: finalContent,
+          mode: "append",
+          injectedItems: [], // No items for simple inline edit resend
           appId: selectedAppId ?? undefined,
         },
         {
@@ -145,18 +233,19 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
           },
           onEnd: () => {
             setIsStreaming(false);
+            abortControllerRef.current = null;
             invalidateDebates();
-            // Just refresh data to be sure
-            // If we just created it, we might want to reload fully next time, but for now state is updated via chunk
           },
-          onError: (data) => {
-            showError(`Error: ${data.error}`);
+          onError: (err) => {
+            showError(`Error en el stream: ${err}`);
             setIsStreaming(false);
+            abortControllerRef.current = null;
           },
+          signal: abortController.signal,
         },
       );
     } catch (e: any) {
-      showError(e.message);
+      showError(`Error al enviar mensaje editado: ${e.message}`);
       setIsStreaming(false);
     }
   };
@@ -176,9 +265,10 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
   };
 
   const handleSummarize = async () => {
+    if (!debateId) return;
     setIsSummarizing(true);
     try {
-      const summary = await ipc.debate.summarizeDebate(debateId);
+      const summary = await ipc.debate.summarizeDebate(debateId!);
       setDebate((prev) => (prev ? { ...prev, summary } : null));
       showSuccess("Resumen generado con éxito");
 
@@ -214,6 +304,11 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
 
   const handleRemoveInjected = (idx: number) => {
     setInjectedItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleTagsChange = (tags: any[]) => {
+    setDebate((prev) => (prev ? { ...prev, tags } : null));
+    invalidateDebates();
   };
 
   if (loading) {
@@ -257,6 +352,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                 {debate.title}
               </h2>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-full"
@@ -275,15 +371,18 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                 <Hash size={10} /> {t.name}
               </span>
             ))}
-            {debate.tags.length === 0 && (
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                Sin etiquetas
-              </span>
+            {debateId && (
+              <DebateTagPicker
+                debateId={debateId}
+                selectedTags={debate.tags}
+                onTagsChange={handleTagsChange}
+              />
             )}
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleSummarize}
@@ -307,7 +406,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar" ref={scrollRef}>
-        <div className="max-w-3xl mx-auto px-4 py-8 space-y-12">
+        <div className="max-w-3xl mx-auto px-4 pt-8 pb-32 space-y-12">
           {debate.messages.length === 0 && !isStreaming && (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground/30 space-y-4">
               <MessageSquare size={48} strokeWidth={1} />
@@ -317,19 +416,30 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             </div>
           )}
 
-          {debate.messages.map((m) => (
+          {debate.messages.map((m, index) => (
             <div
               key={m.id}
               className="flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative"
             >
               <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${
-                  m.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-                }`}
+                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${m.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
+                  }`}
               >
-                {m.role === "user" ? <User size={18} /> : <Bot size={18} />}
+                {m.role === "user" ? (
+                  auth.currentUser?.photoURL ? (
+                    <img
+                      src={auth.currentUser.photoURL}
+                      alt="User"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User size={18} />
+                  )
+                ) : (
+                  <Bot size={18} />
+                )}
               </div>
 
               <div className="flex-1 space-y-4 overflow-hidden">
@@ -376,51 +486,118 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     </div>
                   )}
 
-                  <div
-                    className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg" : ""}`}
-                  >
-                    {m.isSummary && (
-                      <div className="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-70">
-                        <Sparkles size={12} /> Resumen Generado
+                  {editingMessageId === m.id ? (
+                    <div className="bg-[#1a1c1e] rounded-2xl p-4 border border-border/50 mb-4 animate-in fade-in slide-in-from-top-2">
+                      <textarea
+                        autoFocus
+                        value={editingContent}
+                        onChange={(e) => setEditingContent(e.target.value)}
+                        className="w-full bg-transparent border-none outline-none resize-none text-foreground text-sm min-h-[120px] mb-4"
+                        placeholder="Edita tu mensaje..."
+                      />
+                      <div className="flex items-center justify-end pt-2 border-t border-border/20">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingMessageId(null);
+                              setEditingContent("");
+                            }}
+                            className="rounded-full text-muted-foreground hover:text-foreground h-8 px-4"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleSendEditedMessage}
+                            className="rounded-full bg-white text-black hover:bg-gray-200 h-8 px-4 font-bold"
+                          >
+                            Enviar
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                    <ReactMarkdown>
-                      {m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]}
-                    </ReactMarkdown>
-
-                    {m.isSummary && (
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          // We handle save as note for specific message summary if needed, or re-implement handleSaveAsNote to take content
-                          onClick={() =>
-                            ipc.note
-                              .createNote({
-                                title: `Resumen: ${debate.title}`,
-                                content: m.content,
-                              })
-                              .then(() => {
-                                invalidateNotes();
-                                showSuccess("Resumen guardado como nota");
-                              })
+                    </div>
+                  ) : (
+                    <div
+                      className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg" : ""}`}
+                    >
+                      {m.isSummary && (
+                        <div className="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-70">
+                          <Sparkles size={12} /> Resumen Generado
+                        </div>
+                      )}
+                      {m.role === "assistant" ? (
+                        <DyadMarkdownParser
+                          content={
+                            m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]
                           }
-                          className="gap-2 text-xs hover:bg-amber-500/20 h-7"
-                        >
-                          <FileText size={10} /> Guardar Nota
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                          isStreaming={
+                            isStreaming && index === debate.messages.length - 1
+                          }
+                        />
+                      ) : (
+                        <VanillaMarkdownParser
+                          content={
+                            m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]
+                          }
+                        />
+                      )}
+
+                      {m.isSummary && (
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              ipc.note
+                                .createNote({
+                                  title: `Resumen: ${debate.title}`,
+                                  content: m.content,
+                                })
+                                .then(() => {
+                                  invalidateNotes();
+                                  showSuccess("Resumen guardado como nota");
+                                })
+                            }
+                            className="gap-2 text-xs hover:bg-amber-500/20 h-7"
+                          >
+                            <FileText size={10} /> Guardar Nota
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="absolute -right-2 top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
+                {m.role === "user" && !isStreaming && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleEditMessage(m);
+                    }}
+                  >
+                    <Edit3 size={12} />
+                  </Button>
+                )}
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                  onClick={() => handleDeleteMessage(m.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDeleteMessage(m.id);
+                  }}
                 >
                   <Trash2 size={12} />
                 </Button>
@@ -458,6 +635,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                   <span className="truncate max-w-[200px]">{item.title}</span>
                   <button
+                    type="button"
                     onClick={() => handleRemoveInjected(idx)}
                     className="ml-1 hover:bg-primary/20 p-0.5 rounded-full transition-colors"
                   >
@@ -495,14 +673,20 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             />
 
             <Button
+              type="button"
               size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 shadow-lg bg-primary hover:bg-primary/90 transition-all active:scale-95 shadow-primary/10"
-              disabled={
-                isStreaming || (!input.trim() && injectedItems.length === 0)
-              }
-              onClick={handleSendMessage}
+              className={`rounded-full h-10 w-10 flex-shrink-0 shadow-lg transition-all active:scale-95 ${isStreaming
+                ? "bg-destructive hover:bg-destructive/90 shadow-destructive/10"
+                : "bg-primary hover:bg-primary/90 shadow-primary/10"
+                }`}
+              disabled={!isStreaming && (!input.trim() && injectedItems.length === 0)}
+              onClick={() => isStreaming ? handleStopStream() : handleSendMessage('new')}
             >
-              <Send size={18} className={isStreaming ? "animate-pulse" : ""} />
+              {isStreaming ? (
+                <StopCircle size={18} />
+              ) : (
+                <Send size={18} />
+              )}
             </Button>
           </div>
           <div className="flex justify-center px-4">
@@ -512,6 +696,6 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

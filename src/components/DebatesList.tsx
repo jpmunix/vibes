@@ -94,9 +94,14 @@ export function DebatesList({ show }: { show?: boolean }) {
     }
   };
 
-  const filteredDebates = debates.filter((d) =>
-    d.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredDebates = debates.filter((d) => {
+    const query = searchQuery.toLowerCase();
+    const titleMatch = d.title.toLowerCase().includes(query);
+    const tagMatch = d.tags.some((tag) =>
+      tag.name.toLowerCase().includes(query),
+    );
+    return titleMatch || tagMatch;
+  });
 
   return (
     <SidebarGroup className="overflow-y-auto h-[calc(100vh-112px)]">
@@ -141,11 +146,10 @@ export function DebatesList({ show }: { show?: boolean }) {
                     <Button
                       variant="ghost"
                       onClick={() => handleDebateClick(debate.id)}
-                      className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 ${
-                        selectedDebateId === debate.id
-                          ? "border-l-4 border-primary bg-primary/5 text-primary"
-                          : ""
-                      }`}
+                      className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 ${selectedDebateId === debate.id
+                        ? "bg-primary/5 text-primary"
+                        : ""
+                        }`}
                     >
                       <div className="flex flex-col gap-1 w-full overflow-hidden">
                         <div className="flex items-center justify-between">
@@ -160,13 +164,29 @@ export function DebatesList({ show }: { show?: boolean }) {
                               addSuffix: true,
                             })}
                           </span>
-                          {debate.tags.length > 0 && (
-                            <span className="flex items-center gap-1">
-                              <TagIcon size={10} />
-                              {debate.tags.length}
-                            </span>
-                          )}
                         </div>
+                        {debate.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {debate.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold truncate max-w-[80px]"
+                                style={{
+                                  backgroundColor: `#3b82f620`,
+                                  color: "#3b82f6",
+                                  border: `1px solid #3b82f640`,
+                                }}
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                            {debate.tags.length > 3 && (
+                              <span className="text-[9px] text-muted-foreground">
+                                +{debate.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </Button>
                     <button
@@ -206,6 +226,6 @@ export function DebatesList({ show }: { show?: boolean }) {
           </AlertDialog>
         </div>
       </SidebarGroupContent>
-    </SidebarGroup>
+    </SidebarGroup >
   );
 }

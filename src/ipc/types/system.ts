@@ -106,6 +106,7 @@ export const OpenRouterCreditsSchema = z.object({
   totalCredits: z.number(),
   totalUsage: z.number(),
   availableCredits: z.number(),
+  label: z.string().optional(),
 });
 
 export type OpenRouterCredits = z.infer<typeof OpenRouterCreditsSchema>;
@@ -216,6 +217,18 @@ export const systemContracts = {
     channel: "does-release-note-exist",
     input: DoesReleaseNoteExistParamsSchema,
     output: DoesReleaseNoteExistResultSchema,
+  }),
+
+  getReleaseNotesContent: defineContract({
+    channel: "get-release-notes-content",
+    input: z.void(),
+    output: z.string(),
+  }),
+
+  getDocumentationContent: defineContract({
+    channel: "get-documentation-content",
+    input: z.void(),
+    output: z.string(),
   }),
 
   // Upload

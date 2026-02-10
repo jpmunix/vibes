@@ -156,6 +156,21 @@ export const debateContracts = {
     input: z.number(),
     output: z.string(), // Returns the summary
   }),
+  abortStream: defineContract({
+    channel: "debate:abort",
+    input: z.object({ debateId: z.number() }),
+    output: z.void(),
+  }),
+  deleteMessagesAfter: defineContract({
+    channel: "debate:delete-after",
+    input: z.object({ debateId: z.number(), messageId: z.number() }),
+    output: z.void(),
+  }),
+  deleteTag: defineContract({
+    channel: "debate:delete-tag",
+    input: z.object({ tagId: z.number() }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -169,6 +184,8 @@ export const debateStreamContract = defineStream({
     prompt: z.string(),
     injectedItems: z.array(InjectedItemSchema).optional(),
     appId: z.number().optional(),
+    mode: z.enum(["append", "regenerate"]).default("append"),
+    skipSaveUserMessage: z.boolean().optional(),
   }),
   keyField: "debateId",
   events: {

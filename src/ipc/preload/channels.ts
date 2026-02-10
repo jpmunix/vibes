@@ -15,6 +15,7 @@ import {
 
 import { agentContracts, agentEvents } from "../types/agent";
 import { appContracts } from "../types/app";
+import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
 import { chatLogsContracts } from "../types/chat_logs";
@@ -105,6 +106,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(tokenStatsContracts),
   ...getInvokeChannels(chatLogsContracts),
   ...getInvokeChannels(embeddingsContracts),
+  ...getInvokeChannels(backupContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,

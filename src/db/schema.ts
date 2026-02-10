@@ -349,6 +349,10 @@ export const todos = sqliteTable("todos", {
   prompt: text("prompt"),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
   order: integer("order").notNull().default(0),
+  developmentSummary: text("development_summary"),
+  checklist: text("checklist", { mode: "json" }).$type<
+    { id: string; content: string; completed: boolean }[] | null
+  >(),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -381,12 +385,12 @@ export const debateMessages = sqliteTable("debate_messages", {
   // For injected items
   injectedItems: text("injected_items", { mode: "json" }).$type<
     | {
-        type: "chat" | "note" | "todo";
-        id: number;
-        title: string;
-        content: string;
-        fragment?: string; // For specific fragments
-      }[]
+      type: "chat" | "note" | "todo";
+      id: number;
+      title: string;
+      content: string;
+      fragment?: string; // For specific fragments
+    }[]
     | null
   >(),
   createdAt: integer("created_at", { mode: "timestamp" })

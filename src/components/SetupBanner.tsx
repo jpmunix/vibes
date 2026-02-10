@@ -391,6 +391,12 @@ export const OpenRouterSetupBanner = ({
 }) => {
   const posthog = usePostHog();
   const scrollAndNavigateTo = useScrollAndNavigateTo("/settings");
+  const { isProviderSetup } = useLanguageModelProviders();
+
+  if (isProviderSetup("openrouter")) {
+    return null;
+  }
+
   return (
     <SetupProviderCard
       className={cn("mt-2", className)}
