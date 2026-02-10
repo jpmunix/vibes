@@ -4,7 +4,7 @@
 Ahora si envías a desarrollar una tarea de tu tablero kanban y la marcas como completada en el chat, además de sincronizar el estado como completado te generará un resumen de desarrollo en la propia tarea. En la card verás un pequeño icono de bot azul que indica que hay notas
 
 ### ✅ Subtareas en el kanban
-Ahora podrás añadir subtareas a tus tarjetas de kanban para organizar mejor tus tareas y mejorar la visibilidad de tus proyectos.
+Ahora podrás añadir subtareas a tus tarjetas de kanban para organizar mejor tus tareas y mejorar la visibilidad de tus proyectos. Además el Smart Import si detecta subtareas las añadirá automáticamente a tus tarjetas.
 
 ### 🔑 Múltiples keys de OpenRouter
 Si necesitas trabajar en tus proyectos personales y en los del trabajo puedes gestionar los gastos por separado. Además desde el botón de crédito restante podrás ver tu gasto total, el dinero restante y el total recargado a lo largo del tiempo

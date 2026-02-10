@@ -216,6 +216,14 @@ export const AnalyzeTodoFilesResponseSchema = z.object({
       content: z.string(),
       description: z.string().optional().nullable(),
       completed: z.boolean().optional(),
+      checklist: z
+        .array(
+          z.object({
+            content: z.string(),
+            completed: z.boolean(),
+          }),
+        )
+        .optional(),
     }),
   ),
 });

@@ -64,6 +64,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "3. Normalización y Estructura:",
     "- Frases claras, cortas y PROFESIONALES. Elimina redundancias.",
     "- Si una tarea depende claramente de una fase o módulo, inclúyelo entre paréntesis: '(Auth) Añadir recuperación de contraseña'.",
+    "- Si detectas listas anidadas o pasos secuenciales dentro de una tarea mayor, agrégalos como `checklist`.",
     "",
     "4. Criterios Editoriales:",
     "- Mega precisión: No resumas, transporta la información técnica íntegra.",
@@ -72,7 +73,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "5. Formato de salida (OBLIGATORIO):",
     "Responde ÚNICAMENTE en JSON con esta estructura (sin bloques de código):",
-    '{ "listTitle": "Título (ej: Arquitectura CMS / Plan de Proyecto)", "tasks": [ { "content": "Tarea", "description": "Detalles técnicos exhaustivos extraídos", "completed": true|false } ] }',
+    '{ "listTitle": "Título (ej: Arquitectura CMS / Plan de Proyecto)", "tasks": [ { "content": "Tarea principal", "description": "Detalles técnicos", "completed": true|false, "checklist": [ { "content": "Subtarea", "completed": true|false } ] } ] }',
   ].join("\n"),
   todo_refinement: [
     "Eres un experto en ingeniería de prompts.",
