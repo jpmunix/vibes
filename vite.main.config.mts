@@ -35,6 +35,11 @@ export default defineConfig({
       ],
     },
   },
+  server: {
+    watch: {
+      ignored: ["**/userData/**", "**/*.db*", "**/*.db-wal", "**/*.db-shm"],
+    },
+  },
   plugins: [
     {
       name: "restart",

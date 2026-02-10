@@ -106,14 +106,14 @@
   "autoFixMaxDurationMs": 20000,
   "autoFixMaxAttempts": 1,
   "autoFixMaxIssues": 5,
-  "isRunning": false,
+  "isRunning": true,
   "lastKnownPerformance": {
-    "timestamp": 1770745547297,
-    "memoryUsageMB": 384,
-    "cpuUsagePercent": 8.63,
-    "systemMemoryUsageMB": 25953,
-    "systemMemoryTotalMB": 64190,
-    "systemCpuPercent": 41.09
+    "timestamp": 1770746896190,
+    "memoryUsageMB": 378,
+    "cpuUsagePercent": 2.78,
+    "systemMemoryUsageMB": 12575,
+    "systemMemoryTotalMB": 64009,
+    "systemCpuPercent": 45.81
   },
   "chatLanguage": "es",
   "serperApiKey": {
