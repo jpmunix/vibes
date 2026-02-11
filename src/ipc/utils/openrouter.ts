@@ -1,5 +1,6 @@
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
+import { logAiQuery } from "./ai_query_logger";
 
 const logger = log.scope("openrouter_client");
 
@@ -146,7 +147,6 @@ export async function openRouterCompletion(
 
   // Log the query
   try {
-    const { logAiQuery } = await import("./ai_query_logger");
     void logAiQuery({
       queryType: options.title || "generic-completion",
       model: finalModel,

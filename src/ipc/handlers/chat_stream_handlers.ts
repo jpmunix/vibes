@@ -112,6 +112,7 @@ import {
   unmarkMessageAsUsingFreeAgentQuota,
 } from "./free_agent_quota_handlers";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX } from "@/shared/texts";
+import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
   processChatMessagesWithVersionedFiles as getVersionedFiles,
@@ -1313,14 +1314,14 @@ This conversation includes one or more image attachments. When the user uploads 
                 response.usage?.promptTokens ?? response.usage?.inputTokens;
               const completionTokens =
                 response.usage?.completionTokens ??
-                response.usage?.outputTokens;
+                response.usage?.outputTokens ??
+                (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
 
               // Log the query to the dedicated AI query log
               try {
-                const { logAiQuery } = await import("../utils/ai_query_logger");
                 void logAiQuery({
                   queryType: "chat-stream",
-                  model: modelClient.model,
+                  model: selectedModel.name || modelClient.model?.modelId || "unknown",
                   promptSnippet: chatMessages[chatMessages.length - 1]?.content?.slice(0, 100) || "",
                   payload: {
                     system: systemPromptOverride,

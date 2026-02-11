@@ -3,6 +3,7 @@ import { aiQueryLogs } from "../../db/schema";
 import { desc, eq } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
+import { logAiQuery } from "../utils/ai_query_logger";
 
 export function registerAiQueryLogHandlers() {
     createTypedHandler(aiQueryLogContracts.getAiQueryLogs, async () => {
@@ -49,7 +50,7 @@ export function registerAiQueryLogHandlers() {
     });
 
     createTypedHandler(aiQueryLogContracts.addTestLog, async () => {
-        const { logAiQuery } = await import("../utils/ai_query_logger");
+        // const { logAiQuery } = await import("../utils/ai_query_logger");
         await logAiQuery({
             queryType: "test-manual",
             model: "test-model",

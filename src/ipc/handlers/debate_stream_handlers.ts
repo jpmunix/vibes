@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import log from "electron-log";
 import { readSettings } from "../../main/settings";
 import { getModelClient } from "../utils/get_model_client";
+import { logAiQuery } from "../utils/ai_query_logger";
 import { streamText, TextStreamPart } from "ai";
 import { safeSend } from "../utils/safe_sender";
 import { logTokenUsage } from "../utils/token_stats_logger";
@@ -272,7 +273,7 @@ export function registerDebateStreamHandlers() {
 
       // Log the query to the dedicated AI query log
       try {
-        const { logAiQuery } = await import("../utils/ai_query_logger");
+        // const { logAiQuery } = await import("../utils/ai_query_logger");
         void logAiQuery({
           queryType: "debate-stream",
           model: selectedModel.name,

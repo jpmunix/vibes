@@ -137,6 +137,18 @@ export function ChatPanel({
       next.set(chatId, chat.messages);
       return next;
     });
+
+    // After messages are loaded, scroll to bottom so the user sees the latest.
+    // Use RAF + timeout to wait for the DOM (including Virtuoso) to render.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom("instant");
+        // Fallback timeout for Virtuoso which may need extra time to lay out
+        setTimeout(() => {
+          scrollToBottom("instant");
+        }, 200);
+      });
+    });
   }, [chatId, setMessagesById]);
 
   useEffect(() => {
@@ -157,6 +169,11 @@ export function ChatPanel({
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           scrollToBottom("smooth");
+          // Add a timeout to ensure scroll happens after layout might have changed
+          // due to footer appearing (buttons, etc.)
+          setTimeout(() => {
+            scrollToBottom("smooth");
+          }, 150);
         });
       });
     }
