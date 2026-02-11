@@ -22,6 +22,7 @@ import {
   constructSystemPrompt,
   readAiRules,
 } from "../../prompts/system_prompt";
+import { buildKnowledgePrompt, autoExtractKnowledge } from "./knowledge_handlers";
 import { getEffectivePrompt } from "../../prompts";
 import { getThemePromptById } from "../utils/theme_utils";
 import {
@@ -964,6 +965,15 @@ ${componentSnippet}
           chatLanguage: settings.chatLanguage || "es",
           settings,
         });
+
+        // Inject knowledge base prompt (auto-learned project rules)
+        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id);
+        if (knowledgePrompt) {
+          systemPrompt += "\n\n" + knowledgePrompt;
+          logger.log(
+            `Knowledge base injected for app ${updatedChat.app.id}: ${knowledgePrompt.length} chars`,
+          );
+        }
 
         // Add information about mentioned apps if any
         if (otherAppsCodebaseInfo) {
@@ -2016,6 +2026,14 @@ ${problemReport.problems
               : placeholderAssistantMessage.model,
           })
           .where(eq(messages.id, placeholderAssistantMessage.id));
+
+        // Fire-and-forget: auto-extract knowledge from this interaction
+        void autoExtractKnowledge(
+          updatedChat.app.id,
+          userPrompt,
+          fullResponse,
+        );
+
         const settings = readSettings();
         if (
           settings.autoApproveChanges &&

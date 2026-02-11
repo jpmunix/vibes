@@ -45,6 +45,7 @@ import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
+import { knowledgeContracts } from "../types/knowledge";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -107,6 +108,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(chatLogsContracts),
   ...getInvokeChannels(embeddingsContracts),
   ...getInvokeChannels(backupContracts),
+  ...getInvokeChannels(knowledgeContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,

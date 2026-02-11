@@ -253,6 +253,13 @@
       "when": 1770667199580,
       "tag": "0035_outgoing_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1770795768570,
+      "tag": "0036_light_sebastian_shaw",
+      "breakpoints": true
     }
   ]
 }

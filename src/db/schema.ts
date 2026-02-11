@@ -444,3 +444,45 @@ export const debateToTagsRelations = relations(debateToTags, ({ one }) => ({
     references: [debateTags.id],
   }),
 }));
+
+// --- Knowledge Base table ---
+// Auto-fed knowledge entries that the AI learns from interactions per app
+export const knowledgeEntries = sqliteTable("knowledge_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  appId: integer("app_id")
+    .notNull()
+    .references(() => apps.id, { onDelete: "cascade" }),
+  // Category of knowledge: convention, pattern, preference, rule, component
+  category: text("category", {
+    enum: ["convention", "pattern", "preference", "rule", "component"],
+  }).notNull(),
+  // Compressed content - the actual knowledge (short, dense)
+  content: text("content").notNull(),
+  // How this entry was created
+  source: text("source", {
+    enum: ["manual", "auto-extracted", "inferred"],
+  })
+    .notNull()
+    .default("manual"),
+  // Confidence score 0-100 (auto-extracted entries start lower)
+  confidence: integer("confidence").notNull().default(100),
+  // Whether the entry is active (can be soft-disabled)
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Knowledge entries relations
+export const knowledgeEntriesRelations = relations(
+  knowledgeEntries,
+  ({ one }) => ({
+    app: one(apps, {
+      fields: [knowledgeEntries.appId],
+      references: [apps.id],
+    }),
+  }),
+);

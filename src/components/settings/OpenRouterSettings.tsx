@@ -30,6 +30,7 @@ import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
 import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
 import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
 import { SummaryModelSelector } from "@/components/debate/SummaryModelSelector";
+import { KnowledgeModelSelector } from "@/components/KnowledgeModelSelector";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -422,6 +423,18 @@ export function OpenRouterSettings({
                 <SummaryModelSelector />
                 <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
                   Modelo ligero para generar los puntos clave de un debate.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                Base de Conocimientos
+              </Label>
+              <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
+                <KnowledgeModelSelector />
+                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                  Modelo para analizar conversaciones y extraer reglas del
+                  proyecto automáticamente.
                 </p>
               </div>
             </div>

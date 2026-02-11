@@ -56,6 +56,7 @@ export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
 export { embeddingsContracts } from "./embeddings";
 export { debateContracts, debateStreamContract } from "./debate";
+export { knowledgeContracts } from "./knowledge";
 
 // =============================================================================
 // Client Exports
@@ -91,6 +92,7 @@ export { debateClient, debateStreamClient } from "./debate";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
+export { knowledgeClient } from "./knowledge";
 
 // =============================================================================
 // Type Exports
@@ -319,6 +321,16 @@ export type {
 // Debate types
 export type { InjectedItem, DebateMessage, DebateTag, Debate } from "./debate";
 
+// Knowledge types
+export type {
+  KnowledgeEntry,
+  KnowledgeCategory,
+  KnowledgeSource,
+  CreateKnowledgeEntryParams,
+  UpdateKnowledgeEntryParams,
+  ExtractKnowledgeParams,
+} from "./knowledge";
+
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
 // =============================================================================
@@ -384,6 +396,7 @@ import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
 import { debateClient, debateStreamClient } from "./debate";
+import { knowledgeClient } from "./knowledge";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -446,6 +459,7 @@ export const ipc = {
   tokenStats: tokenStatsClient,
   chatLogs: chatLogsClient,
   embeddings: embeddingsClient,
+  knowledge: knowledgeClient,
 
   // Event clients for main->renderer pub/sub
   events: {

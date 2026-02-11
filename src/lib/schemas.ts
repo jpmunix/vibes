@@ -313,6 +313,7 @@ export const UserSettingsSchema = z
     todoAnalysisModel: z.string().optional(),
     debateModel: z.string().optional(),
     summaryModel: z.string().optional(),
+    knowledgeExtractionModel: z.string().optional(),
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
