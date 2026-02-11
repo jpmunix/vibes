@@ -362,6 +362,7 @@ export const UserSettingsSchema = z
 
     enableAutoFixProblems: z.boolean().optional(),
     enableBackgroundProblemAutoFix: z.boolean().optional(),
+    enableAutoRepairRuntimeErrors: z.boolean().optional(),
     autoExpandPreviewPanel: z.boolean().optional(),
     showTokenBar: z.boolean().optional(),
     enableNativeGit: z.boolean().optional(),

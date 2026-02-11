@@ -42,7 +42,7 @@ describe("readSettings", () => {
   describe("when settings file does not exist", () => {
     it("should create default settings file and return default settings", () => {
       mockFs.existsSync.mockReturnValue(false);
-      mockFs.writeFileSync.mockImplementation(() => {});
+      mockFs.writeFileSync.mockImplementation(() => { });
 
       const result = readSettings();
 
@@ -53,7 +53,7 @@ describe("readSettings", () => {
       );
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "appTitleGenerationModel": "openai/gpt-5-mini",
           "autoExpandPreviewPanel": false,
           "autoFixMaxAttempts": 1,
           "autoFixMaxDurationMs": 20000,
@@ -63,12 +63,20 @@ describe("readSettings", () => {
             "provider": "openrouter",
           },
           "chatLanguage": "es",
+          "debateModel": "x-ai/grok-4.1-fast",
           "enableAutoFixProblems": false,
+          "enableAutoRepairRuntimeErrors": true,
           "enableBackgroundProblemAutoFix": false,
+          "enableChatCompletionNotifications": true,
+          "enableGithubAutoCommit": true,
+          "enableLocalSmartContext": true,
+          "enableMcpSmartContext": false,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
+          "enableTokenStats": true,
           "enableTurboEditsV2": true,
+          "enableVerboseChatLogs": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
@@ -81,6 +89,8 @@ describe("readSettings", () => {
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
+          "showTokenBar": false,
+          "summaryModel": "x-ai/grok-4.1-fast",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
           "turboEditModel": "openai/gpt-4.1",
@@ -319,7 +329,7 @@ describe("readSettings", () => {
 
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "appTitleGenerationModel": "openai/gpt-5-mini",
           "autoExpandPreviewPanel": false,
           "autoFixMaxAttempts": 1,
           "autoFixMaxDurationMs": 20000,
@@ -329,12 +339,20 @@ describe("readSettings", () => {
             "provider": "openrouter",
           },
           "chatLanguage": "es",
+          "debateModel": "x-ai/grok-4.1-fast",
           "enableAutoFixProblems": false,
+          "enableAutoRepairRuntimeErrors": true,
           "enableBackgroundProblemAutoFix": false,
+          "enableChatCompletionNotifications": true,
+          "enableGithubAutoCommit": true,
+          "enableLocalSmartContext": true,
+          "enableMcpSmartContext": false,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
+          "enableTokenStats": true,
           "enableTurboEditsV2": true,
+          "enableVerboseChatLogs": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
@@ -347,6 +365,8 @@ describe("readSettings", () => {
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
+          "showTokenBar": false,
+          "summaryModel": "x-ai/grok-4.1-fast",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
           "turboEditModel": "openai/gpt-4.1",

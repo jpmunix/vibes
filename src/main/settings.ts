@@ -49,6 +49,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   selectedChatMode: "build",
   enableAutoFixProblems: false,
   enableBackgroundProblemAutoFix: false,
+  enableAutoRepairRuntimeErrors: true,
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
   selectedThemeId: DEFAULT_THEME_ID,
   isRunning: false,

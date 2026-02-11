@@ -51,7 +51,7 @@ export function NotesList({ show }: { show?: boolean }) {
   // Get current note ID from route
   const currentNoteId =
     routerState.location.pathname.startsWith("/notes/") &&
-    routerState.location.pathname !== "/notes"
+      routerState.location.pathname !== "/notes"
       ? parseInt(routerState.location.pathname.split("/")[2])
       : null;
 
@@ -172,26 +172,23 @@ export function NotesList({ show }: { show?: boolean }) {
                       <Button
                         variant="ghost"
                         onClick={() => handleNoteClick(note.id)}
-                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${
-                          currentNoteId === note.id
+                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${currentNoteId === note.id
                             ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
                             : ""
-                        }`}
+                          }`}
                       >
                         <div className="flex flex-col w-full relative overflow-hidden">
                           <span
-                            className={`truncate mr-16 ${
-                              currentNoteId === note.id ? "font-semibold" : ""
-                            }`}
+                            className={`truncate mr-16 ${currentNoteId === note.id ? "font-semibold" : ""
+                              }`}
                           >
                             {note.title}
                           </span>
                           <span
-                            className={`text-xs ${
-                              currentNoteId === note.id
+                            className={`text-xs ${currentNoteId === note.id
                                 ? "text-blue-600/70 dark:text-blue-400/70"
                                 : "text-gray-500"
-                            }`}
+                              }`}
                           >
                             {formatDistanceToNow(new Date(note.updatedAt), {
                               addSuffix: true,
@@ -204,11 +201,10 @@ export function NotesList({ show }: { show?: boolean }) {
                       {/* Hover gradient shadow */}
                       <div
                         className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10
-                        ${
-                          currentNoteId === note.id
+                        ${currentNoteId === note.id
                             ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
                             : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
-                        }`}
+                          }`}
                       />
 
                       {!busyNoteIds.has(note.id) &&

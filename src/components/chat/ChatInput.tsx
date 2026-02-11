@@ -31,6 +31,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
+import { useAutoRepair } from "@/hooks/useAutoRepair";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
@@ -88,8 +89,21 @@ export function ChatInput({
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { refreshVersions } = useVersions(appId);
+  const autoRepairHook = useAutoRepair();
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
-    useStreamChat();
+    useStreamChat({
+      autoRepair: {
+        activateMonitoring: autoRepairHook.activateMonitoring,
+        onRepairStreamEnd: autoRepairHook.onRepairStreamEnd,
+        resetAutoRepair: autoRepairHook.resetAutoRepair,
+        isRepairing: autoRepairHook.isRepairing,
+      },
+    });
+
+  // Register streamMessage with auto-repair so it can trigger fixes
+  useEffect(() => {
+    autoRepairHook.setStreamMessage(streamMessage);
+  }, [streamMessage, autoRepairHook.setStreamMessage]);
   const [showError, setShowError] = useState(true);
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
@@ -360,9 +374,8 @@ export function ChatInput({
       )}
       <div className="p-4" data-testid="chat-input-container">
         <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-          }`}
+          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
+            }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}

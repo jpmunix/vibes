@@ -163,5 +163,48 @@ export const showExtraFilesToast = ({
   }
 };
 
+// Stable toast ID for auto-repair notifications
+const AUTO_REPAIR_TOAST_ID = "auto-repair-toast";
+
+/**
+ * Show/update the auto-repair toast notification.
+ * Uses a stable ID so calling it multiple times updates the same toast.
+ */
+export const showAutoRepairToast = ({
+  status,
+  attempt,
+  maxAttempts,
+  errorMessage,
+}: {
+  status: "repairing" | "success" | "failed";
+  attempt?: number;
+  maxAttempts?: number;
+  errorMessage?: string;
+}) => {
+  // Lazy import to avoid circular dependencies
+  const { AutoRepairToast } = require("../components/AutoRepairToast");
+
+  const duration =
+    status === "repairing" ? Infinity : status === "success" ? 4_000 : 8_000;
+
+  toast.custom(
+    () =>
+      React.createElement(AutoRepairToast, {
+        status,
+        attempt,
+        maxAttempts,
+        errorMessage,
+      }),
+    { id: AUTO_REPAIR_TOAST_ID, duration },
+  );
+};
+
+/**
+ * Dismiss the auto-repair toast if it's showing.
+ */
+export const dismissAutoRepairToast = () => {
+  toast.dismiss(AUTO_REPAIR_TOAST_ID);
+};
+
 // Re-export for direct use
 export { toast };

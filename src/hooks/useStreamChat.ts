@@ -42,7 +42,16 @@ const pendingStreamChatIds = new Set<number>();
 
 export function useStreamChat({
   hasChatId = true,
-}: { hasChatId?: boolean } = {}) {
+  autoRepair,
+}: {
+  hasChatId?: boolean;
+  autoRepair?: {
+    activateMonitoring: (chatId: number) => void;
+    onRepairStreamEnd: (updatedFiles: boolean) => void;
+    resetAutoRepair: () => void;
+    isRepairing: boolean;
+  };
+} = {}) {
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const setIsStreamingById = useSetAtom(isStreamingByIdAtom);
@@ -94,6 +103,11 @@ export function useStreamChat({
         !chatId
       ) {
         return;
+      }
+
+      // Reset auto-repair state when user sends a new (non-system) message
+      if (!isSystemPrompt && autoRepair) {
+        autoRepair.resetAutoRepair();
       }
 
       // Prevent duplicate streams - check module-level set to avoid race conditions
@@ -237,6 +251,17 @@ export function useStreamChat({
                 if (settings?.enableAutoFixProblems) {
                   checkProblems();
                 }
+
+                // Auto-repair integration: if this was a repair stream,
+                // notify the auto-repair system. Otherwise, activate monitoring.
+                if (autoRepair?.isRepairing) {
+                  autoRepair.onRepairStreamEnd(true);
+                } else {
+                  autoRepair?.activateMonitoring(chatId);
+                }
+              } else if (autoRepair?.isRepairing) {
+                // Repair stream ended but no files were updated
+                autoRepair.onRepairStreamEnd(false);
               }
               if (response.extraFiles) {
                 showExtraFilesToast({

@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
 import { useEffect, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
+import { useSilentAppStart } from "@/hooks/useSilentAppStart";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   appConsoleEntriesAtom,
@@ -26,6 +27,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const { refreshAppIframe } = useRunApp();
   // Subscribe to app output events once at the root level to avoid duplicates
   useAppOutputSubscription();
+  // Silently start the dev server when entering a chat for an app
+  useSilentAppStart();
   const previewMode = useAtomValue(previewModeAtom);
   const { settings } = useSettings();
   const setSelectedComponentsPreview = useSetAtom(
