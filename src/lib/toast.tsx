@@ -4,6 +4,7 @@ import React from "react";
 import { CustomErrorToast } from "../components/CustomErrorToast";
 import { InputRequestToast } from "../components/InputRequestToast";
 import { McpConsentToast } from "../components/McpConsentToast";
+import { AutoRepairToast } from "../components/AutoRepairToast";
 
 /**
  * Toast utility functions for consistent notifications across the app
@@ -181,8 +182,7 @@ export const showAutoRepairToast = ({
   maxAttempts?: number;
   errorMessage?: string;
 }) => {
-  // Lazy import to avoid circular dependencies
-  const { AutoRepairToast } = require("../components/AutoRepairToast");
+  // Use static import instead of require to avoid "Synchronous require" error
 
   const duration =
     status === "repairing" ? Infinity : status === "success" ? 4_000 : 8_000;

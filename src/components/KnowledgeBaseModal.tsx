@@ -5,15 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { showError, showSuccess } from "@/lib/toast";
 import {
-    Brain,
     Plus,
     Trash2,
     ToggleLeft,
     ToggleRight,
-    ChevronDown,
-    ChevronUp,
     Sparkles,
+    Pencil,
+    Check,
+    X,
 } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { HelpCircle } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Category config
 const CATEGORIES: {
@@ -88,13 +101,23 @@ function SourceBadge({ source }: { source: string }) {
     );
 }
 
-export function KnowledgeBasePanel({ appId }: { appId: number }) {
+export function KnowledgeBaseModal({
+    appId,
+    isOpen,
+    onClose
+}: {
+    appId: number;
+    isOpen: boolean;
+    onClose: () => void;
+}) {
     const [entries, setEntries] = useState<KnowledgeEntry[]>([]);
-    const [isExpanded, setIsExpanded] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [newContent, setNewContent] = useState("");
     const [newCategory, setNewCategory] = useState<KnowledgeCategory>("convention");
     const [isLoading, setIsLoading] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState("");
+    const [editCategory, setEditCategory] = useState<KnowledgeCategory>("convention");
 
     const loadEntries = useCallback(async () => {
         try {
@@ -106,10 +129,10 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
     }, [appId]);
 
     useEffect(() => {
-        if (isExpanded) {
+        if (isOpen) {
             loadEntries();
         }
-    }, [isExpanded, loadEntries]);
+    }, [isOpen, loadEntries]);
 
     const handleAdd = async () => {
         if (!newContent.trim()) return;
@@ -145,6 +168,31 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
         }
     };
 
+    const handleStartEdit = (entry: KnowledgeEntry) => {
+        setEditingId(entry.id);
+        setEditContent(entry.content);
+        setEditCategory(entry.category);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingId || !editContent.trim()) return;
+        setIsLoading(true);
+        try {
+            await ipc.knowledge.updateKnowledgeEntry({
+                id: editingId,
+                content: editContent.trim(),
+                category: editCategory,
+            });
+            setEditingId(null);
+            showSuccess("Regla actualizada");
+            await loadEntries();
+        } catch (error) {
+            showError(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleDelete = async (entryId: number) => {
         try {
             await ipc.knowledge.deleteKnowledgeEntry(entryId);
@@ -157,48 +205,117 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
     const activeCount = entries.filter((e) => e.enabled).length;
 
     return (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
-            {/* Header */}
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
-            >
-                <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-violet-500" />
-                    <span className="font-medium text-sm">Base de Conocimientos IA</span>
-                    {entries.length > 0 && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-                            {activeCount} activa{activeCount !== 1 ? "s" : ""}
-                        </span>
-                    )}
-                </div>
-                {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-gray-400" />
-                ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                )}
-            </button>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[95vw]! sm:max-w-[1400px]! w-[95vw]! h-[92vh]! max-h-[92vh]! overflow-hidden flex flex-col p-6">
+                <DialogHeader>
+                    <div className="flex items-center gap-2">
+                        <DialogTitle>Base de Conocimientos IA</DialogTitle>
+                        {entries.length > 0 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                                {activeCount} activa{activeCount !== 1 ? "s" : ""}
+                            </span>
+                        )}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-1">
+                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4">
+                                <h4 className="font-medium mb-2">¿Qué significa cada categoría?</h4>
+                                <div className="space-y-3 text-sm">
+                                    {CATEGORIES.map((cat) => (
+                                        <div key={cat.value} className="flex gap-2">
+                                            <span className="text-lg">{cat.emoji}</span>
+                                            <div>
+                                                <p className="font-medium text-xs">{cat.label}</p>
+                                                <p className="text-xs text-muted-foreground leading-snug">
+                                                    {cat.description}
+                                                    {cat.value === "convention" && " (ej: usar siempre camelCase)"}
+                                                    {cat.value === "pattern" && " (ej: estructura de carpetas específica)"}
+                                                    {cat.value === "preference" && " (ej: prefiero textos cortos)"}
+                                                    {cat.value === "rule" && " (ej: NUNCA borrar base de datos)"}
+                                                    {cat.value === "component" && " (ej: usar MiBoton en vez de <button>)"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <DialogDescription>
+                        La IA aprende y respeta estas reglas automáticamente en cada interacción.
+                    </DialogDescription>
+                </DialogHeader>
 
-            {/* Content */}
-            {isExpanded && (
-                <div className="border-t border-gray-200 dark:border-gray-700 p-3">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        La IA aprende y respeta estas reglas automáticamente en cada
-                        interacción. Puedes añadir reglas manuales o dejar que se
-                        auto-extraigan de las conversaciones.
-                    </p>
-
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4">
                     {/* Entries list */}
                     {entries.length > 0 ? (
                         <div className="space-y-2 mb-3">
                             {entries.map((entry) => {
                                 const cat = getCategoryConfig(entry.category);
+                                const isEditing = editingId === entry.id;
+
+                                if (isEditing) {
+                                    return (
+                                        <div
+                                            key={entry.id}
+                                            className="space-y-2 p-3 border border-violet-200 dark:border-violet-800 rounded-md bg-violet-50/10 dark:bg-violet-950/10"
+                                        >
+                                            <div className="flex gap-1.5 flex-wrap mb-1">
+                                                {CATEGORIES.map((cat) => (
+                                                    <button
+                                                        key={cat.value}
+                                                        onClick={() => setEditCategory(cat.value)}
+                                                        className={`text-[10px] px-2 py-0.5 rounded-full transition-colors cursor-pointer ${editCategory === cat.value
+                                                            ? "bg-violet-500 text-white"
+                                                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                                            }`}
+                                                    >
+                                                        {cat.emoji} {cat.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    value={editContent}
+                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                    className="text-xs h-8 flex-1"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") handleSaveEdit();
+                                                        if (e.key === "Escape") setEditingId(null);
+                                                    }}
+                                                />
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                                    onClick={handleSaveEdit}
+                                                    disabled={isLoading || !editContent.trim()}
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                    onClick={() => setEditingId(null)}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
                                 return (
                                     <div
                                         key={entry.id}
                                         className={`flex items-start gap-2 p-2 rounded-md border text-sm transition-opacity ${entry.enabled
-                                                ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                                                : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 opacity-50"
+                                            ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                            : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 opacity-50"
                                             }`}
                                     >
                                         <span className="text-sm mt-0.5 flex-shrink-0">
@@ -220,6 +337,13 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-0.5 flex-shrink-0">
+                                            <button
+                                                onClick={() => handleStartEdit(entry)}
+                                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-gray-400 hover:text-blue-500"
+                                                title="Editar"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </button>
                                             <button
                                                 onClick={() => handleToggle(entry)}
                                                 className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
@@ -255,15 +379,15 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
 
                     {/* Add new entry form */}
                     {isAdding ? (
-                        <div className="space-y-2 p-2 border border-violet-200 dark:border-violet-800 rounded-md bg-violet-50/50 dark:bg-violet-950/20">
-                            <div className="flex gap-1.5 flex-wrap">
+                        <div className="space-y-2 p-3 border border-violet-200 dark:border-violet-800 rounded-md bg-violet-50/50 dark:bg-violet-950/20">
+                            <div className="flex gap-1.5 flex-wrap mb-2">
                                 {CATEGORIES.map((cat) => (
                                     <button
                                         key={cat.value}
                                         onClick={() => setNewCategory(cat.value)}
                                         className={`text-[10px] px-2 py-1 rounded-full transition-colors cursor-pointer ${newCategory === cat.value
-                                                ? "bg-violet-500 text-white"
-                                                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                            ? "bg-violet-500 text-white"
+                                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                                             }`}
                                         title={cat.description}
                                     >
@@ -275,7 +399,7 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
                                 value={newContent}
                                 onChange={(e) => setNewContent(e.target.value)}
                                 placeholder="Ej: Siempre usar nuestro componente Dialog en vez de confirm()"
-                                className="text-xs h-8"
+                                className="text-sm"
                                 autoFocus
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && newContent.trim()) {
@@ -287,11 +411,10 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
                                     }
                                 }}
                             />
-                            <div className="flex justify-end gap-1.5">
+                            <div className="flex justify-end gap-2 pt-1">
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 text-xs"
                                     onClick={() => {
                                         setIsAdding(false);
                                         setNewContent("");
@@ -301,7 +424,7 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
                                 </Button>
                                 <Button
                                     size="sm"
-                                    className="h-7 text-xs bg-violet-500 hover:bg-violet-600"
+                                    className="bg-violet-500 hover:bg-violet-600"
                                     onClick={handleAdd}
                                     disabled={!newContent.trim() || isLoading}
                                 >
@@ -313,15 +436,15 @@ export function KnowledgeBasePanel({ appId }: { appId: number }) {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="w-full text-xs h-8 border-dashed"
+                            className="w-full border-dashed"
                             onClick={() => setIsAdding(true)}
                         >
-                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            <Plus className="h-4 w-4 mr-2" />
                             Añadir regla manualmente
                         </Button>
                     )}
                 </div>
-            )}
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -27,6 +27,22 @@ Consulta la nueva documentación para aprender a sacarle todo el potencial a Vib
 ### 🧠 Nuevo modelo
 - Se ha añadido Grok 4.1 Fast con un contexto de 2 millones de tokens
 
+### 🤖 Base de Conocimientos IA (Knowledge Base)
+Sistema inteligente que aprende y aplica automáticamente las reglas, convenciones y preferencias de tu proyecto:
+- **Extracción automática**: La IA detecta y guarda tus preferencias mientras trabajas (ej: "siempre usa X", "nunca hagas Y").
+- **Gestión organizada**: Visualiza y edita todas las reglas aprendidas desde una única modal accesible.
+- **Categorización inteligente**: Diferencia entre convenciones, patrones, preferencias, reglas y componentes propios.
+- **Ayuda contextual**: Explicaciones en lenguaje sencillo para usuarios no técnicos.
+- **Inyección en prompts**: Las reglas se integran automáticamente en cada conversación para mantener consistencia.
+
+### 🔧 Auto-Repair de Errores en Tiempo Real
+Nuevo sistema que detecta y corrige automáticamente errores durante el desarrollo:
+- **Monitoreo continuo**: Supervisa errores de runtime mientras desarrollas.
+- **Reparación automática**: Envía los errores al chat para que la IA los corrija sin intervención manual.
+- **Inicio silencioso**: Arranca el servidor de desarrollo en segundo plano para detección temprana de errores.
+- **Notificaciones visuales**: Toasts informativos sobre el progreso y resultado de las reparaciones.
+- **Activación configurable**: Puedes activar/desactivar desde ajustes (`enableAutoRepairRuntimeErrors`).
+
 ### 🛠️ Mejoras en el Agente inteligente
 - Reducción del 95% de la ventana de contexto gracias a la implementación de técnicas de búsquedas de código y utilización avanzada de herramientas locales.
 

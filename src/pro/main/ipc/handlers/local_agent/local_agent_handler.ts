@@ -64,6 +64,7 @@ import { TOOL_DEFINITIONS } from "./tool_definitions";
 import { parseAiMessagesJson } from "@/ipc/utils/ai_messages_utils";
 import { parseMcpToolKey, sanitizeMcpName } from "@/ipc/utils/mcp_tool_utils";
 import { addIntegrationTool } from "./tools/add_integration";
+import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
 
 const logger = log.scope("local_agent_handler");
 
@@ -341,8 +342,8 @@ export async function handleLocalAgentStream(
     const messageHistory: ModelMessage[] = messageOverride
       ? messageOverride
       : chat.messages
-          .filter((msg) => msg.content || msg.aiMessagesJson)
-          .flatMap((msg) => parseAiMessagesJson(msg));
+        .filter((msg) => msg.content || msg.aiMessagesJson)
+        .flatMap((msg) => parseAiMessagesJson(msg));
     logger.log(
       `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
     );
@@ -609,6 +610,13 @@ export async function handleLocalAgentStream(
         });
       }
     }
+
+    // Fire-and-forget: auto-extract knowledge from this interaction
+    void autoExtractKnowledge(
+      chat.app.id,
+      req.prompt,
+      fullResponse,
+    );
 
     // Send completion
     safeSend(event.sender, "chat:response:end", {

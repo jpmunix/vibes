@@ -67,119 +67,148 @@ async function buildKnowledgePrompt(appId: number): Promise<string> {
 }
 
 // =============================================================================
-// Knowledge Extractor
+// AI-Powered Knowledge Extractor
 // =============================================================================
 
 /**
- * Extracts potential knowledge entries from assistant responses.
- * Uses heuristic pattern matching to find conventions and rules.
- *
- * This is a lightweight extraction that runs locally instead of needing
- * an LLM call. It catches common patterns from developer conversations.
+ * Extracts potential knowledge entries from a chat interaction using AI.
+ * Uses a fast, cheap model to synthesize user intent into structured knowledge.
+ * Output is limited to 500 tokens to keep costs low.
  */
-function extractKnowledgeFromResponse(
-    assistantResponse: string,
+async function extractKnowledgeWithAI(
     userPrompt: string,
-): Array<{
+    assistantResponse: string,
+): Promise<Array<{
     category: "convention" | "pattern" | "preference" | "rule" | "component";
     content: string;
     confidence: number;
-}> {
-    const extracted: Array<{
-        category: "convention" | "pattern" | "preference" | "rule" | "component";
-        content: string;
-        confidence: number;
-    }> = [];
+}>> {
+    logger.info("[KNOWLEDGE EXTRACTION] 🧠 Starting AI-powered knowledge extraction");
+    logger.debug("[KNOWLEDGE EXTRACTION] User prompt:", userPrompt.substring(0, 200));
+    logger.debug("[KNOWLEDGE EXTRACTION] Assistant response:", assistantResponse.substring(0, 200));
 
-    const lowerPrompt = userPrompt.toLowerCase();
-    const lowerResponse = assistantResponse.toLowerCase();
+    try {
+        const { readSettings } = await import("../../main/settings");
+        const { getModelClient } = await import("../utils/get_model_client");
+        const { streamText } = await import("ai");
 
-    // Pattern 1: User explicitly says "remember", "always", "never", "use X instead of Y"
-    const explicitRules = [
-        /recuerda?\s+(?:que\s+)?(?:siempre|nunca)\s+(.+?)(?:\.|$)/gi,
-        /(?:siempre|always)\s+(?:usa[rs]?|usar|use)\s+(.+?)(?:\s+(?:en\s+vez|instead)\s+(?:de|of)\s+(.+?))?(?:\.|$)/gi,
-        /(?:nunca|never)\s+(?:usa[rs]?|usar|use)\s+(.+?)(?:\.|$)/gi,
-        /(?:no\s+uses?|don'?t\s+use)\s+(.+?)(?:,?\s*(?:usa|use)\s+(.+?))?(?:\.|$)/gi,
-        /(?:prefiero|prefer)\s+(.+?)(?:\s+(?:sobre|over|en\s+vez\s+de|instead\s+of)\s+(.+?))?(?:\.|$)/gi,
-    ];
+        const settings = readSettings();
+        logger.info("[KNOWLEDGE EXTRACTION] ⚙️ Settings loaded");
 
-    for (const regex of explicitRules) {
-        let match;
-        while ((match = regex.exec(userPrompt)) !== null) {
-            const content = match[0]
-                .trim()
-                .replace(/^recuerda\s+que?\s*/i, "")
-                .replace(/\.$/, "");
-            if (content.length > 10 && content.length < 200) {
-                extracted.push({
-                    category: content.toLowerCase().includes("nunca") ||
-                        content.toLowerCase().includes("never") ||
-                        content.toLowerCase().includes("no uses")
-                        ? "rule"
-                        : "preference",
-                    content: content.charAt(0).toUpperCase() + content.slice(1),
-                    confidence: 90,
-                });
-            }
+        // Use a fast, cheap model for extraction
+        // Default to selectedModel if no specific knowledgeExtractionModel is set
+        // This respects the user's OpenRouter multi-key setup
+        const extractionModel = settings.selectedModel;
+
+        const { modelClient } = await getModelClient(extractionModel, settings);
+        logger.info(`[KNOWLEDGE EXTRACTION] 🤖 Model client obtained: ${extractionModel.provider}/${extractionModel.name}`);
+
+        const extractionPrompt = `Analiza esta conversación entre un usuario y un asistente IA. Tu trabajo es extraer cualquier regla, convención, preferencia o conocimiento que el usuario quiera que la IA recuerde para futuras interacciones.
+
+**USUARIO:**
+${userPrompt}
+
+**ASISTENTE:**
+${assistantResponse.substring(0, 2000)}${assistantResponse.length > 2000 ? "..." : ""}
+
+---
+
+**CATEGORÍAS:**
+- **convention** (Convención): Estándares de código del proyecto (ej: "usar camelCase", "imports al inicio")
+- **pattern** (Patrón): Patrones de diseño recurrentes (ej: "estructura de carpetas específica", "siempre validar entradas")
+- **preference** (Preferencia): Preferencias de estilo y herramientas (ej: "textos cortos", "evitar async/await cuando no sea necesario")
+- **rule** (Regla): Cosas que NUNCA hacer (ej: "NUNCA borrar la base de datos", "no usar var")
+- **component** (Componente): Componentes propios a usar siempre (ej: "usar nuestro Dialog en vez de confirm()")
+
+**INSTRUCCIONES:**
+1. Detecta si el usuario está expresando algo que quiere que se recuerde (ej: "siempre usa X", "quiero usar Y", "nunca hagas Z", "busca X porque siempre quiero usar Y")
+2. Si NO hay nada que recordar, devuelve un array vacío: []
+3. Si SÍ hay conocimiento, devuelve un array JSON con objetos que tengan:
+   - "category": una de las 5 categorías
+   - "content": frase corta y clara (máx 150 caracteres) en español, SIN comillas extras
+   - "confidence": número del 1-100 (qué tan seguro estás de que esto es importante)
+
+**FORMATO DE SALIDA (solo JSON, sin markdown):**
+[
+  {"category": "preference", "content": "Usar siempre textos cortos y concisos", "confidence": 95},
+  {"category": "rule", "content": "Nunca eliminar datos sin confirmación explícita", "confidence": 100}
+]
+
+**IMPORTANTE:**
+- Solo extraer conocimiento EXPLÍCITO (no inventes preferencias)
+- Mantén cada "content" claro, corto y accionable
+- Si el usuario solo hace una pregunta normal, devuelve []`;
+
+        logger.info("[KNOWLEDGE EXTRACTION] 📤 Sending request to AI...");
+        const result = await streamText({
+            model: modelClient.model,
+            messages: [
+                {
+                    role: "user",
+                    content: extractionPrompt,
+                },
+            ],
+            maxOutputTokens: 500,
+            temperature: 0.3, // Low temperature for consistent extraction
+        });
+
+        let fullResponse = "";
+        for await (const chunk of result.textStream) {
+            fullResponse += chunk;
         }
-    }
 
-    // Pattern 2: Detect component creation patterns from the response
-    const componentPattern =
-        /(?:cre[ée]|creat(?:ed|ing)|nuevo|new)\s+(?:componente?|component)\s+[`"']?(\w+)[`"']?/gi;
-    let componentMatch;
-    while ((componentMatch = componentPattern.exec(lowerResponse)) !== null) {
-        const componentName = componentMatch[1];
-        if (componentName && componentName.length > 2) {
-            extracted.push({
-                category: "component",
-                content: `Componente personalizado: ${componentName}`,
-                confidence: 60,
-            });
+        logger.info("[KNOWLEDGE EXTRACTION] 📥 AI response received:");
+        logger.debug("[KNOWLEDGE EXTRACTION] Full response:", fullResponse);
+
+        // Parse JSON response
+        const jsonMatch = fullResponse.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+            logger.warn("[KNOWLEDGE EXTRACTION] ❌ No JSON array found in response");
+            logger.debug("[KNOWLEDGE EXTRACTION] Response was:", fullResponse);
+            return [];
         }
-    }
 
-    // Pattern 3: Detect library/package preferences
-    const libraryPattern =
-        /(?:usamos?|we\s+use|usando|using)\s+[`"']?(\w[\w.-]+)[`"']?\s+(?:para|for|como|as)\s+(.+?)(?:\.|$)/gi;
-    let libMatch;
-    while ((libMatch = libraryPattern.exec(lowerPrompt)) !== null) {
-        const lib = libMatch[1];
-        const purpose = libMatch[2]?.trim();
-        if (lib && lib.length > 2 && purpose) {
-            extracted.push({
-                category: "convention",
-                content: `Usar ${lib} para ${purpose}`,
-                confidence: 75,
-            });
+        logger.info("[KNOWLEDGE EXTRACTION] ✅ JSON array found, parsing...");
+        const parsed = JSON.parse(jsonMatch[0]);
+        logger.debug("[KNOWLEDGE EXTRACTION] Parsed JSON:", JSON.stringify(parsed, null, 2));
+
+        if (!Array.isArray(parsed)) {
+            logger.warn("[KNOWLEDGE EXTRACTION] ❌ Parsed result is not an array");
+            return [];
         }
-    }
 
-    // Pattern 4: "Nuestro componente de X" / "Our X component"
-    const ourComponentPattern =
-        /(?:nuestro|our)\s+(?:componente?|component)\s+(?:de\s+)?[`"']?(\w+)[`"']?/gi;
-    let ourMatch;
-    while ((ourMatch = ourComponentPattern.exec(lowerPrompt)) !== null) {
-        const comp = ourMatch[1];
-        if (comp && comp.length > 2) {
-            extracted.push({
-                category: "component",
-                content: `Usar componente propio: ${comp} (en vez de alternativas nativas)`,
-                confidence: 85,
-            });
+        // Validate and normalize
+        const validated = parsed
+            .filter((item: any) => {
+                return (
+                    item &&
+                    typeof item === "object" &&
+                    ["convention", "pattern", "preference", "rule", "component"].includes(item.category) &&
+                    typeof item.content === "string" &&
+                    item.content.length > 5 &&
+                    item.content.length < 200 &&
+                    typeof item.confidence === "number" &&
+                    item.confidence >= 1 &&
+                    item.confidence <= 100
+                );
+            })
+            .map((item: any) => ({
+                category: item.category,
+                content: item.content.trim(),
+                confidence: Math.round(item.confidence),
+            }));
+
+        logger.info(`[KNOWLEDGE EXTRACTION] ✅ Validated ${validated.length} knowledge entries`);
+        if (validated.length > 0) {
+            logger.info("[KNOWLEDGE EXTRACTION] 📝 Extracted entries:", JSON.stringify(validated, null, 2));
+        } else {
+            logger.info("[KNOWLEDGE EXTRACTION] ℹ️ No valid knowledge entries found");
         }
+        return validated;
+    } catch (error) {
+        logger.error("[KNOWLEDGE EXTRACTION] ❌ Error during extraction:", error);
+        return [];
     }
-
-    // Deduplicate by content similarity
-    const unique = extracted.filter(
-        (entry, index, self) =>
-            index ===
-            self.findIndex(
-                (e) => e.content.toLowerCase() === entry.content.toLowerCase(),
-            ),
-    );
-
-    return unique;
 }
 
 // =============================================================================
@@ -256,9 +285,9 @@ export function registerKnowledgeHandlers() {
         async (_, params) => {
             const { appId, assistantResponse, userPrompt } = params;
 
-            const candidates = extractKnowledgeFromResponse(
-                assistantResponse,
+            const candidates = await extractKnowledgeWithAI(
                 userPrompt,
+                assistantResponse,
             );
 
             if (candidates.length === 0) return [];
@@ -312,13 +341,17 @@ async function autoExtractKnowledge(
     userPrompt: string,
     assistantResponse: string,
 ): Promise<void> {
+    logger.info(`[AUTO-EXTRACT] 🚀 Starting auto-extraction for appId=${appId}`);
     try {
-        const candidates = extractKnowledgeFromResponse(
-            assistantResponse,
+        const candidates = await extractKnowledgeWithAI(
             userPrompt,
+            assistantResponse,
         );
 
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) {
+            logger.info("[AUTO-EXTRACT] ℹ️ No candidates to save, exiting");
+            return;
+        }
 
         // Check for duplicates
         const existing = await db.query.knowledgeEntries.findMany({
@@ -333,8 +366,12 @@ async function autoExtractKnowledge(
             (c) => !existingContents.has(c.content.toLowerCase()),
         );
 
-        if (newEntries.length === 0) return;
+        if (newEntries.length === 0) {
+            logger.info("[AUTO-EXTRACT] ℹ️ All extracted knowledge entries already exist (duplicates filtered)");
+            return;
+        }
 
+        logger.info(`[AUTO-EXTRACT] 💾 Saving ${newEntries.length} new entries to database...`);
         await db.insert(knowledgeEntries).values(
             newEntries.map((entry) => ({
                 appId,
@@ -345,12 +382,17 @@ async function autoExtractKnowledge(
             })),
         );
 
+        const totalEntries = await db.query.knowledgeEntries.findMany({
+            where: eq(knowledgeEntries.appId, appId),
+        });
+
         logger.info(
-            `Auto-extracted ${newEntries.length} knowledge entries for app ${appId}`,
+            `[AUTO-EXTRACT] ✅ Successfully saved ${newEntries.length} new knowledge entries. Total entries for app ${appId}: ${totalEntries.length}`,
         );
+        logger.debug("[AUTO-EXTRACT] Saved entries:", JSON.stringify(newEntries, null, 2));
     } catch (error) {
         // Never crash the chat flow due to knowledge extraction
-        logger.warn("Knowledge auto-extraction failed (non-fatal):", error);
+        logger.error("[AUTO-EXTRACT] ❌ Failed (non-fatal):", error);
     }
 }
 

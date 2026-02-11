@@ -23,6 +23,28 @@ El corazón de Vibes es su potente sistema de chat, diseñado específicamente p
   - **Panel de Logs**: Accede a los logs detallados de las interacciones con la IA para depuración avanzada.
   - **Resumir en Nuevo Chat**: Limpia el historial manteniendo lo esencial en una nueva conversación.
 
+## 🤖 Base de Conocimientos IA
+Sistema inteligente que aprende automáticamente las preferencias y reglas de tu proyecto:
+- **Aprendizaje automático**: Mientras trabajas, la IA detecta y guarda tus preferencias (ej: "siempre usa nuestro componente Dialog", "nunca uses var").
+- **Gestión centralizada**: Accede a la Base de Conocimientos desde el menú de opciones del chat o desde los detalles de la aplicación.
+- **Categorías organizadas**:
+  - **Convenciones**: Estándares de código del proyecto (ej: camelCase, imports al inicio).
+  - **Patrones**: Patrones de diseño recurrentes (ej: estructura de carpetas).
+  - **Preferencias**: Preferencias de estilo y herramientas (ej: textos cortos).
+  - **Reglas**: Cosas que NUNCA hacer (ej: no borrar la base de datos).
+  - **Componentes**: Componentes propios a usar siempre (ej: usar Dialog en vez de confirm()).
+- **Ayuda contextual**: Cada categoría incluye explicaciones en lenguaje sencillo para usuarios no técnicos.
+- **Inyección automática**: Las reglas activas se integran en cada conversación para mantener consistencia en el código generado.
+- **Edición manual**: Puedes añadir, editar, activar/desactivar o eliminar reglas según necesites.
+
+## 🔧 Auto-Repair de Errores
+Sistema automático de detección y corrección de errores durante el desarrollo:
+- **Monitoreo en tiempo real**: Supervisa errores de runtime en tu aplicación mientras desarrollas.
+- **Reparación automática**: Cuando detecta un error, lo envía automáticamente al chat para que la IA lo corrija.
+- **Inicio silencioso de servidores**: Arranca el servidor de desarrollo en segundo plano para detección temprana de errores y mejor HMR.
+- **Notificaciones informativas**: Recibes toasts visuales sobre el progreso y resultado de las reparaciones.
+- **Control total**: Puedes activar o desactivar la funcionalidad desde Ajustes → `enableAutoRepairRuntimeErrors`.
+
 ## 📝 Notas y Tareas
 Herramientas integradas para organizar tu flujo de trabajo sin salir de la app.
 - **Editor de Notas**: Un espacio para guardar fragmentos de código, ideas o documentación personal.

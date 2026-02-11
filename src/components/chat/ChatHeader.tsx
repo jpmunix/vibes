@@ -8,6 +8,7 @@ import {
   Save,
   FileText,
   MoreHorizontal,
+  Brain,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -42,7 +43,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
+import { KnowledgeBaseModal } from "../KnowledgeBaseModal";
 
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
@@ -69,6 +72,7 @@ export function ChatHeader({
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
 
   const {
     branchInfo,
@@ -365,9 +369,24 @@ export function ChatHeader({
                   Logs
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setIsKnowledgeBaseModalOpen(true)}
+              >
+                <Brain size={16} className="mr-2" />
+                Base de Conocimientos
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {appId && (
+          <KnowledgeBaseModal
+            appId={appId}
+            isOpen={isKnowledgeBaseModalOpen}
+            onClose={() => setIsKnowledgeBaseModalOpen(false)}
+          />
+        )}
 
         <button
           data-testid="toggle-preview-panel-button"

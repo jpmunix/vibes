@@ -40,7 +40,8 @@ import { useCheckName } from "@/hooks/useCheckName";
 import { AppUpgrades } from "@/components/AppUpgrades";
 import { CapacitorControls } from "@/components/CapacitorControls";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
-import { KnowledgeBasePanel } from "@/components/KnowledgeBasePanel";
+import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
+import { Brain } from "lucide-react";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -66,6 +67,7 @@ export default function AppDetailsPage() {
   const [newCopyAppName, setNewCopyAppName] = useState("");
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
+  const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
@@ -458,7 +460,34 @@ export default function AppDetailsPage() {
             )}
           </div>
           {appId && <SupabaseConnector appId={appId} />}
-          {appId && <KnowledgeBasePanel appId={appId} />}
+          {appId && (
+            <Button
+              variant="outline"
+              onClick={() => setIsKnowledgeBaseModalOpen(true)}
+              className="w-full justify-start h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
+                  <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    Base de Conocimientos IA
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 text-left">
+                    Gestiona las reglas y convenciones que la IA ha aprendido
+                  </span>
+                </div>
+              </div>
+            </Button>
+          )}
+          {appId && (
+            <KnowledgeBaseModal
+              appId={appId}
+              isOpen={isKnowledgeBaseModalOpen}
+              onClose={() => setIsKnowledgeBaseModalOpen(false)}
+            />
+          )}
           {appId && <CapacitorControls appId={appId} />}
           <AppUpgrades appId={appId} />
         </div>
