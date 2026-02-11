@@ -59,6 +59,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   autoExpandPreviewPanel: false,
   chatLanguage: "es",
   showTokenBar: false,
+  aiQueryLogRotationThreshold: "200",
 };
 
 const SETTINGS_FILE = "user-settings.json";

@@ -19,6 +19,15 @@ export const FirebaseProjectSchema = z.object({
 
 export type FirebaseProject = z.infer<typeof FirebaseProjectSchema>;
 
+export const FirebaseWebAppSchema = z.object({
+    appId: z.string(),
+    displayName: z.string().optional(),
+    appType: z.string().optional(),
+    projectId: z.string(),
+});
+
+export type FirebaseWebApp = z.infer<typeof FirebaseWebAppSchema>;
+
 export const FirebaseWebConfigSchema = z.object({
     apiKey: z.string(),
     authDomain: z.string(),
@@ -41,6 +50,15 @@ export type SetFirebaseAppProjectParams = z.infer<
     typeof SetFirebaseAppProjectParamsSchema
 >;
 
+export const CreateFirebaseProjectParamsSchema = z.object({
+    projectId: z.string(),
+    displayName: z.string(),
+});
+
+export type CreateFirebaseProjectParams = z.infer<
+    typeof CreateFirebaseProjectParamsSchema
+>;
+
 // =============================================================================
 // Firebase Contracts
 // =============================================================================
@@ -53,9 +71,28 @@ export const firebaseContracts = {
     }),
 
     getProjectWebConfig: defineContract({
-        channel: "firebase:get-config",
-        input: z.object({ projectId: z.string() }),
+        channel: "firebase:get-project-web-config",
+        input: z.object({
+            projectId: z.string(),
+            appId: z.string().optional(),
+            displayName: z.string().optional()
+        }),
         output: FirebaseWebConfigSchema,
+    }),
+
+    listWebApps: defineContract({
+        channel: "firebase:list-web-apps",
+        input: z.object({ projectId: z.string() }),
+        output: z.array(FirebaseWebAppSchema),
+    }),
+
+    createWebApp: defineContract({
+        channel: "firebase:create-web-app",
+        input: z.object({
+            projectId: z.string(),
+            displayName: z.string(),
+        }),
+        output: FirebaseWebAppSchema,
     }),
 
     setAppProject: defineContract({
@@ -68,6 +105,27 @@ export const firebaseContracts = {
         channel: "firebase:unset-app-project",
         input: z.object({ appId: z.number() }),
         output: z.void(),
+    }),
+
+    disconnect: defineContract({
+        channel: "firebase:disconnect",
+        input: z.void(),
+        output: z.void(),
+    }),
+
+    createProject: defineContract({
+        channel: "firebase:create-project",
+        input: z.object({
+            projectId: z.string(),
+            displayName: z.string(),
+        }),
+        output: FirebaseProjectSchema,
+    }),
+
+    deploy: defineContract({
+        channel: "firebase:deploy",
+        input: z.object({ appId: z.number() }),
+        output: z.object({ success: z.boolean(), message: z.string().optional() }),
     }),
 } as const;
 

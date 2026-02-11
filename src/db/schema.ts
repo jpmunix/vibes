@@ -478,6 +478,21 @@ export const knowledgeEntries = sqliteTable("knowledge_entries", {
     .default(sql`(unixepoch())`),
 });
 
+// --- AI Query Logs table ---
+export const aiQueryLogs = sqliteTable("ai_query_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  queryType: text("query_type").notNull(), // chat-stream, chat-title, summarize, etc.
+  model: text("model").notNull(),
+  promptSnippet: text("prompt_snippet").notNull(),
+  payload: text("payload", { mode: "json" }).notNull(),
+  response: text("response", { mode: "json" }).notNull(),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // Knowledge entries relations
 export const knowledgeEntriesRelations = relations(
   knowledgeEntries,

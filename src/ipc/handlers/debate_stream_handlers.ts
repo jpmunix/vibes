@@ -270,6 +270,27 @@ export function registerDebateStreamHandlers() {
         });
       }
 
+      // Log the query to the dedicated AI query log
+      try {
+        const { logAiQuery } = await import("../utils/ai_query_logger");
+        void logAiQuery({
+          queryType: "debate-stream",
+          model: selectedModel.name,
+          promptSnippet: prompt.slice(0, 100),
+          payload: {
+            system: getEffectivePrompt("debate_chat_system", settings),
+            messages: finalHistory,
+          },
+          response: {
+            text: fullResponse,
+          },
+          inputTokens: (usage as any)?.inputTokens ?? (usage as any)?.promptTokens,
+          outputTokens: (usage as any)?.outputTokens ?? (usage as any)?.completionTokens,
+        });
+      } catch (e) {
+        logger.error("Failed to log debate AI query", e);
+      }
+
       // Final update
       await db
         .update(debateMessages)

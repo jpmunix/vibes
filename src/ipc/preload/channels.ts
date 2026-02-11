@@ -18,6 +18,7 @@ import { appContracts } from "../types/app";
 import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
+import { firebaseContracts } from "../types/firebase";
 import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
 import { debateContracts, debateStreamContract } from "../types/debate";
@@ -87,6 +88,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(vercelContracts),
   ...getInvokeChannels(supabaseContracts),
   ...getInvokeChannels(neonContracts),
+  ...getInvokeChannels(firebaseContracts),
 
   // Features
   ...getInvokeChannels(systemContracts),

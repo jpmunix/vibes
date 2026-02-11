@@ -3,15 +3,16 @@ import {
     ipc,
     FirebaseProject,
     FirebaseWebConfig,
-    SetFirebaseAppProjectParams
+    SetFirebaseAppProjectParams,
+    CreateFirebaseProjectParams
 } from "@/ipc/types";
 import { useSettings } from "./useSettings";
 import { queryKeys } from "@/lib/queryKeys";
 
 export function useFirebase() {
     const queryClient = useQueryClient();
-    const { settings } = useSettings();
-    const isConnected = !!settings.firebase?.accessToken;
+    const { settings, refreshSettings } = useSettings();
+    const isConnected = !!settings?.firebase?.accessToken;
 
     // Query: Load all Firebase projects
     const projectsQuery = useQuery<FirebaseProject[], Error>({
@@ -20,6 +21,9 @@ export function useFirebase() {
             return ipc.firebase.listProjects();
         },
         enabled: isConnected,
+        staleTime: 0, // Always consider data stale
+        refetchOnMount: "always", // Force refetch EVERY time the component mounts
+        refetchOnWindowFocus: true, // Sync when returning from browser (Google Cloud Console)
         meta: { showErrorToast: true },
     });
 
@@ -49,9 +53,45 @@ export function useFirebase() {
         meta: { showErrorToast: true },
     });
 
+    // Mutation: Disconnect Firebase account
+    const disconnectMutation = useMutation<void, Error, void>({
+        mutationFn: async () => {
+            await ipc.firebase.disconnect();
+        },
+        onSuccess: async () => {
+            // Reset queries to clear cache and stop any background refetching
+            queryClient.resetQueries({ queryKey: queryKeys.firebase.all });
+            await refreshSettings();
+        },
+        meta: { showErrorToast: true },
+    });
+
+    // Mutation: Create a new Firebase project
+    const createProjectMutation = useMutation<
+        FirebaseProject,
+        Error,
+        { projectId: string; displayName: string }
+    >({
+        mutationFn: async (params) => {
+            return await ipc.firebase.createProject(params);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.firebase.projects });
+        },
+        meta: { showErrorToast: true },
+    });
+
     // Function to get config for a project
-    const getProjectConfig = async (projectId: string): Promise<FirebaseWebConfig> => {
-        return ipc.firebase.getProjectWebConfig({ projectId });
+    const getProjectConfig = async (projectId: string, appId?: string, displayName?: string): Promise<FirebaseWebConfig> => {
+        return ipc.firebase.getProjectWebConfig({ projectId, appId, displayName });
+    };
+
+    const listWebApps = async (projectId: string) => {
+        return ipc.firebase.listWebApps({ projectId });
+    };
+
+    const createWebApp = async (projectId: string, displayName: string) => {
+        return ipc.firebase.createWebApp({ projectId, displayName });
     };
 
     return {
@@ -67,11 +107,17 @@ export function useFirebase() {
         // Mutation states
         isSettingAppProject: setAppProjectMutation.isPending,
         isUnsettingAppProject: unsetAppProjectMutation.isPending,
+        isDisconnecting: disconnectMutation.isPending,
+        isCreatingProject: createProjectMutation.isPending,
 
         // Actions
         refetchProjects: projectsQuery.refetch,
         setAppProject: setAppProjectMutation.mutateAsync,
         unsetAppProject: unsetAppProjectMutation.mutateAsync,
+        disconnect: disconnectMutation.mutateAsync,
+        createProject: createProjectMutation.mutateAsync,
         getProjectConfig,
+        listWebApps,
+        createWebApp,
     };
 }

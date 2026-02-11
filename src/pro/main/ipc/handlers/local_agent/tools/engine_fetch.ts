@@ -141,6 +141,7 @@ async function callTurboFileEditViaOpenRouter(
     try {
       data = await openRouterCompletion({
         model,
+        title: "turbo-edit",
         temperature: 0,
         messages: buildTurboEditMessages(body, settings),
         signal: controller.signal,

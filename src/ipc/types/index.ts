@@ -58,6 +58,7 @@ export { chatLogsContracts } from "./chat_logs";
 export { embeddingsContracts } from "./embeddings";
 export { debateContracts, debateStreamContract } from "./debate";
 export { knowledgeContracts } from "./knowledge";
+export { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 // =============================================================================
 // Client Exports
@@ -95,6 +96,7 @@ export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
 export { knowledgeClient } from "./knowledge";
+export { aiQueryLogClient } from "./ai_query_logs";
 
 // =============================================================================
 // Type Exports
@@ -221,6 +223,7 @@ export type {
   FirebaseProject,
   FirebaseWebConfig,
   SetFirebaseAppProjectParams,
+  CreateFirebaseProjectParams,
 } from "./firebase";
 
 // System types
@@ -407,6 +410,7 @@ import { visualEditingClient } from "./visual-editing";
 import { debateClient, debateStreamClient } from "./debate";
 import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
+import { aiQueryLogClient } from "./ai_query_logs";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -471,6 +475,7 @@ export const ipc = {
   chatLogs: chatLogsClient,
   embeddings: embeddingsClient,
   knowledge: knowledgeClient,
+  aiQueryLogs: aiQueryLogClient,
 
   // Event clients for main->renderer pub/sub
   events: {

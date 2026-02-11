@@ -3,6 +3,8 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { VercelConnector } from "@/components/VercelConnector";
+import { FirebaseConnector } from "@/components/FirebaseConnector";
+import { FirebaseDeployer } from "@/components/FirebaseDeployer";
 import { PortalMigrate } from "@/components/PortalMigrate";
 import { ipc } from "@/ipc/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,6 +172,41 @@ export const PublishPanel = () => {
               </div>
             ) : (
               <VercelConnector appId={selectedAppId} folderName={app.name} />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Firebase Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  ipc.system.openExternalUrl("https://console.firebase.google.com/");
+                }}
+                className="flex items-center gap-2 hover:text-orange-600 dark:hover:text-orange-400 transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                <svg
+                  className="w-5 h-5 text-orange-500"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M5.5 19l2.5-4 2.5 4H5.5zM12 4L4 18h16L12 4z" />
+                  <path d="M12 5.89l5.5 9.61h-11L12 5.89z" />
+                </svg>
+                Firebase
+              </button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Publica tu aplicación directamente en Firebase Hosting.
+            </p>
+
+            {app.firebaseProjectId ? (
+              <FirebaseDeployer appId={selectedAppId} app={app} />
+            ) : (
+              <FirebaseConnector appId={selectedAppId} noCard={true} />
             )}
           </CardContent>
         </Card>

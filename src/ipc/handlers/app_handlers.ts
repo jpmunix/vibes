@@ -1984,6 +1984,7 @@ export function registerAppHandlers() {
     try {
       const data = await openRouterCompletion({
         model,
+        title: "app-title-short",
         temperature: 0.3,
         max_tokens: 20,
         messages: [
@@ -2044,6 +2045,7 @@ export function registerAppHandlers() {
 
         const data = await openRouterCompletion({
           model,
+          title: "app-name-pro",
           temperature: 0.3,
           max_tokens: 20,
           messages: [

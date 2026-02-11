@@ -200,6 +200,7 @@ export function registerDebateHandlers() {
     try {
       const data = await openRouterCompletion({
         model,
+        title: "debate-summary",
         messages: [
           {
             role: "system",

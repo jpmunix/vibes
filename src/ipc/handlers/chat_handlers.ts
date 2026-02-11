@@ -227,6 +227,7 @@ export function registerChatHandlers() {
 
         const data = await openRouterCompletion({
           model,
+          title: "chat-title",
           temperature: 0.3,
           max_tokens: 40,
           messages: [
@@ -420,6 +421,7 @@ export function registerChatHandlers() {
     try {
       const data = await openRouterCompletion({
         model,
+        title: "daily-summary",
         temperature: 0.3,
         max_tokens: 500,
         messages: [

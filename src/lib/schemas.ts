@@ -400,6 +400,7 @@ export const UserSettingsSchema = z
     serperApiKey: SecretSchema.optional(),
     themeIntensity: z.number().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
+    aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)

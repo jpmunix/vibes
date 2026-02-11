@@ -260,6 +260,20 @@
       "when": 1770795768570,
       "tag": "0036_light_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1770800000000,
+      "tag": "0037_add_firebase_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1770842938925,
+      "tag": "0038_thankful_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

@@ -47,6 +47,7 @@ import { registerDebateHandlers } from "./handlers/debate_handlers";
 import { registerDebateStreamHandlers } from "./handlers/debate_stream_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
 import { registerKnowledgeHandlers } from "./handlers/knowledge_handlers";
+import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -99,4 +100,5 @@ export function registerIpcHandlers() {
   registerDebateStreamHandlers();
   registerBackupHandlers();
   registerKnowledgeHandlers();
+  registerAiQueryLogHandlers();
 }

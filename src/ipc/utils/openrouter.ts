@@ -142,5 +142,23 @@ export async function openRouterCompletion(
     signal,
   });
 
-  return await response.json();
+  const data = await response.json();
+
+  // Log the query
+  try {
+    const { logAiQuery } = await import("./ai_query_logger");
+    void logAiQuery({
+      queryType: options.title || "generic-completion",
+      model: finalModel,
+      promptSnippet: messages[messages.length - 1]?.content?.slice(0, 100) || "",
+      payload: body,
+      response: data,
+      inputTokens: data?.usage?.prompt_tokens,
+      outputTokens: data?.usage?.completion_tokens,
+    });
+  } catch (err) {
+    logger.error("Failed to initiate AI query logging", err);
+  }
+
+  return data;
 }

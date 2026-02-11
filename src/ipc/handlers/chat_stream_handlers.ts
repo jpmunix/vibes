@@ -1306,7 +1306,7 @@ This conversation includes one or more image attachments. When the user uploads 
             system: systemPromptOverride,
             tools,
             messages: chatMessages.filter((m) => m.content),
-            onFinish: (response) => {
+            onFinish: async (response) => {
               const totalTokens = response.usage?.totalTokens;
               // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
               const promptTokens =
@@ -1314,6 +1314,30 @@ This conversation includes one or more image attachments. When the user uploads 
               const completionTokens =
                 response.usage?.completionTokens ??
                 response.usage?.outputTokens;
+
+              // Log the query to the dedicated AI query log
+              try {
+                const { logAiQuery } = await import("../utils/ai_query_logger");
+                void logAiQuery({
+                  queryType: "chat-stream",
+                  model: modelClient.model,
+                  promptSnippet: chatMessages[chatMessages.length - 1]?.content?.slice(0, 100) || "",
+                  payload: {
+                    system: systemPromptOverride,
+                    messages: chatMessages,
+                    tools: tools ? Object.keys(tools) : [],
+                  },
+                  response: {
+                    text: response.text,
+                    toolCalls: response.toolCalls,
+                    finishReason: response.finishReason,
+                  },
+                  inputTokens: promptTokens,
+                  outputTokens: completionTokens,
+                });
+              } catch (e) {
+                logger.error("Failed to log streaming AI query", e);
+              }
 
               if (typeof totalTokens === "number") {
                 // We use the highest total tokens used (we are *not* accumulating)

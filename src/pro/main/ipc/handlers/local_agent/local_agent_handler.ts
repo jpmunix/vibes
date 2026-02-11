@@ -405,6 +405,30 @@ export async function handleLocalAgentStream(
             .where(eq(messages.id, placeholderMessageId))
             .catch((err) => logger.error("Failed to save token count", err));
 
+          // Log the query to the dedicated AI query log
+          try {
+            const { logAiQuery } = await import("@/ipc/utils/ai_query_logger");
+            void logAiQuery({
+              queryType: "local-agent-stream",
+              model: selectedModel.name,
+              promptSnippet: req.prompt.slice(0, 100),
+              payload: {
+                system: systemPrompt,
+                messages: messageHistory,
+                tools: Object.keys(allTools),
+              },
+              response: {
+                text: response.text,
+                steps: response.steps?.length ?? 0,
+                finishReason: response.finishReason,
+              },
+              inputTokens: inputTokens,
+              outputTokens: response.usage.outputTokens,
+            });
+          } catch (e) {
+            logger.error("Failed to log local agent AI query", e);
+          }
+
           // Log token usage for verbose chat logs and token stats panel
           void logChatInfo(
             ctx.chatId,

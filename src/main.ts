@@ -71,9 +71,13 @@ if (process.defaultApp) {
     app.setAsDefaultProtocolClient("dyad", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
+    app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3", process.execPath, [
+      path.resolve(process.argv[1]),
+    ]);
   }
 } else {
   app.setAsDefaultProtocolClient("dyad");
+  app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3");
 }
 
 function getRecentLogs(lines: number = 50): string {
@@ -390,6 +394,19 @@ async function handleDeepLinkReturn(url: string) {
     "hostname",
     parsed.hostname,
   );
+
+  // Handle Google iOS-style redirect (e.g. com.googleusercontent.apps.xxx:/oauth2redirect)
+  if (parsed.protocol === "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3:" && parsed.pathname === "/oauth2redirect") {
+    const code = parsed.searchParams.get("code");
+    if (code) {
+      await handleFirebaseOAuthReturn({ code });
+      mainWindow?.webContents.send("deep-link-received", {
+        type: "firebase-oauth-return",
+      });
+      return;
+    }
+  }
+
   if (parsed.protocol !== "dyad:") {
     dialog.showErrorBox(
       "Invalid Protocol",
@@ -397,6 +414,7 @@ async function handleDeepLinkReturn(url: string) {
     );
     return;
   }
+
   if (parsed.hostname === "neon-oauth-return") {
     const token = parsed.searchParams.get("token");
     const refreshToken = parsed.searchParams.get("refreshToken");
@@ -408,29 +426,26 @@ async function handleDeepLinkReturn(url: string) {
       );
       return;
     }
-    handleNeonOAuthReturn({ token, refreshToken, expiresIn });
+    await handleNeonOAuthReturn({ token, refreshToken, expiresIn });
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
+
   if (parsed.hostname === "firebase-oauth-return") {
-    const token = parsed.searchParams.get("token");
-    const refreshToken = parsed.searchParams.get("refreshToken");
-    const expiresIn = Number(parsed.searchParams.get("expiresIn"));
-    if (!token || !refreshToken || !expiresIn) {
-      dialog.showErrorBox(
-        "Invalid URL",
-        "Expected token, refreshToken, and expiresIn",
-      );
+    const code = parsed.searchParams.get("code");
+    if (!code) {
+      dialog.showErrorBox("Invalid URL", "Expected code parameter");
       return;
     }
-    handleFirebaseOAuthReturn({ token, refreshToken, expiresIn });
+    await handleFirebaseOAuthReturn({ code });
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
+
   if (parsed.hostname === "supabase-oauth-return") {
     const token = parsed.searchParams.get("token");
     const refreshToken = parsed.searchParams.get("refreshToken");
@@ -448,13 +463,14 @@ async function handleDeepLinkReturn(url: string) {
     });
     return;
   }
+
   if (parsed.hostname === "dyad-pro-return") {
     const apiKey = parsed.searchParams.get("key");
     if (!apiKey) {
       dialog.showErrorBox("Invalid URL", "Expected key");
       return;
     }
-    handleDyadProReturn({
+    await handleDyadProReturn({
       apiKey,
     });
     mainWindow?.webContents.send("deep-link-received", {
@@ -462,6 +478,7 @@ async function handleDeepLinkReturn(url: string) {
     });
     return;
   }
+
   if (parsed.hostname === "add-mcp-server") {
     const name = parsed.searchParams.get("name");
     const config = parsed.searchParams.get("config");
@@ -491,6 +508,7 @@ async function handleDeepLinkReturn(url: string) {
     }
     return;
   }
+
   if (parsed.hostname === "add-prompt") {
     const data = parsed.searchParams.get("data");
     if (!data) {
@@ -516,6 +534,7 @@ async function handleDeepLinkReturn(url: string) {
     }
     return;
   }
+
   dialog.showErrorBox("Invalid deep link URL", url);
 }
 

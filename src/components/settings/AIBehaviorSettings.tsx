@@ -8,6 +8,7 @@ import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
+import { AiQueryLogRotationSelector } from "@/components/AiQueryLogRotationSelector";
 
 export function AIBehaviorSettings({
   isHighlighted,
@@ -136,6 +137,7 @@ export function AIBehaviorSettings({
             />
           </div>
         </div>
+
 
         {/* Prompts Navigation */}
         <div className="pt-8 border-t border-border">

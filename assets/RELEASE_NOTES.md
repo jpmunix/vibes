@@ -1,5 +1,6 @@
 - fix upgrade data loss
-- 
+- firebase integration
+- very comprehensive logs
 
 ## 🔥 Novedades principales
 

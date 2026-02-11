@@ -260,6 +260,7 @@ export function registerTodoHandlers() {
 
       const data = await openRouterCompletion({
         model,
+        title: "todo-refinement",
         temperature: 0.1, // Lower temperature for more deterministic output
         max_tokens: 1500,
         messages: [
@@ -368,6 +369,7 @@ export function registerTodoHandlers() {
     try {
       const data = await openRouterCompletion({
         model,
+        title: "todo-analysis",
         temperature: 0.1,
         messages,
         response_format: { type: "json_object" },
@@ -480,6 +482,7 @@ export function registerTodoHandlers() {
     try {
       const data = await openRouterCompletion({
         model,
+        title: "todo-summary",
         temperature: 0.3,
         messages: [
           {

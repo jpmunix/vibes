@@ -25,6 +25,7 @@ import { useRouter } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
 import { SupabaseIntegration } from "@/components/SupabaseIntegration";
+import { FirebaseIntegration } from "@/components/FirebaseIntegration";
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -315,6 +316,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "postgresql",
       "integracion",
     ],
+    section: "Integraciones",
+    sectionId: "integrations",
+  },
+  {
+    id: "firebase",
+    label: "Firebase",
+    description: "Integración con Firebase (Google)",
+    keywords: ["firebase", "google", "database", "db", "firestore", "integracion"],
     section: "Integraciones",
     sectionId: "integrations",
   },
@@ -622,6 +631,7 @@ export default function SettingsPage() {
               <VercelIntegration />
               <SupabaseIntegration />
               <NeonIntegration />
+              <FirebaseIntegration />
             </div>
           </div>
 
@@ -999,6 +1009,7 @@ export function WorkflowSettings({
 }
 
 function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<TokenStatEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TokenStatEntry | null>(
@@ -1126,6 +1137,15 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
             }}
           >
             Exportar CSV
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-xl h-10 px-4 font-bold text-primary hover:text-primary hover:bg-primary/5 border border-primary/20"
+            onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+          >
+            <Database className="mr-2 h-4 w-4" />
+            Inspeccionar Logs de IA
           </Button>
           <Button
             variant="outline"
