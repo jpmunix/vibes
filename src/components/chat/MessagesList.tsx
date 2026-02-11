@@ -317,16 +317,9 @@ function FooterComponent({ context }: { context?: FooterContext }) {
         </div>
       )}
 
-      {isStreaming &&
-        !settings?.enableDyadPro &&
-        !userBudget &&
-        messages.length > 0 && (
-          <PromoMessage
-            seed={messages.length * (appId ?? 1) * (selectedChatId ?? 1)}
-          />
-        )}
       <div ref={messagesEndRef} />
       {renderSetupBanner()}
+
     </>
   );
 }

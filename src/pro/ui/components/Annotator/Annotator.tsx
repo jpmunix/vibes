@@ -9,22 +9,22 @@ import { chatInputValueAtom } from "@/atoms/chatAtoms";
 type Point = [number, number];
 type Shape =
   | {
-      id: string;
-      type: "line";
-      points: Point[];
-      color: string;
-      size: number;
-      isComplete: boolean;
-    }
+    id: string;
+    type: "line";
+    points: Point[];
+    color: string;
+    size: number;
+    isComplete: boolean;
+  }
   | {
-      id: string;
-      type: "text";
-      x: number;
-      y: number;
-      text: string;
-      fontSize: number;
-      color: string;
-    };
+    id: string;
+    type: "text";
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    color: string;
+  };
 
 // Custom Image Hook
 const useImage = (url: string) => {
@@ -151,7 +151,6 @@ export const Annotator = ({
       });
 
       onSubmit([file], "chat-context");
-      setChatInput("Please update the UI based on these screenshots");
       handleAnnotatorClick();
     } catch (error) {
       console.error("Failed to export annotated image:", error);

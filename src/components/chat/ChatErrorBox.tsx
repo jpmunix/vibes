@@ -49,15 +49,6 @@ export function ChatErrorBox({
     );
   }
 
-  if (error.includes("LiteLLM Virtual Key expected")) {
-    return (
-      <ChatInfoContainer onDismiss={onDismiss}>
-        <span>
-          Looks like you don't have a valid Vibes Pro key.
-        </span>
-      </ChatInfoContainer>
-    );
-  }
   if (isDyadProEnabled && error.includes("ExceededBudget:")) {
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
@@ -75,14 +66,6 @@ export function ChatErrorBox({
   const fallbackPrefix = "Fallbacks=[{";
   if (error.includes(fallbackPrefix)) {
     error = error.split(fallbackPrefix)[0];
-  }
-  // Handle FREE_AGENT_QUOTA_EXCEEDED error (Basic Agent mode quota exceeded)
-  if (error.includes("FREE_AGENT_QUOTA_EXCEEDED")) {
-    return (
-      <ChatErrorContainer onDismiss={onDismiss}>
-        You have used all 5 free Agent messages for today. Please switch to Build mode for unlimited access.
-      </ChatErrorContainer>
-    );
   }
 
   return (

@@ -80,6 +80,14 @@ const unicodeNormalized: LineComparator = (fileLine, patternLine) =>
   normalizeString(fileLine.trim()) === normalizeString(patternLine.trim());
 
 /**
+ * Pass 4.5: Internal Whitespace Normalized
+ * Ignore variations in internal spacing/tabs
+ */
+const internalWhitespaceNormalized: LineComparator = (fileLine, patternLine) =>
+  normalizeString(fileLine.trim()).replace(/\s+/g, " ") ===
+  normalizeString(patternLine.trim()).replace(/\s+/g, " ");
+
+/**
  * Pass 5: Partial Match with Threshold (90%)
  * Allow small differences like extra/missing comments or minor formatting
  */
@@ -119,6 +127,10 @@ const MATCHING_PASSES: Array<{ name: string; comparator: LineComparator }> = [
   },
   { name: "all-edge-whitespace-ignored", comparator: allEdgeWhitespaceIgnored },
   { name: "unicode-normalized", comparator: unicodeNormalized },
+  {
+    name: "internal-whitespace-normalized",
+    comparator: internalWhitespaceNormalized,
+  },
   { name: "partial-match-90%", comparator: partialMatch90Percent },
 ];
 
@@ -491,9 +503,9 @@ export function applySearchReplace(
       const finalIndent =
         relativeLevel < 0
           ? matchedIndent.slice(
-              0,
-              Math.max(0, matchedIndent.length + relativeLevel),
-            )
+            0,
+            Math.max(0, matchedIndent.length + relativeLevel),
+          )
           : matchedIndent + currentIndent.slice(searchBaseLevel);
 
       return finalIndent + line.trim();

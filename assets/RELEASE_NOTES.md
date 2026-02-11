@@ -1,3 +1,9 @@
+- capturas de pantalla
+- mejoras en el auto fixer
+
+
+
+
 ## 🔥 Novedades principales
 
 ### 📝 Resumen automático de desarrollo en el tablero Kanban

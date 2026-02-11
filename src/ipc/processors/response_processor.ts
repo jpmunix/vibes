@@ -37,7 +37,10 @@ import {
   getDyadExecuteSqlTags,
   getDyadSearchReplaceTags,
 } from "../utils/dyad_tag_parser";
-import { applySearchReplace } from "../../pro/main/ipc/processors/search_replace_processor";
+import {
+  applySearchReplace,
+  formatMatchFailureSummary,
+} from "../../pro/main/ipc/processors/search_replace_processor";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 
 import { FileUploadsState } from "../utils/file_uploads_state";
@@ -59,8 +62,19 @@ export async function dryRunSearchReplace({
 }) {
   const issues: { filePath: string; error: string }[] = [];
   const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
+
+  // Group tags by file path to handle multi-block edits to the same file correctly
+  const tagsByFile = new Map<
+    string,
+    { path: string; content: string; description?: string }[]
+  >();
   for (const tag of dyadSearchReplaceTags) {
-    const filePath = tag.path;
+    const list = tagsByFile.get(tag.path) || [];
+    list.push(tag);
+    tagsByFile.set(tag.path, list);
+  }
+
+  for (const [filePath, fileTags] of tagsByFile.entries()) {
     const fullFilePath = safeJoin(appPath, filePath);
     try {
       if (!fs.existsSync(fullFilePath)) {
@@ -72,15 +86,22 @@ export async function dryRunSearchReplace({
       }
 
       const original = await readFile(fullFilePath, "utf8");
-      const result = applySearchReplace(original, tag.content);
+      // Combine all content blocks for this file
+      const combinedContent = fileTags.map((tag) => tag.content).join("\n");
+      const result = applySearchReplace(original, combinedContent);
+
       if (!result.success || typeof result.content !== "string") {
+        const diagnosticSummary =
+          result.diagnostic && formatMatchFailureSummary(result.diagnostic);
+        const baseError = (result.error ?? "unknown").replace(/\.+$/, "");
+        const fullerError = `${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""} Read the latest file and include more surrounding lines before retrying.`;
+
         issues.push({
           filePath,
-          error:
-            "Unable to apply search-replace to file because: " + result.error,
+          error: fullerError,
         });
         logger.warn(
-          `Unable to apply search-replace to file ${filePath} because: ${result.error}. Original content:\n${original}\n Diff content:\n${tag.content}`,
+          `Unable to apply search-replace to file ${filePath} because: ${fullerError}. Original content:\n${original}\n Diff content:\n${combinedContent}`,
         );
         continue;
       }
@@ -138,7 +159,7 @@ export async function processFullResponseActions(
       logger.error("Error creating Neon branch at current version:", error);
       throw new Error(
         "Could not create Neon branch; database versioning functionality is not working: " +
-          error,
+        error,
       );
     }
   }
@@ -363,8 +384,18 @@ export async function processFullResponseActions(
 
     // Process all search-replace edits
     const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
+    // Group tags by file path
+    const srTagsByFile = new Map<
+      string,
+      { path: string; content: string; description?: string }[]
+    >();
     for (const tag of dyadSearchReplaceTags) {
-      const filePath = tag.path;
+      const list = srTagsByFile.get(tag.path) || [];
+      list.push(tag);
+      srTagsByFile.set(tag.path, list);
+    }
+
+    for (const [filePath, fileTags] of srTagsByFile.entries()) {
       const fullFilePath = safeJoin(appPath, filePath);
 
       // Track if this is a shared module
@@ -379,7 +410,10 @@ export async function processFullResponseActions(
           continue;
         }
         const original = await readFile(fullFilePath, "utf8");
-        const result = applySearchReplace(original, tag.content);
+        // Combine all blocks for this file
+        const combinedContent = fileTags.map((tag) => tag.content).join("\n");
+        const result = applySearchReplace(original, combinedContent);
+
         if (!result.success || typeof result.content !== "string") {
           // Do not show warning to user because we already attempt to do a <dyad-write> and/or a subsequent <dyad-search-replace> tag to fix it.
           logger.warn(
@@ -607,17 +641,17 @@ export async function processFullResponseActions(
   } finally {
     const appendedContent = `
     ${warnings
-      .map(
-        (warning) =>
-          `<dyad-output type="warning" message="${warning.message}">${warning.error}</dyad-output>`,
-      )
-      .join("\n")}
+        .map(
+          (warning) =>
+            `<dyad-output type="warning" message="${warning.message}">${warning.error}</dyad-output>`,
+        )
+        .join("\n")}
     ${errors
-      .map(
-        (error) =>
-          `<dyad-output type="error" message="${error.message}">${error.error}</dyad-output>`,
-      )
-      .join("\n")}
+        .map(
+          (error) =>
+            `<dyad-output type="error" message="${error.message}">${error.error}</dyad-output>`,
+        )
+        .join("\n")}
     `;
     if (appendedContent.length > 0) {
       await db

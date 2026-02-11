@@ -436,57 +436,30 @@ export function ChatInput({
               />
             )}
 
-          {userBudget ? (
-            <VisualEditingChangesDialog
-              iframeRef={
-                previewIframeRef
-                  ? { current: previewIframeRef }
-                  : { current: null }
-              }
-              onReset={() => {
-                // Exit component selection mode and visual editing
-                setSelectedComponents([]);
-                setVisualEditingSelectedComponent(null);
-                setCurrentComponentCoordinates(null);
-                setPendingVisualChanges(new Map());
-                refreshAppIframe();
+          <VisualEditingChangesDialog
+            iframeRef={
+              previewIframeRef
+                ? { current: previewIframeRef }
+                : { current: null }
+            }
+            onReset={() => {
+              // Exit component selection mode and visual editing
+              setSelectedComponents([]);
+              setVisualEditingSelectedComponent(null);
+              setCurrentComponentCoordinates(null);
+              setPendingVisualChanges(new Map());
+              refreshAppIframe();
 
-                // Deactivate component selector in iframe
-                if (previewIframeRef?.contentWindow) {
-                  previewIframeRef.contentWindow.postMessage(
-                    { type: "deactivate-dyad-component-selector" },
-                    "*",
-                  );
-                }
-              }}
-            />
-          ) : (
-            selectedComponents.length > 0 && (
-              <div className="border-b border-border p-3 bg-muted/30">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => {
-                          ipc.system.openExternalUrl(
-                            "https://github.com/minube/vibes",
-                          );
-                        }}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                      >
-                        <Lock size={16} />
-                        <span className="font-medium">Editor visual (Pro)</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      La edición visual te permite hacer cambios en la interfaz
-                      sin IA y es una función exclusiva de Pro
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            )
-          )}
+              // Deactivate component selector in iframe
+              if (previewIframeRef?.contentWindow) {
+                previewIframeRef.contentWindow.postMessage(
+                  { type: "deactivate-dyad-component-selector" },
+                  "*",
+                );
+              }
+            }}
+          />
+
 
           <SelectedComponentsDisplay />
 

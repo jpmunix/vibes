@@ -101,10 +101,6 @@ export const TitleBar = () => {
       navigate({ to: "/app-details", search: { appId: selectedApp.id } });
     }
   };
-
-  const isDyadPro = !!settings?.providerSettings?.auto?.apiKey?.value;
-  const isDyadProEnabled = Boolean(settings?.enableDyadPro);
-
   return (
     <>
       <div className="@container z-11 w-full h-11 bg-(--sidebar) absolute top-0 left-0 app-region-drag flex items-center">
@@ -121,8 +117,6 @@ export const TitleBar = () => {
         >
           {displayText}
         </Button>
-        {isDyadPro && <DyadProButton isDyadProEnabled={isDyadProEnabled} />}
-
         <div className="ml-2 no-app-region-drag flex items-center">
           {user ? (
             <DropdownMenu>
@@ -206,17 +200,19 @@ export const TitleBar = () => {
         </div>
 
         {/* Preview Header */}
-        {location.pathname === "/chat" && (
-          <div className="flex-1 flex justify-end">
-            <ActionHeader
-              versions={versions}
-              versionsLoading={versionsLoading}
-            />
-          </div>
-        )}
+        {
+          location.pathname === "/chat" && (
+            <div className="flex-1 flex justify-end">
+              <ActionHeader
+                versions={versions}
+                versionsLoading={versionsLoading}
+              />
+            </div>
+          )
+        }
 
         {showWindowControls && <WindowsControls />}
-      </div>
+      </div >
 
       <DyadProSuccessDialog
         isOpen={isSuccessDialogOpen}
@@ -228,19 +224,21 @@ export const TitleBar = () => {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {user && (
-        <>
-          <ProfileModal
-            isOpen={isProfileModalOpen}
-            onClose={() => setIsProfileModalOpen(false)}
-            user={user}
-          />
-          <BackupModal
-            isOpen={isBackupModalOpen}
-            onClose={() => setIsBackupModalOpen(false)}
-          />
-        </>
-      )}
+      {
+        user && (
+          <>
+            <ProfileModal
+              isOpen={isProfileModalOpen}
+              onClose={() => setIsProfileModalOpen(false)}
+              user={user}
+            />
+            <BackupModal
+              isOpen={isBackupModalOpen}
+              onClose={() => setIsBackupModalOpen(false)}
+            />
+          </>
+        )
+      }
     </>
   );
 };
@@ -322,61 +320,5 @@ function WindowsControls() {
         </svg>
       </button>
     </div>
-  );
-}
-
-export function DyadProButton({
-  isDyadProEnabled,
-}: {
-  isDyadProEnabled: boolean;
-}) {
-  const { navigate } = useRouter();
-  const { userBudget } = useUserBudgetInfo();
-  return (
-    <Button
-      data-testid="title-bar-dyad-pro-button"
-      onClick={() => {
-        navigate({
-          to: "/settings",
-        });
-      }}
-      variant="outline"
-      className={cn(
-        "hidden @2xl:block ml-1 no-app-region-drag h-7 bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white text-xs px-2 pt-1 pb-1",
-        !isDyadProEnabled && "bg-zinc-600 dark:bg-zinc-600",
-      )}
-      size="sm"
-    >
-      {isDyadProEnabled
-        ? userBudget?.isTrial
-          ? "Pro Trial"
-          : "Pro"
-        : "Pro (off)"}
-      {userBudget && isDyadProEnabled && (
-        <AICreditStatus userBudget={userBudget} />
-      )}
-    </Button>
-  );
-}
-
-export function AICreditStatus({
-  userBudget,
-}: {
-  userBudget: NonNullable<UserBudgetInfo>;
-}) {
-  const remaining = Math.round(
-    userBudget.totalCredits - userBudget.usedCredits,
-  );
-  return (
-    <Tooltip>
-      <TooltipTrigger>
-        <div className="text-xs pl-1 mt-0.5">{remaining} credits</div>
-      </TooltipTrigger>
-      <TooltipContent>
-        <div>
-          <p>Note: there is a slight delay in updating the credit status.</p>
-        </div>
-      </TooltipContent>
-    </Tooltip>
   );
 }

@@ -24,6 +24,8 @@ import {
   Monitor,
   Tablet,
   Smartphone,
+  Camera,
+  Crop,
 } from "lucide-react";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";
@@ -182,7 +184,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const { restartApp } = useRunApp();
   const { settings, updateSettings } = useSettings();
   const { userBudget } = useUserBudgetInfo();
-  const isProMode = !!userBudget;
+  const isProMode = true; // Pro features are now available for everyone
 
   // Preserved URL state (persists across HMR-induced remounts)
   const [preservedUrls, setPreservedUrls] = useAtom(previewCurrentUrlAtom);
@@ -569,8 +571,25 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       if (event.data?.type === "dyad-screenshot-response") {
         if (event.data.success && event.data.dataUrl) {
-          setScreenshotDataUrl(event.data.dataUrl);
-          setAnnotatorMode(true);
+          if (isProMode) {
+            setScreenshotDataUrl(event.data.dataUrl);
+            setAnnotatorMode(true);
+          } else {
+            // Auto-attach for non-pro users
+            fetch(event.data.dataUrl)
+              .then((res) => res.blob())
+              .then((blob) => {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const file = new File([blob], `screenshot-${timestamp}.png`, {
+                  type: "image/png",
+                });
+                addAttachments([file], "chat-context");
+              })
+              .catch((err) => {
+                console.error("Failed to auto-attach screenshot:", err);
+                showError("Error al adjuntar la captura al chat");
+              });
+          }
         } else {
           showError(event.data.error);
         }
@@ -579,12 +598,12 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       const { type, payload } = event.data as {
         type:
-          | "window-error"
-          | "unhandled-rejection"
-          | "iframe-sourcemapped-error"
-          | "build-error-report"
-          | "pushState"
-          | "replaceState";
+        | "window-error"
+        | "unhandled-rejection"
+        | "iframe-sourcemapped-error"
+        | "build-error-report"
+        | "pushState"
+        | "replaceState";
         payload?: {
           message?: string;
           stack?: string;
@@ -792,6 +811,17 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       iframeRef.current.contentWindow.postMessage(
         {
           type: "dyad-take-screenshot",
+        },
+        "*",
+      );
+    }
+  };
+
+  const handleStartSelection = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "dyad-start-selection",
         },
         "*",
       );
@@ -1016,11 +1046,10 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleActivateComponentSelector}
-                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      isPicking
-                        ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-                        : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
-                    }`}
+                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
+                      ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+                      : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                      }`}
                     disabled={
                       loading ||
                       !selectedAppId ||
@@ -1039,6 +1068,37 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   </p>
                   <p>{isMac ? "⌘ + ⇧ + C" : "Ctrl + ⇧ + C"}</p>
                 </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <DropdownMenu>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                        disabled={loading || !selectedAppId}
+                        data-testid="preview-screenshot-button"
+                      >
+                        <Camera size={16} />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Take Screenshot</p>
+                  </TooltipContent>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={handleAnnotatorClick}>
+                      <Monitor size={14} className="mr-2" />
+                      <span>Full Page</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleStartSelection}>
+                      <Crop size={14} className="mr-2" />
+                      <span>Selection</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </Tooltip>
             </TooltipProvider>
             <button
@@ -1078,7 +1138,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   >
                     {navigationHistory[currentHistoryPosition]
                       ? new URL(navigationHistory[currentHistoryPosition])
-                          .pathname
+                        .pathname
                       : "/"}
                   </span>
                   <ChevronDown size={14} className="flex-shrink-0" />
@@ -1258,17 +1318,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     : { width: `${deviceWidthConfig[deviceMode]}px` }
                 }
               >
-                {userBudget ? (
-                  <Annotator
-                    screenshotUrl={screenshotDataUrl}
-                    onSubmit={addAttachments}
-                    handleAnnotatorClick={handleAnnotatorClick}
-                  />
-                ) : (
-                  <AnnotatorOnlyForPro
-                    onGoBack={() => setAnnotatorMode(false)}
-                  />
-                )}
+                <Annotator
+                  screenshotUrl={screenshotDataUrl}
+                  onSubmit={addAttachments}
+                  handleAnnotatorClick={handleAnnotatorClick}
+                />
               </div>
             ) : (
               <>

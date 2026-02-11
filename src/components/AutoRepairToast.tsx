@@ -22,10 +22,6 @@ export function AutoRepairToast({
                 {status === "repairing" && (
                     <div className="relative">
                         <Wrench size={18} className="text-blue-500 animate-pulse" />
-                        <Loader2
-                            size={12}
-                            className="absolute -bottom-1 -right-1 text-blue-400 animate-spin"
-                        />
                     </div>
                 )}
                 {status === "success" && (
@@ -37,20 +33,9 @@ export function AutoRepairToast({
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">
-                    {status === "repairing" && (
-                        <>
-                            🔧 Reparando automáticamente
-                            {maxAttempts > 1 && (
-                                <span className="text-muted-foreground font-normal">
-                                    {" "}
-                                    (intento {attempt}/{maxAttempts})
-                                </span>
-                            )}
-                        </>
-                    )}
-                    {status === "success" && "✅ Error reparado correctamente"}
-                    {status === "failed" &&
-                        "⚠️ No se pudo reparar automáticamente"}
+                    {status === "repairing" && "Reparando automáticamente"}
+                    {status === "success" && "Error reparado correctamente"}
+                    {status === "failed" && "No se pudo reparar automáticamente"}
                 </p>
                 {status === "repairing" && (
                     <p className="text-xs text-muted-foreground mt-1">
@@ -62,13 +47,6 @@ export function AutoRepairToast({
                     <p className="text-xs text-muted-foreground mt-1">
                         Puedes intentar arreglarlo manualmente o usar &quot;Fix error with
                         AI&quot; en el panel de preview.
-                    </p>
-                )}
-                {errorMessage && status !== "success" && (
-                    <p className="text-xs text-red-400/80 mt-1 truncate font-mono">
-                        {errorMessage.length > 100
-                            ? errorMessage.slice(0, 100) + "…"
-                            : errorMessage}
                     </p>
                 )}
             </div>

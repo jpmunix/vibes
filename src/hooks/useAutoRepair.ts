@@ -292,6 +292,9 @@ export function useAutoRepair() {
             if (!repairStateRef.current.repairing) return;
 
             if (updatedFiles) {
+                // AI finished its part. Show success immediately to the user.
+                showAutoRepairToast({ status: "success" });
+
                 // Files were updated, re-activate monitoring to check if the fix worked
                 const chatId = repairStateRef.current.chatId;
 
@@ -318,29 +321,18 @@ export function useAutoRepair() {
                         clearTimeout(watchTimerRef.current);
                     }
 
-                    // Wait for Vite to recompile, then check
+                    // Wait for Vite to recompile. If another error appears during this window,
+                    // the useEffect will trigger a new repair cycle.
                     watchTimerRef.current = setTimeout(() => {
-                        // If we get here without new errors, the fix worked!
-                        if (
-                            repairStateRef.current.watching &&
-                            !repairStateRef.current.repairing
-                        ) {
-                            showAutoRepairToast({ status: "success" });
-                            setRepairState((prev) => ({
-                                ...prev,
-                                watching: false,
-                                watchStartedAt: null,
-                            }));
-                        }
+                        // Just stop watching after the timeout
+                        setRepairState((prev) => ({
+                            ...prev,
+                            watching: false,
+                            watchStartedAt: null,
+                        }));
                     }, AUTO_REPAIR_WATCH_WINDOW_MS);
                 } else {
-                    // Max attempts reached
-                    showAutoRepairToast({
-                        status: "failed",
-                        attempt: repairStateRef.current.attempts,
-                        maxAttempts: MAX_AUTO_REPAIR_ATTEMPTS,
-                        errorMessage: repairStateRef.current.lastDetectedError ?? undefined,
-                    });
+                    // Max attempts reached or no chatId
                     setRepairState((prev) => ({
                         ...prev,
                         watching: false,
