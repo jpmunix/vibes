@@ -47,6 +47,7 @@ import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 import { knowledgeContracts } from "../types/knowledge";
+import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -111,6 +112,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(embeddingsContracts),
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(knowledgeContracts),
+  ...getInvokeChannels(aiQueryLogContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,

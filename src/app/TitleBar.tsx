@@ -36,7 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon, Palette, CloudUpload, ScrollText } from "lucide-react";
+import { LogOut, User as UserIcon, Palette, CloudUpload, ScrollText, Database } from "lucide-react";
 
 export const TitleBar = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -171,6 +171,13 @@ export const TitleBar = () => {
                 >
                   <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Copias de seguridad</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="py-2 cursor-pointer focus:bg-accent"
+                  onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+                >
+                  <Database className="mr-3 h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Logs de Consultas IA</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem

@@ -93,19 +93,7 @@ function getRecentLogs(lines: number = 50): string {
 }
 
 export async function onReady() {
-  // Initialize backup manager FIRST to capture state before any potential wipe/corruption
-  // This is especially important during version upgrades
-  try {
-    const backupManager = new BackupManager({
-      settingsFile: getSettingsFilePath(),
-      dbFile: getDatabasePath(),
-    });
-    await backupManager.initialize();
-  } catch (e) {
-    logger.error("Error initializing backup manager", e);
-  }
-
-  // Read settings (now safer because we have a backup if this is an upgrade)
+  // Read settings first (quick, synchronous operation)
   const settings = readSettings();
 
   // Check if app was force-closed
@@ -127,14 +115,29 @@ export async function onReady() {
   // Set isRunning to true at startup
   writeSettings({ isRunning: true });
 
-  // Create window FIRST to show UI quickly
+  // Create window FIRST to show UI quickly.
+  // IMPORTANT: Do NOT await any heavy I/O (like BackupManager or DB init)
+  // before this point. Blocking the event loop here starves Chromium's GPU
+  // process of IPC messages, causing kTransientFailure on CreateCommandBuffer.
   await onFirstRunMaybe(settings);
   createWindow();
   createApplicationMenu();
 
   // Then do heavy operations in background (non-blocking)
   setImmediate(async () => {
-    // Initialize database (blocking but in background)
+    // Initialize backup manager early to capture state before DB migrations
+    // This is especially important during version upgrades
+    try {
+      const backupManager = new BackupManager({
+        settingsFile: getSettingsFilePath(),
+        dbFile: getDatabasePath(),
+      });
+      await backupManager.initialize();
+    } catch (e) {
+      logger.error("Error initializing backup manager", e);
+    }
+
+    // Initialize database (after backup, so we have a safety net)
     initializeDatabase();
 
     // Cleanup old ai_messages_json entries to prevent database bloat

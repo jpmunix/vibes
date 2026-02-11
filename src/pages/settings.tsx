@@ -20,8 +20,9 @@ import {
   Sparkles,
   Search,
   X,
+  Database,
 } from "lucide-react";
-import { useRouter } from "@tanstack/react-router";
+import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
 import { SupabaseIntegration } from "@/components/SupabaseIntegration";

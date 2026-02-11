@@ -21,7 +21,7 @@ import { ArrowLeft, Database, Code, Cpu, Sparkles, Trash2, History, Download, Bu
 import { useNavigate } from "@tanstack/react-router";
 import { AiQueryLogRotationSelector } from "@/components/AiQueryLogRotationSelector";
 import { toast } from "sonner";
-import ADMZip from "adm-zip";
+import JSZip from "jszip";
 
 export default function AiQueryLogsPage() {
     const [logs, setLogs] = useState<Partial<AiQueryLog>[]>([]);
@@ -66,23 +66,16 @@ export default function AiQueryLogsPage() {
                 return;
             }
 
-            // We'll use a dynamic import for adm-zip if possible, or build the zip manually if in renderer
-            // Since ADMZip is usually for node, we might need to handle this differently in renderer
-            // But we can just create a JSON file for now, or use a client-side zip lib if available.
-            // Actually, let's just create a single large JSON for simplicity if ADMZip fails in renderer,
-            // but the requirement was "zip of jsons". Let's try to bundle them.
-
-            const zip = new ADMZip();
+            const zip = new JSZip();
 
             fullLogs.forEach((log: any) => {
                 const dateStr = format(new Date(log.createdAt), "yyyy-MM-dd_HH-mm-ss");
                 const fileName = `${log.id}_${log.queryType}_${dateStr}.json`;
                 const content = JSON.stringify(log, null, 2);
-                zip.addFile(fileName, Buffer.from(content, "utf8"));
+                zip.file(fileName, content);
             });
 
-            const zipBuffer = zip.toBuffer();
-            const blob = new Blob([zipBuffer], { type: "application/zip" });
+            const blob = await zip.generateAsync({ type: "blob" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -92,7 +85,7 @@ export default function AiQueryLogsPage() {
             toast.success("Logs exportados correctamente en formato ZIP");
         } catch (error) {
             console.error("Export failed:", error);
-            toast.error("Error al exportar los logs. Asegúrate de que adm-zip esté disponible.");
+            toast.error("Error al exportar los logs.");
         }
     };
 
@@ -118,92 +111,99 @@ export default function AiQueryLogsPage() {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-background">
-            {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate({ to: "/settings" })}
-                        className="rounded-xl hover:bg-muted"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-2">
-                            <Database className="h-6 w-6 text-primary" />
-                            Logs de Consultas IA
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Historial completo de peticiones y respuestas de modelos de IA
-                        </p>
+        <div className="flex flex-col h-full w-full bg-background min-h-0">
+            {/* Header - Forced Two Rows */}
+            <div className="px-8 py-5 border-b border-border bg-card/40 backdrop-blur-xl sticky top-0 z-10 grid grid-rows-[auto_auto] gap-5">
+                {/* Row 1: Title + FIFO selector */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => navigate({ to: "/settings" })}
+                            className="rounded-2xl hover:bg-muted shrink-0 h-11 w-11 shadow-sm border-border/50"
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div className="min-w-0">
+                            <h1 className="text-2xl font-black flex items-center gap-3 tracking-tight">
+                                <Database className="h-6 w-6 text-primary shrink-0" />
+                                <span className="truncate">Logs de Consultas IA</span>
+                            </h1>
+                            <p className="text-sm text-muted-foreground font-medium truncate opacity-80">
+                                Historial completo de peticiones y respuestas de modelos de IA
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-2xl border border-border/50 shrink-0 shadow-inner">
+                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/70">
+                            Límite FIFO
+                        </span>
+                        <div className="h-4 w-[1px] bg-border/50 mx-1" />
+                        <AiQueryLogRotationSelector />
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 rounded-2xl border border-border mr-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                            Límite FIFO:
-                        </span>
-                        <AiQueryLogRotationSelector />
+                {/* Row 2: Action buttons */}
+                <div className="flex items-center justify-between pl-[60px]">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={loadLogs}
+                            className="rounded-xl font-bold h-10 px-5 text-sm shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={isLoading}
+                        >
+                            <History className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refrescar logs
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportZip}
+                            className="rounded-xl font-bold h-10 px-5 text-sm border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Exportar ZIP
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearLogs}
+                            className="rounded-xl font-bold h-10 px-5 text-sm text-destructive hover:bg-destructive/10 transition-all"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Limpiar historial
+                        </Button>
                     </div>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={loadLogs}
-                        className="rounded-xl font-bold h-10 border-border hover:bg-muted"
-                        disabled={isLoading}
-                    >
-                        <History className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refrescar
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleExportZip}
-                        className="rounded-xl font-bold h-10 border-border hover:bg-muted text-primary"
-                    >
-                        <Download className="mr-2 h-4 w-4" />
-                        Exportar ZIP
-                    </Button>
-
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearLogs}
-                        className="rounded-xl font-bold h-10 text-destructive hover:bg-destructive/10"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Limpiar
-                    </Button>
 
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={handleAddTestLog}
-                        className="rounded-xl text-muted-foreground hover:text-primary"
+                        className="rounded-2xl text-muted-foreground hover:text-primary h-11 w-11 hover:bg-primary/10 transition-colors"
                         title="Generar log de prueba"
                     >
-                        <Bug className="h-4 w-4" />
+                        <Bug className="h-5 w-5" />
                     </Button>
                 </div>
             </div>
 
             {/* Main Content - Full Width */}
-            <div className="flex-1 overflow-auto">
-                <div className="w-full">
-                    <Table>
-                        <TableHeader className="bg-muted/30 sticky top-0 z-10">
+            <div className="flex-1 overflow-auto bg-background/50">
+                <div className="min-w-full inline-block align-middle">
+                    <Table className="w-full">
+                        <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                             <TableRow className="hover:bg-transparent border-border">
-                                <TableHead className="w-[80px] pl-8 text-[11px] font-black uppercase tracking-widest">ID</TableHead>
-                                <TableHead className="w-[180px] text-[11px] font-black uppercase tracking-widest">Fecha</TableHead>
-                                <TableHead className="w-[150px] text-[11px] font-black uppercase tracking-widest">Tipo</TableHead>
-                                <TableHead className="w-[200px] text-[11px] font-black uppercase tracking-widest">Modelo</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase tracking-widest">Snippet del Prompt</TableHead>
-                                <TableHead className="text-right pr-8 w-[150px] text-[11px] font-black uppercase tracking-widest">Tokens (I/O)</TableHead>
+                                <TableHead className="w-[80px] pl-8 text-xs font-bold uppercase tracking-wider text-muted-foreground">ID</TableHead>
+                                <TableHead className="w-[180px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha</TableHead>
+                                <TableHead className="w-[150px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</TableHead>
+                                <TableHead className="w-[200px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Modelo</TableHead>
+                                <TableHead className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[300px]">Snippet del Prompt</TableHead>
+                                <TableHead className="text-right pr-8 w-[150px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Tokens (I/O)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -236,22 +236,22 @@ export default function AiQueryLogsPage() {
                                         className="group cursor-pointer hover:bg-primary/5 transition-colors border-border"
                                         onClick={() => log.id && handleLogClick(log.id)}
                                     >
-                                        <TableCell className="font-mono text-[11px] text-muted-foreground pl-8">
+                                        <TableCell className="font-mono text-xs text-muted-foreground pl-8">
                                             #{log.id}
                                         </TableCell>
-                                        <TableCell className="whitespace-nowrap text-sm font-medium">
+                                        <TableCell className="whitespace-nowrap text-xs font-medium">
                                             {log.createdAt && format(new Date(log.createdAt), "dd MMM, HH:mm:ss")}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-tighter border border-primary/20">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">
                                                 {log.queryType}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="font-semibold text-sm truncate max-w-[200px]">
+                                        <TableCell className="font-medium text-xs truncate max-w-[200px]">
                                             {log.model}
                                         </TableCell>
-                                        <TableCell className="max-w-0 w-full">
-                                            <div className="truncate italic text-muted-foreground text-sm group-hover:text-foreground transition-colors">
+                                        <TableCell className="max-w-[500px] truncate">
+                                            <div className="truncate italic text-muted-foreground text-xs group-hover:text-foreground transition-colors">
                                                 "{log.promptSnippet}..."
                                             </div>
                                         </TableCell>
@@ -272,22 +272,25 @@ export default function AiQueryLogsPage() {
 
             {/* Detail Dialog */}
             <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
-                <DialogContent className="max-w-[85vw] w-full max-h-[90vh] overflow-hidden flex flex-col rounded-[2.5rem] border-none shadow-2xl p-0 h-[85vh] bg-card">
-                    <div className="p-8 border-b border-border bg-muted/10">
+                <DialogContent
+                    className="sm:max-w-[1000px] !max-w-[1000px] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col rounded-3xl border border-border/50 shadow-2xl p-0 bg-card/95 backdrop-blur-xl"
+                    style={{ maxWidth: '1000px', width: '95vw' }}
+                >
+                    <div className="px-8 py-6 border-b border-border/50 bg-muted/20">
                         <DialogHeader>
                             <DialogTitle className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 text-2xl font-bold">
-                                    <div className="p-3 rounded-2xl bg-primary/10">
+                                <div className="flex items-center gap-4 text-2xl font-black tracking-tight">
+                                    <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 shadow-inner">
                                         <Code className="h-6 w-6 text-primary" />
                                     </div>
-                                    Consulta IA #{selectedLog?.id}
+                                    Detalle de Consulta #{selectedLog?.id}
                                 </div>
                                 <div className="flex gap-4 pr-10">
-                                    <div className="text-right px-6 py-2 bg-muted/30 rounded-2xl border border-border">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Tokens Consumidos</p>
-                                        <p className="font-mono text-sm font-bold">
+                                    <div className="text-right px-5 py-2.5 bg-muted/40 rounded-2xl border border-border/50 shadow-sm">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 mb-1">Tokens Consumidos</p>
+                                        <p className="font-mono text-base font-bold">
                                             <span className="text-blue-500">{selectedLog?.inputTokens || 0}</span>
-                                            <span className="mx-2 opacity-20">/</span>
+                                            <span className="mx-2 opacity-20 text-foreground">/</span>
                                             <span className="text-green-500">{selectedLog?.outputTokens || 0}</span>
                                         </p>
                                     </div>
@@ -296,42 +299,42 @@ export default function AiQueryLogsPage() {
                         </DialogHeader>
                     </div>
 
-                    <div className="flex-1 overflow-auto p-10 space-y-10 custom-scrollbar">
-                        <div className="grid grid-cols-3 gap-8">
-                            <div className="p-6 rounded-[2rem] bg-muted/40 border border-border">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
+                    <div className="flex-1 overflow-auto px-8 py-8 space-y-8 custom-scrollbar">
+                        <div className="grid grid-cols-3 gap-6">
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Cpu className="h-3.5 w-3.5" /> Modelo Utilizado
                                 </p>
-                                <p className="font-bold text-xl text-foreground">{selectedLog?.model}</p>
+                                <p className="font-bold text-lg text-foreground truncate">{selectedLog?.model}</p>
                             </div>
-                            <div className="p-6 rounded-[2rem] bg-muted/40 border border-border">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Database className="h-3.5 w-3.5" /> Origen de Llamada
                                 </p>
-                                <p className="font-bold text-xl text-foreground capitalize">{selectedLog?.queryType}</p>
+                                <p className="font-bold text-lg text-foreground capitalize truncate">{selectedLog?.queryType}</p>
                             </div>
-                            <div className="p-6 rounded-[2rem] bg-muted/40 border border-border">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">
-                                    <History className="h-3.5 w-3.5" /> Marca de Tiempo
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
+                                    <History className="h-3.5 w-3.5" /> Fecha y Hora
                                 </p>
-                                <p className="font-bold text-xl text-foreground">
+                                <p className="font-bold text-lg text-foreground whitespace-nowrap">
                                     {selectedLog?.createdAt && format(new Date(selectedLog.createdAt), "dd/MM/yyyy · HH:mm:ss")}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-2 px-2">
+                        <div className="space-y-3">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 flex items-center gap-2 px-1">
                                 <Code className="h-4 w-4 text-primary" /> Payload de Entrada (JSON)
                             </h3>
                             <div className="group relative">
-                                <pre className="p-8 rounded-[2.5rem] bg-zinc-950 text-zinc-300 font-mono text-[13px] overflow-auto border border-zinc-800 leading-relaxed max-h-[450px] scrollbar-thin scrollbar-thumb-zinc-700">
+                                <pre className="p-6 rounded-2xl bg-zinc-950 text-zinc-300 font-mono text-[13px] overflow-auto border border-zinc-800 leading-relaxed max-h-[350px] scrollbar-thin scrollbar-thumb-zinc-700 shadow-xl">
                                     {JSON.stringify(selectedLog?.payload, null, 2)}
                                 </pre>
                                 <Button
-                                    variant="ghost"
+                                    variant="secondary"
                                     size="icon"
-                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.payload, null, 2));
                                         toast.success("Copiado al portapapeles");
@@ -342,18 +345,18 @@ export default function AiQueryLogsPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-4 pb-6">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-2 px-2">
+                        <div className="space-y-3 pb-6">
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 flex items-center gap-2 px-1">
                                 <Sparkles className="h-4 w-4 text-primary" /> Respuesta del Modelo (RAW JSON)
                             </h3>
                             <div className="group relative">
-                                <pre className="p-8 rounded-[2.5rem] bg-primary/[0.03] text-foreground font-mono text-[13px] overflow-auto border border-primary/10 leading-relaxed max-h-[700px] scrollbar-thin scrollbar-thumb-primary/20">
+                                <pre className="p-6 rounded-2xl bg-primary/[0.03] text-foreground font-mono text-[13px] overflow-auto border border-primary/10 leading-relaxed max-h-[500px] scrollbar-thin scrollbar-thumb-primary/20 shadow-lg">
                                     {JSON.stringify(selectedLog?.response, null, 2)}
                                 </pre>
                                 <Button
-                                    variant="ghost"
+                                    variant="secondary"
                                     size="icon"
-                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.response, null, 2));
                                         toast.success("Copiado al portapapeles");
