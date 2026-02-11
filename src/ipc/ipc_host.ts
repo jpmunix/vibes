@@ -8,6 +8,7 @@ import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
 import { registerChatLogsHandlers } from "./handlers/chat_logs_handlers";
 import registerChatStreamHandlers from "./handlers/chat_stream_handlers";
+import { registerFirebaseHandlers } from "./handlers/firebase_handlers";
 //import { registerProHandlers } from "./handlers/pro_handlers";
 import { registerContextPathsHandlers } from "./handlers/context_paths_handlers";
 import { registerDebugHandlers } from "./handlers/debug_handlers";
@@ -66,6 +67,7 @@ export function registerIpcHandlers() {
   registerDebugHandlers();
   registerSupabaseHandlers();
   registerNeonHandlers();
+  registerFirebaseHandlers();
   registerLocalModelHandlers();
   registerTokenCountHandlers();
   registerWindowHandlers();

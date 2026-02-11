@@ -114,7 +114,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-            (error as any).toString(),
+          (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -213,7 +213,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-            (error as any).toString(),
+          (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -475,7 +475,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                               onChange={(e) =>
                                 setInstallCommand(e.target.value)
                               }
-                              placeholder="pnpm install"
+                              placeholder="npm install"
                               className="text-sm"
                               disabled={importAppMutation.isPending}
                             />
@@ -487,7 +487,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             <Input
                               value={startCommand}
                               onChange={(e) => setStartCommand(e.target.value)}
-                              placeholder="pnpm dev"
+                              placeholder="npm run dev"
                               className="text-sm"
                               disabled={importAppMutation.isPending}
                             />
@@ -655,7 +655,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                 onChange={(e) =>
                                   setInstallCommand(e.target.value)
                                 }
-                                placeholder="pnpm install"
+                                placeholder="npm install"
                                 className="text-sm"
                                 disabled={importing}
                               />
@@ -669,7 +669,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                 onChange={(e) =>
                                   setStartCommand(e.target.value)
                                 }
-                                placeholder="pnpm dev"
+                                placeholder="npm run dev"
                                 className="text-sm"
                                 disabled={importing}
                               />
@@ -738,7 +738,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Input
                         value={installCommand}
                         onChange={(e) => setInstallCommand(e.target.value)}
-                        placeholder="pnpm install"
+                        placeholder="npm install"
                         className="text-sm"
                         disabled={importing}
                       />
@@ -750,7 +750,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Input
                         value={startCommand}
                         onChange={(e) => setStartCommand(e.target.value)}
-                        placeholder="pnpm dev"
+                        placeholder="npm run dev"
                         className="text-sm"
                         disabled={importing}
                       />

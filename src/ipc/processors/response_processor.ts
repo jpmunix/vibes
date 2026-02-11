@@ -7,7 +7,7 @@ import path from "node:path";
 import { safeJoin } from "../utils/path_utils";
 
 import log from "electron-log";
-import { executeAddDependency } from "./executeAddDependency";
+import { executeAddDependency, execPromise } from "./executeAddDependency";
 import {
   deleteSupabaseFunction,
   deploySupabaseFunction,
@@ -558,6 +558,53 @@ export async function processFullResponseActions(
     let extraFilesError: string | undefined;
 
     if (hasChanges) {
+      // If package.json was modified, ensure lockfiles are up to date before staging
+      if (writtenFiles.includes("package.json")) {
+        try {
+          logger.info(
+            `Detected changes to package.json in ${appPath}. Running install to update lockfiles...`,
+          );
+          // Use npm exclusively
+          try {
+            logger.info(`Running npm install to update lockfiles in ${appPath}...`);
+            await execPromise("npm install --legacy-peer-deps", {
+              cwd: appPath,
+              timeout: 300000,
+            });
+
+            // Always ensure pnpm-lock.yaml is removed to avoid Vercel deployment issues
+            const pnpmLockPath = safeJoin(appPath, "pnpm-lock.yaml");
+            if (fs.existsSync(pnpmLockPath)) {
+              logger.info("Removing pnpm-lock.yaml to ensure npm-only project");
+              fs.unlinkSync(pnpmLockPath);
+              deletedFiles.push("pnpm-lock.yaml");
+            }
+          } catch (error) {
+            logger.error("Failed to update lockfiles with npm:", error);
+          }
+
+          // Check which lockfiles were created/updated and add them to writtenFiles if not already there
+          const possibleLockfiles = [
+            "pnpm-lock.yaml",
+            "package-lock.json",
+            "yarn.lock",
+          ];
+          for (const lockfile of possibleLockfiles) {
+            if (
+              fs.existsSync(safeJoin(appPath, lockfile)) &&
+              !writtenFiles.includes(lockfile)
+            ) {
+              writtenFiles.push(lockfile);
+            }
+          }
+        } catch (error) {
+          logger.error(
+            "Failed to update lockfiles after package.json modification:",
+            error,
+          );
+        }
+      }
+
       // Stage all written files
       for (const file of writtenFiles) {
         await gitAdd({ path: appPath, filepath: file });

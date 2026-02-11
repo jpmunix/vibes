@@ -35,6 +35,7 @@ export { mcpContracts, mcpEvents } from "./mcp";
 export { vercelContracts } from "./vercel";
 export { supabaseContracts } from "./supabase";
 export { neonContracts } from "./neon";
+export { firebaseContracts } from "./firebase";
 export { systemContracts, systemEvents } from "./system";
 export { versionContracts } from "./version";
 export { languageModelContracts } from "./language-model";
@@ -73,6 +74,7 @@ export { mcpClient, mcpEventClient } from "./mcp";
 export { vercelClient } from "./vercel";
 export { supabaseClient } from "./supabase";
 export { neonClient } from "./neon";
+export { firebaseClient } from "./firebase";
 export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
@@ -213,6 +215,13 @@ export type {
   GetNeonProjectParams,
   GetNeonProjectResponse,
 } from "./neon";
+
+// Firebase types
+export type {
+  FirebaseProject,
+  FirebaseWebConfig,
+  SetFirebaseAppProjectParams,
+} from "./firebase";
 
 // System types
 export type {
@@ -397,6 +406,7 @@ import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
 import { debateClient, debateStreamClient } from "./debate";
 import { knowledgeClient } from "./knowledge";
+import { firebaseClient } from "./firebase";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -439,6 +449,7 @@ export const ipc = {
   vercel: vercelClient,
   supabase: supabaseClient,
   neon: neonClient,
+  firebase: firebaseClient,
 
   // Features
   system: systemClient,

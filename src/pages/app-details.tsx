@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { SupabaseConnector } from "@/components/SupabaseConnector";
+import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
@@ -460,6 +461,7 @@ export default function AppDetailsPage() {
             )}
           </div>
           {appId && <SupabaseConnector appId={appId} />}
+          {appId && <FirebaseConnector appId={appId} />}
           {appId && (
             <Button
               variant="outline"

@@ -11,11 +11,15 @@ import { deleteFileTool } from "./tools/delete_file";
 import { renameFileTool } from "./tools/rename_file";
 import { addDependencyTool } from "./tools/add_dependency";
 import { executeSqlTool } from "./tools/execute_sql";
+import { apps } from "@/db/schema";
+import { db } from "@/db";
+import { eq } from "drizzle-orm";
 
 import { readFileTool } from "./tools/read_file";
 import { listFilesTool } from "./tools/list_files";
 import { getSupabaseProjectInfoTool } from "./tools/get_supabase_project_info";
 import { getSupabaseTableSchemaTool } from "./tools/get_supabase_table_schema";
+import { getFirebaseProjectInfoTool } from "./tools/get_firebase_project_info";
 import { setChatSummaryTool } from "./tools/set_chat_summary";
 import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
@@ -39,6 +43,7 @@ import {
 } from "./tools/types";
 import { AgentToolConsent } from "@/lib/schemas";
 import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
+import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
 // Combined tool definitions array
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   writeFileTool,
@@ -54,6 +59,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   codeSearchTool,
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
+  getFirebaseProjectInfoTool,
   setChatSummaryTool,
   addIntegrationTool,
   readLogsTool,
@@ -208,26 +214,46 @@ async function processArgPlaceholders<T extends Record<string, any>>(
   args: T,
   ctx: AgentContext,
 ): Promise<T> {
-  if (!ctx.supabaseProjectId) {
-    return args;
-  }
-
-  // Check if any string values contain the placeholder
   const argsStr = JSON.stringify(args);
-  if (!argsStr.includes("$$SUPABASE_CLIENT_CODE$$")) {
+  const hasSupabase = argsStr.includes("$$SUPABASE_CLIENT_CODE$$");
+  const hasFirebase = argsStr.includes("$$FIREBASE_CLIENT_CODE$$");
+
+  if (!hasSupabase && !hasFirebase) {
     return args;
   }
 
-  // Fetch the replacement value once
-  const supabaseClientCode = await getSupabaseClientCode({
-    projectId: ctx.supabaseProjectId,
-    organizationSlug: ctx.supabaseOrganizationSlug ?? null,
-  });
+  let supabaseClientCode = "";
+  if (hasSupabase && ctx.supabaseProjectId) {
+    supabaseClientCode = await getSupabaseClientCode({
+      projectId: ctx.supabaseProjectId,
+      organizationSlug: ctx.supabaseOrganizationSlug ?? null,
+    });
+  }
 
-  // Process all string values in args
+  let firebaseClientCode = "";
+  if (hasFirebase && ctx.firebaseProjectId) {
+    const app = await db.query.apps.findFirst({
+      where: eq(apps.id, ctx.appId),
+    });
+    if (app?.firebaseConfig) {
+      firebaseClientCode = await getFirebaseConfigCode({
+        appId: ctx.appId,
+        projectId: ctx.firebaseProjectId,
+        config: app.firebaseConfig,
+      });
+    }
+  }
+
   const processValue = (value: any): any => {
     if (typeof value === "string") {
-      return value.replace(/\$\$SUPABASE_CLIENT_CODE\$\$/g, supabaseClientCode);
+      let result = value;
+      if (supabaseClientCode) {
+        result = result.replace(/\$\$SUPABASE_CLIENT_CODE\$\$/g, supabaseClientCode);
+      }
+      if (firebaseClientCode) {
+        result = result.replace(/\$\$FIREBASE_CLIENT_CODE\$\$/g, firebaseClientCode);
+      }
+      return result;
     }
     if (Array.isArray(value)) {
       return value.map(processValue);

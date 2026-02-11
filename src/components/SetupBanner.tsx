@@ -191,13 +191,7 @@ export function SetupBanner() {
               )}
               {isNodeSetupComplete ? (
                 <p className="text-sm">
-                  Node.js ({nodeSystemInfo!.nodeVersion}) instalado.{" "}
-                  {nodeSystemInfo!.pnpmVersion && (
-                    <span className="text-xs text-gray-500">
-                      {" "}
-                      (opcional) pnpm ({nodeSystemInfo!.pnpmVersion}) instalado.
-                    </span>
-                  )}
+                  Node.js ({nodeSystemInfo!.nodeVersion}) instalado.
                 </p>
               ) : (
                 <div className="text-sm">

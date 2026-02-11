@@ -12,7 +12,6 @@ import {
 
 export const NodeSystemInfoSchema = z.object({
   nodeVersion: z.string().nullable(),
-  pnpmVersion: z.string().nullable(),
   nodeDownloadUrl: z.string(),
 });
 
@@ -20,7 +19,6 @@ export type NodeSystemInfo = z.infer<typeof NodeSystemInfoSchema>;
 
 export const SystemDebugInfoSchema = z.object({
   nodeVersion: z.string().nullable(),
-  pnpmVersion: z.string().nullable(),
   nodePath: z.string().nullable(),
   telemetryId: z.string(),
   telemetryConsent: z.string(),

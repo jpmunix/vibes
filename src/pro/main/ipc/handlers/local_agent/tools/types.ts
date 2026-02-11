@@ -48,6 +48,7 @@ export interface AgentContext {
   chatId: number;
   supabaseProjectId: string | null;
   supabaseOrganizationSlug: string | null;
+  firebaseProjectId: string | null;
   messageId: number;
   isSharedModulesChanged: boolean;
   chatSummary?: string;

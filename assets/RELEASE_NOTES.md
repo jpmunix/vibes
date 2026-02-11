@@ -1,8 +1,5 @@
-- capturas de pantalla
-- mejoras en el auto fixer
-
-
-
+- fix upgrade data loss
+- 
 
 ## 🔥 Novedades principales
 
@@ -55,7 +52,7 @@ Nuevo sistema que detecta y corrige automáticamente errores durante el desarrol
 ### 🎨 Mejoras en la interfaz
 - Añadido un botón de **Reiniciar** directamente en las acciones del chat.
 - Mejoras en el scroll y espaciado de elementos del chat
-
+- Añadido un nuevo botón para sacar captura de pantalla total o parcial y enviarla al chat
 
 ### 👤 Registro de usuario
 - Ya puedes crear una cuenta en Vibes y personalizarla

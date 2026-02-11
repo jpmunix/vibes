@@ -128,7 +128,7 @@ function buildSnippetFromMatch({
 
 function getDefaultCommand(appId: number): string {
   const port = getAppPort(appId);
-  return `(pnpm install && pnpm run dev --port ${port}) || (npm install --legacy-peer-deps && npm run dev -- --port ${port})`;
+  return `npm install --legacy-peer-deps && npm run dev -- --port ${port}`;
 }
 async function copyDir(
   source: string,
@@ -461,9 +461,6 @@ async function executeAppInDocker({
   const dockerfilePath = path.join(appPath, "Dockerfile.dyad");
   if (!fs.existsSync(dockerfilePath)) {
     const dockerfileContent = `FROM node:22-alpine
-
-# Install pnpm
-RUN npm install -g pnpm
 `;
 
     try {
@@ -516,9 +513,7 @@ RUN npm install -g pnpm
       "-v",
       `${appPath}:/app`,
       "-v",
-      `dyad-pnpm-${appId}:/app/.pnpm-store`,
-      "-e",
-      "PNPM_STORE_PATH=/app/.pnpm-store",
+      `dyad-npm-${appId}:/root/.npm`,
       "-w",
       "/app",
       `dyad-app-${appId}`,

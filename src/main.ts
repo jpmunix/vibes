@@ -17,6 +17,7 @@ import { BackupManager } from "./backup_manager";
 import { getDatabasePath, initializeDatabase } from "./db";
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
+import { handleFirebaseOAuthReturn } from "./firebase_admin/firebase_return_handler";
 import {
   AddMcpServerConfigSchema,
   AddMcpServerPayload,
@@ -65,7 +66,6 @@ if (fs.existsSync(gitDir)) {
   process.env.LOCAL_GIT_DIRECTORY = gitDir;
 }
 
-// https://www.electronjs.org/docs/latest/tutorial/launch-app-from-url-in-another-app#main-process-mainjs
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
     app.setAsDefaultProtocolClient("dyad", process.execPath, [
@@ -76,10 +76,6 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient("dyad");
 }
 
-/**
- * Get recent logs from electron-log
- * Returns the last N lines from the log file
- */
 function getRecentLogs(lines: number = 50): string {
   try {
     const logPath = log.transports.file.getFile().path;
@@ -93,7 +89,19 @@ function getRecentLogs(lines: number = 50): string {
 }
 
 export async function onReady() {
-  // Read settings first (quick operation)
+  // Initialize backup manager FIRST to capture state before any potential wipe/corruption
+  // This is especially important during version upgrades
+  try {
+    const backupManager = new BackupManager({
+      settingsFile: getSettingsFilePath(),
+      dbFile: getDatabasePath(),
+    });
+    await backupManager.initialize();
+  } catch (e) {
+    logger.error("Error initializing backup manager", e);
+  }
+
+  // Read settings (now safer because we have a backup if this is an upgrade)
   const settings = readSettings();
 
   // Check if app was force-closed
@@ -122,17 +130,6 @@ export async function onReady() {
 
   // Then do heavy operations in background (non-blocking)
   setImmediate(async () => {
-    try {
-      // Initialize backup manager
-      const backupManager = new BackupManager({
-        settingsFile: getSettingsFilePath(),
-        dbFile: getDatabasePath(),
-      });
-      await backupManager.initialize();
-    } catch (e) {
-      logger.error("Error initializing backup manager", e);
-    }
-
     // Initialize database (blocking but in background)
     initializeDatabase();
 
@@ -140,8 +137,6 @@ export async function onReady() {
     await cleanupOldAiMessagesJson();
 
     // Add dyad-apps directory to git safe.directory (required for Windows).
-    // The trailing /* allows access to all repositories under the named directory.
-    // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
     if (settings.enableNativeGit) {
       await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
     }
@@ -151,8 +146,6 @@ export async function onReady() {
 
     logger.info("Background initialization completed");
   });
-
-  // Auto-update disabled by request
 }
 
 export async function onFirstRunMaybe(settings: UserSettings) {
@@ -169,14 +162,7 @@ export async function onFirstRunMaybe(settings: UserSettings) {
   }
 }
 
-/**
- * Ask the user if the app should be moved to the
- * applications folder.
- */
 async function promptMoveToApplicationsFolder(): Promise<void> {
-  // Why not in e2e tests?
-  // There's no way to stub this dialog in time, so we just skip it
-  // in e2e testing mode.
   if (IS_TEST_BUILD) return;
   if (process.platform !== "darwin") return;
   if (app.isInApplicationsFolder()) return;
@@ -205,7 +191,6 @@ let mainWindow: BrowserWindow | null = null;
 let pendingForceCloseData: any = null;
 
 const createWindow = () => {
-  // Create the browser window.
   mainWindow = new BrowserWindow({
     width: process.env.NODE_ENV === "development" ? 1280 : 960,
     minWidth: 800,
@@ -221,13 +206,9 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
-      // transparent: true,
     },
     icon: path.join(app.getAppPath(), "assets/icon/logo.png"),
-    // backgroundColor: "#00000001",
-    // frame: false,
   });
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -235,12 +216,7 @@ const createWindow = () => {
       path.join(__dirname, "../renderer/main_window/index.html"),
     );
   }
-  // if (process.env.NODE_ENV === "development") {
-  //   // Open the DevTools.
-  //   mainWindow.webContents.openDevTools();
-  // }
 
-  // Send force-close event if it was detected
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {
       mainWindow?.webContents.send(
@@ -251,9 +227,7 @@ const createWindow = () => {
     });
   }
 
-  // Enable native context menu on right-click
   mainWindow.webContents.on("context-menu", (event, params) => {
-    // Prevent any default behavior and show our own menu
     event.preventDefault();
 
     const template: Electron.MenuItemConstructorOptions[] = [];
@@ -296,7 +270,6 @@ const createWindow = () => {
       template.push({ role: "selectAll" });
     }
 
-    //if (process.env.NODE_ENV === "development") {
     template.push(
       { type: "separator" },
       {
@@ -304,41 +277,34 @@ const createWindow = () => {
         click: () => mainWindow?.webContents.inspectElement(params.x, params.y),
       },
     );
-    //}
 
     const menu = Menu.buildFromTemplate(template);
     menu.popup({ window: mainWindow! });
   });
 };
 
-/**
- * Create application menu with Edit shortcuts (Undo, Redo, Cut, Copy, Paste, etc.)
- * This enables standard keyboard shortcuts like Cmd/Ctrl+C, Cmd/Ctrl+V, etc.
- */
 const createApplicationMenu = () => {
   const isMac = process.platform === "darwin";
 
   const template: Electron.MenuItemConstructorOptions[] = [
-    // App menu (macOS only)
     ...(isMac
       ? [
-          {
-            label: app.name,
-            submenu: [
-              { role: "about" as const },
-              { type: "separator" as const },
-              { role: "services" as const },
-              { type: "separator" as const },
-              { role: "hide" as const },
-              { role: "hideOthers" as const },
-              { role: "unhide" as const },
-              { type: "separator" as const },
-              { role: "quit" as const },
-            ],
-          },
-        ]
+        {
+          label: app.name,
+          submenu: [
+            { role: "about" as const },
+            { type: "separator" as const },
+            { role: "services" as const },
+            { type: "separator" as const },
+            { role: "hide" as const },
+            { role: "hideOthers" as const },
+            { role: "unhide" as const },
+            { type: "separator" as const },
+            { role: "quit" as const },
+          ],
+        },
+      ]
       : []),
-    // Edit menu - enables keyboard shortcuts for clipboard operations
     {
       label: "Edit",
       submenu: [
@@ -353,7 +319,6 @@ const createApplicationMenu = () => {
         { role: "selectAll" as const },
       ],
     },
-    // View menu
     {
       label: "View",
       submenu: [
@@ -370,7 +335,6 @@ const createApplicationMenu = () => {
         { role: "togglefullscreen" as const },
       ],
     },
-    // Window menu
     {
       label: "Window",
       submenu: [
@@ -378,11 +342,11 @@ const createApplicationMenu = () => {
         { role: "zoom" as const },
         ...(isMac
           ? [
-              { type: "separator" as const },
-              { role: "front" as const },
-              { type: "separator" as const },
-              { role: "window" as const },
-            ]
+            { type: "separator" as const },
+            { role: "front" as const },
+            { type: "separator" as const },
+            { role: "window" as const },
+          ]
           : [{ role: "close" as const }]),
       ],
     },
@@ -398,24 +362,20 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on("second-instance", (_event, commandLine, _workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
-    // the commandLine is array of strings in which last element is deep link url
     handleDeepLinkReturn(commandLine.pop()!);
   });
   app.whenReady().then(onReady);
 }
 
-// Handle the protocol. In this case, we choose to show an Error Box.
 app.on("open-url", (event, url) => {
   handleDeepLinkReturn(url);
 });
 
 async function handleDeepLinkReturn(url: string) {
-  // example url: "dyad://supabase-oauth-return?token=a&refreshToken=b"
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -424,7 +384,6 @@ async function handleDeepLinkReturn(url: string) {
     return;
   }
 
-  // Intentionally do NOT log the full URL which may contain sensitive tokens.
   log.log(
     "Handling deep link: protocol",
     parsed.protocol,
@@ -450,7 +409,23 @@ async function handleDeepLinkReturn(url: string) {
       return;
     }
     handleNeonOAuthReturn({ token, refreshToken, expiresIn });
-    // Send message to renderer to trigger re-render
+    mainWindow?.webContents.send("deep-link-received", {
+      type: parsed.hostname,
+    });
+    return;
+  }
+  if (parsed.hostname === "firebase-oauth-return") {
+    const token = parsed.searchParams.get("token");
+    const refreshToken = parsed.searchParams.get("refreshToken");
+    const expiresIn = Number(parsed.searchParams.get("expiresIn"));
+    if (!token || !refreshToken || !expiresIn) {
+      dialog.showErrorBox(
+        "Invalid URL",
+        "Expected token, refreshToken, and expiresIn",
+      );
+      return;
+    }
+    handleFirebaseOAuthReturn({ token, refreshToken, expiresIn });
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
@@ -468,13 +443,11 @@ async function handleDeepLinkReturn(url: string) {
       return;
     }
     await handleSupabaseOAuthReturn({ token, refreshToken, expiresIn });
-    // Send message to renderer to trigger re-render
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
-  // dyad://dyad-pro-return?key=123&budget_reset_at=2025-05-26T16:31:13.492000Z&max_budget=100
   if (parsed.hostname === "dyad-pro-return") {
     const apiKey = parsed.searchParams.get("key");
     if (!apiKey) {
@@ -484,13 +457,11 @@ async function handleDeepLinkReturn(url: string) {
     handleDyadProReturn({
       apiKey,
     });
-    // Send message to renderer to trigger re-render
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
-  // dyad://add-mcp-server?name=Chrome%20DevTools&config=eyJjb21tYW5kIjpudWxsLCJ0eXBlIjoic3RkaW8ifQ%3D%3D
   if (parsed.hostname === "add-mcp-server") {
     const name = parsed.searchParams.get("name");
     const config = parsed.searchParams.get("config");
@@ -520,7 +491,6 @@ async function handleDeepLinkReturn(url: string) {
     }
     return;
   }
-  // dyad://add-prompt?data=<base64-encoded-json>
   if (parsed.hostname === "add-prompt") {
     const data = parsed.searchParams.get("data");
     if (!data) {
@@ -549,32 +519,20 @@ async function handleDeepLinkReturn(url: string) {
   dialog.showErrorBox("Invalid deep link URL", url);
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-// Only set isRunning to false when the app is properly quit by the user
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
-
-  // Stop performance monitoring and capture final metrics
   stopPerformanceMonitoring();
-
   writeSettings({ isRunning: false });
 });
 
 app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

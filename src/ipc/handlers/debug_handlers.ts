@@ -28,7 +28,7 @@ async function getSystemDebugInfo({
 }): Promise<SystemDebugInfo> {
   console.log("Getting system debug info");
 
-  // Get Node.js and pnpm versions
+  // Get Node.js version
   let nodeVersion: string | null = null;
   let pnpmVersion: string | null = null;
   let nodePath: string | null = null;
@@ -36,12 +36,6 @@ async function getSystemDebugInfo({
     nodeVersion = await runShellCommand("node --version");
   } catch (err) {
     console.error("Failed to get Node.js version:", err);
-  }
-
-  try {
-    pnpmVersion = await runShellCommand("pnpm --version");
-  } catch (err) {
-    console.error("Failed to get pnpm version:", err);
   }
 
   try {
@@ -103,7 +97,6 @@ async function getSystemDebugInfo({
 
   return {
     nodeVersion,
-    pnpmVersion,
     nodePath,
     telemetryId,
     selectedLanguageModel:

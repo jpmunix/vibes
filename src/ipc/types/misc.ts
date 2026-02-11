@@ -47,7 +47,6 @@ export const SetAppEnvVarsParamsSchema = z.object({
 export const ChatLogsDataSchema = z.object({
   debugInfo: z.object({
     nodeVersion: z.string().nullable(),
-    pnpmVersion: z.string().nullable(),
     nodePath: z.string().nullable(),
     telemetryId: z.string(),
     telemetryConsent: z.string(),

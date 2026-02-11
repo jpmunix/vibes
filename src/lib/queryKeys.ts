@@ -280,6 +280,13 @@ export const queryKeys = {
     byApp: ({ appId }: { appId: number | null }) =>
       ["app-env-vars", appId] as const,
   },
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Firebase
+  // ─────────────────────────────────────────────────────────────────────────────
+  firebase: {
+    all: ["firebase"] as const,
+    projects: ["firebase", "projects"] as const,
+  },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -339,4 +346,5 @@ export type AppQueryKey =
   | QueryKeyOf<(typeof queryKeys.neon)[keyof typeof queryKeys.neon]>
   | QueryKeyOf<
     (typeof queryKeys.appEnvVars)[keyof typeof queryKeys.appEnvVars]
-  >;
+  >
+  | QueryKeyOf<(typeof queryKeys.firebase)[keyof typeof queryKeys.firebase]>;

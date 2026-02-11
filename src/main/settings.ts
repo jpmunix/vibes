@@ -80,117 +80,95 @@ export function readSettings(): UserSettings {
       ...rawSettings,
     };
     const supabase = combinedSettings.supabase;
+
+    // Decrypt legacy tokens
     if (supabase) {
-      // Decrypt legacy tokens (kept but ignored)
-      if (supabase.refreshToken) {
-        const encryptionType = supabase.refreshToken.encryptionType;
-        if (encryptionType) {
-          supabase.refreshToken = {
-            value: decrypt(supabase.refreshToken),
-            encryptionType,
+      const decryptLegacy = (secret: Secret | undefined): Secret | undefined => {
+        if (!secret || secret.encryptionType !== "electron-safe-storage") return secret;
+        try {
+          return {
+            value: decrypt(secret),
+            encryptionType: "plaintext",
           };
+        } catch (e) {
+          logger.error("Failed to decrypt legacy secret:", e);
+          return secret;
         }
-      }
-      if (supabase.accessToken) {
-        const encryptionType = supabase.accessToken.encryptionType;
-        if (encryptionType) {
-          supabase.accessToken = {
-            value: decrypt(supabase.accessToken),
-            encryptionType,
-          };
-        }
-      }
-      // Decrypt tokens for each organization in the organizations map
-      if (supabase.organizations) {
-        for (const orgId in supabase.organizations) {
-          const org = supabase.organizations[orgId];
-          if (org.accessToken) {
-            const encryptionType = org.accessToken.encryptionType;
-            if (encryptionType) {
-              org.accessToken = {
-                value: decrypt(org.accessToken),
-                encryptionType,
-              };
-            }
-          }
-          if (org.refreshToken) {
-            const encryptionType = org.refreshToken.encryptionType;
-            if (encryptionType) {
-              org.refreshToken = {
-                value: decrypt(org.refreshToken),
-                encryptionType,
-              };
-            }
-          }
-        }
-      }
-    }
-    const neon = combinedSettings.neon;
-    if (neon) {
-      if (neon.refreshToken) {
-        const encryptionType = neon.refreshToken.encryptionType;
-        if (encryptionType) {
-          neon.refreshToken = {
-            value: decrypt(neon.refreshToken),
-            encryptionType,
-          };
-        }
-      }
-      if (neon.accessToken) {
-        const encryptionType = neon.accessToken.encryptionType;
-        if (encryptionType) {
-          neon.accessToken = {
-            value: decrypt(neon.accessToken),
-            encryptionType,
-          };
-        }
-      }
-    }
-    if (combinedSettings.githubAccessToken) {
-      const encryptionType = combinedSettings.githubAccessToken.encryptionType;
-      combinedSettings.githubAccessToken = {
-        value: decrypt(combinedSettings.githubAccessToken),
-        encryptionType,
       };
+      supabase.refreshToken = decryptLegacy(supabase.refreshToken);
+      supabase.accessToken = decryptLegacy(supabase.accessToken);
     }
-    if (combinedSettings.vercelAccessToken) {
-      const encryptionType = combinedSettings.vercelAccessToken.encryptionType;
-      combinedSettings.vercelAccessToken = {
-        value: decrypt(combinedSettings.vercelAccessToken),
-        encryptionType,
-      };
-    }
-    for (const provider in combinedSettings.providerSettings) {
-      if (combinedSettings.providerSettings[provider].apiKey) {
-        const encryptionType =
-          combinedSettings.providerSettings[provider].apiKey.encryptionType;
-        combinedSettings.providerSettings[provider].apiKey = {
-          value: decrypt(combinedSettings.providerSettings[provider].apiKey),
-          encryptionType,
-        };
-      }
-      // Decrypt Vertex service account key if present
-      const v = combinedSettings.providerSettings[
-        provider
-      ] as VertexProviderSetting;
-      if (provider === "vertex" && v?.serviceAccountKey) {
-        const encryptionType = v.serviceAccountKey.encryptionType;
-        v.serviceAccountKey = {
-          value: decrypt(v.serviceAccountKey),
-          encryptionType,
-        };
-      }
-      // Decrypt OpenRouter keys if present
-      const p = combinedSettings.providerSettings[provider] as any;
-      if (p.keys && Array.isArray(p.keys)) {
-        for (const keyEntry of p.keys) {
-          if (keyEntry.key) {
-            const encryptionType = keyEntry.key.encryptionType;
-            keyEntry.key = {
-              value: decrypt(keyEntry.key),
-              encryptionType,
+
+    // Decrypt tokens for each organization in the organizations map
+    if (supabase && supabase.organizations) {
+      for (const orgId in supabase.organizations) {
+        const org = supabase.organizations[orgId];
+        try {
+          if (org.accessToken && org.accessToken.encryptionType === "electron-safe-storage") {
+            org.accessToken = {
+              value: decrypt(org.accessToken),
+              encryptionType: "plaintext",
             };
           }
+        } catch (e) {
+          logger.error(`Failed to decrypt accessToken for org ${orgId}:`, e);
+        }
+
+        try {
+          if (org.refreshToken && org.refreshToken.encryptionType === "electron-safe-storage") {
+            org.refreshToken = {
+              value: decrypt(org.refreshToken),
+              encryptionType: "plaintext",
+            };
+          }
+        } catch (e) {
+          logger.error(`Failed to decrypt refreshToken for org ${orgId}:`, e);
+        }
+      }
+    }
+
+    const decryptSafe = (secret: Secret | undefined): Secret | undefined => {
+      if (!secret || secret.encryptionType !== "electron-safe-storage") return secret;
+      try {
+        return {
+          value: decrypt(secret),
+          encryptionType: "plaintext",
+        };
+      } catch (e) {
+        logger.error("Failed to decrypt field, keeping encrypted value:", e);
+        return secret;
+      }
+    };
+
+    if (combinedSettings.neon) {
+      combinedSettings.neon.accessToken = decryptSafe(combinedSettings.neon.accessToken);
+      combinedSettings.neon.refreshToken = decryptSafe(combinedSettings.neon.refreshToken);
+    }
+
+    if (combinedSettings.firebase) {
+      combinedSettings.firebase.accessToken = decryptSafe(combinedSettings.firebase.accessToken);
+      combinedSettings.firebase.refreshToken = decryptSafe(combinedSettings.firebase.refreshToken);
+    }
+
+    if (combinedSettings.githubAccessToken) {
+      combinedSettings.githubAccessToken = decryptSafe(combinedSettings.githubAccessToken);
+    }
+
+    if (combinedSettings.vercelAccessToken) {
+      combinedSettings.vercelAccessToken = decryptSafe(combinedSettings.vercelAccessToken);
+    }
+
+    for (const provider in combinedSettings.providerSettings) {
+      const p = combinedSettings.providerSettings[provider] as any;
+      if (p.apiKey) {
+        p.apiKey = decryptSafe(p.apiKey);
+      }
+      if (provider === "vertex" && p.serviceAccountKey) {
+        p.serviceAccountKey = decryptSafe(p.serviceAccountKey);
+      }
+      if (p.keys && Array.isArray(p.keys)) {
+        for (const keyEntry of p.keys) {
+          keyEntry.key = decryptSafe(keyEntry.key);
         }
       }
     }
@@ -213,71 +191,55 @@ export function writeSettings(settings: Partial<UserSettings>): void {
     const filePath = getSettingsFilePath();
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
+
+    const encryptSafe = (secret: Secret | undefined): Secret | undefined => {
+      if (!secret) return secret;
+      // If already encrypted, don't double-encrypt
+      if (secret.encryptionType === "electron-safe-storage") return secret;
+      return encrypt(secret.value);
+    };
+
     if (newSettings.githubAccessToken) {
-      newSettings.githubAccessToken = encrypt(
-        newSettings.githubAccessToken.value,
-      );
+      newSettings.githubAccessToken = encryptSafe(newSettings.githubAccessToken);
     }
     if (newSettings.vercelAccessToken) {
-      newSettings.vercelAccessToken = encrypt(
-        newSettings.vercelAccessToken.value,
-      );
+      newSettings.vercelAccessToken = encryptSafe(newSettings.vercelAccessToken);
     }
     if (newSettings.supabase) {
       // Encrypt legacy tokens (kept for backwards compat)
-      if (newSettings.supabase.accessToken) {
-        newSettings.supabase.accessToken = encrypt(
-          newSettings.supabase.accessToken.value,
-        );
-      }
-      if (newSettings.supabase.refreshToken) {
-        newSettings.supabase.refreshToken = encrypt(
-          newSettings.supabase.refreshToken.value,
-        );
-      }
+      newSettings.supabase.accessToken = encryptSafe(newSettings.supabase.accessToken);
+      newSettings.supabase.refreshToken = encryptSafe(newSettings.supabase.refreshToken);
+
       // Encrypt tokens for each organization in the organizations map
       if (newSettings.supabase.organizations) {
         for (const orgId in newSettings.supabase.organizations) {
           const org = newSettings.supabase.organizations[orgId];
-          if (org.accessToken) {
-            org.accessToken = encrypt(org.accessToken.value);
-          }
-          if (org.refreshToken) {
-            org.refreshToken = encrypt(org.refreshToken.value);
-          }
+          org.accessToken = encryptSafe(org.accessToken) as Secret; // Schema says it's required
+          org.refreshToken = encryptSafe(org.refreshToken) as Secret;
         }
       }
     }
     if (newSettings.neon) {
-      if (newSettings.neon.accessToken) {
-        newSettings.neon.accessToken = encrypt(
-          newSettings.neon.accessToken.value,
-        );
-      }
-      if (newSettings.neon.refreshToken) {
-        newSettings.neon.refreshToken = encrypt(
-          newSettings.neon.refreshToken.value,
-        );
-      }
+      newSettings.neon.accessToken = encryptSafe(newSettings.neon.accessToken);
+      newSettings.neon.refreshToken = encryptSafe(newSettings.neon.refreshToken);
+    }
+    if (newSettings.firebase) {
+      newSettings.firebase.accessToken = encryptSafe(newSettings.firebase.accessToken);
+      newSettings.firebase.refreshToken = encryptSafe(newSettings.firebase.refreshToken);
     }
     for (const provider in newSettings.providerSettings) {
-      if (newSettings.providerSettings[provider].apiKey) {
-        newSettings.providerSettings[provider].apiKey = encrypt(
-          newSettings.providerSettings[provider].apiKey.value,
-        );
+      const p = newSettings.providerSettings[provider] as any;
+      if (p.apiKey) {
+        p.apiKey = encryptSafe(p.apiKey);
       }
       // Encrypt Vertex service account key if present
-      const v = newSettings.providerSettings[provider] as VertexProviderSetting;
-      if (provider === "vertex" && v?.serviceAccountKey) {
-        v.serviceAccountKey = encrypt(v.serviceAccountKey.value);
+      if (provider === "vertex" && p.serviceAccountKey) {
+        p.serviceAccountKey = encryptSafe(p.serviceAccountKey);
       }
       // Encrypt OpenRouter keys if present
-      const p = newSettings.providerSettings[provider] as any;
       if (p.keys && Array.isArray(p.keys)) {
         for (const keyEntry of p.keys) {
-          if (keyEntry.key) {
-            keyEntry.key = encrypt(keyEntry.key.value);
-          }
+          keyEntry.key = encryptSafe(keyEntry.key) as Secret;
         }
       }
     }
