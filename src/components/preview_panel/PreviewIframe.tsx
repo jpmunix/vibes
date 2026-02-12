@@ -579,7 +579,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
         // Calculate absolute coordinates relative to the window
         // We need to account for the fact that Electron's capturePage matches the window's content area
-        const captureRect = rect
+        const captureRect = (rect && rect.width && rect.height)
           ? {
             x: Math.round(iframeRect.left + rect.left),
             y: Math.round(iframeRect.top + rect.top),
