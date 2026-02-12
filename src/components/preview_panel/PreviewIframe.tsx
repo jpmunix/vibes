@@ -68,9 +68,7 @@ import { cn } from "@/lib/utils";
 import { normalizePath } from "../../../shared/normalizePath";
 import { showError } from "@/lib/toast";
 import type { DeviceMode } from "@/lib/schemas";
-import { AnnotatorOnlyForPro } from "./AnnotatorOnlyForPro";
 import { useAttachments } from "@/hooks/useAttachments";
-import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
 
@@ -183,7 +181,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const { routes: availableRoutes } = useParseRouter(selectedAppId);
   const { restartApp } = useRunApp();
   const { settings, updateSettings } = useSettings();
-  const { userBudget } = useUserBudgetInfo();
   const isProMode = true; // Pro features are now available for everyone
 
   // Preserved URL state (persists across HMR-induced remounts)
@@ -566,6 +563,65 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         if (event.data.coordinates) {
           setCurrentComponentCoordinates(event.data.coordinates);
         }
+        return;
+      }
+
+      if (event.data?.type === "dyad-request-native-screenshot") {
+        const { rect } = event.data;
+        const iframeRect = iframeRef.current?.getBoundingClientRect();
+
+        if (!iframeRect) {
+          showError(
+            "No se pudo determinar la posición del área de previsualización",
+          );
+          return;
+        }
+
+        // Calculate absolute coordinates relative to the window
+        // We need to account for the fact that Electron's capturePage matches the window's content area
+        const captureRect = rect
+          ? {
+            x: Math.round(iframeRect.left + rect.left),
+            y: Math.round(iframeRect.top + rect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          }
+          : {
+            x: Math.round(iframeRect.left),
+            y: Math.round(iframeRect.top),
+            width: Math.round(iframeRect.width),
+            height: Math.round(iframeRect.height),
+          };
+
+        ipc.system
+          .takeScreenshot({ rect: captureRect })
+          .then((dataUrl) => {
+            if (isProMode) {
+              setScreenshotDataUrl(dataUrl);
+              setAnnotatorMode(true);
+            } else {
+              // Auto-attach for non-pro users
+              fetch(dataUrl)
+                .then((res) => res.blob())
+                .then((blob) => {
+                  const timestamp = new Date()
+                    .toISOString()
+                    .replace(/[:.]/g, "-");
+                  const file = new File([blob], `screenshot-${timestamp}.png`, {
+                    type: "image/png",
+                  });
+                  addAttachments([file], "chat-context");
+                })
+                .catch((err) => {
+                  console.error("Failed to auto-attach screenshot:", err);
+                  showError("Error al adjuntar la captura al chat");
+                });
+            }
+          })
+          .catch((err) => {
+            console.error("Native capture failed:", err);
+            showError("Error al realizar la captura nativa");
+          });
         return;
       }
 

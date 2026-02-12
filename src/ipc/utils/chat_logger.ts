@@ -46,7 +46,10 @@ export async function logChatInternal(options: ChatLogOptions): Promise<void> {
       level: options.level,
       category: options.category,
       message: options.message,
-      metadata: options.metadata ?? null,
+      metadata: {
+        ...(options.metadata ?? {}),
+        chatMode: settings.selectedChatMode,
+      },
       timestamp: new Date(),
     });
   } catch (error) {

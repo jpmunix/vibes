@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { ipc, type ChatLogEntry } from "@/ipc/types";
 import { Button } from "../ui/button";
-import { X, Info, TrendingUp, Clock, Zap } from "lucide-react";
+import {
+  X,
+  Info,
+  TrendingUp,
+  Clock,
+  Zap,
+  Bot,
+  Brain,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -28,6 +36,29 @@ export function ChatLogsPanel({ chatId, isOpen, onClose }: ChatLogsPanelProps) {
   const [logs, setLogs] = useState<ChatLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState<ChatLogEntry | null>(null);
+
+  const getModeIcon = (log: ChatLogEntry) => {
+    const chatMode = log.metadata?.chatMode as string | undefined;
+    if (chatMode === "local-agent" || chatMode === "agent") {
+      return (
+        <div className="flex items-center gap-1 w-[72px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800">
+          <Brain className="text-purple-600 dark:text-purple-400" size={10} />
+          <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-tighter">
+            Agente
+          </span>
+        </div>
+      );
+    }
+    // Default to build mode icon
+    return (
+      <div className="flex items-center gap-1 w-[72px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+        <Bot className="text-blue-600 dark:text-blue-400" size={10} />
+        <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-tighter">
+          Build
+        </span>
+      </div>
+    );
+  };
 
   const loadLogs = async () => {
     try {
@@ -282,13 +313,16 @@ export function ChatLogsPanel({ chatId, isOpen, onClose }: ChatLogsPanelProps) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {getModeIcon(log)}
+                            <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-mono">
+                              {log.category}
+                            </span>
+                          </div>
                           <p className="text-sm text-gray-900 dark:text-gray-100 truncate">
                             {log.message}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                              {log.category}
-                            </span>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               {formatDistanceToNow(new Date(log.timestamp), {
                                 addSuffix: true,

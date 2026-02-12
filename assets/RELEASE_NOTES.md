@@ -1,6 +1,7 @@
 - fix upgrade data loss
 - firebase integration
 - very comprehensive logs
+- Mejoras el el asistente inteligente para cometer menos errores manteniendo el ratio de consumo de tokens por debajo del modo Build
 
 ## 🔥 Novedades principales
 

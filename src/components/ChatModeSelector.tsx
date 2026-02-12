@@ -151,7 +151,7 @@ export function ChatModeSelector() {
         )}*/}
         <SelectItem value="build">
           <div className="flex flex-col items-start">
-            <span className="font-medium">Construir</span>
+            <span className="font-medium">Build</span>
             <span className="text-xs text-muted-foreground">
               Genera y edita con una gestion de contexto algo peor
             </span>

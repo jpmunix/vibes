@@ -187,18 +187,25 @@ export function registerDebugHandlers() {
 
   console.log("Registered debug IPC handlers");
 
-  createTypedHandler(systemContracts.takeScreenshot, async () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (!win) throw new Error("No focused window to capture");
+  createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (!win) throw new Error("No window to capture");
 
-    // Capture the window's current contents as a NativeImage
-    const image = await win.capturePage();
+    // Capture the window's current contents
+    // Electron's capturePage accepts a rect {x, y, width, height}
+    const image = params?.rect
+      ? await win.capturePage(params.rect)
+      : await win.capturePage();
+
     // Validate image
     if (!image || image.isEmpty()) {
       throw new Error("Failed to capture screenshot");
     }
-    // Write the image to the clipboard
+    // Write the image to the clipboard (still useful for manual paste)
     clipboard.writeImage(image);
+
+    // Return data URL for the UI to use
+    return image.toDataURL();
   });
 }
 

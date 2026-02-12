@@ -5,49 +5,13 @@
   let startX, startY;
 
   async function captureScreenshot(options = {}) {
-    try {
-      // Use html-to-image if available
-      if (typeof htmlToImage !== "undefined") {
-        const { left, top, width, height } = options;
-
-        // If specific area is requested
-        if (width && height) {
-          const fullCanvas = await htmlToImage.toCanvas(document.body, {
-            width: document.documentElement.scrollWidth,
-            height: document.documentElement.scrollHeight,
-          });
-
-          const cropCanvas = document.createElement('canvas');
-          cropCanvas.width = width;
-          cropCanvas.height = height;
-          const ctx = cropCanvas.getContext('2d');
-
-          // Draw the selected part of the full canvas onto the crop canvas
-          // Note: coordinates from selection are relative to viewport, 
-          // we need to add scroll offsets if we captured the full body
-          const scrollX = window.scrollX;
-          const scrollY = window.scrollY;
-
-          ctx.drawImage(
-            fullCanvas,
-            left + scrollX, top + scrollY, width, height, // source
-            0, 0, width, height                           // destination
-          );
-
-          return cropCanvas.toDataURL('image/png');
-        }
-
-        // Default: Full page
-        return await htmlToImage.toPng(document.body, {
-          width: document.documentElement.scrollWidth,
-          height: document.documentElement.scrollHeight,
-        });
-      }
-      throw new Error("html-to-image library not found");
-    } catch (error) {
-      console.error("[dyad-screenshot] Failed to capture screenshot:", error);
-      throw error;
-    }
+    // We now prefer native screenshot via parent Electron process
+    // This is much more reliable than html-to-image
+    window.parent.postMessage({
+      type: "dyad-request-native-screenshot",
+      rect: options
+    }, "*");
+    return null; // Response will come asynchronously via parent
   }
 
   function cleanupSelection() {
@@ -140,12 +104,7 @@
 
       // Give time for overlay to disappear
       setTimeout(async () => {
-        try {
-          const dataUrl = await captureScreenshot({ left, top, width, height });
-          sendResponse(true, dataUrl);
-        } catch (error) {
-          sendResponse(false, null, error.message);
-        }
+        captureScreenshot({ left, top, width, height });
       }, 50);
     };
 
@@ -163,15 +122,8 @@
   }
 
   async function handleScreenshotRequest(options = {}) {
-    try {
-      console.debug("[dyad-screenshot] Capturing screenshot...");
-      const dataUrl = await captureScreenshot(options);
-      console.debug("[dyad-screenshot] Screenshot captured successfully");
-      sendResponse(true, dataUrl);
-    } catch (error) {
-      console.error("[dyad-screenshot] Screenshot capture failed:", error);
-      sendResponse(false, null, error.message);
-    }
+    console.debug("[dyad-screenshot] Requesting native screenshot from parent...");
+    captureScreenshot(options);
   }
 
   window.addEventListener("message", (event) => {

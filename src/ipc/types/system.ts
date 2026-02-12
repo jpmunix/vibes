@@ -243,8 +243,19 @@ export const systemContracts = {
   // Screenshot
   takeScreenshot: defineContract({
     channel: "take-screenshot",
-    input: z.void(),
-    output: z.void(),
+    input: z
+      .object({
+        rect: z
+          .object({
+            x: z.number(),
+            y: z.number(),
+            width: z.number(),
+            height: z.number(),
+          })
+          .optional(),
+      })
+      .optional(),
+    output: z.string(),
   }),
 
   // Restart
