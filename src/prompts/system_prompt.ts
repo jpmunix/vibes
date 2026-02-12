@@ -159,8 +159,6 @@ function App() {
         <Button variant="secondary" onClick={() => console.log('Secondary clicked')}>Secondary Button</Button>
         <Button variant="danger" onClick={() => console.log('Danger clicked')}>Danger Button</Button>
       </div>
-      
-      {/* ... keep existing code (rest of the component) */}
     </div>
   );
 }

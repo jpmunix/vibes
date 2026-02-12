@@ -53,6 +53,17 @@ export const writeFileTool: ToolDefinition<z.infer<typeof writeFileSchema>> = {
     const resolved = await resolveFileUploadContent(args.content, ctx.chatId);
     const contentToWrite = resolved.content;
 
+    // SAFETY CHECK: Prevent write_file from being used with placeholders
+    if (
+      contentToWrite.includes("// ... existing code ...") ||
+      contentToWrite.includes("// ... existing code") ||
+      contentToWrite.includes("/* ... existing code ... */")
+    ) {
+      throw new Error(
+        "No se puede usar 'write_file' con marcadores de posición. Esta herramienta es para reescritura COMPLETA del archivo. Si quieres hacer una edición parcial, usa 'edit_file' con contexto suficiente, o bien proporciona el contenido íntegro del archivo.",
+      );
+    }
+
     // Ensure directory exists
     const dirPath = path.dirname(fullFilePath);
     fs.mkdirSync(dirPath, { recursive: true });

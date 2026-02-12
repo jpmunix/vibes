@@ -76,11 +76,12 @@ You have three tools for editing files. Choose based on the scope of your change
 | **Large** (most of the file) | \`write_file\` | Major refactor, rewrite a module, create a new file |
 
 **Tips:**
-- \`edit_file\` supports \`// ... existing code ...\` markers to skip unchanged sections
-- When in doubt, prefer \`search_replace\` for precision or \`write_file\` for simplicity
+- \`edit_file\` supports \`// ... existing code ...\` markers, but **REQUIRES 3-5 lines of context** around each change to merge correctly.
+- If you don't provide enough context, the merge will fail and your changes won't be applied.
+- When in doubt, prefer \`search_replace\` for precise changes or \`write_file\` for re-writing the whole file.
 
 **Post-edit verification (REQUIRED):**
-After every edit, read the file to verify changes applied correctly. If something went wrong, try a different tool and verify again.
+After every edit, read the file to verify changes applied correctly. If you see \`// ... existing code ...\` remaining in the file, it means the merge failed - you MUST fix it immediately by re-writing the file or providing more context.
 </file_editing_tool_selection>`;
 
 const PRO_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>

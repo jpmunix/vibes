@@ -198,10 +198,16 @@ let mainWindow: BrowserWindow | null = null;
 let pendingForceCloseData: any = null;
 
 const createWindow = () => {
+  const settings = readSettings();
+  const windowState = settings.windowState;
+
   mainWindow = new BrowserWindow({
-    width: process.env.NODE_ENV === "development" ? 1280 : 960,
+    x: windowState?.x,
+    y: windowState?.y,
+    width:
+      windowState?.width || (process.env.NODE_ENV === "development" ? 1280 : 960),
     minWidth: 800,
-    height: 700,
+    height: windowState?.height || 700,
     minHeight: 500,
     titleBarStyle: "hidden",
     titleBarOverlay: false,
@@ -288,6 +294,41 @@ const createWindow = () => {
     const menu = Menu.buildFromTemplate(template);
     menu.popup({ window: mainWindow! });
   });
+
+  if (windowState?.isMaximized) {
+    mainWindow.maximize();
+  }
+
+  const saveWindowState = () => {
+    if (!mainWindow) return;
+    const isMaximized = mainWindow.isMaximized();
+    const currentSettings = readSettings();
+    const newState = {
+      ...currentSettings.windowState,
+      isMaximized,
+    };
+
+    if (!isMaximized) {
+      const bounds = mainWindow.getBounds();
+      newState.x = bounds.x;
+      newState.y = bounds.y;
+      newState.width = bounds.width;
+      newState.height = bounds.height;
+    }
+
+    writeSettings({ windowState: newState });
+  };
+
+  let saveTimeout: NodeJS.Timeout;
+  const debouncedSave = () => {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveWindowState, 500);
+  };
+
+  mainWindow.on("resize", debouncedSave);
+  mainWindow.on("move", debouncedSave);
+  mainWindow.on("maximize", saveWindowState);
+  mainWindow.on("unmaximize", saveWindowState);
 };
 
 const createApplicationMenu = () => {

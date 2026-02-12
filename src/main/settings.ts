@@ -60,6 +60,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   chatLanguage: "es",
   showTokenBar: false,
   aiQueryLogRotationThreshold: "200",
+  windowState: undefined,
 };
 
 const SETTINGS_FILE = "user-settings.json";

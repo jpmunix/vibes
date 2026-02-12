@@ -29,6 +29,14 @@ const turboFileEditResponseSchema = z.object({
   result: z.string(),
 });
 
+function containsPlaceholders(content: string): boolean {
+  return (
+    content.includes("// ... existing code ...") ||
+    content.includes("// ... existing code") ||
+    content.includes("/* ... existing code ... */")
+  );
+}
+
 async function callTurboFileEdit(
   params: {
     path: string;
@@ -51,19 +59,30 @@ async function callTurboFileEdit(
       }),
     });
   } catch (error) {
-    logger.warn(
-      "Turbo edit request failed, falling back to local rewrite",
-      error,
+    logger.warn("Turbo edit request failed", error);
+    throw new Error(
+      `Fallo crítico en la fusión de archivos (Network Error). Por favor, intenta usar 'write_file' para enviar el archivo completo o reduce el número de bloques '// ... existing code ...'.`,
     );
-    response = null;
   }
 
   if (!response || !response.ok) {
-    // Fallback: return requested content so caller can write full file
-    return params.content;
+    const errorText = await response?.text().catch(() => "Unknown error");
+    logger.error("Turbo edit failed", errorText);
+    throw new Error(
+      `No se pudo fusionar el archivo correctamente (Engine Error: ${response?.status}). Asegúrate de incluir suficiente contexto alrededor de tus cambios (al menos 3-5 líneas) para que el sistema pueda identificar dónde aplicarlos.`,
+    );
   }
 
   const data = turboFileEditResponseSchema.parse(await response.json());
+
+  // FINAL SAFETY CHECK: Never allow returning content that still has placeholders
+  if (containsPlaceholders(data.result)) {
+    logger.error("Turbo edit returned content with placeholders", data.result);
+    throw new Error(
+      "El motor de fusión devolvió un archivo incompleto (contiene marcadores de posición). Reintenta la operación proporcionando más líneas de contexto antes y después de cada cambio, o usa 'write_file' para reescribir el archivo completo.",
+    );
+  }
+
   return data.result;
 }
 
