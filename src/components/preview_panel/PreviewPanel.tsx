@@ -14,16 +14,20 @@ import { ChevronDown, ChevronUp, Logs } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Console } from "./Console";
+import { ConsoleTerminal } from "./ConsoleTerminal";
 import { useRunApp } from "@/hooks/useRunApp";
 import { PublishPanel } from "./PublishPanel";
 import { SecurityPanel } from "./SecurityPanel";
 import { useSupabase } from "@/hooks/useSupabase";
 import { VersionPane } from "../chat/VersionPane";
+import { cn } from "@/lib/utils";
 
 interface ConsoleHeaderProps {
   isOpen: boolean;
   onToggle: () => void;
   latestMessage?: string;
+  consoleView: "logs" | "terminal";
+  onViewChange: (view: "logs" | "terminal") => void;
 }
 
 // Console header component
@@ -31,22 +35,66 @@ const ConsoleHeader = ({
   isOpen,
   onToggle,
   latestMessage,
+  consoleView,
+  onViewChange,
 }: ConsoleHeaderProps) => (
-  <div
-    onClick={onToggle}
-    className="flex items-start gap-2 px-4 py-1.5 border-t border-border cursor-pointer hover:bg-[var(--background-darkest)] transition-colors"
-  >
-    <Logs size={16} className="mt-0.5" />
-    <div className="flex flex-col">
-      <span className="text-sm font-medium">System Messages</span>
-      {!isOpen && latestMessage && (
-        <span className="text-xs text-gray-500 truncate max-w-[200px] md:max-w-[400px]">
-          {latestMessage}
+  <div className="flex items-center gap-2 px-4 py-1.5 border-t border-border bg-background">
+    <div
+      onClick={onToggle}
+      className="flex items-start gap-2 cursor-pointer hover:bg-[var(--background-darkest)] transition-colors flex-1 min-w-0"
+    >
+      <Logs size={16} className="mt-0.5 shrink-0" />
+      <div className="flex flex-col min-w-0">
+        <span className="text-sm font-medium whitespace-nowrap">
+          {consoleView === "logs" ? "System Messages" : "App Console"}
         </span>
-      )}
+        {!isOpen && latestMessage && (
+          <span className="text-xs text-gray-500 truncate max-w-[200px] md:max-w-[400px]">
+            {latestMessage}
+          </span>
+        )}
+      </div>
     </div>
-    <div className="flex-1" />
-    {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+
+    {isOpen && (
+      <div className="flex items-center bg-muted rounded-md p-0.5 mr-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewChange("logs");
+          }}
+          className={cn(
+            "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
+            consoleView === "logs"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Logs
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewChange("terminal");
+          }}
+          className={cn(
+            "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
+            consoleView === "terminal"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Console
+        </button>
+      </div>
+    )}
+
+    <div
+      onClick={onToggle}
+      className="cursor-pointer hover:bg-[var(--background-darkest)] p-1 rounded transition-colors"
+    >
+      {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+    </div>
   </div>
 );
 
@@ -55,6 +103,7 @@ export function PreviewPanel() {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [consoleView, setConsoleView] = useState<"logs" | "terminal">("logs");
   const { runApp, stopApp, loading, app } = useRunApp();
   const { loadEdgeLogs } = useSupabase();
   const runningAppIdRef = useRef<number | null>(null);
@@ -168,8 +217,10 @@ export function PreviewPanel() {
                     isOpen={true}
                     onToggle={() => setIsConsoleOpen(false)}
                     latestMessage={latestMessage}
+                    consoleView={consoleView}
+                    onViewChange={setConsoleView}
                   />
-                  <Console />
+                  {consoleView === "logs" ? <Console /> : <ConsoleTerminal />}
                 </div>
               </Panel>
             </>
@@ -181,6 +232,8 @@ export function PreviewPanel() {
           isOpen={false}
           onToggle={() => setIsConsoleOpen(true)}
           latestMessage={latestMessage}
+          consoleView={consoleView}
+          onViewChange={setConsoleView}
         />
       )}
     </div>

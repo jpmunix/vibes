@@ -1,4 +1,4 @@
-import { Filter, X, Trash2 } from "lucide-react";
+import { Filter, X, Trash2, Download } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -9,11 +9,11 @@ import {
 interface ConsoleFiltersProps {
   levelFilter: "all" | "info" | "warn" | "error";
   typeFilter:
-    | "all"
-    | "server"
-    | "client"
-    | "edge-function"
-    | "network-requests";
+  | "all"
+  | "server"
+  | "client"
+  | "edge-function"
+  | "network-requests";
   sourceFilter: string;
   onLevelFilterChange: (value: "all" | "info" | "warn" | "error") => void;
   onTypeFilterChange: (
@@ -25,6 +25,7 @@ interface ConsoleFiltersProps {
   uniqueSources: string[];
   totalLogs: number;
   showFilters: boolean;
+  onExportLogs: () => void;
 }
 
 export const ConsoleFilters = ({
@@ -39,6 +40,7 @@ export const ConsoleFilters = ({
   uniqueSources,
   totalLogs,
   showFilters,
+  onExportLogs,
 }: ConsoleFiltersProps) => {
   const hasActiveFilters =
     levelFilter !== "all" || typeFilter !== "all" || sourceFilter !== "";
@@ -71,11 +73,11 @@ export const ConsoleFilters = ({
         onChange={(e) =>
           onTypeFilterChange(
             e.target.value as
-              | "all"
-              | "server"
-              | "client"
-              | "edge-function"
-              | "network-requests",
+            | "all"
+            | "server"
+            | "client"
+            | "edge-function"
+            | "network-requests",
           )
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -127,6 +129,21 @@ export const ConsoleFilters = ({
             </button>
           </TooltipTrigger>
           <TooltipContent>Clear logs</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onExportLogs}
+              className="p-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="Exportar logs"
+            >
+              <Download size={14} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Exportar logs a archivo</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 

@@ -6,7 +6,7 @@ import {
   previewCurrentUrlAtom,
 } from "@/atoms/appAtoms";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -996,7 +996,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   };
 
   // Function to handle reload
-  const handleReload = () => {
+  const handleReload = (e?: MouseEvent) => {
+    // If Shift is pressed, do a full restart instead
+    if (e?.shiftKey) {
+      onRestart();
+      return;
+    }
+
     // Store the current URL to preserve the route during reload
     const currentUrl = navigationHistory[currentHistoryPosition] || appUrl;
 
@@ -1056,6 +1062,22 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     }
   };
 
+  // Convert null to undefined for iframe src prop compatibility
+  // Add a cache-busting parameter when reloadKey changes to force a fresh reload from the server
+  const iframeSrc = useMemo(() => {
+    const base = currentIframeUrlRef.current ?? appUrl;
+    if (!base) return undefined;
+    if (reloadKey === 0) return base;
+
+    try {
+      const url = new URL(base);
+      url.searchParams.set("dyad_v", reloadKey.toString());
+      return url.toString();
+    } catch {
+      return base;
+    }
+  }, [appUrl, reloadKey]);
+
   // Display loading state
   if (loading) {
     return (
@@ -1087,8 +1109,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     restartApp();
   };
 
-  // Convert null to undefined for iframe src prop compatibility
-  const iframeSrc = currentIframeUrlRef.current ?? appUrl ?? undefined;
 
   return (
     <div className="flex flex-col h-full">
@@ -1173,14 +1193,23 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             >
               <ArrowRight size={16} />
             </button>
-            <button
-              onClick={handleReload}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
-              disabled={loading || !selectedAppId}
-              data-testid="preview-refresh-button"
-            >
-              <RefreshCw size={16} />
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleReload}
+                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+                    disabled={loading || !selectedAppId}
+                    data-testid="preview-refresh-button"
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Actualizar vista (Shift + Click para reiniciar)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Address Bar with Routes Dropdown - using shadcn/ui dropdown-menu */}

@@ -530,7 +530,7 @@ function SuggestionButton({
   onClick,
   tooltipText,
 }: {
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode;
   tooltipText: string;
 }) {
@@ -658,18 +658,26 @@ function RestartButton() {
 }
 
 function RefreshButton() {
-  const { refreshAppIframe } = useRunApp();
+  const { refreshAppIframe, restartApp } = useRunApp();
   const posthog = usePostHog();
 
-  const onClick = useCallback(() => {
-    posthog.capture("action:refresh");
-    refreshAppIframe();
-  }, [posthog, refreshAppIframe]);
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.shiftKey) {
+        posthog.capture("action:restart_from_refresh");
+        restartApp();
+        return;
+      }
+      posthog.capture("action:refresh");
+      refreshAppIframe();
+    },
+    [posthog, refreshAppIframe, restartApp],
+  );
 
   return (
     <SuggestionButton
       onClick={onClick}
-      tooltipText="Actualiza la vista previa de la aplicación"
+      tooltipText="Actualiza la vista previa (Shift + Click para reiniciar)"
     >
       Actualizar vista
     </SuggestionButton>

@@ -127,7 +127,7 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   thinking_prompt:
     "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
   build_system_prefix:
-    "Define la personalidad y el rol básico de Dyad en modo construcción.",
+    "Define la personalidad y el rol básico de Vibes en modo construcción.",
   build_system_postfix:
     "Reglas críticas sobre el formato de salida y etiquetas <dyad-write>.",
   summarize_chat_system:

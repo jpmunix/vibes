@@ -1662,9 +1662,6 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.respondToAppInput, async (_, params) => {
     const { appId, response } = params;
-    if (response !== "y" && response !== "n") {
-      throw new Error(`Invalid response: ${response}`);
-    }
     const appInfo = runningApps.get(appId);
 
     if (!appInfo) {

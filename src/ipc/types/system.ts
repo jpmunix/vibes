@@ -178,6 +178,21 @@ export const systemContracts = {
     output: SelectAppFolderResultSchema,
   }),
 
+  saveTextToFile: defineContract({
+    channel: "save-text-to-file",
+    input: z.object({
+      content: z.string(),
+      defaultName: z.string().optional(),
+      filters: z
+        .array(z.object({ name: z.string(), extensions: z.array(z.string()) }))
+        .optional(),
+    }),
+    output: z.object({
+      filePath: z.string().nullable(),
+      canceled: z.boolean(),
+    }),
+  }),
+
   // External
   openExternalUrl: defineContract({
     channel: "open-external-url",

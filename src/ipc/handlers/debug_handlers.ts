@@ -207,6 +207,27 @@ export function registerDebugHandlers() {
     // Return data URL for the UI to use
     return image.toDataURL();
   });
+
+  createTypedHandler(systemContracts.saveTextToFile, async (_, params) => {
+    const { content, defaultName, filters } = params;
+
+    const result = await dialog.showSaveDialog({
+      defaultPath: defaultName,
+      filters: filters,
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { filePath: null, canceled: true };
+    }
+
+    try {
+      fs.writeFileSync(result.filePath, content, "utf8");
+      return { filePath: result.filePath, canceled: false };
+    } catch (error) {
+      log.error("Failed to save text to file:", error);
+      throw error;
+    }
+  });
 }
 
 function serializeModelForDebug(model: LargeLanguageModel): string {

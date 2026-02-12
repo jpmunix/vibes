@@ -168,9 +168,9 @@ export function useRunApp() {
         error instanceof Error
           ? { message: error.message, source: "dyad-app" }
           : {
-              message: error?.toString() || "Unknown error",
-              source: "dyad-app",
-            },
+            message: error?.toString() || "Unknown error",
+            source: "dyad-app",
+          },
       );
     } finally {
       setLoading(false);
@@ -193,9 +193,9 @@ export function useRunApp() {
         error instanceof Error
           ? { message: error.message, source: "dyad-app" }
           : {
-              message: error?.toString() || "Unknown error",
-              source: "dyad-app",
-            },
+            message: error?.toString() || "Unknown error",
+            source: "dyad-app",
+          },
       );
     } finally {
       setLoading(false);
@@ -254,9 +254,9 @@ export function useRunApp() {
           error instanceof Error
             ? { message: error.message, source: "dyad-app" }
             : {
-                message: error?.toString() || "Unknown error",
-                source: "dyad-app",
-              },
+              message: error?.toString() || "Unknown error",
+              source: "dyad-app",
+            },
         );
       } finally {
         setPreviewPanelKey((prevKey) => prevKey + 1);
@@ -274,8 +274,9 @@ export function useRunApp() {
   );
 
   const refreshAppIframe = useCallback(async () => {
+    setPreviewErrorMessage(undefined);
     setPreviewPanelKey((prevKey) => prevKey + 1);
-  }, [setPreviewPanelKey]);
+  }, [setPreviewPanelKey, setPreviewErrorMessage]);
 
   return {
     loading,

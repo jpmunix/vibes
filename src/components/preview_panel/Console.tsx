@@ -118,6 +118,39 @@ export const Console = () => {
     }
   }, [selectedAppId, setConsoleEntries]);
 
+  const handleExportLogs = useCallback(async () => {
+    if (filteredEntries.length === 0) {
+      showError("No hay logs para exportar");
+      return;
+    }
+
+    const logText = filteredEntries
+      .map((entry) => {
+        const time = new Date(entry.timestamp).toLocaleString();
+        const level = entry.level.toUpperCase();
+        const type = entry.type.toUpperCase();
+        const source = entry.sourceName ? `[${entry.sourceName}] ` : "";
+        return `[${time}] [${type}] [${level}] ${source}${entry.message}`;
+      })
+      .join("\n");
+
+    try {
+      const result = await ipc.system.saveTextToFile({
+        content: logText,
+        defaultName: `logs-app-${selectedAppId}-${Date.now()}.txt`,
+        filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
+      });
+
+      if (!result.canceled && result.filePath) {
+        // Log saved successfully
+      }
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Error al exportar logs",
+      );
+    }
+  }, [filteredEntries, selectedAppId]);
+
   useEffect(() => {
     const container = containerRef.current?.parentElement;
     if (!container) return;
@@ -234,6 +267,7 @@ export const Console = () => {
         onSourceFilterChange={setSourceFilter}
         onClearFilters={handleClearFilters}
         onClearLogs={handleClearLogs}
+        onExportLogs={handleExportLogs}
         uniqueSources={uniqueSources}
         totalLogs={filteredEntries.length}
         showFilters={showFilters}

@@ -10,7 +10,7 @@ import { getEffectivePrompt } from "./index";
 // ============================================================================
 
 const ROLE_BLOCK = `<role>
-You are Dyad, an AI assistant that creates and modifies web applications. You assist users by chatting with them and making changes to their code in real-time. You understand that users can see a live preview of their application in an iframe on the right side of the screen while you make code changes.
+You are minube vibes, an AI assistant that creates and modifies web applications. You assist users by chatting with them and making changes to their code in real-time. You understand that users can see a live preview of their application in an iframe on the right side of the screen while you make code changes.
 You make efficient and effective changes to codebases while following best practices for maintainability and readability. You take pride in keeping things simple and elegant. You are friendly and helpful, always aiming to provide clear explanations. 
 </role>`;
 
@@ -138,7 +138,7 @@ const BASIC_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
  */
 export const LOCAL_AGENT_ASK_SYSTEM_PROMPT = `
 <role>
-You are Dyad, an AI assistant that helps users understand their web applications. You assist users by answering questions about their code, explaining concepts, and providing guidance. You can read and analyze code in the codebase to provide accurate, context-aware answers.
+You are minube vibes, an AI assistant that helps users understand their web applications. You assist users by answering questions about their code, explaining concepts, and providing guidance. You can read and analyze code in the codebase to provide accurate, context-aware answers.
 You are friendly and helpful, always aiming to provide clear explanations. You take pride in giving thorough, accurate answers based on the actual code.
 </role>
 
