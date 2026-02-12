@@ -403,6 +403,43 @@ export async function handleLocalAgentStream(
           cachedInputTokens ? (cachedInputTokens ?? 0) / (inputTokens ?? 0) : 0,
         );
 
+        // Log AI query using fullResponse from outer scope (closure)
+        let effectiveOutputTokens = outputTokens
+          || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
+
+        // If still 0 or undefined, estimate from fullResponse length
+        // Rule of thumb: ~4 characters per token
+        if (!effectiveOutputTokens || effectiveOutputTokens === 0) {
+          effectiveOutputTokens = Math.ceil(fullResponse.length / 4);
+        }
+
+        logger.log(
+          `[AGENT onFinish] Logging AI query with fullResponse length: ${fullResponse.length}, effectiveOutputTokens: ${effectiveOutputTokens}`,
+        );
+
+        try {
+          void logAiQuery({
+            queryType: "local-agent-stream",
+            model: selectedModel.name,
+            promptSnippet: req.prompt.slice(0, 100),
+            payload: {
+              system: systemPrompt.slice(0, 500),
+              messages: messageHistory,
+              tools: Object.keys(allTools),
+            },
+            response: {
+              fullResponse: fullResponse || "[empty at onFinish]",
+              text: response.text,
+              steps: response.steps?.length ?? 0,
+              finishReason: response.finishReason,
+            },
+            inputTokens: inputTokens,
+            outputTokens: effectiveOutputTokens,
+          });
+        } catch (e) {
+          logger.error("Failed to log local agent AI query in onFinish", e);
+        }
+
         if (typeof totalTokens === "number") {
           await db
             .update(messages)
@@ -414,11 +451,11 @@ export async function handleLocalAgentStream(
           void logChatInfo(
             ctx.chatId,
             "token-usage",
-            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${outputTokens ?? "?"})`,
+            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${effectiveOutputTokens ?? "?"})`,
             {
               totalTokens,
               inputTokens,
-              outputTokens,
+              outputTokens: effectiveOutputTokens,
               model: selectedModel.name,
               cachedInputTokens,
               type: "local-agent",
@@ -432,7 +469,7 @@ export async function handleLocalAgentStream(
               messageId: placeholderMessageId,
               totalTokens,
               promptTokens: inputTokens,
-              completionTokens: outputTokens,
+              completionTokens: effectiveOutputTokens,
               model: selectedModel.name,
               timestamp: Date.now(),
               appId: chat.app.id,
@@ -582,41 +619,6 @@ export async function handleLocalAgentStream(
       }
     } catch (err) {
       logger.warn("Failed to save AI messages JSON:", err);
-    }
-
-    // Post-stream AI query log: at this point fullResponse is complete
-    // and we can await usage for accurate token counts.
-    try {
-      const usage = await streamResult.usage;
-      const inputTokens = usage?.inputTokens ?? (usage as any)?.promptTokens;
-      const outputTokens = usage?.outputTokens ?? (usage as any)?.completionTokens;
-      const totalTokens = usage?.totalTokens;
-      const effectiveOutputTokens = outputTokens
-        || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
-
-      logger.log(
-        `[AGENT LOG] Post-stream usage — input: ${inputTokens}, output: ${outputTokens}, effective output: ${effectiveOutputTokens}, total: ${totalTokens}`,
-      );
-
-      void logAiQuery({
-        queryType: "local-agent-stream",
-        model: selectedModel.name,
-        promptSnippet: req.prompt.slice(0, 100),
-        payload: {
-          system: systemPrompt,
-          messages: messageHistory,
-          tools: Object.keys(allTools),
-        },
-        response: {
-          fullResponse: fullResponse,
-          steps: (await streamResult.steps)?.length ?? 0,
-          finishReason: (await streamResult.finishReason),
-        },
-        inputTokens: inputTokens,
-        outputTokens: effectiveOutputTokens,
-      });
-    } catch (e) {
-      logger.error("Failed to log local agent AI query (post-stream)", e);
     }
 
     // In read-only mode, skip deploys and commits

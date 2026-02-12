@@ -57,17 +57,32 @@ export function ChatPanel({
   const scrollerCleanupRef = useRef<(() => void) | null>(null);
   // Ref to track previous streaming state
   const prevIsStreamingRef = useRef(false);
+  // Ref to track if we're programmatically scrolling (to avoid triggering user scroll detection)
+  const isProgrammaticScrollRef = useRef(false);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    isProgrammaticScrollRef.current = true;
     messagesEndRef.current?.scrollIntoView({ behavior });
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 300);
   };
 
   const handleScrollButtonClick = () => {
     scrollToBottom("smooth");
+    // User clicked to go to bottom, so they're no longer scrolling away
+    setIsUserScrolling(false);
+    setShowScrollButton(false);
   };
 
   // Unified scroll tracking handler for both test and Virtuoso modes
   const handleScrollTracking = useCallback((container: HTMLElement) => {
+    // Ignore scroll events triggered by our own programmatic scrolling
+    if (isProgrammaticScrollRef.current) {
+      return;
+    }
+
     const distanceFromBottom =
       container.scrollHeight - (container.scrollTop + container.clientHeight);
     distanceFromBottomRef.current = distanceFromBottom;
@@ -84,10 +99,10 @@ export function ChatPanel({
         window.clearTimeout(userScrollTimeoutRef.current);
       }
 
-      // Reset isUserScrolling after 2 seconds
+      // Reset isUserScrolling after 1 second (reduced from 2 seconds)
       userScrollTimeoutRef.current = window.setTimeout(() => {
         setIsUserScrolling(false);
-      }, 2000);
+      }, 1000);
     } else {
       // User is near bottom
       setIsUserScrolling(false);
@@ -139,13 +154,21 @@ export function ChatPanel({
     });
 
     // After messages are loaded, scroll to bottom so the user sees the latest.
-    // Use RAF + timeout to wait for the DOM (including Virtuoso) to render.
+    // Use multiple scroll attempts to handle late-rendering content (like timestamps)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollToBottom("instant");
-        // Fallback timeout for Virtuoso which may need extra time to lay out
+        // First delayed scroll for Virtuoso layout
         setTimeout(() => {
           scrollToBottom("instant");
+          // Second delayed scroll for async content like timestamps
+          setTimeout(() => {
+            scrollToBottom("instant");
+            // Final scroll to ensure everything is visible
+            setTimeout(() => {
+              scrollToBottom("instant");
+            }, 1000);
+          }, 500);
         }, 200);
       });
     });

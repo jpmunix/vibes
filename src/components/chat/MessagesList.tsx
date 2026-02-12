@@ -119,7 +119,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
       )}
 
       {!isStreaming && (
-        <div className="flex max-w-3xl mx-auto gap-2 mt-12 mb-8">
+        <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
 
           {!!messages.length &&
             messages[messages.length - 1].role === "assistant" && (
@@ -295,9 +295,10 @@ function FooterComponent({ context }: { context?: FooterContext }) {
         </div>
       )}
 
-      <div ref={messagesEndRef} />
       {renderSetupBanner()}
 
+      {/* Scroll anchor at the very end to ensure all content above is visible */}
+      <div ref={messagesEndRef} />
     </>
   );
 }
@@ -560,7 +561,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
     return (
       <div
-        className="absolute inset-0 overflow-y-auto px-4 pt-4 pb-20"
+        className="absolute inset-0 overflow-y-auto px-4 pt-4 pb-8"
         ref={ref}
         data-testid="messages-list"
       >
@@ -572,13 +573,19 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           components={{ Footer: FooterComponent }}
           context={footerContext}
           scrollerRef={onScrollerRef}
-          followOutput={() => {
-            const shouldAutoScroll =
-              !isUserScrolling &&
-              isStreaming &&
-              distanceFromBottomRef &&
-              distanceFromBottomRef.current <= 280;
-            return shouldAutoScroll ? "smooth" : false;
+          followOutput={(isAtBottom) => {
+            // During streaming, auto-scroll aggressively
+            if (isStreaming) {
+              // If user hasn't manually scrolled far away, keep auto-scrolling
+              const distanceFromBottom = distanceFromBottomRef?.current ?? 0;
+              const userScrolledFarAway = distanceFromBottom > 800;
+
+              // Auto-scroll unless user has explicitly scrolled far away
+              if (!userScrolledFarAway) {
+                return "smooth";
+              }
+            }
+            return false;
           }}
         />
       </div>
