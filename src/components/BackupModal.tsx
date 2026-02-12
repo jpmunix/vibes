@@ -74,7 +74,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                 contentType: zipFile.contentType,
             });
 
-            // 3. Rotación de copias: mantener solo las 3 más recientes en la nube
+            // 3. Rotación de copias: mantener solo las 10 más recientes en la nube
             await rotateBackups(user.uid);
 
             toast.success("Copia de seguridad subida a la nube correctamente");
@@ -93,9 +93,9 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             const res = await listAll(backupsRootRef);
 
             // Ahora trabajamos con archivos individuales (items) en lugar de carpetas (prefixes)
-            if (res.items.length > 3) {
+            if (res.items.length > 10) {
                 const sortedItems = [...res.items].sort((a, b) => a.name.localeCompare(b.name));
-                const toDelete = sortedItems.slice(0, sortedItems.length - 3);
+                const toDelete = sortedItems.slice(0, sortedItems.length - 10);
 
                 for (const item of toDelete) {
                     await deleteObject(item);

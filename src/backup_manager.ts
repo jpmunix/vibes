@@ -7,7 +7,7 @@ import Database from "better-sqlite3";
 
 const logger = log.scope("backup_manager");
 
-const MAX_BACKUPS = 3;
+const MAX_BACKUPS = 10;
 
 interface BackupManagerOptions {
   settingsFile: string;
