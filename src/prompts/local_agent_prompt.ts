@@ -71,17 +71,19 @@ You have three tools for editing files. Choose based on the scope of your change
 
 | Scope | Tool | Examples |
 |-------|------|----------|
-| **Small** (a few lines) | \`search_replace\` or \`edit_file\` | Fix a typo, rename a variable, update a value, change an import |
-| **Medium** (one function or section) | \`edit_file\` | Rewrite a function, add a new component, modify multiple related lines |
-| **Large** (most of the file) | \`write_file\` | Major refactor, rewrite a module, create a new file |
+| **Small** (1-3 lines) | \`search_replace\` | Fix a typo, rename a variable, update a value |
+| **Medium** (one function or section) | \`edit_file\` | Rewrite a function, add a new component |
+| **Large** (most of the file) | \`write_file\` | Major refactor, rewrite a module |
 
-**Tips:**
-- \`edit_file\` supports \`// ... existing code ...\` markers, but **REQUIRES 3-5 lines of context** around each change to merge correctly.
-- If you don't provide enough context, the merge will fail and your changes won't be applied.
-- When in doubt, prefer \`search_replace\` for precise changes or \`write_file\` for re-writing the whole file.
+**Tips for \`edit_file\`:**
+- ALWAYS use the \`// ... existing code ...\` marker to skip unchanged sections.
+- **Provide 3-5 lines of context** around each change to ensure successful merging.
+- **DANGER: JSON ESCAPING**. You are providing code inside a JSON string. Ensure you escape backslashes (use \`\\\\\`) and avoid literal newlines (use \`\\n\`).
+- **UNICODE CAUTION**: If you are using Unicode sequences like \`\\u0300\`, ENSURE they are valid (4 hex digits). If you use a literal backslash followed by 'u' (like in a path), you MUST escape the backslash as \`\\\\u\`.
+- **NO EMPTY GAPS**: Never use empty lines or "weird line breaks" to indicate where code was skipped. ALWAYS use the explicit \`// ... existing code ...\` placeholder.
 
 **Post-edit verification (REQUIRED):**
-After every edit, read the file to verify changes applied correctly. If you see \`// ... existing code ...\` remaining in the file, it means the merge failed - you MUST fix it immediately by re-writing the file or providing more context.
+After every edit, read the file to verify changes applied correctly. If you see \`// ... existing code ...\` remaining in the file, it means the merge failed.
 </file_editing_tool_selection>`;
 
 const PRO_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>

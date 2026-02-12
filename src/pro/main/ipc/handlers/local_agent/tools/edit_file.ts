@@ -104,19 +104,6 @@ Do NOT use this tool when:
 
 When writing the edit, you should specify each edit in sequence, with the special comment // ... existing code ... to represent unchanged code in between edited lines.
 
-Basic example:
-\`\`\`
-edit_file(path="file.js", instructions="I am adding error handling to the fetchData function and updating the return type.", content="""
-// ... existing code ...
-FIRST_EDIT
-// ... existing code ...
-SECOND_EDIT
-// ... existing code ...
-THIRD_EDIT
-// ... existing code ...
-""")
-\`\`\`
-
 ## General Principles
 
 You should bias towards repeating as few lines of the original file as possible to convey the change.
@@ -126,41 +113,24 @@ NEVER show unmodified code in the edit, unless sufficient context of unchanged l
 DO NOT omit spans of pre-existing code without using the // ... existing code ... comment to indicate its absence.
 
 ## Example: Basic Edit
-\`\`\`
-edit_file(path="LandingPage.tsx", instructions="I am changing the return statement in LandingPage to render a div with 'hello' instead of the previous content.", content="""
-// ... existing code ...
-
-const LandingPage = () => {
-  // ... existing code ...
-  return (
-    <div>hello</div>
-  );
-};
-
-// ... existing code ...
-""")
-\`\`\`
+\\\`\\\`\\\`json
+{
+  "path": "LandingPage.tsx",
+  "instructions": "I am changing the return statement in LandingPage to render a div with 'hello' instead of the previous content.",
+  "content": "// ... existing code ...\\n\\nconst LandingPage = () => {\\n  // ... existing code ...\\n  return (\\n    <div>hello</div>\\n  );\\n};\\n\\n// ... existing code ..."
+}
+\\\`\\\`\\\`
 
 ## Example: Deleting Code
 
 **When deleting code, you must provide surrounding context and leave an explicit comment indicating what was removed.**
-\`\`\`
-edit_file(path="utils.ts", instructions="I am removing the deprecatedHelper function located between currentHelper and anotherHelper.", content="""
-// ... existing code ...
-
-export function currentHelper() {
-  return "active";
+\\\`\\\`\\\`json
+{
+  "path": "utils.ts",
+  "instructions": "I am removing the deprecatedHelper function located between currentHelper and anotherHelper.",
+  "content": "// ... existing code ...\\n\\nexport function currentHelper() {\\n  return \\"active\\";\\n}\\n\\n// REMOVED: deprecatedHelper() function\\n\\nexport function anotherHelper() {\\n  return \\"working\\";\\n}\\n\\n// ... existing code ..."
 }
-
-// REMOVED: deprecatedHelper() function
-
-export function anotherHelper() {
-  return "working";
-}
-
-// ... existing code ...
-""")
-\`\`\`
+\\\`\\\`\\\`
 `;
 export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
   name: "edit_file",

@@ -370,10 +370,17 @@ export function buildAgentToolSet(
           const errorMessage =
             error instanceof Error ? error.message : String(error);
 
-          ctx.onXmlComplete(
-            `<dyad-output type="error" message="Tool '${tool.name}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorMessage)}</dyad-output>`,
-          );
+          // Suppress specific network errors from being "painted" to the user
+          // These errors are handled by triggering a fallback in the agent (e.g. using write_file)
+          const isSilentError = errorMessage.includes("Fallo crítico en la fusión de archivos (Network Error)");
+
+          if (!isSilentError) {
+            ctx.onXmlComplete(
+              `<dyad-output type="error" message="Tool '${tool.name}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorMessage)}</dyad-output>`,
+            );
+          }
           throw error;
+
         }
       },
     };
