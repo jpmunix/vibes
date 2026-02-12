@@ -47,15 +47,18 @@ import { mcpServers } from "@/db/schema";
 import { requireMcpToolConsent } from "@/ipc/utils/mcp_consent";
 import { getAiMessagesJsonIfWithinLimit } from "@/ipc/utils/ai_messages_utils";
 
-import type { ChatStreamParams, ChatResponseEnd } from "@/ipc/types";
 import {
-  AgentContext,
+  FileEditToolName,
+  FILE_EDIT_TOOL_NAMES,
   parsePartialJson,
+  type AgentContext,
+  type FileEditTracker,
   escapeXmlAttr,
   escapeXmlContent,
   UserMessageContentPart,
-  FileEditTracker,
 } from "./tools/types";
+
+import type { ChatStreamParams, ChatResponseEnd } from "@/ipc/types";
 import { sendTelemetryEvent } from "@/ipc/utils/telemetry";
 import {
   prepareStepMessages,
@@ -79,6 +82,7 @@ const logger = log.scope("local_agent_handler");
 interface ToolStreamingEntry {
   toolName: string;
   argsAccumulated: string;
+  pathTracked?: string;
 }
 const toolStreamingEntries = new Map<string, ToolStreamingEntry>();
 
@@ -553,7 +557,24 @@ export async function handleLocalAgentStream(
             const toolDef = findToolDefinition(entry.toolName);
             if (toolDef?.buildXml) {
               const argsPartial = parsePartialJson(entry.argsAccumulated);
-              const xml = toolDef.buildXml(argsPartial, false);
+
+              // Track file edit per path to show retry count in UI
+              if (FILE_EDIT_TOOL_NAMES.includes(entry.toolName as any)) {
+                const path = argsPartial.path || argsPartial.file_path;
+                if (path && entry.pathTracked !== path) {
+                  entry.pathTracked = path;
+                  if (!ctx.fileEditTracker[path]) {
+                    ctx.fileEditTracker[path] = {
+                      write_file: 0,
+                      edit_file: 0,
+                      search_replace: 0,
+                    };
+                  }
+                  ctx.fileEditTracker[path][entry.toolName as FileEditToolName]++;
+                }
+              }
+
+              const xml = toolDef.buildXml(argsPartial, false, ctx);
               if (xml) {
                 ctx.onXmlStream(xml);
               }
@@ -569,7 +590,7 @@ export async function handleLocalAgentStream(
             const toolDef = findToolDefinition(entry.toolName);
             if (toolDef?.buildXml) {
               const argsPartial = parsePartialJson(entry.argsAccumulated);
-              const xml = toolDef.buildXml(argsPartial, true);
+              const xml = toolDef.buildXml(argsPartial, true, ctx);
               if (xml) {
                 ctx.onXmlComplete(xml);
               }

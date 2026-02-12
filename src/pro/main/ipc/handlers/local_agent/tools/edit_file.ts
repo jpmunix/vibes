@@ -144,10 +144,19 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
 
   getConsentPreview: (args) => `Edit ${args.path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.path) return undefined;
 
-    let xml = `<dyad-edit path="${escapeXmlAttr(args.path)}" description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.path]) {
+      const counts = ctx.fileEditTracker[args.path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
+
+    let xml = `<dyad-edit path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
       xml += "\n</dyad-edit>";
     }

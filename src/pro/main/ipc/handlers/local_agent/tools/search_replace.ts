@@ -68,12 +68,21 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
 
   getConsentPreview: (args) => `Edit ${args.file_path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.file_path) return undefined;
+
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.file_path]) {
+      const counts = ctx.fileEditTracker[args.file_path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
 
     const escapedOld = escapeSearchReplaceMarkers(args.old_string ?? "");
 
-    let xml = `<dyad-search-replace path="${escapeXmlAttr(args.file_path)}" description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
+    let xml = `<dyad-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
 
     // Add separator and replace content if new_string has started
     if (args.new_string !== undefined) {

@@ -441,6 +441,7 @@ function renderCustomTag(
             properties: {
               path: attributes.path || "",
               description: attributes.description || "",
+              retryCount: attributes["retry-count"] || "",
               state: getState({ isStreaming, inProgress }),
             },
           }}
@@ -558,6 +559,7 @@ function renderCustomTag(
             properties: {
               path: attributes.path || "",
               description: attributes.description || "",
+              retryCount: attributes["retry-count"] || "",
               state: getState({ isStreaming, inProgress }),
             },
           }}
@@ -573,6 +575,7 @@ function renderCustomTag(
             properties: {
               path: attributes.path || "",
               description: attributes.description || "",
+              retryCount: attributes["retry-count"] || "",
               state: getState({ isStreaming, inProgress }),
             },
           }}

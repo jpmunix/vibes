@@ -171,5 +171,9 @@ export interface ToolDefinition<T = any> {
    * @param isComplete - True if this is the final call (include closing tags)
    * @returns The XML string, or undefined if not enough args yet
    */
-  buildXml?: (args: Partial<T>, isComplete: boolean) => string | undefined;
+  buildXml?: (
+    args: Partial<T>,
+    isComplete: boolean,
+    ctx?: AgentContext,
+  ) => string | undefined;
 }

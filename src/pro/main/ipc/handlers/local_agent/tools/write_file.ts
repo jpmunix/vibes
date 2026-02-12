@@ -31,10 +31,19 @@ export const writeFileTool: ToolDefinition<z.infer<typeof writeFileSchema>> = {
 
   getConsentPreview: (args) => `Write to ${args.path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.path) return undefined;
 
-    let xml = `<dyad-write path="${escapeXmlAttr(args.path)}" description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.path]) {
+      const counts = ctx.fileEditTracker[args.path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
+
+    let xml = `<dyad-write path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
       xml += "\n</dyad-write>";
     }

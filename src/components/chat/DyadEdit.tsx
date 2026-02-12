@@ -30,6 +30,7 @@ export const DyadEdit: React.FC<DyadEditProps> = ({
   const path = pathProp || node?.properties?.path || "";
   const description = descriptionProp || node?.properties?.description || "";
   const state = node?.properties?.state as CustomTagState;
+  const retryCount = node?.properties?.retryCount || "";
   const inProgress = state === "pending";
   const aborted = state === "aborted";
   const finished = state === "finished";
@@ -47,13 +48,12 @@ export const DyadEdit: React.FC<DyadEditProps> = ({
 
   return (
     <div
-      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
-        inProgress
-          ? "border-amber-500"
-          : aborted
-            ? "border-red-500"
-            : "border-border"
-      }`}
+      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress
+        ? "border-amber-500"
+        : aborted
+          ? "border-red-500"
+          : "border-border"
+        }`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >
       <div className="flex items-center justify-between">
@@ -67,9 +67,16 @@ export const DyadEdit: React.FC<DyadEditProps> = ({
             </span>
           </div>
           {fileName && (
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
-              {fileName}
-            </span>
+            <div className="flex items-center">
+              <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+                {fileName}
+              </span>
+              {retryCount && Number(retryCount) > 1 && (
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">
+                  (reintento {Number(retryCount) - 1})
+                </span>
+              )}
+            </div>
           )}
           {inProgress && (
             <div className="flex items-center text-amber-600 text-xs">
