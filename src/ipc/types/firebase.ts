@@ -36,6 +36,7 @@ export const FirebaseWebConfigSchema = z.object({
     messagingSenderId: z.string(),
     appId: z.string(),
     measurementId: z.string().optional(),
+    webAppDisplayName: z.string().nullable().optional(),
 });
 
 export type FirebaseWebConfig = z.infer<typeof FirebaseWebConfigSchema>;

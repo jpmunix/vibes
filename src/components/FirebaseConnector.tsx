@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
-import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft } from "lucide-react";
+import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft, X } from "lucide-react";
 import { FIREBASE_AUTH_CONFIG } from "@/shared/firebase_auth_config";
 import { Input } from "@/components/ui/input";
 
@@ -45,6 +45,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
     const [isLoadingWebApps, setIsLoadingWebApps] = useState(false);
     const [showCreateWebAppForm, setShowCreateWebAppForm] = useState(false);
     const [newWebAppName, setNewWebAppName] = useState("");
+    const [showManageWebApps, setShowManageWebApps] = useState(false);
 
     const {
         projects,
@@ -118,10 +119,11 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
         setIsConnecting(true);
         try {
             const config = await getProjectConfig(projectId, firebaseWebAppId, displayName);
+            const configWithName = { ...config, webAppDisplayName: displayName || null };
             await setAppProject({
                 appId,
                 projectId,
-                config,
+                config: configWithName,
             });
             toast.success("Proyecto Firebase conectado con éxito");
             await refreshApp();
@@ -209,6 +211,54 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
 
     // VIEW 1: Connected and has project set
     if (isConnected && app?.firebaseProjectId) {
+        const handleManageWebApps = async () => {
+            setShowManageWebApps(true);
+            setShowCreateWebAppForm(false);
+            setNewWebAppName(app?.name || "");
+            setIsLoadingWebApps(true);
+            try {
+                const apps = await listWebApps(app.firebaseProjectId!);
+                setWebApps(apps);
+            } catch (error: any) {
+                toast.error("Error al cargar Apps web: " + error.message);
+            } finally {
+                setIsLoadingWebApps(false);
+            }
+        };
+
+        const handleSelectWebAppFromManage = async (webAppId: string, displayName?: string) => {
+            setIsConnecting(true);
+            try {
+                const config = await getProjectConfig(app.firebaseProjectId!, webAppId, displayName);
+                const configWithName = { ...config, webAppDisplayName: displayName || null };
+                await setAppProject({
+                    appId,
+                    projectId: app.firebaseProjectId!,
+                    config: configWithName,
+                });
+                toast.success("App Web configurada con éxito");
+                await refreshApp();
+                setShowManageWebApps(false);
+            } catch (error: any) {
+                toast.error("Error al configurar la App Web: " + error.message);
+            } finally {
+                setIsConnecting(false);
+            }
+        };
+
+        const handleCreateWebAppFromManage = async () => {
+            if (!newWebAppName) return;
+            setIsInternalProcessing(true);
+            try {
+                const result = await createWebApp(app.firebaseProjectId!, newWebAppName);
+                await handleSelectWebAppFromManage(result.appId, newWebAppName);
+            } catch (error: any) {
+                toast.error("Error al crear App web: " + error.message);
+            } finally {
+                setIsInternalProcessing(false);
+            }
+        };
+
         const content = (
             <div className="space-y-4">
                 <div className="flex flex-col gap-1.5 text-sm">
@@ -217,6 +267,114 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         {app.firebaseProjectId}
                     </Badge>
                 </div>
+
+                {/* Web App Management Section */}
+                {showManageWebApps ? (
+                    <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Apps Web del Proyecto</span>
+                                <span className="text-sm font-medium leading-none">{app.firebaseProjectId}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setShowManageWebApps(false)} disabled={isWorking} className="h-7 text-xs">
+                                <X className="h-3 w-3 mr-1" />
+                                Cerrar
+                            </Button>
+                        </div>
+
+                        {isLoadingWebApps ? (
+                            <div className="space-y-2 py-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        ) : showCreateWebAppForm ? (
+                            <div className="space-y-4 p-3 border rounded-lg bg-muted/20">
+                                <div className="space-y-2">
+                                    <Label htmlFor="web-app-name-manage">Nombre de la nueva App Web</Label>
+                                    <Input
+                                        id="web-app-name-manage"
+                                        value={newWebAppName}
+                                        onChange={(e) => setNewWebAppName(e.target.value)}
+                                        placeholder="Mi App Web"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button className="flex-1" onClick={handleCreateWebAppFromManage} disabled={isWorking}>
+                                        {isInternalProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Crear y Conectar"}
+                                    </Button>
+                                    <Button variant="outline" onClick={() => setShowCreateWebAppForm(false)} disabled={isWorking}>
+                                        Cancelar
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <Label>Selecciona una App Web existente</Label>
+                                <div className="grid gap-2">
+                                    {webApps.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground italic py-2">No hay apps web en este proyecto.</p>
+                                    ) : (
+                                        webApps.map((wa) => {
+                                            const isCurrentApp = app.firebaseConfig?.appId === wa.appId;
+                                            return (
+                                                <Button
+                                                    key={wa.appId}
+                                                    variant={isCurrentApp ? "default" : "outline"}
+                                                    className={`justify-start h-auto py-3 px-4 flex flex-col items-start gap-1 ${isCurrentApp ? "ring-2 ring-orange-400" : ""}`}
+                                                    onClick={() => handleSelectWebAppFromManage(wa.appId, wa.displayName)}
+                                                    disabled={isWorking || isCurrentApp}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold">{wa.displayName || "App sin nombre"}</span>
+                                                        {isCurrentApp && <Badge variant="outline" className="text-[9px] py-0 px-1.5">Actual</Badge>}
+                                                    </div>
+                                                    <span className="text-[10px] opacity-60 font-mono">{wa.appId}</span>
+                                                </Button>
+                                            );
+                                        })
+                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        className="mt-2 border-dashed border-2 h-14"
+                                        onClick={() => setShowCreateWebAppForm(true)}
+                                        disabled={isWorking}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Crear nueva App Web
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : app.firebaseConfig?.appId ? (
+                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-muted/10">
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">App Web</span>
+                            <span className="text-sm font-medium truncate">{app.firebaseConfig.webAppDisplayName || app.firebaseConfig.appId}</span>
+                            {app.firebaseConfig.webAppDisplayName && <span className="text-[10px] text-muted-foreground font-mono truncate">{app.firebaseConfig.appId}</span>}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleManageWebApps}
+                            className="h-7 text-xs shrink-0"
+                        >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Cambiar
+                        </Button>
+                    </div>
+                ) : (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManageWebApps}
+                        className="w-full border-dashed"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Elegir o crear App Web
+                    </Button>
+                )}
+
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
@@ -300,7 +458,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                                         key={wa.appId}
                                         variant="outline"
                                         className="justify-start h-auto py-3 px-4 flex flex-col items-start gap-1"
-                                        onClick={() => handleProjectSelect(selectedProjectId, wa.appId)}
+                                        onClick={() => handleProjectSelect(selectedProjectId, wa.appId, wa.displayName)}
                                         disabled={isWorking}
                                     >
                                         <span className="font-bold">{wa.displayName || "App sin nombre"}</span>

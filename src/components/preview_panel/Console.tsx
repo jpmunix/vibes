@@ -1,4 +1,4 @@
-import { appConsoleEntriesAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
+import { appConsoleEntriesAtom, currentAppAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import type { ConsoleEntry } from "@/ipc/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ipc } from "@/ipc/types";
@@ -68,6 +68,7 @@ export const Console = () => {
   const consoleEntries = useAtomValue(appConsoleEntriesAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const currentApp = useAtomValue(currentAppAtom);
   const { settings } = useSettings();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -117,39 +118,6 @@ export const Console = () => {
       }
     }
   }, [selectedAppId, setConsoleEntries]);
-
-  const handleExportLogs = useCallback(async () => {
-    if (filteredEntries.length === 0) {
-      showError("No hay logs para exportar");
-      return;
-    }
-
-    const logText = filteredEntries
-      .map((entry) => {
-        const time = new Date(entry.timestamp).toLocaleString();
-        const level = entry.level.toUpperCase();
-        const type = entry.type.toUpperCase();
-        const source = entry.sourceName ? `[${entry.sourceName}] ` : "";
-        return `[${time}] [${type}] [${level}] ${source}${entry.message}`;
-      })
-      .join("\n");
-
-    try {
-      const result = await ipc.system.saveTextToFile({
-        content: logText,
-        defaultName: `logs-app-${selectedAppId}-${Date.now()}.txt`,
-        filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
-      });
-
-      if (!result.canceled && result.filePath) {
-        // Log saved successfully
-      }
-    } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Error al exportar logs",
-      );
-    }
-  }, [filteredEntries, selectedAppId]);
 
   useEffect(() => {
     const container = containerRef.current?.parentElement;
@@ -206,6 +174,45 @@ export const Console = () => {
       })
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [consoleEntries, levelFilter, typeFilter, sourceFilter]);
+
+  const handleExportLogs = useCallback(async () => {
+    if (filteredEntries.length === 0) {
+      showError("No hay logs para exportar");
+      return;
+    }
+
+    const logText = filteredEntries
+      .map((entry) => {
+        const time = new Date(entry.timestamp).toLocaleString();
+        const level = entry.level.toUpperCase();
+        const type = entry.type.toUpperCase();
+        const source = entry.sourceName ? `[${entry.sourceName}] ` : "";
+        return `[${time}] [${type}] [${level}] ${source}${entry.message}`;
+      })
+      .join("\n");
+
+    const appName = currentApp?.name ?? `app-${selectedAppId}`;
+    const normalizedName = appName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    try {
+      const result = await ipc.system.saveTextToFile({
+        content: logText,
+        defaultName: `logs-${normalizedName}.txt`,
+        filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
+      });
+
+      if (!result.canceled && result.filePath) {
+        // Log saved successfully
+      }
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Error al exportar logs",
+      );
+    }
+  }, [filteredEntries, selectedAppId, currentApp]);
 
   // Generate unique key for each entry
   const getEntryKey = useCallback(

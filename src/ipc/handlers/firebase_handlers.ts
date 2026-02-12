@@ -79,7 +79,9 @@ export function registerFirebaseHandlers() {
     createTypedHandler(firebaseContracts.getProjectWebConfig, async (_, params) => {
         try {
             logger.info(`Getting web config for project: ${params.projectId}, appId: ${params.appId}`);
-            return await getFirebaseProjectWebConfig(params.projectId, params.appId, params.displayName);
+            const config = await getFirebaseProjectWebConfig(params.projectId, params.appId, params.displayName);
+            // Inject displayName into the config so it's available when saved
+            return { ...config, webAppDisplayName: params.displayName || null };
         } catch (error) {
             logger.error(`Failed to get config for Firebase project ${params.projectId}:`, error);
             throw error;
@@ -89,6 +91,9 @@ export function registerFirebaseHandlers() {
     // Set project for an app
     createTypedHandler(firebaseContracts.setAppProject, async (_, params) => {
         const { appId, projectId, config } = params;
+        logger.info(`[setAppProject] Received config keys: ${Object.keys(config).join(', ')}`);
+        logger.info(`[setAppProject] webAppDisplayName: "${config.webAppDisplayName || '(not set)'}"`);
+        logger.info(`[setAppProject] Full config: ${JSON.stringify(config)}`);
         await db
             .update(apps)
             .set({
