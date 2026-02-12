@@ -250,15 +250,27 @@ export async function getFirebaseProjectWebConfig(projectId: string, appId?: str
         targetAppId = webApp.appId;
     }
 
+    if (!targetAppId) {
+        throw new Error("No web app ID provided or found for this project.");
+    }
+
     // 3. Get the config for the web app
-    const configResponse = await fetch(`https://firebase.googleapis.com/v1beta1/projects/${projectId}/webApps/${targetAppId}/config`, {
+    const encodedProjectId = encodeURIComponent(projectId);
+    const encodedAppId = encodeURIComponent(targetAppId);
+    const configUrl = `https://firebase.googleapis.com/v1beta1/projects/${encodedProjectId}/webApps/${encodedAppId}/config`;
+
+    logger.info(`Fetching web app config from: ${configUrl}`);
+
+    const configResponse = await fetch(configUrl, {
         headers: {
             Authorization: `Bearer ${token}`,
         },
     });
 
     if (!configResponse.ok) {
-        throw new Error(`Failed to get Firebase web app config: ${configResponse.statusText}`);
+        const errorText = await configResponse.text();
+        logger.error(`Failed to get Firebase web app config. Status: ${configResponse.status} ${configResponse.statusText}. Body: ${errorText}`);
+        throw new Error(`Failed to get Firebase web app config: ${configResponse.statusText} (${configResponse.status})`);
     }
 
     return await configResponse.json();

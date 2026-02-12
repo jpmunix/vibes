@@ -64,7 +64,7 @@ export function registerFirebaseHandlers() {
         try {
             const result = await createFirebaseWebApp(params.projectId, params.displayName);
             return {
-                appId: result.appId || result.name?.split("/").pop(), // Handle both direct result and Operation
+                appId: result.appId, // Only return if it's a direct result, not an Operation
                 displayName: params.displayName,
                 projectId: params.projectId,
             };
@@ -77,6 +77,7 @@ export function registerFirebaseHandlers() {
     // Get web config for a project
     createTypedHandler(firebaseContracts.getProjectWebConfig, async (_, params) => {
         try {
+            logger.info(`Getting web config for project: ${params.projectId}, appId: ${params.appId}`);
             return await getFirebaseProjectWebConfig(params.projectId, params.appId, params.displayName);
         } catch (error) {
             logger.error(`Failed to get config for Firebase project ${params.projectId}:`, error);

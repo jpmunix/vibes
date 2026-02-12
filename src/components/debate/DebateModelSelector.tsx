@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ModelItemContent } from "../ModelItemContent";
 
 const SAME_AS_CHAT_VALUE = "__SAME_AS_CHAT__";
 
@@ -17,8 +18,8 @@ export function DebateModelSelector() {
 
   const currentValue =
     settings?.debateModel === "SAME_AS_CHAT" ||
-    !settings?.debateModel ||
-    settings?.debateModel === ""
+      !settings?.debateModel ||
+      settings?.debateModel === ""
       ? SAME_AS_CHAT_VALUE
       : settings?.debateModel;
 
@@ -40,11 +41,16 @@ export function DebateModelSelector() {
         <SelectTrigger id="debateModel">
           <SelectValue placeholder="Selecciona un modelo" />
         </SelectTrigger>
-        <SelectContent className="max-h-[300px]">
-          <SelectItem value={SAME_AS_CHAT_VALUE}>El mismo del chat</SelectItem>
+        <SelectContent className="max-h-[280px] w-72">
+          <SelectItem value={SAME_AS_CHAT_VALUE} className="py-1.5 px-3">
+            <div className="flex flex-col gap-0">
+              <span className="font-semibold text-[13px]">El mismo del chat</span>
+              <span className="text-[10px] text-muted-foreground/60">Sigue la selección principal del chat</span>
+            </div>
+          </SelectItem>
           {openRouterModels?.map((model) => (
-            <SelectItem key={model.apiName} value={model.apiName}>
-              {model.displayName}
+            <SelectItem key={model.apiName} value={model.apiName} className="py-1 px-3">
+              <ModelItemContent model={model} />
             </SelectItem>
           ))}
         </SelectContent>

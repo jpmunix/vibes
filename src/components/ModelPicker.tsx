@@ -16,11 +16,10 @@ import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProvide
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
-import { PriceBadge } from "@/components/PriceBadge";
-import { BrainBadge } from "@/components/BrainBadge";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
+import { ModelItemContent } from "@/components/ModelItemContent";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -113,8 +112,9 @@ export function ModelPicker() {
         <TooltipContent>{modelDisplayName}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent
-        className="w-64"
+        className="w-72 max-h-[280px] overflow-y-auto"
         align="start"
+        side="top"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         {!isTrial &&
@@ -138,12 +138,11 @@ export function ModelPicker() {
                   <Tooltip key={`auto-router-${model.apiName}`}>
                     <TooltipTrigger asChild>
                       <DropdownMenuItem
-                        className={
-                          selectedModel.provider === "auto-router" &&
+                        className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "auto-router" &&
                           selectedModel.name === model.apiName
-                            ? "bg-secondary"
-                            : ""
-                        }
+                          ? "bg-secondary"
+                          : ""
+                          }`}
                         onClick={() => {
                           onModelSelect({
                             name: model.apiName,
@@ -152,12 +151,11 @@ export function ModelPicker() {
                           setOpen(false);
                         }}
                       >
-                        <div className="flex justify-between items-start w-full gap-1">
-                          <span className="flex-1">{model.displayName}</span>
-                          <div className="flex items-center gap-1">
-                            <AutoRouterBadge />
-                          </div>
-                        </div>
+                        <ModelItemContent
+                          model={model}
+                          showAutoRouterBadge
+                          isAutoRouter
+                        />
                       </DropdownMenuItem>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -165,6 +163,14 @@ export function ModelPicker() {
                     </TooltipContent>
                   </Tooltip>
                 ))}
+
+              {/* Divider if both exist */}
+              {modelsByProviders["auto-router"] &&
+                modelsByProviders["auto-router"].length > 0 &&
+                modelsByProviders["openrouter"] &&
+                modelsByProviders["openrouter"].length > 0 && (
+                  <div className="h-px bg-border my-1 mx-1" />
+                )}
 
               {/* OpenRouter section */}
               {modelsByProviders["openrouter"] &&
@@ -186,12 +192,11 @@ export function ModelPicker() {
                     <Tooltip key={`openrouter-${model.apiName}`}>
                       <TooltipTrigger asChild>
                         <DropdownMenuItem
-                          className={
-                            selectedModel.provider === "openrouter" &&
+                          className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
                             selectedModel.name === model.apiName
-                              ? "bg-secondary"
-                              : ""
-                          }
+                            ? "bg-secondary"
+                            : ""
+                            }`}
                           onClick={() => {
                             const customModelId =
                               model.type === "custom" ? model.id : undefined;
@@ -203,18 +208,7 @@ export function ModelPicker() {
                             setOpen(false);
                           }}
                         >
-                          <div className="flex justify-between items-start w-full gap-1">
-                            <span className="flex-1">{model.displayName}</span>
-                            <div className="flex items-center gap-1">
-                              <PriceBadge dollarSigns={model.dollarSigns} />
-                              <BrainBadge brainSigns={model.brainSigns} />
-                              {model.tag && (
-                                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                  {model.tag}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                          <ModelItemContent model={model} />
                         </DropdownMenuItem>
                       </TooltipTrigger>
                       <TooltipContent side="right">

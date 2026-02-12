@@ -7,6 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { ModelItemContent } from "./ModelItemContent";
 
 const DEFAULT_VALUE = "openai/gpt-4.1-mini";
 
@@ -35,15 +36,26 @@ export function KnowledgeModelSelector() {
                 <SelectTrigger id="knowledgeExtractionModel">
                     <SelectValue placeholder="Selecciona un modelo" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                    <SelectItem value={DEFAULT_VALUE}>
-                        GPT-4.1 Mini (recomendado)
-                    </SelectItem>
+                <SelectContent className="max-h-[280px] w-72">
+                    {openRouterModels?.find(m => m.apiName === DEFAULT_VALUE) ? (
+                        <SelectItem value={DEFAULT_VALUE} className="py-1 px-3">
+                            <ModelItemContent
+                                model={{
+                                    ...openRouterModels.find(m => m.apiName === DEFAULT_VALUE)!,
+                                    tag: "Recomendado"
+                                }}
+                            />
+                        </SelectItem>
+                    ) : (
+                        <SelectItem value={DEFAULT_VALUE} className="py-1.5 px-3">
+                            <span className="font-semibold text-[13px]">GPT-4.1 Mini (recomendado)</span>
+                        </SelectItem>
+                    )}
                     {openRouterModels
                         ?.filter((model) => model.apiName !== DEFAULT_VALUE)
                         .map((model) => (
-                            <SelectItem key={model.apiName} value={model.apiName}>
-                                {model.displayName}
+                            <SelectItem key={model.apiName} value={model.apiName} className="py-1 px-3">
+                                <ModelItemContent model={model} />
                             </SelectItem>
                         ))}
                 </SelectContent>
