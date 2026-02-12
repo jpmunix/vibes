@@ -324,3 +324,34 @@ export async function createFirebaseProject(projectId: string, displayName: stri
         resources: {},
     };
 }
+
+/**
+ * Enables the Firebase Hosting API for a project if it's not already enabled.
+ */
+export async function enableFirebaseHosting(projectId: string) {
+    const token = await getFirebaseAccessToken();
+    const serviceName = "firebasehosting.googleapis.com";
+    logger.info(`Enabling ${serviceName} for project: ${projectId}`);
+
+    try {
+        const response = await fetch(`https://serviceusage.googleapis.com/v1/projects/${projectId}/services/${serviceName}:enable`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            // If it's already enabled or another non-critical error, we log but continue
+            logger.warn(`Could not automatically enable ${serviceName}: ${error.error?.message || response.statusText}`);
+        } else {
+            logger.info(`Successfully initiated enablement of ${serviceName}`);
+            // Wait a few seconds for propagation if we just enabled it
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    } catch (e) {
+        logger.error(`Error attempting to enable ${serviceName}:`, e);
+    }
+}

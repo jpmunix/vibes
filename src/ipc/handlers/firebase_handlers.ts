@@ -15,6 +15,7 @@ import {
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
+import { getDyadAppPath } from "../../paths/paths";
 import { addLog } from "../../lib/log_store";
 import util from "util";
 
@@ -145,10 +146,20 @@ export function registerFirebaseHandlers() {
                 throw new Error("La aplicación no tiene un proyecto de Firebase configurado o no se encuentra el path.");
             }
 
-            const appPath = app.path;
+            const appPath = getDyadAppPath(app.path);
             const projectId = app.firebaseProjectId;
 
-            // 2. Ensure firebase.json exists
+            logger.info(`Starting deploy for app ${appId} at path: ${appPath}`);
+
+            // 1b. Verify directory exists
+            try {
+                const stats = await fs.stat(appPath);
+                if (!stats.isDirectory()) {
+                    throw new Error(`La ruta ${appPath} no es un directorio.`);
+                }
+            } catch (e: any) {
+                throw new Error(`No se puede acceder al directorio de la aplicación: ${appPath}. Asegúrate de que existe.`);
+            }
             const firebaseJsonPath = path.join(appPath, "firebase.json");
             try {
                 await fs.access(firebaseJsonPath);
@@ -216,13 +227,18 @@ export function registerFirebaseHandlers() {
             });
 
             // 6. Run deploy
+            const maskedCommand = `npx firebase-tools deploy --only hosting --project ${projectId} --token ******** --non-interactive`;
+            logger.info(`Running deploy command: ${maskedCommand}`);
             addLog({
                 appId,
                 level: "info",
                 type: "server",
-                message: "Iniciando despliegue en Firebase Hosting...",
+                message: `Iniciando despliegue en Firebase Hosting...`,
                 timestamp: Date.now()
             });
+
+            let deployOutput = "";
+            let deployErrorOutput = "";
 
             // Note: we use npx firebase-tools to ensure it's available
             const deployProcess = spawn("npx", ["firebase-tools", "deploy", "--only", "hosting", "--project", projectId, "--token", token, "--non-interactive"], {
@@ -234,15 +250,30 @@ export function registerFirebaseHandlers() {
             await new Promise((resolve, reject) => {
                 deployProcess.stdout.on("data", (data) => {
                     const message = util.stripVTControlCharacters(data.toString());
+                    deployOutput += message;
                     addLog({ appId, level: "info", type: "server", message, timestamp: Date.now() });
                 });
                 deployProcess.stderr.on("data", (data) => {
                     const message = util.stripVTControlCharacters(data.toString());
+                    deployErrorOutput += message;
                     addLog({ appId, level: "warn", type: "server", message, timestamp: Date.now() });
                 });
                 deployProcess.on("close", (code) => {
-                    if (code === 0) resolve(true);
-                    else reject(new Error(`El despliegue falló con código ${code}`));
+                    if (code === 0) {
+                        resolve(true);
+                    } else {
+                        logger.error(`Firebase deploy failed with code ${code}.\nSTDOUT: ${deployOutput}\nSTDERR: ${deployErrorOutput}`);
+
+                        // Detect SERVICE_DISABLED or Hosting API not used error
+                        if (deployOutput.includes("firebasehosting.googleapis.com") && deployOutput.includes("is disabled")) {
+                            const urlMatch = deployOutput.match(/https?:\/\/console\.developers\.google\.com\/apis\/api\/firebasehosting\.googleapis\.com\/overview\?project=\d+/);
+                            const activationUrl = urlMatch ? urlMatch[0] : `https://console.firebase.google.com/project/${projectId}/hosting`;
+
+                            reject(new Error(`HOSTING_API_DISABLED|${activationUrl}`));
+                        } else {
+                            reject(new Error(`El despliegue falló con código ${code}. Mira los logs internos para ver el error de Firebase.`));
+                        }
+                    }
                 });
             });
 

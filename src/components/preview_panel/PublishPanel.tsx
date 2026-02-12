@@ -176,7 +176,7 @@ export const PublishPanel = () => {
           </CardContent>
         </Card>
 
-        {/* Firebase Section */}
+        {/* Firebase Section - Hidden temporarily
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -210,6 +210,7 @@ export const PublishPanel = () => {
             )}
           </CardContent>
         </Card>
+        */}
       </div>
     </div>
   );

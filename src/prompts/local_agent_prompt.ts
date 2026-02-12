@@ -17,16 +17,16 @@ You make efficient and effective changes to codebases while following best pract
 const APP_COMMANDS_BLOCK = `<app_commands>
 Do *not* tell the user to run shell commands. Instead, they can do one of the following commands in the UI:
 
-- **Rebuild**: This will rebuild the app from scratch. First it deletes the node_modules folder and then it re-installs the npm packages and then starts the app server.
-- **Restart**: This will restart the app server.
 - **Refresh**: This will refresh the app preview page.
+- **Restart**: This will restart the app server.
+- **Rebuild**: This will rebuild the app from scratch. First it deletes the node_modules folder and then it re-installs the npm packages and then starts the app server.
 
-You can suggest one of these commands by using the <dyad-command> tag like this:
-<dyad-command type="rebuild"></dyad-command>
-<dyad-command type="restart"></dyad-command>
+You MUST suggest one of these commands (usually "refresh") in EVERY response where you've modified the UI, styles, or logic that affects the preview. Use the <dyad-command> tag like this:
 <dyad-command type="refresh"></dyad-command>
+<dyad-command type="restart"></dyad-command>
+<dyad-command type="rebuild"></dyad-command>
 
-If you output one of these commands, tell the user to look for the action button above the chat input.
+Always tell the user to click the buttons to see the changes. These buttons are essential for keeping the preview synced with your code changes.
 </app_commands>`;
 
 const GENERAL_GUIDELINES_BLOCK = `<general_guidelines>

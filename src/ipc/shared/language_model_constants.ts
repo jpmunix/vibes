@@ -173,7 +173,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       displayName: "MoonshotAI: Kimi K2.5",
       description:
         "SOTA en visual coding y paradigma de agentes; excelente razonamiento general y multimodal.",
-      maxOutputTokens: 262_144,
+      maxOutputTokens: 65_000,
       contextWindow: 262_144,
       temperature: 0,
       dollarSigns: 1,

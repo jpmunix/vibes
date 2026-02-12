@@ -61,7 +61,7 @@ import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
 import { readFile, writeFile, unlink } from "fs/promises";
-import { getMaxTokens, getTemperature } from "../utils/token_utils";
+import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "../utils/token_utils";
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
@@ -1294,11 +1294,39 @@ This conversation includes one or more image attachments. When the user uploads 
             placeholderAssistantMessage?.id,
           );
 
+          // Dynamic maxOutputTokens capping based on estimated input
+          const requestedMaxOutput = await getMaxTokens(settings.selectedModel);
+          const contextWindow = await getContextWindow();
+
+          // Estimate current prompt tokens (1.5x safety buffer for system/overhead)
+          let estimatedInputTokens = Math.round(estimateTokens(systemPromptOverride) * 1.5);
+          for (const msg of chatMessages.filter(m => m.content)) {
+            if (typeof msg.content === 'string') {
+              estimatedInputTokens += estimateTokens(msg.content);
+            } else if (Array.isArray(msg.content)) {
+              for (const part of msg.content) {
+                if (part.type === 'text') estimatedInputTokens += estimateTokens(part.text);
+              }
+            }
+          }
+
+          // Add overhead for tool definitions (approx 500 tokens per tool)
+          const toolOverhead = tools ? Object.keys(tools).length * 500 : 0;
+          estimatedInputTokens += toolOverhead;
+
+          let finalMaxOutputTokens = requestedMaxOutput;
+          // If requested max tokens + input exceeds context, we cap it
+          // We always want at least 4k for output if possible.
+          if (finalMaxOutputTokens && (estimatedInputTokens + finalMaxOutputTokens > contextWindow)) {
+            finalMaxOutputTokens = Math.max(4096, contextWindow - estimatedInputTokens - 2000);
+            logger.log(`Capping maxOutputTokens from ${requestedMaxOutput} to ${finalMaxOutputTokens} to fit in context window of ${contextWindow} (estimated input: ${estimatedInputTokens})`);
+          }
+
           const streamResult = streamText({
             headers: getAiHeaders({
               builtinProviderId: modelClient.builtinProviderId,
             }),
-            maxOutputTokens: await getMaxTokens(settings.selectedModel),
+            maxOutputTokens: finalMaxOutputTokens,
             temperature: await getTemperature(settings.selectedModel),
             maxRetries: 2,
             model: modelClient.model,

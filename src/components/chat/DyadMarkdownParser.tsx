@@ -649,10 +649,21 @@ function renderCustomTag(
 
     case "dyad-command":
       if (attributes.type) {
-        const action = {
-          id: attributes.type,
-        } as SuggestedAction;
-        return <>{mapActionToButton(action)}</>;
+        const commandTypes = [attributes.type];
+        // If it's a refresh, we also suggest a restart as a more powerful alternative
+        if (attributes.type === "refresh") {
+          commandTypes.push("restart");
+        }
+
+        return (
+          <div className="flex flex-wrap gap-2 my-3">
+            {commandTypes.map((type) => (
+              <React.Fragment key={type}>
+                {mapActionToButton({ id: type } as SuggestedAction)}
+              </React.Fragment>
+            ))}
+          </div>
+        );
       }
       return null;
 
