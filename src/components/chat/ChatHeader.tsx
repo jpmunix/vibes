@@ -195,10 +195,7 @@ export function ChatHeader({
     }
   };
 
-  const isNotMainBranch =
-    branchInfo &&
-    branchInfo.branch !== "main" &&
-    branchInfo.branch !== "master";
+  const isNotMainBranch = branchInfo && branchInfo.branch !== "main";
 
   const currentBranchName = branchInfo?.branch;
 
@@ -210,7 +207,7 @@ export function ChatHeader({
   return (
     <div className="flex flex-col w-full @container">
       <LoadingBar isVisible={showLoadingBar} message={loadingMessage} />
-      {/* Show branch warning when not on main or master branch */}
+      {/* Show branch warning when not on main branch */}
       {isNotMainBranch && (
         <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
           <div className="flex items-center gap-2 text-sm">
@@ -242,7 +239,7 @@ export function ChatHeader({
                         <p>
                           {isAnyCheckoutVersionInProgress
                             ? "La recuperación de la versión está en curso"
-                            : "Recupera la rama principal, de lo contrario los cambios no se guardarán correctamente"}
+                            : "Recupera la rama main, de lo contrario los cambios no se guardarán correctamente"}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -257,7 +254,16 @@ export function ChatHeader({
               {branchInfoLoading && <span>Comprobando rama...</span>}
             </span>
           </div>
-          {isAnyCheckoutVersionInProgress && !isCheckingOutVersion ? null : (
+          {currentBranchName === "master" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRenameMasterToMain}
+              disabled={isRenamingBranch || branchInfoLoading}
+            >
+              {isRenamingBranch ? "Renombrando..." : "Renombrar master a main"}
+            </Button>
+          ) : isAnyCheckoutVersionInProgress && !isCheckingOutVersion ? null : (
             <Button
               variant="outline"
               size="sm"
@@ -266,7 +272,7 @@ export function ChatHeader({
             >
               {isCheckingOutVersion
                 ? "Recuperando..."
-                : "Cambiar a la rama principal"}
+                : "Cambiar a la rama main"}
             </Button>
           )}
         </div>
