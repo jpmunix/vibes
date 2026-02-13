@@ -34,12 +34,12 @@ interface ConsoleHeaderProps {
 
 // Console header component
 const ConsoleHeader = ({
-  isOpen,
-  onToggle,
-  latestMessage,
-  consoleView,
-  onViewChange,
-}: ConsoleHeaderProps) => (
+                         isOpen,
+                         onToggle,
+                         latestMessage,
+                         consoleView,
+                         onViewChange,
+                       }: ConsoleHeaderProps) => (
   <div className="flex items-center gap-2 px-4 py-1.5 border-t border-border bg-background">
     <div
       onClick={onToggle}

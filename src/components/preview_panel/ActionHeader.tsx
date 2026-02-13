@@ -74,9 +74,9 @@ interface ActionHeaderProps {
 
 // Preview Header component with preview mode toggle
 export const ActionHeader = ({
-  versions = [],
-  versionsLoading = false,
-}: ActionHeaderProps) => {
+                               versions = [],
+                               versionsLoading = false,
+                             }: ActionHeaderProps) => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
