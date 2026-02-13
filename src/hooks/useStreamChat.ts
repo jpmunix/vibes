@@ -40,6 +40,21 @@ export function getRandomNumberId() {
 // This prevents race conditions when clicking rapidly before state updates
 const pendingStreamChatIds = new Set<number>();
 
+// Helper to update Map atoms without creating new Map if value hasn't changed
+function updateMapAtom<K, V>(
+  setter: (fn: (prev: Map<K, V>) => Map<K, V>) => void,
+  key: K,
+  value: V,
+) {
+  setter((prev) => {
+    if (prev.get(key) === value) return prev; // Skip if value unchanged
+    const next = new Map(prev);
+    next.set(key, value);
+    return next;
+  });
+}
+
+
 export function useStreamChat({
   hasChatId = true,
   autoRepair,
@@ -129,16 +144,8 @@ export function useStreamChat({
         return next;
       });
 
-      setErrorById((prev) => {
-        const next = new Map(prev);
-        next.set(chatId, null);
-        return next;
-      });
-      setIsStreamingById((prev) => {
-        const next = new Map(prev);
-        next.set(chatId, true);
-        return next;
-      });
+      updateMapAtom(setErrorById, chatId, null);
+      updateMapAtom(setIsStreamingById, chatId, true);
 
       // Convert FileAttachment[] (with File objects) to ChatAttachment[] (base64 encoded)
       let convertedAttachments: ChatAttachment[] | undefined;
@@ -187,6 +194,9 @@ export function useStreamChat({
       })();
 
       let hasIncrementedStreamCount = false;
+      // RAF throttling: batch onChunk updates to max 1 per animation frame
+      let pendingChunkMessages: typeof undefined | Parameters<Parameters<typeof ipc.chatStream.start>[1]["onChunk"]>[0]["messages"] = undefined;
+      let chunkRafId: number | null = null;
       try {
         ipc.chatStream.start(
           {
@@ -207,13 +217,29 @@ export function useStreamChat({
                 hasIncrementedStreamCount = true;
               }
 
-              setMessagesById((prev) => {
-                const next = new Map(prev);
-                next.set(chatId, updatedMessages);
-                return next;
-              });
+              // Batch message updates: store latest and flush once per frame
+              pendingChunkMessages = updatedMessages;
+              if (!chunkRafId) {
+                chunkRafId = requestAnimationFrame(() => {
+                  if (pendingChunkMessages) {
+                    updateMapAtom(setMessagesById, chatId, pendingChunkMessages);
+                    pendingChunkMessages = undefined;
+                  }
+                  chunkRafId = null;
+                });
+              }
             },
             onEnd: (response: ChatResponseEnd) => {
+              // Flush any pending RAF updates before processing end
+              if (chunkRafId) {
+                cancelAnimationFrame(chunkRafId);
+                chunkRafId = null;
+              }
+              if (pendingChunkMessages) {
+                updateMapAtom(setMessagesById, chatId, pendingChunkMessages);
+                pendingChunkMessages = undefined;
+              }
+
               // Remove from pending set now that stream is complete
               pendingStreamChatIds.delete(chatId);
 
@@ -281,11 +307,7 @@ export function useStreamChat({
               });
 
               // Keep the same as below
-              setIsStreamingById((prev) => {
-                const next = new Map(prev);
-                next.set(chatId, false);
-                return next;
-              });
+              updateMapAtom(setIsStreamingById, chatId, false);
               // Use queryClient directly with the chatId parameter to avoid stale closure issues
               queryClient.invalidateQueries({
                 queryKey: queryKeys.proposals.detail({ chatId }),
@@ -298,15 +320,18 @@ export function useStreamChat({
               onSettled?.();
             },
             onError: ({ error: errorMessage }) => {
+              // Cancel any pending RAF updates on error
+              if (chunkRafId) {
+                cancelAnimationFrame(chunkRafId);
+                chunkRafId = null;
+              }
+              pendingChunkMessages = undefined;
+
               // Remove from pending set now that stream ended with error
               pendingStreamChatIds.delete(chatId);
 
               console.error(`[CHAT] Stream error for ${chatId}:`, errorMessage);
-              setErrorById((prev) => {
-                const next = new Map(prev);
-                next.set(chatId, errorMessage);
-                return next;
-              });
+              updateMapAtom(setErrorById, chatId, errorMessage);
 
               // Invalidate free agent quota to update the UI after error
               // (the server may have refunded the quota)
@@ -315,11 +340,7 @@ export function useStreamChat({
               });
 
               // Keep the same as above
-              setIsStreamingById((prev) => {
-                const next = new Map(prev);
-                next.set(chatId, false);
-                return next;
-              });
+              updateMapAtom(setIsStreamingById, chatId, false);
               invalidateChats();
               refreshApp();
               refreshVersions();
@@ -333,20 +354,14 @@ export function useStreamChat({
         pendingStreamChatIds.delete(chatId);
 
         console.error("[CHAT] Exception during streaming setup:", error);
-        setIsStreamingById((prev) => {
-          const next = new Map(prev);
-          if (chatId) next.set(chatId, false);
-          return next;
-        });
-        setErrorById((prev) => {
-          const next = new Map(prev);
-          if (chatId)
-            next.set(
-              chatId,
-              error instanceof Error ? error.message : String(error),
-            );
-          return next;
-        });
+        if (chatId) {
+          updateMapAtom(setIsStreamingById, chatId, false);
+          updateMapAtom(
+            setErrorById,
+            chatId,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
         onSettled?.();
       }
     },

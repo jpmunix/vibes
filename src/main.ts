@@ -42,6 +42,13 @@ const logger = log.scope("main");
 // Load environment variables from .env file
 dotenv.config();
 
+// Change app name in development to prevent conflicts with installed version
+// and allow running both simultaneously (separate single instance lock)
+if (process.env.NODE_ENV === "development") {
+  app.setName("minube-vibes-dev");
+  app.setPath("userData", path.join(app.getPath("appData"), "minube-vibes-dev"));
+}
+
 // Register IPC handlers before app is ready
 registerIpcHandlers();
 
@@ -202,6 +209,7 @@ const createWindow = () => {
   const windowState = settings.windowState;
 
   mainWindow = new BrowserWindow({
+    title: process.env.NODE_ENV === "development" ? "[DEV] minube-vibes" : "minube-vibes",
     x: windowState?.x,
     y: windowState?.y,
     width:

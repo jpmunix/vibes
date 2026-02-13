@@ -5,3 +5,7 @@
 export function getAppPort(appId: number): number {
   return 32100 + (appId % 10_000);
 }
+
+export function getProxyPort(appId: number): number {
+  return 42100 + (appId % 10_000);
+}

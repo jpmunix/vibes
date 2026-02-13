@@ -25,6 +25,10 @@ import { queryKeys } from "./lib/queryKeys";
 // @ts-ignore
 console.log("Running in mode:", import.meta.env.MODE);
 
+if (import.meta.env.MODE === "development") {
+  document.title = `[DEV] ${document.title}`;
+}
+
 interface MyMeta extends Record<string, unknown> {
   showErrorToast: boolean;
 }

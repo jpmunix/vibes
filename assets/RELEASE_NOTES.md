@@ -1,8 +1,3 @@
-- fix upgrade data loss
-- firebase integration
-- very comprehensive logs
-- Mejoras el el asistente inteligente para cometer menos errores manteniendo el ratio de consumo de tokens por debajo del modo Build
-
 ## 🔥 Novedades principales
 
 ### 📝 Resumen automático de desarrollo en el tablero Kanban
@@ -23,7 +18,7 @@ Perfecto si trabajas con proyectos personales y laborales:
 ### 💬 Mejoras en Debates
 - Edición y reenvío de mensajes.
 - Etiquetas para organizar tus chats.
-- Botón para detener respuestas en generación.
+- Botón para detener respuestas euen generación.
 - Optimización de la velocidad de respuesta.
 
 ### 📑 Nueva sección de documentación
@@ -50,13 +45,15 @@ Nuevo sistema que detecta y corrige automáticamente errores durante el desarrol
 
 ### 🛠️ Mejoras en el Agente inteligente
 - Reducción del 95% de la ventana de contexto gracias a la implementación de técnicas de búsquedas de código y utilización avanzada de herramientas locales.
+- Almacenamiento de logs que permite analizar todo lo que pasa en el core de vibes
 
 ### 🎨 Mejoras en la interfaz
 - Añadido un botón de **Reiniciar** directamente en las acciones del chat.
 - Mejoras en el scroll y espaciado de elementos del chat
 - Añadido un nuevo botón para sacar captura de pantalla total o parcial y enviarla al chat
+- Refinamiento en UI para que sea más rápida
 
-### 👤 Registro de usuario
+### 👤 Registro de usuario con firebase
 - Ya puedes crear una cuenta en Vibes y personalizarla
 - Copias de seguridad en la nube con un historial de hasta tres versiones que almacenan nuestro historial de trabajo, preferencias y llaves configuradas
 

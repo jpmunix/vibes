@@ -92,7 +92,7 @@ export function ForceCloseDialog({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col">
+      <AlertDialogContent className="max-w-6xl w-[90vw] max-h-[85vh] flex flex-col">
         <AlertDialogHeader className="flex-shrink-0">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
@@ -165,34 +165,34 @@ export function ForceCloseDialog({
                   {/* System Metrics */}
                   {(performanceData.systemMemoryUsageMB !== undefined ||
                     performanceData.systemCpuPercent !== undefined) && (
-                    <div className="space-y-2">
-                      <div className="font-medium text-foreground">
-                        System Metrics
-                      </div>
-                      <div className="space-y-1">
-                        {performanceData.systemMemoryUsageMB !== undefined &&
-                          performanceData.systemMemoryTotalMB !== undefined && (
+                      <div className="space-y-2">
+                        <div className="font-medium text-foreground">
+                          System Metrics
+                        </div>
+                        <div className="space-y-1">
+                          {performanceData.systemMemoryUsageMB !== undefined &&
+                            performanceData.systemMemoryTotalMB !== undefined && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                  Memory:
+                                </span>
+                                <span className="font-mono">
+                                  {performanceData.systemMemoryUsageMB} /{" "}
+                                  {performanceData.systemMemoryTotalMB} MB
+                                </span>
+                              </div>
+                            )}
+                          {performanceData.systemCpuPercent !== undefined && (
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">
-                                Memory:
-                              </span>
+                              <span className="text-muted-foreground">CPU:</span>
                               <span className="font-mono">
-                                {performanceData.systemMemoryUsageMB} /{" "}
-                                {performanceData.systemMemoryTotalMB} MB
+                                {performanceData.systemCpuPercent}%
                               </span>
                             </div>
                           )}
-                        {performanceData.systemCpuPercent !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">CPU:</span>
-                            <span className="font-mono">
-                              {performanceData.systemCpuPercent}%
-                            </span>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             )}

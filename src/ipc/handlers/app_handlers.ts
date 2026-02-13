@@ -63,7 +63,7 @@ import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 
-import { getAppPort } from "../../../shared/ports";
+import { getAppPort, getProxyPort } from "../../../shared/ports";
 import {
   getRgExecutablePath,
   MAX_FILE_SEARCH_SIZE,
@@ -344,7 +344,12 @@ function listenToProcess({
 
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
+        const proxyPort = getProxyPort(appId);
+        // Ensure the port is free before starting the proxy
+        await killProcessOnPort(proxyPort);
+
         proxyWorker = await startProxy(urlMatch[1], {
+          port: proxyPort,
           onStarted: (proxyUrl) => {
             safeSend(event.sender, "app:output", {
               type: "stdout",

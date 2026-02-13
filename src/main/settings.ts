@@ -267,6 +267,13 @@ export function encrypt(data: string): Secret {
 
 export function decrypt(data: Secret): string {
   if (data.encryptionType === "electron-safe-storage") {
+    // safeStorage is not available in worker threads (e.g. context_worker)
+    if (!safeStorage?.decryptString) {
+      logger.warn(
+        "safeStorage.decryptString not available (possibly running in a worker thread). Returning raw value.",
+      );
+      return data.value;
+    }
     return safeStorage.decryptString(Buffer.from(data.value, "base64"));
   }
   return data.value;

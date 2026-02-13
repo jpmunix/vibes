@@ -1,9 +1,15 @@
+import React, { Suspense } from "react";
 import { createRoute } from "@tanstack/react-router";
 import { rootRoute } from "./root";
-import ThemesPage from "@/pages/themes";
+
+const ThemesPage = React.lazy(() => import("@/pages/themes"));
 
 export const themesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/themes",
-  component: ThemesPage,
+  component: () => (
+    <Suspense>
+    <ThemesPage />
+    </Suspense>
+  ),
 });

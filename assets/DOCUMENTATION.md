@@ -10,9 +10,11 @@ Vibes te permite crear, desarrollar y desplegar aplicaciones de forma integral.
 
 ## 💬 Chat e Inteligencia Artificial
 El corazón de Vibes es su potente sistema de chat, diseñado específicamente para programadores.
-- **Selección de Modelos**: Acceso a los mejores modelos del mercado a través de OpenRouter.
+- **Selección de Modelos**: Acceso a los mejores modelos del mercado a través de OpenRouter (incluye modelos con contextos muy amplios, como Grok 4.1 Fast con hasta 2M tokens).
+- **Capturas de pantalla**: Puedes hacer una captura **total o parcial** y adjuntarla directamente en el chat.
 - **Auto-Router**: Deja que Vibes elija el modelo más eficiente para cada tarea.
 - **Contexto del Código**: El chat tiene conocimiento de tu codebase. Puedes añadir archivos específicos al contexto para consultas precisas.
+- **Contexto dinámico y optimizado**: Vibes utiliza búsqueda de código y herramientas locales para reducir drásticamente el “ruido” del contexto y aportar al modelo sólo lo relevante para la tarea.
 - **Herramientas Avanzadas**:
   - **Web Search**: Búsqueda en internet para obtener información actualizada utilizando tu API de serper.dev.
   - **Code Search con Grep e inteligencia artificial**: Busca patrones y archivos en todo tu proyecto gracias a la integración de MiniLM.
@@ -21,6 +23,7 @@ El corazón de Vibes es su potente sistema de chat, diseñado específicamente p
 - **Resumen Diario y Logs**:
   - **Botón de Resumen**: Genera un resumen de tus avances del día.
   - **Panel de Logs**: Accede a los logs detallados de las interacciones con la IA para depuración avanzada.
+  - **Logs del agente**: Se almacena el historial de ejecución del agente para poder analizar qué ocurre en el “core” de Vibes cuando usa herramientas y realiza acciones.
   - **Resumir en Nuevo Chat**: Limpia el historial manteniendo lo esencial en una nueva conversación.
 
 ## 🤖 Base de Conocimientos IA
@@ -90,6 +93,7 @@ Vibes incluye herramientas diseñadas para que tu historial de trabajo sea útil
 - **Títulos Automáticos (Auto-titles)**: Genera nombres descriptivos para tus nuevos chats automáticamente.
 - **Exportar Chat a Nota**: Guarda cualquier conversación como nota persistente para consulta futura.
 - **Vaciado de Chat**: Limpia los mensajes visibles sin borrar la conversación del historial.
+- **Notas de versión**: Consulta las notas de versión para estar al día de cambios relevantes de producto sin necesidad de revisar el historial de chats.
 
 ## 👤 Registro de Usuario
 - Puedes crear una cuenta en Vibes y personalizar tu entorno de trabajo.
@@ -98,7 +102,4 @@ Vibes incluye herramientas diseñadas para que tu historial de trabajo sea útil
 ## ⚙️ Ajustes de Sistema
 - **Consumo de Créditos**: Monitoriza el gasto en OpenRouter en tiempo real.
 - **Logs Técnicos**: Activa logs verbosos para ver exactamente qué envía y recibe el asistente.
-
 ---
-
-*Esta documentación se actualiza dinámicamente con las nuevas funcionalidades de la plataforma.*
