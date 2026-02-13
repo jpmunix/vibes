@@ -82,7 +82,7 @@ export const readFileTool: ToolDefinition<z.infer<typeof readFileSchema>> = {
     const fullFilePath = safeJoin(ctx.appPath, args.path);
 
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.path}`);
+      return `File does not exist: ${args.path}`;
     }
 
     const content = await readFile(fullFilePath, "utf8");
