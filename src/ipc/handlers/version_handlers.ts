@@ -160,15 +160,20 @@ export function registerVersionHandlers() {
       }
 
       const appPath = getDyadAppPath(app.path);
+
+      // Get the current branch name to use as default reference
+      const currentBranch = await gitCurrentBranch({ path: appPath });
+      const mainRef = currentBranch || "main";
+
       // Get the current commit hash before reverting
       const currentCommitHash = await getCurrentCommitHash({
         path: appPath,
-        ref: "main",
+        ref: mainRef,
       });
 
       await gitCheckout({
         path: appPath,
-        ref: "main",
+        ref: mainRef,
       });
 
       if (app.neonProjectId && app.neonDevelopmentBranchId) {
@@ -381,7 +386,11 @@ export function registerVersionHandlers() {
         app.neonDevelopmentBranchId &&
         app.neonPreviewBranchId
       ) {
-        if (gitRef === "main") {
+        const appPath = getDyadAppPath(app.path);
+        const currentBranch = await gitCurrentBranch({ path: appPath });
+        const mainBranch = currentBranch || "main";
+
+        if (gitRef === mainBranch || gitRef === "main") {
           logger.info(
             `Switching Postgres to development branch for app ${appId}`,
           );

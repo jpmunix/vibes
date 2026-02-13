@@ -24,8 +24,8 @@ export class IncrementalIndexer {
   private appPath: string;
 
   constructor(appPath: string) {
-    this.appPath = appPath;
-    this.index = new LocalVectorIndex(appPath);
+    this.appPath = path.resolve(appPath); // Normalize path
+    this.index = new LocalVectorIndex(this.appPath);
   }
 
   /**
@@ -40,20 +40,41 @@ export class IncrementalIndexer {
     logger.info(`Starting file watcher for ${this.appPath}`);
 
     this.watcher = chokidar.watch(this.appPath, {
-      ignored: [
-        /(^|[/\\])\../, // dot files
-        "**/node_modules/**",
-        "**/.git/**",
-        "**/.vite/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/.next/**",
-        "**/.venv/**",
-        "**/venv/**",
-        "**/.dyad/**", // Don't watch our own index
-      ],
+      ignored: (testPath: string) => {
+        // Normalize for comparison
+        const normalized = testPath.toLowerCase().replace(/\\/g, "/");
+
+        // Directories to always exclude
+        const excludeDirs = [
+          "node_modules",
+          ".git",
+          ".vite",
+          "dist",
+          "build",
+          ".next",
+          ".venv",
+          "venv",
+          ".dyad",
+        ];
+
+        // Check if any part of the path is in excludeDirs
+        // We use path.sep to be platform-aware, but since we normalized we use /
+        const parts = normalized.split("/");
+        if (parts.some((part) => excludeDirs.includes(part))) {
+          return true;
+        }
+
+        // Ignore dotfiles except those specifically needed
+        const basename = path.basename(testPath);
+        if (basename.startsWith(".") && basename !== ".env") {
+          return true;
+        }
+
+        return false;
+      },
       persistent: true,
-      ignoreInitial: true, // Don't trigger for existing files
+      ignoreInitial: true,
+      ignorePermissionErrors: true,
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100,
@@ -73,8 +94,18 @@ export class IncrementalIndexer {
       this.onFileDelete(filePath);
     });
 
-    this.watcher.on("error", (error: unknown) => {
+    this.watcher.on("error", (error: any) => {
       logger.error("File watcher error:", error);
+
+      // Handle EMFILE (too many open files) specifically to prevent crash loop
+      if (error?.code === "EMFILE") {
+        logger.warn(
+          "EMFILE error detected: too many open files. Stopping file watcher to prevent crash.",
+        );
+        this.stop().catch((err) =>
+          logger.error("Failed to stop watcher after EMFILE:", err),
+        );
+      }
     });
 
     logger.info("File watcher started successfully");
@@ -408,13 +439,14 @@ const watchers = new Map<string, IncrementalIndexer>();
  * Get or create an incremental indexer for an app
  */
 export function getIncrementalIndexer(appPath: string): IncrementalIndexer {
-  let indexer = watchers.get(appPath);
+  const normalizedPath = path.resolve(appPath);
+  let indexer = watchers.get(normalizedPath);
 
   if (!indexer) {
-    indexer = new IncrementalIndexer(appPath);
+    indexer = new IncrementalIndexer(normalizedPath);
     indexer.start();
-    watchers.set(appPath, indexer);
-    logger.info(`Created new incremental indexer for ${appPath}`);
+    watchers.set(normalizedPath, indexer);
+    logger.info(`Created new incremental indexer for ${normalizedPath}`);
   }
 
   return indexer;
