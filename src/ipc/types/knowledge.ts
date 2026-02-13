@@ -21,6 +21,13 @@ export const KnowledgeSourceSchema = z.enum([
 ]);
 export type KnowledgeSource = z.infer<typeof KnowledgeSourceSchema>;
 
+export const KnowledgeDurabilitySchema = z.enum([
+    "permanent",
+    "project-phase",
+    "temporary",
+]);
+export type KnowledgeDurability = z.infer<typeof KnowledgeDurabilitySchema>;
+
 /**
  * Schema for a Knowledge Entry object.
  */
@@ -32,6 +39,9 @@ export const KnowledgeEntrySchema = z.object({
     source: KnowledgeSourceSchema,
     confidence: z.number(),
     enabled: z.boolean(),
+    durability: KnowledgeDurabilitySchema.nullable().optional(),
+    supersededBy: z.number().nullable().optional(),
+    lastConfirmedAt: z.union([z.date(), z.string(), z.null()]).optional(),
     createdAt: z.union([z.date(), z.string()]),
     updatedAt: z.union([z.date(), z.string()]),
 });
@@ -82,6 +92,36 @@ export type ExtractKnowledgeParams = z.infer<
     typeof ExtractKnowledgeParamsSchema
 >;
 
+/**
+ * Schema for bulk operations on knowledge entries.
+ */
+export const BulkKnowledgeParamsSchema = z.object({
+    entryIds: z.array(z.number()),
+});
+
+export type BulkKnowledgeParams = z.infer<typeof BulkKnowledgeParamsSchema>;
+
+/**
+ * Schema for knowledge health analysis result.
+ */
+export const KnowledgeHealthResultSchema = z.object({
+    noise: z.array(z.number()),
+    redundant: z.array(
+        z.object({
+            keep: z.number(),
+            remove: z.array(z.number()),
+        }),
+    ),
+    contradictions: z.array(
+        z.object({
+            entryA: z.number(),
+            entryB: z.number(),
+        }),
+    ),
+});
+
+export type KnowledgeHealthResult = z.infer<typeof KnowledgeHealthResultSchema>;
+
 // =============================================================================
 // Knowledge Base Contracts (Invoke/Response)
 // =============================================================================
@@ -124,6 +164,34 @@ export const knowledgeContracts = {
         input: ExtractKnowledgeParamsSchema,
         output: z.array(KnowledgeEntrySchema), // newly extracted entries
     }),
+
+    /** Decay confidence of unconfirmed auto-extracted entries */
+    decayKnowledge: defineContract({
+        channel: "decay-knowledge",
+        input: z.number(), // appId
+        output: z.number(), // number of decayed entries
+    }),
+
+    /** Analyze knowledge health — identify noise, redundancies, contradictions */
+    analyzeKnowledgeHealth: defineContract({
+        channel: "analyze-knowledge-health",
+        input: z.number(), // appId
+        output: KnowledgeHealthResultSchema,
+    }),
+
+    /** Bulk disable knowledge entries by IDs */
+    bulkDisableKnowledge: defineContract({
+        channel: "bulk-disable-knowledge",
+        input: BulkKnowledgeParamsSchema,
+        output: z.number(), // number of disabled entries
+    }),
+
+    /** Bulk approve pending knowledge entries by IDs */
+    bulkApproveKnowledge: defineContract({
+        channel: "bulk-approve-knowledge",
+        input: BulkKnowledgeParamsSchema,
+        output: z.number(), // number of approved entries
+    }),
 } as const;
 
 // =============================================================================
@@ -137,5 +205,6 @@ export const knowledgeContracts = {
  * @example
  * const entries = await knowledgeClient.getKnowledgeEntries(appId);
  * const prompt = await knowledgeClient.getKnowledgePrompt(appId);
+ * const health = await knowledgeClient.analyzeKnowledgeHealth(appId);
  */
 export const knowledgeClient = createClient(knowledgeContracts);

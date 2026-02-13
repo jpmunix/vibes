@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ipc } from "@/ipc/types";
-import type { KnowledgeEntry, KnowledgeCategory } from "@/ipc/types";
+import type { KnowledgeEntry, KnowledgeCategory, KnowledgeHealthResult } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { showError, showSuccess } from "@/lib/toast";
@@ -13,6 +13,12 @@ import {
     Pencil,
     Check,
     X,
+    ShieldAlert,
+    Inbox,
+    AlertTriangle,
+    CheckCheck,
+    Zap,
+    Loader2,
 } from "lucide-react";
 import {
     Dialog,
@@ -27,6 +33,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+
+// Max entries constant — matches backend
+const MAX_ENTRIES = 50;
 
 // Category config
 const CATEGORIES: {
@@ -101,6 +110,16 @@ function SourceBadge({ source }: { source: string }) {
     );
 }
 
+// Durability badge (v2)
+function DurabilityBadge({ durability }: { durability: string | null | undefined }) {
+    if (!durability || durability === "permanent") return null;
+    return (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+            {durability === "project-phase" ? "Fase" : "Temp"}
+        </span>
+    );
+}
+
 export function KnowledgeBaseModal({
     appId,
     isOpen,
@@ -118,6 +137,9 @@ export function KnowledgeBaseModal({
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState("");
     const [editCategory, setEditCategory] = useState<KnowledgeCategory>("convention");
+    const [activeTab, setActiveTab] = useState<"active" | "pending">("active");
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [healthResult, setHealthResult] = useState<KnowledgeHealthResult | null>(null);
 
     const loadEntries = useCallback(async () => {
         try {
@@ -131,8 +153,19 @@ export function KnowledgeBaseModal({
     useEffect(() => {
         if (isOpen) {
             loadEntries();
+            setHealthResult(null);
+            // Run decay on open
+            ipc.knowledge.decayKnowledge(appId).catch(() => { });
         }
-    }, [isOpen, loadEntries]);
+    }, [isOpen, loadEntries, appId]);
+
+    // Computed counts
+    const activeEntries = useMemo(() => entries.filter((e) => e.enabled), [entries]);
+    const pendingEntries = useMemo(() => entries.filter((e) => !e.enabled && e.source === "auto-extracted"), [entries]);
+    const disabledManual = useMemo(() => entries.filter((e) => !e.enabled && e.source !== "auto-extracted"), [entries]);
+
+    const activeCount = activeEntries.length;
+    const pendingCount = pendingEntries.length;
 
     const handleAdd = async () => {
         if (!newContent.trim()) return;
@@ -202,7 +235,109 @@ export function KnowledgeBaseModal({
         }
     };
 
-    const activeCount = entries.filter((e) => e.enabled).length;
+    const handleApproveEntry = async (entryId: number) => {
+        try {
+            await ipc.knowledge.bulkApproveKnowledge({ entryIds: [entryId] });
+            showSuccess("Entrada aprobada");
+            await loadEntries();
+        } catch (error) {
+            showError(error);
+        }
+    };
+
+    const handleApprovePending = async () => {
+        if (pendingEntries.length === 0) return;
+        setIsLoading(true);
+        try {
+            await ipc.knowledge.bulkApproveKnowledge({
+                entryIds: pendingEntries.map((e) => e.id),
+            });
+            showSuccess(`${pendingEntries.length} entradas aprobadas`);
+            await loadEntries();
+        } catch (error) {
+            showError(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDismissPending = async () => {
+        if (pendingEntries.length === 0) return;
+        setIsLoading(true);
+        try {
+            // Delete pending entries instead of just disabling
+            for (const entry of pendingEntries) {
+                await ipc.knowledge.deleteKnowledgeEntry(entry.id);
+            }
+            showSuccess(`${pendingEntries.length} entradas descartadas`);
+            await loadEntries();
+        } catch (error) {
+            showError(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAnalyzeHealth = async () => {
+        setIsAnalyzing(true);
+        try {
+            const result = await ipc.knowledge.analyzeKnowledgeHealth(appId);
+            setHealthResult(result);
+
+            const issues =
+                result.noise.length +
+                result.redundant.reduce((acc, r) => acc + r.remove.length, 0) +
+                result.contradictions.length;
+
+            if (issues === 0) {
+                showSuccess("¡Base de conocimientos limpia! Sin problemas detectados.");
+            } else {
+                showSuccess(`Análisis completado: ${issues} problema(s) detectado(s)`);
+            }
+        } catch (error) {
+            showError(error);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleCleanNoise = async () => {
+        if (!healthResult || healthResult.noise.length === 0) return;
+        setIsLoading(true);
+        try {
+            await ipc.knowledge.bulkDisableKnowledge({
+                entryIds: healthResult.noise,
+            });
+            showSuccess(`${healthResult.noise.length} entradas de ruido desactivadas`);
+            setHealthResult(null);
+            await loadEntries();
+        } catch (error) {
+            showError(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const noiseIds = useMemo(() => new Set(healthResult?.noise || []), [healthResult]);
+    const contradictionIds = useMemo(() => {
+        const ids = new Set<number>();
+        for (const c of healthResult?.contradictions || []) {
+            ids.add(c.entryA);
+            ids.add(c.entryB);
+        }
+        return ids;
+    }, [healthResult]);
+    const redundantRemoveIds = useMemo(() => {
+        const ids = new Set<number>();
+        for (const r of healthResult?.redundant || []) {
+            for (const id of r.remove) ids.add(id);
+        }
+        return ids;
+    }, [healthResult]);
+
+    const displayEntries = activeTab === "active"
+        ? [...activeEntries, ...disabledManual]
+        : pendingEntries;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -212,7 +347,12 @@ export function KnowledgeBaseModal({
                         <DialogTitle>Base de Conocimientos IA</DialogTitle>
                         {entries.length > 0 && (
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-                                {activeCount} activa{activeCount !== 1 ? "s" : ""}
+                                {activeCount}/{MAX_ENTRIES}
+                            </span>
+                        )}
+                        {pendingCount > 0 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 animate-pulse">
+                                {pendingCount} pendientes
                             </span>
                         )}
                         <Popover>
@@ -241,6 +381,10 @@ export function KnowledgeBaseModal({
                                         </div>
                                     ))}
                                 </div>
+                                <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                                    <p className="font-medium text-xs text-foreground mb-1">Sistema v2</p>
+                                    <p>El extractor ahora filtra ruido automáticamente, detecta duplicados semánticos y clasifica la durabilidad de cada regla.</p>
+                                </div>
                             </PopoverContent>
                         </Popover>
                     </div>
@@ -249,13 +393,121 @@ export function KnowledgeBaseModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4">
+                {/* Tab bar */}
+                <div className="flex items-center gap-2 mt-2 mb-1 border-b border-gray-200 dark:border-gray-700">
+                    <button
+                        onClick={() => setActiveTab("active")}
+                        className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors cursor-pointer ${activeTab === "active"
+                            ? "border-violet-500 text-violet-600 dark:text-violet-400"
+                            : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                            }`}
+                    >
+                        Activas ({activeCount})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("pending")}
+                        className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "pending"
+                            ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                            : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                            }`}
+                    >
+                        <Inbox className="h-3.5 w-3.5" />
+                        Pendientes ({pendingCount})
+                        {pendingCount > 0 && (
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        )}
+                    </button>
+
+                    <div className="flex-1" />
+
+                    {/* Health analysis button */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleAnalyzeHealth}
+                        disabled={isAnalyzing || activeCount < 3}
+                        className="text-xs h-7 gap-1.5"
+                    >
+                        {isAnalyzing ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <Zap className="h-3.5 w-3.5" />
+                        )}
+                        {isAnalyzing ? "Analizando..." : "Limpiar ruido"}
+                    </Button>
+                </div>
+
+                {/* Health analysis results */}
+                {healthResult && (healthResult.noise.length > 0 || healthResult.contradictions.length > 0 || healthResult.redundant.some(r => r.remove.length > 0)) && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs">
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                        <span className="flex-1 text-amber-700 dark:text-amber-300">
+                            {healthResult.noise.length > 0 && `${healthResult.noise.length} ruido `}
+                            {healthResult.redundant.filter(r => r.remove.length > 0).length > 0 && `${healthResult.redundant.reduce((a, r) => a + r.remove.length, 0)} redundantes `}
+                            {healthResult.contradictions.length > 0 && `${healthResult.contradictions.length} contradicciones`}
+                            {" — las entradas detectadas están marcadas en la lista"}
+                        </span>
+                        {healthResult.noise.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCleanNoise}
+                                className="h-6 text-[10px] border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                            >
+                                Desactivar ruido ({healthResult.noise.length})
+                            </Button>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => setHealthResult(null)}
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                    {/* Pending tab: bulk actions */}
+                    {activeTab === "pending" && pendingCount > 0 && (
+                        <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-gray-50 dark:bg-gray-800/50">
+                            <span className="text-xs text-gray-500 flex-1">
+                                {pendingCount} entrada{pendingCount !== 1 ? "s" : ""} esperando revisión
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleApprovePending}
+                                disabled={isLoading}
+                                className="h-7 text-xs gap-1 text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                            >
+                                <CheckCheck className="h-3.5 w-3.5" />
+                                Aprobar todas
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDismissPending}
+                                disabled={isLoading}
+                                className="h-7 text-xs gap-1 text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Descartar todas
+                            </Button>
+                        </div>
+                    )}
+
                     {/* Entries list */}
-                    {entries.length > 0 ? (
+                    {displayEntries.length > 0 ? (
                         <div className="space-y-2 mb-3">
-                            {entries.map((entry) => {
+                            {displayEntries.map((entry) => {
                                 const cat = getCategoryConfig(entry.category);
                                 const isEditing = editingId === entry.id;
+                                const isNoise = noiseIds.has(entry.id);
+                                const isContradiction = contradictionIds.has(entry.id);
+                                const isRedundant = redundantRemoveIds.has(entry.id);
+                                const hasHealthFlag = isNoise || isContradiction || isRedundant;
 
                                 if (isEditing) {
                                     return (
@@ -313,9 +565,15 @@ export function KnowledgeBaseModal({
                                 return (
                                     <div
                                         key={entry.id}
-                                        className={`flex items-start gap-2 p-2 rounded-md border text-sm transition-opacity ${entry.enabled
-                                            ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                                            : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 opacity-50"
+                                        className={`flex items-start gap-2 p-2 rounded-md border text-sm transition-all ${hasHealthFlag
+                                            ? isNoise
+                                                ? "border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20"
+                                                : isContradiction
+                                                    ? "border-yellow-300 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-950/20"
+                                                    : "border-orange-300 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20"
+                                            : entry.enabled
+                                                ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                                : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 opacity-50"
                                             }`}
                                     >
                                         <span className="text-sm mt-0.5 flex-shrink-0">
@@ -327,16 +585,43 @@ export function KnowledgeBaseModal({
                                             >
                                                 {entry.content}
                                             </p>
-                                            <div className="flex items-center gap-1.5 mt-1">
+                                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                                 <SourceBadge source={entry.source} />
+                                                <DurabilityBadge durability={entry.durability} />
                                                 {entry.confidence < 100 && (
                                                     <span className="text-[10px] text-gray-400">
-                                                        {entry.confidence}% confianza
+                                                        {entry.confidence}%
+                                                    </span>
+                                                )}
+                                                {isNoise && (
+                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 flex items-center gap-0.5">
+                                                        <ShieldAlert className="h-3 w-3" />
+                                                        Ruido
+                                                    </span>
+                                                )}
+                                                {isContradiction && (
+                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 flex items-center gap-0.5">
+                                                        <AlertTriangle className="h-3 w-3" />
+                                                        Contradicción
+                                                    </span>
+                                                )}
+                                                {isRedundant && (
+                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                                        Redundante
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-0.5 flex-shrink-0">
+                                            {activeTab === "pending" && (
+                                                <button
+                                                    onClick={() => handleApproveEntry(entry.id)}
+                                                    className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer text-gray-400 hover:text-green-500"
+                                                    title="Aprobar"
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => handleStartEdit(entry)}
                                                 className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer text-gray-400 hover:text-blue-500"
@@ -369,79 +654,97 @@ export function KnowledgeBaseModal({
                         </div>
                     ) : (
                         <div className="text-center py-4 mb-3">
-                            <Sparkles className="h-6 w-6 text-violet-300 mx-auto mb-2" />
-                            <p className="text-xs text-gray-400">
-                                Sin reglas todavía. Añade una regla manual o la IA las
-                                extraerá automáticamente de las conversaciones.
-                            </p>
+                            {activeTab === "pending" ? (
+                                <>
+                                    <Inbox className="h-6 w-6 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-xs text-gray-400">
+                                        No hay entradas pendientes de revisión.
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Las entradas con baja confianza o fase de proyecto aparecerán aquí.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-6 w-6 text-violet-300 mx-auto mb-2" />
+                                    <p className="text-xs text-gray-400">
+                                        Sin reglas todavía. Añade una regla manual o la IA las
+                                        extraerá automáticamente de las conversaciones.
+                                    </p>
+                                </>
+                            )}
                         </div>
                     )}
 
-                    {/* Add new entry form */}
-                    {isAdding ? (
-                        <div className="space-y-2 p-3 border border-violet-200 dark:border-violet-800 rounded-md bg-violet-50/50 dark:bg-violet-950/20">
-                            <div className="flex gap-1.5 flex-wrap mb-2">
-                                {CATEGORIES.map((cat) => (
-                                    <button
-                                        key={cat.value}
-                                        onClick={() => setNewCategory(cat.value)}
-                                        className={`text-[10px] px-2 py-1 rounded-full transition-colors cursor-pointer ${newCategory === cat.value
-                                            ? "bg-violet-500 text-white"
-                                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                                            }`}
-                                        title={cat.description}
-                                    >
-                                        {cat.emoji} {cat.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <Input
-                                value={newContent}
-                                onChange={(e) => setNewContent(e.target.value)}
-                                placeholder="Ej: Siempre usar nuestro componente Dialog en vez de confirm()"
-                                className="text-sm"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && newContent.trim()) {
-                                        handleAdd();
-                                    }
-                                    if (e.key === "Escape") {
-                                        setIsAdding(false);
-                                        setNewContent("");
-                                    }
-                                }}
-                            />
-                            <div className="flex justify-end gap-2 pt-1">
+                    {/* Add new entry form — only on active tab */}
+                    {activeTab === "active" && (
+                        <>
+                            {isAdding ? (
+                                <div className="space-y-2 p-3 border border-violet-200 dark:border-violet-800 rounded-md bg-violet-50/50 dark:bg-violet-950/20">
+                                    <div className="flex gap-1.5 flex-wrap mb-2">
+                                        {CATEGORIES.map((cat) => (
+                                            <button
+                                                key={cat.value}
+                                                onClick={() => setNewCategory(cat.value)}
+                                                className={`text-[10px] px-2 py-1 rounded-full transition-colors cursor-pointer ${newCategory === cat.value
+                                                    ? "bg-violet-500 text-white"
+                                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                                    }`}
+                                                title={cat.description}
+                                            >
+                                                {cat.emoji} {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <Input
+                                        value={newContent}
+                                        onChange={(e) => setNewContent(e.target.value)}
+                                        placeholder="Ej: Siempre usar nuestro componente Dialog en vez de confirm()"
+                                        className="text-sm"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && newContent.trim()) {
+                                                handleAdd();
+                                            }
+                                            if (e.key === "Escape") {
+                                                setIsAdding(false);
+                                                setNewContent("");
+                                            }
+                                        }}
+                                    />
+                                    <div className="flex justify-end gap-2 pt-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setIsAdding(false);
+                                                setNewContent("");
+                                            }}
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            className="bg-violet-500 hover:bg-violet-600"
+                                            onClick={handleAdd}
+                                            disabled={!newContent.trim() || isLoading}
+                                        >
+                                            Añadir regla
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                        setIsAdding(false);
-                                        setNewContent("");
-                                    }}
+                                    className="w-full border-dashed"
+                                    onClick={() => setIsAdding(true)}
                                 >
-                                    Cancelar
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Añadir regla manualmente
                                 </Button>
-                                <Button
-                                    size="sm"
-                                    className="bg-violet-500 hover:bg-violet-600"
-                                    onClick={handleAdd}
-                                    disabled={!newContent.trim() || isLoading}
-                                >
-                                    Añadir regla
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full border-dashed"
-                            onClick={() => setIsAdding(true)}
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Añadir regla manualmente
-                        </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </DialogContent>

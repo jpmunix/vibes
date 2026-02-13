@@ -1,55 +1,97 @@
-# Sistema de Base de Conocimientos IA (v1.0)
+# AI Knowledge Base (Base de Conocimientos IA) — v2.0
 
-El Sistema de Base de Conocimientos permite que el asistente aprenda de forma autónoma las reglas, patrones y convenciones específicas de cada proyecto conforme interactúas con él. Estas reglas se persisten por cada aplicación y se inyectan automáticamente en el prompt del sistema para asegurar la consistencia del código generado.
+## Overview
 
-## Características Principales
+The Knowledge Base allows the AI to **automatically learn** project-specific conventions, patterns, preferences, and rules from conversations, and apply them consistently across all future interactions.
 
-### 1. Aprendizaje Continuo (Auto-Learning)
-Vibes analiza cada conversación en segundo plano para identificar directivas implícitas o explícitas.
-- **Detección de reglas**: Si dices "siempre usa nuestro componente de Dialog", el sistema crea una entrada automáticamente.
-- **Detección de patrones**: Si creas un nuevo componente, el sistema lo registra como un componente personalizado disponible.
-- **Silencioso**: La extracción ocurre de forma asíncrona (fire-and-forget) sin retrasar las respuestas del chat.
+### What Changed in v2.0
 
-### 2. Categorización de Conocimiento
-Las entradas se organizan en 5 categorías para una mejor densidad en el prompt:
-- 📐 **Convención**: Estándares de código (ej: "Usar CamelCase para archivos TSX").
-- 🔁 **Patrón**: Soluciones recurrentes (ej: "Usar React Query para todas las peticiones").
-- ⚙️ **Preferencia**: Gustos del desarrollador (ej: "Prefiero CSS puro sobre Tailwind").
-- 🚫 **Regla**: Restricciones críticas (ej: "Nunca usar `any`").
-- 🧩 **Componente**: Inventario de componentes propios para evitar duplicación.
+- **Smarter extraction**: The AI now explicitly excludes implementation details, file paths, CSS values, and transient decisions
+- **Durability classification**: Every extracted entry is classified as `permanent`, `project-phase`, or `temporary`
+- **Semantic deduplication**: Uses Jaccard token similarity (threshold ≥ 0.55) instead of exact string matching
+- **Contradiction detection**: New entries that contradict existing ones supersede them automatically
+- **Confidence decay**: Auto-extracted entries lose confidence over time if not manually confirmed
+- **Entry cap**: Maximum 50 active entries per app, lowest-confidence entries are auto-disabled
+- **Noise filters**: 20+ regex patterns filter implementation details before storage
+- **Pending review**: Low-confidence and `project-phase` entries go to a review queue instead of being auto-activated
+- **Health analysis**: AI-powered analysis to detect noise, redundancies, and contradictions in existing entries
 
-### 3. Inyección de Contexto Comprimido
-Vibes inyecta un bloque `<knowledge_base>` ultra-denso en el System Prompt. Este bloque está diseñado para ocupar el mínimo espacio posible (+-500 tokens) mientras mantiene la máxima "atención" del modelo.
+## Features
 
-## Interfaz de Usuario
+- **Continuous Learning**: The AI extracts knowledge from every conversation (max 2 entries per interaction)
+- **Knowledge Categories**:
+  - 📐 **Convention** — Code standards (e.g., "use camelCase for TSX files")
+  - 🔁 **Pattern** — Recurring architectural patterns (e.g., "use React Query for all API requests")
+  - ⚙️ **Preference** — Stable dev preferences (e.g., "prefer CSS modules over Tailwind")
+  - 🚫 **Rule** — Absolute prohibitions (e.g., "NEVER use `any` type")  
+  - 🧩 **Component** — Mandatory project components (e.g., "use our custom Dialog, not `confirm()`")
+- **Context-Aware**: The extractor sees existing knowledge and avoids semantic duplicates and contradictions
+- **Compressed Prompt Injection**: Active entries are injected into the system prompt in a dense format
+- **Pending Review Queue**: Low-confidence entries require manual approval before activation
 
-### Panel de Base de Conocimientos
-Ubicado en la vista de **Detalles de la Aplicación**, este panel permite:
-- **Visualización**: Ver qué ha aprendido la IA.
-- **Gestión**: Activar/desactivar reglas específicas sin borrarlas.
-- **Edición**: Borrar reglas obsoletas o mal extraídas.
-- **Añadir Manualmente**: Definir reglas de forma proactiva antes de empezar a programar.
+## UI
 
-### Configuración del Modelo
-En **Ajustes → Modelos y Conectividad**, puedes elegir qué modelo se encarga de la extracción de conocimiento.
-- **Modelo por defecto**: `GPT-4o Mini` (o GPT-4.1) por su balance entre coste y capacidad de razonamiento.
+The Knowledge Base is accessible from **Application Details → Base de Conocimientos IA** button.
 
-## Detalles Técnicos
+### Tabs
+- **Activas**: Enabled entries grouped by category. Rules always appear regardless of cap.
+- **Pendientes**: Auto-extracted entries that need review (low confidence or `project-phase` durability)
 
-### Persistencia
-Los datos se guardan en la tabla `knowledge_entries` de la base de datos local (SQLite/Drizzle). Cada entrada tiene:
-- `app_id`: Relación con la aplicación.
-- `source`: `manual`, `auto-extracted` (por heurística) o `inferred`.
-- `confidence`: Puntuación de 0-100 para priorizar reglas sólidas.
-- `enabled`: Toggle para activar/desactivar.
+### Actions
+- **Limpiar ruido**: AI-powered analysis that flags noise, redundancies, and contradictions
+- **Aprobar todas / Descartar todas**: Bulk actions for pending entries
+- **Manual add/edit/toggle/delete**: Full CRUD on individual entries
 
-### Flujo de Datos
-1. **Request**: Al enviar un mensaje, se recuperan todas las reglas `enabled` de la app.
-2. **Prompt Builder**: Se agrupan por categoría y se comprimen en un formato Markdown minimalista.
-3. **Response**: Al recibir la respuesta del asistente, se dispara el proceso de extracción en background.
-4. **Extractor**: Aplica heurísticas de lenguaje natural para detectar intenciones de reglas o convenciones.
+### Health Indicators
+- Active count vs MAX_ENTRIES cap (50)  
+- Pending review count with pulse animation
+- Inline flags: 🟥 Noise, 🟡 Contradiction, 🟠 Redundant
 
-## Mejores Prácticas
-- **Usa lenguaje directo**: Si quieres que la IA aprenda algo rápido, dile específicamente: "Recuerda que en este proyecto siempre usamos X para Y".
-- **Limpia periódicamente**: Si la IA extrae algo incorrectamente, puedes desactivarlo desde el panel de Detalles de la App.
-- **Combina con AI_RULES.md**: La base de conocimientos complementa el archivo `AI_RULES.md` estático, añadiendo una capa de memoria dinámica y evolutiva.
+## Technical Details
+
+### Data
+
+Stored in the `knowledge_entries` SQLite table (Drizzle ORM):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | integer | Primary key |
+| `app_id` | integer | FK to apps |
+| `category` | text | convention, pattern, preference, rule, component |
+| `content` | text | The actual knowledge text |
+| `source` | text | manual, auto-extracted, inferred |
+| `confidence` | integer | 0-100 score |
+| `enabled` | boolean | Whether the entry is active |
+| `durability` | text | permanent, project-phase, temporary |
+| `superseded_by` | integer | ID of entry that replaced this one |
+| `last_confirmed_at` | timestamp | When user last manually confirmed |
+| `created_at` | timestamp | Creation time |
+| `updated_at` | timestamp | Last update time |
+
+### Flow
+
+1. **Request** → Retrieve enabled rules → Compress → Inject into system prompt → AI response
+2. **After Response** → Background extraction → Noise filter → Semantic dedup → Durability check → Store (active or pending)
+3. **On App Open** → Run confidence decay on stale auto-extracted entries
+4. **Manual Action** → Health analysis → Flag noise/redundancies/contradictions
+
+### Knowledge Model
+
+The extraction model uses the main selected model (configurable in Settings). Temperature is set to 0.2 for deterministic extraction.
+
+### Noise Filtering Pipeline
+
+1. **AI-level**: Explicit exclusion rules in the extraction prompt (paths, CSS, layouts, copy, refactoring actions)
+2. **Heuristic-level**: 20+ regex patterns catch remaining noise before database insertion
+3. **Durability-level**: `temporary` entries are discarded; `project-phase` go to pending review
+4. **Confidence-level**: Entries below 85% confidence go to pending review
+5. **Semantic dedup**: Jaccard similarity ≥ 0.55 = duplicate
+6. **Entry cap**: Max 50 active entries; lowest-confidence entries auto-disabled
+
+## Best Practices
+
+- **Use direct, declarative language** when teaching: "Siempre usar X" or "Nunca hacer Y"
+- **Review pending entries periodically** to approve good ones and discard noise
+- **Run health analysis** occasionally to clean up accumulated entries
+- **Manual entries have confidence 100** and never decay
+- **Complement with static `AI_RULES.md`** for project-wide rules that shouldn't change

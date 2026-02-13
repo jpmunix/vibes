@@ -338,9 +338,12 @@ export type {
   KnowledgeEntry,
   KnowledgeCategory,
   KnowledgeSource,
+  KnowledgeDurability,
   CreateKnowledgeEntryParams,
   UpdateKnowledgeEntryParams,
   ExtractKnowledgeParams,
+  BulkKnowledgeParams,
+  KnowledgeHealthResult,
 } from "./knowledge";
 
 // =============================================================================

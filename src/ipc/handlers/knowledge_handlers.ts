@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { knowledgeEntries } from "../../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lt, gt, sql } from "drizzle-orm";
 import log from "electron-log";
 import { createTypedHandler } from "./base";
 import { knowledgeContracts } from "../types/knowledge";
@@ -8,8 +8,15 @@ import { knowledgeContracts } from "../types/knowledge";
 const logger = log.scope("knowledge_handlers");
 
 // =============================================================================
-// Category labels for prompt generation
+// Constants
 // =============================================================================
+
+const MAX_KNOWLEDGE_ENTRIES = 50;
+const CONFIDENCE_DECAY_INTERVAL_DAYS = 7;
+const CONFIDENCE_DECAY_AMOUNT = 10;
+const CONFIDENCE_FLOOR = 20;
+const JACCARD_DUPLICATE_THRESHOLD = 0.55;
+const PENDING_REVIEW_CONFIDENCE_THRESHOLD = 85;
 
 const CATEGORY_LABELS: Record<string, string> = {
     convention: "📐 Convenciones",
@@ -20,12 +27,129 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 // =============================================================================
-// Knowledge Prompt Builder
+// Noise Filtering — Heuristic pre-save filters
+// =============================================================================
+
+const NOISE_PATTERNS: RegExp[] = [
+    // File paths, imports, internal routes
+    /(?:src|components|pages|shared|admin|public)\//i,
+    /\.\.\//,
+    /import\s.*\sfrom/i,
+    /\/admin\//i,
+
+    // CSS measurements and specific layout values
+    /\d+px/,
+    /max-w-/,
+    /col-span-/,
+    /grid-cols-/,
+    /gap-\d/,
+    /rounded-/,
+    /shadow-/,
+    /font-display/,
+
+    // Specific layouts for a single screen
+    /columna[s]?\s*(partida|dividida)/i,
+    /disposición\s*(vertical|horizontal)/i,
+    /en\s+\d+\s+columna/i,
+
+    // Content, copy, SEO texts
+    /texto.*debe.*(?:ser|mostrarse)/i,
+    /cambiar.*(?:el |la |los |las )?texto/i,
+    /mostrar.*en\s+español/i,
+    /título.*debe.*(?:ser|ir)/i,
+
+    // Temporary refactoring actions
+    /^(?:eliminar|borrar|quitar|mover|renombrar)\s/i,
+    /^(?:añadir|agregar)\s.*(?:a la tabla|al formulario|a la sección)/i,
+
+    // Overly specific to one screen/page
+    /en\s+(?:la sección|la modal|la pestaña|la card|la vista)\s/i,
+    /en\s+\/\w+/i,
+
+    // Database/table column specifics
+    /^(?:la tabla|campo|columna)\s+['"`]\w+['"`]/i,
+    /ALTER\s+TABLE/i,
+    /ADD\s+COLUMN/i,
+
+    // Toast/timeout/keyboard shortcuts
+    /duración\s+de\s+(?:toast|notificaci)/i,
+    /atajo\s+de\s+teclado/i,
+    /(?:Ctrl|Cmd)\s*\+\s*\w/i,
+
+    // Placeholder/preview size specifics
+    /previsualización.*\d+px/i,
+    /tamaño.*estático/i,
+    /ancho.*(?:máximo|fijo)/i,
+];
+
+/**
+ * Returns true if the content looks like noise (implementation detail, not a convention).
+ */
+function isNoiseEntry(content: string): boolean {
+    return NOISE_PATTERNS.some(pattern => pattern.test(content));
+}
+
+// =============================================================================
+// Semantic Deduplication (Jaccard similarity)
+// =============================================================================
+
+/**
+ * Tokenize text for Jaccard comparison.
+ * Removes short words, punctuation, normalizes to lowercase.
+ */
+function tokenize(text: string): Set<string> {
+    return new Set(
+        text
+            .toLowerCase()
+            .replace(/[^\w\sáéíóúñü]/g, "")
+            .split(/\s+/)
+            .filter((w) => w.length > 2),
+    );
+}
+
+/**
+ * Jaccard similarity coefficient between two strings.
+ * Returns a value between 0 (no overlap) and 1 (identical token sets).
+ */
+function jaccardSimilarity(a: string, b: string): number {
+    const tokensA = tokenize(a);
+    const tokensB = tokenize(b);
+
+    if (tokensA.size === 0 && tokensB.size === 0) return 1;
+    if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+    let intersection = 0;
+    for (const token of tokensA) {
+        if (tokensB.has(token)) intersection++;
+    }
+
+    const unionSize = tokensA.size + tokensB.size - intersection;
+    return unionSize === 0 ? 0 : intersection / unionSize;
+}
+
+/**
+ * Check if a new entry is semantically similar to any existing entry.
+ * Returns the matching existing entry if found, or null.
+ */
+function findSemanticDuplicate(
+    newContent: string,
+    existingEntries: { id: number; content: string; category: string }[],
+): { id: number; content: string; category: string } | null {
+    for (const existing of existingEntries) {
+        if (jaccardSimilarity(newContent, existing.content) >= JACCARD_DUPLICATE_THRESHOLD) {
+            return existing;
+        }
+    }
+    return null;
+}
+
+// =============================================================================
+// Knowledge Prompt Builder (Optimized v2)
 // =============================================================================
 
 /**
  * Builds a compressed knowledge base prompt from active entries.
- * Designed to be ultra-lightweight (<500 tokens typically).
+ * v2: Denser format, prioritizes rules, limits to top entries.
  */
 async function buildKnowledgePrompt(appId: number): Promise<string> {
     const entries = await db.query.knowledgeEntries.findMany({
@@ -34,30 +158,43 @@ async function buildKnowledgePrompt(appId: number): Promise<string> {
             eq(knowledgeEntries.enabled, true),
         ),
         orderBy: [desc(knowledgeEntries.confidence)],
+        limit: MAX_KNOWLEDGE_ENTRIES,
     });
 
     if (entries.length === 0) return "";
 
+    // Always include ALL rules regardless of limit
+    const rules = entries.filter((e) => e.category === "rule");
+    const rest = entries
+        .filter((e) => e.category !== "rule")
+        .slice(0, Math.max(30, MAX_KNOWLEDGE_ENTRIES - rules.length));
+    const finalEntries = [...rules, ...rest];
+
     // Group by category
     const grouped: Record<string, string[]> = {};
-    for (const entry of entries) {
+    for (const entry of finalEntries) {
         const cat = entry.category;
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(entry.content);
     }
 
-    // Build compressed prompt
+    // Build ultra-dense prompt
     let prompt = "<knowledge_base>\n";
-    prompt +=
-        "# Base de Conocimientos del Proyecto\n";
-    prompt +=
-        "Reglas y convenciones aprendidas. DEBES respetar SIEMPRE estas directivas:\n\n";
+    prompt += "# Reglas del Proyecto\n";
+    prompt += "DEBES respetar SIEMPRE estas directivas aprendidas:\n\n";
 
     for (const [category, items] of Object.entries(grouped)) {
         const label = CATEGORY_LABELS[category] || category;
-        prompt += `## ${label}\n`;
-        for (const item of items) {
-            prompt += `- ${item}\n`;
+        // Dense format: category line + pipe-separated items
+        if (items.length <= 3) {
+            prompt += `${label}\n`;
+            for (const item of items) {
+                prompt += `- ${item}\n`;
+            }
+        } else {
+            // Ultra-dense: single line with pipe separator for many items
+            prompt += `${label}\n`;
+            prompt += items.map((item) => `- ${item}`).join("\n") + "\n";
         }
         prompt += "\n";
     }
@@ -67,25 +204,28 @@ async function buildKnowledgePrompt(appId: number): Promise<string> {
 }
 
 // =============================================================================
-// AI-Powered Knowledge Extractor
+// AI-Powered Knowledge Extractor (v2 — with context awareness)
 // =============================================================================
 
 /**
  * Extracts potential knowledge entries from a chat interaction using AI.
- * Uses a fast, cheap model to synthesize user intent into structured knowledge.
- * Output is limited to 500 tokens to keep costs low.
+ * v2: Includes existing knowledge context, explicit exclusion rules,
+ * durability classification, and contradiction detection.
  */
 async function extractKnowledgeWithAI(
+    appId: number,
     userPrompt: string,
     assistantResponse: string,
-): Promise<Array<{
-    category: "convention" | "pattern" | "preference" | "rule" | "component";
-    content: string;
-    confidence: number;
-}>> {
-    logger.info("[KNOWLEDGE EXTRACTION] 🧠 Starting AI-powered knowledge extraction");
-    logger.debug("[KNOWLEDGE EXTRACTION] User prompt:", userPrompt.substring(0, 200));
-    logger.debug("[KNOWLEDGE EXTRACTION] Assistant response:", assistantResponse.substring(0, 200));
+): Promise<
+    Array<{
+        category: "convention" | "pattern" | "preference" | "rule" | "component";
+        content: string;
+        confidence: number;
+        durability: "permanent" | "project-phase" | "temporary";
+        replaces?: string;
+    }>
+> {
+    logger.info("[KNOWLEDGE v2] 🧠 Starting AI-powered knowledge extraction");
 
     try {
         const { readSettings } = await import("../../main/settings");
@@ -93,17 +233,28 @@ async function extractKnowledgeWithAI(
         const { streamText } = await import("ai");
 
         const settings = readSettings();
-        logger.info("[KNOWLEDGE EXTRACTION] ⚙️ Settings loaded");
 
-        // Use a fast, cheap model for extraction
-        // Default to selectedModel if no specific knowledgeExtractionModel is set
-        // This respects the user's OpenRouter multi-key setup
         const extractionModel = settings.selectedModel;
-
         const { modelClient } = await getModelClient(extractionModel, settings);
-        logger.info(`[KNOWLEDGE EXTRACTION] 🤖 Model client obtained: ${extractionModel.provider}/${extractionModel.name}`);
 
-        const extractionPrompt = `Analiza esta conversación entre un usuario y un asistente IA. Tu trabajo es extraer cualquier regla, convención, preferencia o conocimiento que el usuario quiera que la IA recuerde para futuras interacciones.
+        // Fetch existing knowledge to provide context
+        const existingEntries = await db.query.knowledgeEntries.findMany({
+            where: and(
+                eq(knowledgeEntries.appId, appId),
+                eq(knowledgeEntries.enabled, true),
+            ),
+            orderBy: [desc(knowledgeEntries.confidence)],
+            limit: 40,
+        });
+
+        const existingContext =
+            existingEntries.length > 0
+                ? existingEntries
+                    .map((e) => `- [${e.category}] ${e.content}`)
+                    .join("\n")
+                : "(vacío — aún no se ha aprendido nada)";
+
+        const extractionPrompt = `Analiza esta conversación y extrae SOLO conocimiento que sea una CONVENCIÓN ESTABLE del proyecto. Tu trabajo es muy selectivo: solo extraer reglas, patrones o preferencias que deban recordarse permanentemente.
 
 **USUARIO:**
 ${userPrompt}
@@ -113,33 +264,56 @@ ${assistantResponse.substring(0, 2000)}${assistantResponse.length > 2000 ? "..."
 
 ---
 
-**CATEGORÍAS:**
-- **convention** (Convención): Estándares de código del proyecto (ej: "usar camelCase", "imports al inicio")
-- **pattern** (Patrón): Patrones de diseño recurrentes (ej: "estructura de carpetas específica", "siempre validar entradas")
-- **preference** (Preferencia): Preferencias de estilo y herramientas (ej: "textos cortos", "evitar async/await cuando no sea necesario")
-- **rule** (Regla): Cosas que NUNCA hacer (ej: "NUNCA borrar la base de datos", "no usar var")
-- **component** (Componente): Componentes propios a usar siempre (ej: "usar nuestro Dialog en vez de confirm()")
+**CONOCIMIENTO YA EXISTENTE EN EL PROYECTO:**
+${existingContext}
 
-**INSTRUCCIONES:**
-1. Detecta si el usuario está expresando algo que quiere que se recuerde (ej: "siempre usa X", "quiero usar Y", "nunca hagas Z", "busca X porque siempre quiero usar Y")
-2. Si NO hay nada que recordar, devuelve un array vacío: []
-3. Si SÍ hay conocimiento, devuelve un array JSON con objetos que tengan:
-   - "category": una de las 5 categorías
-   - "content": frase corta y clara (máx 150 caracteres) en español, SIN comillas extras
-   - "confidence": número del 1-100 (qué tan seguro estás de que esto es importante)
+---
+
+**CATEGORÍAS:**
+- **convention**: Estándares de código permanentes (ej: "camelCase para archivos TSX", "imports organizados por tipo")
+- **pattern**: Patrones arquitectónicos recurrentes (ej: "usar React Query para todas las peticiones")
+- **preference**: Preferencias estables del desarrollador (ej: "evitar Tailwind, usar CSS puro")
+- **rule**: Prohibiciones absolutas (ej: "NUNCA usar any", "NUNCA usar alert() nativo")
+- **component**: Componentes propios obligatorios (ej: "usar Dialog propio en vez de confirm()")
+
+**QUÉ NO EXTRAER (NUNCA):**
+- ❌ Rutas de archivos o imports específicos (ej: "importar desde ../../shared/")
+- ❌ Medidas CSS o valores pixel concretos (ej: "botón de 56px", "max-w-sm")
+- ❌ Layouts o disposiciones de columnas de una pantalla específica
+- ❌ Nombres de campos de base de datos, tablas concretas o esquemas SQL
+- ❌ Textos de contenido, copy, SEO o traducciones específicas
+- ❌ Cambios temporales de refactoring (ej: "eliminar sección X", "renombrar Y a Z")
+- ❌ Diseño visual para una pantalla particular (ej: "centrar verticalmente icono del calendario")
+- ❌ Configuraciones de duración de toasts, atajos de teclado, tamaños de preview
+- ❌ Cualquier cosa que sea un DETALLE DE IMPLEMENTACIÓN y no una CONVENCIÓN
+- ❌ Instrucciones que solo aplican a una tarea puntual en curso
+- ❌ Estructura de formularios/secciones de una página concreta del admin
+- ❌ Algo que ya existe en el conocimiento actual (ni paráfrasis del mismo concepto)
+
+**DURABILIDAD:**
+Para cada entrada, clasifica su durabilidad:
+- "permanent": Convención estable que no cambiará (ej: "usar TypeScript estricto")
+- "project-phase": Aplica durante una fase del proyecto pero puede cambiar (ej: "usar Supabase v2 API")
+- "temporary": Decisión puntual que probablemente cambiará (ESTAS NO SE DEBEN EXTRAER)
+
+**CONTRADICCIONES:**
+Si detectas que una nueva regla CONTRADICE algo del conocimiento existente, incluye el campo "replaces" con el texto exacto de la entrada existente que debería reemplazarse.
 
 **FORMATO DE SALIDA (solo JSON, sin markdown):**
 [
-  {"category": "preference", "content": "Usar siempre textos cortos y concisos", "confidence": 95},
-  {"category": "rule", "content": "Nunca eliminar datos sin confirmación explícita", "confidence": 100}
+  {"category": "rule", "content": "Nunca usar any en TypeScript", "confidence": 95, "durability": "permanent"},
+  {"category": "pattern", "content": "Usar React Query para todas las peticiones API", "confidence": 90, "durability": "permanent", "replaces": "Usar fetch directo para las peticiones"}
 ]
 
 **IMPORTANTE:**
-- Solo extraer conocimiento EXPLÍCITO (no inventes preferencias)
-- Mantén cada "content" claro, corto y accionable
-- Si el usuario solo hace una pregunta normal, devuelve []`;
+- MÁXIMO 2 entradas por conversación (sé muy selectivo)
+- Solo extraer conocimiento EXPLÍCITO (no inventes preferencias implícitas)
+- Mantén cada "content" claro, corto y accionable (máx 120 caracteres)
+- Si el usuario solo hace una pregunta normal o pide cambios puntuales, devuelve []
+- Si no hay nada que CLARAMENTE sea una convención estable, devuelve []
+- Duda = no extraer. Menos es más.`;
 
-        logger.info("[KNOWLEDGE EXTRACTION] 📤 Sending request to AI...");
+        logger.info("[KNOWLEDGE v2] 📤 Sending request to AI...");
         const result = await streamText({
             model: modelClient.model,
             messages: [
@@ -148,8 +322,8 @@ ${assistantResponse.substring(0, 2000)}${assistantResponse.length > 2000 ? "..."
                     content: extractionPrompt,
                 },
             ],
-            maxOutputTokens: 500,
-            temperature: 0.3, // Low temperature for consistent extraction
+            maxOutputTokens: 400,
+            temperature: 0.2, // Even lower temperature for v2
         });
 
         let fullResponse = "";
@@ -157,33 +331,32 @@ ${assistantResponse.substring(0, 2000)}${assistantResponse.length > 2000 ? "..."
             fullResponse += chunk;
         }
 
-        logger.info("[KNOWLEDGE EXTRACTION] 📥 AI response received:");
-        logger.debug("[KNOWLEDGE EXTRACTION] Full response:", fullResponse);
+        logger.info("[KNOWLEDGE v2] 📥 AI response received");
+        logger.debug("[KNOWLEDGE v2] Full response:", fullResponse);
 
         // Parse JSON response
         const jsonMatch = fullResponse.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
-            logger.warn("[KNOWLEDGE EXTRACTION] ❌ No JSON array found in response");
-            logger.debug("[KNOWLEDGE EXTRACTION] Response was:", fullResponse);
+            logger.info("[KNOWLEDGE v2] ℹ️ No JSON found — nothing to extract");
             return [];
         }
 
-        logger.info("[KNOWLEDGE EXTRACTION] ✅ JSON array found, parsing...");
         const parsed = JSON.parse(jsonMatch[0]);
-        logger.debug("[KNOWLEDGE EXTRACTION] Parsed JSON:", JSON.stringify(parsed, null, 2));
-
         if (!Array.isArray(parsed)) {
-            logger.warn("[KNOWLEDGE EXTRACTION] ❌ Parsed result is not an array");
+            logger.warn("[KNOWLEDGE v2] ❌ Parsed result is not an array");
             return [];
         }
 
-        // Validate and normalize
+        // Validate, normalize, and filter
+        const validCategories = ["convention", "pattern", "preference", "rule", "component"];
+        const validDurabilities = ["permanent", "project-phase", "temporary"];
+
         const validated = parsed
             .filter((item: any) => {
                 return (
                     item &&
                     typeof item === "object" &&
-                    ["convention", "pattern", "preference", "rule", "component"].includes(item.category) &&
+                    validCategories.includes(item.category) &&
                     typeof item.content === "string" &&
                     item.content.length > 5 &&
                     item.content.length < 200 &&
@@ -193,21 +366,217 @@ ${assistantResponse.substring(0, 2000)}${assistantResponse.length > 2000 ? "..."
                 );
             })
             .map((item: any) => ({
-                category: item.category,
+                category: item.category as "convention" | "pattern" | "preference" | "rule" | "component",
                 content: item.content.trim(),
                 confidence: Math.round(item.confidence),
-            }));
+                durability: (validDurabilities.includes(item.durability) ? item.durability : "permanent") as
+                    | "permanent"
+                    | "project-phase"
+                    | "temporary",
+                replaces: typeof item.replaces === "string" ? item.replaces.trim() : undefined,
+            }))
+            // Filter out temporary durability entries
+            .filter((item) => item.durability !== "temporary")
+            // Filter out noise via heuristic patterns
+            .filter((item) => {
+                if (isNoiseEntry(item.content)) {
+                    logger.info(`[KNOWLEDGE v2] 🗑️ Filtered noise: "${item.content}"`);
+                    return false;
+                }
+                return true;
+            })
+            // Hard limit: max 2 entries per extraction
+            .slice(0, 2);
 
-        logger.info(`[KNOWLEDGE EXTRACTION] ✅ Validated ${validated.length} knowledge entries`);
+        logger.info(`[KNOWLEDGE v2] ✅ Validated ${validated.length} knowledge entries`);
         if (validated.length > 0) {
-            logger.info("[KNOWLEDGE EXTRACTION] 📝 Extracted entries:", JSON.stringify(validated, null, 2));
-        } else {
-            logger.info("[KNOWLEDGE EXTRACTION] ℹ️ No valid knowledge entries found");
+            logger.info(
+                "[KNOWLEDGE v2] 📝 Extracted entries:",
+                JSON.stringify(validated, null, 2),
+            );
         }
         return validated;
     } catch (error) {
-        logger.error("[KNOWLEDGE EXTRACTION] ❌ Error during extraction:", error);
+        logger.error("[KNOWLEDGE v2] ❌ Error during extraction:", error);
         return [];
+    }
+}
+
+// =============================================================================
+// Confidence Decay — Reduce confidence of unconfirmed auto-extracted entries
+// =============================================================================
+
+/**
+ * Decays confidence of auto-extracted entries that haven't been manually
+ * confirmed within the decay interval. Called on app open or periodically.
+ */
+async function decayUnconfirmedKnowledge(appId: number): Promise<number> {
+    const cutoffMs = Date.now() - CONFIDENCE_DECAY_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
+    const cutoffTimestamp = Math.floor(cutoffMs / 1000);
+
+    try {
+        // Find entries eligible for decay
+        const eligibleEntries = await db.query.knowledgeEntries.findMany({
+            where: and(
+                eq(knowledgeEntries.appId, appId),
+                eq(knowledgeEntries.source, "auto-extracted"),
+                eq(knowledgeEntries.enabled, true),
+            ),
+        });
+
+        let decayedCount = 0;
+        for (const entry of eligibleEntries) {
+            // Use lastConfirmedAt if available, otherwise updatedAt
+            const lastTouched = (entry as any).lastConfirmedAt || entry.updatedAt;
+            const lastTouchedTs =
+                typeof lastTouched === "number"
+                    ? lastTouched
+                    : lastTouched instanceof Date
+                        ? Math.floor(lastTouched.getTime() / 1000)
+                        : 0;
+
+            if (lastTouchedTs < cutoffTimestamp && entry.confidence > CONFIDENCE_FLOOR) {
+                const newConfidence = Math.max(entry.confidence - CONFIDENCE_DECAY_AMOUNT, CONFIDENCE_FLOOR);
+                await db
+                    .update(knowledgeEntries)
+                    .set({ confidence: newConfidence })
+                    .where(eq(knowledgeEntries.id, entry.id));
+                decayedCount++;
+            }
+        }
+
+        if (decayedCount > 0) {
+            logger.info(
+                `[KNOWLEDGE DECAY] Decayed confidence for ${decayedCount} unconfirmed entries (app ${appId})`,
+            );
+        }
+        return decayedCount;
+    } catch (error) {
+        logger.error("[KNOWLEDGE DECAY] Error:", error);
+        return 0;
+    }
+}
+
+// =============================================================================
+// Entry Cap Enforcement
+// =============================================================================
+
+/**
+ * Ensures the number of active entries doesn't exceed MAX_KNOWLEDGE_ENTRIES.
+ * Disables the lowest-confidence entries if the limit is exceeded.
+ */
+async function enforceEntryCap(appId: number): Promise<number> {
+    try {
+        const activeEntries = await db.query.knowledgeEntries.findMany({
+            where: and(
+                eq(knowledgeEntries.appId, appId),
+                eq(knowledgeEntries.enabled, true),
+            ),
+            orderBy: [desc(knowledgeEntries.confidence)],
+        });
+
+        if (activeEntries.length <= MAX_KNOWLEDGE_ENTRIES) return 0;
+
+        const toDisable = activeEntries.slice(MAX_KNOWLEDGE_ENTRIES);
+        for (const entry of toDisable) {
+            await db
+                .update(knowledgeEntries)
+                .set({ enabled: false })
+                .where(eq(knowledgeEntries.id, entry.id));
+        }
+
+        logger.info(
+            `[KNOWLEDGE CAP] Disabled ${toDisable.length} entries exceeding cap of ${MAX_KNOWLEDGE_ENTRIES} (app ${appId})`,
+        );
+        return toDisable.length;
+    } catch (error) {
+        logger.error("[KNOWLEDGE CAP] Error:", error);
+        return 0;
+    }
+}
+
+// =============================================================================
+// AI-Powered Cleanup — Analyze all entries and suggest removals
+// =============================================================================
+
+/**
+ * Uses AI to analyze all active entries and identify noise, redundancies,
+ * and contradictions. Returns categorized suggestions.
+ */
+async function analyzeKnowledgeHealth(
+    appId: number,
+): Promise<{
+    noise: number[];
+    redundant: Array<{ keep: number; remove: number[] }>;
+    contradictions: Array<{ entryA: number; entryB: number }>;
+}> {
+    const defaultResult = { noise: [], redundant: [], contradictions: [] };
+
+    try {
+        const { readSettings } = await import("../../main/settings");
+        const { getModelClient } = await import("../utils/get_model_client");
+        const { streamText } = await import("ai");
+
+        const settings = readSettings();
+        const { modelClient } = await getModelClient(settings.selectedModel, settings);
+
+        const entries = await db.query.knowledgeEntries.findMany({
+            where: and(
+                eq(knowledgeEntries.appId, appId),
+                eq(knowledgeEntries.enabled, true),
+            ),
+            orderBy: [desc(knowledgeEntries.confidence)],
+        });
+
+        if (entries.length < 3) return defaultResult;
+
+        const entriesList = entries
+            .map((e) => `[ID:${e.id}] [${e.category}] ${e.content}`)
+            .join("\n");
+
+        const prompt = `Analiza estas entradas de base de conocimientos de un proyecto de software y devuelve un análisis de calidad.
+
+**ENTRADAS ACTUALES:**
+${entriesList}
+
+Busca:
+1. **Ruido**: Entradas que NO son convenciones estables (detalles de implementación, rutas de archivos, medidas CSS, textos de contenido, decisiones temporales de refactoring, layouts de una pantalla concreta)
+2. **Redundancias**: Entradas que dicen lo mismo con diferentes palabras
+3. **Contradicciones**: Entradas que se contradicen entre sí
+
+**FORMATO DE SALIDA (solo JSON):**
+{
+  "noise": [1, 5, 12],
+  "redundant": [{"keep": 3, "remove": [7, 15]}],
+  "contradictions": [{"entryA": 2, "entryB": 8}]
+}
+
+Si todo parece limpio, devuelve: {"noise": [], "redundant": [], "contradictions": []}`;
+
+        const result = await streamText({
+            model: modelClient.model,
+            messages: [{ role: "user", content: prompt }],
+            maxOutputTokens: 600,
+            temperature: 0.1,
+        });
+
+        let fullResponse = "";
+        for await (const chunk of result.textStream) {
+            fullResponse += chunk;
+        }
+
+        const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return defaultResult;
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+            noise: Array.isArray(parsed.noise) ? parsed.noise.filter((n: any) => typeof n === "number") : [],
+            redundant: Array.isArray(parsed.redundant) ? parsed.redundant : [],
+            contradictions: Array.isArray(parsed.contradictions) ? parsed.contradictions : [],
+        };
+    } catch (error) {
+        logger.error("[KNOWLEDGE HEALTH] Error:", error);
+        return defaultResult;
     }
 }
 
@@ -256,6 +625,8 @@ export function registerKnowledgeHandlers() {
             if (params.enabled !== undefined) updateData.enabled = params.enabled;
 
             if (Object.keys(updateData).length > 0) {
+                // When user manually edits, update lastConfirmedAt
+                updateData.lastConfirmedAt = sql`(unixepoch())`;
                 await db
                     .update(knowledgeEntries)
                     .set(updateData)
@@ -286,28 +657,58 @@ export function registerKnowledgeHandlers() {
             const { appId, assistantResponse, userPrompt } = params;
 
             const candidates = await extractKnowledgeWithAI(
+                appId,
                 userPrompt,
                 assistantResponse,
             );
 
             if (candidates.length === 0) return [];
 
-            // Check for duplicates against existing entries
+            // Get existing entries for semantic dedup
             const existing = await db.query.knowledgeEntries.findMany({
                 where: eq(knowledgeEntries.appId, appId),
             });
 
-            const existingContents = new Set(
-                existing.map((e) => e.content.toLowerCase()),
-            );
+            const newEntries: typeof candidates = [];
+            for (const candidate of candidates) {
+                // Check semantic similarity against ALL existing entries
+                const duplicate = findSemanticDuplicate(
+                    candidate.content,
+                    existing.map((e) => ({ id: e.id, content: e.content, category: e.category })),
+                );
 
-            const newEntries = candidates.filter(
-                (c) => !existingContents.has(c.content.toLowerCase()),
-            );
+                if (duplicate) {
+                    logger.info(
+                        `[KNOWLEDGE v2] 🔄 Duplicate detected: "${candidate.content}" ≈ "${duplicate.content}"`,
+                    );
+                    continue;
+                }
+
+                // Handle contradictions (replaces field)
+                if (candidate.replaces) {
+                    const contradicted = existing.find(
+                        (e) => jaccardSimilarity(e.content, candidate.replaces!) >= 0.5,
+                    );
+                    if (contradicted) {
+                        logger.info(
+                            `[KNOWLEDGE v2] ⚡ Contradiction: "${candidate.content}" replaces "${contradicted.content}" (ID: ${contradicted.id})`,
+                        );
+                        await db
+                            .update(knowledgeEntries)
+                            .set({
+                                enabled: false,
+                                supersededBy: null, // Will be set after insert
+                            })
+                            .where(eq(knowledgeEntries.id, contradicted.id));
+                    }
+                }
+
+                newEntries.push(candidate);
+            }
 
             if (newEntries.length === 0) return [];
 
-            // Insert new entries
+            // Determine if entries go active or pending review
             const inserted = await db
                 .insert(knowledgeEntries)
                 .values(
@@ -317,61 +718,161 @@ export function registerKnowledgeHandlers() {
                         content: entry.content,
                         source: "auto-extracted" as const,
                         confidence: entry.confidence,
+                        // project-phase entries start disabled for review
+                        enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
+                        durability: entry.durability,
                     })),
                 )
                 .returning();
 
+            // Enforce entry cap after insertion
+            await enforceEntryCap(appId);
+
             logger.info(
-                `Auto-extracted ${inserted.length} knowledge entries for app ${appId}`,
+                `[KNOWLEDGE v2] ✅ Saved ${inserted.length} entries for app ${appId} (${inserted.filter((e) => e.enabled).length} active, ${inserted.filter((e) => !e.enabled).length} pending review)`,
             );
 
             return inserted;
         },
     );
 
-    logger.debug("Registered knowledge base IPC handlers");
+    // New handler: Decay unconfirmed knowledge
+    createTypedHandler(
+        knowledgeContracts.decayKnowledge,
+        async (_, appId) => {
+            const decayedCount = await decayUnconfirmedKnowledge(appId);
+            return decayedCount;
+        },
+    );
+
+    // New handler: Analyze knowledge health
+    createTypedHandler(
+        knowledgeContracts.analyzeKnowledgeHealth,
+        async (_, appId) => {
+            return analyzeKnowledgeHealth(appId);
+        },
+    );
+
+    // New handler: Bulk cleanup (disable entries by IDs)
+    createTypedHandler(
+        knowledgeContracts.bulkDisableKnowledge,
+        async (_, params) => {
+            const { entryIds } = params;
+            let count = 0;
+            for (const id of entryIds) {
+                await db
+                    .update(knowledgeEntries)
+                    .set({ enabled: false })
+                    .where(eq(knowledgeEntries.id, id));
+                count++;
+            }
+            logger.info(`[KNOWLEDGE CLEANUP] Disabled ${count} entries`);
+            return count;
+        },
+    );
+
+    // New handler: Bulk approve pending entries
+    createTypedHandler(
+        knowledgeContracts.bulkApproveKnowledge,
+        async (_, params) => {
+            const { entryIds } = params;
+            let count = 0;
+            for (const id of entryIds) {
+                await db
+                    .update(knowledgeEntries)
+                    .set({
+                        enabled: true,
+                        confidence: 100,
+                        source: "manual" as const,
+                        lastConfirmedAt: sql`(unixepoch())`,
+                    })
+                    .where(eq(knowledgeEntries.id, id));
+                count++;
+            }
+            // Enforce cap after bulk approve
+            const appIdResult = await db.query.knowledgeEntries.findFirst({
+                where: eq(knowledgeEntries.id, entryIds[0]),
+            });
+            if (appIdResult) {
+                await enforceEntryCap(appIdResult.appId);
+            }
+            logger.info(`[KNOWLEDGE APPROVE] Approved ${count} entries`);
+            return count;
+        },
+    );
+
+    logger.debug("Registered knowledge base v2 IPC handlers");
 }
+
+// =============================================================================
+// Auto-extraction (Fire-and-forget)
+// =============================================================================
 
 /**
  * Fire-and-forget auto-extraction of knowledge from a chat interaction.
- * Safe to call without awaiting - errors are caught and logged silently.
+ * v2: Includes appId for context-aware extraction.
  */
 async function autoExtractKnowledge(
     appId: number,
     userPrompt: string,
     assistantResponse: string,
 ): Promise<void> {
-    logger.info(`[AUTO-EXTRACT] 🚀 Starting auto-extraction for appId=${appId}`);
+    logger.info(`[AUTO-EXTRACT v2] 🚀 Starting for appId=${appId}`);
     try {
         const candidates = await extractKnowledgeWithAI(
+            appId,
             userPrompt,
             assistantResponse,
         );
 
         if (candidates.length === 0) {
-            logger.info("[AUTO-EXTRACT] ℹ️ No candidates to save, exiting");
+            logger.info("[AUTO-EXTRACT v2] ℹ️ No candidates to save");
             return;
         }
 
-        // Check for duplicates
+        // Get existing entries for semantic dedup
         const existing = await db.query.knowledgeEntries.findMany({
             where: eq(knowledgeEntries.appId, appId),
         });
 
-        const existingContents = new Set(
-            existing.map((e) => e.content.toLowerCase()),
-        );
+        const newEntries: typeof candidates = [];
+        for (const candidate of candidates) {
+            const duplicate = findSemanticDuplicate(
+                candidate.content,
+                existing.map((e) => ({ id: e.id, content: e.content, category: e.category })),
+            );
 
-        const newEntries = candidates.filter(
-            (c) => !existingContents.has(c.content.toLowerCase()),
-        );
+            if (duplicate) {
+                logger.info(
+                    `[AUTO-EXTRACT v2] 🔄 Skipping duplicate: "${candidate.content}" ≈ "${duplicate.content}"`,
+                );
+                continue;
+            }
+
+            // Handle contradictions
+            if (candidate.replaces) {
+                const contradicted = existing.find(
+                    (e) => jaccardSimilarity(e.content, candidate.replaces!) >= 0.5,
+                );
+                if (contradicted) {
+                    logger.info(
+                        `[AUTO-EXTRACT v2] ⚡ Superseding: "${contradicted.content}" → "${candidate.content}"`,
+                    );
+                    await db
+                        .update(knowledgeEntries)
+                        .set({ enabled: false })
+                        .where(eq(knowledgeEntries.id, contradicted.id));
+                }
+            }
+
+            newEntries.push(candidate);
+        }
 
         if (newEntries.length === 0) {
-            logger.info("[AUTO-EXTRACT] ℹ️ All extracted knowledge entries already exist (duplicates filtered)");
+            logger.info("[AUTO-EXTRACT v2] ℹ️ All candidates filtered out");
             return;
         }
 
-        logger.info(`[AUTO-EXTRACT] 💾 Saving ${newEntries.length} new entries to database...`);
         await db.insert(knowledgeEntries).values(
             newEntries.map((entry) => ({
                 appId,
@@ -379,20 +880,22 @@ async function autoExtractKnowledge(
                 content: entry.content,
                 source: "auto-extracted" as const,
                 confidence: entry.confidence,
+                enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
+                durability: entry.durability,
             })),
         );
 
-        const totalEntries = await db.query.knowledgeEntries.findMany({
-            where: eq(knowledgeEntries.appId, appId),
-        });
+        // Enforce entry cap
+        await enforceEntryCap(appId);
+
+        // Run decay while we're at it
+        await decayUnconfirmedKnowledge(appId);
 
         logger.info(
-            `[AUTO-EXTRACT] ✅ Successfully saved ${newEntries.length} new knowledge entries. Total entries for app ${appId}: ${totalEntries.length}`,
+            `[AUTO-EXTRACT v2] ✅ Saved ${newEntries.length} new entries`,
         );
-        logger.debug("[AUTO-EXTRACT] Saved entries:", JSON.stringify(newEntries, null, 2));
     } catch (error) {
-        // Never crash the chat flow due to knowledge extraction
-        logger.error("[AUTO-EXTRACT] ❌ Failed (non-fatal):", error);
+        logger.error("[AUTO-EXTRACT v2] ❌ Failed (non-fatal):", error);
     }
 }
 

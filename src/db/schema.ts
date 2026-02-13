@@ -470,6 +470,14 @@ export const knowledgeEntries = sqliteTable("knowledge_entries", {
   confidence: integer("confidence").notNull().default(100),
   // Whether the entry is active (can be soft-disabled)
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  // v2: Durability classification
+  durability: text("durability", {
+    enum: ["permanent", "project-phase", "temporary"],
+  }).default("permanent"),
+  // v2: If this entry was superseded by another entry
+  supersededBy: integer("superseded_by"),
+  // v2: When the user last manually confirmed/edited this entry
+  lastConfirmedAt: integer("last_confirmed_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
