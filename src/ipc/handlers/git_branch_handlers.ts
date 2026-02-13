@@ -18,7 +18,11 @@ import {
   isGitRebaseInProgress,
   getGitUncommittedFilesWithStatus,
   gitAddAll,
+  gitAdd,
+  gitReset,
+  gitResetFile,
   gitCommit,
+  gitDiffFile,
 } from "../utils/git_utils";
 import { getDyadAppPath } from "../../paths/paths";
 import { db } from "../../db";
@@ -165,7 +169,7 @@ async function handleSwitchBranch(
     ) {
       throw new Error(
         `Failed to switch branch: uncommitted changes detected. ` +
-          "Please commit or stash your changes manually and try again.",
+        "Please commit or stash your changes manually and try again.",
       );
     }
     throw checkoutError;
@@ -270,7 +274,7 @@ async function handleMergeBranch(
     ) {
       throw new Error(
         `Failed to merge branch: uncommitted changes detected. ` +
-          "Please commit or stash your changes manually and try again.",
+        "Please commit or stash your changes manually and try again.",
       );
     }
 
@@ -317,7 +321,7 @@ async function handleGetUncommittedFiles(
 
 async function handleCommitChanges(
   event: IpcMainInvokeEvent,
-  { appId, message }: { appId: number; message: string },
+  { appId, message, filesToStage }: { appId: number; message: string; filesToStage?: string[] },
 ): Promise<string> {
   const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
   if (!app) throw new Error("App not found");
@@ -339,14 +343,72 @@ async function handleCommitChanges(
       );
     }
 
-    // Stage all changes
-    await gitAddAll({ path: appPath });
+    // Selective staging: if filesToStage is provided, stage only those files
+    if (filesToStage && filesToStage.length > 0) {
+      for (const filepath of filesToStage) {
+        await gitAdd({ path: appPath, filepath });
+      }
+    } else {
+      // Stage all changes (default behavior)
+      await gitAddAll({ path: appPath });
+    }
 
     // Commit with the provided message
     const commitHash = await gitCommit({ path: appPath, message });
 
     return commitHash;
   });
+}
+
+// --- Git Stage/Unstage Handlers ---
+async function handleStageFile(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+): Promise<void> {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+  await gitAdd({ path: appPath, filepath });
+}
+
+async function handleUnstageFile(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+): Promise<void> {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+  await gitResetFile({ path: appPath, filepath });
+}
+
+async function handleStageAll(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+): Promise<void> {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+  await gitAddAll({ path: appPath });
+}
+
+async function handleUnstageAll(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+): Promise<void> {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+  await gitReset({ path: appPath });
+}
+
+async function handleGetFileDiff(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+): Promise<{ additions: number; deletions: number; diff: string }> {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+  return gitDiffFile({ path: appPath, filepath });
 }
 
 // --- GitHub Pull Handler ---
@@ -420,4 +482,9 @@ export function registerGithubBranchHandlers() {
     handleGetUncommittedFiles,
   );
   createTypedHandler(gitContracts.commitChanges, handleCommitChanges);
+  createTypedHandler(gitContracts.stageFile, handleStageFile);
+  createTypedHandler(gitContracts.unstageFile, handleUnstageFile);
+  createTypedHandler(gitContracts.stageAll, handleStageAll);
+  createTypedHandler(gitContracts.unstageAll, handleUnstageAll);
+  createTypedHandler(gitContracts.getFileDiff, handleGetFileDiff);
 }

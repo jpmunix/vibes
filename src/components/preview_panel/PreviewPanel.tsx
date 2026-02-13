@@ -20,6 +20,7 @@ import { PublishPanel } from "./PublishPanel";
 import { SecurityPanel } from "./SecurityPanel";
 import { useSupabase } from "@/hooks/useSupabase";
 import { VersionPane } from "../chat/VersionPane";
+import { GitPanel } from "../GitPanel";
 import { cn } from "@/lib/utils";
 
 interface ConsoleHeaderProps {
@@ -191,6 +192,10 @@ export function PreviewPanel() {
               {previewMode === "versions" ? (
                 <VersionPane
                   isVisible={true}
+                  onClose={() => setPreviewMode("preview")}
+                />
+              ) : previewMode === "git" ? (
+                <GitPanel
                   onClose={() => setPreviewMode("preview")}
                 />
               ) : previewMode === "preview" ? (

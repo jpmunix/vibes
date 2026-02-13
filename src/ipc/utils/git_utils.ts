@@ -445,7 +445,31 @@ export async function gitReset({ path }: GitBaseParams): Promise<void> {
     // If needed, users can manually reset via command line or enable native git
     throw new Error(
       "gitReset: Resetting the staging area is not fully supported when native git is disabled. " +
-        "Please enable native git or manually unstage files using 'git reset HEAD'.",
+      "Please enable native git or manually unstage files using 'git reset HEAD'.",
+    );
+  }
+}
+
+/**
+ * Unstage a single file from the staging area (git reset HEAD -- filepath).
+ * The file remains modified in the working directory.
+ */
+export async function gitResetFile({
+  path,
+  filepath,
+}: GitFileParams): Promise<void> {
+  const normalizedFilepath = normalizePath(filepath);
+  const settings = readSettings();
+  if (settings.enableNativeGit) {
+    await execOrThrow(
+      ["reset", "HEAD", "--", normalizedFilepath],
+      path,
+      `Failed to unstage file '${normalizedFilepath}'`,
+    );
+  } else {
+    throw new Error(
+      "gitResetFile: Unstaging individual files is not supported when native git is disabled. " +
+      "Please enable native git.",
     );
   }
 }
@@ -793,9 +817,9 @@ export async function gitClone({
       url: cleanUrl,
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
       singleBranch,
       depth: depth ?? undefined,
@@ -895,11 +919,11 @@ export async function gitPush({
   if (forceWithLease) {
     logger.warn(
       "gitPush: 'forceWithLease' requested but not supported when native git is disabled. " +
-        "Rejecting push to prevent unsafe force operation.",
+      "Rejecting push to prevent unsafe force operation.",
     );
     throw new Error(
       "gitPush: 'forceWithLease' is not supported when native git is disabled. " +
-        "Falling back to plain force could overwrite remote commits. Enable native git.",
+      "Falling back to plain force could overwrite remote commits. Enable native git.",
     );
   }
   await git.push({
@@ -911,9 +935,9 @@ export async function gitPush({
     remoteRef: targetBranch,
     onAuth: accessToken
       ? () => ({
-          username: accessToken,
-          password: "x-oauth-basic",
-        })
+        username: accessToken,
+        password: "x-oauth-basic",
+      })
       : undefined,
     force: !!force,
   });
@@ -1168,9 +1192,9 @@ export async function gitFetch({
       remote,
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
     });
   }
@@ -1244,9 +1268,9 @@ export async function gitPull({
       author: author || (await getGitAuthor()),
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
     });
     // Check for conflicts even if pull succeeded (isomorphic-git may not throw on conflicts)
@@ -1333,7 +1357,7 @@ export async function gitCreateBranch({
   if (from !== "HEAD") {
     throw new Error(
       `gitCreateBranch: 'from' is not supported when native git is disabled (from=${from}). ` +
-        `Branches would be created from HEAD instead.`,
+      `Branches would be created from HEAD instead.`,
     );
   }
   await git.branch({

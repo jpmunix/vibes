@@ -352,6 +352,40 @@ export const gitContracts = {
     input: CommitChangesParamsSchema,
     output: z.string(), // Returns commit hash
   }),
+
+  stageFile: defineContract({
+    channel: "git:stage-file",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.void(),
+  }),
+
+  unstageFile: defineContract({
+    channel: "git:unstage-file",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.void(),
+  }),
+
+  stageAll: defineContract({
+    channel: "git:stage-all",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  unstageAll: defineContract({
+    channel: "git:unstage-all",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  getFileDiff: defineContract({
+    channel: "git:get-file-diff",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({
+      additions: z.number(),
+      deletions: z.number(),
+      diff: z.string(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

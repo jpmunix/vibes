@@ -15,6 +15,7 @@ export const previewModeAtom = atom<
   | "publish"
   | "security"
   | "versions"
+  | "git"
 >("preview");
 export const selectedVersionIdAtom = atom<string | null>(null);
 
