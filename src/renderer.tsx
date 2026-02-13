@@ -272,12 +272,30 @@ function App() {
   return <RouterProvider router={router} />;
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <PostHogProvider client={posthogClient}>
-        <App />
-      </PostHogProvider>
-    </QueryClientProvider>
-  </StrictMode>,
-);
+// Check if this is a pop-out database window
+const urlParams = new URLSearchParams(window.location.search);
+const windowType = urlParams.get("window");
+const appIdStr = urlParams.get("appId");
+
+if (windowType === "database" && appIdStr) {
+  // Lazy import to avoid loading full app dependencies
+  import("./components/database/DatabaseWindowApp").then(
+    ({ DatabaseWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <DatabaseWindowApp appId={Number(appIdStr)} />
+        </StrictMode>,
+      );
+    },
+  );
+} else {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <PostHogProvider client={posthogClient}>
+          <App />
+        </PostHogProvider>
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}

@@ -286,6 +286,13 @@ export const systemContracts = {
     input: z.void(),
     output: OpenRouterCreditsSchema,
   }),
+
+  // Database viewer window
+  openDatabaseWindow: defineContract({
+    channel: "window:open-database",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================

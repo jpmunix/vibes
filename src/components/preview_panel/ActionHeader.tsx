@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
-import { previewModeAtom, selectedAppIdAtom } from "../../atoms/appAtoms";
+import { previewModeAtom, selectedAppIdAtom, currentAppAtom } from "../../atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 
 import {
@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Hammer,
   ChevronDown,
+  Database,
 } from "lucide-react";
 import { ChatActivityButton } from "@/components/chat/ChatActivity";
 import { motion } from "framer-motion";
@@ -48,7 +49,8 @@ export type PreviewMode =
   | "publish"
   | "security"
   | "versions"
-  | "git";
+  | "git"
+  | "database";
 
 // Which top-level group a mode belongs to
 type MenuGroup = "preview" | "code" | "configure";
@@ -61,6 +63,7 @@ const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
   security: "code",
   versions: "code",
   git: "code",
+  database: "code",
   configure: "configure",
 };
 
@@ -77,6 +80,8 @@ export const ActionHeader = ({
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const currentApp = useAtomValue(currentAppAtom);
+  const hasSupabase = Boolean(currentApp?.supabaseProjectId);
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);
@@ -212,6 +217,8 @@ export const ActionHeader = ({
         return { icon: <Shield size={iconSize} />, label: "Seguridad" };
       case "git":
         return { icon: <GitBranch size={iconSize} />, label: "Git" };
+      case "database":
+        return { icon: <Database size={iconSize} />, label: "Base de datos" };
       default:
         return { icon: <Code size={iconSize} />, label: "Código" };
     }
@@ -377,6 +384,15 @@ export const ActionHeader = ({
                 <GitBranch size={14} />
                 <span>Git</span>
               </DropdownMenuItem>
+              {hasSupabase && (
+                <DropdownMenuItem
+                  onClick={() => selectPanel("database")}
+                  className={cn(previewMode === "database" && "bg-accent")}
+                >
+                  <Database size={14} />
+                  <span>Base de datos</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

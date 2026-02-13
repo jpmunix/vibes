@@ -21,6 +21,7 @@ import { SecurityPanel } from "./SecurityPanel";
 import { useSupabase } from "@/hooks/useSupabase";
 import { VersionPane } from "../chat/VersionPane";
 import { GitPanel } from "../GitPanel";
+import { DatabasePanel } from "../database/DatabasePanel";
 import { cn } from "@/lib/utils";
 
 interface ConsoleHeaderProps {
@@ -208,6 +209,8 @@ export function PreviewPanel() {
                 <PublishPanel />
               ) : previewMode === "security" ? (
                 <SecurityPanel />
+              ) : previewMode === "database" ? (
+                <DatabasePanel />
               ) : (
                 <Problems />
               )}

@@ -256,6 +256,25 @@ export const queryKeys = {
       projectId: string;
       organizationSlug: string | null;
     }) => ["supabase", "branches", projectId, organizationSlug] as const,
+    dbTables: (appId: number) => ["supabase", "db-tables", appId] as const,
+    dbTableData: (
+      appId: number,
+      table: string,
+      page: number,
+      pageSize: number,
+      orderBy?: string,
+      orderDir?: string,
+    ) =>
+      [
+        "supabase",
+        "db-table-data",
+        appId,
+        table,
+        page,
+        pageSize,
+        orderBy,
+        orderDir,
+      ] as const,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
