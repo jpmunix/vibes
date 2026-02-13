@@ -1,4 +1,4 @@
-name: Create Release (Linux & Mac)
+name: Create Mac release
 on:
   workflow_dispatch:
 
