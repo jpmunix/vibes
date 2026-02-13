@@ -18,6 +18,17 @@ type Shape =
   }
   | {
     id: string;
+    type: "rect";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  }
+  | {
+    id: string;
     type: "text";
     x: number;
     y: number;
@@ -50,8 +61,8 @@ export const Annotator = ({
   handleAnnotatorClick: () => void;
 }) => {
   const image = useImage(screenshotUrl);
-  const [tool, setTool] = useState<"select" | "draw" | "text">("draw");
-  const [color, setColor] = useState<string>("#7f22fe");
+  const [tool, setTool] = useState<"select" | "draw" | "rect" | "text">("draw");
+  const [color, setColor] = useState<string>("#ef4444");
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Shape[][]>([]);
@@ -250,6 +261,22 @@ export const Annotator = ({
       };
       setShapes([...shapes, newShape]);
       setSelectedId(null);
+    } else if (tool === "rect") {
+      isDrawing.current = true;
+      const id = Date.now().toString();
+      const newShape: Shape = {
+        id,
+        type: "rect",
+        x: adjustedPos.x,
+        y: adjustedPos.y,
+        width: 0,
+        height: 0,
+        color: color,
+        strokeWidth: 3,
+        isComplete: false,
+      };
+      setShapes([...shapes, newShape]);
+      setSelectedId(null);
     } else if (tool === "text") {
       const newInput = {
         id: Date.now().toString(),
@@ -265,7 +292,8 @@ export const Annotator = ({
   };
 
   const handleMouseMove = (e: any) => {
-    if (tool !== "draw" || !isDrawing.current) return;
+    if (!isDrawing.current) return;
+    if (tool !== "draw" && tool !== "rect") return;
 
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
@@ -278,7 +306,8 @@ export const Annotator = ({
     };
 
     const lastShape = shapes[shapes.length - 1];
-    if (lastShape && lastShape.type === "line") {
+
+    if (tool === "draw" && lastShape && lastShape.type === "line") {
       // Append point
       const newPoints = [
         ...lastShape.points,
@@ -289,14 +318,22 @@ export const Annotator = ({
       // Update shapes without saving history yet (performance)
       const newShapes = shapes.slice(0, -1).concat(updatedShape);
       setShapes(newShapes);
+    } else if (tool === "rect" && lastShape && lastShape.type === "rect") {
+      const updatedShape = {
+        ...lastShape,
+        width: adjustedPoint.x - lastShape.x,
+        height: adjustedPoint.y - lastShape.y,
+      };
+      const newShapes = shapes.slice(0, -1).concat(updatedShape);
+      setShapes(newShapes);
     }
   };
 
   const handleMouseUp = () => {
-    if (tool === "draw" && isDrawing.current) {
+    if ((tool === "draw" || tool === "rect") && isDrawing.current) {
       isDrawing.current = false;
       const lastShape = shapes[shapes.length - 1];
-      if (lastShape && lastShape.type === "line") {
+      if (lastShape && (lastShape.type === "line" || lastShape.type === "rect")) {
         const completedShape = { ...lastShape, isComplete: true };
         const newShapes = shapes.slice(0, -1).concat(completedShape);
         setShapes(newShapes);

@@ -4,6 +4,7 @@ import {
   Layer,
   Image as KonvaImage,
   Path,
+  Rect as KonvaRect,
   Text,
   Transformer,
 } from "react-konva";
@@ -27,28 +28,39 @@ function getSvgPathFromStroke(stroke: number[][]) {
 type Point = [number, number];
 type Shape =
   | {
-      id: string;
-      type: "line";
-      points: Point[];
-      color: string;
-      size: number;
-      isComplete: boolean;
-    }
+    id: string;
+    type: "line";
+    points: Point[];
+    color: string;
+    size: number;
+    isComplete: boolean;
+  }
   | {
-      id: string;
-      type: "text";
-      x: number;
-      y: number;
-      text: string;
-      fontSize: number;
-      color: string;
-    };
+    id: string;
+    type: "rect";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  }
+  | {
+    id: string;
+    type: "text";
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    color: string;
+  };
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;
   shapes: Shape[];
   selectedId: string | null;
-  tool: "select" | "draw" | "text";
+  tool: "select" | "draw" | "rect" | "text";
   scale: number;
   stageDimensions: { width: number; height: number };
   containerSize: { width: number; height: number };
@@ -122,6 +134,27 @@ export const AnnotationCanvas = ({
                   onClick={() => tool === "select" && onShapeSelect(shape.id)}
                   onTap={() => tool === "select" && onShapeSelect(shape.id)}
                   draggable={tool === "select"}
+                />
+              );
+            } else if (shape.type === "rect") {
+              return (
+                <KonvaRect
+                  key={shape.id}
+                  id={shape.id}
+                  x={shape.x * scale}
+                  y={shape.y * scale}
+                  width={shape.width * scale}
+                  height={shape.height * scale}
+                  stroke={shape.color}
+                  strokeWidth={shape.strokeWidth}
+                  fill="transparent"
+                  draggable={tool === "select"}
+                  onClick={() => tool === "select" && onShapeSelect(shape.id)}
+                  onTap={() => tool === "select" && onShapeSelect(shape.id)}
+                  onDragEnd={(e) => {
+                    const node = e.target;
+                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
+                  }}
                 />
               );
             } else if (shape.type === "text") {
