@@ -1,34 +1,105 @@
-# Dyad
+## 🚀 Gestión de Aplicaciones (Apps)
+Vibes te permite crear, desarrollar y desplegar aplicaciones de forma integral.
+- **Creación desde Plantillas**: Inicia proyectos rápidamente usando plantillas preconfiguradas.
+- **Panel de Previsualización**: Visualiza tu aplicación en tiempo real mientras realizas cambios.
+- **Consola Integrada**: Monitorea la salida de tu aplicación y depura errores directamente.
+- **Corrección Automática (Auto-Fix)**: Vibes puede detectar errores en tu código y proponer correcciones automáticas mediante el botón `Fix All Errors`.
+- **Control de Versiones**: Integración nativa con Git para gestionar ramas y realizar commits de forma sencilla.
+- **Integraciones Cloud**: Conecta tus proyectos con Vercel, Supabase y Neon para bases de datos y despliegue rápido.
+- **Controles móviles**: Soporte para Capacitor, permitiendo previsualizar y configurar tu app para plataformas móviles.
 
-Dyad is a local, open-source AI app builder. It's fast, private, and fully under your control — like Lovable, v0, or Bolt, but running right on your machine.
+## 💬 Chat e Inteligencia Artificial
+El corazón de Vibes es su potente sistema de chat, diseñado específicamente para programadores.
+- **Selección de Modelos**: Acceso a los mejores modelos del mercado a través de OpenRouter (incluye modelos con contextos muy amplios, como Grok 4.1 Fast con hasta 2M tokens).
+- **Capturas de pantalla**: Puedes hacer una captura **total o parcial** y adjuntarla directamente en el chat.
+- **Auto-Router**: Deja que Vibes elija el modelo más eficiente para cada tarea.
+- **Contexto del Código**: El chat tiene conocimiento de tu codebase. Puedes añadir archivos específicos al contexto para consultas precisas.
+- **Contexto dinámico y optimizado**: Vibes utiliza búsqueda de código y herramientas locales para reducir drásticamente el “ruido” del contexto y aportar al modelo sólo lo relevante para la tarea.
+- **Herramientas Avanzadas**:
+    - **Web Search**: Búsqueda en internet para obtener información actualizada utilizando tu API de serper.dev.
+    - **Code Search con Grep e inteligencia artificial**: Busca patrones y archivos en todo tu proyecto gracias a la integración de MiniLM.
+    - **Execute SQL**: Ejecuta consultas directamente en tus bases de datos integradas.
+- **Presupuesto de "Pensamiento"**: Controla el límite de tokens de razonamiento (`Thinking Budget`) para modelos avanzados.
+- **Resumen Diario y Logs**:
+    - **Botón de Resumen**: Genera un resumen de tus avances del día.
+    - **Panel de Logs**: Accede a los logs detallados de las interacciones con la IA para depuración avanzada.
+    - **Logs del agente**: Se almacena el historial de ejecución del agente para poder analizar qué ocurre en el “core” de Vibes cuando usa herramientas y realiza acciones.
+    - **Resumir en Nuevo Chat**: Limpia el historial manteniendo lo esencial en una nueva conversación.
 
-[![Image](https://github.com/user-attachments/assets/f6c83dfc-6ffd-4d32-93dd-4b9c46d17790)](https://dyad.sh/)
+## 🤖 Base de Conocimientos IA
+Sistema inteligente que aprende automáticamente las preferencias y reglas de tu proyecto:
+- **Aprendizaje automático**: Mientras trabajas, la IA detecta y guarda tus preferencias (ej: "siempre usa nuestro componente Dialog", "nunca uses var").
+- **Gestión centralizada**: Accede a la Base de Conocimientos desde el menú de opciones del chat o desde los detalles de la aplicación.
+- **Categorías organizadas**:
+    - **Convenciones**: Estándares de código del proyecto (ej: camelCase, imports al inicio).
+    - **Patrones**: Patrones de diseño recurrentes (ej: estructura de carpetas).
+    - **Preferencias**: Preferencias de estilo y herramientas (ej: textos cortos).
+    - **Reglas**: Cosas que NUNCA hacer (ej: no borrar la base de datos).
+    - **Componentes**: Componentes propios a usar siempre (ej: usar Dialog en vez de confirm()).
+- **Ayuda contextual**: Cada categoría incluye explicaciones en lenguaje sencillo para usuarios no técnicos.
+- **Inyección automática**: Las reglas activas se integran en cada conversación para mantener consistencia en el código generado.
+- **Edición manual**: Puedes añadir, editar, activar/desactivar o eliminar reglas según necesites.
 
-More info at: [https://dyad.sh/](https://dyad.sh/)
+## 🔧 Auto-Repair de Errores
+Sistema automático de detección y corrección de errores durante el desarrollo:
+- **Monitoreo en tiempo real**: Supervisa errores de runtime en tu aplicación mientras desarrollas.
+- **Reparación automática**: Cuando detecta un error, lo envía automáticamente al chat para que la IA lo corrija.
+- **Inicio silencioso de servidores**: Arranca el servidor de desarrollo en segundo plano para detección temprana de errores y mejor HMR.
+- **Notificaciones informativas**: Recibes toasts visuales sobre el progreso y resultado de las reparaciones.
+- **Control total**: Puedes activar o desactivar la funcionalidad desde Ajustes → `enableAutoRepairRuntimeErrors`.
 
-## 🚀 Features
+## 📝 Notas y Tareas
+Herramientas integradas para organizar tu flujo de trabajo sin salir de la app.
+- **Editor de Notas**: Un espacio para guardar fragmentos de código, ideas o documentación personal.
+- **Tablero de Tareas (Todos/Kanban)**: Gestiona tus tareas pendientes de forma visual y organizada en listas personalizables.
+- **Subtareas en el Kanban**: Puedes añadir subtareas dentro de cada tarjeta para una mejor estructuración.  
+  Smart Import detecta y genera estas subtareas automáticamente.
+- **Resumen Automático de Desarrollo**:  
+  Cuando muevas una tarjeta del kanban a desarrollo y la completes desde el chat:
+    - Su estado se marcará como *completado* automáticamente.
+    - Se generará un resumen automático de desarrollo dentro de la tarjeta.
+    - Un ícono azul de bot indicará que la card contiene notas generadas.
+- **Smart Import (Detección Inteligente)**: Vibes puede analizar archivos externos y crear automáticamente una lista de tareas estructurada:
+    - **Formatos soportados**: PDF, Word (.docx), texto (.txt) e imágenes con texto.
+    - **Cómo usarlo**: Desde cualquier tablero de tareas, haz clic en `Smart Import` y selecciona tus archivos.
+- **Análisis Inteligente de Tareas**: Usa IA para desglosar tareas complejas o refinar prompts de desarrollo.
 
-- ⚡️ **Local**: Fast, private and no lock-in.
-- 🛠 **Bring your own keys**: Use your own AI API keys — no vendor lock-in.
-- 🖥️ **Cross-platform**: Easy to run on Mac or Windows.
+## ⚖️ Debates
+Pon a prueba tus ideas o arquitecturas con la función de Debates.
+- **Multimodelo**: Configura desde los ajustes el modelo que mejor se adapte a tu manera de trabajar.
+- **Resumen de Debate**: Obtén una síntesis de las conclusiones alcanzadas por los agentes.
+- **Mejoras adicionales**:
+    - Edición y reenvío de mensajes.
+    - Etiquetas para organizar tus chats.
+    - Botón para detener respuestas en generación.
+    - Optimización de la velocidad de respuesta.
 
-## 📦 Download
+## ⚙️ Configuración y Personalización
+El panel de Ajustes permite adaptar Vibes a tu flujo de trabajo específico:
+- **Configuración de Modelos por Tarea**:
+    - **Turbo Edits**: Optimiza la velocidad de edición de archivos.
+    - **Análisis de Tareas**: Modelo especializado en extraer requerimientos de archivos adjuntos.
+    - **Debates y Resúmenes**: Configura qué IA lidera la discusión y cuál sintetiza los resultados.
+- **Soporte para múltiples API keys de OpenRouter**:
+    - Útil para separar ambientes personales y laborales.
+    - Desde el panel de crédito restante puedes visualizar gasto total, saldo disponible e histórico de recargas.
+- **Comportamiento del Asistente**:
+    - **Idioma de Preferencia**: Fuerza al asistente a responder siempre en el idioma elegido.
+    - **Smart Context Local**: Ranking local de archivos relevantes para máxima privacidad.
+    - **Turnos Máximos**: Controla la longitud de las conversaciones.
 
-No sign-up required. Just download and go.
+## 🗂️ Organización y Productividad
+Vibes incluye herramientas diseñadas para que tu historial de trabajo sea útil a largo plazo.
+- **Títulos Automáticos (Auto-titles)**: Genera nombres descriptivos para tus nuevos chats automáticamente.
+- **Exportar Chat a Nota**: Guarda cualquier conversación como nota persistente para consulta futura.
+- **Vaciado de Chat**: Limpia los mensajes visibles sin borrar la conversación del historial.
+- **Notas de versión**: Consulta las notas de versión para estar al día de cambios relevantes de producto sin necesidad de revisar el historial de chats.
 
-### [👉 Download for your platform](https://www.dyad.sh/#download)
+## 👤 Registro de Usuario
+- Puedes crear una cuenta en Vibes y personalizar tu entorno de trabajo.
+- Dispones de **copias de seguridad primitivas en la nube**, con un historial de hasta tres versiones.
 
-## 🤝 Community
-
-Join our growing community of AI app builders on **Reddit**: [r/dyadbuilders](https://www.reddit.com/r/dyadbuilders/) - share your projects and get help from the community!
-
-## 🛠️ Contributing
-
-**Dyad** is open-source (see License info below).
-
-If you're interested in contributing to dyad, please read our [contributing](./CONTRIBUTING.md) doc.
-
-## License
-
-- All the code in this repo outside of `src/pro` is open-source and licensed under Apache 2.0 - see [LICENSE](./LICENSE).
-- All the code in this repo within `src/pro` is fair-source and licensed under [Functional Source License 1.1 Apache 2.0](https://fsl.software/) - see [LICENSE](./src/pro/LICENSE).
+## ⚙️ Ajustes de Sistema
+- **Consumo de Créditos**: Monitoriza el gasto en OpenRouter en tiempo real.
+- **Logs Técnicos**: Activa logs verbosos para ver exactamente qué envía y recibe el asistente.
+---
