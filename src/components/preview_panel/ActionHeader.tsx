@@ -5,7 +5,6 @@ import { ipc } from "@/ipc/types";
 import {
   Eye,
   Code,
-  MoreVertical,
   Cog,
   Trash2,
   AlertTriangle,
@@ -13,6 +12,9 @@ import {
   Shield,
   History,
   GitBranch,
+  RefreshCw,
+  Hammer,
+  ChevronDown,
 } from "lucide-react";
 import { ChatActivityButton } from "@/components/chat/ChatActivity";
 import { motion } from "framer-motion";
@@ -24,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -35,6 +38,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { useMutation } from "@tanstack/react-query";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import { cn } from "@/lib/utils";
 
 export type PreviewMode =
   | "preview"
@@ -45,6 +49,20 @@ export type PreviewMode =
   | "security"
   | "versions"
   | "git";
+
+// Which top-level group a mode belongs to
+type MenuGroup = "preview" | "code" | "configure";
+
+const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
+  preview: "preview",
+  code: "code",
+  problems: "code",
+  publish: "code",
+  security: "code",
+  versions: "code",
+  git: "code",
+  configure: "configure",
+};
 
 interface ActionHeaderProps {
   versions?: any[];
@@ -59,14 +77,9 @@ export const ActionHeader = ({
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
-  const versionsRef = useRef<HTMLButtonElement>(null);
-  const previewRef = useRef<HTMLButtonElement>(null);
-  const codeRef = useRef<HTMLButtonElement>(null);
-  const problemsRef = useRef<HTMLButtonElement>(null);
+  const previewGroupRef = useRef<HTMLButtonElement>(null);
+  const codeGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);
-  const publishRef = useRef<HTMLButtonElement>(null);
-  const securityRef = useRef<HTMLButtonElement>(null);
-  const gitRef = useRef<HTMLButtonElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const { problemReport } = useCheckProblems(selectedAppId);
@@ -84,35 +97,38 @@ export const ActionHeader = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const selectPanel = (panel: PreviewMode) => {
-    if (previewMode === panel) {
-      setIsPreviewOpen(!isPreviewOpen);
-    } else {
-      setPreviewMode(panel);
-      setIsPreviewOpen(true);
-    }
-  };
+  const selectPanel = useCallback(
+    (panel: PreviewMode) => {
+      if (previewMode === panel) {
+        setIsPreviewOpen(!isPreviewOpen);
+      } else {
+        setPreviewMode(panel);
+        setIsPreviewOpen(true);
+      }
+    },
+    [previewMode, isPreviewOpen, setPreviewMode, setIsPreviewOpen],
+  );
+
+  const onRestart = useCallback(() => {
+    restartApp();
+  }, [restartApp]);
 
   const onCleanRestart = useCallback(() => {
     restartApp({ removeNodeModules: true });
   }, [restartApp]);
 
-  const useClearSessionData = () => {
-    return useMutation({
-      mutationFn: () => {
-        return ipc.system.clearSessionData();
-      },
-      onSuccess: async () => {
-        await refreshAppIframe();
-        showSuccess("Datos de vista previa borrados");
-      },
-      onError: (error) => {
-        showError(`Error al borrar los datos de vista previa: ${error}`);
-      },
-    });
-  };
-
-  const { mutate: clearSessionData } = useClearSessionData();
+  const { mutate: clearSessionData } = useMutation({
+    mutationFn: () => {
+      return ipc.system.clearSessionData();
+    },
+    onSuccess: async () => {
+      await refreshAppIframe();
+      showSuccess("Datos de vista previa borrados");
+    },
+    onError: (error) => {
+      showError(`Error al borrar los datos de vista previa: ${error}`);
+    },
+  });
 
   const onClearSessionData = useCallback(() => {
     clearSessionData();
@@ -130,35 +146,23 @@ export const ActionHeader = ({
 
   const displayCount = formatProblemCount(problemCount);
 
+  // Determine which group is active
+  const activeGroup = MODE_TO_GROUP[previewMode];
+
   // Update indicator position when mode changes
   useEffect(() => {
     const updateIndicator = () => {
       let targetRef: React.RefObject<HTMLButtonElement | null>;
 
-      switch (previewMode) {
-        case "versions":
-          targetRef = versionsRef;
-          break;
+      switch (activeGroup) {
         case "preview":
-          targetRef = previewRef;
+          targetRef = previewGroupRef;
           break;
         case "code":
-          targetRef = codeRef;
-          break;
-        case "problems":
-          targetRef = problemsRef;
+          targetRef = codeGroupRef;
           break;
         case "configure":
           targetRef = configureRef;
-          break;
-        case "publish":
-          targetRef = publishRef;
-          break;
-        case "security":
-          targetRef = securityRef;
-          break;
-        case "git":
-          targetRef = gitRef;
           break;
         default:
           return;
@@ -181,45 +185,43 @@ export const ActionHeader = ({
     // Small delay to ensure DOM is updated
     const timeoutId = setTimeout(updateIndicator, 10);
     return () => clearTimeout(timeoutId);
-  }, [previewMode, displayCount, isPreviewOpen, isCompact]);
+  }, [activeGroup, displayCount, isPreviewOpen, isCompact]);
 
-  const renderButton = (
-    mode: PreviewMode,
-    ref: React.RefObject<HTMLButtonElement | null>,
-    icon: React.ReactNode,
-    text: string,
-    testId: string,
-    badge?: React.ReactNode,
-  ) => {
-    const buttonContent = (
-      <button
-        data-testid={testId}
-        ref={ref}
-        className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
-        onClick={() => selectPanel(mode)}
-      >
-        {icon}
-        <span>
-          {!isCompact && <span>{text}</span>}
-          {badge}
-        </span>
-      </button>
-    );
-
-    if (isCompact) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
-          <TooltipContent>
-            <p>{text}</p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return buttonContent;
-  };
   const iconSize = 15;
+
+  // Dynamic label/icon for the "Código" group based on active mode
+  const getCodeGroupInfo = () => {
+    switch (previewMode) {
+      case "versions":
+        return {
+          icon: <History size={iconSize} />,
+          label: versionsLoading
+            ? "..."
+            : `Versión ${versions.length}`,
+        };
+      case "code":
+        return { icon: <Code size={iconSize} />, label: "Código" };
+      case "publish":
+        return { icon: <Globe size={iconSize} />, label: "Publicar" };
+      case "problems":
+        return {
+          icon: <AlertTriangle size={iconSize} />,
+          label: "Problemas",
+        };
+      case "security":
+        return { icon: <Shield size={iconSize} />, label: "Seguridad" };
+      case "git":
+        return { icon: <GitBranch size={iconSize} />, label: "Git" };
+      default:
+        return { icon: <Code size={iconSize} />, label: "Código" };
+    }
+  };
+
+  const codeGroupInfo = getCodeGroupInfo();
+
+  // Button style for the 3 main groups
+  const groupButtonClass =
+    "no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] transition-colors";
 
   return (
     <TooltipProvider>
@@ -239,107 +241,176 @@ export const ActionHeader = ({
               mass: 0.6,
             }}
           />
-          <button
-            ref={versionsRef}
-            data-testid="versions-button"
-            className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 flex-col hover:bg-[var(--background)]"
-            onClick={() => selectPanel("versions")}
-          >
-            <History size={iconSize} />
-            <span>
-              {versionsLoading ? "..." : `Versión ${versions.length}`}
-            </span>
-          </button>
-          {renderButton(
-            "preview",
-            previewRef,
-            <Eye size={iconSize} />,
-            "Vista previa",
-            "preview-mode-button",
-          )}
-          {renderButton(
-            "code",
-            codeRef,
-            <Code size={iconSize} />,
-            "Código",
-            "code-mode-button",
-          )}
-          {renderButton(
-            "publish",
-            publishRef,
-            <Globe size={iconSize} />,
-            "Publicar",
-            "publish-mode-button",
-          )}
-          {renderButton(
-            "problems",
-            problemsRef,
-            <AlertTriangle size={iconSize} />,
-            "Problemas",
-            "problems-mode-button",
-            displayCount && (
-              <span className="ml-0.5 px-1 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
-                {displayCount}
-              </span>
-            ),
-          )}
-          {renderButton(
-            "security",
-            securityRef,
-            <Shield size={iconSize} />,
-            "Seguridad",
-            "security-mode-button",
-          )}
-          {renderButton(
-            "configure",
-            configureRef,
-            <Cog size={iconSize} />,
-            "Configurar",
-            "configure-mode-button",
-          )}
-          {renderButton(
-            "git",
-            gitRef,
-            <GitBranch size={iconSize} />,
-            "Git",
-            "git-mode-button",
-          )}
-        </div>
-        {/* Chat activity bell */}
-        <div className="flex items-center gap-1">
-          <ChatActivityButton />
+
+          {/* ─── Vista previa group ─── */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                data-testid="preview-more-options-button"
-                className="no-app-region-drag flex items-center justify-center p-1.5 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
-                title="Más opciones"
+                ref={previewGroupRef}
+                data-testid="preview-group-button"
+                className={groupButtonClass}
               >
-                <MoreVertical size={16} />
+                <Eye size={iconSize} />
+                {!isCompact && <span>Vista previa</span>}
+                <ChevronDown size={10} className="text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => selectPanel("preview")}
+                className={cn(
+                  previewMode === "preview" && "bg-accent",
+                )}
+              >
+                <Eye size={14} />
+                <span>Vista previa</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onRestart}>
+                <RefreshCw size={14} />
+                <div className="flex flex-col">
+                  <span>Reiniciar</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Reinicia el servidor de desarrollo
+                  </span>
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onCleanRestart}>
-                <Cog size={16} />
+                <Hammer size={14} />
                 <div className="flex flex-col">
                   <span>Reconstruir</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground">
                     Reinstala node_modules y reinicia
                   </span>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onClearSessionData}>
-                <Trash2 size={16} />
+                <Trash2 size={14} />
                 <div className="flex flex-col">
                   <span>Borrar caché</span>
-                  <span className="text-xs text-muted-foreground">
-                    Borra cookies, almacenamiento local y otra caché de la
-                    aplicación
+                  <span className="text-[10px] text-muted-foreground">
+                    Borra cookies y almacenamiento local
                   </span>
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* ─── Código group ─── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                ref={codeGroupRef}
+                data-testid="code-group-button"
+                className={groupButtonClass}
+              >
+                {codeGroupInfo.icon}
+                {!isCompact && <span>{codeGroupInfo.label}</span>}
+                {!isCompact && displayCount && (
+                  <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                    {displayCount}
+                  </span>
+                )}
+                <ChevronDown size={10} className="text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => selectPanel("versions")}
+                className={cn(
+                  previewMode === "versions" && "bg-accent",
+                )}
+              >
+                <History size={14} />
+                <span>
+                  {versionsLoading
+                    ? "Versiones..."
+                    : `Versión ${versions.length}`}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("code")}
+                className={cn(previewMode === "code" && "bg-accent")}
+              >
+                <Code size={14} />
+                <span>Código</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("publish")}
+                className={cn(
+                  previewMode === "publish" && "bg-accent",
+                )}
+              >
+                <Globe size={14} />
+                <span>Publicar</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("problems")}
+                className={cn(
+                  previewMode === "problems" && "bg-accent",
+                )}
+              >
+                <AlertTriangle size={14} />
+                <div className="flex items-center gap-2">
+                  <span>Problemas</span>
+                  {displayCount && (
+                    <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                      {displayCount}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("security")}
+                className={cn(
+                  previewMode === "security" && "bg-accent",
+                )}
+              >
+                <Shield size={14} />
+                <span>Seguridad</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => selectPanel("git")}
+                className={cn(previewMode === "git" && "bg-accent")}
+              >
+                <GitBranch size={14} />
+                <span>Git</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* ─── Configurar (direct) ─── */}
+          {(() => {
+            const buttonContent = (
+              <button
+                ref={configureRef}
+                data-testid="configure-mode-button"
+                className={groupButtonClass}
+                onClick={() => selectPanel("configure")}
+              >
+                <Cog size={iconSize} />
+                {!isCompact && <span>Configurar</span>}
+              </button>
+            );
+
+            if (isCompact) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+                  <TooltipContent>
+                    <p>Configurar</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return buttonContent;
+          })()}
+        </div>
+
+        {/* Chat activity bell */}
+        <div className="flex items-center gap-1">
+          <ChatActivityButton />
         </div>
       </div>
     </TooltipProvider>
