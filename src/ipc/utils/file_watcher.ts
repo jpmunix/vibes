@@ -40,20 +40,31 @@ export class IncrementalIndexer {
     logger.info(`Starting file watcher for ${this.appPath}`);
 
     this.watcher = chokidar.watch(this.appPath, {
-      ignored: [
-        /(^|[/\\])\../, // dot files
-        "**/node_modules/**",
-        "**/.git/**",
-        "**/.vite/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/.next/**",
-        "**/.venv/**",
-        "**/venv/**",
-        "**/.dyad/**", // Don't watch our own index
-      ],
+      ignored: (filePath) => {
+        // Exclude dotfiles
+        if (/(^|[/\\])\../.test(filePath)) return true;
+
+        // Exclude specific directories
+        const excludeDirs = [
+          "node_modules",
+          ".git",
+          ".vite",
+          "dist",
+          "build",
+          ".next",
+          ".venv",
+          "venv",
+          ".dyad",
+        ];
+
+        // Check if path contains any of the exclude dirs
+        // matches /dir/ or /dir at the end
+        const regex = new RegExp(`[\\\\/](${excludeDirs.map(d => d.replace('.', '\\.')).join('|')})([\\\\/]|$)`);
+        return regex.test(filePath);
+      },
       persistent: true,
       ignoreInitial: true, // Don't trigger for existing files
+      ignorePermissionErrors: true,
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100,
@@ -272,7 +283,10 @@ export class IncrementalIndexer {
     ];
 
     // Find all matching files
-    const patterns = allowedExtensions.map((ext) => `**/*${ext}`);
+    // Use brace expansion for a single pass
+    // Remove dots from extensions for brace pattern
+    const extensionsPattern = allowedExtensions.map(ext => ext.substring(1)).join(',');
+    const pattern = `**/*.{${extensionsPattern}}`;
     let allFiles: string[] = [];
 
     // Directories to always exclude from indexing
@@ -288,18 +302,26 @@ export class IncrementalIndexer {
       ".dyad",
     ];
 
-    for (const pattern of patterns) {
-      logger.debug(`Searching for pattern ${pattern} in ${this.appPath}`);
-      const files = await glob(pattern, {
+    logger.debug(`Searching for pattern ${pattern} in ${this.appPath}`);
+
+    try {
+      // Use a single glob call which is much more efficient
+      // Cast to any because @types/glob is v8 but glob is v11
+      const files = await (glob as any)(pattern, {
         cwd: this.appPath,
         absolute: true,
         ignore: excludeDirs.map((dir) => `**/${dir}/**`),
-      });
+        nodir: true,
+      }) as string[];
 
       // Extra safety filter - ensure no excluded directories slip through
+      // This is redundant if glob ignore works, but good for safety
       const filteredFiles = files.filter((file) => {
         const normalizedPath = file.toLowerCase();
-        return !excludeDirs.some((dir) => normalizedPath.includes(`/${dir}/`));
+        // Check if path contains any excluded directory
+        // Use regex for performance similar to watcher
+        const excludeRegex = new RegExp(`[\\\\/](${excludeDirs.map(d => d.replace('.', '\\.')).join('|')})([\\\\/]|$)`);
+        return !excludeRegex.test(normalizedPath);
       });
 
       if (files.length !== filteredFiles.length) {
@@ -309,9 +331,12 @@ export class IncrementalIndexer {
       }
 
       logger.debug(
-        `Pattern ${pattern} found ${filteredFiles.length} files (filtered from ${files.length})`,
+        `Found ${filteredFiles.length} files to index`,
       );
-      allFiles = allFiles.concat(filteredFiles);
+      allFiles = filteredFiles;
+    } catch (error) {
+      logger.error(`Error during file scan: ${error}`);
+      return 0;
     }
 
     logger.info(`Found ${allFiles.length} files to index`);
