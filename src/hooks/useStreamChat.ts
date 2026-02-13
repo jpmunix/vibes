@@ -112,9 +112,34 @@ export function useStreamChat({
       selectedComponents?: ComponentSelection[];
       onSettled?: () => void;
       isSystemPrompt?: boolean;
+      undoRedo?: boolean;
     }) => {
+      // Setup listener for undo-redo content restoring
+      // This needs to be outside the ipc.chatStream.start call as it's a separate event
+      if (undoRedo) {
+        const removeListener = window.electron.on(
+          "chat:undo-redo:content",
+          (_: any, data: { chatId: number; prompt: string }) => {
+            if (data.chatId === chatId) {
+              // We need to import chatInputValueAtom but we can't do it inside the function
+              // We should pass a callback or handle it via atomSetter
+              // But here we are inside a hook, so we can use an atom setter if available
+              // Ideally we would set the input value atom here.
+              // Since we don't have access to setInputValue directly here (it's in the component),
+              // we will emit a custom window event that the ChatInput component can listen to
+              window.dispatchEvent(new CustomEvent('dyad:restore-chat-input', {
+                detail: { prompt: data.prompt }
+              }));
+            }
+          }
+        );
+
+        // Clean up listener after a short timeout (it should happen quickly)
+        setTimeout(removeListener, 5000);
+      }
+
       if (
-        (!prompt.trim() && (!attachments || attachments.length === 0)) ||
+        (!prompt.trim() && (!attachments || attachments.length === 0) && !undoRedo) ||
         !chatId
       ) {
         return;

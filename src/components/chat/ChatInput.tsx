@@ -163,7 +163,31 @@ export function ChatInput({
     handleDrop,
     clearAttachments,
     handlePaste,
+    addAttachments,
   } = useAttachments();
+
+  // Listen for restoring chat input (undo functionality)
+  useEffect(() => {
+    const handleRestoreInput = (
+      e: CustomEvent<{ prompt: string; attachments?: File[] }>,
+    ) => {
+      setInputValue(e.detail.prompt);
+      if (e.detail.attachments && e.detail.attachments.length > 0) {
+        addAttachments(e.detail.attachments, "chat-context");
+      }
+    };
+
+    window.addEventListener(
+      "dyad:restore-chat-input" as any,
+      handleRestoreInput,
+    );
+    return () => {
+      window.removeEventListener(
+        "dyad:restore-chat-input" as any,
+        handleRestoreInput,
+      );
+    };
+  }, [setInputValue, addAttachments]);
 
   // Use the hook to fetch the proposal
   const {

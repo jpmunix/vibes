@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import type { FileAttachment } from "@/ipc/types";
 import { useAtom } from "jotai";
 import { attachmentsAtom } from "@/atoms/chatAtoms";
@@ -8,119 +8,140 @@ export function useAttachments() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  const handleAttachmentClick = () => {
+  const handleAttachmentClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "chat-context" | "upload-to-codebase" = "chat-context",
-  ) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
+  const handleFileChange = useCallback(
+    (
+      e: React.ChangeEvent<HTMLInputElement>,
+      type: "chat-context" | "upload-to-codebase" = "chat-context",
+    ) => {
+      if (e.target.files && e.target.files.length > 0) {
+        const files = Array.from(e.target.files);
+        const fileAttachments: FileAttachment[] = files.map((file) => ({
+          file,
+          type,
+        }));
+        setAttachments((attachments) => [...attachments, ...fileAttachments]);
+        // Clear the input value so the same file can be selected again
+        e.target.value = "";
+      }
+    },
+    [setAttachments],
+  );
+
+  const handleFileSelect = useCallback(
+    (
+      fileList: FileList,
+      type: "chat-context" | "upload-to-codebase",
+    ) => {
+      const files = Array.from(fileList);
       const fileAttachments: FileAttachment[] = files.map((file) => ({
         file,
         type,
       }));
       setAttachments((attachments) => [...attachments, ...fileAttachments]);
-      // Clear the input value so the same file can be selected again
-      e.target.value = "";
-    }
-  };
+    },
+    [setAttachments],
+  );
 
-  const handleFileSelect = (
-    fileList: FileList,
-    type: "chat-context" | "upload-to-codebase",
-  ) => {
-    const files = Array.from(fileList);
-    const fileAttachments: FileAttachment[] = files.map((file) => ({
-      file,
-      type,
-    }));
-    setAttachments((attachments) => [...attachments, ...fileAttachments]);
-  };
+  const removeAttachment = useCallback(
+    (index: number) => {
+      setAttachments((attachments) =>
+        attachments.filter((_, i) => i !== index),
+      );
+    },
+    [setAttachments],
+  );
 
-  const removeAttachment = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(true);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setIsDraggingOver(false);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDraggingOver(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const files = Array.from(e.dataTransfer.files);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const files = Array.from(e.dataTransfer.files);
+        const fileAttachments: FileAttachment[] = files.map((file) => ({
+          file,
+          type: "chat-context" as const,
+        }));
+        setAttachments((attachments) => [...attachments, ...fileAttachments]);
+      }
+    },
+    [setAttachments],
+  );
+
+  const clearAttachments = useCallback(() => {
+    setAttachments([]);
+  }, [setAttachments]);
+
+  const addAttachments = useCallback(
+    (
+      files: File[],
+      type: "chat-context" | "upload-to-codebase" = "chat-context",
+    ) => {
       const fileAttachments: FileAttachment[] = files.map((file) => ({
         file,
-        type: "chat-context" as const,
+        type,
       }));
       setAttachments((attachments) => [...attachments, ...fileAttachments]);
-    }
-  };
+    },
+    [setAttachments],
+  );
 
-  const clearAttachments = () => {
-    setAttachments([]);
-  };
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent) => {
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
 
-  const addAttachments = (
-    files: File[],
-    type: "chat-context" | "upload-to-codebase" = "chat-context",
-  ) => {
-    const fileAttachments: FileAttachment[] = files.map((file) => ({
-      file,
-      type,
-    }));
-    setAttachments((attachments) => [...attachments, ...fileAttachments]);
-  };
+      const items = Array.from(clipboardData.items);
+      const imageItems = items.filter((item) =>
+        item.type.startsWith("image/"),
+      );
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const clipboardData = e.clipboardData;
-    if (!clipboardData) return;
+      if (imageItems.length > 0) {
+        e.preventDefault(); // Prevent default paste behavior for images
 
-    const items = Array.from(clipboardData.items);
-    const imageItems = items.filter((item) => item.type.startsWith("image/"));
+        const imageFiles: File[] = [];
+        // Generate base timestamp once to avoid collisions
+        const baseTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-    if (imageItems.length > 0) {
-      e.preventDefault(); // Prevent default paste behavior for images
+        for (let i = 0; i < imageItems.length; i++) {
+          const item = imageItems[i];
+          const file = item.getAsFile();
+          if (file) {
+            // Create a more descriptive filename with timestamp and counter
+            const extension = file.type.split("/")[1] || "png";
+            const filename =
+              imageItems.length === 1
+                ? `pasted-image-${baseTimestamp}.${extension}`
+                : `pasted-image-${baseTimestamp}-${i + 1}.${extension}`;
+            const newFile = new File([file], filename, {
+              type: file.type,
+            });
+            imageFiles.push(newFile);
+          }
+        }
 
-      const imageFiles: File[] = [];
-      // Generate base timestamp once to avoid collisions
-      const baseTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-      for (let i = 0; i < imageItems.length; i++) {
-        const item = imageItems[i];
-        const file = item.getAsFile();
-        if (file) {
-          // Create a more descriptive filename with timestamp and counter
-          const extension = file.type.split("/")[1] || "png";
-          const filename =
-            imageItems.length === 1
-              ? `pasted-image-${baseTimestamp}.${extension}`
-              : `pasted-image-${baseTimestamp}-${i + 1}.${extension}`;
-
-          const newFile = new File([file], filename, {
-            type: file.type,
-          });
-          imageFiles.push(newFile);
+        if (imageFiles.length > 0) {
+          addAttachments(imageFiles, "chat-context");
+          // Show a brief toast or indication that image was pasted
+          console.log(`Pasted ${imageFiles.length} image(s) from clipboard`);
         }
       }
-
-      if (imageFiles.length > 0) {
-        addAttachments(imageFiles, "chat-context");
-        // Show a brief toast or indication that image was pasted
-        console.log(`Pasted ${imageFiles.length} image(s) from clipboard`);
-      }
-    }
-  };
+    },
+    [addAttachments],
+  );
 
   return {
     attachments,

@@ -64,6 +64,22 @@ interface FooterContext {
   todoId: number | null;
 }
 
+// Helper to convert base64 to File
+function base64ToFile(
+  base64: string,
+  filename: string,
+  mimeType: string,
+): File {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: mimeType });
+  return new File([blob], filename, { type: mimeType });
+}
+
 // Footer component for Virtuoso - receives context via props
 function FooterComponent({ context }: { context?: FooterContext }) {
   if (!context) return null;
@@ -120,7 +136,6 @@ function FooterComponent({ context }: { context?: FooterContext }) {
 
       {!isStreaming && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
-
           {!!messages.length &&
             messages[messages.length - 1].role === "assistant" && (
               <Button
@@ -138,6 +153,64 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                     const currentMessage = messages[messages.length - 1];
                     // The user message that triggered this assistant response
                     const userMessage = messages[messages.length - 2];
+
+                    if (userMessage) {
+                      let prompt = userMessage.content;
+                      // Heuristic: check if there's an attachments section and strip it
+                      // This matches the format used in chat_stream_handlers.ts
+                      const attachmentMarkerIndex =
+                        prompt.indexOf("\n\nAttachments:\n");
+                      if (attachmentMarkerIndex !== -1) {
+                        prompt = prompt.substring(0, attachmentMarkerIndex);
+                      }
+
+                      const attachments: File[] = [];
+
+                      // Try to recover image attachments from aiMessagesJson if available
+                      // Casting to any because aiMessagesJson is not in the strict Message type but exists at runtime
+                      const aiMessages = (userMessage as any).aiMessagesJson
+                        ?.messages;
+
+                      if (aiMessages && Array.isArray(aiMessages)) {
+                        const userMsg = aiMessages.find(
+                          (m: any) => m.role === "user",
+                        );
+                        if (userMsg && Array.isArray(userMsg.content)) {
+                          userMsg.content.forEach(
+                            (part: any, index: number) => {
+                              if (part.type === "image" && part.image) {
+                                const mimeType =
+                                  part.mediaType || "image/png";
+                                const ext =
+                                  mimeType.split("/")[1] || "png";
+                                const filename = `restored-image-${Date.now()}-${index}.${ext}`;
+                                try {
+                                  const file = base64ToFile(
+                                    part.image,
+                                    filename,
+                                    mimeType,
+                                  );
+                                  attachments.push(file);
+                                } catch (e) {
+                                  console.error(
+                                    "Failed to restore image attachment",
+                                    e,
+                                  );
+                                }
+                              }
+                            },
+                          );
+                        }
+                      }
+
+                      // Dispatch event to restore input
+                      window.dispatchEvent(
+                        new CustomEvent("dyad:restore-chat-input", {
+                          detail: { prompt, attachments },
+                        }),
+                      );
+                    }
+
                     if (currentMessage?.sourceCommitHash) {
                       console.debug(
                         "Reverting to source commit hash",

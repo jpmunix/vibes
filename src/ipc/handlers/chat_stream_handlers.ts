@@ -278,7 +278,7 @@ function registerChatStreamHandlers() {
       }
 
       // Handle redo option: remove the most recent messages if needed
-      if (req.redo) {
+      if (req.redo || req.undoRedo) {
         // Get the most recent messages
         const chatMessages = [...chat.messages];
 
@@ -292,6 +292,41 @@ function registerChatStreamHandlers() {
         }
 
         if (lastUserMessageIndex >= 0) {
+          // If this is an undo-redo request, we need to send the content back to the frontend
+          if (req.undoRedo) {
+            const lastUserMessage = chatMessages[lastUserMessageIndex];
+
+            // Extract prompt content (remove attachment info if present)
+            // The attachment info is appended at the end, starting with "\n\nAttachments:\n" or similar
+            // We'll try to extract the original prompt
+            let cleanPrompt = lastUserMessage.content;
+
+            // Simple heuristic to remove appended attachment info
+            // This matches the way attachmentInfo is appended below
+            const attachmentMarkerIndex = cleanPrompt.indexOf("\n\nAttachments:\n");
+            if (attachmentMarkerIndex !== -1) {
+              cleanPrompt = cleanPrompt.substring(0, attachmentMarkerIndex);
+            }
+
+            // Also clean up selected components info
+            const componentMarkerIndex = cleanPrompt.indexOf("\n\nSelected components:\n");
+            if (componentMarkerIndex !== -1) {
+              cleanPrompt = cleanPrompt.substring(0, componentMarkerIndex);
+            }
+
+            // We also need to recover attachments if possible
+            // Since we can't easily reconstruct the File objects from the text description,
+            // we will send the raw content back and let the frontend handle it or just the text for now.
+            // For a full implementation, we'd need to parse the attachments from the message content
+            // or store them separately. For now, we'll restore the text prompt.
+
+            safeSend(event.sender, "chat:undo-redo:content", {
+              chatId: req.chatId,
+              prompt: cleanPrompt,
+              // Future: parse and return attachments
+            });
+          }
+
           // Delete the user message
           await db
             .delete(messages)
@@ -308,6 +343,16 @@ function registerChatStreamHandlers() {
                 eq(messages.id, chatMessages[lastUserMessageIndex + 1].id),
               );
           }
+        }
+
+        // If it was just an undoRedo (without a new prompt), we stop here
+        if (req.undoRedo && !req.prompt) {
+          // Notify that the stream/operation ended (since we just undid)
+          safeSend(event.sender, "chat:response:end", {
+            chatId: req.chatId,
+            updatedFiles: false,
+          });
+          return;
         }
       }
 
@@ -897,7 +942,7 @@ ${componentSnippet}
         );
 
         // Prepare message history for the AI
-        const messageHistory = updatedChat.messages.map((message) => ({
+        const messageHistory = updatedChat.messages.map((message: any) => ({
           role: message.role as "user" | "assistant" | "system",
           content: message.content,
           sourceCommitHash: message.sourceCommitHash,
@@ -919,14 +964,14 @@ ${componentSnippet}
           // Each turn is a user + assistant pair
           // Calculate how many messages to keep (maxChatTurns * 2)
           let recentMessages = messageHistory
-            .filter((msg) => msg.role !== "system")
+            .filter((msg: any) => msg.role !== "system")
             .slice(-maxChatTurns * 2);
 
           // Ensure the first message is a user message
           if (recentMessages.length > 0 && recentMessages[0].role !== "user") {
             // Find the first user message
             const firstUserIndex = recentMessages.findIndex(
-              (msg) => msg.role === "user",
+              (msg: any) => msg.role === "user",
             );
             if (firstUserIndex > 0) {
               // Drop assistant messages before the first user message
@@ -1048,14 +1093,14 @@ ${componentSnippet}
         // Update the system prompt for images if there are image attachments
         const hasImageAttachments =
           req.attachments &&
-          req.attachments.some((attachment) =>
+          req.attachments.some((attachment: any) =>
             attachment.type.startsWith("image/"),
           );
 
         const hasUploadedAttachments =
           req.attachments &&
           req.attachments.some(
-            (attachment) => attachment.attachmentType === "upload-to-codebase",
+            (attachment: any) => attachment.attachmentType === "upload-to-codebase",
           );
         // If there's mixed attachments (e.g. some upload to codebase attachments and some upload images as chat context attachemnts)
         // we will just include the file upload system prompt, otherwise the AI gets confused and doesn't reliably
@@ -1134,7 +1179,7 @@ This conversation includes one or more image attachments. When the user uploads 
             ] as const)
             : [];
 
-        const limitedHistoryChatMessages = limitedMessageHistory.map((msg) => ({
+        const limitedHistoryChatMessages = limitedMessageHistory.map((msg: any) => ({
           role: msg.role as "user" | "assistant" | "system",
           // Why remove thinking tags?
           // Thinking tags are generally not critical for the context
@@ -1334,8 +1379,8 @@ This conversation includes one or more image attachments. When the user uploads 
             providerOptions,
             system: systemPromptOverride,
             tools,
-            messages: chatMessages.filter((m) => m.content),
-            onFinish: async (response) => {
+            messages: chatMessages.filter((m: any) => m.content),
+            onFinish: async (response: any) => {
               const totalTokens = response.usage?.totalTokens;
               // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
               const promptTokens =
@@ -1636,7 +1681,7 @@ This conversation includes one or more image attachments. When the user uploads 
         }
 
         if (settings.selectedChatMode === "agent") {
-          const tools = await getMcpTools(event);
+          const tools = await getMcpTools(event, req);
 
           const { fullStream } = await simpleStreamText({
             chatMessages: limitedHistoryChatMessages,
@@ -2472,7 +2517,10 @@ async function tryMcpRankFiles({
   }
 }
 
-async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
+async function getMcpTools(
+  event: IpcMainInvokeEvent,
+  req: ChatStreamParams,
+): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
   try {
     const servers = await db
@@ -2482,7 +2530,7 @@ async function getMcpTools(event: IpcMainInvokeEvent): Promise<ToolSet> {
     for (const s of servers) {
       const client = await mcpManager.getClient(s.id);
       const toolSet = await client.tools();
-      for (const [name, mcpTool] of Object.entries(toolSet)) {
+      for (const [name, mcpTool] of Object.entries(toolSet) as [string, any][]) {
         const key = `${String(s.name || "").replace(/[^a-zA-Z0-9_-]/g, "-")}__${String(name).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
         mcpToolSet[key] = {
           description: mcpTool.description,
