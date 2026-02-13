@@ -1394,56 +1394,54 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               deviceMode !== "desktop" && "flex justify-center",
             )}
           >
-            {annotatorMode && screenshotDataUrl ? (
-              <div
-                className="w-full h-full bg-white dark:bg-gray-950"
-                style={
-                  deviceMode == "desktop"
-                    ? {}
-                    : { width: `${deviceWidthConfig[deviceMode]}px` }
-                }
-              >
-                <Annotator
-                  screenshotUrl={screenshotDataUrl}
-                  onSubmit={addAttachments}
-                  handleAnnotatorClick={handleAnnotatorClick}
-                />
-              </div>
-            ) : (
-              <>
-                <iframe
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
-                  data-testid="preview-iframe-element"
-                  onLoad={() => {
-                    setErrorMessage(undefined);
-                    // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
-                    // This prevents re-renders from accidentally changing the iframe src
-                  }}
-                  ref={iframeRef}
-                  key={reloadKey}
-                  title={`Preview for App ${selectedAppId}`}
-                  className="w-full h-full border-none bg-white dark:bg-gray-950"
-                  style={
-                    deviceMode == "desktop"
-                      ? {}
-                      : { width: `${deviceWidthConfig[deviceMode]}px` }
-                  }
-                  src={iframeSrc}
-                  allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
-                />
-                {/* Visual Editing Toolbar */}
-                {isProMode &&
-                  visualEditingSelectedComponent &&
-                  selectedAppId && (
-                    <VisualEditingToolbar
-                      selectedComponent={visualEditingSelectedComponent}
-                      iframeRef={iframeRef}
-                      isDynamic={isDynamicComponent}
-                      hasStaticText={hasStaticText}
-                    />
-                  )}
-              </>
-            )}
+            <div
+              className="relative h-full"
+              style={
+                deviceMode == "desktop"
+                  ? { width: "100%" }
+                  : { width: `${deviceWidthConfig[deviceMode]}px` }
+              }
+            >
+              {annotatorMode && screenshotDataUrl && (
+                <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950">
+                  <Annotator
+                    screenshotUrl={screenshotDataUrl}
+                    onSubmit={addAttachments}
+                    handleAnnotatorClick={handleAnnotatorClick}
+                  />
+                </div>
+              )}
+              <iframe
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
+                data-testid="preview-iframe-element"
+                onLoad={() => {
+                  setErrorMessage(undefined);
+                  // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
+                  // This prevents re-renders from accidentally changing the iframe src
+                }}
+                ref={iframeRef}
+                key={reloadKey}
+                title={`Preview for App ${selectedAppId}`}
+                className={cn(
+                  "w-full h-full border-none bg-white dark:bg-gray-950",
+                  annotatorMode && "invisible",
+                )}
+                src={iframeSrc}
+                allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
+              />
+              {/* Visual Editing Toolbar */}
+              {!annotatorMode &&
+                isProMode &&
+                visualEditingSelectedComponent &&
+                selectedAppId && (
+                  <VisualEditingToolbar
+                    selectedComponent={visualEditingSelectedComponent}
+                    iframeRef={iframeRef}
+                    isDynamic={isDynamicComponent}
+                    hasStaticText={hasStaticText}
+                  />
+                )}
+            </div>
           </div>
         )}
       </div>

@@ -412,15 +412,9 @@ const createApplicationMenu = () => {
   Menu.setApplicationMenu(appMenu);
 };
 
-console.log("DEBUG: NODE_ENV =", process.env.NODE_ENV);
-console.log("DEBUG: App Name =", app.getName());
-console.log("DEBUG: User Data =", app.getPath("userData"));
-
 const gotTheLock = app.requestSingleInstanceLock();
-console.log("DEBUG: Got Lock =", gotTheLock);
 
 if (!gotTheLock) {
-  console.log("DEBUG: Quitting because lock was not acquired.");
   app.quit();
 } else {
   app.on("second-instance", (_event, commandLine, _workingDirectory) => {
