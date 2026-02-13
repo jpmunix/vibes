@@ -14,6 +14,8 @@ import {
   Check,
   Info,
   Bot,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useVersions } from "@/hooks/useVersions";
@@ -41,6 +43,7 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions: liveVersions } = useVersions(appId);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
@@ -94,7 +97,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     ) {
       return (
         liveVersions.find(
-          (version) =>
+          (version: any) =>
             message.commitHash &&
             version.oid.slice(0, 7) === message.commitHash.slice(0, 7),
         ) || null
@@ -147,7 +150,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             />
           ) : !isSelectingModel ? (
             <div
-              className="prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+              className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
               suppressHydrationWarning
             >
               {message.role === "assistant" ? (
@@ -199,6 +202,27 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                   </TooltipProvider>
                 )}
               <div className="flex flex-wrap gap-2">
+                {message.role === "assistant" && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setIsCollapsed(!isCollapsed)}
+                          className="flex items-center justify-center p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200 cursor-pointer"
+                        >
+                          {isCollapsed ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronUp className="h-4 w-4" />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isCollapsed ? "Expandir respuesta" : "Colapsar respuesta"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 {message.approvalState && (
                   <div className="flex items-center space-x-1">
                     {message.approvalState === "approved" ? (
