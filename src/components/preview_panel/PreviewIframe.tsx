@@ -993,7 +993,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           { type: "cleanup-all-text-editing" },
           "*",
         );
-        
+
         // Remove all component overlays when deactivating
         if (visualEditingSelectedComponent) {
           iframeRef.current.contentWindow.postMessage(
@@ -1004,7 +1004,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             "*",
           );
         }
-        
+
         // Clear visual editing state
         setVisualEditingSelectedComponent(null);
         setCurrentComponentCoordinates(null);
@@ -1029,25 +1029,31 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       setAnnotatorMode(false);
       return;
     }
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        {
-          type: "dyad-take-screenshot",
-        },
-        "*",
-      );
-    }
+    // Delay to let the dropdown menu close before taking the screenshot
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "dyad-take-screenshot",
+          },
+          "*",
+        );
+      }
+    }, 150);
   };
 
   const handleStartSelection = () => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        {
-          type: "dyad-start-selection",
-        },
-        "*",
-      );
-    }
+    // Delay to let the dropdown menu close before starting selection
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "dyad-start-selection",
+          },
+          "*",
+        );
+      }
+    }, 150);
   };
 
   // Activate component selector using a shortcut
@@ -1370,11 +1376,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     <p>Take Screenshot</p>
                   </TooltipContent>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={handleAnnotatorClick}>
+                    <DropdownMenuItem onSelect={handleAnnotatorClick}>
                       <Monitor size={14} className="mr-2" />
                       <span>Full Page</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleStartSelection}>
+                    <DropdownMenuItem onSelect={handleStartSelection}>
                       <Crop size={14} className="mr-2" />
                       <span>Selection</span>
                     </DropdownMenuItem>

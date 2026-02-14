@@ -747,14 +747,14 @@ export class PageObject {
   }
 
   async clickAnnotatorSubmit() {
-    await this.page.getByRole("button", { name: "Add to Chat" }).click();
+    await this.page.getByRole("button", { name: "Añadir al chat" }).click();
   }
   locateLoadingAppPreview() {
-    return this.page.getByText("Preparing app preview...");
+    return this.page.getByText("Preparando la vista previa");
   }
 
   locateStartingAppPreview() {
-    return this.page.getByText("Starting your app server...");
+    return this.page.getByText("Iniciando el servidor");
   }
 
   getPreviewIframeElement() {
@@ -768,18 +768,18 @@ export class PageObject {
   }
 
   async clickFixErrorWithAI() {
-    await this.page.getByRole("button", { name: "Fix error with AI" }).click();
+    await this.page.getByRole("button", { name: "Arreglar el problema con la IA" }).click();
   }
 
   async clickCopyErrorMessage() {
-    await this.page.getByRole("button", { name: /Copy/ }).click();
+    await this.page.getByRole("button", { name: /Copiar/ }).click();
   }
 
   async getClipboardText(): Promise<string> {
     return await this.page.evaluate(() => navigator.clipboard.readText());
   }
   async clickFixAllErrors() {
-    await this.page.getByRole("button", { name: /Fix All Errors/ }).click();
+    await this.page.getByRole("button", { name: /Arreglar todos los errores/ }).click();
   }
 
   async snapshotPreviewErrorBanner() {

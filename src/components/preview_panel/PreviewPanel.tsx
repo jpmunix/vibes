@@ -55,7 +55,7 @@ const ConsoleHeader = ({
       <Logs size={16} className="mt-0.5 shrink-0" />
       <div className="flex flex-col min-w-0">
         <span className="text-sm font-medium whitespace-nowrap">
-          {consoleView === "logs" ? "System Messages" : "App Console"}
+          {consoleView === "logs" ? "Mensajes del sistema" : "Consola"}
         </span>
         {!isOpen && latestMessage && (
           <span className="text-xs text-gray-500 truncate max-w-[200px] md:max-w-[400px]">

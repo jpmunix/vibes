@@ -25,6 +25,9 @@ export const MessageSchema = z.object({
   requestId: z.string().nullable().optional(),
   totalTokens: z.number().nullable().optional(),
   model: z.string().nullable().optional(),
+  // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
+  // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
+  aiMessagesJson: z.any().nullable().optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;

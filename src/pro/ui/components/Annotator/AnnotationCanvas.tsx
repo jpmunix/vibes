@@ -6,6 +6,7 @@ import {
   Path,
   Rect as KonvaRect,
   Text,
+  Arrow,
   Transformer,
 } from "react-konva";
 import { getStroke } from "perfect-freehand";
@@ -54,13 +55,21 @@ type Shape =
     text: string;
     fontSize: number;
     color: string;
+  }
+  | {
+    id: string;
+    type: "arrow";
+    points: [number, number, number, number];
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
   };
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;
   shapes: Shape[];
   selectedId: string | null;
-  tool: "select" | "draw" | "rect" | "text";
+  tool: "select" | "draw" | "rect" | "text" | "arrow";
   scale: number;
   stageDimensions: { width: number; height: number };
   containerSize: { width: number; height: number };
@@ -175,6 +184,31 @@ export const AnnotationCanvas = ({
                   onDragEnd={(e) => {
                     const node = e.target;
                     onShapeDragEnd(shape.id, node.x(), node.y());
+                  }}
+                />
+              );
+            } else if (shape.type === "arrow") {
+              return (
+                <Arrow
+                  key={shape.id}
+                  id={shape.id}
+                  points={[
+                    shape.points[0] * scale,
+                    shape.points[1] * scale,
+                    shape.points[2] * scale,
+                    shape.points[3] * scale,
+                  ]}
+                  stroke={shape.color}
+                  fill={shape.color}
+                  strokeWidth={shape.strokeWidth}
+                  pointerLength={12}
+                  pointerWidth={10}
+                  draggable={tool === "select"}
+                  onClick={() => tool === "select" && onShapeSelect(shape.id)}
+                  onTap={() => tool === "select" && onShapeSelect(shape.id)}
+                  onDragEnd={(e) => {
+                    const node = e.target;
+                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
                   }}
                 />
               );

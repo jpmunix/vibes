@@ -15,10 +15,24 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
     base64: string;
     mimeType: string;
 }> {
-    if (!aiMessagesJson) return [];
+    if (!aiMessagesJson) {
+        console.log("[UserMessageContent] No aiMessagesJson provided");
+        return [];
+    }
 
-    const messages = aiMessagesJson?.messages;
-    if (!messages || !Array.isArray(messages)) return [];
+    console.log("[UserMessageContent] aiMessagesJson:", aiMessagesJson);
+
+    // Handle both new format {messages: [...]} and old format [...]
+    const messages = Array.isArray(aiMessagesJson)
+        ? aiMessagesJson
+        : aiMessagesJson?.messages;
+
+    if (!messages || !Array.isArray(messages)) {
+        console.warn("[UserMessageContent] No valid messages array found");
+        return [];
+    }
+
+    console.log("[UserMessageContent] Processing messages array:", messages);
 
     const images: Array<{ base64: string; mimeType: string }> = [];
 
@@ -32,10 +46,15 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
                     base64: part.image,
                     mimeType: part.mediaType || part.mimeType || "image/png",
                 });
+                console.log("[UserMessageContent] Found image attachment:", {
+                    mimeType: part.mediaType || part.mimeType || "image/png",
+                    base64Length: part.image.length
+                });
             }
         }
     }
 
+    console.log("[UserMessageContent] Total images extracted:", images.length);
     return images;
 }
 
@@ -99,20 +118,21 @@ export function UserMessageContent({
 
             {/* Render image thumbnails if we have images from aiMessagesJson */}
             {images.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="not-prose flex flex-wrap gap-2 mt-2">
                     {images.map((img, index) => {
                         const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
                         return (
                             <button
                                 key={index}
                                 onClick={() => handleImageClick(dataUrl)}
+                                style={{ width: 96, height: 96, flexShrink: 0 }}
                                 className="relative group rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all duration-200 hover:shadow-md cursor-pointer"
                                 title="Click para ampliar"
                             >
                                 <img
                                     src={dataUrl}
                                     alt={`Captura ${index + 1}`}
-                                    className="w-24 h-24 object-cover"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
                                     <ImageIcon

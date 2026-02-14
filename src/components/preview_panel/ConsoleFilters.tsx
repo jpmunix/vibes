@@ -61,7 +61,7 @@ export const ConsoleFilters = ({
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <option value="all">All Levels</option>
+        <option value="all">Todos los niveles</option>
         <option value="info">Info</option>
         <option value="warn">Warn</option>
         <option value="error">Error</option>
@@ -82,7 +82,7 @@ export const ConsoleFilters = ({
         }
         className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        <option value="all">All Types</option>
+        <option value="all">Todos los tipos</option>
         <option value="server">Server</option>
         <option value="client">Client</option>
         <option value="edge-function">Edge Function</option>

@@ -166,7 +166,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
               ) : (
                 <UserMessageContent
                   content={message.content}
-                  aiMessagesJson={(message as any).aiMessagesJson}
+                  aiMessagesJson={message.aiMessagesJson}
                 />
               )}
             </div>

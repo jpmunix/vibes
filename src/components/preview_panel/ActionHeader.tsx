@@ -252,7 +252,7 @@ export const ActionHeader = ({
 
   // Button style for the 3 main groups
   const groupButtonClass =
-    "no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] transition-colors";
+    "no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium z-10 hover:bg-[var(--background-lightest)] transition-colors";
 
   return (
     <TooltipProvider>

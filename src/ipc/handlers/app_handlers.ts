@@ -155,6 +155,9 @@ async function copyDir(
 
 let proxyWorker: Worker | null = null;
 
+// Track proxy URLs per app to enable re-emission when the app is already running
+const proxyUrlByApp = new Map<number, { proxyUrl: string; originalUrl: string }>();
+
 // Needed, otherwise electron in MacOS/Linux will not be able
 // to find node/pnpm.
 fixPath();
@@ -357,6 +360,8 @@ function listenToProcess({
           proxyWorker = await startProxy(urlMatch[1], {
             port: proxyPort,
             onStarted: (proxyUrl) => {
+              // Store the proxy URL for this app for later re-emission
+              proxyUrlByApp.set(appId, { proxyUrl, originalUrl: urlMatch[1] });
               safeSend(event.sender, "app:output", {
                 type: "stdout",
                 message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${urlMatch[1]}]`,
@@ -1025,6 +1030,16 @@ export function registerAppHandlers() {
       // Check if app is already running
       if (runningApps.has(appId)) {
         logger.debug(`App ${appId} is already running.`);
+        // Re-emit the proxy URL if the proxy was previously started
+        // (only if we have a stored URL - don't emit if npm install is still running)
+        const storedProxy = proxyUrlByApp.get(appId);
+        if (storedProxy) {
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[dyad-proxy-server]started=[${storedProxy.proxyUrl}] original=[${storedProxy.originalUrl}]`,
+            appId,
+          });
+        }
         return;
       }
 
@@ -1096,6 +1111,7 @@ export function registerAppHandlers() {
       }
 
       try {
+        proxyUrlByApp.delete(appId);
         await stopAppByInfo(appId, appInfo);
 
         // Now, safely remove the app from the map *after* confirming closure
@@ -1126,6 +1142,7 @@ export function registerAppHandlers() {
           logger.log(
             `Stopping app ${appId} (processId ${processId}) before restart`,
           );
+          proxyUrlByApp.delete(appId);
           await stopAppByInfo(appId, appInfo);
         } else {
           logger.log(`App ${appId} not running. Proceeding to start.`);

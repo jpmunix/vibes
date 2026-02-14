@@ -8,6 +8,9 @@ import {
   Redo,
   Check,
   X,
+  MoveUpRight,
+  Clipboard,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,21 +21,32 @@ import {
 } from "@/components/ui/tooltip";
 import { ToolbarColorPicker } from "./ToolbarColorPicker";
 
+type ToolType = "select" | "draw" | "rect" | "text" | "arrow";
+
 interface AnnotatorToolbarProps {
-  tool: "select" | "draw" | "rect" | "text";
+  tool: ToolType;
   color: string;
   selectedId: string | null;
   historyStep: number;
   historyLength: number;
-  onToolChange: (tool: "select" | "draw" | "rect" | "text") => void;
+  onToolChange: (tool: ToolType) => void;
   onColorChange: (color: string) => void;
   onDelete: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onSubmit: () => void;
+  onCopyToClipboard: () => void;
+  onSaveAsFile: () => void;
   onDeactivate: () => void;
   hasSubmitHandler: boolean;
 }
+
+const activeClass =
+  "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700";
+const inactiveClass =
+  "text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900";
+const actionClass =
+  "p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const AnnotatorToolbar = ({
   tool,
@@ -46,93 +60,48 @@ export const AnnotatorToolbar = ({
   onUndo,
   onRedo,
   onSubmit,
+  onCopyToClipboard,
+  onSaveAsFile,
   onDeactivate,
   hasSubmitHandler,
 }: AnnotatorToolbarProps) => {
+  const toolBtn = (
+    id: ToolType,
+    label: string,
+    Icon: React.ElementType,
+  ) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={() => onToolChange(id)}
+          aria-label={label}
+          className={cn(
+            "p-1 rounded transition-colors duration-200",
+            tool === id ? activeClass : inactiveClass,
+          )}
+        >
+          <Icon size={16} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+
+  const Divider = () => (
+    <div className="w-px bg-gray-200 dark:bg-gray-700 h-4" />
+  );
+
   return (
     <div className="flex items-center justify-center p-2 border-b space-x-2">
       <TooltipProvider>
-        {/* Tool Selection Buttons */}
         <div className="flex space-x-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onToolChange("select")}
-                aria-label="Seleccionar"
-                className={cn(
-                  "p-1 rounded transition-colors duration-200",
-                  tool === "select"
-                    ? "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-                    : " text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900",
-                )}
-              >
-                <MousePointer2 size={16} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Seleccionar</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onToolChange("draw")}
-                aria-label="Dibujar"
-                className={cn(
-                  "p-1 rounded transition-colors duration-200",
-                  tool === "draw"
-                    ? "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-                    : " text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900",
-                )}
-              >
-                <Pencil size={16} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Dibujar</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onToolChange("rect")}
-                aria-label="Rectángulo"
-                className={cn(
-                  "p-1 rounded transition-colors duration-200",
-                  tool === "rect"
-                    ? "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-                    : " text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900",
-                )}
-              >
-                <Square size={16} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Rectángulo</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => onToolChange("text")}
-                aria-label="Texto"
-                className={cn(
-                  "p-1 rounded transition-colors duration-200",
-                  tool === "text"
-                    ? "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-                    : "text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900",
-                )}
-              >
-                <Type size={16} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Texto</p>
-            </TooltipContent>
-          </Tooltip>
+          {toolBtn("select", "Seleccionar", MousePointer2)}
+          {toolBtn("draw", "Dibujar", Pencil)}
+          {toolBtn("rect", "Rectángulo", Square)}
+          {toolBtn("arrow", "Flecha", MoveUpRight)}
+          {toolBtn("text", "Texto", Type)}
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -145,14 +114,14 @@ export const AnnotatorToolbar = ({
             </TooltipContent>
           </Tooltip>
 
-          <div className="w-px bg-gray-200 dark:bg-gray-700 h-4" />
+          <Divider />
 
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onDelete}
                 aria-label="Eliminar"
-                className="p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={actionClass}
                 disabled={!selectedId}
               >
                 <Trash2 size={16} />
@@ -163,14 +132,14 @@ export const AnnotatorToolbar = ({
             </TooltipContent>
           </Tooltip>
 
-          <div className="w-px bg-gray-200 dark:bg-gray-700 h-4" />
+          <Divider />
 
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onUndo}
                 aria-label="Deshacer"
-                className="p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={actionClass}
                 disabled={historyStep === 0}
               >
                 <Undo size={16} />
@@ -186,7 +155,7 @@ export const AnnotatorToolbar = ({
               <button
                 onClick={onRedo}
                 aria-label="Rehacer"
-                className="p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200  dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={actionClass}
                 disabled={historyStep === historyLength - 1}
               >
                 <Redo size={16} />
@@ -197,14 +166,46 @@ export const AnnotatorToolbar = ({
             </TooltipContent>
           </Tooltip>
 
-          <div className="w-px bg-gray-200 dark:bg-gray-700 h-4" />
+          <Divider />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onCopyToClipboard}
+                aria-label="Copiar al portapapeles"
+                className={actionClass}
+              >
+                <Clipboard size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Copiar al portapapeles</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onSaveAsFile}
+                aria-label="Guardar como archivo"
+                className={actionClass}
+              >
+                <Download size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Guardar como archivo</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Divider />
 
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onSubmit}
                 aria-label="Añadir al chat"
-                className="p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={actionClass}
                 disabled={!hasSubmitHandler}
               >
                 <Check size={16} />

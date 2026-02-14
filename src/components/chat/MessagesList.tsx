@@ -166,42 +166,59 @@ function FooterComponent({ context }: { context?: FooterContext }) {
 
                       const attachments: File[] = [];
 
-                      // Try to recover image attachments from aiMessagesJson if available
-                      // Casting to any because aiMessagesJson is not in the strict Message type but exists at runtime
-                      const aiMessages = (userMessage as any).aiMessagesJson
-                        ?.messages;
+                      console.log("[UNDO] User message:", userMessage);
+                      console.log("[UNDO] aiMessagesJson:", userMessage.aiMessagesJson);
 
-                      if (aiMessages && Array.isArray(aiMessages)) {
-                        const userMsg = aiMessages.find(
-                          (m: any) => m.role === "user",
-                        );
-                        if (userMsg && Array.isArray(userMsg.content)) {
-                          userMsg.content.forEach(
-                            (part: any, index: number) => {
-                              if (part.type === "image" && part.image) {
-                                const mimeType =
-                                  part.mediaType || "image/png";
-                                const ext =
-                                  mimeType.split("/")[1] || "png";
-                                const filename = `restored-image-${Date.now()}-${index}.${ext}`;
-                                try {
-                                  const file = base64ToFile(
-                                    part.image,
-                                    filename,
-                                    mimeType,
-                                  );
-                                  attachments.push(file);
-                                } catch (e) {
-                                  console.error(
-                                    "Failed to restore image attachment",
-                                    e,
-                                  );
-                                }
-                              }
-                            },
+                      // Try to recover image attachments from aiMessagesJson if available
+                      const aiMessagesJson = userMessage.aiMessagesJson;
+
+                      if (aiMessagesJson) {
+                        // Handle both new format {messages: [...]} and old format [...]
+                        const aiMessages = Array.isArray(aiMessagesJson)
+                          ? aiMessagesJson
+                          : aiMessagesJson.messages;
+
+                        console.log("[UNDO] Processed aiMessages:", aiMessages);
+
+                        if (aiMessages && Array.isArray(aiMessages)) {
+                          const userMsg = aiMessages.find(
+                            (m: any) => m.role === "user",
                           );
+                          console.log("[UNDO] Found user message in aiMessages:", userMsg);
+
+                          if (userMsg && Array.isArray(userMsg.content)) {
+                            userMsg.content.forEach(
+                              (part: any, index: number) => {
+                                if (part.type === "image" && part.image) {
+                                  const mimeType =
+                                    part.mediaType || part.mimeType || "image/png";
+                                  const ext =
+                                    mimeType.split("/")[1] || "png";
+                                  const filename = `restored-image-${Date.now()}-${index}.${ext}`;
+                                  try {
+                                    const file = base64ToFile(
+                                      part.image,
+                                      filename,
+                                      mimeType,
+                                    );
+                                    attachments.push(file);
+                                    console.log("[UNDO] Successfully restored image:", filename);
+                                  } catch (e) {
+                                    console.error(
+                                      "Failed to restore image attachment",
+                                      e,
+                                    );
+                                  }
+                                }
+                              },
+                            );
+                          }
                         }
+                      } else {
+                        console.warn("[UNDO] No aiMessagesJson found in user message");
                       }
+
+                      console.log("[UNDO] Total attachments recovered:", attachments.length);
 
                       // Dispatch event to restore input
                       window.dispatchEvent(

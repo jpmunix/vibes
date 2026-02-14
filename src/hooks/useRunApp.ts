@@ -117,12 +117,19 @@ export function useAppOutputSubscription() {
     },
     [setConsoleEntries, processProxyServerOutput],
   );
+  // Use a ref so the event listener always sees the latest appId
+  // without needing to re-register (which creates a gap where events get lost)
+  const appIdRef = useRef(appId);
+  useEffect(() => {
+    appIdRef.current = appId;
+  }, [appId]);
 
-  // Subscribe to app output events from main process
+  // Subscribe to app output events from main process - register ONCE
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onAppOutput((output) => {
+      const currentAppId = appIdRef.current;
       // Only process events for the currently selected app
-      if (appId !== null && output.appId === appId) {
+      if (currentAppId !== null && output.appId === currentAppId) {
         // Handle HMR updates
         if (
           output.message.includes("hmr update") &&
@@ -135,7 +142,7 @@ export function useAppOutputSubscription() {
     });
 
     return unsubscribe;
-  }, [appId, processAppOutput, onHotModuleReload]);
+  }, [processAppOutput, onHotModuleReload]);
 }
 
 export function useRunApp() {
@@ -153,13 +160,10 @@ export function useRunApp() {
     try {
       console.debug("Running app", appId);
 
-      // Clear the URL and add restart message
-      setAppUrlObj((prevAppUrlObj) => {
-        if (prevAppUrlObj?.appId !== appId) {
-          return { appUrl: null, appId: null, originalUrl: null };
-        }
-        return prevAppUrlObj; // No change needed
-      });
+      // Always clear the URL so the iframe shows "Starting your app server..."
+      // until the proxy emits a fresh URL event. This prevents loading a stale
+      // proxy URL when the app/proxy was stopped and restarted.
+      setAppUrlObj({ appUrl: null, appId: null, originalUrl: null });
 
       const logEntry = {
         level: "info" as const,

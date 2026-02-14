@@ -16,6 +16,7 @@ import {
   gitCheckout,
   gitCommit,
   gitStageToRevert,
+  gitAddAll,
   getCurrentCommitHash,
   gitCurrentBranch,
   gitLog,
@@ -185,6 +186,10 @@ export function registerVersionHandlers() {
       });
       const isClean = await isGitStatusClean({ path: appPath });
       if (!isClean) {
+        // Ensure all changes are staged before committing
+        // This handles edge cases where gitStageToRevert may leave files unstaged
+        // (e.g., when isomorphic-git staging doesn't fully sync with native git)
+        await gitAddAll({ path: appPath });
         await gitCommit({
           path: appPath,
           message: `Reverted all changes back to version ${previousVersionId}`,
