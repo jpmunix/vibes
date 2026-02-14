@@ -46,6 +46,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   todo_refinement: <Wand2 className="w-4 h-4" />,
   debate_chat_system: <MessageSquare className="w-4 h-4" />,
   debate_summary_system: <Lightbulb className="w-4 h-4" />,
+  quick_edit_system: <Wand2 className="w-4 h-4" />,
 };
 
 export function PromptsSettings() {
@@ -112,7 +113,7 @@ export function PromptsSettings() {
   return (
     <div className="flex flex-col w-full min-h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30 backdrop-blur-sm sticky top-0 z-10">
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-muted sticky top-0 z-10">
         <div className="flex items-center gap-4 flex-1">
           <Link to="/settings">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -254,7 +255,7 @@ export function PromptsSettings() {
 
               <div className="px-4 pb-4 flex flex-col">
                 <div className="rounded-xl border bg-card shadow-sm flex flex-col overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted">
                     <span className="text-xs font-mono text-muted-foreground">
                       Original length: {DEFAULT_PROMPTS[activeTab].length} chars
                     </span>

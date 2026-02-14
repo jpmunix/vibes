@@ -20,6 +20,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
+const formatTokens = (num: number | undefined) => {
+  if (num === undefined) return "---";
+  if (num >= 1000000) return `${Math.ceil(num / 1000000)}M`;
+  if (num >= 1000) return `${Math.ceil(num / 1000)}K`;
+  return num.toString();
+};
+
 interface ModelsSectionProps {
   providerId: string;
 }
@@ -115,9 +122,8 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           {models.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${
-                selectedModel === model.apiName ? "ring-2 ring-primary" : ""
-              }`}
+              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${selectedModel === model.apiName ? "ring-2 ring-primary" : ""
+                }`}
               onClick={() => handleModelClick(model.apiName)}
               onDoubleClick={() => handleModelDoubleClick(model)}
             >
@@ -174,9 +180,20 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                 </p>
               )}
               <div className="flex flex-wrap gap-1 mt-auto pt-2">
-                <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                  {model.type === "cloud" ? "Integrado" : "Personalizado"}
-                </span>
+                {model.contextWindow && model.maxOutputTokens ? (
+                  <>
+                    <span className="inline-block bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      Contexto: {formatTokens(model.contextWindow)}
+                    </span>
+                    <span className="inline-block bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      Salida: {formatTokens(model.maxOutputTokens)}
+                    </span>
+                  </>
+                ) : model.type === "custom" ? (
+                  <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    Personalizado
+                  </span>
+                ) : null}
                 {model.tag && (
                   <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
                     {model.tag}
@@ -240,7 +257,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
               el modelo personalizado "
               {modelToDelete
                 ? models?.find((m) => m.apiName === modelToDelete)
-                    ?.displayName || modelToDelete
+                  ?.displayName || modelToDelete
                 : ""}
               " (API Name: {modelToDelete}).
             </AlertDialogDescription>

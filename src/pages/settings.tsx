@@ -3,6 +3,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { AutomationSettings } from "@/components/settings/AutomationSettings";
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
+import { WebSearchSettings } from "@/components/settings/WebSearchSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
@@ -21,6 +22,8 @@ import {
   Search,
   X,
   Database,
+  Download,
+  Upload,
 } from "lucide-react";
 import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
@@ -221,8 +224,8 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Clave API de Serper",
     description: "Configurar la clave API para búsquedas web con Serper",
     keywords: ["serper", "api", "key", "clave", "busqueda", "web", "search"],
-    section: "Modelos y Conectividad",
-    sectionId: "models-connectivity",
+    section: "Búsqueda Web e Información",
+    sectionId: "serper-settings",
   },
   {
     id: "smart-context",
@@ -277,8 +280,8 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Configuración de OpenRouter",
     description: "Configurar clave API de OpenRouter y modelos",
     keywords: ["openrouter", "api", "key", "clave", "ia"],
-    section: "Modelos y Conectividad",
-    sectionId: "models-connectivity",
+    section: "Modelos e IA",
+    sectionId: "openrouter-settings",
   },
   // Integrations
   {
@@ -508,6 +511,70 @@ export default function SettingsPage() {
     }
   };
 
+  const handleExportSettings = () => {
+    try {
+      if (!settings) {
+        showError("No hay configuración para exportar");
+        return;
+      }
+
+      const dataToExport = {
+        settings: settings,
+        exportedAt: new Date().toISOString(),
+        version: "1.0",
+      };
+      
+      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `vibes-settings-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showSuccess("Configuración exportada correctamente");
+    } catch (err) {
+      console.error("Export error:", err);
+      showError("Error al exportar la configuración");
+    }
+  };
+
+  const handleImportSettings = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        // Validate the imported data
+        if (!data.settings || typeof data.settings !== "object") {
+          showError("Formato de archivo inválido");
+          return;
+        }
+        
+        // Update all settings
+        await updateSettings(data.settings);
+        
+        showSuccess("Configuración importada correctamente. Recarga la página para ver todos los cambios.");
+      } catch (err) {
+        console.error("Import error:", err);
+        showError("Error al importar la configuración. Verifica el formato del archivo.");
+      }
+    };
+    
+    input.click();
+  };
+
   return (
     <div
       id="settings-scroll-container"
@@ -537,6 +604,28 @@ export default function SettingsPage() {
                 <X className="h-4 w-4" />
               </button>
             )}
+          </div>
+
+          {/* Export/Import Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleExportSettings}
+            >
+              <Download className="w-4 h-4" />
+              Exportar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleImportSettings}
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
           </div>
         </div>
 
@@ -598,6 +687,10 @@ export default function SettingsPage() {
 
           <ModelsAndConnectivity
             isHighlighted={highlightedSection === "models-connectivity"}
+          />
+
+          <WebSearchSettings
+            isHighlighted={highlightedSection === "serper-settings"}
           />
 
           <AIBehaviorSettings

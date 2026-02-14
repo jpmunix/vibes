@@ -190,7 +190,7 @@ export function OpenRouterSettings({
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            OpenRouter
+            Modelos e IA
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Configura tu acceso a cientos de modelos de IA a través de OpenRouter

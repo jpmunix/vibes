@@ -2,6 +2,10 @@
 - Mejoras en la pantalla de aplicación para quitar ruido
 - Expandir/colapasar la vista previa
 - Mejoras varias en la ui en toda la app
+- Exportar notas a word
+- Reorganización de los ajustes
+- Posibilidad de exportar e importar ajustes
+- posibilidad de exportar e importar los ajustes
 
 ## 🔥 Novedades principales
 
