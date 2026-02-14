@@ -18,6 +18,8 @@ import { ArrowDown } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 import { isBasicAgentMode } from "@/lib/schemas";
+import { PlanPanel } from "./chat/PlanPanel";
+import { usePlanSync } from "@/hooks/usePlanSync";
 
 interface ChatPanelProps {
   chatId?: number;
@@ -41,6 +43,9 @@ export function ChatPanel({
   const { isQuotaExceeded } = useFreeAgentQuota();
   const showFreeAgentQuotaBanner =
     settings && isBasicAgentMode(settings) && isQuotaExceeded;
+
+  // Sync plan state from chat messages (in plan mode)
+  usePlanSync(chatId);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -303,6 +308,7 @@ export function ChatPanel({
               }
             />
           )}
+          <PlanPanel chatId={chatId} />
           <ChatInput chatId={chatId} autoStart={autoStart} />
         </div>
       </div>

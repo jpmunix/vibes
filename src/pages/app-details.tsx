@@ -51,7 +51,8 @@ import { AppUpgrades } from "@/components/AppUpgrades";
 import { CapacitorControls } from "@/components/CapacitorControls";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { Brain } from "lucide-react";
+import { DossierModal } from "@/components/DossierModal";
+import { Brain, FileText as FileTextIcon } from "lucide-react";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import {
   Card,
@@ -88,6 +89,7 @@ export default function AppDetailsPage() {
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
   const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
@@ -564,6 +566,35 @@ export default function AppDetailsPage() {
               appId={appId}
               isOpen={isKnowledgeBaseModalOpen}
               onClose={() => setIsKnowledgeBaseModalOpen(false)}
+            />
+          )}
+
+          {appId && (
+            <Button
+              variant="outline"
+              onClick={() => setIsDossierModalOpen(true)}
+              className="w-full justify-between h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
+              <div className="flex items-center gap-2">
+                <ChevronRight className="h-4 w-4 text-gray-500" />
+                <div className="flex flex-col items-start">
+                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                    Dossier de la App
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 text-left">
+                    Genera tutorial + memoria técnica en DOCX para licitaciones
+                  </span>
+                </div>
+              </div>
+              <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
+            </Button>
+          )}
+          {appId && selectedApp && (
+            <DossierModal
+              appId={appId}
+              appName={selectedApp.name}
+              isOpen={isDossierModalOpen}
+              onClose={() => setIsDossierModalOpen(false)}
             />
           )}
         </div>

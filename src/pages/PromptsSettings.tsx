@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   FileSearch,
   Wand2,
+  FileText,
 } from "lucide-react";
 
 import { useRef } from "react";
@@ -47,6 +48,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   debate_chat_system: <MessageSquare className="w-4 h-4" />,
   debate_summary_system: <Lightbulb className="w-4 h-4" />,
   quick_edit_system: <Wand2 className="w-4 h-4" />,
+  dossier_prompt: <FileText className="w-4 h-4" />,
 };
 
 export function PromptsSettings() {
@@ -244,7 +246,7 @@ export function PromptsSettings() {
                     disabled={
                       loading ||
                       localPrompts[activeTab] ===
-                        settings?.customPrompts?.[activeTab]
+                      settings?.customPrompts?.[activeTab]
                     }
                   >
                     <Save className="w-4 h-4" />

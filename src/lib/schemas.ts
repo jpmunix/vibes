@@ -177,7 +177,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["build", "ask", "agent", "local-agent"]);
+export const ChatModeSchema = z.enum(["build", "ask", "agent", "local-agent", "plan"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -322,6 +322,7 @@ export const UserSettingsSchema = z
     debateModel: z.string().optional(),
     summaryModel: z.string().optional(),
     knowledgeExtractionModel: z.string().optional(),
+    dossierModel: z.string().optional(),
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
@@ -458,11 +459,14 @@ export function getEffectiveDefaultChatMode(
       if (freeAgentQuotaAvailable && hasPaidProviderSetup) return "local-agent";
       return "build";
     }
+    if (settings.defaultChatMode === "build") {
+      return "plan";
+    }
     return settings.defaultChatMode;
   }
 
-  // No explicit default set - default to "build" because local-agent is still unreliable
-  return "build";
+  // No explicit default set - default to "plan" (planning mode for new apps)
+  return "plan";
 }
 
 /**

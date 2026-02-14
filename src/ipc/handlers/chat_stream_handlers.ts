@@ -1185,7 +1185,8 @@ This conversation includes one or more image attachments. When the user uploads 
           // Thinking tags are generally not critical for the context
           // and eats up extra tokens.
           content:
-            settings.selectedChatMode === "ask"
+            settings.selectedChatMode === "ask" ||
+              settings.selectedChatMode === "plan"
               ? removeDyadTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
@@ -1749,6 +1750,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
           if (
             settings.selectedChatMode !== "ask" &&
+            settings.selectedChatMode !== "plan" &&
             isTurboEditsV2Enabled(settings)
           ) {
             const maxIssues = settings.autoFixMaxIssues ?? 5;

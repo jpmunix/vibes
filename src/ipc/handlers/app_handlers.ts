@@ -1363,15 +1363,27 @@ export function registerAppHandlers() {
         throw new Error(`Failed to delete app from database: ${error.message}`);
       }
 
-      // Delete app files
+      // Delete app files with retry logic to handle race conditions
+      // (e.g. file watchers or dev servers releasing handles)
       const appPath = getDyadAppPath(app.path);
-      try {
-        await fsPromises.rm(appPath, { recursive: true, force: true });
-      } catch (error: any) {
-        logger.error(`Error deleting app files for app ${appId}:`, error);
-        throw new Error(
-          `App deleted from database, but failed to delete app files. Please delete app files from ${appPath} manually.\n\nError: ${error.message}`,
-        );
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          await fsPromises.rm(appPath, { recursive: true, force: true });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          if (attempt < maxRetries && (error.code === 'ENOTEMPTY' || error.code === 'EBUSY' || error.code === 'EPERM')) {
+            logger.warn(
+              `Attempt ${attempt}/${maxRetries} to delete app files failed (${error.code}). Retrying in ${attempt * 500}ms...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+          } else {
+            logger.error(`Error deleting app files for app ${appId}:`, error);
+            throw new Error(
+              `App deleted from database, but failed to delete app files. Please delete app files from ${appPath} manually.\n\nError: ${error.message}`,
+            );
+          }
+        }
       }
     });
   });

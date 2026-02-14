@@ -48,6 +48,7 @@ import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 import { knowledgeContracts } from "../types/knowledge";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
+import { dossierContracts, dossierStreamContract } from "../types/dossier";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -56,6 +57,7 @@ import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
 const DEBATE_STREAM_CHANNELS = getStreamChannels(debateStreamContract);
+const DOSSIER_STREAM_CHANNELS = getStreamChannels(dossierStreamContract);
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
 const TEST_INVOKE_CHANNELS = [
@@ -81,6 +83,7 @@ export const VALID_INVOKE_CHANNELS = [
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
   DEBATE_STREAM_CHANNELS.invoke,
+  DOSSIER_STREAM_CHANNELS.invoke,
 
   // Integrations
   ...getInvokeChannels(githubContracts),
@@ -113,6 +116,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(knowledgeContracts),
   ...getInvokeChannels(aiQueryLogContracts),
+  ...getInvokeChannels(dossierContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,
@@ -131,6 +135,7 @@ export const VALID_RECEIVE_CHANNELS = [
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
   ...DEBATE_STREAM_CHANNELS.receive,
+  ...DOSSIER_STREAM_CHANNELS.receive,
 
   // Event channels
   ...getReceiveChannels(agentEvents),

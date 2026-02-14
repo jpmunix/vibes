@@ -31,6 +31,7 @@ import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelecto
 import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
 import { SummaryModelSelector } from "@/components/debate/SummaryModelSelector";
 import { KnowledgeModelSelector } from "@/components/KnowledgeModelSelector";
+import { DossierModelSelector } from "@/components/DossierModelSelector";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -435,6 +436,17 @@ export function OpenRouterSettings({
                 <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
                   Modelo para analizar conversaciones y extraer reglas del
                   proyecto automáticamente.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
+                Dossier de la App
+              </Label>
+              <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
+                <DossierModelSelector />
+                <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                  Modelo para generar el dossier técnico (tutorial + memoria).
                 </p>
               </div>
             </div>

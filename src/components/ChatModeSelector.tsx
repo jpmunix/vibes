@@ -40,7 +40,7 @@ export function ChatModeSelector() {
 
   const selectedMode = settings?.selectedChatMode || "build";
   const isProEnabled = settings ? isDyadProEnabled(settings) : false;
-  const {} = useFreeAgentQuota();
+  const { } = useFreeAgentQuota();
 
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;
@@ -78,6 +78,8 @@ export function ChatModeSelector() {
     switch (mode) {
       case "build":
         return "Build";
+      case "plan":
+        return "Planificación";
       case "ask":
         return "Preguntar";
       case "agent":
@@ -98,10 +100,12 @@ export function ChatModeSelector() {
           <MiniSelectTrigger
             data-testid="chat-mode-selector"
             className={cn(
-              "h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5",
+              "h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors",
               selectedMode === "build" || selectedMode === "local-agent"
                 ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
-                : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
+                : selectedMode === "plan"
+                  ? "bg-teal-500/10 hover:bg-teal-500/20 focus:bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                  : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
             )}
             size="sm"
           >
@@ -118,6 +122,16 @@ export function ChatModeSelector() {
         </TooltipContent>
       </Tooltip>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
+        {
+          <SelectItem value="plan">
+            <div className="flex flex-col items-start">
+              <span className="font-medium">Planificación</span>
+              <span className="text-xs text-muted-foreground">
+                Transforma tu idea en un plan de acción editable
+              </span>
+            </div>
+          </SelectItem>
+        }
         {
           <SelectItem value="local-agent">
             <div className="flex flex-col items-start">

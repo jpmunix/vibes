@@ -43,9 +43,12 @@ export function DefaultChatModeSelector() {
         return "Construir";
       case "agent":
         return "Build (MCP)";
+      case "plan":
+        return "Planificación";
       case "local-agent":
         return "Agente inteligente";
       case "ask":
+        return "Preguntar";
       default:
         throw new Error(`Unknown chat mode: ${mode}`);
     }
@@ -68,6 +71,14 @@ export function DefaultChatModeSelector() {
             <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="plan">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">Planificación</span>
+                <span className="text-xs text-muted-foreground">
+                  Transforma tu idea en un plan de acción editable
+                </span>
+              </div>
+            </SelectItem>
             <SelectItem value="local-agent">
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5">
@@ -87,12 +98,20 @@ export function DefaultChatModeSelector() {
                 </span>
               </div>
             </SelectItem>
+            <SelectItem value="ask">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">Preguntar</span>
+                <span className="text-xs text-muted-foreground">
+                  Pregunta sobre cosas de la app pero sin editar
+                </span>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="text-sm text-gray-500 dark:text-gray-400">
         El modo de chat usado para crear nuevos chats
       </div>
-    </div>
+    </div >
   );
 }

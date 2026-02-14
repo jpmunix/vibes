@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Database, Settings, BarChart3, CloudUpload, List, Trash2, Clock, RotateCcw } from "lucide-react";
+import { Database, Settings, BarChart3, CloudUpload, List, Trash2, Clock, RotateCcw, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { backupClient } from "@/ipc/types/backup";
 import { storage, auth } from "@/lib/firebase";
@@ -41,6 +41,12 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
     const [backupToDelete, setBackupToDelete] = useState<string | null>(null);
     const [backupToRestore, setBackupToRestore] = useState<string | null>(null);
     const [isRestoring, setIsRestoring] = useState(false);
+
+    // Dossiers state
+    const [dossiers, setDossiers] = useState<{ id: string, name: string, appName: string }[]>([]);
+    const [isLoadingDossiers, setIsLoadingDossiers] = useState(false);
+    const [dossierToDelete, setDossierToDelete] = useState<string | null>(null);
+    const [isDownloadingDossier, setIsDownloadingDossier] = useState<string | null>(null);
 
     const handleBackup = async () => {
         if (!user) {
@@ -159,6 +165,39 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
         }
     };
 
+    const fetchDossiers = useCallback(async () => {
+        if (!user) return;
+
+        setIsLoadingDossiers(true);
+        try {
+            const dossiersRef = ref(storage, `dossiers/${user.uid}`);
+            const res = await listAll(dossiersRef);
+
+            const fetchedDossiers = res.items.map(item => {
+                // Nombre: dossier_AppName.zip
+                const match = item.name.match(/^dossier_(.+)\.zip$/);
+                const appName = match ? match[1].replace(/_/g, " ") : item.name;
+
+                return {
+                    id: item.name,
+                    name: item.name,
+                    appName,
+                };
+            }).sort((a, b) => a.appName.localeCompare(b.appName));
+
+            setDossiers(fetchedDossiers);
+        } catch (error: any) {
+            console.error("[BackupModal] Error fetching dossiers:", error);
+            if (error.code === 'storage/object-not-found') {
+                setDossiers([]);
+            } else {
+                toast.error("Error al cargar la lista de dossiers");
+            }
+        } finally {
+            setIsLoadingDossiers(false);
+        }
+    }, [user]);
+
     const handleDeleteBackup = async () => {
         if (!user || !backupToDelete) return;
 
@@ -173,6 +212,52 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             toast.error("Error al eliminar la copia");
         } finally {
             setBackupToDelete(null);
+        }
+    };
+
+    const handleDeleteDossier = async () => {
+        if (!user || !dossierToDelete) return;
+
+        try {
+            const fileRef = ref(storage, `dossiers/${user.uid}/${dossierToDelete}`);
+            await deleteObject(fileRef);
+            toast.success("Dossier eliminado de la nube");
+            fetchDossiers();
+        } catch (error) {
+            console.error("[BackupModal] Error deleting dossier:", error);
+            toast.error("Error al eliminar el dossier");
+        } finally {
+            setDossierToDelete(null);
+        }
+    };
+
+    const handleDownloadDossier = async (dossierId: string) => {
+        if (!user) return;
+
+        setIsDownloadingDossier(dossierId);
+        try {
+            const fileRef = ref(storage, `dossiers/${user.uid}/${dossierId}`);
+            const url = await getDownloadURL(fileRef);
+
+            // Fetch and trigger download
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = dossierId;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+
+            toast.success("Dossier descargado");
+        } catch (error) {
+            console.error("[BackupModal] Error downloading dossier:", error);
+            toast.error("Error al descargar el dossier");
+        } finally {
+            setIsDownloadingDossier(null);
         }
     };
 
@@ -208,8 +293,11 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
     useEffect(() => {
         if (isOpen) {
             fetchBackups();
+            fetchDossiers();
         }
-    }, [isOpen]);
+    }, [isOpen, fetchDossiers]);
+
+    const hasDossiers = dossiers.length > 0 || isLoadingDossiers;
 
     return (
         <>
@@ -222,12 +310,12 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                 Copia de Seguridad
                             </DialogTitle>
                             <DialogDescription className="text-muted-foreground text-sm">
-                                Gestiona tus copias de seguridad en la nube
+                                Gestiona tus copias de seguridad y dossiers en la nube
                             </DialogDescription>
                         </DialogHeader>
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 h-12">
+                            <TabsList className={`grid w-full ${hasDossiers ? "grid-cols-3" : "grid-cols-2"} bg-muted/50 p-1 h-12`}>
                                 <TabsTrigger value="create" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
                                     <CloudUpload className="h-4 w-4" />
                                     Sacar Copia
@@ -236,6 +324,12 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                     <List className="h-4 w-4" />
                                     Ver Existentes
                                 </TabsTrigger>
+                                {hasDossiers && (
+                                    <TabsTrigger value="dossiers" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
+                                        <FileText className="h-4 w-4" />
+                                        Dossiers
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
 
                             <TabsContent value="create" className="space-y-6 pt-6">
@@ -335,6 +429,64 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                     <Button variant="outline" onClick={onClose}>Cerrar</Button>
                                 </div>
                             </TabsContent>
+
+                            {/* Dossiers Tab */}
+                            <TabsContent value="dossiers" className="space-y-4 pt-6">
+                                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                    {isLoadingDossiers ? (
+                                        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                                            <p>Cargando dossiers...</p>
+                                        </div>
+                                    ) : dossiers.length === 0 ? (
+                                        <div className="text-center py-10 text-muted-foreground">
+                                            <FileText className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                            <p>No hay dossiers en la nube</p>
+                                            <p className="text-xs mt-1">Los dossiers se suben automáticamente al generarlos</p>
+                                        </div>
+                                    ) : (
+                                        dossiers.map((dossier) => (
+                                            <div key={dossier.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-md">
+                                                        <FileText className="h-4 w-4 text-indigo-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium">{dossier.appName}</p>
+                                                        <p className="text-[10px] text-muted-foreground">{dossier.id}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="opacity-0 group-hover:opacity-100 text-indigo-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-opacity"
+                                                        onClick={() => handleDownloadDossier(dossier.id)}
+                                                        disabled={isDownloadingDossier === dossier.id}
+                                                    >
+                                                        {isDownloadingDossier === dossier.id ? (
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
+                                                        ) : (
+                                                            <Download className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                                                        onClick={() => setDossierToDelete(dossier.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <Button variant="outline" onClick={onClose}>Cerrar</Button>
+                                </div>
+                            </TabsContent>
                         </Tabs>
                     </div>
                 </DialogContent>
@@ -352,6 +504,26 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteBackup}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={!!dossierToDelete} onOpenChange={(open) => !open && setDossierToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar dossier?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción no se puede deshacer. El dossier será eliminado permanentemente de la nube.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteDossier}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Eliminar

@@ -1,5 +1,7 @@
 ## 🔥 Novedades principales
 
+- Generacion del dossier + documentación + copia automática en mi cuenta de vibes (si estoy logueado)
+
 ### ✏️ Editor visual
 - **Editor visual de la página** mediante el icono de lápiz. Permite modificar textos, iconos, colores y tamaños directamente desde la interfaz, incluyendo el uso de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.
 

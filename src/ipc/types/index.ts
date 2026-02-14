@@ -59,6 +59,7 @@ export { embeddingsContracts } from "./embeddings";
 export { debateContracts, debateStreamContract } from "./debate";
 export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
+export { dossierContracts, dossierStreamContract } from "./dossier";
 
 // =============================================================================
 // Client Exports
@@ -97,6 +98,7 @@ export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
 export { knowledgeClient } from "./knowledge";
 export { aiQueryLogClient } from "./ai_query_logs";
+export { dossierClient, dossierStreamClient } from "./dossier";
 
 // =============================================================================
 // Type Exports
@@ -348,6 +350,16 @@ export type {
   KnowledgeHealthResult,
 } from "./knowledge";
 
+// Dossier types
+export type {
+  DossierGenerateParams,
+  DossierCheckExistingParams,
+  DossierCheckExistingResult,
+  DossierDownloadResult,
+  DossierChunk,
+  DossierEnd,
+} from "./dossier";
+
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
 // =============================================================================
@@ -416,6 +428,7 @@ import { debateClient, debateStreamClient } from "./debate";
 import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
 import { aiQueryLogClient } from "./ai_query_logs";
+import { dossierClient, dossierStreamClient } from "./dossier";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -450,6 +463,7 @@ export const ipc = {
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
   debateStream: debateStreamClient,
+  dossierStream: dossierStreamClient,
 
   // Integrations
   github: githubClient,
@@ -481,6 +495,7 @@ export const ipc = {
   embeddings: embeddingsClient,
   knowledge: knowledgeClient,
   aiQueryLogs: aiQueryLogClient,
+  dossier: dossierClient,
 
   // Event clients for main->renderer pub/sub
   events: {

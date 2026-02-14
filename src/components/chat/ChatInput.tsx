@@ -442,6 +442,7 @@ export function ChatInput({
             proposal &&
             proposalResult?.chatId === chatId &&
             settings.selectedChatMode !== "ask" &&
+            settings.selectedChatMode !== "plan" &&
             settings.selectedChatMode !== "local-agent" && (
               <ChatInputActions
                 proposal={proposal}
