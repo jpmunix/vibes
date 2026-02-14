@@ -27,6 +27,7 @@ import { generateText } from "ai";
 import { getModelClient } from "../../../../ipc/utils/get_model_client";
 import { readSettings } from "../../../../main/settings";
 import { logAiQuery } from "../../../../ipc/utils/ai_query_logger";
+import { getEffectivePrompt } from "../../../../prompts";
 
 export function registerVisualEditingHandlers() {
   ipcMain.handle(
@@ -218,42 +219,49 @@ export function registerVisualEditingHandlers() {
           };
         }
 
-        // Build system prompt for style/content modifications
-        const systemPrompt = `Eres un asistente de diseño web. El usuario está editando un componente llamado "${componentName}".
+        // Get base prompt from settings
+        const basePrompt = getEffectivePrompt("quick_edit_system", settings);
 
-Tu tarea es interpretar solicitudes simples del usuario y devolver ÚNICAMENTE un objeto JSON con los cambios solicitados.
+        // Build system prompt for style/content modifications
+        const systemPrompt = `${basePrompt}
+
+El usuario está editando un componente llamado "${componentName}".
 
 El componente actual tiene estos estilos: ${JSON.stringify(currentStyles || {})}
-${currentTextContent ? `Contenido de texto actual: "${currentTextContent}"` : ""}
-
-IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.
+${currentTextContent ? `
+Contenido de texto actual: "${currentTextContent}"` : ""}
 
 El JSON debe tener esta estructura:
 {
   "textContent": "nuevo texto" (opcional, solo si el usuario quiere cambiar el texto),
   "styles": {
-    "backgroundColor": "color" (opcional),
+    "backgroundColor": "color o clase" (opcional),
     "text": {
-      "color": "color" (opcional),
-      "fontSize": "tamaño" (opcional),
+      "color": "color o clase" (opcional),
+      "fontSize": "tamaño o clase" (opcional),
       "fontWeight": "peso" (opcional)
     } (opcional),
     "border": {
       "width": "ancho" (opcional),
-      "color": "color" (opcional),
-      "radius": "radio" (opcional)
+      "color": "color o clase" (opcional),
+      "radius": "radio o clase" (opcional)
     } (opcional),
     "padding": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional),
     "margin": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional)
   }
 }
 
-Ejemplos:
+Ejemplos con Tailwind detectado:
+- "cambia esto a negro" → { "styles": { "text": { "color": "text-black" } } }
+- "hazlo verde" → { "styles": { "text": { "color": "text-green-600" } } }
+- "fondo azul" → { "styles": { "backgroundColor": "bg-blue-500" } }
+- "hazlo más grande" → { "styles": { "text": { "fontSize": "text-lg" } } }
+
+Ejemplos sin Tailwind:
 - "cambia esto a negro" → { "styles": { "text": { "color": "#000000" } } }
+- "hazlo verde" → { "styles": { "text": { "color": "#22c55e" } } }
+- "fondo azul" → { "styles": { "backgroundColor": "#3b82f6" } }
 - "hazlo más grande" → { "styles": { "text": { "fontSize": "20px" } } }
-- "pon el texto en rojo" → { "styles": { "text": { "color": "#ff0000" } } }
-- "cambia el texto a 'Hola Mundo'" → { "textContent": "Hola Mundo" }
-- "background azul" → { "styles": { "backgroundColor": "#0000ff" } }
 
 Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
 

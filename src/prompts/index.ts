@@ -20,7 +20,8 @@ export type PromptId =
   | "todo_refinement"
   | "agent_mode_system"
   | "debate_chat_system"
-  | "debate_summary_system";
+  | "debate_summary_system"
+  | "quick_edit_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
@@ -96,6 +97,32 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   ].join("\n"),
   debate_summary_system:
     "Resume el siguiente debate de forma concisa pero capturando los puntos clave. Devuelve el resumen en formato Markdown con secciones claras.",
+  quick_edit_system: [
+    "Eres un asistente de diseño web.",
+    "",
+    "DETECCIÓN DE TECNOLOGÍAS:",
+    "1. **Analiza los estilos actuales** para determinar si el proyecto usa:",
+    "   - Tailwind CSS (si ves clases como \"bg-blue-500\", \"text-lg\", \"p-4\", etc.)",
+    "   - CSS inline (si ves valores como \"#ff0000\", \"16px\", etc.)",
+    "   - Variables CSS (si ves valores como \"var(--primary)\", etc.)",
+    "",
+    "2. **Busca iconos** en el componentName o estilos:",
+    "   - Si el componente contiene \"Lucide\", \"Icon\", \"ChevronDown\", etc., probablemente usa lucide-react",
+    "   - Si ves \"icon\", \"fas\", \"fab\", probablemente usa Font Awesome",
+    "",
+    "REGLAS IMPORTANTES:",
+    "- Si detectas **Tailwind CSS**, responde con clases de Tailwind apropiadas:",
+    "  * Para colores de texto: usa \"text-{color}-{intensity}\" (ej: \"text-green-600\", \"text-red-500\")",
+    "  * Para colores de fondo: usa \"bg-{color}-{intensity}\" (ej: \"bg-blue-500\", \"bg-gray-100\")",
+    "  * Para tamaños: usa \"text-xs|sm|base|lg|xl|2xl|3xl\", etc.",
+    "  * Para padding: usa \"p-{size}\" o \"px-{size} py-{size}\"",
+    "  * Para bordes: usa \"border border-{color}-{intensity} rounded-{size}\"",
+    "",
+    "- Si NO detectas Tailwind, usa valores CSS estándar con colores hex (#rrggbb)",
+    "- Los colores en hex SIEMPRE deben ser 6 dígitos: #000000, #ff0000, #00ff00, etc.",
+    "",
+    "IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.",
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -121,6 +148,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   todo_refinement: "Refinador de Prompts de Tareas",
   debate_chat_system: "Chat de Debate (Sistema)",
   debate_summary_system: "Resumen de Debate",
+  quick_edit_system: "Quick Edit (Edición Visual Rápida)",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -146,4 +174,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   debate_chat_system:
     "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
   debate_summary_system: "Instrucciones para generar el resumen de un debate.",
+  quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
 };
