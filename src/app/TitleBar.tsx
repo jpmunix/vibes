@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
+import { UserHeaderActions } from "@/components/preview_panel/UserHeaderActions";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { AuthModal } from "@/components/AuthModal";
 import { userAtom } from "@/atoms/authAtoms";
@@ -122,23 +123,27 @@ export const TitleBar = () => {
 
 
         {
-          location.pathname === "/chat" && !isPreviewExpanded && (
-            <div className="flex-1 flex justify-end">
-              <ActionHeader
-                versions={versions}
-                versionsLoading={versionsLoading}
-                user={user}
-                isAuthModalOpen={isAuthModalOpen}
-                setIsAuthModalOpen={setIsAuthModalOpen}
-                isProfileModalOpen={isProfileModalOpen}
-                setIsProfileModalOpen={setIsProfileModalOpen}
-                isBackupModalOpen={isBackupModalOpen}
-                setIsBackupModalOpen={setIsBackupModalOpen}
-                handleLogout={handleLogout}
-                navigate={navigate}
-              />
-            </div>
-          )
+          <div className="flex-1 flex justify-end items-center mr-2">
+            {
+              location.pathname === "/chat" && !isPreviewExpanded && (
+                <ActionHeader
+                  versions={versions}
+                  versionsLoading={versionsLoading}
+                />
+              )
+            }
+            <UserHeaderActions
+              user={user}
+              isAuthModalOpen={isAuthModalOpen}
+              setIsAuthModalOpen={setIsAuthModalOpen}
+              isProfileModalOpen={isProfileModalOpen}
+              setIsProfileModalOpen={setIsProfileModalOpen}
+              isBackupModalOpen={isBackupModalOpen}
+              setIsBackupModalOpen={setIsBackupModalOpen}
+              handleLogout={handleLogout}
+              navigate={navigate}
+            />
+          </div>
         }
 
         {showWindowControls && <WindowsControls />}

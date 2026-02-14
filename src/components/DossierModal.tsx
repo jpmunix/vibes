@@ -172,15 +172,16 @@ export function DossierModal({
                             base64: data.zipBase64,
                             fileName: data.fileName,
                         });
-                        // Auto-download on completion
-                        triggerDownload(data.zipBase64, data.fileName);
+                        // Auto-download removed upon user request
+                        // triggerDownload(data.zipBase64, data.fileName);
 
                         // Auto-upload to Firebase if logged in
                         if (user) {
                             try {
                                 addMessage("Subiendo dossier a la nube...", "done");
                                 const sanitizedName = appName.replace(/[^a-zA-Z0-9]/g, "_");
-                                const storageRef = ref(storage, `dossiers/${user.uid}/dossier_${sanitizedName}.zip`);
+                                // Use 'backups' folder to reuse existing storage rules
+                                const storageRef = ref(storage, `backups/${user.uid}/dossier_${sanitizedName}.zip`);
                                 await uploadString(storageRef, data.zipBase64, "base64", {
                                     contentType: "application/zip",
                                 });
@@ -425,7 +426,7 @@ export function DossierModal({
                                 className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-900/20"
                             >
                                 <Download className="h-4 w-4 mr-1" />
-                                Descargar de nuevo
+                                Descargar Dossier
                             </Button>
                         )}
 

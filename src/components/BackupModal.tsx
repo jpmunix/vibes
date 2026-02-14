@@ -99,8 +99,11 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             const res = await listAll(backupsRootRef);
 
             // Ahora trabajamos con archivos individuales (items) en lugar de carpetas (prefixes)
-            if (res.items.length > 10) {
-                const sortedItems = [...res.items].sort((a, b) => a.name.localeCompare(b.name));
+            // Filter ONLY backup files (ignore dossiers)
+            const backupFiles = res.items.filter(item => item.name.startsWith("backup-"));
+
+            if (backupFiles.length > 10) {
+                const sortedItems = [...backupFiles].sort((a, b) => a.name.localeCompare(b.name));
                 const toDelete = sortedItems.slice(0, sortedItems.length - 10);
 
                 for (const item of toDelete) {
@@ -118,85 +121,76 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             return;
         }
 
-        console.log("[BackupModal] Fetching backups for user:", user.uid);
+        console.log("[BackupModal] Fetching cloud data for user:", user.uid);
         setIsLoadingBackups(true);
+        setIsLoadingDossiers(true);
+
         try {
+            // We store both backups and dossiers in the 'backups' folder to reuse security rules
             const backupsRootRef = ref(storage, `backups/${user.uid}`);
             const res = await listAll(backupsRootRef);
-            console.log("[BackupModal] Found", res.items.length, "backup files");
+            console.log("[BackupModal] Found", res.items.length, "total files");
 
-            // Ahora trabajamos con archivos ZIP individuales
-            const fetchedBackups = res.items.map(item => {
-                // Nombre del archivo: backup-2024-02-10T19-45-12-123Z.zip
-                // Extraer el timestamp del nombre del archivo
-                const match = item.name.match(/backup-(.+)\.zip$/);
-                const timestamp = match ? match[1] : item.name;
+            const backupsList: typeof backups = [];
+            const dossiersList: typeof dossiers = [];
 
-                // Formatear fecha para mostrar
-                let formattedDate = timestamp;
-                try {
-                    const parts = timestamp.split('T');
-                    if (parts.length === 2) {
-                        const timePart = parts[1].replace(/-/g, ':').replace(/:([^:]*)$/, '.$1');
-                        const isoStr = `${parts[0]}T${timePart}`;
-                        formattedDate = new Date(isoStr).toLocaleString();
+            res.items.forEach(item => {
+                if (item.name.startsWith("backup-")) {
+                    // It's a backup file
+                    const match = item.name.match(/backup-(.+)\.zip$/);
+                    const timestamp = match ? match[1] : item.name;
+
+                    let formattedDate = timestamp;
+                    try {
+                        const parts = timestamp.split('T');
+                        if (parts.length === 2) {
+                            const timePart = parts[1].replace(/-/g, ':').replace(/:([^:]*)$/, '.$1');
+                            const isoStr = `${parts[0]}T${timePart}`;
+                            formattedDate = new Date(isoStr).toLocaleString();
+                        }
+                    } catch (e) {
+                        formattedDate = timestamp;
                     }
-                } catch (e) {
-                    formattedDate = timestamp;
+
+                    backupsList.push({
+                        id: item.name,
+                        name: `Backup ${timestamp}`,
+                        date: formattedDate
+                    });
+                } else if (item.name.startsWith("dossier_")) {
+                    // It's a dossier file
+                    const match = item.name.match(/^dossier_(.+)\.zip$/);
+                    const appName = match ? match[1].replace(/_/g, " ") : item.name;
+
+                    dossiersList.push({
+                        id: item.name,
+                        name: item.name,
+                        appName,
+                    });
                 }
+            });
 
-                return {
-                    id: item.name, // Nombre completo del archivo
-                    name: `Backup ${timestamp}`,
-                    date: formattedDate
-                };
-            }).sort((a, b) => b.id.localeCompare(a.id));
-
-            setBackups(fetchedBackups);
+            setBackups(backupsList.sort((a, b) => b.id.localeCompare(a.id)));
+            setDossiers(dossiersList.sort((a, b) => a.appName.localeCompare(b.appName)));
         } catch (error: any) {
-            console.error("[BackupModal] Error fetching backups:", error);
+            console.error("[BackupModal] Error fetching cloud data:", error);
             if (error.code === 'storage/object-not-found') {
                 setBackups([]);
+                setDossiers([]);
             } else {
-                toast.error("Error al cargar la lista de copias");
+                // Determine if we should show error toast based on user action context
+                // For initial load, maybe silent is better if it's just empty
+                if (error.code !== "storage/object-not-found") {
+                    toast.error("Error al cargar datos de la nube");
+                }
             }
         } finally {
             setIsLoadingBackups(false);
+            setIsLoadingDossiers(false);
         }
     };
 
-    const fetchDossiers = useCallback(async () => {
-        if (!user) return;
-
-        setIsLoadingDossiers(true);
-        try {
-            const dossiersRef = ref(storage, `dossiers/${user.uid}`);
-            const res = await listAll(dossiersRef);
-
-            const fetchedDossiers = res.items.map(item => {
-                // Nombre: dossier_AppName.zip
-                const match = item.name.match(/^dossier_(.+)\.zip$/);
-                const appName = match ? match[1].replace(/_/g, " ") : item.name;
-
-                return {
-                    id: item.name,
-                    name: item.name,
-                    appName,
-                };
-            }).sort((a, b) => a.appName.localeCompare(b.appName));
-
-            setDossiers(fetchedDossiers);
-        } catch (error: any) {
-            console.error("[BackupModal] Error fetching dossiers:", error);
-            if (error.code === 'storage/object-not-found') {
-                setDossiers([]);
-            } else {
-                toast.error("Error al cargar la lista de dossiers");
-            }
-        } finally {
-            setIsLoadingDossiers(false);
-        }
-    }, [user]);
+    // fetchDossiers removed, logic merged into fetchBackups
 
     const handleDeleteBackup = async () => {
         if (!user || !backupToDelete) return;
@@ -219,10 +213,11 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
         if (!user || !dossierToDelete) return;
 
         try {
-            const fileRef = ref(storage, `dossiers/${user.uid}/${dossierToDelete}`);
+            // Note: now dossiers are also in backups/{uid}
+            const fileRef = ref(storage, `backups/${user.uid}/${dossierToDelete}`);
             await deleteObject(fileRef);
             toast.success("Dossier eliminado de la nube");
-            fetchDossiers();
+            fetchBackups();
         } catch (error) {
             console.error("[BackupModal] Error deleting dossier:", error);
             toast.error("Error al eliminar el dossier");
@@ -236,7 +231,8 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
 
         setIsDownloadingDossier(dossierId);
         try {
-            const fileRef = ref(storage, `dossiers/${user.uid}/${dossierId}`);
+            // Note: now dossiers are also in backups/{uid}
+            const fileRef = ref(storage, `backups/${user.uid}/${dossierId}`);
             const url = await getDownloadURL(fileRef);
 
             // Fetch and trigger download
@@ -293,9 +289,8 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
     useEffect(() => {
         if (isOpen) {
             fetchBackups();
-            fetchDossiers();
         }
-    }, [isOpen, fetchDossiers]);
+    }, [isOpen]);
 
     const hasDossiers = dossiers.length > 0 || isLoadingDossiers;
 
