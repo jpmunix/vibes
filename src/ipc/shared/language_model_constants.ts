@@ -92,6 +92,17 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       brainSigns: 3,
     },
     {
+      name: "anthropic/claude-opus-4.6",
+      displayName: "Claude Opus 4.6",
+      description:
+        "El modelo más potente de Anthropic para código y tareas profesionales de larga duración. Diseñado para agentes que operan en flujos de trabajo completos, destacando en codebases grandes, refactorizaciones complejas y debugging multi-paso. Mantiene coherencia excepcional en outputs muy largos y sesiones extendidas.",
+      maxOutputTokens: 128_000,
+      contextWindow: 1_000_000,
+      temperature: 0,
+      dollarSigns: 4,
+      brainSigns: 3,
+    },
+    {
       name: "openai/gpt-5.1-codex-mini",
       displayName: "GPT 5.1 Codex mini",
       description:
@@ -178,6 +189,28 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       temperature: 0,
       dollarSigns: 1,
       brainSigns: 2,
+    },
+    {
+      name: "minimax/minimax-m2.5",
+      displayName: "MiniMax M2.5",
+      description:
+        "Modelo SOTA diseñado para productividad del mundo real. Experto en generación y operación de archivos Word, Excel y PowerPoint, cambiando fluidamente entre entornos de software diversos. Destaca en SWE-Bench (80.2%) y es altamente eficiente en tokens gracias a su entrenamiento en planificación optimizada.",
+      maxOutputTokens: 131_100,
+      contextWindow: 204_800,
+      temperature: 0,
+      dollarSigns: 1,
+      brainSigns: 1,
+    },
+    {
+      name: "x-ai/grok-code-fast-1",
+      displayName: "Grok Code Fast 1",
+      description:
+        "Modelo de razonamiento rápido y económico especializado en coding agentic. Con trazas de razonamiento visibles en la respuesta, permite a los desarrolladores guiar a Grok Code para flujos de trabajo de alta calidad. Ideal para desarrollo ágil con balance entre velocidad y precisión.",
+      maxOutputTokens: 10_000,
+      contextWindow: 256_000,
+      temperature: 0,
+      dollarSigns: 1,
+      brainSigns: 1,
     },
   ],
 };
