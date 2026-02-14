@@ -104,6 +104,7 @@ export function useStreamChat({
       selectedComponents,
       onSettled,
       isSystemPrompt = false,
+      undoRedo,
     }: {
       prompt: string;
       chatId: number;

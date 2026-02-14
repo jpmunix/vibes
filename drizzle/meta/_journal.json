@@ -278,13 +278,6 @@
     {
       "idx": 39,
       "version": "6",
-      "when": 1770940681000,
-      "tag": "0039_knowledge_v2",
-      "breakpoints": true
-    },
-    {
-      "idx": 40,
-      "version": "6",
       "when": 1771008266213,
       "tag": "0040_new_shooting_star",
       "breakpoints": true
