@@ -68,6 +68,40 @@ function fixOrphanedMigrations(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure required columns exist in knowledge_entries table.
+ * Migration 0040 adds durability, superseded_by, and last_confirmed_at but can
+ * fail if the migration was partially applied. This is a safety net.
+ */
+function ensureKnowledgeColumns(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='knowledge_entries'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(knowledge_entries)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("durability")) {
+      logger.log("Adding missing 'durability' column to knowledge_entries");
+      sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`durability\` text DEFAULT 'permanent'`);
+    }
+    if (!columnNames.has("superseded_by")) {
+      logger.log("Adding missing 'superseded_by' column to knowledge_entries");
+      sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`superseded_by\` integer`);
+    }
+    if (!columnNames.has("last_confirmed_at")) {
+      logger.log("Adding missing 'last_confirmed_at' column to knowledge_entries");
+      sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`last_confirmed_at\` integer`);
+    }
+  } catch (error) {
+    logger.error("Error ensuring knowledge columns:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -133,6 +167,9 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
       // Fix orphaned migrations before running migrate()
       // This handles the case where a table exists but the migration record is missing
       fixOrphanedMigrations(sqlite);
+
+      // Ensure knowledge_entries has all required columns (safety net for migration 0040)
+      ensureKnowledgeColumns(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });
