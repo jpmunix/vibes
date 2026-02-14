@@ -29,8 +29,8 @@ export function AppItem({
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
           className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
-              ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-              : ""
+            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+            : ""
             }`}
           data-testid={`app-list-item-${app.name}`}
         >
@@ -72,8 +72,8 @@ export function AppItem({
               size={14}
               className={
                 app.isFavorite
-                  ? "fill-amber-500 text-amber-500"
-                  : "text-gray-400 hover:text-amber-500 hover:fill-amber-500"
+                  ? "fill-blue-500 text-blue-500"
+                  : "text-gray-400 hover:text-blue-500 hover:fill-blue-500"
               }
             />
           </SidebarMenuAction>
