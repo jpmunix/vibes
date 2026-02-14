@@ -1,0 +1,1148 @@
+[
+    {
+        "name": "Home",
+        "tags": [
+            "casa",
+            "inicio",
+            "principal",
+            "hogar"
+        ]
+    },
+    {
+        "name": "User",
+        "tags": [
+            "usuario",
+            "persona",
+            "perfil",
+            "cuenta"
+        ]
+    },
+    {
+        "name": "Settings",
+        "tags": [
+            "configuración",
+            "ajustes",
+            "opciones",
+            "preferencias"
+        ]
+    },
+    {
+        "name": "Search",
+        "tags": [
+            "buscar",
+            "lupa",
+            "encontrar",
+            "búsqueda"
+        ]
+    },
+    {
+        "name": "Menu",
+        "tags": [
+            "menú",
+            "hamburguesa",
+            "navegación",
+            "opciones"
+        ]
+    },
+    {
+        "name": "X",
+        "tags": [
+            "cerrar",
+            "cancelar",
+            "equis",
+            "salir"
+        ]
+    },
+    {
+        "name": "Check",
+        "tags": [
+            "verificar",
+            "correcto",
+            "aprobar",
+            "confirmar",
+            "palomita"
+        ]
+    },
+    {
+        "name": "ChevronRight",
+        "tags": [
+            "derecha",
+            "siguiente",
+            "avanzar",
+            "flecha"
+        ]
+    },
+    {
+        "name": "ChevronLeft",
+        "tags": [
+            "izquierda",
+            "anterior",
+            "retroceder",
+            "flecha"
+        ]
+    },
+    {
+        "name": "ChevronDown",
+        "tags": [
+            "abajo",
+            "desplegar",
+            "expandir",
+            "flecha"
+        ]
+    },
+    {
+        "name": "ChevronUp",
+        "tags": [
+            "arriba",
+            "contraer",
+            "flecha"
+        ]
+    },
+    {
+        "name": "Heart",
+        "tags": [
+            "corazón",
+            "favorito",
+            "me gusta",
+            "amor"
+        ]
+    },
+    {
+        "name": "Star",
+        "tags": [
+            "estrella",
+            "favorito",
+            "destacado",
+            "valoración"
+        ]
+    },
+    {
+        "name": "Mail",
+        "tags": [
+            "correo",
+            "email",
+            "mensaje",
+            "carta"
+        ]
+    },
+    {
+        "name": "Phone",
+        "tags": [
+            "teléfono",
+            "llamar",
+            "contacto",
+            "celular"
+        ]
+    },
+    {
+        "name": "Calendar",
+        "tags": [
+            "calendario",
+            "fecha",
+            "agenda",
+            "día"
+        ]
+    },
+    {
+        "name": "Clock",
+        "tags": [
+            "reloj",
+            "hora",
+            "tiempo"
+        ]
+    },
+    {
+        "name": "Download",
+        "tags": [
+            "descargar",
+            "bajar",
+            "guardar"
+        ]
+    },
+    {
+        "name": "Upload",
+        "tags": [
+            "subir",
+            "cargar",
+            "enviar"
+        ]
+    },
+    {
+        "name": "Trash",
+        "tags": [
+            "basura",
+            "eliminar",
+            "borrar",
+            "papelera"
+        ]
+    },
+    {
+        "name": "Edit",
+        "tags": [
+            "editar",
+            "lápiz",
+            "modificar",
+            "escribir"
+        ]
+    },
+    {
+        "name": "Save",
+        "tags": [
+            "guardar",
+            "disco",
+            "almacenar"
+        ]
+    },
+    {
+        "name": "Plus",
+        "tags": [
+            "más",
+            "agregar",
+            "añadir",
+            "crear",
+            "nuevo"
+        ]
+    },
+    {
+        "name": "Minus",
+        "tags": [
+            "menos",
+            "quitar",
+            "restar"
+        ]
+    },
+    {
+        "name": "Share",
+        "tags": [
+            "compartir",
+            "enviar",
+            "distribuir"
+        ]
+    },
+    {
+        "name": "Copy",
+        "tags": [
+            "copiar",
+            "duplicar",
+            "clonar"
+        ]
+    },
+    {
+        "name": "File",
+        "tags": [
+            "archivo",
+            "documento",
+            "fichero"
+        ]
+    },
+    {
+        "name": "Folder",
+        "tags": [
+            "carpeta",
+            "directorio",
+            "contenedor"
+        ]
+    },
+    {
+        "name": "Image",
+        "tags": [
+            "imagen",
+            "foto",
+            "picture",
+            "fotografía"
+        ]
+    },
+    {
+        "name": "Video",
+        "tags": [
+            "vídeo",
+            "película",
+            "grabación"
+        ]
+    },
+    {
+        "name": "Camera",
+        "tags": [
+            "cámara",
+            "foto",
+            "captura"
+        ]
+    },
+    {
+        "name": "Mic",
+        "tags": [
+            "micrófono",
+            "audio",
+            "grabar"
+        ]
+    },
+    {
+        "name": "Volume",
+        "tags": [
+            "volumen",
+            "sonido",
+            "audio"
+        ]
+    },
+    {
+        "name": "Bell",
+        "tags": [
+            "campana",
+            "notificación",
+            "alerta",
+            "aviso"
+        ]
+    },
+    {
+        "name": "Info",
+        "tags": [
+            "información",
+            "ayuda",
+            "detalles"
+        ]
+    },
+    {
+        "name": "AlertCircle",
+        "tags": [
+            "alerta",
+            "advertencia",
+            "peligro",
+            "cuidado"
+        ]
+    },
+    {
+        "name": "AlertTriangle",
+        "tags": [
+            "advertencia",
+            "precaución",
+            "peligro"
+        ]
+    },
+    {
+        "name": "Lock",
+        "tags": [
+            "candado",
+            "bloquear",
+            "seguro",
+            "privado"
+        ]
+    },
+    {
+        "name": "Unlock",
+        "tags": [
+            "desbloquear",
+            "abrir",
+            "público"
+        ]
+    },
+    {
+        "name": "Eye",
+        "tags": [
+            "ojo",
+            "ver",
+            "mostrar",
+            "visible"
+        ]
+    },
+    {
+        "name": "EyeOff",
+        "tags": [
+            "ocultar",
+            "esconder",
+            "invisible",
+            "contraseña"
+        ]
+    },
+    {
+        "name": "LogIn",
+        "tags": [
+            "iniciar sesión",
+            "entrar",
+            "login",
+            "acceder"
+        ]
+    },
+    {
+        "name": "LogOut",
+        "tags": [
+            "cerrar sesión",
+            "salir",
+            "logout",
+            "desconectar"
+        ]
+    },
+    {
+        "name": "ShoppingCart",
+        "tags": [
+            "carrito",
+            "compras",
+            "tienda",
+            "shop"
+        ]
+    },
+    {
+        "name": "CreditCard",
+        "tags": [
+            "tarjeta",
+            "pago",
+            "crédito",
+            "banco"
+        ]
+    },
+    {
+        "name": "DollarSign",
+        "tags": [
+            "dólar",
+            "dinero",
+            "precio",
+            "moneda"
+        ]
+    },
+    {
+        "name": "Users",
+        "tags": [
+            "usuarios",
+            "personas",
+            "equipo",
+            "grupo"
+        ]
+    },
+    {
+        "name": "MessageCircle",
+        "tags": [
+            "mensaje",
+            "chat",
+            "conversación",
+            "comentario"
+        ]
+    },
+    {
+        "name": "Send",
+        "tags": [
+            "enviar",
+            "mandar",
+            "paper plane",
+            "avión"
+        ]
+    },
+    {
+        "name": "Paperclip",
+        "tags": [
+            "adjuntar",
+            "clip",
+            "archivo",
+            "anexo"
+        ]
+    },
+    {
+        "name": "ExternalLink",
+        "tags": [
+            "enlace externo",
+            "abrir",
+            "link",
+            "salir"
+        ]
+    },
+    {
+        "name": "Link",
+        "tags": [
+            "enlace",
+            "link",
+            "cadena",
+            "conectar"
+        ]
+    },
+    {
+        "name": "Bookmark",
+        "tags": [
+            "marcador",
+            "favorito",
+            "guardar",
+            "señalador"
+        ]
+    },
+    {
+        "name": "Flag",
+        "tags": [
+            "bandera",
+            "marcar",
+            "señalar",
+            "reportar"
+        ]
+    },
+    {
+        "name": "Map",
+        "tags": [
+            "mapa",
+            "ubicación",
+            "localización",
+            "navegación"
+        ]
+    },
+    {
+        "name": "MapPin",
+        "tags": [
+            "ubicación",
+            "lugar",
+            "punto",
+            "localización"
+        ]
+    },
+    {
+        "name": "Navigation",
+        "tags": [
+            "navegación",
+            "brújula",
+            "dirección"
+        ]
+    },
+    {
+        "name": "Globe",
+        "tags": [
+            "globo",
+            "mundo",
+            "internet",
+            "internacional"
+        ]
+    },
+    {
+        "name": "Wifi",
+        "tags": [
+            "wifi",
+            "internet",
+            "conexión",
+            "red"
+        ]
+    },
+    {
+        "name": "Bluetooth",
+        "tags": [
+            "bluetooth",
+            "conexión",
+            "inalámbrico"
+        ]
+    },
+    {
+        "name": "Battery",
+        "tags": [
+            "batería",
+            "energía",
+            "carga"
+        ]
+    },
+    {
+        "name": "Power",
+        "tags": [
+            "encender",
+            "apagar",
+            "energía",
+            "botón"
+        ]
+    },
+    {
+        "name": "Zap",
+        "tags": [
+            "rayo",
+            "electricidad",
+            "rápido",
+            "energía"
+        ]
+    },
+    {
+        "name": "Sun",
+        "tags": [
+            "sol",
+            "día",
+            "brillo",
+            "claro"
+        ]
+    },
+    {
+        "name": "Moon",
+        "tags": [
+            "luna",
+            "noche",
+            "oscuro",
+            "modo nocturno"
+        ]
+    },
+    {
+        "name": "Cloud",
+        "tags": [
+            "nube",
+            "clima",
+            "almacenamiento"
+        ]
+    },
+    {
+        "name": "CloudRain",
+        "tags": [
+            "lluvia",
+            "clima",
+            "weather"
+        ]
+    },
+    {
+        "name": "CloudSnow",
+        "tags": [
+            "nieve",
+            "clima",
+            "frío"
+        ]
+    },
+    {
+        "name": "Umbrella",
+        "tags": [
+            "paraguas",
+            "lluvia",
+            "protección"
+        ]
+    },
+    {
+        "name": "Award",
+        "tags": [
+            "premio",
+            "medalla",
+            "logro",
+            "reconocimiento"
+        ]
+    },
+    {
+        "name": "Trophy",
+        "tags": [
+            "trofeo",
+            "premio",
+            "victoria",
+            "campeón"
+        ]
+    },
+    {
+        "name": "Gift",
+        "tags": [
+            "regalo",
+            "presente",
+            "sorpresa"
+        ]
+    },
+    {
+        "name": "Package",
+        "tags": [
+            "paquete",
+            "caja",
+            "entrega",
+            "envío"
+        ]
+    },
+    {
+        "name": "Truck",
+        "tags": [
+            "camión",
+            "entrega",
+            "transporte",
+            "envío"
+        ]
+    },
+    {
+        "name": "Plane",
+        "tags": [
+            "avión",
+            "vuelo",
+            "viaje",
+            "transporte"
+        ]
+    },
+    {
+        "name": "Car",
+        "tags": [
+            "carro",
+            "auto",
+            "vehículo",
+            "transporte"
+        ]
+    },
+    {
+        "name": "Bike",
+        "tags": [
+            "bicicleta",
+            "ciclismo",
+            "transporte"
+        ]
+    },
+    {
+        "name": "Coffee",
+        "tags": [
+            "café",
+            "bebida",
+            "taza"
+        ]
+    },
+    {
+        "name": "Pizza",
+        "tags": [
+            "pizza",
+            "comida",
+            "food"
+        ]
+    },
+    {
+        "name": "Music",
+        "tags": [
+            "música",
+            "nota musical",
+            "canción"
+        ]
+    },
+    {
+        "name": "Headphones",
+        "tags": [
+            "audífonos",
+            "audio",
+            "escuchar",
+            "música"
+        ]
+    },
+    {
+        "name": "Film",
+        "tags": [
+            "película",
+            "cine",
+            "video"
+        ]
+    },
+    {
+        "name": "Tv",
+        "tags": [
+            "televisión",
+            "pantalla",
+            "monitor"
+        ]
+    },
+    {
+        "name": "Smartphone",
+        "tags": [
+            "smartphone",
+            "móvil",
+            "celular",
+            "teléfono"
+        ]
+    },
+    {
+        "name": "Laptop",
+        "tags": [
+            "laptop",
+            "computadora",
+            "portátil"
+        ]
+    },
+    {
+        "name": "Monitor",
+        "tags": [
+            "monitor",
+            "pantalla",
+            "computadora"
+        ]
+    },
+    {
+        "name": "Printer",
+        "tags": [
+            "impresora",
+            "imprimir",
+            "papel"
+        ]
+    },
+    {
+        "name": "Database",
+        "tags": [
+            "base de datos",
+            "datos",
+            "almacenamiento"
+        ]
+    },
+    {
+        "name": "Server",
+        "tags": [
+            "servidor",
+            "hosting",
+            "cloud"
+        ]
+    },
+    {
+        "name": "HardDrive",
+        "tags": [
+            "disco duro",
+            "almacenamiento",
+            "guardar"
+        ]
+    },
+    {
+        "name": "Code",
+        "tags": [
+            "código",
+            "programar",
+            "desarrollo"
+        ]
+    },
+    {
+        "name": "Terminal",
+        "tags": [
+            "terminal",
+            "consola",
+            "comando"
+        ]
+    },
+    {
+        "name": "GitBranch",
+        "tags": [
+            "git",
+            "rama",
+            "branch",
+            "versión"
+        ]
+    },
+    {
+        "name": "GitCommit",
+        "tags": [
+            "git",
+            "commit",
+            "versión",
+            "guardar"
+        ]
+    },
+    {
+        "name": "Github",
+        "tags": [
+            "github",
+            "git",
+            "repositorio",
+            "código"
+        ]
+    },
+    {
+        "name": "Layout",
+        "tags": [
+            "layout",
+            "diseño",
+            "maquetación",
+            "estructura"
+        ]
+    },
+    {
+        "name": "Layers",
+        "tags": [
+            "capas",
+            "niveles",
+            "organización"
+        ]
+    },
+    {
+        "name": "Grid",
+        "tags": [
+            "cuadrícula",
+            "grid",
+            "tabla",
+            "organización"
+        ]
+    },
+    {
+        "name": "List",
+        "tags": [
+            "lista",
+            "listado",
+            "items"
+        ]
+    },
+    {
+        "name": "Table",
+        "tags": [
+            "tabla",
+            "grid",
+            "datos"
+        ]
+    },
+    {
+        "name": "Columns",
+        "tags": [
+            "columnas",
+            "layout",
+            "estructura"
+        ]
+    },
+    {
+        "name": "Rows",
+        "tags": [
+            "filas",
+            "layout",
+            "estructura"
+        ]
+    },
+    {
+        "name": "AlignLeft",
+        "tags": [
+            "alinear izquierda",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "AlignCenter",
+        "tags": [
+            "alinear centro",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "AlignRight",
+        "tags": [
+            "alinear derecha",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "AlignJustify",
+        "tags": [
+            "justificar",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "Bold",
+        "tags": [
+            "negrita",
+            "bold",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "Italic",
+        "tags": [
+            "cursiva",
+            "italic",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "Underline",
+        "tags": [
+            "subrayado",
+            "underline",
+            "texto",
+            "formato"
+        ]
+    },
+    {
+        "name": "Type",
+        "tags": [
+            "texto",
+            "tipografía",
+            "fuente"
+        ]
+    },
+    {
+        "name": "Palette",
+        "tags": [
+            "paleta",
+            "colores",
+            "diseño",
+            "pintura"
+        ]
+    },
+    {
+        "name": "Paintbrush",
+        "tags": [
+            "pincel",
+            "pintar",
+            "diseño",
+            "arte"
+        ]
+    },
+    {
+        "name": "Maximize",
+        "tags": [
+            "maximizar",
+            "expandir",
+            "pantalla completa"
+        ]
+    },
+    {
+        "name": "Minimize",
+        "tags": [
+            "minimizar",
+            "reducir",
+            "ventana"
+        ]
+    },
+    {
+        "name": "Move",
+        "tags": [
+            "mover",
+            "arrastrar",
+            "drag"
+        ]
+    },
+    {
+        "name": "Rotate",
+        "tags": [
+            "rotar",
+            "girar",
+            "rotation"
+        ]
+    },
+    {
+        "name": "ZoomIn",
+        "tags": [
+            "acercar",
+            "zoom",
+            "ampliar"
+        ]
+    },
+    {
+        "name": "ZoomOut",
+        "tags": [
+            "alejar",
+            "zoom",
+            "reducir"
+        ]
+    },
+    {
+        "name": "Filter",
+        "tags": [
+            "filtro",
+            "filtrar",
+            "búsqueda"
+        ]
+    },
+    {
+        "name": "SortAsc",
+        "tags": [
+            "ordenar ascendente",
+            "sort",
+            "organizar"
+        ]
+    },
+    {
+        "name": "SortDesc",
+        "tags": [
+            "ordenar descendente",
+            "sort",
+            "organizar"
+        ]
+    },
+    {
+        "name": "Sliders",
+        "tags": [
+            "controles",
+            "ajustes",
+            "configuración"
+        ]
+    },
+    {
+        "name": "MoreVertical",
+        "tags": [
+            "más opciones",
+            "menú",
+            "vertical",
+            "tres puntos"
+        ]
+    },
+    {
+        "name": "MoreHorizontal",
+        "tags": [
+            "más opciones",
+            "menú",
+            "horizontal",
+            "tres puntos"
+        ]
+    },
+    {
+        "name": "Loader",
+        "tags": [
+            "cargando",
+            "loading",
+            "espera",
+            "spinner"
+        ]
+    },
+    {
+        "name": "RefreshCw",
+        "tags": [
+            "refrescar",
+            "recargar",
+            "actualizar",
+            "refresh"
+        ]
+    },
+    {
+        "name": "Play",
+        "tags": [
+            "reproducir",
+            "play",
+            "iniciar"
+        ]
+    },
+    {
+        "name": "Pause",
+        "tags": [
+            "pausar",
+            "detener temporalmente"
+        ]
+    },
+    {
+        "name": "Stop",
+        "tags": [
+            "detener",
+            "stop",
+            "parar"
+        ]
+    },
+    {
+        "name": "SkipForward",
+        "tags": [
+            "siguiente",
+            "adelantar",
+            "skip"
+        ]
+    },
+    {
+        "name": "SkipBack",
+        "tags": [
+            "anterior",
+            "retroceder",
+            "skip"
+        ]
+    },
+    {
+        "name": "FastForward",
+        "tags": [
+            "adelantar rápido",
+            "avance rápido"
+        ]
+    },
+    {
+        "name": "Rewind",
+        "tags": [
+            "retroceder",
+            "rebobinar"
+        ]
+    },
+    {
+        "name": "Repeat",
+        "tags": [
+            "repetir",
+            "loop",
+            "bucle"
+        ]
+    },
+    {
+        "name": "Shuffle",
+        "tags": [
+            "aleatorio",
+            "shuffle",
+            "mezclar"
+        ]
+    }
+]

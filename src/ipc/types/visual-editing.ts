@@ -47,8 +47,14 @@ export const VisualEditingChangeSchema = z.object({
         fontWeight: z.string().optional(),
         color: z.string().optional(),
         fontFamily: z.string().optional(),
+        textAlign: z.string().optional(),
       })
       .optional(),
+    opacity: z.string().optional(),
+    boxShadow: z.string().optional(),
+    gap: z.string().optional(),
+    display: z.string().optional(),
+    flexDirection: z.string().optional(),
   }),
   textContent: z.string().optional(),
 });
@@ -73,9 +79,31 @@ export type AnalyseComponentParams = z.infer<
   typeof AnalyseComponentParamsSchema
 >;
 
+export const ReplaceIconParamsSchema = z.object({
+  appId: z.number(),
+  componentId: z.string(),
+  newIconName: z.string(),
+});
+
+export type ReplaceIconParams = z.infer<typeof ReplaceIconParamsSchema>;
+
+export const ElementTypeSchema = z.enum([
+  "text",
+  "container",
+  "image",
+  "button",
+  "unknown",
+]);
+
+export type ElementType = z.infer<typeof ElementTypeSchema>;
+
 export const AnalyseComponentResultSchema = z.object({
   isDynamic: z.boolean(),
   hasStaticText: z.boolean(),
+  elementType: ElementTypeSchema,
+  iconName: z.string().optional(),
+  iconLine: z.number().optional(),
+  textContent: z.string().optional(),
 });
 
 // =============================================================================
@@ -93,6 +121,44 @@ export const visualEditingContracts = {
     channel: "analyze-component",
     input: AnalyseComponentParamsSchema,
     output: AnalyseComponentResultSchema,
+  }),
+
+  replaceIcon: defineContract({
+    channel: "replace-component-icon",
+    input: ReplaceIconParamsSchema,
+    output: z.void(),
+  }),
+
+  makePrettier: defineContract({
+    channel: "visual-editing:make-prettier",
+    input: z.object({
+      appId: z.number(),
+      componentId: z.string(),
+      relativePath: z.string(),
+      lineNumber: z.number(),
+      currentStyles: z.record(z.string(), z.any()).optional(),
+    }),
+    output: z.object({
+      suggestions: z.array(VisualEditingChangeSchema),
+    }),
+  }),
+
+  quickEdit: defineContract({
+    channel: "visual-editing:quick-edit",
+    input: z.object({
+      appId: z.number(),
+      componentId: z.string(),
+      componentName: z.string(),
+      relativePath: z.string(),
+      lineNumber: z.number(),
+      prompt: z.string(),
+      currentStyles: z.record(z.string(), z.any()).optional(),
+      currentTextContent: z.string().optional(),
+    }),
+    output: z.object({
+      change: VisualEditingChangeSchema.optional(),
+      error: z.string().optional(),
+    }),
   }),
 } as const;
 

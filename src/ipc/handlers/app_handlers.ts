@@ -345,19 +345,36 @@ function listenToProcess({
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
         const proxyPort = getProxyPort(appId);
-        // Ensure the port is free before starting the proxy
-        await killProcessOnPort(proxyPort);
 
-        proxyWorker = await startProxy(urlMatch[1], {
-          port: proxyPort,
-          onStarted: (proxyUrl) => {
-            safeSend(event.sender, "app:output", {
-              type: "stdout",
-              message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${urlMatch[1]}]`,
-              appId,
-            });
-          },
-        });
+        // Use existing proxy worker logic to prevent multiple instances
+        if (proxyWorker) {
+          logger.info(`Terminating existing proxy worker for app ${appId}`);
+          await proxyWorker.terminate();
+          proxyWorker = null;
+        }
+
+        try {
+          proxyWorker = await startProxy(urlMatch[1], {
+            port: proxyPort,
+            onStarted: (proxyUrl) => {
+              safeSend(event.sender, "app:output", {
+                type: "stdout",
+                message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${urlMatch[1]}]`,
+                appId,
+              });
+            },
+            onUpstreamRecovered: () => {
+              logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
+              safeSend(event.sender, "app:output", {
+                type: "stdout",
+                message: `[dyad-proxy-server]upstream-recovered`,
+                appId,
+              });
+            },
+          });
+        } catch (err) {
+          logger.error(`Failed to start proxy for app ${appId}:`, err);
+        }
       }
     }
   });

@@ -37,7 +37,7 @@ import connectSupabaseDark from "../../assets/supabase/connect-supabase-dark.svg
 // @ts-ignore
 import connectSupabaseLight from "../../assets/supabase/connect-supabase-light.svg";
 
-import { ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Database, ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isSupabaseConnected } from "@/lib/schemas";
 
@@ -163,29 +163,10 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   if (isConnected && app?.supabaseProjectName) {
     return (
       <Card className="mt-1">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Proyecto de Supabase{" "}
-            <Button
-              variant="outline"
-              onClick={() => {
-                ipc.system.openExternalUrl(
-                  `https://supabase.com/dashboard/project/${app.supabaseProjectId}`,
-                );
-              }}
-              className="ml-2 px-2 py-1"
-              style={{ display: "inline-flex", alignItems: "center" }}
-              asChild
-            >
-              <div className="flex items-center gap-2">
-                <img
-                  src={isDarkMode ? supabaseLogoDark : supabaseLogoLight}
-                  alt="Supabase Logo"
-                  style={{ height: 20, width: "auto", marginRight: 4 }}
-                />
-                <ExternalLink className="h-4 w-4" />
-              </div>
-            </Button>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="h-5 w-5" />
+            Supabase
           </CardTitle>
           <CardDescription className="flex flex-col gap-1.5 text-sm">
             Esta app está conectada al proyecto:{" "}
@@ -198,8 +179,9 @@ export function SupabaseConnector({ appId }: { appId: number }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Button variant="destructive" onClick={handleUnsetProject}>
+          <div className="pt-2 border-t flex justify-end">
+            <Button variant="ghost" size="sm" onClick={handleUnsetProject} className="text-muted-foreground hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
               Desconectar proyecto
             </Button>
           </div>
@@ -218,9 +200,12 @@ export function SupabaseConnector({ appId }: { appId: number }) {
 
     return (
       <Card className="mt-1">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Proyectos de Supabase
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Supabase
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -248,7 +233,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             Selecciona un proyecto de Supabase para conectar a esta app
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           {isLoadingProjects || isFetchingProjects ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -348,9 +333,15 @@ export function SupabaseConnector({ appId }: { appId: number }) {
 
   // No accounts connected, show connect button
   return (
-    <div className="flex flex-col space-y-4 p-4 border rounded-md">
-      <div className="flex flex-col md:flex-row items-center justify-between">
-        <h2 className="text-lg font-medium">Integraciones</h2>
+    <Card className="mt-1 border-dashed">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Database className="h-5 w-5" />
+          Supabase
+        </CardTitle>
+        <CardDescription>Conecta tu cuenta de Supabase para gestionar tu base de datos</CardDescription>
+      </CardHeader>
+      <CardContent>
         <img
           onClick={handleAddAccount}
           src={isDarkMode ? connectSupabaseDark : connectSupabaseLight}
@@ -358,7 +349,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
           className="w-full h-10 min-h-8 min-w-20 cursor-pointer"
           data-testid="connect-supabase-button"
         />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

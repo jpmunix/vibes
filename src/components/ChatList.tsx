@@ -309,11 +309,10 @@ export function ChatList({ show }: { show?: boolean }) {
                             appId: chat.appId,
                           })
                         }
-                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${
-                          selectedChatId === chat.id
+                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
                             ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
                             : ""
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2 w-full relative overflow-hidden">
                           {isStreamingById.get(chat.id) === true && (
@@ -325,7 +324,7 @@ export function ChatList({ show }: { show?: boolean }) {
                           )}
                           <div className="flex flex-col w-full overflow-hidden">
                             <span
-                              className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
+                              className={`truncate mr-2 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
                             >
                               {chat.title || "Nuevo chat"}
                             </span>
@@ -343,11 +342,10 @@ export function ChatList({ show }: { show?: boolean }) {
                       {/* Hover gradient shadow - refined for better visibility */}
                       <div
                         className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
-                        ${
-                          selectedChatId === chat.id
+                        ${selectedChatId === chat.id
                             ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
                             : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
-                        }`}
+                          }`}
                       />
 
                       <SidebarMenuAction

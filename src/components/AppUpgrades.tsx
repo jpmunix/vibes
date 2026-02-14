@@ -1,10 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, ArrowUpCircle } from "lucide-react";
 import { ipc, type AppUpgrade } from "@/ipc/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function AppUpgrades({ appId }: { appId: number | null }) {
   const queryClient = useQueryClient();
@@ -66,101 +73,88 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
 
   if (isLoading) {
     return (
-      <div className="mt-6">
-        <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Actualizaciones de la aplicación
-        </h3>
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
+      <Card className="mt-1">
+        <CardContent className="flex items-center justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
     );
   }
 
   if (queryError) {
     return (
-      <div className="mt-6">
-        <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-          Actualizaciones de la aplicación
-        </h3>
-        <Alert variant="destructive">
-          <AlertTitle>Error al cargar las actualizaciones</AlertTitle>
-          <AlertDescription>{queryError.message}</AlertDescription>
-        </Alert>
-      </div>
+      <Card className="mt-1">
+        <CardContent className="pt-6">
+          <Alert variant="destructive">
+            <AlertTitle>Error al cargar las actualizaciones</AlertTitle>
+            <AlertDescription>{queryError.message}</AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   }
 
   const currentUpgrades = upgrades?.filter((u) => u.isNeeded) ?? [];
 
+  if (currentUpgrades.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="mt-6">
-      <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">
-        Actualizaciones de la aplicación
-      </h3>
-      {currentUpgrades.length === 0 ? (
-        <div
-          data-testid="no-app-upgrades-needed"
-          className="p-4 bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800/50 rounded-lg text-sm text-green-800 dark:text-green-300"
-        >
-          La aplicación está actualizada y tiene todas las capacidades de Vibes
-          habilitadas
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {currentUpgrades.map((upgrade: AppUpgrade) => (
-            <div
-              key={upgrade.id}
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-start"
+    <>
+      {currentUpgrades.map((upgrade: AppUpgrade) => (
+        <Card key={upgrade.id} className="mt-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ArrowUpCircle className="h-5 w-5" />
+              {upgrade.id.charAt(0).toUpperCase() + upgrade.id.slice(1)}
+            </CardTitle>
+            <CardDescription>{upgrade.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2 pb-4">
+            <Button
+              onClick={() => handleUpgrade(upgrade.id)}
+              disabled={isUpgrading && upgradingVariables === upgrade.id}
+              variant="outline"
+              size="sm"
+              data-testid={`app-upgrade-${upgrade.id}`}
             >
-              <div className="flex-grow">
-                <h4 className="font-semibold text-gray-800 dark:text-gray-200">
-                  {upgrade.title}
-                </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {upgrade.description}
-                </p>
-                {mutationError && upgradingVariables === upgrade.id && (
-                  <Alert
-                    variant="destructive"
-                    className="mt-3 dark:bg-destructive/15"
-                  >
-                    <Terminal className="h-4 w-4" />
-                    <AlertTitle className="dark:text-red-200">
-                      Actualización fallida
-                    </AlertTitle>
-                    <AlertDescription className="text-xs text-red-400 dark:text-red-300">
-                      {(mutationError as Error).message}{" "}
-                      <a
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          ipc.system.openExternalUrl(
-                            upgrade.manualUpgradeUrl ??
-                              "https://github.com/jpmunix",
-                          );
-                        }}
-                        className="underline font-medium hover:dark:text-red-200"
-                      >
-                        Instrucciones de actualización manual
-                      </a>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-              <Button
-                onClick={() => handleUpgrade(upgrade.id)}
-                disabled={isUpgrading && upgradingVariables === upgrade.id}
-                className="ml-4 flex-shrink-0"
-                size="sm"
-                data-testid={`app-upgrade-${upgrade.id}`}
+              {isUpgrading && upgradingVariables === upgrade.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Actualizar
+            </Button>
+          </CardContent>
+          {mutationError && upgradingVariables === upgrade.id && (
+            <CardContent className="pt-0">
+              <Alert
+                variant="destructive"
+                className="dark:bg-destructive/15"
               >
-                {isUpgrading && upgradingVariables === upgrade.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Actualizar
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                <Terminal className="h-4 w-4" />
+                <AlertTitle className="dark:text-red-200">
+                  Actualización fallida
+                </AlertTitle>
+                <AlertDescription className="text-xs text-red-400 dark:text-red-300">
+                  {(mutationError as Error).message}{" "}
+                  <a
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ipc.system.openExternalUrl(
+                        upgrade.manualUpgradeUrl ??
+                        "https://github.com/jpmunix",
+                      );
+                    }}
+                    className="underline font-medium hover:dark:text-red-200 cursor-pointer"
+                  >
+                    Instrucciones de actualización manual
+                  </a>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+        </Card>
+      ))}
+    </>
   );
 }

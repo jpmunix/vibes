@@ -64,12 +64,29 @@
         fontWeight: "fontWeight",
         fontFamily: "fontFamily",
         color: "color",
+        textAlign: "textAlign",
       };
       Object.entries(textProps).forEach(([key, cssProp]) => {
         if (styles.text[key] !== undefined) {
           element.style[cssProp] = styles.text[key];
         }
       });
+    }
+
+    if (styles.opacity !== undefined) {
+      element.style.opacity = styles.opacity;
+    }
+    if (styles.boxShadow !== undefined) {
+      element.style.boxShadow = styles.boxShadow;
+    }
+    if (styles.gap !== undefined) {
+      element.style.gap = styles.gap;
+    }
+    if (styles.display !== undefined) {
+      element.style.display = styles.display;
+    }
+    if (styles.flexDirection !== undefined) {
+      element.style.flexDirection = styles.flexDirection;
     }
   }
 
@@ -104,7 +121,13 @@
           fontWeight: computedStyle.fontWeight,
           fontFamily: computedStyle.fontFamily,
           color: computedStyle.color,
+          textAlign: computedStyle.textAlign,
         },
+        opacity: computedStyle.opacity,
+        boxShadow: computedStyle.boxShadow,
+        gap: computedStyle.gap,
+        display: computedStyle.display,
+        flexDirection: computedStyle.flexDirection,
       };
 
       window.parent.postMessage(
@@ -220,6 +243,40 @@
     }
   }
 
+  function handlePreviewTextContent(data) {
+    const { componentId, runtimeId, text } = data;
+    const element = findElementByDyadId(componentId, runtimeId);
+    if (!element) return;
+
+    // Check if element has child elements (like icons)
+    const childElements = Array.from(element.childNodes).filter(
+      (node) => node.nodeType === Node.ELEMENT_NODE,
+    );
+
+    if (childElements.length === 0) {
+      // Simple case: no child elements, just set text
+      element.textContent = text;
+    } else {
+      // Mixed content: update only text nodes, preserve elements
+      let textUpdated = false;
+      Array.from(element.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
+          if (!textUpdated) {
+            node.textContent = " " + text + " ";
+            textUpdated = true;
+          } else {
+            node.textContent = " ";
+          }
+        }
+      });
+
+      // If no text node was found, append one
+      if (!textUpdated) {
+        element.appendChild(document.createTextNode(" " + text));
+      }
+    }
+  }
+
   function handleDisableTextEditing(data) {
     const { componentId } = data;
     const state = textEditingState.get(componentId);
@@ -242,6 +299,28 @@
       },
       "*",
     );
+  }
+
+  function handleGetElementInfo(data) {
+    const { elementId, runtimeId } = data;
+    const element = findElementByDyadId(elementId, runtimeId);
+    if (element) {
+      const computedStyle = window.getComputedStyle(element);
+      window.parent.postMessage(
+        {
+          type: "dyad-element-info",
+          data: {
+            tagName: element.tagName.toLowerCase(),
+            hasOnClick: !!element.onclick || element.hasAttribute("onclick"),
+            hasSrc: element.hasAttribute("src"),
+            hasHref: element.hasAttribute("href"),
+            childrenText: element.children.length === 0 ? element.innerText : null,
+            computedDisplay: computedStyle.display,
+          },
+        },
+        "*",
+      );
+    }
   }
 
   /* ---------- message bridge -------------------------------------------- */
@@ -267,11 +346,17 @@
       case "get-dyad-text-content":
         handleGetTextContent(data);
         break;
+      case "get-dyad-element-info":
+        handleGetElementInfo(data);
+        break;
       case "cleanup-all-text-editing":
         // Clean up all text editing states
         textEditingState.forEach((state) => {
           state.cleanup();
         });
+        break;
+      case "preview-dyad-text-content":
+        handlePreviewTextContent(data);
         break;
     }
   });

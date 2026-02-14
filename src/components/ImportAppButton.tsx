@@ -9,13 +9,14 @@ export function ImportAppButton({ className }: { className?: string }) {
 
   return (
     <>
-      <div className={cn("px-4 pb-1 flex justify-center", className)}>
+      <div className={cn("px-0 pb-0 flex justify-stretch", className)}>
         <Button
-          variant="default"
+          variant="outline"
           size="default"
           onClick={() => setIsDialogOpen(true)}
+          className="flex items-center justify-start gap-2 w-full py-2"
         >
-          <Upload className="mr-2 h-4 w-4" />
+          <Upload className="h-4 w-4" />
           Importar App
         </Button>
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { atom } from "jotai";
 import { ipc, type AppOutput } from "@/ipc/types";
 import {
@@ -26,6 +26,9 @@ export function useAppOutputSubscription() {
   const setPreviewPanelKey = useSetAtom(previewPanelKeyAtom);
   const appId = useAtomValue(selectedAppIdAtom);
 
+  // Ref to debounce recovery refreshes - avoid multiple rapid refreshes
+  const recoveryRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const processProxyServerOutput = useCallback(
     (output: AppOutput) => {
       const matchesProxyServerStart = output.message.includes(
@@ -48,8 +51,21 @@ export function useAppOutputSubscription() {
           });
         }
       }
+
+      // Detect upstream recovery after ECONNREFUSED retries - trigger iframe refresh
+      if (output.message.includes("[dyad-proxy-server]upstream-recovered")) {
+        // Debounce: only refresh once even if multiple recovery signals arrive
+        if (recoveryRefreshTimerRef.current) {
+          clearTimeout(recoveryRefreshTimerRef.current);
+        }
+        recoveryRefreshTimerRef.current = setTimeout(() => {
+          console.log("[useRunApp] Upstream recovered after retries, refreshing iframe...");
+          setPreviewPanelKey((prevKey) => prevKey + 1);
+          recoveryRefreshTimerRef.current = null;
+        }, 300); // Small delay to let remaining sub-resources also recover
+      }
     },
-    [setAppUrlObj],
+    [setAppUrlObj, setPreviewPanelKey],
   );
 
   const onHotModuleReload = useCallback(() => {

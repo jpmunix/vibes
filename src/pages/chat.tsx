@@ -10,7 +10,7 @@ import { PreviewPanel } from "../components/preview_panel/PreviewPanel";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import { isPreviewOpenAtom, isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import { useChats } from "@/hooks/useChats";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 
@@ -20,6 +20,7 @@ export default function ChatPage() {
   });
   const navigate = useNavigate();
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
+  const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
   const [isResizing, setIsResizing] = useState(false);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
@@ -40,25 +41,41 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!chatId && chats.length && !loading) {
-      // Not a real navigation, just a redirect, when the user navigates to /chat
-      // without a chatId, we redirect to the first chat
       setSelectedAppId(chats[0].appId);
       navigate({ to: "/chat", search: { id: chats[0].id }, replace: true });
     }
   }, [chatId, chats, loading, navigate, setSelectedAppId]);
 
+  // Preview panel open/close (normal toggle)
   useEffect(() => {
     if (isPreviewOpen) {
-      ref.current?.expand();
+      previewRef.current?.expand();
     } else {
-      ref.current?.collapse();
+      previewRef.current?.collapse();
     }
   }, [isPreviewOpen]);
-  const ref = useRef<ImperativePanelHandle>(null);
+
+  const previewRef = useRef<ImperativePanelHandle>(null);
+  const chatRef = useRef<ImperativePanelHandle>(null);
+
+  // Expanded mode: collapse/expand the chat panel using the imperative API
+  useEffect(() => {
+    if (isPreviewExpanded) {
+      chatRef.current?.collapse();
+    } else {
+      chatRef.current?.expand();
+    }
+  }, [isPreviewExpanded]);
 
   return (
     <PanelGroup autoSaveId="persistence" direction="horizontal">
-      <Panel id="chat-panel" minSize={30}>
+      <Panel
+        collapsible
+        collapsedSize={0}
+        ref={chatRef}
+        id="chat-panel"
+        minSize={30}
+      >
         <div className="h-full w-full">
           <ChatPanel
             chatId={chatId}
@@ -67,9 +84,9 @@ export default function ChatPage() {
             onTogglePreview={() => {
               setIsPreviewOpen(!isPreviewOpen);
               if (isPreviewOpen) {
-                ref.current?.collapse();
+                previewRef.current?.collapse();
               } else {
-                ref.current?.expand();
+                previewRef.current?.expand();
               }
             }}
           />
@@ -79,11 +96,15 @@ export default function ChatPage() {
       <>
         <PanelResizeHandle
           onDragging={(e) => setIsResizing(e)}
-          className="w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize"
+          className={cn(
+            "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
+            isPreviewExpanded && "invisible",
+          )}
+          disabled={isPreviewExpanded}
         />
         <Panel
           collapsible
-          ref={ref}
+          ref={previewRef}
           id="preview-panel"
           minSize={20}
           className={cn(

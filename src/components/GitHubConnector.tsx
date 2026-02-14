@@ -8,6 +8,9 @@ import {
   ChevronRight,
   GitMerge,
   FileWarning,
+  Trash2,
+  Upload,
+  Download,
 } from "lucide-react";
 import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
@@ -81,6 +84,7 @@ function ConnectedGitHubConnector({
 }: ConnectedGitHubConnectorProps) {
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
   const [showForceDialog, setShowForceDialog] = useState(false);
@@ -418,27 +422,27 @@ function ConnectedGitHubConnector({
   const isRebaseActionPending = isSyncing || !!rebaseAction;
 
   return (
-    <div className="w-full" data-testid="github-connected-repo">
-      <p>Conectado al repositorio de GitHub:</p>
-      <a
-        onClick={(e) => {
-          e.preventDefault();
-          ipc.system.openExternalUrl(
-            `https://github.com/${app.githubOrg}/${app.githubRepo}`,
-          );
-        }}
-        className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {app.githubOrg}/{app.githubRepo}
-      </a>
+    <div className="w-full space-y-3" data-testid="github-connected-repo">
+      <p className="text-sm text-muted-foreground">
+        Conectado al repositorio:{" "}
+        <a
+          onClick={(e) => {
+            e.preventDefault();
+            ipc.system.openExternalUrl(
+              `https://github.com/${app.githubOrg}/${app.githubRepo}`,
+            );
+          }}
+          className="cursor-pointer text-foreground hover:underline font-medium"
+        >
+          {app.githubOrg}/{app.githubRepo}
+        </a>
+      </p>
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
       {hasUncommittedFiles && (
-        <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
+        <div className="p-4 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex items-center gap-2 text-sm text-foreground mb-3">
             <FileWarning size={16} />
             <span className="font-medium">
               Tienes {uncommittedFiles.length}{" "}
@@ -468,31 +472,61 @@ function ConnectedGitHubConnector({
               className={cn(
                 "bg-white dark:bg-slate-950",
                 !commitMessage.trim() &&
-                  "border-red-500 focus-visible:ring-red-500",
+                "border-red-500 focus-visible:ring-red-500",
               )}
             />
-            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70">
+            <p className="text-[10px] text-muted-foreground">
               Estos cambios se confirmarán automáticamente antes de sincronizar.
             </p>
           </div>
         </div>
       )}
-      <div className="mt-2 flex gap-2">
+      <div className="flex gap-2">
         <Button
           onClick={handleOpenPreview}
+          variant="outline"
           disabled={
             isRebaseActionPending ||
             (hasUncommittedFiles && !commitMessage.trim())
           }
         >
-          Vista previa y sincronizar
+          <Upload className="h-4 w-4 mr-1.5" />
+          Subir al repositorio
         </Button>
         <Button
+          onClick={async () => {
+            setIsPulling(true);
+            try {
+              await ipc.github.pull({ appId });
+              setSyncSuccess(true);
+              refreshApp();
+            } catch (err: any) {
+              setSyncError(err.message || "Error al descargar del repositorio.");
+            } finally {
+              setIsPulling(false);
+            }
+          }}
+          variant="outline"
+          disabled={isPulling || isRebaseActionPending}
+        >
+          {isPulling ? (
+            <Download className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1.5" />
+          )}
+          Descargar del repositorio
+        </Button>
+      </div>
+      <div className="pt-2 border-t flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleDisconnectRepo}
           disabled={isDisconnecting}
-          variant="outline"
+          className="text-muted-foreground hover:text-destructive"
         >
-          {isDisconnecting ? "Desconectando..." : "Desconectar del repositorio"}
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          {isDisconnecting ? "Desconectando..." : "Desconectar repositorio"}
         </Button>
       </div>
 
@@ -518,7 +552,7 @@ function ConnectedGitHubConnector({
                 e.preventDefault();
                 ipc.system.openExternalUrl("https://github.com/minube/vibes/");
               }}
-              className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+              className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -605,7 +639,7 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {syncSuccess && (
-        <p className="text-green-600 mt-2">¡Subido a GitHub con éxito!</p>
+        <p className="text-sm text-muted-foreground mt-2">¡Subido a GitHub con éxito!</p>
       )}
       {disconnectError && (
         <p className="text-red-600 mt-2">{disconnectError}</p>
@@ -862,7 +896,7 @@ export function UnconnectedGitHubConnector({
       } catch (err: any) {
         setRepoCheckError(
           err.message ||
-            "Error al comprobar la disponibilidad del repositorio.",
+          "Error al comprobar la disponibilidad del repositorio.",
         );
       } finally {
         setIsCheckingRepo(false);
@@ -917,7 +951,7 @@ export function UnconnectedGitHubConnector({
     } catch (err: any) {
       setCreateRepoError(
         err.message ||
-          `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
+        `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
       );
     } finally {
       setIsCreatingRepo(false);
@@ -981,7 +1015,7 @@ export function UnconnectedGitHubConnector({
                     }}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-1 text-blue-600 hover:underline dark:text-blue-400"
+                    className="ml-1 text-muted-foreground hover:underline hover:text-foreground"
                   >
                     {githubVerificationUri}
                   </a>
@@ -1009,7 +1043,7 @@ export function UnconnectedGitHubConnector({
                     title="Copiar al portapapeles"
                   >
                     {codeCopied ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-muted-foreground" />
                     ) : (
                       <Clipboard className="h-4 w-4" />
                     )}
@@ -1034,11 +1068,10 @@ export function UnconnectedGitHubConnector({
       <button
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
-        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${
-          !isExpanded
-            ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            : ""
-        }`}
+        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
+          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          : ""
+          }`}
       >
         <span className="font-medium">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
@@ -1048,9 +1081,8 @@ export function UnconnectedGitHubConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
@@ -1059,11 +1091,10 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${
-                  repoSetupMode === "create"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("create");
                   setCreateRepoError(null);
@@ -1075,11 +1106,10 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${
-                  repoSetupMode === "existing"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${repoSetupMode === "existing"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
                   setCreateRepoError(null);
@@ -1117,7 +1147,7 @@ export function UnconnectedGitHubConnector({
                     </p>
                   )}
                   {repoAvailable === true && (
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       ¡El nombre del repositorio está disponible!
                     </p>
                   )}
@@ -1257,7 +1287,7 @@ export function UnconnectedGitHubConnector({
             <p className="text-red-600 mt-2">{createRepoError}</p>
           )}
           {createRepoSuccess && (
-            <p className="text-green-600 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               {repoSetupMode === "create"
                 ? "¡Repositorio creado y vinculado!"
                 : "¡Conectado al repositorio!"}

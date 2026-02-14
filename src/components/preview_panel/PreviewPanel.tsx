@@ -23,6 +23,13 @@ import { VersionPane } from "../chat/VersionPane";
 import { GitPanel } from "../GitPanel";
 import { DatabasePanel } from "../database/DatabasePanel";
 import { cn } from "@/lib/utils";
+import { NaturalEditingPanel } from "./NaturalEditingPanel";
+import {
+  naturalEditingPanelOpenAtom,
+  visualEditingSelectedComponentAtom,
+  previewIframeRefAtom,
+} from "@/atoms/previewAtoms";
+import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 
 interface ConsoleHeaderProps {
   isOpen: boolean;
@@ -34,12 +41,12 @@ interface ConsoleHeaderProps {
 
 // Console header component
 const ConsoleHeader = ({
-                         isOpen,
-                         onToggle,
-                         latestMessage,
-                         consoleView,
-                         onViewChange,
-                       }: ConsoleHeaderProps) => (
+  isOpen,
+  onToggle,
+  latestMessage,
+  consoleView,
+  onViewChange,
+}: ConsoleHeaderProps) => (
   <div className="flex items-center gap-2 px-4 py-1.5 border-t border-border bg-background">
     <div
       onClick={onToggle}
@@ -111,6 +118,12 @@ export function PreviewPanel() {
   const runningAppIdRef = useRef<number | null>(null);
   const key = useAtomValue(previewPanelKeyAtom);
   const consoleEntries = useAtomValue(appConsoleEntriesAtom);
+
+  // Natural Editing Panel atoms
+  const naturalEditingPanelOpen = useAtomValue(naturalEditingPanelOpenAtom);
+  const visualEditingSelectedComponent = useAtomValue(visualEditingSelectedComponentAtom);
+  const previewIframeRef = useAtomValue(previewIframeRefAtom);
+  const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
   const latestMessage =
     consoleEntries.length > 0
@@ -200,7 +213,18 @@ export function PreviewPanel() {
                   onClose={() => setPreviewMode("preview")}
                 />
               ) : previewMode === "preview" ? (
-                <PreviewIframe key={key} loading={loading} />
+                <div className="flex h-full">
+                  <div className="flex-1 min-w-0 h-full">
+                    <PreviewIframe key={key} loading={loading} />
+                  </div>
+                  {naturalEditingPanelOpen &&
+                    visualEditingSelectedComponent && (
+                      <NaturalEditingPanel
+                        selectedComponent={visualEditingSelectedComponent}
+                        iframeRef={previewIframeRef}
+                      />
+                    )}
+                </div>
               ) : previewMode === "code" ? (
                 <CodeView loading={loading} app={app} />
               ) : previewMode === "configure" ? (
@@ -216,7 +240,7 @@ export function PreviewPanel() {
               )}
             </div>
           </Panel>
-          {isConsoleOpen && (
+          {!isPreviewExpanded && isConsoleOpen && (
             <>
               <PanelResizeHandle className="h-1 bg-border hover:bg-gray-400 transition-colors cursor-row-resize" />
               <Panel id="console" minSize={10} defaultSize={30}>
@@ -235,7 +259,7 @@ export function PreviewPanel() {
           )}
         </PanelGroup>
       </div>
-      {!isConsoleOpen && (
+      {!isPreviewExpanded && !isConsoleOpen && (
         <ConsoleHeader
           isOpen={false}
           onToggle={() => setIsConsoleOpen(true)}

@@ -339,52 +339,104 @@ const server = http.createServer((clientReq, clientRes) => {
     headers,
   };
 
-  const upReq = lib.request(upOpts, (upRes) => {
-    const wantsInjection = needsInjection(target.pathname);
-    // Only inject when upstream indicates HTML content
-    const contentTypeHeader = upRes.headers["content-type"];
-    const contentType = Array.isArray(contentTypeHeader)
-      ? contentTypeHeader[0]
-      : contentTypeHeader || "";
-    const isHtml =
-      typeof contentType === "string" &&
-      contentType.toLowerCase().includes("text/html");
-    const inject = wantsInjection && isHtml;
+  const MAX_RETRIES = 20;
 
-    if (!inject) {
-      clientRes.writeHead(upRes.statusCode, upRes.headers);
-      return void upRes.pipe(clientRes);
-    }
-
-    const chunks = [];
-    upRes.on("data", (c) => chunks.push(c));
-    upRes.on("end", () => {
-      try {
-        const merged = Buffer.concat(chunks);
-        const patched = injectHTML(merged);
-
-        const hdrs = {
-          ...upRes.headers,
-          "content-length": Buffer.byteLength(patched),
-        };
-        // If we injected content, it's no longer encoded in the original way
-        delete hdrs["content-encoding"];
-        // Also, remove ETag as content has changed
-        delete hdrs["etag"];
-
-        clientRes.writeHead(upRes.statusCode, hdrs);
-        clientRes.end(patched);
-      } catch (e) {
-        clientRes.writeHead(500, { "content-type": "text/plain" });
-        clientRes.end("Injection failed: " + e.message);
+  const attemptRequest = (retriesLeft) => {
+    const upReq = lib.request(upOpts, (upRes) => {
+      // If we used any retries, notify parent so the iframe can be refreshed
+      const usedRetries = MAX_RETRIES - retriesLeft;
+      if (usedRetries > 0) {
+        parentPort?.postMessage("proxy-upstream-recovered");
       }
+
+      upRes.on("error", (err) => {
+        console.error("[proxy-worker] Upstream response error:", err.message);
+        clientRes.destroy();
+      });
+      const wantsInjection = needsInjection(target.pathname);
+      // Only inject when upstream indicates HTML content
+      const contentTypeHeader = upRes.headers["content-type"];
+      const contentType = Array.isArray(contentTypeHeader)
+        ? contentTypeHeader[0]
+        : contentTypeHeader || "";
+      const isHtml =
+        typeof contentType === "string" &&
+        contentType.toLowerCase().includes("text/html");
+      const inject = wantsInjection && isHtml;
+
+      if (!inject) {
+        clientRes.writeHead(upRes.statusCode, upRes.headers);
+        return void upRes.pipe(clientRes);
+      }
+
+      const chunks = [];
+      upRes.on("data", (c) => chunks.push(c));
+      upRes.on("end", () => {
+        if (clientRes.destroyed || clientRes.writableEnded) return;
+        try {
+          const merged = Buffer.concat(chunks);
+          const patched = injectHTML(merged);
+
+          const hdrs = {
+            ...upRes.headers,
+            "content-length": Buffer.byteLength(patched),
+          };
+          // If we injected content, it's no longer encoded in the original way
+          delete hdrs["content-encoding"];
+          // Also, remove ETag as content has changed
+          delete hdrs["etag"];
+
+          clientRes.writeHead(upRes.statusCode, hdrs);
+          clientRes.end(patched);
+        } catch (e) {
+          clientRes.writeHead(500, { "content-type": "text/plain" });
+          clientRes.end("Injection failed: " + e.message);
+        }
+      });
     });
+
+    const isGetOrHead = clientReq.method === "GET" || clientReq.method === "HEAD";
+
+    upReq.on("error", (e) => {
+      // If the connection was refused and it's a safe method (GET/HEAD), retry.
+      if (
+        e.code === "ECONNREFUSED" &&
+        retriesLeft > 0 &&
+        isGetOrHead
+      ) {
+        // Wait 250ms and try again
+        setTimeout(() => attemptRequest(retriesLeft - 1), 250);
+        return;
+      }
+
+      clientRes.writeHead(502, { "content-type": "text/plain" });
+      clientRes.end("Upstream error: " + e.message);
+    });
+
+    if (isGetOrHead) {
+      // For GET/HEAD, we don't pipe the client body (usually empty), just end the request.
+      upReq.end();
+    } else {
+      // For other methods (POST, etc), we must pipe the body.
+      // Retrying is not safe/easy here because the stream is consumed.
+      clientReq.pipe(upReq);
+    }
+  };
+
+  // Start with MAX_RETRIES retries (approx 5 seconds)
+  attemptRequest(MAX_RETRIES);
+
+  clientReq.on("error", (e) => {
+    console.error("[proxy-worker] Client request error:", e.message);
+    // There isn't a single upReq to destroy here if we are between retries, 
+    // but the closure mostly handles it or it will garbage collect.
   });
 
-  clientReq.pipe(upReq);
-  upReq.on("error", (e) => {
-    clientRes.writeHead(502, { "content-type": "text/plain" });
-    clientRes.end("Upstream error: " + e.message);
+  clientRes.on("error", (e) => {
+    console.error("[proxy-worker] Client response error:", e.message);
+    // Similar to above, if we are in a retry loop, the current upReq (if any)
+    // might need destroying, but we don't hold a reference to it outside attemptRequest.
+    // It's acceptable for this simple proxy.
   });
 });
 
@@ -417,12 +469,22 @@ server.on("upgrade", (req, socket, _head) => {
   upReq.on("upgrade", (upRes, upSocket, upHead) => {
     socket.write(
       "HTTP/1.1 101 Switching Protocols\r\n" +
-        Object.entries(upRes.headers)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join("\r\n") +
-        "\r\n\r\n",
+      Object.entries(upRes.headers)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\r\n") +
+      "\r\n\r\n",
     );
     if (upHead && upHead.length) socket.write(upHead);
+
+    socket.on("error", (err) => {
+      console.error("[proxy-worker] Client socket error:", err.message);
+      upSocket.destroy();
+    });
+
+    upSocket.on("error", (err) => {
+      console.error("[proxy-worker] Upstream socket error:", err.message);
+      socket.destroy();
+    });
 
     upSocket.pipe(socket).pipe(upSocket);
   });

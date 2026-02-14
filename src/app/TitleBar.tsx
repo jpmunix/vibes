@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
@@ -51,6 +52,7 @@ export const TitleBar = () => {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const user = useAtomValue(userAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
+  const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
   const handleLogout = async () => {
     try {
@@ -206,9 +208,9 @@ export const TitleBar = () => {
           )}
         </div>
 
-        {/* Preview Header */}
+        {/* Preview Header - hidden when preview is expanded */}
         {
-          location.pathname === "/chat" && (
+          location.pathname === "/chat" && !isPreviewExpanded && (
             <div className="flex-1 flex justify-end">
               <ActionHeader
                 versions={versions}

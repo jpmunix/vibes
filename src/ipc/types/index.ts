@@ -300,11 +300,11 @@ export type { ContextPathResults, AppChatContext } from "./context";
 // Upgrade types
 export type { AppUpgrade } from "./upgrade";
 
-// Visual editing types
 export type {
   VisualEditingChange,
   ApplyVisualEditingChangesParams,
   AnalyseComponentParams,
+  ElementType,
 } from "./visual-editing";
 
 // Security types

@@ -57,8 +57,13 @@ export function VisualEditingChangesDialog({
         try {
           const changesToSave = Array.from(pendingChanges.values());
 
-          // Update changes with cached text content
+          // Update changes with cached text content (only as fallback if not already set by panel)
           const updatedChanges = changesToSave.map((change) => {
+            // If textContent was explicitly set (e.g., from text editing panel), keep it
+            if (change.textContent) {
+              return change;
+            }
+            // Otherwise, use the cached text from the iframe (if available)
             const cachedText = textContentCache.current.get(change.componentId);
             if (cachedText !== undefined) {
               return { ...change, textContent: cachedText };
@@ -103,19 +108,24 @@ export function VisualEditingChangesDialog({
     try {
       const changesToSave = Array.from(pendingChanges.values());
 
-      if (iframeRef?.current?.contentWindow) {
+      // Separate changes that already have textContent from those that need iframe text
+      const changesNeedingIframeText = changesToSave.filter(
+        (change) => !change.textContent && change.textContent !== "",
+      );
+
+      if (changesNeedingIframeText.length > 0 && iframeRef?.current?.contentWindow) {
         // Reset state for new request
         setAllResponsesReceived(false);
         expectedResponsesRef.current.clear();
         isWaitingForResponses.current = true;
 
-        // Track which components we're expecting responses from
-        for (const change of changesToSave) {
+        // Only track components that actually need text from iframe
+        for (const change of changesNeedingIframeText) {
           expectedResponsesRef.current.add(change.componentId);
         }
 
-        // Request text content for each component
-        for (const change of changesToSave) {
+        // Request text content only for components that need it
+        for (const change of changesNeedingIframeText) {
           iframeRef.current.contentWindow.postMessage(
             {
               type: "get-dyad-text-content",
@@ -125,11 +135,16 @@ export function VisualEditingChangesDialog({
           );
         }
 
-        // If no responses are expected, trigger immediately
-        if (expectedResponsesRef.current.size === 0) {
-          setAllResponsesReceived(true);
-        }
+        // Safety timeout: if iframe doesn't respond within 2 seconds, proceed anyway
+        setTimeout(() => {
+          if (isWaitingForResponses.current && expectedResponsesRef.current.size > 0) {
+            console.warn("Timeout waiting for iframe text responses, proceeding with save");
+            expectedResponsesRef.current.clear();
+            setAllResponsesReceived(true);
+          }
+        }, 2000);
       } else {
+        // All changes already have textContent or no iframe — save directly
         await ipc.visualEditing.applyChanges({
           appId: selectedAppId!,
           changes: changesToSave,
@@ -139,6 +154,7 @@ export function VisualEditingChangesDialog({
         textContentCache.current.clear();
         showSuccess("Visual changes saved to source files");
         onReset?.();
+        setIsSaving(false);
       }
     } catch (error) {
       console.error("Failed to save visual editing changes:", error);

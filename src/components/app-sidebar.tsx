@@ -1,7 +1,8 @@
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   CheckSquare,
   Home,
@@ -214,7 +215,10 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
-  const displayItems = [...items];
+  const selectedAppId = useAtomValue(selectedAppIdAtom);
+
+  // Filtrar el botón de Chat si no hay app seleccionada
+  const displayItems = selectedAppId ? [...items] : items.filter(item => item.title !== "Chat");
 
   return (
     // When collapsed: only show the main menu

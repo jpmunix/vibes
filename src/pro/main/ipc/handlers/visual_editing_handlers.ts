@@ -16,11 +16,17 @@ import {
   AnalyseComponentParams,
   ApplyVisualEditingChangesParams,
 } from "@/ipc/types";
+import { ReplaceIconParams } from "@/ipc/types/visual-editing";
 import {
   transformContent,
   analyzeComponent,
+  replaceIconComponent,
 } from "../../utils/visual_editing_utils";
 import { normalizePath } from "../../../../../shared/normalizePath";
+import { generateText } from "ai";
+import { getModelClient } from "../../../../ipc/utils/get_model_client";
+import { readSettings } from "../../../../main/settings";
+import { logAiQuery } from "../../../../ipc/utils/ai_query_logger";
 
 export function registerVisualEditingHandlers() {
   ipcMain.handle(
@@ -50,11 +56,21 @@ export function registerVisualEditingHandlers() {
 
         // Group changes by file and line
         for (const change of changes) {
+          console.log('[visual-editing] Processing change:', {
+            componentId: change.componentId,
+            file: change.relativePath,
+            line: change.lineNumber,
+            styles: change.styles,
+          });
+
           if (!fileChanges.has(change.relativePath)) {
             fileChanges.set(change.relativePath, new Map());
           }
           const tailwindClasses = stylesToTailwind(change.styles);
           const changePrefixes = extractClassPrefixes(tailwindClasses);
+
+          console.log('[visual-editing] Generated Tailwind classes:', tailwindClasses);
+          console.log('[visual-editing] Class prefixes:', changePrefixes);
 
           fileChanges.get(change.relativePath)!.set(change.lineNumber, {
             classes: tailwindClasses,
@@ -66,24 +82,35 @@ export function registerVisualEditingHandlers() {
         }
 
         // Apply changes to each file
+        const modifiedFiles: string[] = [];
         for (const [relativePath, lineChanges] of fileChanges) {
           const normalizedRelativePath = normalizePath(relativePath);
           const filePath = safeJoin(appPath, normalizedRelativePath);
           const content = await fsPromises.readFile(filePath, "utf-8");
           const transformedContent = transformContent(content, lineChanges);
-          await fsPromises.writeFile(filePath, transformedContent, "utf-8");
-          // Check if git repository exists and commit the change
-          if (fs.existsSync(path.join(appPath, ".git"))) {
+
+          console.log('[visual-editing] Content changed:', transformedContent !== content);
+
+          // Only write if content actually changed
+          if (transformedContent !== content) {
+            await fsPromises.writeFile(filePath, transformedContent, "utf-8");
+            modifiedFiles.push(normalizedRelativePath);
+          }
+        }
+
+        // Commit all changes in a single commit
+        if (modifiedFiles.length > 0 && fs.existsSync(path.join(appPath, ".git"))) {
+          for (const filepath of modifiedFiles) {
             await gitAdd({
               path: appPath,
-              filepath: normalizedRelativePath,
-            });
-
-            await gitCommit({
-              path: appPath,
-              message: `Updated ${normalizedRelativePath}`,
+              filepath,
             });
           }
+
+          await gitCommit({
+            path: appPath,
+            message: `Visual editing: Updated ${modifiedFiles.length} file${modifiedFiles.length > 1 ? "s" : ""}`,
+          });
         }
       } catch (error) {
         throw new Error(`Failed to apply visual editing changes: ${error}`);
@@ -119,6 +146,193 @@ export function registerVisualEditingHandlers() {
       } catch (error) {
         console.error("Failed to analyze component:", error);
         return { isDynamic: false, hasStaticText: false };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "replace-component-icon",
+    async (_event, params: ReplaceIconParams) => {
+      const { appId, componentId, newIconName } = params;
+      try {
+        const [filePath, lineStr] = componentId.split(":");
+        const line = parseInt(lineStr, 10);
+
+        if (!filePath || isNaN(line)) {
+          throw new Error("Invalid component ID format");
+        }
+
+        // Get the app to find its path
+        const app = await db.query.apps.findFirst({
+          where: eq(apps.id, appId),
+        });
+
+        if (!app) {
+          throw new Error(`App not found: ${appId}`);
+        }
+
+        const appPath = getDyadAppPath(app.path);
+        const fullPath = safeJoin(appPath, filePath);
+        const content = await fsPromises.readFile(fullPath, "utf-8");
+
+        const newContent = replaceIconComponent(content, line, newIconName);
+
+        if (newContent !== content) {
+          await fsPromises.writeFile(fullPath, newContent, "utf-8");
+
+          await gitAdd({ path: appPath, filepath: filePath });
+          await gitCommit({
+            path: appPath,
+            message: `Visual editing: Changed icon to ${newIconName} in ${filePath}`,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to replace icon:", error);
+        throw error;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "visual-editing:quick-edit",
+    async (_event, params) => {
+      const {
+        appId,
+        componentId,
+        componentName,
+        relativePath,
+        lineNumber,
+        prompt,
+        currentStyles,
+        currentTextContent,
+      } = params;
+
+      try {
+        // Get settings to access the selected model
+        const settings = await readSettings();
+        const selectedModel = settings.selectedModel;
+
+        if (!selectedModel) {
+          return {
+            error: "No hay modelo de IA seleccionado",
+          };
+        }
+
+        // Build system prompt for style/content modifications
+        const systemPrompt = `Eres un asistente de diseño web. El usuario está editando un componente llamado "${componentName}".
+
+Tu tarea es interpretar solicitudes simples del usuario y devolver ÚNICAMENTE un objeto JSON con los cambios solicitados.
+
+El componente actual tiene estos estilos: ${JSON.stringify(currentStyles || {})}
+${currentTextContent ? `Contenido de texto actual: "${currentTextContent}"` : ""}
+
+IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.
+
+El JSON debe tener esta estructura:
+{
+  "textContent": "nuevo texto" (opcional, solo si el usuario quiere cambiar el texto),
+  "styles": {
+    "backgroundColor": "color" (opcional),
+    "text": {
+      "color": "color" (opcional),
+      "fontSize": "tamaño" (opcional),
+      "fontWeight": "peso" (opcional)
+    } (opcional),
+    "border": {
+      "width": "ancho" (opcional),
+      "color": "color" (opcional),
+      "radius": "radio" (opcional)
+    } (opcional),
+    "padding": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional),
+    "margin": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional)
+  }
+}
+
+Ejemplos:
+- "cambia esto a negro" → { "styles": { "text": { "color": "#000000" } } }
+- "hazlo más grande" → { "styles": { "text": { "fontSize": "20px" } } }
+- "pon el texto en rojo" → { "styles": { "text": { "color": "#ff0000" } } }
+- "cambia el texto a 'Hola Mundo'" → { "textContent": "Hola Mundo" }
+- "background azul" → { "styles": { "backgroundColor": "#0000ff" } }
+
+Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
+
+        // Get AI model client
+        const { modelClient } = await getModelClient(selectedModel, settings);
+
+        // Generate response
+        const result = await generateText({
+          model: modelClient.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.3, // Lower temperature for more consistent JSON output
+        });
+
+        const responseText = result.text.trim();
+
+        // Try to parse the JSON response
+        let parsedResponse: any;
+        try {
+          // Remove markdown code blocks if present
+          const cleaned = responseText
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim();
+
+          parsedResponse = JSON.parse(cleaned);
+        } catch (parseError) {
+          console.error("Failed to parse AI response:", responseText);
+          return {
+            error: "No pude entender la respuesta de la IA. Intenta ser más específico.",
+          };
+        }
+
+        // Log AI query for analytics
+        try {
+          void logAiQuery({
+            queryType: "visual-editing-quick-edit",
+            model: selectedModel.name,
+            promptSnippet: prompt.slice(0, 100),
+            payload: {
+              system: systemPrompt,
+              prompt,
+              componentName,
+              currentStyles,
+              currentTextContent,
+            },
+            response: {
+              text: responseText,
+              parsed: parsedResponse,
+            },
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+          });
+        } catch (logError) {
+          console.error("Failed to log AI query:", logError);
+        }
+
+        // Build the change object
+        const change: any = {
+          componentId,
+          componentName,
+          relativePath,
+          lineNumber,
+          styles: parsedResponse.styles || {},
+        };
+
+        if (parsedResponse.textContent !== undefined) {
+          change.textContent = parsedResponse.textContent;
+        }
+
+        return { change };
+      } catch (error) {
+        console.error("Failed to process quick edit:", error);
+        return {
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
     },
   );

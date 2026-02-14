@@ -1,3 +1,8 @@
+- editor visual de la página mediante el lápiz que nos deja cambiar textos, iconos, colores, tmaños, etc y usar la ia para cambios simples
+- Mejoras en la pantalla de aplicación para quitar ruido
+- Expandir/colapasar la vista previa
+- Mejoras varias en la ui en toda la app
+
 ## 🔥 Novedades principales
 
 ### Performance

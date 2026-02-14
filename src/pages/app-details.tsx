@@ -13,6 +13,15 @@ import {
   Pencil,
   Folder,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
+  Github,
+  Smartphone,
+  Flame,
+  Database,
+  Copy,
+  Trash2,
+  Star,
 } from "lucide-react";
 import {
   Popover,
@@ -43,6 +52,14 @@ import { CapacitorControls } from "@/components/CapacitorControls";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
 import { Brain } from "lucide-react";
+import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -63,6 +80,8 @@ export default function AppDetailsPage() {
   const [isRenamingFolder, setIsRenamingFolder] = useState(false);
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [aiGeneratedTitle, setAiGeneratedTitle] = useState<string | null>(null);
+  const [isIntegrationsSectionOpen, setIsIntegrationsSectionOpen] = useState(false);
+  const { toggleFavorite, isLoading: isFavoriteLoading } = useAddAppToFavorite();
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [newCopyAppName, setNewCopyAppName] = useState("");
@@ -313,18 +332,23 @@ export default function AppDetailsPage() {
       className="relative min-h-screen p-4 w-full"
       data-testid="app-details-page"
     >
-      <Button
-        onClick={() => router.history.back()}
-        variant="outline"
-        size="sm"
-        className="absolute top-4 left-4 flex items-center gap-1 bg-(--background-lightest) py-2"
-      >
-        <ArrowLeft className="h-3 w-4" />
-        Atrás
-      </Button>
-
-      <div className="w-full max-w-2xl mx-auto mt-10 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm relative">
+      <div className="w-full max-w-2xl mx-auto mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm relative">
         <div className="flex items-center mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0.5 h-auto mr-1"
+            onClick={() => toggleFavorite(selectedApp.id)}
+            disabled={isFavoriteLoading}
+            title={selectedApp.isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+          >
+            <Star
+              className={`h-5 w-5 transition-colors ${selectedApp.isFavorite
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-400 hover:text-yellow-400"
+                }`}
+            />
+          </Button>
           <h2 className="text-2xl font-bold">{selectedApp.name}</h2>
           <Button
             variant="ghost"
@@ -338,17 +362,16 @@ export default function AppDetailsPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="ml-1 items-center gap-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            className="ml-0.5 p-0.5 h-auto"
             onClick={handleGenerateTitle}
             disabled={isGeneratingTitle}
-            title="Generar título mágico basado en el historial"
+            title="Asignar nombre de la app con inteligencia artificial"
           >
             {isGeneratingTitle ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            <span className="text-xs">Título mágico</span>
           </Button>
         </div>
 
@@ -383,22 +406,6 @@ export default function AppDetailsPage() {
                 >
                   Mover carpeta
                 </Button>
-                <Button
-                  onClick={handleOpenCopyDialog}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 justify-start text-xs"
-                >
-                  Copiar aplicación
-                </Button>
-                <Button
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 justify-start text-xs"
-                >
-                  Borrar
-                </Button>
               </div>
             </PopoverContent>
           </Popover>
@@ -409,13 +416,13 @@ export default function AppDetailsPage() {
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
               Creado
             </span>
-            <span>{selectedApp.createdAt.toString()}</span>
+            <span className="text-xs">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div>
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
               Última actualización
             </span>
-            <span>{selectedApp.updatedAt.toString()}</span>
+            <span className="text-xs">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div className="col-span-2">
             <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
@@ -449,31 +456,99 @@ export default function AppDetailsPage() {
             className="cursor-pointer w-full py-5 flex justify-center items-center gap-2"
             size="lg"
           >
-            Abrir en Chat
             <MessageCircle className="h-4 w-4" />
+            Abrir en Chat
           </Button>
-          <div className="border border-gray-200 rounded-md p-4">
-            <GitHubConnector appId={appId} folderName={selectedApp.path} />
-            {selectedApp.githubOrg && selectedApp.githubRepo && appId && (
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                <GithubCollaboratorManager appId={appId} />
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleOpenCopyDialog}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+            >
+              <Copy className="h-4 w-4" />
+              Clonar aplicación
+            </button>
+            <button
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4" />
+              Borrar aplicación
+            </button>
           </div>
-          {appId && <SupabaseConnector appId={appId} />}
-          {appId && <FirebaseConnector appId={appId} />}
+          {/* Collapsible Repositorio e integraciones section */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsIntegrationsSectionOpen(!isIntegrationsSectionOpen)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                {isIntegrationsSectionOpen ? (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                )}
+                <div className="flex flex-col items-start">
+                  <span className="font-medium text-sm">Repositorio e integraciones</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Supabase, Firebase y Capacitor</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Github className="h-3.5 w-3.5 text-gray-400" />
+                <Database className="h-3.5 w-3.5 text-gray-400" />
+                <Flame className="h-3.5 w-3.5 text-gray-400" />
+                <Smartphone className="h-3.5 w-3.5 text-gray-400" />
+              </div>
+            </button>
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isIntegrationsSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+            >
+              <div className="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+                {/* GitHub */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Github className="h-5 w-5" />
+                      GitHub
+                    </CardTitle>
+                    <CardDescription>Conecta y gestiona tu repositorio de GitHub</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <GitHubConnector appId={appId} folderName={selectedApp.path} />
+                    {selectedApp.githubOrg && selectedApp.githubRepo && appId && (
+                      <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
+                        <GithubCollaboratorManager appId={appId} />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Supabase */}
+                {appId && <SupabaseConnector appId={appId} />}
+
+                {/* Firebase */}
+                {appId && <FirebaseConnector appId={appId} />}
+
+                {/* Capacitor */}
+                {appId && <CapacitorControls appId={appId} />}
+
+                {/* App Upgrades (includes Capacitor install prompt) */}
+                <AppUpgrades appId={appId} />
+              </div>
+            </div>
+          </div>
+
           {appId && (
             <Button
               variant="outline"
               onClick={() => setIsKnowledgeBaseModalOpen(true)}
-              className="w-full justify-start h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              className="w-full justify-between h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
-                  <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                </div>
+              <div className="flex items-center gap-2">
+                <ChevronRight className="h-4 w-4 text-gray-500" />
                 <div className="flex flex-col items-start">
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
                     Base de Conocimientos IA
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400 text-left">
@@ -481,6 +556,7 @@ export default function AppDetailsPage() {
                   </span>
                 </div>
               </div>
+              <Brain className="h-3.5 w-3.5 text-gray-400" />
             </Button>
           )}
           {appId && (
@@ -490,8 +566,6 @@ export default function AppDetailsPage() {
               onClose={() => setIsKnowledgeBaseModalOpen(false)}
             />
           )}
-          {appId && <CapacitorControls appId={appId} />}
-          <AppUpgrades appId={appId} />
         </div>
 
         {/* Rename Dialog */}
@@ -667,12 +741,11 @@ export default function AppDetailsPage() {
           <Dialog open={isCopyDialogOpen} onOpenChange={setIsCopyDialogOpen}>
             <DialogContent className="max-w-md p-4">
               <DialogHeader className="pb-2">
-                <DialogTitle>Copiar "{selectedApp.name}"</DialogTitle>
+                <DialogTitle>Clonar "{selectedApp.name}"</DialogTitle>
                 <DialogDescription className="text-sm">
-                  <p>Crea una copia de esta aplicación.</p>
+                  <p>Crea una copia independiente de esta aplicación con un nuevo nombre.</p>
                   <p>
-                    Nota: esto no copia el proyecto de Supabase ni el proyecto
-                    de GitHub.
+                    Las integraciones (Supabase, GitHub, Firebase) no se clonan.
                   </p>
                 </DialogDescription>
               </DialogHeader>
@@ -730,11 +803,11 @@ export default function AppDetailsPage() {
                     </div>
                     <div className="text-left">
                       <p className="font-medium text-xs">
-                        Copiar aplicación con historial
+                        Clonar con historial
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Copia toda la aplicación, incluyendo el historial de
-                        versiones de Git.
+                        Clona toda la aplicación incluyendo el historial de
+                        versiones.
                       </p>
                     </div>
                   </Button>
@@ -758,11 +831,11 @@ export default function AppDetailsPage() {
                       )}
                     <div className="text-left">
                       <p className="font-medium text-xs">
-                        Copiar aplicación sin historial
+                        Clonar sin historial
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Útil si la aplicación actual tiene algún problema
-                        relacionado con Git.
+                        Solo clona el estado actual del código, sin versiones
+                        anteriores. Útil si hay problemas con Git.
                       </p>
                     </div>
                   </Button>

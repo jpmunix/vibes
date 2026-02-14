@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ImportAppButton } from "./ImportAppButton";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -134,6 +135,7 @@ export function AppList({ show }: { show?: boolean }) {
               <PlusCircle size={16} />
               <span>Nueva aplicación</span>
             </Button>
+            <ImportAppButton className="mx-2 px-0 pb-0" />
             <Button
               onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
               variant="outline"

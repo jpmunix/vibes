@@ -72,6 +72,7 @@ function fixOrphanedMigrations(sqlite: Database.Database): void {
  * Ensure required columns exist in knowledge_entries table.
  * Migration 0040 adds durability, superseded_by, and last_confirmed_at but can
  * fail if the migration was partially applied. This is a safety net.
+ * When columns are ensured, also mark migration 0040 as applied so migrate() skips it.
  */
 function ensureKnowledgeColumns(sqlite: Database.Database): void {
   try {
@@ -85,17 +86,48 @@ function ensureKnowledgeColumns(sqlite: Database.Database): void {
       .all() as Array<{ name: string }>;
     const columnNames = new Set(columns.map((c) => c.name));
 
+    let columnsAdded = false;
+
     if (!columnNames.has("durability")) {
       logger.log("Adding missing 'durability' column to knowledge_entries");
       sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`durability\` text DEFAULT 'permanent'`);
+      columnsAdded = true;
     }
     if (!columnNames.has("superseded_by")) {
       logger.log("Adding missing 'superseded_by' column to knowledge_entries");
       sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`superseded_by\` integer`);
+      columnsAdded = true;
     }
     if (!columnNames.has("last_confirmed_at")) {
       logger.log("Adding missing 'last_confirmed_at' column to knowledge_entries");
       sqlite.exec(`ALTER TABLE \`knowledge_entries\` ADD \`last_confirmed_at\` integer`);
+      columnsAdded = true;
+    }
+
+    // If columns already exist (or were just added), ensure migration 0040 is recorded
+    // so that migrate() doesn't try to re-add them and crash
+    const MIGRATION_0040_HASH = "465652dbf63a5cb30415f442ff29e9b4f7cec3a44be6d4a271a308b2c107dfa0";
+    const MIGRATION_0040_CREATED_AT = 1771008266213;
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_0040_HASH);
+
+        if (!migrationExists) {
+          logger.log("Marking migration 0040 (knowledge columns) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_0040_HASH, MIGRATION_0040_CREATED_AT);
+        }
+      }
+    } catch (migError) {
+      logger.log("Could not mark migration 0040 as applied (will likely be handled by migrate)");
     }
   } catch (error) {
     logger.error("Error ensuring knowledge columns:", error);

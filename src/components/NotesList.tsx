@@ -173,21 +173,21 @@ export function NotesList({ show }: { show?: boolean }) {
                         variant="ghost"
                         onClick={() => handleNoteClick(note.id)}
                         className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${currentNoteId === note.id
-                            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-                            : ""
+                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+                          : ""
                           }`}
                       >
                         <div className="flex flex-col w-full relative overflow-hidden">
                           <span
-                            className={`truncate mr-16 ${currentNoteId === note.id ? "font-semibold" : ""
+                            className={`truncate mr-8 ${currentNoteId === note.id ? "font-semibold" : ""
                               }`}
                           >
                             {note.title}
                           </span>
                           <span
                             className={`text-xs ${currentNoteId === note.id
-                                ? "text-blue-600/70 dark:text-blue-400/70"
-                                : "text-gray-500"
+                              ? "text-blue-600/70 dark:text-blue-400/70"
+                              : "text-gray-500"
                               }`}
                           >
                             {formatDistanceToNow(new Date(note.updatedAt), {

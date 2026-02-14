@@ -13,6 +13,7 @@ export async function startProxy(
     port?: number;
     // env?: Record<string, string>;
     onStarted?: (proxyUrl: string) => void;
+    onUpstreamRecovered?: () => void;
   } = {},
 ) {
   if (!/^https?:\/\//.test(targetOrigin))
@@ -29,6 +30,7 @@ export async function startProxy(
     // host = "localhost",
     // env = {}, // additional env vars to pass to the worker
     onStarted,
+    onUpstreamRecovered,
   } = opts;
 
   const worker = new Worker(
@@ -46,6 +48,9 @@ export async function startProxy(
     if (typeof m === "string" && m.startsWith("proxy-server-start url=")) {
       const url = m.substring("proxy-server-start url=".length);
       onStarted?.(url);
+    }
+    if (m === "proxy-upstream-recovered") {
+      onUpstreamRecovered?.();
     }
   });
   worker.on("error", (e) => logger.error("[proxy] error:", e));

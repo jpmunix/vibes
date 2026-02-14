@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
-import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft, X } from "lucide-react";
+import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft, X, Trash2 } from "lucide-react";
 import { FIREBASE_AUTH_CONFIG } from "@/shared/firebase_auth_config";
 import { Input } from "@/components/ui/input";
 
@@ -299,7 +299,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                                     />
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button className="flex-1" onClick={handleCreateWebAppFromManage} disabled={isWorking}>
+                                    <Button variant="outline" className="flex-1" onClick={handleCreateWebAppFromManage} disabled={isWorking}>
                                         {isInternalProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Crear y Conectar"}
                                     </Button>
                                     <Button variant="outline" onClick={() => setShowCreateWebAppForm(false)} disabled={isWorking}>
@@ -308,7 +308,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-3 mt-3">
                                 <Label>Selecciona una App Web existente</Label>
                                 <div className="grid gap-2">
                                     {webApps.length === 0 ? (
@@ -387,7 +387,8 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Ver en consola
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={handleUnsetProject}>
+                    <Button variant="ghost" size="sm" onClick={handleUnsetProject} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
                         Desconectar
                     </Button>
                 </div>
@@ -396,9 +397,9 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
         if (noCard) return content;
         return (
             <Card className="mt-1">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Flame className="h-5 w-5 text-orange-500" />
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Flame className="h-5 w-5" />
                         Proyecto de Firebase
                     </CardTitle>
                 </CardHeader>
@@ -438,7 +439,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                             />
                         </div>
                         <div className="flex gap-2">
-                            <Button className="flex-1" onClick={handleCreateWebApp} disabled={isWorking}>
+                            <Button variant="outline" className="flex-1" onClick={handleCreateWebApp} disabled={isWorking}>
                                 {isInternalProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Crear y Conectar"}
                             </Button>
                             <Button variant="outline" onClick={() => setShowCreateWebAppForm(false)} disabled={isWorking}>
@@ -447,7 +448,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 mt-3">
                         <Label>Selecciona una App Web existente</Label>
                         <div className="grid gap-2">
                             {webApps.length === 0 ? (
@@ -485,9 +486,9 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
 
         return (
             <Card className="mt-1">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Flame className="h-5 w-5 text-orange-500" />
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Flame className="h-5 w-5" />
                         Configurar App Web
                     </CardTitle>
                     <CardDescription>
@@ -522,7 +523,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                     />
                 </div>
                 <div className="flex gap-2 pt-2">
-                    <Button className="flex-1" onClick={handleCreateProject} disabled={isWorking}>
+                    <Button variant="outline" className="flex-1" onClick={handleCreateProject} disabled={isWorking}>
                         {isWorking ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : "Crear Proyecto"}
                     </Button>
                     <Button variant="outline" onClick={() => setShowCreateForm(false)} disabled={isWorking}>
@@ -546,7 +547,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        <Label htmlFor="project-select">Seleccionar proyecto existente</Label>
+                        <Label htmlFor="project-select">Proyecto</Label>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <Select value="" onValueChange={onSelectProjectFromList}>
@@ -582,10 +583,10 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
         if (noCard) return content;
         return (
             <Card className="mt-1">
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
+                <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between text-base">
                         <div className="flex items-center gap-2">
-                            <Flame className="h-5 w-5 text-orange-500" />
+                            <Flame className="h-5 w-5" />
                             {showCreateForm ? "Nuevo Proyecto" : "Firebase"}
                         </div>
                         {!showCreateForm && (
@@ -598,7 +599,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         {showCreateForm ? "Carga un nuevo proyecto de Firebase" : "Selecciona un proyecto para esta app."}
                     </CardDescription>
                 </CardHeader>
-                <CardContent>{content}</CardContent>
+                <CardContent className="pt-2">{content}</CardContent>
             </Card>
         );
     }
@@ -616,9 +617,9 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
     if (noCard) return content;
     return (
         <Card className="mt-1 border-dashed">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Flame className="h-5 w-5 text-orange-500" />
+            <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Flame className="h-5 w-5" />
                     Firebase
                 </CardTitle>
                 <CardDescription>Conecta tu cuenta de Google para gestionar tus proyectos.</CardDescription>

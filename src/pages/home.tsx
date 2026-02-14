@@ -16,7 +16,6 @@ import { INSPIRATION_PROMPTS } from "@/prompts/inspiration_prompts";
 import { useAppVersion } from "@/hooks/useAppVersion";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { ImportAppButton } from "@/components/ImportAppButton";
 import { showError } from "@/lib/toast";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useQueryClient } from "@tanstack/react-query";
@@ -111,10 +110,15 @@ export default function HomePage() {
     typeof INSPIRATION_PROMPTS
   >([]);
 
-  // Function to get random prompts
+  // Function to get random prompts using Fisher-Yates shuffle for true randomness
   const getRandomPrompts = useCallback(() => {
-    const shuffled = [...INSPIRATION_PROMPTS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 3);
+    const shuffled = [...INSPIRATION_PROMPTS];
+    // Fisher-Yates shuffle algorithm for true randomness
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, 6);
   }, []);
 
   // Initialize random prompts
@@ -218,7 +222,7 @@ export default function HomePage() {
   // Loading overlay for app creation
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center max-w-3xl m-auto p-8">
+      <div className="flex flex-col items-center justify-center max-w-5xl m-auto p-8">
         <div className="w-full flex flex-col items-center">
           {/* Loading Spinner */}
           <div className="relative w-24 h-24 mb-8">
@@ -239,7 +243,7 @@ export default function HomePage() {
 
   // Main Home Page Content
   return (
-    <div className="flex flex-col items-center justify-center max-w-3xl w-full m-auto p-8 relative">
+    <div className="flex flex-col items-center justify-center max-w-5xl w-full m-auto p-8 relative">
       {/*<div className="fixed top-16 right-8 z-50">*/}
       {/*  {settings && hasDyadProKey(settings) ? (*/}
       {/*    <ManageDyadProButton className="mt-0 w-auto h-9 px-3 text-base shadow-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800" />*/}
@@ -258,9 +262,6 @@ export default function HomePage() {
       <SetupBanner />
 
       <div className="w-full">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <ImportAppButton className="px-0 pb-0 flex-none" />
-        </div>
         <HomeChatInput onSubmit={handleSubmit} />
 
         <div className="flex flex-col gap-4 mt-2">

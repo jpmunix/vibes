@@ -485,7 +485,8 @@ export function ChatInput({
           />
 
 
-          <SelectedComponentsDisplay />
+          {/* SelectedComponentsDisplay hidden — visual editor panel handles this */}
+          {/* <SelectedComponentsDisplay /> */}
 
           {/* Use the AttachmentsList component */}
           <AttachmentsList

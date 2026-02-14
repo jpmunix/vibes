@@ -26,6 +26,8 @@ import {
   Smartphone,
   Camera,
   Crop,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";
@@ -47,8 +49,16 @@ import {
   annotatorModeAtom,
   screenshotDataUrlAtom,
   pendingVisualChangesAtom,
+  elementTypeAtom,
+  naturalEditingPanelOpenAtom,
+  isDynamicComponentAtom,
+  hasStaticTextAtom,
+  currentIconNameAtom,
+  iconLineAtom,
+  componentTextContentAtom,
 } from "@/atoms/previewAtoms";
 import { ComponentSelection } from "@/ipc/types";
+import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
   Tooltip,
   TooltipContent,
@@ -71,6 +81,7 @@ import type { DeviceMode } from "@/lib/schemas";
 import { useAttachments } from "@/hooks/useAttachments";
 import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface ErrorBannerProps {
   error: { message: string; source: "preview-app" | "dyad-app" } | undefined;
@@ -94,77 +105,141 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
   };
 
   return (
-    <div
-      className="absolute top-2 left-2 right-2 z-10 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md shadow-sm p-2"
-      data-testid="preview-error-banner"
-    >
-      {/* Close button in top left */}
-      <button
-        onClick={onDismiss}
-        className="absolute top-1 left-1 p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
-      >
-        <X size={14} className="text-red-500 dark:text-red-400" />
-      </button>
-
-      {/* Add a little chip that says "Internal error" if source is "dyad-app" */}
-      {error.source === "dyad-app" && (
-        <div className="absolute top-1 right-1 p-1 bg-red-100 dark:bg-red-900 rounded-md text-xs font-medium text-red-700 dark:text-red-300">
-          Internal error
-        </div>
-      )}
-
-      {/* Error message in the middle */}
+    <>
+      {/* Overlay oscuro de fondo */}
       <div
-        className={cn(
-          "px-6 py-1 text-sm",
-          error.source === "dyad-app" && "pt-6",
-        )}
+        className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        onClick={onDismiss}
+      />
+
+      {/* Modal centrado */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-2xl bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-red-200 dark:border-red-800"
+        data-testid="preview-error-banner"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="text-red-700 dark:text-red-300 text-wrap font-mono whitespace-pre-wrap break-words text-xs cursor-pointer flex gap-1 items-start"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          <ChevronRight
-            size={14}
-            className={`mt-0.5 transform transition-transform ${isCollapsed ? "" : "rotate-90"}`}
-          />
-
-          {isCollapsed ? getTruncatedError() : error.message}
-        </div>
-      </div>
-
-      {/* Tip message */}
-      <div className="mt-2 px-6">
-        <div className="relative p-2 bg-red-100 dark:bg-red-900 rounded-sm flex gap-1 items-center">
-          <div>
-            <Lightbulb size={16} className=" text-red-800 dark:text-red-300" />
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <X size={20} className="text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Error en la aplicación
+              </h3>
+              {error.source === "dyad-app" && (
+                <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/50 rounded text-xs font-medium text-red-700 dark:text-red-300">
+                  Error interno
+                </span>
+              )}
+            </div>
           </div>
-          <span className="text-sm text-red-700 dark:text-red-200">
-            <span className="font-medium">Tip: </span>
-            {isDockerError
-              ? "Make sure Docker Desktop is running and try restarting the app."
-              : error.source === "dyad-app"
-                ? "Try restarting the Dyad app or restarting your computer to see if that fixes the error."
-                : "Check if restarting the app fixes the error."}
-          </span>
-        </div>
-      </div>
-
-      {/* Action buttons at the bottom */}
-      {!isDockerError && error.source === "preview-app" && (
-        <div className="mt-3 px-6 flex justify-end gap-2">
-          <CopyErrorMessage errorMessage={error.message} />
           <button
-            disabled={isStreaming}
-            onClick={onAIFix}
-            className="cursor-pointer flex items-center space-x-1 px-2 py-1 bg-red-500 dark:bg-red-600 text-white rounded text-sm hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onDismiss}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Cerrar"
           >
-            <Sparkles size={14} />
-            <span>Fix error with AI</span>
+            <X size={20} className="text-gray-500 dark:text-gray-400" />
           </button>
         </div>
-      )}
-    </div>
+
+        {/* Contenido del error */}
+        <div className="p-4">
+          <div
+            className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800/50 cursor-pointer hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            <div className="flex gap-2 items-start">
+              <ChevronRight
+                size={16}
+                className={`mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400 transform transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+              />
+              <div className="flex-1 text-sm font-mono text-red-700 dark:text-red-300 whitespace-pre-wrap break-words">
+                {isCollapsed ? getTruncatedError() : error.message}
+              </div>
+            </div>
+          </div>
+
+          {/* Mensaje de consejo */}
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 flex gap-3">
+            <Lightbulb size={18} className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div className="text-sm text-blue-900 dark:text-blue-200">
+              <span className="font-semibold">Consejo: </span>
+              {isDockerError
+                ? "Asegúrate de que Docker Desktop está en ejecución e intenta reiniciar la aplicación."
+                : error.source === "dyad-app"
+                  ? "Intenta reiniciar la aplicación Dyad o reiniciar tu computadora para ver si eso soluciona el error."
+                  : "Verifica si reiniciar la aplicación soluciona el error."}
+            </div>
+          </div>
+        </div>
+
+        {/* Botones de acción */}
+        {!isDockerError && error.source === "preview-app" && (
+          <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
+            <CopyErrorMessage errorMessage={error.message} />
+            <button
+              disabled={isStreaming}
+              onClick={onAIFix}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-red-600 disabled:hover:to-red-700"
+            >
+              <Sparkles size={16} />
+              <span>Arreglar con IA</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+// Expand/Collapse Preview Button
+const ExpandPreviewButton = () => {
+  const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
+  const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
+  const sidebarWasOpenRef = useRef(true);
+
+  const handleToggle = () => {
+    if (!isExpanded) {
+      // Expanding: remember sidebar state and collapse it
+      sidebarWasOpenRef.current = sidebarOpen;
+      setSidebarOpen(false);
+      setIsExpanded(true);
+    } else {
+      // Collapsing: restore sidebar if it was open before
+      setIsExpanded(false);
+      if (sidebarWasOpenRef.current) {
+        setSidebarOpen(true);
+      }
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleToggle}
+            className={cn(
+              "p-1 rounded transition-all duration-200 dark:text-gray-300",
+              isExpanded
+                ? "bg-gray-200 dark:bg-gray-700 text-foreground"
+                : "hover:bg-gray-200 dark:hover:bg-gray-700",
+            )}
+            data-testid="preview-expand-button"
+            aria-label={isExpanded ? "Contraer vista" : "Expandir vista"}
+          >
+            <div className="transition-transform duration-200 hover:scale-110">
+              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </div>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isExpanded ? "Contraer vista" : "Expandir vista"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -225,12 +300,22 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     screenshotDataUrlAtom,
   );
 
+  // Connection error tracking and auto-restart logic
+  const [loadFailureCount, setLoadFailureCount] = useState(0);
+  const [isAutoRestarting, setIsAutoRestarting] = useState(false);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const { addAttachments } = useAttachments();
   const setPendingChanges = useSetAtom(pendingVisualChangesAtom);
+  const setElementType = useSetAtom(elementTypeAtom);
+  const setNaturalEditingPanelOpen = useSetAtom(naturalEditingPanelOpenAtom);
 
-  // AST Analysis State
-  const [isDynamicComponent, setIsDynamicComponent] = useState(false);
-  const [hasStaticText, setHasStaticText] = useState(false);
+  // AST Analysis State (atoms for cross-component access)
+  const [isDynamicComponent, setIsDynamicComponent] = useAtom(isDynamicComponentAtom);
+  const [hasStaticText, setHasStaticText] = useAtom(hasStaticTextAtom);
+  const setCurrentIconName = useSetAtom(currentIconNameAtom);
+  const setIconLine = useSetAtom(iconLineAtom);
+  const setComponentTextContent = useSetAtom(componentTextContentAtom);
 
   // Device mode state
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
@@ -255,6 +340,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       });
       setIsDynamicComponent(result.isDynamic);
       setHasStaticText(result.hasStaticText);
+      if (result.elementType) {
+        setElementType(result.elementType);
+      }
+      setCurrentIconName(result.iconName || null);
+      setIconLine(result.iconLine || null);
+      setComponentTextContent(result.textContent || "");
+      setNaturalEditingPanelOpen(true);
 
       // Automatically enable text editing if component has static text
       if (result.hasStaticText && iframeRef.current?.contentWindow) {
@@ -342,10 +434,46 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     };
   }, [selectedAppId]);
 
-  // Update iframe ref atom
+  // Reset auto-restart state when manual restart is triggered (loading becomes true)
   useEffect(() => {
-    setPreviewIframeRef(iframeRef.current);
-  }, [iframeRef.current, setPreviewIframeRef]);
+    if (loading && isAutoRestarting) {
+      // Manual restart in progress - cancel auto-restart
+      setIsAutoRestarting(false);
+      setLoadFailureCount(0);
+    }
+  }, [loading, isAutoRestarting]);
+
+  // Handle automatic server restart on connection failures
+  useEffect(() => {
+    // Clear failure count when URL changes successfully
+    if (appUrl) {
+      setLoadFailureCount(0);
+      setIsAutoRestarting(false);
+    }
+  }, [appUrl]);
+
+  // Auto-restart logic when iframe fails to load multiple times
+  useEffect(() => {
+    const MAX_FAILURES = 2;
+
+    if (loadFailureCount >= MAX_FAILURES && !isAutoRestarting && selectedAppId) {
+      console.warn(`[PreviewIframe] Detected ${loadFailureCount} consecutive load failures. Auto-restarting server...`);
+      setIsAutoRestarting(true);
+
+      // Immediately reset failure count to prevent multiple restart attempts
+      setLoadFailureCount(0);
+
+      // Force a complete server restart
+      restartApp({ removeNodeModules: false }).then(() => {
+        console.log('[PreviewIframe] Server restarted successfully');
+        setIsAutoRestarting(false);
+      }).catch((err) => {
+        console.error('[PreviewIframe] Failed to restart server:', err);
+        setIsAutoRestarting(false);
+        // Don't increment failure count here to avoid infinite loop
+      });
+    }
+  }, [loadFailureCount, isAutoRestarting, selectedAppId, restartApp]);
 
   // Send pro mode status to iframe
   useEffect(() => {
@@ -522,8 +650,30 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         });
 
         if (isProMode) {
-          // Set as the highlighted component for visual editing
-          setVisualEditingSelectedComponent(component);
+          // Remove previous component's overlay if it exists and close panel if switching
+          let shouldClosePanel = false;
+          setVisualEditingSelectedComponent((prev) => {
+            if (prev && prev.id !== component.id) {
+              // Different component selected - remove old overlay and mark to close panel
+              shouldClosePanel = true;
+              if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                  {
+                    type: "remove-dyad-component-overlay",
+                    componentId: prev.id,
+                  },
+                  "*",
+                );
+              }
+            }
+            return component;
+          });
+
+          // Close panel if we were switching to a different component
+          if (shouldClosePanel) {
+            setNaturalEditingPanelOpen(false);
+          }
+
           // Trigger AST analysis
           analyzeComponent(component.id);
         }
@@ -843,6 +993,22 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           { type: "cleanup-all-text-editing" },
           "*",
         );
+        
+        // Remove all component overlays when deactivating
+        if (visualEditingSelectedComponent) {
+          iframeRef.current.contentWindow.postMessage(
+            {
+              type: "remove-dyad-component-overlay",
+              componentId: visualEditingSelectedComponent.id,
+            },
+            "*",
+          );
+        }
+        
+        // Clear visual editing state
+        setVisualEditingSelectedComponent(null);
+        setCurrentComponentCoordinates(null);
+        setNaturalEditingPanelOpen(false);
       }
       setIsPicking(newIsPicking);
       setVisualEditingSelectedComponent(null);
@@ -1078,8 +1244,43 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     }
   }, [appUrl, reloadKey]);
 
-  // Display loading state
-  if (loading) {
+  // Set iframe load timeout - if iframe doesn't load within 30 seconds, consider it a failure
+  useEffect(() => {
+    if (!iframeSrc || isAutoRestarting) return;
+
+    // Clear any existing timeout
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
+
+    // Set new timeout
+    loadTimeoutRef.current = setTimeout(() => {
+      console.warn('[PreviewIframe] Iframe load timeout - no response after 30 seconds');
+
+      // Increment failure count
+      setLoadFailureCount((prev) => {
+        const newCount = prev + 1;
+        console.warn(`[PreviewIframe] Timeout failure ${newCount}`);
+        return newCount;
+      });
+
+      setErrorMessage({
+        message: 'Timeout: El servidor local no responde. Intentando reiniciar automáticamente...',
+        source: 'preview-app'
+      });
+    }, 30000); // 30 seconds
+
+    // Cleanup timeout on unmount or when src changes
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    };
+  }, [iframeSrc, isAutoRestarting]);
+
+  // Display loading state or auto-restarting state
+  if (loading || isAutoRestarting) {
     return (
       <div className="flex flex-col h-full relative">
         <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
@@ -1089,7 +1290,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             <div className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-full opacity-60"></div>
           </div>
           <p className="text-gray-600 dark:text-gray-300">
-            Preparing app preview...
+            {isAutoRestarting
+              ? "Reiniciando servidor (error de conexión detectado)..."
+              : "Preparing app preview..."}
           </p>
         </div>
       </div>
@@ -1117,14 +1320,16 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         <div className="flex items-center p-2 border-b space-x-2">
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
+            {/* Expand/Collapse Preview Button */}
+            <ExpandPreviewButton />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleActivateComponentSelector}
                     className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
-                      ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-                      : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                      ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                     disabled={
                       loading ||
@@ -1153,7 +1358,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <button
-                        className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
+                        className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
                         disabled={loading || !selectedAppId}
                         data-testid="preview-screenshot-button"
                       >
@@ -1415,11 +1620,48 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
                 data-testid="preview-iframe-element"
                 onLoad={() => {
+                  // Clear any pending load timeout
+                  if (loadTimeoutRef.current) {
+                    clearTimeout(loadTimeoutRef.current);
+                    loadTimeoutRef.current = null;
+                  }
+
+                  // Reset error state and failure count on successful load
                   setErrorMessage(undefined);
+                  setLoadFailureCount(0);
+                  setIsAutoRestarting(false);
+
+                  console.log('[PreviewIframe] Successfully loaded iframe');
                   // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
                   // This prevents re-renders from accidentally changing the iframe src
                 }}
-                ref={iframeRef}
+                onError={(e) => {
+                  console.error('[PreviewIframe] iframe load error:', e);
+
+                  // Clear any pending load timeout
+                  if (loadTimeoutRef.current) {
+                    clearTimeout(loadTimeoutRef.current);
+                    loadTimeoutRef.current = null;
+                  }
+
+                  // Increment failure count
+                  setLoadFailureCount((prev) => {
+                    const newCount = prev + 1;
+                    console.warn(`[PreviewIframe] Load failure ${newCount}`);
+                    return newCount;
+                  });
+
+                  setErrorMessage({
+                    message: 'Error de conexión con el servidor local (127.0.0.1). Intentando reiniciar automáticamente...',
+                    source: 'preview-app'
+                  });
+                }}
+                ref={(el) => {
+                  iframeRef.current = el;
+                  if (setPreviewIframeRef) {
+                    setPreviewIframeRef(el);
+                  }
+                }}
                 key={reloadKey}
                 title={`Preview for App ${selectedAppId}`}
                 className={cn(
@@ -1429,18 +1671,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 src={iframeSrc}
                 allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
               />
-              {/* Visual Editing Toolbar */}
-              {!annotatorMode &&
-                isProMode &&
-                visualEditingSelectedComponent &&
-                selectedAppId && (
-                  <VisualEditingToolbar
-                    selectedComponent={visualEditingSelectedComponent}
-                    iframeRef={iframeRef}
-                    isDynamic={isDynamicComponent}
-                    hasStaticText={hasStaticText}
-                  />
-                )}
+              {/* Visual Editing Toolbar — replaced by NaturalEditingPanel in PreviewPanel */}
             </div>
           </div>
         )}

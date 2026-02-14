@@ -142,18 +142,18 @@ export function DebatesList({ show }: { show?: boolean }) {
             <SidebarMenu className="space-y-1">
               {filteredDebates.map((debate) => (
                 <SidebarMenuItem key={debate.id}>
-                  <div className="group relative flex items-center">
+                  <div className="group/menu-item relative flex items-center">
                     <Button
                       variant="ghost"
                       onClick={() => handleDebateClick(debate.id)}
-                      className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 ${selectedDebateId === debate.id
+                      className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 pr-1 ${selectedDebateId === debate.id
                         ? "bg-primary/5 text-primary"
                         : ""
                         }`}
                     >
                       <div className="flex flex-col gap-1 w-full overflow-hidden">
                         <div className="flex items-center justify-between">
-                          <span className="truncate font-medium flex-1">
+                          <span className="truncate font-medium flex-1 mr-8">
                             {debate.title}
                           </span>
                         </div>
@@ -189,12 +189,26 @@ export function DebatesList({ show }: { show?: boolean }) {
                         )}
                       </div>
                     </Button>
-                    <button
-                      onClick={(e) => handleDeleteClick(e, debate.id)}
-                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
+
+                    {/* Hover gradient shadow */}
+                    <div
+                      className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10
+                        ${selectedDebateId === debate.id
+                          ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+                          : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+                        }`}
+                    />
+
+                    <SidebarMenuAction
+                      showOnHover
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(e, debate.id);
+                      }}
+                      className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                     >
-                      <Trash2 size={14} />
-                    </button>
+                      <Trash2 className="h-4 w-4" />
+                    </SidebarMenuAction>
                   </div>
                 </SidebarMenuItem>
               ))}
