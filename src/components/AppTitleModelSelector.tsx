@@ -40,7 +40,7 @@ export function AppTitleModelSelector() {
         onValueChange={handleChange}
         disabled={isLoading}
       >
-        <SelectTrigger id="appTitleGenerationModel">
+        <SelectTrigger id="appTitleGenerationModel" className="h-[60px] w-full max-w-[380px] px-6 py-4 rounded-xl">
           <SelectValue placeholder="Selecciona un modelo" />
         </SelectTrigger>
         <SelectContent className="max-h-[280px] w-72">

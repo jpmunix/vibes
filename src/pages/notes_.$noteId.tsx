@@ -5,7 +5,7 @@ import { ipc } from "@/ipc/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useState, useEffect } from "react";
-import { showError } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 
 export default function NoteDetailPage() {
   const { noteId } = useParams({ from: "/notes/$noteId" });
@@ -77,6 +77,17 @@ export default function NoteDetailPage() {
     );
   }
 
+  const handleExport = async () => {
+    try {
+      const exported = await ipc.note.exportNote({ noteId: numericNoteId });
+      if (exported) {
+        showSuccess("Nota exportada correctamente");
+      }
+    } catch (error) {
+      showError(`Error al exportar nota: ${(error as Error).message}`);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto overflow-x-hidden">
       <div className="w-full mx-auto px-8 pt-12 pb-4">
@@ -89,7 +100,11 @@ export default function NoteDetailPage() {
         />
       </div>
       <div className="flex-1 w-full flex flex-col items-center pb-12">
-        <NoteEditor content={content} onUpdate={setContent} />
+        <NoteEditor
+          content={content}
+          onUpdate={setContent}
+          onExport={handleExport}
+        />
       </div>
     </div>
   );

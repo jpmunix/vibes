@@ -33,17 +33,14 @@ export function KnowledgeModelSelector() {
                 onValueChange={handleChange}
                 disabled={isLoading}
             >
-                <SelectTrigger id="knowledgeExtractionModel">
+                <SelectTrigger id="knowledgeExtractionModel" className="h-[60px] w-full max-w-[380px] px-6 py-4 rounded-xl">
                     <SelectValue placeholder="Selecciona un modelo" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px] w-72">
                     {openRouterModels?.find(m => m.apiName === DEFAULT_VALUE) ? (
                         <SelectItem value={DEFAULT_VALUE} className="py-1 px-3">
                             <ModelItemContent
-                                model={{
-                                    ...openRouterModels.find(m => m.apiName === DEFAULT_VALUE)!,
-                                    tag: "Recomendado"
-                                }}
+                                model={openRouterModels.find(m => m.apiName === DEFAULT_VALUE)!}
                             />
                         </SelectItem>
                     ) : (

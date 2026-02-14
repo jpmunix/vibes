@@ -1,8 +1,8 @@
 import type { Message } from "@/ipc/types";
 import {
   DyadMarkdownParser,
-  VanillaMarkdownParser,
 } from "./DyadMarkdownParser";
+import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import {
@@ -164,7 +164,10 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                   )}
                 </>
               ) : (
-                <VanillaMarkdownParser content={message.content} />
+                <UserMessageContent
+                  content={message.content}
+                  aiMessagesJson={(message as any).aiMessagesJson}
+                />
               )}
             </div>
           ) : null}

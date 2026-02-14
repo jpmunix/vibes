@@ -160,6 +160,62 @@ export function useGitPanel(appId: number | null) {
         [appId],
     );
 
+    // Fetch conflict files (only when merge is in progress)
+    const { data: conflictData } = useQuery({
+        queryKey: ["git-conflicts", appId],
+        queryFn: async () => {
+            if (!appId) return { files: [], mergeInProgress: false };
+            return ipc.git.getConflictFiles({ appId });
+        },
+        enabled: appId !== null && gitState?.mergeInProgress === true,
+        refetchInterval: 3000,
+    });
+
+    // Resolve merge: accept ours (local changes)
+    const resolveMergeOursMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            return ipc.git.resolveMergeOurs({ appId });
+        },
+        onSuccess: (result) => {
+            refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-conflicts", appId] });
+            toast.success(result.message);
+        },
+        onError: (err: Error) => toast.error(`Error al resolver: ${err.message}`),
+    });
+
+    // Resolve merge: accept theirs (incoming changes)
+    const resolveMergeTheirsMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            return ipc.git.resolveMergeTheirs({ appId });
+        },
+        onSuccess: (result) => {
+            refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-conflicts", appId] });
+            toast.success(result.message);
+        },
+        onError: (err: Error) => toast.error(`Error al resolver: ${err.message}`),
+    });
+
+    // Abort merge
+    const abortMergeMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.git.abortMerge({ appId });
+        },
+        onSuccess: () => {
+            refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-conflicts", appId] });
+            toast.success("Merge abortado correctamente");
+        },
+        onError: (err: Error) => toast.error(`Error al abortar merge: ${err.message}`),
+    });
+
     return {
         // Data
         uncommittedFiles,
@@ -168,6 +224,7 @@ export function useGitPanel(appId: number | null) {
         gitState,
         commitMessage,
         isLoadingFiles,
+        conflictFiles: conflictData?.files ?? [],
 
         // Setters
         setCommitMessage,
@@ -183,6 +240,9 @@ export function useGitPanel(appId: number | null) {
         getFileDiff,
         refreshFiles,
         refreshBranch,
+        resolveMergeOurs: resolveMergeOursMutation.mutateAsync,
+        resolveMergeTheirs: resolveMergeTheirsMutation.mutateAsync,
+        abortMerge: abortMergeMutation.mutateAsync,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -190,5 +250,8 @@ export function useGitPanel(appId: number | null) {
         isCommitting: commitMutation.isPending,
         isPushing: pushMutation.isPending,
         isGeneratingMessage,
+        isResolvingMerge: resolveMergeOursMutation.isPending || resolveMergeTheirsMutation.isPending,
+        isAbortingMerge: abortMergeMutation.isPending,
     };
 }
+

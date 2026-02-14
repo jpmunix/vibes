@@ -26,6 +26,7 @@ import {
   Code,
   Smile,
   Type,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,17 +72,17 @@ const FontSize = Extension.create({
     return {
       setFontSize:
         (fontSize: string) =>
-        ({ chain }: any) => {
-          return chain().setMark("textStyle", { fontSize }).run();
-        },
+          ({ chain }: any) => {
+            return chain().setMark("textStyle", { fontSize }).run();
+          },
       unsetFontSize:
         () =>
-        ({ chain }: any) => {
-          return chain()
-            .setMark("textStyle", { fontSize: null })
-            .removeEmptyTextStyle()
-            .run();
-        },
+          ({ chain }: any) => {
+            return chain()
+              .setMark("textStyle", { fontSize: null })
+              .removeEmptyTextStyle()
+              .run();
+          },
     } as any;
   },
 });
@@ -117,12 +118,14 @@ const EMOJIS = ["😀", "🚀", "💡", "✅", "🔥", "✨", "📝", "💻", "�
 interface NoteEditorProps {
   content: string;
   onUpdate: (content: string) => void;
+  onExport?: () => void;
   placeholder?: string;
 }
 
 export function NoteEditor({
   content,
   onUpdate,
+  onExport,
   placeholder = "Escribe tu nota aquí...",
 }: NoteEditorProps) {
   // Detect if content looks like Markdown and convert to HTML
@@ -410,6 +413,21 @@ export function NoteEditor({
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {onExport && (
+            <>
+              <div className="w-px h-4 bg-border mx-1 shrink-0" />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onExport}
+                className="rounded-full h-8 w-8 p-0 shrink-0 hover:bg-primary/10 text-primary"
+                title="Exportar a Word (.docx)"
+              >
+                <FileDown className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

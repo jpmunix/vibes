@@ -195,7 +195,9 @@ export function ChatHeader({
     }
   };
 
-  const isNotMainBranch = branchInfo && branchInfo.branch !== "main";
+  // Only show branch warning for dangerous cases: detached HEAD or master (to rename)
+  // Normal feature branches (feat/*, fix/*, etc.) should NOT show any warning
+  const isNotMainBranch = branchInfo && (branchInfo.branch === "<no-branch>" || branchInfo.branch === "master");
 
   const currentBranchName = branchInfo?.branch;
 

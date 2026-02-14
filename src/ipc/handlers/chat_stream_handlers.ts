@@ -1214,10 +1214,14 @@ This conversation includes one or more image attachments. When the user uploads 
                 attachmentPaths,
               );
             }
-            // Save aiMessagesJson for modes that use handleLocalAgentStream
-            // (which reads from DB and needs structured image content)
+            // Save aiMessagesJson when there are image attachments or when using local agent stream.
+            // This is needed for:
+            // 1. Local agent stream (reads from DB and needs structured image content)
+            // 2. Undo functionality (needs to recover image attachments from aiMessagesJson)
+            const hasImageAttachmentsForSave = attachmentPaths.length > 0 &&
+              req.attachments?.some(a => a.type.startsWith("image/"));
 
-            if (willUseLocalAgentStream) {
+            if (willUseLocalAgentStream || hasImageAttachmentsForSave) {
               // Insert into DB (with size guard)
               const userAiMessagesJson = getAiMessagesJsonIfWithinLimit([
                 chatMessages[lastUserIndex],

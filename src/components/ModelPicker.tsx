@@ -101,11 +101,13 @@ export function ModelPicker() {
             <Button
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 h-8 max-w-[290px] px-4 text-xs-sm"
+              className="flex items-center justify-between h-9 w-full max-w-[290px] px-4 text-xs-sm rounded-md"
             >
-              <span className="truncate">{modelDisplayName}</span>
-              {selectedModel.provider === "auto-router" &&
-                selectedModel.name === "auto" && <AutoRouterBadge />}
+              <span className="truncate flex-1 text-left">{modelDisplayName}</span>
+              <div className="flex items-center gap-2 ml-2">
+                {selectedModel.provider === "auto-router" &&
+                  selectedModel.name === "auto" && <AutoRouterBadge />}
+              </div>
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

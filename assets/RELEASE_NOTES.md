@@ -8,6 +8,9 @@
 
 - Capacidad de hacer undo y recuperar nuestro prompt y assets
 
+### Notas
+- Las notas ahora se pueden exportar a docx para poder abrirlas en las principales plataformas como word, libre office y google docs
+
 ### UI
 - Mejoradas las herramientas de captura de pantalla
 - Simplificada la barra de acciones de un chat

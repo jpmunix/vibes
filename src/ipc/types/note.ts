@@ -88,6 +88,14 @@ export const noteContracts = {
     input: z.number(), // noteId
     output: z.void(),
   }),
+
+  exportNote: defineContract({
+    channel: "export-note",
+    input: z.object({
+      noteId: z.number(),
+    }),
+    output: z.boolean(), // Returns true if exported, false if canceled
+  }),
 } as const;
 
 // =============================================================================

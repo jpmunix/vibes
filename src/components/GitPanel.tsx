@@ -19,6 +19,13 @@ import {
     FileEdit,
     ArrowRightLeft,
     X,
+    History,
+    GitCommit,
+    AlertTriangle,
+    GitMerge,
+    Ban,
+    ShieldCheck,
+    ArrowDownToLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +34,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { GitCommitHistory } from "@/components/GitCommitHistory";
 
 interface GitPanelProps {
     onClose: () => void;
@@ -256,6 +264,7 @@ function StagedFileRow({
 
 export function GitPanel({ onClose }: GitPanelProps) {
     const appId = useAtomValue(selectedAppIdAtom);
+    const [activeTab, setActiveTab] = useState<"changes" | "history">("changes");
     const {
         uncommittedFiles,
         currentBranch,
@@ -276,6 +285,12 @@ export function GitPanel({ onClose }: GitPanelProps) {
         isCommitting,
         isPushing,
         isGeneratingMessage,
+        conflictFiles,
+        resolveMergeOurs,
+        resolveMergeTheirs,
+        abortMerge,
+        isResolvingMerge,
+        isAbortingMerge,
     } = useGitPanel(appId);
 
     const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set());
@@ -428,275 +443,411 @@ export function GitPanel({ onClose }: GitPanelProps) {
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-                {isLoadingFiles ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="animate-spin text-muted-foreground" size={20} />
-                    </div>
-                ) : !hasChanges ? (
-                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                        <Check size={32} className="text-green-500 mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                            El árbol de trabajo está limpio
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            No hay cambios pendientes
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Unstaged Changes Section */}
-                        <div className="border-b border-border">
-                            <div
-                                className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                                onClick={() => setShowUnstaged(!showUnstaged)}
-                            >
+            {/* Tab Navigation */}
+            <div className="flex border-b border-border">
+                <button
+                    onClick={() => setActiveTab("changes")}
+                    className={cn(
+                        "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative",
+                        activeTab === "changes"
+                            ? "text-foreground"
+                            : "text-muted-foreground hover:text-foreground/80",
+                    )}
+                >
+                    <GitCommit size={13} />
+                    Cambios
+                    {hasChanges && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+                            {uncommittedFiles.length}
+                        </span>
+                    )}
+                    {activeTab === "changes" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
+                    )}
+                </button>
+                <button
+                    onClick={() => setActiveTab("history")}
+                    className={cn(
+                        "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative",
+                        activeTab === "history"
+                            ? "text-foreground"
+                            : "text-muted-foreground hover:text-foreground/80",
+                    )}
+                >
+                    <History size={13} />
+                    Historial
+                    {activeTab === "history" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
+                    )}
+                </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === "history" ? (
+                <div className="flex-1 overflow-hidden">
+                    <GitCommitHistory />
+                </div>
+            ) : (
+                <>
+                    {/* Changes Content */}
+
+                    {/* Merge Conflict Resolution Banner */}
+                    {gitState?.mergeInProgress && (
+                        <div className="border-b border-amber-500/30 bg-amber-500/5">
+                            <div className="px-3 py-3 space-y-3">
+                                {/* Header */}
                                 <div className="flex items-center gap-2">
-                                    <ChevronDown
-                                        size={14}
-                                        className={cn(
-                                            "text-muted-foreground transition-transform",
-                                            !showUnstaged && "-rotate-90",
-                                        )}
-                                    />
-                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Cambios
-                                    </span>
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                                        {unstagedFiles.length}
-                                    </span>
+                                    <div className="p-1.5 rounded-md bg-amber-500/15">
+                                        <GitMerge size={16} className="text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                                            Merge en progreso — Conflictos detectados
+                                        </p>
+                                        <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">
+                                            Resuelve los conflictos rápidamente eligiendo una estrategia
+                                        </p>
+                                    </div>
                                 </div>
-                                {unstagedFiles.length > 0 && (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleStageAll();
-                                                }}
-                                                disabled={isStaging}
-                                                className="p-1 rounded hover:bg-muted transition-colors"
-                                            >
-                                                <Plus size={14} className="text-muted-foreground" />
-                                            </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Stage todos los cambios</TooltipContent>
-                                    </Tooltip>
+
+                                {/* Conflicting files list */}
+                                {conflictFiles.length > 0 && (
+                                    <div className="bg-amber-500/8 border border-amber-500/20 rounded-md px-2.5 py-2 space-y-1">
+                                        <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                                            Archivos en conflicto ({conflictFiles.length})
+                                        </p>
+                                        <div className="max-h-24 overflow-y-auto space-y-0.5">
+                                            {conflictFiles.map((file) => (
+                                                <div key={file} className="flex items-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+                                                    <AlertTriangle size={10} className="text-amber-500 shrink-0" />
+                                                    <span className="font-mono truncate">{file}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
+
+                                {/* Action buttons */}
+                                <div className="flex flex-col gap-1.5">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full h-8 text-xs font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                                        onClick={() => resolveMergeOurs()}
+                                        disabled={isResolvingMerge || isAbortingMerge}
+                                    >
+                                        {isResolvingMerge ? (
+                                            <Loader2 size={13} className="animate-spin mr-1.5" />
+                                        ) : (
+                                            <ShieldCheck size={13} className="mr-1.5" />
+                                        )}
+                                        Aceptar mis cambios
+                                        <span className="ml-1 text-[10px] opacity-60">(local)</span>
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full h-8 text-xs font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
+                                        onClick={() => resolveMergeTheirs()}
+                                        disabled={isResolvingMerge || isAbortingMerge}
+                                    >
+                                        {isResolvingMerge ? (
+                                            <Loader2 size={13} className="animate-spin mr-1.5" />
+                                        ) : (
+                                            <ArrowDownToLine size={13} className="mr-1.5" />
+                                        )}
+                                        Aceptar sus cambios
+                                        <span className="ml-1 text-[10px] opacity-60">(remoto)</span>
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full h-7 text-[11px] text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                                        onClick={() => abortMerge()}
+                                        disabled={isResolvingMerge || isAbortingMerge}
+                                    >
+                                        {isAbortingMerge ? (
+                                            <Loader2 size={12} className="animate-spin mr-1.5" />
+                                        ) : (
+                                            <Ban size={12} className="mr-1.5" />
+                                        )}
+                                        Cancelar merge
+                                    </Button>
+                                </div>
                             </div>
-                            {showUnstaged && (
-                                <div>
-                                    {unstagedFiles.map((file) => (
-                                        <div key={file.path}>
-                                            <FileRow
-                                                file={file}
-                                                onToggle={() => handleStageFile(file.path)}
-                                                isToggling={isStaging}
-                                                onViewDiff={() => handleViewDiff(file.path)}
-                                                isExpanded={expandedFile === file.path}
+                        </div>
+                    )}
+
+                    <div className="flex-1 overflow-y-auto">
+                        {isLoadingFiles ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="animate-spin text-muted-foreground" size={20} />
+                            </div>
+                        ) : !hasChanges ? (
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                <Check size={32} className="text-green-500 mb-2" />
+                                <p className="text-sm text-muted-foreground">
+                                    El árbol de trabajo está limpio
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    No hay cambios pendientes
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Unstaged Changes Section */}
+                                <div className="border-b border-border">
+                                    <div
+                                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                                        onClick={() => setShowUnstaged(!showUnstaged)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                size={14}
+                                                className={cn(
+                                                    "text-muted-foreground transition-transform",
+                                                    !showUnstaged && "-rotate-90",
+                                                )}
                                             />
-                                            {expandedFile === file.path && (
-                                                <div className="bg-muted/20">
-                                                    {isLoadingDiff ? (
-                                                        <div className="flex items-center justify-center py-4">
-                                                            <Loader2
-                                                                size={14}
-                                                                className="animate-spin text-muted-foreground"
-                                                            />
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                Cambios
+                                            </span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                                {unstagedFiles.length}
+                                            </span>
+                                        </div>
+                                        {unstagedFiles.length > 0 && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStageAll();
+                                                        }}
+                                                        disabled={isStaging}
+                                                        className="p-1 rounded hover:bg-muted transition-colors"
+                                                    >
+                                                        <Plus size={14} className="text-muted-foreground" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Stage todos los cambios</TooltipContent>
+                                            </Tooltip>
+                                        )}
+                                    </div>
+                                    {showUnstaged && (
+                                        <div>
+                                            {unstagedFiles.map((file) => (
+                                                <div key={file.path}>
+                                                    <FileRow
+                                                        file={file}
+                                                        onToggle={() => handleStageFile(file.path)}
+                                                        isToggling={isStaging}
+                                                        onViewDiff={() => handleViewDiff(file.path)}
+                                                        isExpanded={expandedFile === file.path}
+                                                    />
+                                                    {expandedFile === file.path && (
+                                                        <div className="bg-muted/20">
+                                                            {isLoadingDiff ? (
+                                                                <div className="flex items-center justify-center py-4">
+                                                                    <Loader2
+                                                                        size={14}
+                                                                        className="animate-spin text-muted-foreground"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <DiffViewer diff={fileDiff} />
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <DiffViewer diff={fileDiff} />
                                                     )}
+                                                </div>
+                                            ))}
+                                            {unstagedFiles.length === 0 && (
+                                                <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                                                    Todos los archivos están staged
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
-                                    {unstagedFiles.length === 0 && (
-                                        <div className="px-3 py-2 text-xs text-muted-foreground italic">
-                                            Todos los archivos están staged
-                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Staged Changes Section */}
-                        <div className="border-b border-border">
-                            <div
-                                className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                                onClick={() => setShowStaged(!showStaged)}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <ChevronDown
-                                        size={14}
-                                        className={cn(
-                                            "text-muted-foreground transition-transform",
-                                            !showStaged && "-rotate-90",
+                                {/* Staged Changes Section */}
+                                <div className="border-b border-border">
+                                    <div
+                                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                                        onClick={() => setShowStaged(!showStaged)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                size={14}
+                                                className={cn(
+                                                    "text-muted-foreground transition-transform",
+                                                    !showStaged && "-rotate-90",
+                                                )}
+                                            />
+                                            <span className="text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
+                                                Staged
+                                            </span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+                                                {stagedFilesList.length}
+                                            </span>
+                                        </div>
+                                        {stagedFilesList.length > 0 && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUnstageAll();
+                                                        }}
+                                                        disabled={isUnstaging}
+                                                        className="p-1 rounded hover:bg-muted transition-colors"
+                                                    >
+                                                        <Minus size={14} className="text-muted-foreground" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Unstage todos</TooltipContent>
+                                            </Tooltip>
                                         )}
-                                    />
-                                    <span className="text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
-                                        Staged
-                                    </span>
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
-                                        {stagedFilesList.length}
-                                    </span>
-                                </div>
-                                {stagedFilesList.length > 0 && (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleUnstageAll();
-                                                }}
-                                                disabled={isUnstaging}
-                                                className="p-1 rounded hover:bg-muted transition-colors"
-                                            >
-                                                <Minus size={14} className="text-muted-foreground" />
-                                            </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Unstage todos</TooltipContent>
-                                    </Tooltip>
-                                )}
-                            </div>
-                            {showStaged && (
-                                <div>
-                                    {stagedFilesList.map((file) => (
-                                        <StagedFileRow
-                                            key={file.path}
-                                            file={file}
-                                            onUnstage={() => handleUnstageFile(file.path)}
-                                            isUnstaging={isUnstaging}
-                                        />
-                                    ))}
-                                    {stagedFilesList.length === 0 && (
-                                        <div className="px-3 py-2 text-xs text-muted-foreground italic">
-                                            Sin archivos staged — haz commit de todos o selecciona individualmente
+                                    </div>
+                                    {showStaged && (
+                                        <div>
+                                            {stagedFilesList.map((file) => (
+                                                <StagedFileRow
+                                                    key={file.path}
+                                                    file={file}
+                                                    onUnstage={() => handleUnstageFile(file.path)}
+                                                    isUnstaging={isUnstaging}
+                                                />
+                                            ))}
+                                            {stagedFilesList.length === 0 && (
+                                                <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                                                    Sin archivos staged — haz commit de todos o selecciona individualmente
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
+                            </>
+                        )}
+                    </div>
 
-            {/* Commit Area (bottom) */}
-            {hasChanges && (
-                <div className="border-t border-border p-3 space-y-2 bg-background">
-                    {/* Commit message */}
-                    <div className="flex gap-1.5">
-                        <Input
-                            value={commitMessage}
-                            onChange={(e) => setCommitMessage(e.target.value)}
-                            placeholder="Mensaje de commit..."
-                            className={cn(
-                                "h-8 text-xs flex-1",
-                                !commitMessage.trim() &&
-                                hasStagedFiles &&
-                                "border-amber-500/50 focus-visible:ring-amber-500/50",
-                            )}
-                            disabled={isCommitting || isGeneratingMessage}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && canCommit) {
-                                    handleCommit();
-                                }
-                            }}
-                        />
-                        <Tooltip>
-                            <TooltipTrigger asChild>
+                    {/* Commit Area (bottom) */}
+                    {hasChanges && (
+                        <div className="border-t border-border p-3 space-y-2 bg-background">
+                            {/* Commit message */}
+                            <div className="flex gap-1.5">
+                                <Input
+                                    value={commitMessage}
+                                    onChange={(e) => setCommitMessage(e.target.value)}
+                                    placeholder="Mensaje de commit..."
+                                    className={cn(
+                                        "h-8 text-xs flex-1",
+                                        !commitMessage.trim() &&
+                                        hasStagedFiles &&
+                                        "border-amber-500/50 focus-visible:ring-amber-500/50",
+                                    )}
+                                    disabled={isCommitting || isGeneratingMessage}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && canCommit) {
+                                            handleCommit();
+                                        }
+                                    }}
+                                />
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0"
+                                            onClick={generateCommitMessage}
+                                            disabled={isGeneratingMessage || !hasChanges}
+                                        >
+                                            {isGeneratingMessage ? (
+                                                <Loader2 size={14} className="animate-spin" />
+                                            ) : (
+                                                <Sparkles size={14} />
+                                            )}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Generar mensaje con IA</TooltipContent>
+                                </Tooltip>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-1.5">
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs font-medium"
+                                    onClick={handleCommit}
+                                    disabled={!canCommit || isCommitting}
+                                >
+                                    {isCommitting ? (
+                                        <Loader2 size={14} className="animate-spin mr-1.5" />
+                                    ) : (
+                                        <Check size={14} className="mr-1.5" />
+                                    )}
+                                    Commit{hasStagedFiles ? ` (${stagedFilesList.length})` : ""}
+                                </Button>
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs font-medium bg-green-600 hover:bg-green-700 text-white"
+                                    onClick={handleCommitAndPush}
+                                    disabled={!canCommit || isCommitting || isPushing}
+                                >
+                                    {isCommitting || isPushing ? (
+                                        <Loader2 size={14} className="animate-spin mr-1.5" />
+                                    ) : (
+                                        <Upload size={14} className="mr-1.5" />
+                                    )}
+                                    Commit & Push
+                                </Button>
+                            </div>
+
+                            {/* Push only button */}
+                            {gitState?.ahead !== undefined && gitState.ahead > 0 && (
                                 <Button
                                     variant="outline"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0"
-                                    onClick={generateCommitMessage}
-                                    disabled={isGeneratingMessage || !hasChanges}
+                                    size="sm"
+                                    className="w-full h-7 text-xs"
+                                    onClick={handlePush}
+                                    disabled={isPushing}
                                 >
-                                    {isGeneratingMessage ? (
-                                        <Loader2 size={14} className="animate-spin" />
+                                    {isPushing ? (
+                                        <Loader2 size={12} className="animate-spin mr-1.5" />
                                     ) : (
-                                        <Sparkles size={14} />
+                                        <Upload size={12} className="mr-1.5" />
                                     )}
+                                    Push ({gitState.ahead} commit{gitState.ahead > 1 ? "s" : ""})
                                 </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Generar mensaje con IA</TooltipContent>
-                        </Tooltip>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-1.5">
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-xs font-medium"
-                            onClick={handleCommit}
-                            disabled={!canCommit || isCommitting}
-                        >
-                            {isCommitting ? (
-                                <Loader2 size={14} className="animate-spin mr-1.5" />
-                            ) : (
-                                <Check size={14} className="mr-1.5" />
                             )}
-                            Commit{hasStagedFiles ? ` (${stagedFilesList.length})` : ""}
-                        </Button>
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-8 text-xs font-medium bg-green-600 hover:bg-green-700 text-white"
-                            onClick={handleCommitAndPush}
-                            disabled={!canCommit || isCommitting || isPushing}
-                        >
-                            {isCommitting || isPushing ? (
-                                <Loader2 size={14} className="animate-spin mr-1.5" />
-                            ) : (
-                                <Upload size={14} className="mr-1.5" />
-                            )}
-                            Commit & Push
-                        </Button>
-                    </div>
-
-                    {/* Push only button */}
-                    {gitState?.ahead !== undefined && gitState.ahead > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-7 text-xs"
-                            onClick={handlePush}
-                            disabled={isPushing}
-                        >
-                            {isPushing ? (
-                                <Loader2 size={12} className="animate-spin mr-1.5" />
-                            ) : (
-                                <Upload size={12} className="mr-1.5" />
-                            )}
-                            Push ({gitState.ahead} commit{gitState.ahead > 1 ? "s" : ""})
-                        </Button>
+                        </div>
                     )}
-                </div>
-            )}
 
-            {/* Push button when no changes but ahead of remote */}
-            {!hasChanges &&
-                gitState?.ahead !== undefined &&
-                gitState.ahead > 0 && (
-                    <div className="border-t border-border p-3 bg-background">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-8 text-xs"
-                            onClick={handlePush}
-                            disabled={isPushing}
-                        >
-                            {isPushing ? (
-                                <Loader2 size={12} className="animate-spin mr-1.5" />
-                            ) : (
-                                <Upload size={12} className="mr-1.5" />
-                            )}
-                            Push ({gitState.ahead} commit{gitState.ahead > 1 ? "s" : ""} pendiente{gitState.ahead > 1 ? "s" : ""})
-                        </Button>
-                    </div>
-                )}
+                    {/* Push button when no changes but ahead of remote */}
+                    {!hasChanges &&
+                        gitState?.ahead !== undefined &&
+                        gitState.ahead > 0 && (
+                            <div className="border-t border-border p-3 bg-background">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full h-8 text-xs"
+                                    onClick={handlePush}
+                                    disabled={isPushing}
+                                >
+                                    {isPushing ? (
+                                        <Loader2 size={12} className="animate-spin mr-1.5" />
+                                    ) : (
+                                        <Upload size={12} className="mr-1.5" />
+                                    )}
+                                    Push ({gitState.ahead} commit{gitState.ahead > 1 ? "s" : ""} pendiente{gitState.ahead > 1 ? "s" : ""})
+                                </Button>
+                            </div>
+                        )}
+                </>
+            )}
         </div>
     );
 }

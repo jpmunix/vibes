@@ -169,6 +169,8 @@ export type {
   GitDiffFile,
   GitCommit,
   GitPreview,
+  CommitHistoryEntry,
+  CommitHistoryFile,
 } from "./github";
 
 // MCP types

@@ -23,6 +23,11 @@ import {
   gitResetFile,
   gitCommit,
   gitDiffFile,
+  gitLogDetailed,
+  gitShowCommitDetail,
+  gitResolveMergeOurs,
+  gitResolveMergeTheirs,
+  gitGetMergeConflicts,
 } from "../utils/git_utils";
 import { getDyadAppPath } from "../../paths/paths";
 import { db } from "../../db";
@@ -40,6 +45,8 @@ import type {
   RenameGitBranchParams,
   UncommittedFile,
 } from "../types/github";
+import fs from "node:fs";
+import path from "node:path";
 
 const logger = log.scope("git_branch_handlers");
 
@@ -459,6 +466,91 @@ async function handlePullFromGithub(
   }
 }
 
+// --- Git Commit History Handlers ---
+async function handleGetCommitHistory(
+  _event: IpcMainInvokeEvent,
+  { appId, limit = 50, offset = 0, branch }: { appId: number; limit?: number; offset?: number; branch?: string },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  // Check if it's a git repo
+  if (!fs.existsSync(path.join(appPath, ".git"))) {
+    return { commits: [], total: 0, hasMore: false };
+  }
+
+  return gitLogDetailed({ path: appPath, limit, offset, branch });
+}
+
+async function handleGetCommitDetail(
+  _event: IpcMainInvokeEvent,
+  { appId, commitHash }: { appId: number; commitHash: string },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitShowCommitDetail({ path: appPath, commitHash });
+}
+
+// --- Merge Conflict Resolution Handlers ---
+
+async function handleGetConflictFiles(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  const mergeInProgress = isGitMergeInProgress({ path: appPath });
+  let files: string[] = [];
+
+  if (mergeInProgress) {
+    try {
+      files = await gitGetMergeConflicts({ path: appPath });
+    } catch (e) {
+      logger.warn("Failed to get conflict files:", e);
+    }
+  }
+
+  return { files, mergeInProgress };
+}
+
+async function handleResolveMergeOurs(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitResolveMergeOurs({ path: appPath });
+}
+
+async function handleResolveMergeTheirs(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitResolveMergeTheirs({ path: appPath });
+}
+
+async function handleAbortMergeFromGit(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  await gitMergeAbort({ path: appPath });
+}
+
 // --- Registration ---
 export function registerGithubBranchHandlers() {
   createTypedHandler(githubContracts.mergeAbort, handleAbortMerge);
@@ -487,4 +579,11 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.stageAll, handleStageAll);
   createTypedHandler(gitContracts.unstageAll, handleUnstageAll);
   createTypedHandler(gitContracts.getFileDiff, handleGetFileDiff);
+  createTypedHandler(gitContracts.getCommitHistory, handleGetCommitHistory);
+  createTypedHandler(gitContracts.getCommitDetail, handleGetCommitDetail);
+  createTypedHandler(gitContracts.getConflictFiles, handleGetConflictFiles);
+  createTypedHandler(gitContracts.resolveMergeOurs, handleResolveMergeOurs);
+  createTypedHandler(gitContracts.resolveMergeTheirs, handleResolveMergeTheirs);
+  createTypedHandler(gitContracts.abortMerge, handleAbortMergeFromGit);
 }
+

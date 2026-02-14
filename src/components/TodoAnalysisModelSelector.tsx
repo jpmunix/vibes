@@ -39,7 +39,7 @@ export function TodoAnalysisModelSelector() {
         onValueChange={handleChange}
         disabled={isLoading}
       >
-        <SelectTrigger id="todoAnalysisModel">
+        <SelectTrigger id="todoAnalysisModel" className="h-[60px] w-full max-w-[380px] px-6 py-4 rounded-xl">
           <SelectValue placeholder="Selecciona un modelo" />
         </SelectTrigger>
         <SelectContent className="max-h-[280px] w-72">

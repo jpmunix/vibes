@@ -4,6 +4,9 @@ import { desc, eq } from "drizzle-orm";
 import type { NoteSummary } from "../../lib/schemas";
 
 import log from "electron-log";
+import { dialog } from "electron";
+import fs from "fs/promises";
+import HTMLToDOCX from "html-to-docx";
 import { createTypedHandler } from "./base";
 import { noteContracts } from "../types/note";
 
@@ -69,6 +72,55 @@ export function registerNoteHandlers() {
     if (Object.keys(updateData).length > 0) {
       await db.update(notes).set(updateData).where(eq(notes.id, noteId));
       logger.info("Updated note:", noteId);
+    }
+  });
+
+  createTypedHandler(noteContracts.exportNote, async (_, { noteId }) => {
+    const note = await db.query.notes.findFirst({
+      where: eq(notes.id, noteId),
+    });
+
+    if (!note) {
+      throw new Error("Note not found");
+    }
+
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      title: "Exportar Nota",
+      defaultPath: `${note.title || "Nota"}.docx`,
+      filters: [{ name: "Documento Word", extensions: ["docx"] }],
+    });
+
+    if (canceled || !filePath) {
+      return false;
+    }
+
+    try {
+      // Basic HTML wrapper to ensure it's valid and has the title
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+        </head>
+        <body>
+          <h1>${note.title}</h1>
+          ${note.content}
+        </body>
+        </html>
+      `;
+
+      const fileBuffer = await (HTMLToDOCX as any)(fullHtml, null, {
+        title: note.title,
+        creator: "Minube Vibes",
+        description: "Nota exportada desde Minube Vibes",
+      });
+
+      await fs.writeFile(filePath, Buffer.from(fileBuffer));
+      logger.info("Exported note to:", filePath);
+      return true;
+    } catch (error) {
+      logger.error("Failed to export note:", error);
+      throw error;
     }
   });
 
