@@ -11,7 +11,7 @@ import {
 import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
 
-import "@/index.css";
+import "@/styles/globals.css";
 
 const queryClient = new QueryClient({
     defaultOptions: {
