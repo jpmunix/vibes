@@ -16,7 +16,7 @@
   "scripts": {
     "start": "electron-forge start",
     "distribute": "npm run clean && electron-forge make",
-    "make:linux": "npm run clean && electron-forge make --platform linux --arch x64",
+    "make:linux": "npm run clean && electron-forge make --platform linux --arch x64 && mkdir -p /media/munix/NAS/MinubeVibes/linux && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux/ \\;",
     "make:mac": "npm run clean && electron-forge make --platform darwin --arch x64",
     "make:mac-arm64": "npm run clean && electron-forge make --platform darwin --arch arm64",
     "install:mac-deps": "echo 'Deprecated: Dependencies are now installed automatically during build'",
