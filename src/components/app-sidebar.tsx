@@ -1,5 +1,6 @@
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
+import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -193,7 +194,7 @@ export function AppSidebar() {
             </div>
           </div>
           {/* Right Column: Chat List Section */}
-          <div className="flex-1 min-w-0">
+          <div className={cn("flex-1 min-w-0", state === "collapsed" && "hidden")}>
             <AppList show={selectedItem === "Aplicaciones"} />
             <ChatList show={selectedItem === "Chat"} />
             <NotesList show={selectedItem === "Notas"} />
