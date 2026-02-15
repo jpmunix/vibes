@@ -11,8 +11,10 @@ const logger = log.scope("createFromTemplate");
 
 export async function createFromTemplate({
   fullAppPath,
+  appName,
 }: {
   fullAppPath: string;
+  appName?: string;
 }) {
   const settings = readSettings();
   const templateId = settings.selectedTemplateId;
@@ -22,6 +24,8 @@ export async function createFromTemplate({
       path.join(__dirname, "..", "..", "scaffold"),
       fullAppPath,
     );
+    // Sustituir wildcards en la plantilla
+    await replaceTemplateWildcards(fullAppPath, appName);
     return;
   }
 
@@ -31,6 +35,30 @@ export async function createFromTemplate({
   }
   const repoCachePath = await cloneRepo(template.githubUrl);
   await copyRepoToApp(repoCachePath, fullAppPath);
+  // También sustituir wildcards en templates de GitHub
+  await replaceTemplateWildcards(fullAppPath, appName);
+}
+
+async function replaceTemplateWildcards(
+  appPath: string,
+  appName?: string,
+): Promise<void> {
+  const displayName = appName || "minube vibes";
+  const indexHtmlPath = path.join(appPath, "index.html");
+  try {
+    const content = await fs.readFile(indexHtmlPath, "utf-8");
+    if (content.includes("{{APP_NAME}}")) {
+      await fs.writeFile(
+        indexHtmlPath,
+        content.replace(/\{\{APP_NAME\}\}/g, displayName),
+        "utf-8",
+      );
+      logger.info(`Replaced {{APP_NAME}} with "${displayName}" in index.html`);
+    }
+  } catch (error) {
+    // index.html puede no existir en templates de GitHub personalizados
+    logger.debug(`Could not replace wildcards in index.html: ${error}`);
+  }
 }
 
 async function cloneRepo(repoUrl: string): Promise<string> {

@@ -1,19 +1,19 @@
 # Tech Stack
 
-- You are building a React application.
-- Use TypeScript.
-- Use React Router. KEEP the routes in src/App.tsx
-- Always put source code in the src folder.
-- Put pages into src/pages/
-- Put components into src/components/
-- The main page (default page) is src/pages/Index.tsx
-- UPDATE the main page to include the new components. OTHERWISE, the user can NOT see any components!
-- ALWAYS try to use the shadcn/ui library.
-- Tailwind CSS: always use Tailwind CSS for styling components. Utilize Tailwind classes extensively for layout, spacing, colors, and other design aspects.
+- Estás construyendo una aplicación React.
+- Usa TypeScript.
+- Usa React Router. MANTÉN las rutas en src/App.tsx.
+- Pon siempre el código fuente en la carpeta src/.
+- Las páginas van en src/pages/.
+- Los componentes van en src/components/.
+- La página principal (por defecto) es src/pages/Index.tsx.
+- ACTUALIZA la página principal para incluir los nuevos componentes. De lo contrario, el usuario NO verá ningún componente.
+- Usa SIEMPRE la librería shadcn/ui.
+- Tailwind CSS: usa siempre Tailwind CSS para dar estilos a los componentes. Utiliza las clases de Tailwind extensamente para layout, espaciado, colores y otros aspectos del diseño.
 
-Available packages and libraries:
+Paquetes y librerías disponibles:
 
-- The lucide-react package is installed for icons.
-- You ALREADY have ALL the shadcn/ui components and their dependencies installed. So you don't need to install them again.
-- You have ALL the necessary Radix UI components installed.
-- Use prebuilt components from the shadcn/ui library after importing them. Note that these files shouldn't be edited, so make new components if you need to change them.
+- El paquete lucide-react está instalado para iconos.
+- YA tienes TODOS los componentes shadcn/ui y sus dependencias instalados. No necesitas instalarlos de nuevo.
+- Tienes TODOS los componentes Radix UI necesarios instalados.
+- Usa los componentes prebuilt de shadcn/ui importándolos. Estos archivos no deben editarse; crea componentes nuevos si necesitas modificarlos.
