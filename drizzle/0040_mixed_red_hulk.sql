@@ -1,0 +1,1 @@
+ALTER TABLE `chats` ADD `is_plan` integer DEFAULT false;

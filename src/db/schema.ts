@@ -74,6 +74,7 @@ export const chats = sqliteTable("chats", {
   }),
   title: text("title"),
   initialCommitHash: text("initial_commit_hash"),
+  isPlan: integer("is_plan", { mode: "boolean" }).default(false),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

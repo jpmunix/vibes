@@ -1,16 +1,17 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import {
-    planAtom,
-    planCollapsedAtom,
-    planReadOnlyAtom,
-    planLoadingAtom,
-    planInputValueAtom,
+    plansByChatIdAtom,
+    planCollapsedByChatIdAtom,
+    planReadOnlyByChatIdAtom,
+    planLoadingByChatIdAtom,
+    planInputValueByChatIdAtom,
     type Plan,
     type PlanStage,
     type PlanTask,
 } from "@/atoms/planAtoms";
-import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useSettings } from "@/hooks/useSettings";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
     Send,
     CheckSquare,
     Square,
+    CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
@@ -38,14 +40,20 @@ function genId(prefix = "item") {
     return `${prefix}_${nextId++}_${Date.now()}`;
 }
 
+function updateMapAtom<K, V>(
+    setter: (fn: (prev: Map<K, V>) => Map<K, V>) => void,
+    key: K,
+    value: V,
+) {
+    setter((prev) => {
+        const next = new Map(prev);
+        next.set(key, value);
+        return next;
+    });
+}
+
 /**
  * Parse structured plan text from AI response into a Plan object.
- * Expected format:
- * # Objetivo: ...
- * ## Etapa 1: Title
- * Summary text
- * - [ ] Task 1
- * - [x] Task 2
  */
 export function parsePlanFromText(text: string): Plan | null {
     const lines = text.split("\n");
@@ -193,7 +201,7 @@ function PlanTaskItem({
     return (
         <div
             className={cn(
-                "group flex items-start gap-2 py-1.5 px-2 rounded-md transition-colors",
+                "group flex items-start gap-3 py-2.5 px-3 rounded-md transition-colors",
                 "hover:bg-muted/40",
                 task.checked && "opacity-70",
             )}
@@ -201,11 +209,13 @@ function PlanTaskItem({
             {/* Checkbox */}
             <button
                 onClick={onToggle}
-                disabled={readOnly}
+                disabled={readOnly || task.isDeveloped}
                 className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default"
-                title={task.checked ? "Desmarcar" : "Marcar"}
+                title={task.isDeveloped ? "Desarrollado" : task.checked ? "Desmarcar" : "Marcar"}
             >
-                {task.checked ? (
+                {task.isDeveloped ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : task.checked ? (
                     <CheckSquare className="h-4 w-4 text-teal-500" />
                 ) : (
                     <Square className="h-4 w-4" />
@@ -236,7 +246,8 @@ function PlanTaskItem({
                 <span
                     className={cn(
                         "flex-1 text-sm leading-relaxed",
-                        task.checked && "line-through text-muted-foreground",
+                        (task.checked || task.isDeveloped) && "text-muted-foreground",
+                        task.isDeveloped && "line-through opacity-70",
                     )}
                 >
                     {task.text}
@@ -244,7 +255,7 @@ function PlanTaskItem({
             )}
 
             {/* Actions (only visible on hover, hidden in read-only) */}
-            {!readOnly && !editing && (
+            {!readOnly && !editing && !task.isDeveloped && (
                 <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                         onClick={startEdit}
@@ -308,7 +319,7 @@ function PlanStageSection({
     const checkedCount = stage.tasks.filter((t) => t.checked).length;
 
     return (
-        <div className="mb-3">
+        <div className="mb-8">
             {/* Stage header */}
             <div className="flex items-center gap-2 mb-1">
                 {editingTitle && !readOnly ? (
@@ -387,75 +398,121 @@ function PlanStageSection({
 // ---- Main PlanPanel ----
 
 export function PlanPanel({ chatId }: { chatId?: number }) {
-    const [plan, setPlan] = useAtom(planAtom);
-    const [collapsed, setCollapsed] = useAtom(planCollapsedAtom);
-    const [readOnly, setReadOnly] = useAtom(planReadOnlyAtom);
-    const [loading, setLoading] = useAtom(planLoadingAtom);
-    const [planInput, setPlanInput] = useAtom(planInputValueAtom);
+    const plans = useAtomValue(plansByChatIdAtom);
+    const setPlans = useSetAtom(plansByChatIdAtom);
+    const collapsedMap = useAtomValue(planCollapsedByChatIdAtom);
+    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
+    const readOnlyMap = useAtomValue(planReadOnlyByChatIdAtom);
+    const setReadOnly = useSetAtom(planReadOnlyByChatIdAtom);
+    const loadingMap = useAtomValue(planLoadingByChatIdAtom);
+    const setLoading = useSetAtom(planLoadingByChatIdAtom);
+    const planInputMap = useAtomValue(planInputValueByChatIdAtom);
+    const setPlanInput = useSetAtom(planInputValueByChatIdAtom);
+
     const { settings, updateSettings } = useSettings();
     const { streamMessage } = useStreamChat();
+    const streamingMap = useAtomValue(isStreamingByIdAtom);
+    const isStreaming = chatId ? (streamingMap.get(chatId) ?? false) : false;
+    const plan = chatId ? (plans.get(chatId) ?? null) : null;
+
+    useEffect(() => {
+        if (!chatId || !plan) return;
+
+        ipc.chat.updateChat({ chatId, isPlan: true }).then(() => {
+            window.dispatchEvent(new Event("plan-chat-db-update"));
+        }).catch(err => console.error(err));
+    }, [chatId, plan]);
+
+    if (!chatId) return null;
+
+    const collapsed = collapsedMap.get(chatId) ?? true;
+    const readOnly = readOnlyMap.get(chatId) ?? false;
+    const loading = loadingMap.get(chatId) ?? false;
+    const planInput = planInputMap.get(chatId) ?? "";
 
     // Don't render if no plan exists
     if (!plan) return null;
 
     const totalTasks = plan.stages.reduce((sum, s) => sum + s.tasks.length, 0);
-    const checkedTasks = plan.stages.reduce(
-        (sum, s) => sum + s.tasks.filter((t) => t.checked).length,
+    const completedTasks = plan.stages.reduce(
+        (sum, s) => sum + s.tasks.filter((t) => t.checked || t.isDeveloped).length,
         0,
     );
-    const hasChecked = checkedTasks > 0;
-    const allChecked = checkedTasks === totalTasks && totalTasks > 0;
+    const selectedTasks = plan.stages.reduce(
+        (sum, s) => sum + s.tasks.filter((t) => t.checked && !t.isDeveloped).length,
+        0,
+    );
+    const hasChecked = selectedTasks > 0;
+    const allChecked = completedTasks === totalTasks && totalTasks > 0;
 
     const updateStage = (stageId: string, updated: PlanStage) => {
-        setPlan((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                stages: prev.stages.map((s) => (s.id === stageId ? updated : s)),
-            };
+        updateMapAtom(setPlans, chatId, {
+            ...plan,
+            stages: plan.stages.map((s) => (s.id === stageId ? updated : s)),
         });
     };
 
     const deleteStage = (stageId: string) => {
-        setPlan((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                stages: prev.stages.filter((s) => s.id !== stageId),
-            };
+        updateMapAtom(setPlans, chatId, {
+            ...plan,
+            stages: plan.stages.filter((s) => s.id !== stageId),
         });
     };
 
     const toggleAll = () => {
         const newChecked = !allChecked;
-        setPlan((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                stages: prev.stages.map((s) => ({
-                    ...s,
-                    tasks: s.tasks.map((t) => ({ ...t, checked: newChecked })),
-                })),
-            };
+        updateMapAtom(setPlans, chatId, {
+            ...plan,
+            stages: plan.stages.map((s) => ({
+                ...s,
+                tasks: s.tasks.map((t) => t.isDeveloped ? t : ({ ...t, checked: newChecked })),
+            })),
         });
     };
 
     const handleDevelop = (onlySelected: boolean) => {
-        if (!plan || !chatId) return;
+        // Filter tasks to develop (checked AND not already developed)
+        // If develop all (onlySelected=false), we select all non-developed tasks
+        const tasksToDevelop = plan.stages
+            .flatMap(s => s.tasks)
+            .filter(t => !t.isDeveloped && (onlySelected ? t.checked : true));
 
-        // Build prompt from plan
-        const planText = planToPromptText(plan, onlySelected);
-        const developPrompt = onlySelected
-            ? `Implementa las siguientes tareas seleccionadas del plan:\n\n${planText}\n\nComienza a desarrollar cada tarea seleccionada ([x]) en orden. Genera el código necesario.`
-            : `Implementa el siguiente plan completo:\n\n${planText}\n\nComienza a desarrollar cada tarea en orden. Genera el código necesario.`;
+        if (tasksToDevelop.length === 0) return;
+
+        // Mark them as developed in the state
+        const taskIdsToMark = new Set(tasksToDevelop.map(t => t.id));
+        updateMapAtom(setPlans, chatId, {
+            ...plan,
+            stages: plan.stages.map(s => ({
+                ...s,
+                tasks: s.tasks.map(t => taskIdsToMark.has(t.id) ? { ...t, isDeveloped: true, checked: false } : t)
+            }))
+        });
+
+        // Build prompt from plan (using the state BEFORE marking as developed, or logically what we want to send)
+        // We want to send the tasks we just identified.
+        // But planToPromptText iterates the plan.
+
+        // Let's manually construct a plan object for prompt generation that represents "What to do"
+        const promptPlan = {
+            ...plan,
+            stages: plan.stages.map(s => ({
+                ...s,
+                tasks: s.tasks.filter(t => taskIdsToMark.has(t.id))
+            })).filter(s => s.tasks.length > 0)
+        };
+
+        const planText = planToPromptText(promptPlan, false); // effectively "all" of the filtered plan
+
+        const developPrompt = `Implementa las siguientes tareas del plan:\n\n${planText}\n\nComienza a desarrollar cada tarea listada. Genera el código necesario.`;
 
         // Switch to development mode
         const devMode = settings?.defaultChatMode === "local-agent" ? "local-agent" : "build";
         updateSettings({ selectedChatMode: devMode });
 
-        // Make plan read-only and collapse
-        setReadOnly(true);
-        setCollapsed(true);
+        // Collapse panel, but keep read-only FALSE so user can iterate
+        updateMapAtom(setCollapsed, chatId, true);
+        // updateMapAtom(setReadOnly, chatId, false); // Implicitly stays false or we ensure it
 
         // Send to chat
         streamMessage({
@@ -469,8 +526,8 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
         const modificationPrompt = `El usuario tiene el siguiente plan activo:\n\n${planToPromptText(plan, false)}\n\nEl usuario solicita el siguiente cambio al plan:\n${planInput}\n\nActualiza el plan completo con el cambio solicitado. Responde SOLO con el plan actualizado en el formato estructurado (# Objetivo, ## Etapa, - [ ] tarea).`;
 
-        setLoading(true);
-        setPlanInput("");
+        updateMapAtom(setLoading, chatId, true);
+        updateMapAtom(setPlanInput, chatId, "");
 
         // Send to AI for plan update
         streamMessage({
@@ -482,14 +539,14 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     return (
         <div
             className={cn(
-                "border-t border-border bg-background/95 backdrop-blur-sm transition-all duration-200",
-                collapsed ? "max-h-10" : "max-h-[50vh]",
+                "flex flex-col overflow-hidden border-t border-border bg-background/95 backdrop-blur-sm transition-all duration-200",
+                collapsed ? "max-h-10" : "max-h-[60vh]",
             )}
         >
             {/* Header bar (always visible) */}
             <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
+                onClick={() => updateMapAtom(setCollapsed, chatId, !collapsed)}
+                className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors"
             >
                 <div className="flex items-center gap-2">
                     <ListChecks className="h-4 w-4 text-teal-500" />
@@ -502,7 +559,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                         </span>
                     )}
                     <span className="text-xs text-muted-foreground">
-                        ({checkedTasks}/{totalTasks})
+                        ({completedTasks}/{totalTasks})
                     </span>
                 </div>
                 {collapsed ? (
@@ -514,9 +571,9 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
             {/* Expanded content */}
             {!collapsed && (
-                <div className="flex flex-col overflow-hidden">
+                <div className="flex flex-col overflow-hidden min-h-0 flex-1">
                     {/* Scrollable plan stages */}
-                    <div className="overflow-y-auto max-h-[35vh] px-3 pb-2">
+                    <div className="flex-1 overflow-y-auto px-6 pb-4">
                         {plan.stages.map((stage) => (
                             <PlanStageSection
                                 key={stage.id}
@@ -530,44 +587,41 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
                     {/* Action bar (hidden in read-only mode) */}
                     {!readOnly && (
-                        <div className="border-t border-border/50 px-3 py-2 space-y-2">
+                        <div className="border-t border-border/50 px-6 py-4 space-y-4">
                             {/* Toggle all + Develop buttons */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-4">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={toggleAll}
-                                    className="text-xs h-7 gap-1"
+                                    className="text-xs h-9 px-3 gap-2"
                                 >
                                     {allChecked ? (
-                                        <Square className="h-3.5 w-3.5" />
+                                        <Square className="h-4 w-4" />
                                     ) : (
-                                        <CheckSquare className="h-3.5 w-3.5" />
+                                        <CheckSquare className="h-4 w-4" />
                                     )}
                                     {allChecked ? "Desmarcar todo" : "Marcar todo"}
                                 </Button>
 
                                 <div className="flex-1" />
 
-                                {hasChecked && !allChecked && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleDevelop(true)}
-                                        className="text-xs h-7 gap-1 border-teal-500/30 text-teal-600 dark:text-teal-400 hover:bg-teal-500/10"
-                                    >
-                                        <Rocket className="h-3.5 w-3.5" />
-                                        Desarrollar selección ({checkedTasks})
-                                    </Button>
-                                )}
-
                                 <Button
                                     size="sm"
-                                    onClick={() => handleDevelop(false)}
-                                    className="text-xs h-7 gap-1 bg-teal-600 hover:bg-teal-700 text-white"
+                                    disabled={isStreaming}
+                                    onClick={() => handleDevelop(hasChecked && !allChecked)}
+                                    className={cn(
+                                        "text-xs h-9 px-4 gap-2 text-white transition-all",
+                                        isStreaming && "opacity-50 cursor-not-allowed",
+                                        hasChecked && !allChecked
+                                            ? "bg-teal-600 hover:bg-teal-700"
+                                            : "bg-primary hover:bg-primary/90"
+                                    )}
                                 >
-                                    <Rocket className="h-3.5 w-3.5" />
-                                    Desarrollar todo
+                                    <Rocket className="h-4 w-4" />
+                                    {hasChecked && !allChecked
+                                        ? `Desarrollar selección (${selectedTasks})`
+                                        : "Desarrollar Plan Completo"}
                                 </Button>
                             </div>
 
@@ -575,7 +629,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                             <div className="flex items-center gap-2">
                                 <input
                                     value={planInput}
-                                    onChange={(e) => setPlanInput(e.target.value)}
+                                    onChange={(e) => updateMapAtom(setPlanInput, chatId, e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
                                             e.preventDefault();

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "74cd8943-8fb1-4774-9855-b8692050ed1c",
-  "prevId": "a3232ad3-be53-426a-9384-d5a575eff0d3",
+  "id": "045d4cd2-e8b1-4e05-b5cb-92bd513c5dbc",
+  "prevId": "74cd8943-8fb1-4774-9855-b8692050ed1c",
   "tables": {
     "ai_query_logs": {
       "name": "ai_query_logs",
@@ -397,6 +397,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "is_plan": {
+          "name": "is_plan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
         },
         "created_at": {
           "name": "created_at",

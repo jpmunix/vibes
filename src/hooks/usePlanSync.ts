@@ -2,13 +2,25 @@ import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { chatMessagesByIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import {
-    planAtom,
-    planCollapsedAtom,
-    planLoadingAtom,
-    planReadOnlyAtom,
+    plansByChatIdAtom,
+    planCollapsedByChatIdAtom,
+    planLoadingByChatIdAtom,
+    planReadOnlyByChatIdAtom,
 } from "@/atoms/planAtoms";
 import { parsePlanFromText } from "@/components/chat/PlanPanel";
 import { useSettings } from "./useSettings";
+
+function updateMapAtom<K, V>(
+    setter: (fn: (prev: Map<K, V>) => Map<K, V>) => void,
+    key: K,
+    value: V,
+) {
+    setter((prev) => {
+        const next = new Map(prev);
+        next.set(key, value);
+        return next;
+    });
+}
 
 /**
  * Hook that watches chat messages and parses plan responses when in plan mode.
@@ -18,10 +30,10 @@ import { useSettings } from "./useSettings";
 export function usePlanSync(chatId?: number) {
     const messagesById = useAtomValue(chatMessagesByIdAtom);
     const isStreamingById = useAtomValue(isStreamingByIdAtom);
-    const setPlan = useSetAtom(planAtom);
-    const setCollapsed = useSetAtom(planCollapsedAtom);
-    const setLoading = useSetAtom(planLoadingAtom);
-    const setReadOnly = useSetAtom(planReadOnlyAtom);
+    const setPlans = useSetAtom(plansByChatIdAtom);
+    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
+    const setLoading = useSetAtom(planLoadingByChatIdAtom);
+    const setReadOnly = useSetAtom(planReadOnlyByChatIdAtom);
     const { settings } = useSettings();
 
     const prevStreamingRef = useRef(false);
@@ -51,19 +63,50 @@ export function usePlanSync(chatId?: number) {
         // Try to parse the response into a plan
         const parsed = parsePlanFromText(lastAssistantMsg.content);
         if (parsed) {
-            setPlan(parsed);
-            setCollapsed(false); // auto-expand plan panel
-            setReadOnly(false);
-            setLoading(false);
+            updateMapAtom(setPlans, chatId, parsed);
+            updateMapAtom(setCollapsed, chatId, false); // auto-expand plan panel
+            updateMapAtom(setReadOnly, chatId, false);
+            updateMapAtom(setLoading, chatId, false);
         }
     }, [
         chatId,
         isStreamingById,
         messagesById,
         settings?.selectedChatMode,
-        setPlan,
+        setPlans,
         setCollapsed,
         setLoading,
         setReadOnly,
     ]);
+
+    // Initial load: Try to recover plan from history if not present in atom
+    useEffect(() => {
+        if (!chatId) return;
+
+        const messages = messagesById.get(chatId) ?? [];
+        if (messages.length === 0) return;
+
+        // If actively streaming, let the streaming effect handle it
+        if (isStreamingById.get(chatId)) return;
+
+        setPlans((prev) => {
+            // If plan already exists in memory for this chat, preserve it (keeps user edits during session)
+            if (prev.has(chatId)) return prev;
+
+            // Otherwise, try to parse from last assistant message
+            const lastAssistantMsg = [...messages]
+                .reverse()
+                .find((m) => m.role === "assistant");
+
+            if (!lastAssistantMsg?.content) return prev;
+
+            const parsed = parsePlanFromText(lastAssistantMsg.content);
+            if (parsed) {
+                const next = new Map(prev);
+                next.set(chatId, parsed);
+                return next;
+            }
+            return prev;
+        });
+    }, [chatId, messagesById, isStreamingById, setPlans]);
 }

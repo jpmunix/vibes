@@ -78,6 +78,7 @@ export function registerChatHandlers() {
         ...m,
         role: m.role as "user" | "assistant",
       })),
+      isPlan: chat.isPlan ?? false,
     };
   });
 
@@ -91,6 +92,7 @@ export function registerChatHandlers() {
           title: true,
           createdAt: true,
           appId: true,
+          isPlan: true,
         },
         orderBy: [desc(chats.createdAt)],
       })
@@ -100,6 +102,7 @@ export function registerChatHandlers() {
           title: true,
           createdAt: true,
           appId: true,
+          isPlan: true,
         },
         orderBy: [desc(chats.createdAt)],
       });
@@ -113,8 +116,14 @@ export function registerChatHandlers() {
   });
 
   createTypedHandler(chatContracts.updateChat, async (_, params) => {
-    const { chatId, title } = params;
-    await db.update(chats).set({ title }).where(eq(chats.id, chatId));
+    const { chatId, title, isPlan } = params;
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (isPlan !== undefined) updateData.isPlan = isPlan;
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(chats).set(updateData).where(eq(chats.id, chatId));
+    }
   });
 
   createTypedHandler(chatContracts.deleteMessages, async (_, chatId) => {
@@ -129,7 +138,9 @@ export function registerChatHandlers() {
         id: chats.id,
         appId: chats.appId,
         title: chats.title,
+        title: chats.title,
         createdAt: chats.createdAt,
+        isPlan: chats.isPlan,
       })
       .from(chats)
       .where(and(eq(chats.appId, appId), like(chats.title, `%${query}%`)))
@@ -142,6 +153,7 @@ export function registerChatHandlers() {
       title: c.title,
       createdAt: c.createdAt,
       matchedMessageContent: null,
+      isPlan: c.isPlan ?? false,
     }));
 
     // 2) Find messages that match and join to chats to build one result per message
@@ -150,7 +162,9 @@ export function registerChatHandlers() {
         id: chats.id,
         appId: chats.appId,
         title: chats.title,
+        title: chats.title,
         createdAt: chats.createdAt,
+        isPlan: chats.isPlan,
         matchedMessageContent: messages.content,
       })
       .from(messages)
@@ -160,7 +174,17 @@ export function registerChatHandlers() {
       .limit(10);
 
     // Combine: keep title matches and per-message matches
-    const combined: ChatSearchResult[] = [...titleResults, ...messageResults];
+    // Need to map messageResults to ChatSearchResult shape explicitly to ensure type compatibility
+    const messageResultsMapped: ChatSearchResult[] = messageResults.map(c => ({
+      id: c.id,
+      appId: c.appId,
+      title: c.title,
+      createdAt: c.createdAt,
+      matchedMessageContent: c.matchedMessageContent,
+      isPlan: c.isPlan ?? false
+    }));
+
+    const combined: ChatSearchResult[] = [...titleResults, ...messageResultsMapped];
     const uniqueChats = Array.from(
       new Map(combined.map((item) => [item.id, item])).values(),
     );

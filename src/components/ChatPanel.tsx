@@ -14,7 +14,7 @@ import { ChatError } from "./chat/ChatError";
 import { FreeAgentQuotaBanner } from "./chat/FreeAgentQuotaBanner";
 import { ChatLogsPanel } from "./chat/ChatLogsPanel";
 import { Button } from "@/components/ui/button";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Loader2, ListChecks } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 import { isBasicAgentMode } from "@/lib/schemas";
@@ -275,14 +275,34 @@ export function ChatPanel({
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 relative overflow-hidden">
-            <MessagesList
-              messages={messages}
-              messagesEndRef={messagesEndRef}
-              ref={messagesContainerRef}
-              onScrollerRef={handleScrollerRef}
-              distanceFromBottomRef={distanceFromBottomRef}
-              isUserScrolling={isUserScrolling}
-            />
+            {settings?.selectedChatMode !== "plan" ? (
+              <MessagesList
+                messages={messages}
+                messagesEndRef={messagesEndRef}
+                ref={messagesContainerRef}
+                onScrollerRef={handleScrollerRef}
+                distanceFromBottomRef={distanceFromBottomRef}
+                isUserScrolling={isUserScrolling}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-300">
+                {chatId && isStreamingById.get(chatId) ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-10 w-10 animate-spin text-teal-500" />
+                    <p className="text-sm font-medium">
+                      Diseñando plan operativo...
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 opacity-20">
+                    <ListChecks className="h-16 w-16" />
+                    <p className="text-sm font-medium">
+                      Modo Planificación
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Scroll to bottom button */}
             {showScrollButton && (

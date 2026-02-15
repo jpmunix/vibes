@@ -15,6 +15,7 @@ export const ChatSummarySchema = z.object({
   appId: z.number(),
   title: z.string().nullable(),
   createdAt: z.date(),
+  isPlan: z.boolean().optional().default(false),
 });
 
 /**
@@ -36,6 +37,7 @@ export const ChatSearchResultSchema = z.object({
   title: z.string().nullable(),
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
+  isPlan: z.boolean().optional().default(false),
 });
 
 /**

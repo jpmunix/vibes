@@ -183,6 +183,10 @@ export async function requireAgentToolConsent(
   if (current === "never")
     throw new Error("Should not ask for consent for a tool marked as 'never'");
 
+  // If autoApproveChanges is enabled globally, skip the consent prompt
+  const settings = readSettings();
+  if (settings.autoApproveChanges) return true;
+
   // Ask renderer for a decision via event bridge
   const requestId = `agent:${params.toolName}:${crypto.randomUUID()}`;
   (event.sender as any).send("agent-tool:consent-request", {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { formatDistanceToNow } from "date-fns";
@@ -9,6 +9,7 @@ import {
   Search,
   FileText,
   Loader2,
+  ListChecks,
 } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
@@ -81,6 +82,30 @@ export function ChatList({ show }: { show?: boolean }) {
   // delete all chats dialog state
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
 
+  // Plan chat identification
+  useEffect(() => {
+    const handleUpdate = () => {
+      invalidateChats();
+    };
+    window.addEventListener("plan-chat-db-update", handleUpdate);
+    return () => window.removeEventListener("plan-chat-db-update", handleUpdate);
+  }, [invalidateChats]);
+
+  const sortedChats = useMemo(() => {
+    if (!chats) return [];
+    return [...chats].sort((a, b) => {
+      // Plan chat first
+      // Assuming isPlan is boolean. Drizzle might return null if not strictly defined, so coalesce.
+      const isPlanA = (a as any).isPlan === true;
+      const isPlanB = (b as any).isPlan === true;
+
+      if (isPlanA && !isPlanB) return -1;
+      if (!isPlanA && isPlanB) return 1;
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [chats]);
+
   // Update selectedChatId when route changes
   useEffect(() => {
     if (isChatRoute) {
@@ -124,6 +149,11 @@ export function ChatList({ show }: { show?: boolean }) {
             freeAgentQuotaAvailable,
           );
           updateSettings({ selectedChatMode: effectiveDefaultMode });
+
+          if (effectiveDefaultMode === "plan") {
+            localStorage.setItem(`plan_chat_${selectedAppId}`, chatId.toString());
+            setPlanChatId(chatId);
+          }
         }
 
         // Navigate to the new chat
@@ -298,7 +328,7 @@ export function ChatList({ show }: { show?: boolean }) {
               </div>
             ) : (
               <SidebarMenu className="space-y-1">
-                {chats.map((chat) => (
+                {sortedChats.map((chat) => (
                   <SidebarMenuItem key={chat.id} className="mb-1">
                     <div className="flex ml-2 mr-6 items-center relative group/menu-item">
                       <Button
@@ -310,18 +340,26 @@ export function ChatList({ show }: { show?: boolean }) {
                           })
                         }
                         className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedChatId === chat.id
-                            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-                            : ""
+                          ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+                          : ""
                           }`}
                       >
                         <div className="flex items-center gap-2 w-full relative overflow-hidden">
-                          {isStreamingById.get(chat.id) === true && (
+                          {isStreamingById.get(chat.id) === true ? (
                             <Loader2
                               size={16}
                               className="text-blue-500 animate-spin flex-shrink-0"
                               aria-label="Chat en progreso"
                             />
-                          )}
+                          ) : chat.isPlan ? (
+                            <div className="flex items-center justify-center h-6 w-6 rounded-md bg-green-500/10 flex-shrink-0">
+                              <ListChecks
+                                size={14}
+                                className="text-green-600 dark:text-green-400"
+                                aria-label="Chat de Planificación"
+                              />
+                            </div>
+                          ) : null}
                           <div className="flex flex-col w-full overflow-hidden">
                             <span
                               className={`truncate mr-2 ${selectedChatId === chat.id ? "font-semibold" : ""}`}

@@ -237,16 +237,31 @@ function App() {
     return () => unsubscribe();
   }, [setPendingAgentConsents]);
 
-  // Clear pending agent consents when a chat stream ends or errors
-  // This prevents stale consent banners from remaining visible after cancellation
+  // Clear pending agent consents and finalize in-progress todos when a chat stream ends
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
       setPendingAgentConsents((prev) =>
         prev.filter((consent) => consent.chatId !== chatId),
       );
+      // Finalize any in_progress todos to completed (safety net for when
+      // the model doesn't return the correct schema to close out its todos)
+      setAgentTodosByChatId((prev) => {
+        const todos = prev.get(chatId);
+        if (!todos) return prev;
+        const hasInProgress = todos.some((t) => t.status === "in_progress");
+        if (!hasInProgress) return prev;
+        const next = new Map(prev);
+        next.set(
+          chatId,
+          todos.map((t) =>
+            t.status === "in_progress" ? { ...t, status: "completed" as const } : t,
+          ),
+        );
+        return next;
+      });
     });
     return () => unsubscribe();
-  }, [setPendingAgentConsents]);
+  }, [setPendingAgentConsents, setAgentTodosByChatId]);
 
   // Forward telemetry events from main process to PostHog
   useEffect(() => {

@@ -3,6 +3,7 @@ import { mcpToolConsents } from "../../db/schema";
 import { and, eq } from "drizzle-orm";
 import { IpcMainInvokeEvent } from "electron";
 import crypto from "node:crypto";
+import { readSettings } from "@/main/settings";
 
 export type Consent = "ask" | "always" | "denied";
 
@@ -76,6 +77,7 @@ export async function setStoredConsent(
   }
 }
 
+
 export async function requireMcpToolConsent(
   event: IpcMainInvokeEvent,
   params: {
@@ -89,6 +91,11 @@ export async function requireMcpToolConsent(
   const current = await getStoredConsent(params.serverId, params.toolName);
   if (current === "always") return true;
   if (current === "denied") return false;
+
+  // If autoApproveChanges is enabled globally, skip the consent prompt
+  const settings = readSettings();
+  if (settings.autoApproveChanges) return true;
+
 
   // Ask renderer for a decision via event bridge
   const requestId = `${params.serverId}:${params.toolName}:${crypto.randomUUID()}`;

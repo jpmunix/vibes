@@ -133,23 +133,18 @@ export default function HomePage() {
     }
   }, [appId, navigate]);
 
-  // Apply default chat mode when navigating to home page
-  // Wait for quota status to load to avoid race condition where we default to Basic Agent
-  // before knowing if quota is actually exceeded
+  // Enforce "plan" mode as the absolute default on Home screen for new apps
   const hasAppliedDefaultChatMode = useRef(false);
   useEffect(() => {
-    if (settings && !hasAppliedDefaultChatMode.current && !isQuotaLoading) {
+    // Wait for settings to load
+    if (settings && !hasAppliedDefaultChatMode.current) {
       hasAppliedDefaultChatMode.current = true;
-      const effectiveDefaultMode = getEffectiveDefaultChatMode(
-        settings,
-        envVars,
-        !isQuotaExceeded,
-      );
-      if (settings.selectedChatMode !== effectiveDefaultMode) {
-        updateSettings({ selectedChatMode: effectiveDefaultMode });
+      // Always force Plan mode on Home screen, regardless of user preferences or quota
+      if (settings.selectedChatMode !== "plan") {
+        updateSettings({ selectedChatMode: "plan" });
       }
     }
-  }, [settings, updateSettings, isQuotaExceeded, isQuotaLoading, envVars]);
+  }, [settings, updateSettings]);
 
   const handleSubmit = async (options?: HomeSubmitOptions) => {
     const attachments = options?.attachments || [];

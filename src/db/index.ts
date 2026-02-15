@@ -134,6 +134,57 @@ function ensureKnowledgeColumns(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure the is_plan column exists in chats table.
+ * Migration 0040_mixed_red_hulk adds this column but can fail if db:push already applied it.
+ * When the column is ensured, also mark migration 0040_mixed_red_hulk as applied so migrate() skips it.
+ */
+function ensureChatsIsPlanColumn(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='chats'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(chats)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("is_plan")) {
+      logger.log("Adding missing 'is_plan' column to chats");
+      sqlite.exec(`ALTER TABLE \`chats\` ADD \`is_plan\` integer DEFAULT false`);
+    }
+
+    // Whether column already existed or was just added, ensure migration is recorded
+    const MIGRATION_HASH = "a2aabf4fc6dd33661c1a4def26c8c3022570593c9c524e7b466ee080bf713d68";
+    const MIGRATION_CREATED_AT = 1771110607425;
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_HASH);
+
+        if (!migrationExists) {
+          logger.log("Marking migration 0040_mixed_red_hulk (is_plan) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_HASH, MIGRATION_CREATED_AT);
+        }
+      }
+    } catch (migError) {
+      logger.log("Could not mark migration 0040_mixed_red_hulk as applied");
+    }
+  } catch (error) {
+    logger.error("Error ensuring chats is_plan column:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -202,6 +253,9 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure knowledge_entries has all required columns (safety net for migration 0040)
       ensureKnowledgeColumns(sqlite);
+
+      // Ensure chats has is_plan column (safety net for migration 0040_mixed_red_hulk)
+      ensureChatsIsPlanColumn(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });

@@ -42,6 +42,7 @@ export const ChatSchema = z.object({
   todoId: z.number().nullable().optional(),
   initialCommitHash: z.string().nullable().optional(),
   dbTimestamp: z.string().nullable().optional(),
+  isPlan: z.boolean().optional().default(false),
 });
 
 export type Chat = z.infer<typeof ChatSchema>;
@@ -150,7 +151,8 @@ export const CreateChatResultSchema = z.number();
  */
 export const UpdateChatParamsSchema = z.object({
   chatId: z.number(),
-  title: z.string(),
+  title: z.string().optional(),
+  isPlan: z.boolean().optional(),
 });
 
 export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;

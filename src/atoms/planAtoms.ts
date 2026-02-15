@@ -6,6 +6,7 @@ export interface PlanTask {
     id: string;
     text: string;
     checked: boolean;
+    isDeveloped?: boolean;
 }
 
 export interface PlanStage {
@@ -20,19 +21,19 @@ export interface Plan {
     stages: PlanStage[];
 }
 
-// --- Plan State ---
+// --- Plan State (Scoped by Chat ID) ---
 
-/** The current plan (null = no plan generated yet) */
-export const planAtom = atom<Plan | null>(null);
+/** Plans stored by chatId */
+export const plansByChatIdAtom = atom<Map<number, Plan>>(new Map());
 
-/** Whether the plan panel is collapsed */
-export const planCollapsedAtom = atom<boolean>(true);
+/** Collapsed state by chatId (default: true) */
+export const planCollapsedByChatIdAtom = atom<Map<number, boolean>>(new Map());
 
-/** Whether the plan is in read-only mode (after sending to development) */
-export const planReadOnlyAtom = atom<boolean>(false);
+/** Read-only state by chatId (default: false) */
+export const planReadOnlyByChatIdAtom = atom<Map<number, boolean>>(new Map());
 
-/** Whether the plan is currently being generated/updated by the AI */
-export const planLoadingAtom = atom<boolean>(false);
+/** Loading state by chatId (default: false) */
+export const planLoadingByChatIdAtom = atom<Map<number, boolean>>(new Map());
 
-/** The text input value for plan modification requests */
-export const planInputValueAtom = atom<string>("");
+/** Input values by chatId */
+export const planInputValueByChatIdAtom = atom<Map<number, string>>(new Map());
