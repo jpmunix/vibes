@@ -10,9 +10,15 @@ const path = require("path");
 exports.default = async function afterPack(context) {
   const { electronPlatformName, appOutDir, arch } = context;
 
-  // Solo ejecutar para macOS
+  // Linux: fix executable permissions for dugite git binary
+  if (electronPlatformName === "linux") {
+    await fixLinuxGitPermissions(appOutDir);
+    return;
+  }
+
+  // Solo ejecutar para macOS (Sharp, @xenova, etc.)
   if (electronPlatformName !== "darwin") {
-    console.log(`[afterPack] Skipping Sharp copy for ${electronPlatformName}`);
+    console.log(`[afterPack] Skipping platform-specific fixes for ${electronPlatformName}`);
     return;
   }
 
@@ -369,3 +375,55 @@ function copyRecursiveSync(src, dest) {
     fs.copyFileSync(src, dest);
   }
 }
+
+/**
+ * Fixes executable permissions for the dugite git binary on Linux.
+ * When Electron Forge packages the app, binaries in extraResource
+ * can lose their executable bit. This restores chmod +x on all
+ * files under resources/git/bin/ and resources/git/libexec/.
+ */
+async function fixLinuxGitPermissions(appOutDir) {
+  console.log("[afterPack] Fixing git binary permissions for Linux...");
+
+  const gitResourceDir = path.join(appOutDir, "resources", "git");
+
+  if (!fs.existsSync(gitResourceDir)) {
+    console.warn(
+      `[afterPack] WARNING: Dugite git directory not found at ${gitResourceDir}`,
+    );
+    return;
+  }
+
+  // Directories that contain executables
+  const execDirs = ["bin", "libexec"];
+  let fixedCount = 0;
+
+  for (const dir of execDirs) {
+    const dirPath = path.join(gitResourceDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+
+    chmodRecursive(dirPath);
+    fixedCount++;
+  }
+
+  console.log(
+    `[afterPack] ✅ Fixed executable permissions in ${fixedCount} directories under resources/git/`,
+  );
+}
+
+/**
+ * Recursively sets 0o755 on all files in a directory.
+ */
+function chmodRecursive(dirPath) {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      fs.chmodSync(fullPath, 0o755);
+      chmodRecursive(fullPath);
+    } else if (entry.isFile()) {
+      fs.chmodSync(fullPath, 0o755);
+    }
+  }
+}
+
