@@ -34,7 +34,7 @@ export function usePlanSync(chatId?: number) {
     const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
     const setLoading = useSetAtom(planLoadingByChatIdAtom);
     const setReadOnly = useSetAtom(planReadOnlyByChatIdAtom);
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
 
     const prevStreamingRef = useRef(false);
 
@@ -67,12 +67,22 @@ export function usePlanSync(chatId?: number) {
             updateMapAtom(setCollapsed, chatId, false); // auto-expand plan panel
             updateMapAtom(setReadOnly, chatId, false);
             updateMapAtom(setLoading, chatId, false);
+
+            // Switch back to the user's default chat mode now that the plan is ready
+            const defaultMode = settings?.defaultChatMode || "build";
+            if (defaultMode !== "plan") {
+                updateSettings({ selectedChatMode: defaultMode });
+            } else {
+                updateSettings({ selectedChatMode: "build" });
+            }
         }
     }, [
         chatId,
         isStreamingById,
         messagesById,
         settings?.selectedChatMode,
+        settings?.defaultChatMode,
+        updateSettings,
         setPlans,
         setCollapsed,
         setLoading,

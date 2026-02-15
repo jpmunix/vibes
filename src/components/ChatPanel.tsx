@@ -290,7 +290,7 @@ export function ChatPanel({
                   <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-teal-500" />
                     <p className="text-sm font-medium">
-                      Diseñando plan operativo...
+                      Diseñando el plan...
                     </p>
                   </div>
                 ) : (
