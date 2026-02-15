@@ -13,12 +13,10 @@ import type {
   SearchSimilarFilesInput,
   SearchSimilarFilesOutput,
 } from "../types/embeddings";
-import { embed } from "../utils/embeddings";
+import { generateEmbeddingsInWorker } from "../processors/embeddings_worker_client";
 import { getIncrementalIndexer } from "../utils/file_watcher";
 
-// =============================================================================
-// Handler: Get Embeddings
-// =============================================================================
+// ...
 
 export async function handleGetEmbeddings(
   _event: IpcMainInvokeEvent,
@@ -31,8 +29,15 @@ export async function handleGetEmbeddings(
   }
 
   try {
-    const embeddings = await embed(text);
-    return embeddings as Float32Array;
+    // Use worker to generate embeddings - prevents UI freeze
+    // We treat the text as a single "file" with one chunk
+    const embeddings = await generateEmbeddingsInWorker([text], "adhoc-embedding-request");
+
+    // Return the first embedding (Float32Array)
+    if (embeddings && embeddings.length > 0) {
+      return embeddings[0] as unknown as GetEmbeddingsOutput; // Cast necessary if GetEmbeddingsOutput expects specific type
+    }
+    throw new Error("No embeddings generated");
   } catch (error) {
     console.error("Error generando embeddings:", error);
     throw new Error(

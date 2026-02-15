@@ -37,6 +37,10 @@ log.errorHandler.startCatching();
 log.eventLogger.startLogging();
 log.scope.labelPadding = false;
 
+// Optimization: Only write errors to disk to avoid I/O contention
+log.transports.file.level = "error";
+log.transports.console.level = "info"; // Keep info logs in console/stdout
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Performance: Chromium command-line flags (must be set before app.ready)
 // Inspired by VS Code's Electron optimizations

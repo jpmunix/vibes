@@ -278,8 +278,12 @@ export class LocalVectorIndex {
   async search(query: string, maxResults = 15): Promise<string[]> {
     try {
       const db = await this.ensureDbReady();
-      // Generate query embedding
-      const queryEmbedding = await embed(query);
+      // Generate query embedding in worker to prevent UI freeze
+      const queryEmbeddings = await generateEmbeddingsInWorker([query], "search-query");
+      if (!queryEmbeddings || queryEmbeddings.length === 0) {
+        throw new Error("Failed to generate embedding for query");
+      }
+      const queryEmbedding = queryEmbeddings[0];
 
       // Get all embeddings from database
       const rows = db
@@ -295,11 +299,11 @@ export class LocalVectorIndex {
       `,
         )
         .all() as Array<{
-        path: string;
-        chunk_index: number;
-        total_chunks: number;
-        embedding: Buffer;
-      }>;
+          path: string;
+          chunk_index: number;
+          total_chunks: number;
+          embedding: Buffer;
+        }>;
 
       // Calculate similarities
       const results: VectorSearchResult[] = rows.map((row) => {
