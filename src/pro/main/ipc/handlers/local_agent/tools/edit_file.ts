@@ -61,7 +61,7 @@ async function callTurboFileEdit(
   } catch (error) {
     logger.warn("Turbo edit request failed", error);
     throw new Error(
-      `Fallo crítico en la fusión de archivos (Network Error). Por favor, intenta usar 'write_file' para enviar el archivo completo o reduce el número de bloques '// ... existing code ...'.`,
+      `Fallo crítico en la fusión de archivos (Network Error). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
     );
   }
 
@@ -69,7 +69,7 @@ async function callTurboFileEdit(
     const errorText = await response?.text().catch(() => "Unknown error");
     logger.error("Turbo edit failed", errorText);
     throw new Error(
-      `No se pudo fusionar el archivo correctamente (Engine Error: ${response?.status}). Asegúrate de incluir suficiente contexto alrededor de tus cambios (al menos 3-5 líneas) para que el sistema pueda identificar dónde aplicarlos.`,
+      `No se pudo fusionar el archivo correctamente (Engine Error: ${response?.status}). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
     );
   }
 
@@ -79,7 +79,7 @@ async function callTurboFileEdit(
   if (containsPlaceholders(data.result)) {
     logger.error("Turbo edit returned content with placeholders", data.result);
     throw new Error(
-      "El motor de fusión devolvió un archivo incompleto (contiene marcadores de posición). Reintenta la operación proporcionando más líneas de contexto antes y después de cada cambio, o usa 'write_file' para reescribir el archivo completo.",
+      "El motor de fusión devolvió un archivo incompleto (contiene marcadores de posición). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.",
     );
   }
 

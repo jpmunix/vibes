@@ -219,3 +219,51 @@ replacement
 <error_pattern>
 Search block did not match any content
 </error_pattern>
+
+--- Test case name: block fuzzy match ambiguous two positions ---
+<original_file>
+import React from 'react';
+import { useState } from 'react';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+// second section
+import React from 'react';
+import { useEffect } from 'react';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+</original_file>
+<<<<<<< SEARCH
+import React from 'react';
+import { WRONG } from 'react';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+=======
+replaced
+>>>>>>> REPLACE
+<error_pattern>
+ambiguous
+</error_pattern>
+
+--- Test case name: block fuzzy match below threshold ---
+<original_file>
+const a = 1;
+const b = 2;
+const c = 3;
+const d = 4;
+const e = 5;
+</original_file>
+<<<<<<< SEARCH
+const x = 10;
+const y = 20;
+const c = 3;
+const z = 40;
+const w = 50;
+=======
+replaced
+>>>>>>> REPLACE
+<error_pattern>
+did not match any content
+</error_pattern>
