@@ -10,6 +10,21 @@ import MakerZIP from "@electron-forge/maker-zip";
 const ignore = (file: string): boolean => {
   if (!file || file === "/") return false;
 
+  // ─── SCAFFOLD: BLINDADO ───────────────────────────────────────────────
+  // El scaffold es la plantilla que se copia a cada app nueva.
+  // Se incluye TODO excepto node_modules y .git (regenerables).
+  // IMPORTANTE: este bloque va ANTES de cualquier regla de extensión
+  // para que nunca se filtren archivos críticos (.ts, .mts, etc.).
+  if (file.startsWith("/scaffold")) {
+    if (
+      file.includes("/node_modules") ||
+      file.includes("/.git")
+    ) {
+      return true; // Ignorar: regenerable
+    }
+    return false; // Incluir: es parte de la plantilla
+  }
+
   if (
     file.includes("/node_modules/@img") ||
     file.includes("/node_modules/@xenova") ||
@@ -36,7 +51,6 @@ const ignore = (file: string): boolean => {
     "/node_modules",
     "/.vite",
     "/drizzle",
-    "/scaffold",
     "/worker",
     "/assets", // Asegúrate de incluir tus iconos/recursos aquí
     "/package.json",
