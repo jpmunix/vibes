@@ -7,7 +7,7 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import MakerZIP from "@electron-forge/maker-zip";
 
-const ignore = (file: string) => {
+const ignore = (file: string): boolean => {
   if (!file || file === "/") return false;
 
   if (
@@ -21,6 +21,12 @@ const ignore = (file: string) => {
   }
 
   if (file.includes("/node_modules/@xenova/transformers/node_modules")) {
+    return true;
+  }
+
+  // Ignore date-fns/fp (1500+ unused files, functional programming API)
+  // Prevents ENOTEMPTY race condition in electron-packager
+  if (file.includes("/node_modules/date-fns/fp")) {
     return true;
   }
 
@@ -46,6 +52,9 @@ const ignore = (file: string) => {
 
     return false; // Se queda en la app
   }
+
+  // Cualquier archivo fuera de las rutas permitidas se ignora
+  return true;
 };
 
 const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
