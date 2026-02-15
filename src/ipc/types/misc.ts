@@ -140,6 +140,12 @@ export const miscContracts = {
   }),
 
   // Console logs
+  getConsoleLogs: defineContract({
+    channel: "get-console-logs",
+    input: z.object({ appId: z.number() }),
+    output: z.array(ConsoleEntrySchema),
+  }),
+
   addLog: defineContract({
     channel: "add-log",
     input: ConsoleEntrySchema,
@@ -170,6 +176,13 @@ export const miscContracts = {
   }),
 } as const;
 
+export const AppLogsBatchSchema = z.object({
+  appId: z.number(),
+  logs: z.array(AppOutputSchema),
+});
+
+export type AppLogsBatch = z.infer<typeof AppLogsBatchSchema>;
+
 // =============================================================================
 // Misc Event Contracts
 // =============================================================================
@@ -178,6 +191,11 @@ export const miscEvents = {
   appOutput: defineEvent({
     channel: "app:output",
     payload: AppOutputSchema,
+  }),
+
+  appLogsBatch: defineEvent({
+    channel: "app:logs-batch",
+    payload: AppLogsBatchSchema,
   }),
 
   deepLinkReceived: defineEvent({

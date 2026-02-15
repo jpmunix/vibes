@@ -13,6 +13,53 @@ import { getDyadAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import net from "node:net";
+import { AppOutput } from "../types/misc";
+
+// Buffer for batching log updates to the renderer
+class LogBuffer {
+  private buffers = new Map<number, AppOutput[]>();
+  private timeouts = new Map<number, NodeJS.Timeout>();
+  private readonly FLUSH_INTERVAL_MS = 200;
+  private readonly MAX_BATCH_SIZE = 100;
+
+  add(appId: number, output: AppOutput, event: Electron.IpcMainInvokeEvent) {
+    if (!this.buffers.has(appId)) {
+      this.buffers.set(appId, []);
+    }
+
+    const buffer = this.buffers.get(appId)!;
+    buffer.push(output);
+
+    if (buffer.length >= this.MAX_BATCH_SIZE) {
+      this.flush(appId, event);
+    } else if (!this.timeouts.has(appId)) {
+      const timeout = setTimeout(() => this.flush(appId, event), this.FLUSH_INTERVAL_MS);
+      this.timeouts.set(appId, timeout);
+    }
+  }
+
+  flush(appId: number, event: Electron.IpcMainInvokeEvent) {
+    const buffer = this.buffers.get(appId);
+    if (!buffer || buffer.length === 0) return;
+
+    // Clear timeout if exists
+    if (this.timeouts.has(appId)) {
+      clearTimeout(this.timeouts.get(appId)!);
+      this.timeouts.delete(appId);
+    }
+
+    // Send batch
+    const logs = [...buffer];
+    this.buffers.set(appId, []);
+
+    safeSend(event.sender, "app:logs-batch", {
+      appId,
+      logs,
+    });
+  }
+}
+
+const logBuffer = new LogBuffer();
 
 // Import our utility modules
 import { withLock } from "../utils/lock_utils";
@@ -377,7 +424,7 @@ function listenToProcess({
       clearInterval(pollingInterval);
       await startProxyForApp(`http://localhost:${appPort}`);
     }
-  }, 1000);
+  }, 3000);
 
   // Log output
   spawnedProcess.stdout?.on("data", async (data) => {
@@ -419,12 +466,13 @@ function listenToProcess({
         appId,
       });
     } else {
-      // Normal stdout handling
-      safeSend(event.sender, "app:output", {
+      // Normal stdout handling - buffered
+      logBuffer.add(appId, {
         type: "stdout",
         message,
         appId,
-      });
+        timestamp: Date.now(),
+      }, event);
 
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
@@ -449,11 +497,13 @@ function listenToProcess({
       appId,
     });
 
-    safeSend(event.sender, "app:output", {
+    // Buffered stderr
+    logBuffer.add(appId, {
       type: "stderr",
       message,
       appId,
-    });
+      timestamp: Date.now(),
+    }, event);
   });
 
   // Handle process exit/close

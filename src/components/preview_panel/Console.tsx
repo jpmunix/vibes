@@ -141,6 +141,63 @@ export const Console = () => {
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Fetch initial logs and subscribe to updates
+  useEffect(() => {
+    if (!selectedAppId) return;
+
+    let isMounted = true;
+
+    // Fetch existing logs
+    ipc.misc.getConsoleLogs({ appId: selectedAppId }).then((logs) => {
+      if (isMounted) {
+        // Convert ConsoleEntry to match local AppOutput-like structure if needed
+        // The atom expects an array of log objects.
+        // ConsoleEntry has { type, level, message, timestamp, sourceName, appId }
+        // AppOutput has { type, message, appId, timestamp }
+        // They are compatible enough for display.
+        setConsoleEntries(logs);
+      }
+    }).catch(console.error);
+
+    // Subscribe to batched logs
+    const unsubscribeBatch = ipc.events.misc.onAppLogsBatch((batch) => {
+      if (batch.appId === selectedAppId) {
+        setConsoleEntries((prev) => {
+          // Deduplicate logic could go here if needed, but timestamp should be unique enough?
+          // Actually, simplest is just append.
+          return [...prev, ...batch.logs.map(log => ({
+            ...log,
+            level: log.type === "stderr" || log.type === "client-error" ? "error" as const : "info" as const,
+            type: "server" as const,
+            timestamp: log.timestamp ?? Date.now()
+          }))];
+        });
+      }
+    });
+
+    // Subscribe to immediate output (proxy events, etc)
+    const unsubscribeOutput = ipc.events.misc.onAppOutput((output) => {
+      if (output.appId === selectedAppId) {
+        // Ignore input-requested as it's handled by useRunApp
+        if (output.type === "input-requested") return;
+
+        setConsoleEntries((prev) => [...prev, {
+          level: output.type === "stderr" || output.type === "client-error" ? "error" as const : "info" as const,
+          type: "server" as const,
+          message: output.message,
+          appId: output.appId,
+          timestamp: output.timestamp ?? Date.now(),
+        }]);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeBatch();
+      unsubscribeOutput();
+    };
+  }, [selectedAppId, setConsoleEntries]);
+
   // Show filters after initial render and when panel is large enough
   useEffect(() => {
     const timer = setTimeout(() => {

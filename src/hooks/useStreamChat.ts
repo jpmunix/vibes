@@ -365,6 +365,11 @@ export function useStreamChat({
                 queryKey: queryKeys.freeAgentQuota.status,
               });
 
+              // Clean up auto-repair state if needed
+              if (autoRepair?.isRepairing) {
+                autoRepair.onRepairStreamEnd(false);
+              }
+
               // Keep the same as above
               updateMapAtom(setIsStreamingById, chatId, false);
               invalidateChats();

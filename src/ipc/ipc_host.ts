@@ -49,6 +49,7 @@ import { registerBackupHandlers } from "./handlers/backup_handlers";
 import { registerKnowledgeHandlers } from "./handlers/knowledge_handlers";
 import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
 import { registerDossierHandlers } from "./handlers/dossier_handlers";
+import { registerConsoleHandlers } from "./handlers/console_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -103,4 +104,5 @@ export function registerIpcHandlers() {
   registerKnowledgeHandlers();
   registerAiQueryLogHandlers();
   registerDossierHandlers();
+  registerConsoleHandlers();
 }

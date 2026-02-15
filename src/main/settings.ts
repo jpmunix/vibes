@@ -65,15 +65,24 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 const SETTINGS_FILE = "user-settings.json";
 
+// In-memory cache for settings to avoid blocking I/O
+let cachedSettings: UserSettings | null = null;
+
 export function getSettingsFilePath(): string {
   return path.join(getUserDataPath(), SETTINGS_FILE);
 }
 
 export function readSettings(): UserSettings {
+  // Return cached settings if available
+  if (cachedSettings) {
+    return cachedSettings;
+  }
+
   try {
     const filePath = getSettingsFilePath();
     if (!fs.existsSync(filePath)) {
       fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SETTINGS, null, 2));
+      cachedSettings = DEFAULT_SETTINGS;
       return DEFAULT_SETTINGS;
     }
     const rawSettings = JSON.parse(fs.readFileSync(filePath, "utf-8"));
@@ -181,6 +190,10 @@ export function readSettings(): UserSettings {
     if (validatedSettings.proSmartContextOption === "conservative") {
       validatedSettings.proSmartContextOption = undefined;
     }
+
+    // Update cache
+    cachedSettings = validatedSettings;
+
     return validatedSettings;
   } catch (error) {
     logger.error("Error reading settings:", error);
@@ -191,8 +204,16 @@ export function readSettings(): UserSettings {
 export function writeSettings(settings: Partial<UserSettings>): void {
   try {
     const filePath = getSettingsFilePath();
+
+    // Use readSettings which now uses cache
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
+
+    // Update cache immediately with UNENCRYPTED values
+    cachedSettings = newSettings;
+
+    // Create a deep clone for encryption/writing to avoid mutating the cache
+    const settingsToWrite = JSON.parse(JSON.stringify(newSettings));
 
     const encryptSafe = (secret: Secret | undefined): Secret | undefined => {
       if (!secret) return secret;
@@ -201,36 +222,36 @@ export function writeSettings(settings: Partial<UserSettings>): void {
       return encrypt(secret.value);
     };
 
-    if (newSettings.githubAccessToken) {
-      newSettings.githubAccessToken = encryptSafe(newSettings.githubAccessToken);
+    if (settingsToWrite.githubAccessToken) {
+      settingsToWrite.githubAccessToken = encryptSafe(settingsToWrite.githubAccessToken);
     }
-    if (newSettings.vercelAccessToken) {
-      newSettings.vercelAccessToken = encryptSafe(newSettings.vercelAccessToken);
+    if (settingsToWrite.vercelAccessToken) {
+      settingsToWrite.vercelAccessToken = encryptSafe(settingsToWrite.vercelAccessToken);
     }
-    if (newSettings.supabase) {
+    if (settingsToWrite.supabase) {
       // Encrypt legacy tokens (kept for backwards compat)
-      newSettings.supabase.accessToken = encryptSafe(newSettings.supabase.accessToken);
-      newSettings.supabase.refreshToken = encryptSafe(newSettings.supabase.refreshToken);
+      settingsToWrite.supabase.accessToken = encryptSafe(settingsToWrite.supabase.accessToken);
+      settingsToWrite.supabase.refreshToken = encryptSafe(settingsToWrite.supabase.refreshToken);
 
       // Encrypt tokens for each organization in the organizations map
-      if (newSettings.supabase.organizations) {
-        for (const orgId in newSettings.supabase.organizations) {
-          const org = newSettings.supabase.organizations[orgId];
+      if (settingsToWrite.supabase.organizations) {
+        for (const orgId in settingsToWrite.supabase.organizations) {
+          const org = settingsToWrite.supabase.organizations[orgId];
           org.accessToken = encryptSafe(org.accessToken) as Secret; // Schema says it's required
           org.refreshToken = encryptSafe(org.refreshToken) as Secret;
         }
       }
     }
-    if (newSettings.neon) {
-      newSettings.neon.accessToken = encryptSafe(newSettings.neon.accessToken);
-      newSettings.neon.refreshToken = encryptSafe(newSettings.neon.refreshToken);
+    if (settingsToWrite.neon) {
+      settingsToWrite.neon.accessToken = encryptSafe(settingsToWrite.neon.accessToken);
+      settingsToWrite.neon.refreshToken = encryptSafe(settingsToWrite.neon.refreshToken);
     }
-    if (newSettings.firebase) {
-      newSettings.firebase.accessToken = encryptSafe(newSettings.firebase.accessToken);
-      newSettings.firebase.refreshToken = encryptSafe(newSettings.firebase.refreshToken);
+    if (settingsToWrite.firebase) {
+      settingsToWrite.firebase.accessToken = encryptSafe(settingsToWrite.firebase.accessToken);
+      settingsToWrite.firebase.refreshToken = encryptSafe(settingsToWrite.firebase.refreshToken);
     }
-    for (const provider in newSettings.providerSettings) {
-      const p = newSettings.providerSettings[provider] as any;
+    for (const provider in settingsToWrite.providerSettings) {
+      const p = settingsToWrite.providerSettings[provider] as any;
       if (p.apiKey) {
         p.apiKey = encryptSafe(p.apiKey);
       }
@@ -245,7 +266,7 @@ export function writeSettings(settings: Partial<UserSettings>): void {
         }
       }
     }
-    const validatedSettings = UserSettingsSchema.parse(newSettings);
+    const validatedSettings = UserSettingsSchema.parse(settingsToWrite);
     fs.writeFileSync(filePath, JSON.stringify(validatedSettings, null, 2));
   } catch (error) {
     logger.error("Error writing settings:", error);

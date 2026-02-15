@@ -21,7 +21,6 @@ const useRunAppLoadingAtom = atom(false);
  * to avoid duplicate event subscriptions causing duplicate log entries.
  */
 export function useAppOutputSubscription() {
-  const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const [, setAppUrlObj] = useAtom(appUrlAtom);
   const setPreviewPanelKey = useSetAtom(previewPanelKeyAtom);
   const appId = useAtomValue(selectedAppIdAtom);
@@ -86,36 +85,25 @@ export function useAppOutputSubscription() {
             console.error("Failed to respond to app input:", error);
           }
         });
-        return; // Don't add to regular output
+        return;
       }
-
-      // Add to console entries
-      // Use "server" type for stdout/stderr to match the backend log store
-      // (app_handlers.ts stores these as type: "server")
-      const logEntry = {
-        level:
-          output.type === "stderr" || output.type === "client-error"
-            ? ("error" as const)
-            : ("info" as const),
-        type: "server" as const,
-        message: output.message,
-        appId: output.appId,
-        timestamp: output.timestamp ?? Date.now(),
-      };
 
       // Only send client-error logs to central store
       // Server logs (stdout/stderr) are already stored in the main process
       if (output.type === "client-error") {
-        ipc.misc.addLog(logEntry);
+        ipc.misc.addLog({
+          level: "error",
+          type: "server",
+          message: output.message,
+          appId: output.appId,
+          timestamp: output.timestamp ?? Date.now(),
+        });
       }
-
-      // Also update UI state
-      setConsoleEntries((prev) => [...prev, logEntry]);
 
       // Process proxy server output
       processProxyServerOutput(output);
     },
-    [setConsoleEntries, processProxyServerOutput],
+    [processProxyServerOutput],
   );
   // Use a ref so the event listener always sees the latest appId
   // without needing to re-register (which creates a gap where events get lost)

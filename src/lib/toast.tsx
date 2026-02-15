@@ -185,15 +185,16 @@ export const showAutoRepairToast = ({
   // Use static import instead of require to avoid "Synchronous require" error
 
   const duration =
-    status === "repairing" ? Infinity : status === "success" ? 4_000 : 8_000;
+    status === "repairing" ? Infinity : status === "success" ? 10_000 : Infinity;
 
   toast.custom(
-    () =>
+    (t) =>
       React.createElement(AutoRepairToast, {
         status,
         attempt,
         maxAttempts,
         errorMessage,
+        onDismiss: () => toast.dismiss(t),
       }),
     { id: AUTO_REPAIR_TOAST_ID, duration },
   );
