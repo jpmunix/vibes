@@ -21,6 +21,7 @@ export type SearchReplaceResult = {
   content?: string;
   error?: string;
   diagnostic?: MatchFailureDiagnostic;
+  recoveryStrategy?: string;
 };
 
 // ============================================================================
@@ -517,6 +518,7 @@ export function applySearchReplace(
   const lineEnding = originalContent.includes("\r\n") ? "\r\n" : "\n";
   let resultLines = originalContent.split(/\r?\n/);
   let appliedCount = 0;
+  const strategiesUsed = new Set<string>();
 
   logger.debug(
     `Applying search-replace: ${blocks.length} blocks, file has ${resultLines.length} lines`,
@@ -592,6 +594,16 @@ export function applySearchReplace(
       ) {
         // Propagate ambiguity error from block-fuzzy — it's more informative
         matchResult = blockResult;
+      }
+    }
+
+    if (!matchResult.error && matchResult.passName) {
+      if (
+        !["exact", "trailing-whitespace", "edge-whitespace", "unicode"].includes(
+          matchResult.passName,
+        )
+      ) {
+        strategiesUsed.add(matchResult.passName);
       }
     }
 
@@ -688,5 +700,12 @@ export function applySearchReplace(
   logger.info(
     `search_replace: Successfully applied ${appliedCount}/${blocks.length} blocks`,
   );
-  return { success: true, content: resultLines.join(lineEnding) };
+  const recoveryStrategy =
+    strategiesUsed.size > 0 ? Array.from(strategiesUsed).join(", ") : undefined;
+
+  return {
+    success: true,
+    content: resultLines.join(lineEnding),
+    recoveryStrategy,
+  };
 }

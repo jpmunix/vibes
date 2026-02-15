@@ -26,6 +26,7 @@ vi.mock("electron-log", () => ({
       warn: vi.fn(),
       error: vi.fn(),
       debug: vi.fn(),
+      info: vi.fn(),
     }),
   },
 }));
@@ -43,6 +44,7 @@ describe("searchReplaceTool", () => {
     chatId: 1,
     supabaseProjectId: null,
     supabaseOrganizationSlug: null,
+    firebaseProjectId: "test-project",
     messageId: 1,
     isSharedModulesChanged: false,
     isBasicAgentMode: false,
@@ -162,6 +164,11 @@ describe("searchReplaceTool", () => {
       expect(fs.promises.writeFile).toHaveBeenCalledWith(
         "/test/app/test.ts",
         expect.stringContaining("const a = 10"),
+      );
+
+      // Verify visual feedback
+      expect(mockContext.onXmlComplete).toHaveBeenCalledWith(
+        expect.stringContaining('<dyad-output type="success"'),
       );
     });
 

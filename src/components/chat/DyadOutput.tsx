@@ -5,13 +5,15 @@ import {
   AlertTriangle,
   XCircle,
   Sparkles,
+  CheckCircle,
+  Info,
 } from "lucide-react";
 import { useAtomValue } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";
 interface DyadOutputProps {
-  type: "error" | "warning";
+  type: "error" | "warning" | "success" | "info";
   message?: string;
   children?: React.ReactNode;
 }
@@ -25,16 +27,40 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const { streamMessage } = useStreamChat();
 
-  // If the type is not warning, it is an error (in case LLM gives a weird "type")
-  const isError = type !== "warning";
-  const borderColor = isError ? "border-red-500" : "border-amber-500";
-  const iconColor = isError ? "text-red-500" : "text-amber-500";
-  const icon = isError ? (
-    <XCircle size={16} className={iconColor} />
-  ) : (
-    <AlertTriangle size={16} className={iconColor} />
-  );
-  const label = isError ? "Error" : "Advertencia";
+  const isError = type === "error";
+
+  const styles = {
+    error: {
+      border: "border-red-500",
+      text: "text-red-500",
+      icon: <XCircle size={16} className="text-red-500" />,
+      label: "Error",
+    },
+    warning: {
+      border: "border-amber-500",
+      text: "text-amber-500",
+      icon: <AlertTriangle size={16} className="text-amber-500" />,
+      label: "Advertencia",
+    },
+    success: {
+      border: "border-green-500",
+      text: "text-green-500",
+      icon: <CheckCircle size={16} className="text-green-500" />,
+      label: "Éxito",
+    },
+    info: {
+      border: "border-blue-500",
+      text: "text-blue-500",
+      icon: <Info size={16} className="text-blue-500" />,
+      label: "Info",
+    },
+  };
+
+  const style = styles[type] || styles.info;
+  const borderColor = style.border;
+  const iconColor = style.text;
+  const icon = style.icon;
+  const label = style.label;
 
   const handleAIFix = (e: React.MouseEvent) => {
     e.stopPropagation();

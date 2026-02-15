@@ -638,7 +638,7 @@ function renderCustomTag(
     case "dyad-output":
       return (
         <DyadOutput
-          type={attributes.type as "warning" | "error"}
+          type={attributes.type as "warning" | "error" | "success" | "info"}
           message={attributes.message}
         >
           {content}
