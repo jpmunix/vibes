@@ -90,21 +90,40 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
   const autoCommitTriggeredRef = useRef(false);
+  const autoCommitFailCountRef = useRef(0);
+
+  // Reset failure counter when app changes
+  useEffect(() => {
+    autoCommitFailCountRef.current = 0;
+    autoCommitTriggeredRef.current = false;
+  }, [appId]);
 
   // Auto-commit silently when autoApproveChanges is enabled
+  // Limited to 3 retries to prevent infinite toast loops on persistent errors
+  const MAX_AUTO_COMMIT_RETRIES = 3;
   useEffect(() => {
     if (
       settings?.autoApproveChanges &&
       hasUncommittedFiles &&
       !isCommitting &&
       !autoCommitTriggeredRef.current &&
+      autoCommitFailCountRef.current < MAX_AUTO_COMMIT_RETRIES &&
       appId
     ) {
       autoCommitTriggeredRef.current = true;
       const message = generateDefaultCommitMessage(uncommittedFiles);
-      commitChanges({ appId, message }).finally(() => {
-        autoCommitTriggeredRef.current = false;
-      });
+      commitChanges({ appId, message, silent: true })
+        .then(() => {
+          autoCommitFailCountRef.current = 0;
+          autoCommitTriggeredRef.current = false;
+        })
+        .catch(() => {
+          autoCommitFailCountRef.current++;
+          // Delay before allowing the next retry to avoid rapid-fire
+          setTimeout(() => {
+            autoCommitTriggeredRef.current = false;
+          }, 5000);
+        });
     }
   }, [
     settings?.autoApproveChanges,

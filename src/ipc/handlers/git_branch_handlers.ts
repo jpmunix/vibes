@@ -335,6 +335,18 @@ async function handleCommitChanges(
   const appPath = getDyadAppPath(app.path);
 
   return withLock(appId, async () => {
+    // Safety: remove stale index.lock if it exists.
+    // We hold the JS lock, so if the file exists it's from a crashed git process.
+    const lockFile = path.join(appPath, ".git", "index.lock");
+    if (fs.existsSync(lockFile)) {
+      logger.warn(`Removing stale index.lock at ${lockFile}`);
+      try {
+        fs.unlinkSync(lockFile);
+      } catch (e) {
+        logger.error(`Failed to remove stale index.lock: ${e}`);
+      }
+    }
+
     // Check for merge or rebase in progress
     if (isGitMergeInProgress({ path: appPath })) {
       throw GitStateError(
