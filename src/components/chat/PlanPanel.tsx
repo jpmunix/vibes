@@ -1,9 +1,8 @@
-import { useCallback, useRef, useState, useEffect } from "react";
-import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { useCallback, useRef, useState } from "react";
+import { useSetAtom, useAtomValue } from "jotai";
 import {
     plansByChatIdAtom,
     planCollapsedByChatIdAtom,
-    planReadOnlyByChatIdAtom,
     planLoadingByChatIdAtom,
     planInputValueByChatIdAtom,
     type Plan,
@@ -402,8 +401,6 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     const setPlans = useSetAtom(plansByChatIdAtom);
     const collapsedMap = useAtomValue(planCollapsedByChatIdAtom);
     const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
-    const readOnlyMap = useAtomValue(planReadOnlyByChatIdAtom);
-    const setReadOnly = useSetAtom(planReadOnlyByChatIdAtom);
     const loadingMap = useAtomValue(planLoadingByChatIdAtom);
     const setLoading = useSetAtom(planLoadingByChatIdAtom);
     const planInputMap = useAtomValue(planInputValueByChatIdAtom);
@@ -415,18 +412,21 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     const isStreaming = chatId ? (streamingMap.get(chatId) ?? false) : false;
     const plan = chatId ? (plans.get(chatId) ?? null) : null;
 
-    useEffect(() => {
-        if (!chatId || !plan) return;
-
-        ipc.chat.updateChat({ chatId, isPlan: true }).then(() => {
+    // Helper: update plan in atom AND persist to DB
+    const savePlan = useCallback((newPlan: Plan) => {
+        if (!chatId) return;
+        updateMapAtom(setPlans, chatId, newPlan);
+        // Persist to DB (fire-and-forget)
+        ipc.chat.savePlanData({ chatId, planData: newPlan }).then(() => {
             window.dispatchEvent(new Event("plan-chat-db-update"));
-        }).catch(err => console.error(err));
-    }, [chatId, plan]);
+        }).catch(err =>
+            console.error("Failed to save plan:", err)
+        );
+    }, [chatId, setPlans]);
 
     if (!chatId) return null;
 
     const collapsed = collapsedMap.get(chatId) ?? true;
-    const readOnly = readOnlyMap.get(chatId) ?? false;
     const loading = loadingMap.get(chatId) ?? false;
     const planInput = planInputMap.get(chatId) ?? "";
 
@@ -444,16 +444,19 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     );
     const hasChecked = selectedTasks > 0;
     const allChecked = completedTasks === totalTasks && totalTasks > 0;
+    // When all tasks are done, the plan becomes fully read-only (reference only)
+    const allCompleted = allChecked;
+    const effectiveReadOnly = allCompleted;
 
     const updateStage = (stageId: string, updated: PlanStage) => {
-        updateMapAtom(setPlans, chatId, {
+        savePlan({
             ...plan,
             stages: plan.stages.map((s) => (s.id === stageId ? updated : s)),
         });
     };
 
     const deleteStage = (stageId: string) => {
-        updateMapAtom(setPlans, chatId, {
+        savePlan({
             ...plan,
             stages: plan.stages.filter((s) => s.id !== stageId),
         });
@@ -461,7 +464,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
     const toggleAll = () => {
         const newChecked = !allChecked;
-        updateMapAtom(setPlans, chatId, {
+        savePlan({
             ...plan,
             stages: plan.stages.map((s) => ({
                 ...s,
@@ -479,9 +482,9 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
         if (tasksToDevelop.length === 0) return;
 
-        // Mark them as developed in the state
+        // Mark them as developed in the state and save to DB
         const taskIdsToMark = new Set(tasksToDevelop.map(t => t.id));
-        updateMapAtom(setPlans, chatId, {
+        savePlan({
             ...plan,
             stages: plan.stages.map(s => ({
                 ...s,
@@ -510,9 +513,8 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
         const devMode = settings?.defaultChatMode === "local-agent" ? "local-agent" : "build";
         updateSettings({ selectedChatMode: devMode });
 
-        // Collapse panel, but keep read-only FALSE so user can iterate
+        // Collapse panel
         updateMapAtom(setCollapsed, chatId, true);
-        // updateMapAtom(setReadOnly, chatId, false); // Implicitly stays false or we ensure it
 
         // Send to chat
         streamMessage({
@@ -529,6 +531,9 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
         updateMapAtom(setLoading, chatId, true);
         updateMapAtom(setPlanInput, chatId, "");
 
+        // Switch to plan mode so usePlanSync captures the response
+        updateSettings({ selectedChatMode: "plan" });
+
         // Send to AI for plan update
         streamMessage({
             prompt: modificationPrompt,
@@ -539,7 +544,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     return (
         <div
             className={cn(
-                "flex flex-col overflow-hidden border-t border-border bg-background/95 backdrop-blur-sm transition-all duration-200",
+                "flex flex-col overflow-hidden border-t border-border bg-background/95 backdrop-blur-sm transition-[height] duration-200",
                 collapsed ? "max-h-10" : "max-h-[60vh]",
             )}
         >
@@ -561,6 +566,12 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                     <span className="text-xs text-muted-foreground">
                         ({completedTasks}/{totalTasks})
                     </span>
+                    {allCompleted && (
+                        <span className="text-xs font-medium text-green-500 flex items-center gap-1 ml-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Plan completado
+                        </span>
+                    )}
                 </div>
                 {collapsed ? (
                     <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -578,15 +589,15 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                             <PlanStageSection
                                 key={stage.id}
                                 stage={stage}
-                                readOnly={readOnly}
+                                readOnly={effectiveReadOnly}
                                 onUpdateStage={(updated) => updateStage(stage.id, updated)}
                                 onDeleteStage={() => deleteStage(stage.id)}
                             />
                         ))}
                     </div>
 
-                    {/* Action bar (hidden in read-only mode) */}
-                    {!readOnly && (
+                    {/* Action bar (hidden when read-only or all tasks completed) */}
+                    {!effectiveReadOnly && (
                         <div className="border-t border-border/50 px-6 py-4 space-y-4">
                             {/* Toggle all + Develop buttons */}
                             <div className="flex items-center gap-4">
@@ -611,7 +622,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                                     disabled={isStreaming}
                                     onClick={() => handleDevelop(hasChecked && !allChecked)}
                                     className={cn(
-                                        "text-xs h-9 px-4 gap-2 text-white transition-all",
+                                        "text-xs h-9 px-4 gap-2 text-white transition-colors",
                                         isStreaming && "opacity-50 cursor-not-allowed",
                                         hasChecked && !allChecked
                                             ? "bg-teal-600 hover:bg-teal-700"

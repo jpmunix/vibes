@@ -37,6 +37,26 @@ log.errorHandler.startCatching();
 log.eventLogger.startLogging();
 log.scope.labelPadding = false;
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Performance: Chromium command-line flags (must be set before app.ready)
+// Inspired by VS Code's Electron optimizations
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Enable GPU rasterization for smoother rendering
+app.commandLine.appendSwitch("enable-gpu-rasterization");
+
+// Enable zero-copy rasterization for reduced memory overhead
+app.commandLine.appendSwitch("enable-zero-copy");
+
+// Ignore GPU blocklist — use GPU even on "unsupported" configs (VS Code does this)
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
+// Prevent Chromium from throttling the renderer process when window is not focused
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+
+// Enable smooth scrolling at Chromium level
+app.commandLine.appendSwitch("enable-smooth-scrolling");
+
 const logger = log.scope("main");
 
 // Load environment variables from .env file
@@ -209,6 +229,8 @@ const createWindow = () => {
     minWidth: 800,
     height: windowState?.height || 700,
     minHeight: 500,
+    // Show window only after content is rendered to prevent white flash (VS Code pattern)
+    show: false,
     titleBarStyle: "hidden",
     titleBarOverlay: false,
     trafficLightPosition: {
@@ -219,6 +241,13 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
+      // Enable V8 code caching — compiles and caches JS bytecode immediately
+      // instead of waiting for hot paths. Dramatically faster subsequent loads.
+      v8CacheOptions: "bypassHeatCheck",
+      // Disable spellcheck to reduce CPU overhead (we handle it ourselves)
+      spellcheck: false,
+      // Prevent Chromium from throttling timers/animations when window loses focus
+      backgroundThrottling: false,
     },
     icon: path.join(app.getAppPath(), "assets/icon/logo.png"),
   });
@@ -229,6 +258,11 @@ const createWindow = () => {
       path.join(__dirname, "../renderer/main_window/index.html"),
     );
   }
+
+  // Show window once content is rendered (prevents white flash on startup)
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
 
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {

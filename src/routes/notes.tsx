@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { createRoute } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 
@@ -8,7 +9,7 @@ export const notesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/notes",
   component: () => (
-    <Suspense>
+    <Suspense fallback={<PageLoader />}>
       <NotesPage />
     </Suspense>
   ),

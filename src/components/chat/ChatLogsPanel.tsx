@@ -281,7 +281,7 @@ export function ChatLogsPanel({ chatId, isOpen, onClose }: ChatLogsPanelProps) {
                         </span>
                         <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
+                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-[width] duration-300"
                             style={{
                               width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
                             }}

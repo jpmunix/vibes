@@ -21,7 +21,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import {
   Tooltip,
@@ -40,6 +40,18 @@ interface ChatMessageProps {
   message: Message;
   isLastMessage: boolean;
 }
+// Hoisted to module level — pure function, no component state needed
+const formatTimestamp = (timestamp: string | Date) => {
+  const now = new Date();
+  const messageTime = new Date(timestamp);
+  const diffInHours =
+    (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
+  if (diffInHours < 24) {
+    return formatDistanceToNow(messageTime, { addSuffix: true });
+  } else {
+    return format(messageTime, "MMM d, yyyy 'at' h:mm a");
+  }
+};
 
 const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
@@ -54,9 +66,9 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     : false;
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
-  const handleCopyFormatted = async () => {
+  const handleCopyFormatted = useCallback(async () => {
     await copyMessageContent(message.content);
-  };
+  }, [copyMessageContent, message.content]);
   const loadingPhrases = useMemo(
     () => [
       "Analizando contexto",
@@ -117,18 +129,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     };
   }, []);
 
-  // Format the message timestamp
-  const formatTimestamp = (timestamp: string | Date) => {
-    const now = new Date();
-    const messageTime = new Date(timestamp);
-    const diffInHours =
-      (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
-    if (diffInHours < 24) {
-      return formatDistanceToNow(messageTime, { addSuffix: true });
-    } else {
-      return format(messageTime, "MMM d, yyyy 'at' h:mm a");
-    }
-  };
+
 
   return (
     <div

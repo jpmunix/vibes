@@ -39,6 +39,13 @@ export default function ChatPage() {
 
   const autoStart = autoStartChatId === chatId;
 
+  // Redirect to home if no app is selected
+  useEffect(() => {
+    if (!selectedAppId && !loading) {
+      navigate({ to: "/", replace: true });
+    }
+  }, [selectedAppId, loading, navigate]);
+
   useEffect(() => {
     if (!chatId && chats.length && !loading) {
       setSelectedAppId(chats[0].appId);
@@ -108,7 +115,7 @@ export default function ChatPage() {
           id="preview-panel"
           minSize={20}
           className={cn(
-            !isResizing && "transition-all duration-100 ease-in-out",
+            !isResizing && "transition-[opacity] duration-150 ease-in-out",
           )}
         >
           <PreviewPanel />

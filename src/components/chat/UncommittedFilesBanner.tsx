@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSettings } from "@/hooks/useSettings";
 import {
   FileWarning,
   Plus,
@@ -82,11 +83,42 @@ function generateDefaultCommitMessage(files: UncommittedFile[]): string {
 }
 
 export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
+  const { settings } = useSettings();
   const { uncommittedFiles, hasUncommittedFiles, isLoading } =
     useUncommittedFiles(appId);
   const { commitChanges, isCommitting } = useCommitChanges();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
+  const autoCommitTriggeredRef = useRef(false);
+
+  // Auto-commit silently when autoApproveChanges is enabled
+  useEffect(() => {
+    if (
+      settings?.autoApproveChanges &&
+      hasUncommittedFiles &&
+      !isCommitting &&
+      !autoCommitTriggeredRef.current &&
+      appId
+    ) {
+      autoCommitTriggeredRef.current = true;
+      const message = generateDefaultCommitMessage(uncommittedFiles);
+      commitChanges({ appId, message }).finally(() => {
+        autoCommitTriggeredRef.current = false;
+      });
+    }
+  }, [
+    settings?.autoApproveChanges,
+    hasUncommittedFiles,
+    isCommitting,
+    appId,
+    uncommittedFiles,
+    commitChanges,
+  ]);
+
+  // Don't show banner when auto-approve is enabled
+  if (settings?.autoApproveChanges) {
+    return null;
+  }
 
   if (!appId || isLoading || !hasUncommittedFiles) {
     return null;
@@ -190,13 +222,13 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
                       className={cn(
                         "text-xs px-1.5 py-0.5 rounded",
                         file.status === "added" &&
-                          "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+                        "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
                         file.status === "modified" &&
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
                         file.status === "deleted" &&
-                          "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+                        "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
                         file.status === "renamed" &&
-                          "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                        "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
                       )}
                     >
                       {getStatusLabel(file.status)}

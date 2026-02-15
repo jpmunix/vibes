@@ -387,7 +387,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             size="sm"
             onClick={handleSummarize}
             disabled={isSummarizing}
-            className="gap-2 rounded-2xl hover:bg-amber-500/5 hover:border-amber-500/30 transition-all active:scale-95 group min-w-[100px]"
+            className="gap-2 rounded-2xl hover:bg-amber-500/5 hover:border-amber-500/30 transition-colors active:scale-95 group min-w-[100px]"
           >
             {isSummarizing ? (
               <Loader2 size={14} className="text-amber-500 animate-spin" />
@@ -574,13 +574,13 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                 </div>
               </div>
 
-              <div className="absolute -right-2 top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
+              <div className="absolute -right-2 top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100">
                 {m.role === "user" && !isStreaming && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
                       handleEditMessage(m);
@@ -593,7 +593,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={(e) => {
                     e.preventDefault();
                     handleDeleteMessage(m.id);
@@ -646,7 +646,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             </div>
           )}
 
-          <div className="flex items-end gap-3 bg-secondary/30 rounded-3xl p-2 pl-4 border border-border/50 focus-within:border-primary/40 focus-within:bg-secondary/50 transition-all shadow-sm">
+          <div className="flex items-end gap-3 bg-secondary/30 rounded-3xl p-2 pl-4 border border-border/50 focus-within:border-primary/40 focus-within:bg-secondary/50 transition-[border-color,background-color] shadow-sm">
             <div className="flex-shrink-0 mb-1">
               <InjectedItemPicker
                 onSelect={(item) => setInjectedItems((prev) => [...prev, item])}
@@ -675,7 +675,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             <Button
               type="button"
               size="icon"
-              className={`rounded-full h-10 w-10 flex-shrink-0 shadow-lg transition-all active:scale-95 ${isStreaming
+              className={`rounded-full h-10 w-10 flex-shrink-0 shadow-lg transition-colors active:scale-95 ${isStreaming
                 ? "bg-destructive hover:bg-destructive/90 shadow-destructive/10"
                 : "bg-primary hover:bg-primary/90 shadow-primary/10"
                 }`}

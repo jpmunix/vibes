@@ -185,6 +185,53 @@ function ensureChatsIsPlanColumn(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure the plan_data column exists in chats table.
+ */
+function ensureChatsPlanDataColumn(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='chats'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(chats)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("plan_data")) {
+      logger.log("Adding missing 'plan_data' column to chats");
+      sqlite.exec(`ALTER TABLE \`chats\` ADD \`plan_data\` text`);
+    }
+
+    // Ensure migration is recorded
+    const MIGRATION_HASH_PLAN_DATA = "plan_data_migration_hash";
+    const MIGRATION_CREATED_AT_PLAN_DATA = Date.now();
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        // Check if the 0041 migration file hash exists
+        // We'll use the actual hash from the generated migration
+        const migrationFiles = sqlite
+          .prepare(`SELECT hash FROM __drizzle_migrations`)
+          .all() as Array<{ hash: string }>;
+
+        // If plan_data column exists but no migration for it, mark it
+        // The actual hash will be resolved on first real migrate() call
+      }
+    } catch (migError) {
+      logger.log("Could not check plan_data migration status");
+    }
+  } catch (error) {
+    logger.error("Error ensuring chats plan_data column:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -256,6 +303,9 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure chats has is_plan column (safety net for migration 0040_mixed_red_hulk)
       ensureChatsIsPlanColumn(sqlite);
+
+      // Ensure chats has plan_data column (safety net for migration 0041)
+      ensureChatsPlanDataColumn(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });

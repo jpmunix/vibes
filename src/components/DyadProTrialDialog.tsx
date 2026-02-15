@@ -89,7 +89,7 @@ export function DyadProTrialDialog({
           <div className="mt-6 space-y-3">
             <Button
               onClick={handleStartTrial}
-              className="w-full bg-violet-600 py-5 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:bg-violet-500 hover:shadow-xl hover:shadow-violet-500/40 active:scale-[0.98]"
+              className="w-full bg-violet-600 py-5 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-[background-color,box-shadow] hover:bg-violet-500 hover:shadow-xl hover:shadow-violet-500/40 active:scale-[0.98]"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               Comenzar prueba gratuita

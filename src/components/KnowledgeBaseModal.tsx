@@ -565,7 +565,7 @@ export function KnowledgeBaseModal({
                                 return (
                                     <div
                                         key={entry.id}
-                                        className={`flex items-start gap-2 p-2 rounded-md border text-sm transition-all ${hasHealthFlag
+                                        className={`flex items-start gap-2 p-2 rounded-md border text-sm transition-colors ${hasHealthFlag
                                             ? isNoise
                                                 ? "border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20"
                                                 : isContradiction

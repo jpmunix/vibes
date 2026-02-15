@@ -12,6 +12,7 @@ import path from "node:path";
 import { getDyadAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
+import net from "node:net";
 
 // Import our utility modules
 import { withLock } from "../utils/lock_utils";
@@ -158,6 +159,10 @@ let proxyWorker: Worker | null = null;
 // Track proxy URLs per app to enable re-emission when the app is already running
 const proxyUrlByApp = new Map<number, { proxyUrl: string; originalUrl: string }>();
 
+// Track apps that have already attempted auto-recovery for missing modules
+// to prevent infinite restart loops. Cleared on user-initiated restarts.
+const autoRecoveryAttempted = new Set<number>();
+
 // Needed, otherwise electron in MacOS/Linux will not be able
 // to find node/pnpm.
 fixPath();
@@ -284,6 +289,9 @@ Details: ${details || "n/a"}
     appId,
     isNeon,
     event,
+    appPath,
+    installCommand,
+    startCommand,
   });
 }
 
@@ -292,12 +300,85 @@ function listenToProcess({
   appId,
   isNeon,
   event,
+  appPath,
+  installCommand,
+  startCommand,
 }: {
   process: ChildProcess;
   appId: number;
   isNeon: boolean;
   event: Electron.IpcMainInvokeEvent;
+  appPath: string;
+  installCommand?: string | null;
+  startCommand?: string | null;
 }) {
+  // Buffer to accumulate stderr output for missing module detection on crash
+  let stderrBuffer = "";
+  let proxyStarted = false;
+
+  // Helper to start proxy and emit events - avoids duplication between stdout and polling
+  const startProxyForApp = async (targetUrl: string) => {
+    if (proxyStarted) return;
+    proxyStarted = true;
+
+    const proxyPort = getProxyPort(appId);
+
+    // Use existing proxy worker logic to prevent multiple instances
+    if (proxyWorker) {
+      logger.info(`Terminating existing proxy worker for app ${appId}`);
+      await proxyWorker.terminate();
+      proxyWorker = null;
+    }
+
+    try {
+      proxyWorker = await startProxy(targetUrl, {
+        port: proxyPort,
+        onStarted: (proxyUrl) => {
+          // Store the proxy URL for this app for later re-emission
+          proxyUrlByApp.set(appId, { proxyUrl, originalUrl: targetUrl });
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${targetUrl}]`,
+            appId,
+          });
+        },
+        onUpstreamRecovered: () => {
+          logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[dyad-proxy-server]upstream-recovered`,
+            appId,
+          });
+        },
+      });
+    } catch (err) {
+      logger.error(`Failed to start proxy for app ${appId}:`, err);
+    }
+  };
+
+  // Poll for port open status to detect apps that don't log their URL (e.g. default Express/debug)
+  const pollingInterval = setInterval(async () => {
+    if (proxyStarted) {
+      clearInterval(pollingInterval);
+      return;
+    }
+
+    // Ensure we are still monitoring the correct process
+    if (runningApps.get(appId)?.process?.pid !== spawnedProcess.pid) {
+      clearInterval(pollingInterval);
+      return;
+    }
+
+    const appPort = getAppPort(appId);
+    const isOpen = await checkPortOpen(appPort);
+
+    if (isOpen && !proxyStarted) {
+      logger.info(`[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`);
+      clearInterval(pollingInterval);
+      await startProxyForApp(`http://localhost:${appPort}`);
+    }
+  }, 1000);
+
   // Log output
   spawnedProcess.stdout?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
@@ -347,45 +428,14 @@ function listenToProcess({
 
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
-        const proxyPort = getProxyPort(appId);
-
-        // Use existing proxy worker logic to prevent multiple instances
-        if (proxyWorker) {
-          logger.info(`Terminating existing proxy worker for app ${appId}`);
-          await proxyWorker.terminate();
-          proxyWorker = null;
-        }
-
-        try {
-          proxyWorker = await startProxy(urlMatch[1], {
-            port: proxyPort,
-            onStarted: (proxyUrl) => {
-              // Store the proxy URL for this app for later re-emission
-              proxyUrlByApp.set(appId, { proxyUrl, originalUrl: urlMatch[1] });
-              safeSend(event.sender, "app:output", {
-                type: "stdout",
-                message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${urlMatch[1]}]`,
-                appId,
-              });
-            },
-            onUpstreamRecovered: () => {
-              logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
-              safeSend(event.sender, "app:output", {
-                type: "stdout",
-                message: `[dyad-proxy-server]upstream-recovered`,
-                appId,
-              });
-            },
-          });
-        } catch (err) {
-          logger.error(`Failed to start proxy for app ${appId}:`, err);
-        }
+        await startProxyForApp(urlMatch[1]);
       }
     }
   });
 
   spawnedProcess.stderr?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
+    stderrBuffer += message;
     logger.error(
       `App ${appId} (PID: ${spawnedProcess.pid}) stderr: ${message}`,
     );
@@ -408,14 +458,44 @@ function listenToProcess({
 
   // Handle process exit/close
   spawnedProcess.on("close", (code, signal) => {
+    clearInterval(pollingInterval); // Stop polling
     logger.log(
       `App ${appId} (PID: ${spawnedProcess.pid}) process closed with code ${code}, signal ${signal}.`,
     );
     removeAppIfCurrentProcess(appId, spawnedProcess);
+
+    // Auto-recovery: if the process crashed with a missing module error,
+    // delete node_modules and restart the app (which will re-run npm install).
+    if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
+      const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;
+      if (missingModulePattern.test(stderrBuffer)) {
+        logger.info(
+          `[AutoRecovery] App ${appId} crashed with missing module error. Attempting auto-recovery...`,
+        );
+        autoRecoveryAttempted.add(appId);
+
+        safeSend(event.sender, "app:output", {
+          type: "stderr",
+          message:
+            "[vibes] Módulo faltante detectado. Reinstalando dependencias automáticamente...",
+          appId,
+        });
+
+        handleMissingModuleRecovery({
+          appId,
+          appPath,
+          event,
+          isNeon,
+          installCommand,
+          startCommand,
+        });
+      }
+    }
   });
 
   // Handle errors during process lifecycle (e.g., command not found)
   spawnedProcess.on("error", (err) => {
+    clearInterval(pollingInterval); // Stop polling
     logger.error(
       `Error in app ${appId} (PID: ${spawnedProcess.pid}) process: ${err.message}`,
     );
@@ -423,6 +503,59 @@ function listenToProcess({
     // Note: We don't throw here as the error is asynchronous. The caller got a success response already.
     // Consider adding ipcRenderer event emission to notify UI of the error.
   });
+}
+
+/**
+ * Auto-recovery helper: deletes node_modules and re-executes the app.
+ * Called when a process crashes with a MODULE_NOT_FOUND error.
+ */
+async function handleMissingModuleRecovery({
+  appId,
+  appPath,
+  event,
+  isNeon,
+  installCommand,
+  startCommand,
+}: {
+  appId: number;
+  appPath: string;
+  event: Electron.IpcMainInvokeEvent;
+  isNeon: boolean;
+  installCommand?: string | null;
+  startCommand?: string | null;
+}) {
+  try {
+    const nodeModulesPath = path.join(appPath, "node_modules");
+    if (fs.existsSync(nodeModulesPath)) {
+      logger.info(
+        `[AutoRecovery] Removing node_modules for app ${appId} at ${nodeModulesPath}`,
+      );
+      await fsPromises.rm(nodeModulesPath, { recursive: true, force: true });
+      logger.info(
+        `[AutoRecovery] Successfully removed node_modules for app ${appId}`,
+      );
+    }
+
+    // Clean up the port before restarting
+    await cleanUpPort(getAppPort(appId));
+
+    logger.info(`[AutoRecovery] Re-executing app ${appId}...`);
+    await executeApp({
+      appPath,
+      appId,
+      event,
+      isNeon,
+      installCommand,
+      startCommand,
+    });
+  } catch (error) {
+    logger.error(`[AutoRecovery] Failed to recover app ${appId}:`, error);
+    safeSend(event.sender, "app:output", {
+      type: "stderr",
+      message: `[vibes] Error durante la recuperación automática: ${error}`,
+      appId,
+    });
+  }
 }
 
 async function executeAppInDocker({
@@ -607,6 +740,9 @@ ${errorOutput || "(empty)"}`,
     appId,
     isNeon,
     event,
+    appPath,
+    installCommand,
+    startCommand,
   });
 }
 
@@ -617,6 +753,26 @@ async function killProcessOnPort(port: number): Promise<void> {
   } catch {
     // Ignore if nothing was running on that port
   }
+}
+
+async function checkPortOpen(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(200); // Short timeout for quick checks
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.connect(port, "127.0.0.1");
+  });
 }
 
 // Helper to stop any Docker containers publishing a given host port
@@ -1133,6 +1289,8 @@ export function registerAppHandlers() {
   createTypedHandler(appContracts.restartApp, async (event, params) => {
     const { appId, removeNodeModules } = params;
     logger.log(`Restarting app ${appId}`);
+    // Clear auto-recovery flag so the next start cycle gets a fresh attempt
+    autoRecoveryAttempted.delete(appId);
     return withLock(appId, async () => {
       try {
         // First stop the app if it's running
@@ -1426,6 +1584,30 @@ export function registerAppHandlers() {
           error,
         );
         throw new Error(`Failed to toggle favorite status: ${error.message}`);
+      }
+    });
+  });
+
+  createTypedHandler(appContracts.updateAppCommands, async (_, params) => {
+    const { appId, installCommand, startCommand } = params;
+    return withLock(appId, async () => {
+      try {
+        await db
+          .update(apps)
+          .set({
+            installCommand: installCommand?.trim() || null,
+            startCommand: startCommand?.trim() || null,
+          })
+          .where(eq(apps.id, appId));
+        logger.info(
+          `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
+        );
+      } catch (error: any) {
+        logger.error(
+          `Error updating commands for app ID ${appId}:`,
+          error,
+        );
+        throw new Error(`Failed to update app commands: ${error.message}`);
       }
     });
   });
@@ -1733,6 +1915,235 @@ export function registerAppHandlers() {
       logger.error(`Error sending response to app ${appId}:`, error);
       throw new Error(`Failed to send response to app: ${error.message}`);
     }
+  });
+
+  // Track running shell command processes per app
+  const runningShellCommands = new Map<number, ChildProcess>();
+  // Track current working directory per app for persistent cd
+  const shellCwdMap = new Map<number, string>();
+
+  createTypedHandler(appContracts.executeShellCommand, async (_, params) => {
+    const { appId, command, timeoutMs } = params;
+
+    // Get app path
+    const appRecord = await db.query.apps.findFirst({
+      where: eq(apps.id, appId),
+    });
+
+    if (!appRecord) {
+      throw new Error(`App ${appId} not found`);
+    }
+
+    const appPath = getDyadAppPath(appRecord.path);
+    const currentCwd = shellCwdMap.get(appId) || appPath;
+
+    // Kill any previously running shell command for this app
+    const existingProcess = runningShellCommands.get(appId);
+    if (existingProcess && !existingProcess.killed) {
+      try {
+        if (existingProcess.pid) {
+          process.kill(-existingProcess.pid, "SIGTERM");
+        }
+      } catch {
+        // Process may already be dead
+      }
+      runningShellCommands.delete(appId);
+    }
+
+    const trimmedCommand = command.trim();
+
+    // Handle "cd" specially to track CWD changes
+    const cdMatch = trimmedCommand.match(/^cd\s+(.*)/);
+    if (cdMatch || trimmedCommand === "cd") {
+      const target = cdMatch?.[1]?.trim() || process.env.HOME || "/";
+      // Resolve the new CWD by running cd + pwd
+      const resolveCmd = `cd ${JSON.stringify(currentCwd)} && cd ${target} && pwd`;
+
+      return new Promise((resolve) => {
+        let stdout = "";
+        let stderr = "";
+
+        const p = spawn(resolveCmd, [], {
+          cwd: appPath,
+          shell: true,
+          stdio: "pipe",
+        });
+
+        p.stdout?.on("data", (data) => { stdout += data.toString(); });
+        p.stderr?.on("data", (data) => { stderr += data.toString(); });
+
+        p.on("close", (code) => {
+          if (code === 0 && stdout.trim()) {
+            const newCwd = stdout.trim();
+            shellCwdMap.set(appId, newCwd);
+            resolve({
+              stdout: "",
+              stderr: "",
+              exitCode: 0,
+              cwd: newCwd,
+            });
+          } else {
+            resolve({
+              stdout: "",
+              stderr: stderr || `cd: ${target}: No existe el directorio`,
+              exitCode: code ?? 1,
+              cwd: currentCwd,
+            });
+          }
+        });
+
+        p.on("error", (err) => {
+          resolve({
+            stdout: "",
+            stderr: err.message,
+            exitCode: 1,
+            cwd: currentCwd,
+          });
+        });
+      });
+    }
+
+    // For all other commands, execute in the tracked CWD
+    return new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+
+      const shellProcess = spawn(trimmedCommand, [], {
+        cwd: currentCwd,
+        shell: true,
+        stdio: "pipe",
+        detached: true,
+      });
+
+      runningShellCommands.set(appId, shellProcess);
+
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          try {
+            if (shellProcess.pid) {
+              process.kill(-shellProcess.pid, "SIGTERM");
+            }
+          } catch {
+            // ignore
+          }
+          runningShellCommands.delete(appId);
+          resolve({
+            stdout,
+            stderr,
+            exitCode: null,
+            error: `Command timed out after ${timeoutMs}ms`,
+            cancelled: false,
+            cwd: currentCwd,
+          });
+        }
+      }, timeoutMs);
+
+      shellProcess.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      shellProcess.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      shellProcess.on("close", (code) => {
+        clearTimeout(timeout);
+        runningShellCommands.delete(appId);
+        if (!settled) {
+          settled = true;
+          resolve({
+            stdout,
+            stderr,
+            exitCode: code,
+            cwd: currentCwd,
+          });
+        }
+      });
+
+      shellProcess.on("error", (err) => {
+        clearTimeout(timeout);
+        runningShellCommands.delete(appId);
+        if (!settled) {
+          settled = true;
+          resolve({
+            stdout,
+            stderr,
+            exitCode: null,
+            error: err.message,
+            cwd: currentCwd,
+          });
+        }
+      });
+    });
+  });
+
+  createTypedHandler(appContracts.cancelShellCommand, async (_, params) => {
+    const { appId } = params;
+    const shellProcess = runningShellCommands.get(appId);
+
+    if (!shellProcess || shellProcess.killed) {
+      return;
+    }
+
+    try {
+      if (shellProcess.pid) {
+        process.kill(-shellProcess.pid, "SIGTERM");
+      }
+    } catch (error: any) {
+      logger.warn(`Error killing shell command for app ${appId}:`, error.message);
+    }
+
+    runningShellCommands.delete(appId);
+  });
+
+  createTypedHandler(appContracts.getShellCompletions, async (_, params) => {
+    const { appId, partial } = params;
+
+    const appRecord = await db.query.apps.findFirst({
+      where: eq(apps.id, appId),
+    });
+
+    if (!appRecord) {
+      return { completions: [] };
+    }
+
+    const appPath = getDyadAppPath(appRecord.path);
+    const currentCwd = shellCwdMap.get(appId) || appPath;
+
+    return new Promise((resolve) => {
+      // Use compgen for bash-style completion of files/directories
+      const escapedPartial = partial.replace(/'/g, "'\\''");
+      const cmd = `cd ${JSON.stringify(currentCwd)} && compgen -f -- '${escapedPartial}' 2>/dev/null | head -20`;
+
+      const p = spawn(cmd, [], {
+        cwd: currentCwd,
+        shell: true,
+        stdio: "pipe",
+      });
+
+      let stdout = "";
+      p.stdout?.on("data", (data) => { stdout += data.toString(); });
+
+      p.on("close", () => {
+        const completions = stdout
+          .trim()
+          .split("\n")
+          .filter((line) => line.length > 0);
+        resolve({ completions });
+      });
+
+      p.on("error", () => {
+        resolve({ completions: [] });
+      });
+
+      // Timeout for completion
+      setTimeout(() => {
+        try { p.kill(); } catch { /* ignore */ }
+        resolve({ completions: [] });
+      }, 3000);
+    });
   });
 
   createTypedHandler(appContracts.searchAppFiles, async (_, params) => {
@@ -2131,10 +2542,15 @@ function getCommand({
   installCommand?: string | null;
   startCommand?: string | null;
 }) {
+  const port = getAppPort(appId);
   const hasCustomCommands = !!installCommand?.trim() && !!startCommand?.trim();
-  return hasCustomCommands
-    ? `${installCommand!.trim()} && ${startCommand!.trim()}`
-    : getDefaultCommand(appId);
+  if (hasCustomCommands) {
+    // Replace {port} placeholder with the actual assigned port
+    const install = installCommand!.trim().replace(/\{port\}/g, String(port));
+    const start = startCommand!.trim().replace(/\{port\}/g, String(port));
+    return `${install} && ${start}`;
+  }
+  return getDefaultCommand(appId);
 }
 
 async function cleanUpPort(port: number) {

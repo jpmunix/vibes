@@ -152,7 +152,7 @@ export default function AiQueryLogsPage() {
                             variant="secondary"
                             size="sm"
                             onClick={loadLogs}
-                            className="rounded-xl font-bold h-10 px-5 text-sm shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            className="rounded-xl font-bold h-10 px-5 text-sm shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
                             disabled={isLoading}
                         >
                             <History className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -163,7 +163,7 @@ export default function AiQueryLogsPage() {
                             variant="outline"
                             size="sm"
                             onClick={handleExportZip}
-                            className="rounded-xl font-bold h-10 px-5 text-sm border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                            className="rounded-xl font-bold h-10 px-5 text-sm border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
                         >
                             <Download className="mr-2 h-4 w-4" />
                             Exportar ZIP
@@ -173,7 +173,7 @@ export default function AiQueryLogsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={handleClearLogs}
-                            className="rounded-xl font-bold h-10 px-5 text-sm text-destructive hover:bg-destructive/10 transition-all"
+                            className="rounded-xl font-bold h-10 px-5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Limpiar historial
@@ -301,19 +301,19 @@ export default function AiQueryLogsPage() {
 
                     <div className="flex-1 overflow-auto px-8 py-8 space-y-8 custom-scrollbar">
                         <div className="grid grid-cols-3 gap-6">
-                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
                                 <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Cpu className="h-3.5 w-3.5" /> Modelo Utilizado
                                 </p>
                                 <p className="font-bold text-lg text-foreground truncate">{selectedLog?.model}</p>
                             </div>
-                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
                                 <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Database className="h-3.5 w-3.5" /> Origen de Llamada
                                 </p>
                                 <p className="font-bold text-lg text-foreground capitalize truncate">{selectedLog?.queryType}</p>
                             </div>
-                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-all hover:bg-muted/50">
+                            <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
                                 <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <History className="h-3.5 w-3.5" /> Fecha y Hora
                                 </p>
@@ -334,7 +334,7 @@ export default function AiQueryLogsPage() {
                                 <Button
                                     variant="secondary"
                                     size="icon"
-                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all h-9 w-9 shadow-lg"
+                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.payload, null, 2));
                                         toast.success("Copiado al portapapeles");
@@ -356,7 +356,7 @@ export default function AiQueryLogsPage() {
                                 <Button
                                     variant="secondary"
                                     size="icon"
-                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all h-9 w-9 shadow-lg"
+                                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.response, null, 2));
                                         toast.success("Copiado al portapapeles");

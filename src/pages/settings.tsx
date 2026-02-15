@@ -523,7 +523,7 @@ export default function SettingsPage() {
         exportedAt: new Date().toISOString(),
         version: "1.0",
       };
-      
+
       const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
         type: "application/json",
       });
@@ -535,7 +535,7 @@ export default function SettingsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       showSuccess("Configuración exportada correctamente");
     } catch (err) {
       console.error("Export error:", err);
@@ -547,31 +547,31 @@ export default function SettingsPage() {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".json";
-    
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
+
       try {
         const text = await file.text();
         const data = JSON.parse(text);
-        
+
         // Validate the imported data
         if (!data.settings || typeof data.settings !== "object") {
           showError("Formato de archivo inválido");
           return;
         }
-        
+
         // Update all settings
         await updateSettings(data.settings);
-        
+
         showSuccess("Configuración importada correctamente. Recarga la página para ver todos los cambios.");
       } catch (err) {
         console.error("Import error:", err);
         showError("Error al importar la configuración. Verifica el formato del archivo.");
       }
     };
-    
+
     input.click();
   };
 
@@ -708,7 +708,7 @@ export default function SettingsPage() {
           {/* Integrations Section */}
           <div
             id="integrations"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "integrations"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "integrations"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -732,7 +732,7 @@ export default function SettingsPage() {
           {/* Agent v2 Permissions */}
           <div
             id="agent-permissions"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "agent-permissions"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "agent-permissions"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -754,7 +754,7 @@ export default function SettingsPage() {
           {/* Experiments Section */}
           <div
             id="experiments"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300 ${highlightedSection === "experiments"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "experiments"
               ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -787,7 +787,7 @@ export default function SettingsPage() {
           {/* Danger Zone */}
           <div
             id="danger-zone"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-all duration-300 ${highlightedSection === "danger-zone"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-[border-color,box-shadow] duration-300 ${highlightedSection === "danger-zone"
               ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
               : ""
               }`}
@@ -811,7 +811,7 @@ export default function SettingsPage() {
                   onClick={() => setIsResetDialogOpen(true)}
                   disabled={isResetting}
                   variant="outline"
-                  className="rounded-xl h-11 px-8 text-sm font-bold border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all active:scale-95 whitespace-nowrap"
+                  className="rounded-xl h-11 px-8 text-sm font-bold border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors active:scale-95 whitespace-nowrap"
                 >
                   {isResetting ? "Reseteando..." : "Resetear todo"}
                 </Button>
@@ -866,7 +866,7 @@ export function GeneralSettings({
     <div
       id="general-settings"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
         isHighlighted
           ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
           : "",
@@ -887,7 +887,7 @@ export function GeneralSettings({
                 key={option}
                 onClick={() => setTheme(option)}
                 className={cn(
-                  "px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
+                  "px-6 py-2.5 text-sm font-bold rounded-xl transition-colors duration-200",
                   theme === option
                     ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-black/5"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
@@ -969,7 +969,7 @@ export function GeneralSettings({
                     updateSettings({ themeIntensity: val });
                   }
                 }}
-                className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary group-hover:accent-primary/80 transition-all"
+                className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary group-hover:accent-primary/80"
               />
               <div
                 className="absolute left-1/2 -translate-x-1/2 w-1 h-4 bg-foreground/10 pointer-events-none rounded-full"
@@ -1001,7 +1001,7 @@ export function WorkflowSettings({
     <div
       id="workflow-settings"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
         isHighlighted
           ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
           : "",
@@ -1175,7 +1175,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
     <div
       id="stats-settings"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
         isHighlighted
           ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
           : "",
@@ -1330,7 +1330,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                     </span>
                     <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary rounded-full transition-all duration-300 flex items-center justify-end pr-4"
+                        className="h-full bg-primary rounded-full transition-[width] duration-300 flex items-center justify-end pr-4"
                         style={{
                           width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
                         }}
@@ -1384,7 +1384,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary transition-all duration-300"
+                        className="h-full bg-primary transition-[width] duration-300"
                         style={{
                           width: `${(stat.tokens / maxModelTokens) * 100}%`,
                         }}
@@ -1408,7 +1408,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   <button
                     key={`${entry.timestamp}-${entry.messageId}`}
                     onClick={() => setSelectedEntry(entry)}
-                    className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all border border-transparent hover:border-border group shadow-none hover:shadow-sm"
+                    className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-border group shadow-none hover:shadow-sm"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
@@ -1424,7 +1424,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                     <div className="flex items-center gap-4">
                       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-primary transition-all"
+                          className="h-full bg-primary transition-[width]"
                           style={{
                             width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
                           }}

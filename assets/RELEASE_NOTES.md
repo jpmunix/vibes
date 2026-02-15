@@ -3,6 +3,8 @@
 - Generacion del dossier + documentación + copia automática en mi cuenta de vibes (si estoy logueado)
 - Modo planificación
 - mejoras en los prompts generales, estados de la interfaz, manejo de errores
+- mejoras en la configuracion para añadir comandos específicos de arranque o reinstalacion para los proyectos
+- posibilidad de escribir rutas a mano en la barra de direcciones, con historial + detección de rutas existentes
 
 ### ✏️ Editor visual
 - **Editor visual de la página** mediante el icono de lápiz. Permite modificar textos, iconos, colores y tamaños directamente desde la interfaz, incluyendo el uso de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.

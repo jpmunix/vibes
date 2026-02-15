@@ -4,9 +4,10 @@ import {
   appConsoleEntriesAtom,
   previewErrorMessageAtom,
   previewCurrentUrlAtom,
+  routeHistoryAtom,
 } from "@/atoms/appAtoms";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -182,7 +183,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
             <button
               disabled={isStreaming}
               onClick={onAIFix}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-red-600 disabled:hover:to-red-700"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-red-600 disabled:hover:to-red-700"
             >
               <Sparkles size={16} />
               <span>Arreglar con IA</span>
@@ -222,7 +223,7 @@ const ExpandPreviewButton = () => {
           <button
             onClick={handleToggle}
             className={cn(
-              "p-1 rounded transition-all duration-200 dark:text-gray-300",
+              "p-1 rounded transition-colors duration-200 dark:text-gray-300",
               isExpanded
                 ? "bg-gray-200 dark:bg-gray-700 text-foreground"
                 : "hover:bg-gray-200 dark:hover:bg-gray-700",
@@ -303,6 +304,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   // Connection error tracking and auto-restart logic
   const [loadFailureCount, setLoadFailureCount] = useState(0);
   const [isAutoRestarting, setIsAutoRestarting] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(false);
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { addAttachments } = useAttachments();
@@ -320,6 +322,91 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   // Device mode state
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
   const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
+
+  // Address bar combobox state
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [urlInputValue, setUrlInputValue] = useState("/");
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const [routeHistory, setRouteHistory] = useAtom(routeHistoryAtom);
+
+  // Get current path from navigation history
+  const getCurrentPath = useCallback(() => {
+    try {
+      const currentUrl = navigationHistory[currentHistoryPosition];
+      if (currentUrl) return new URL(currentUrl).pathname;
+    } catch { }
+    return "/";
+  }, [navigationHistory, currentHistoryPosition]);
+
+  // Add a path to per-app route history
+  const addToHistory = useCallback(
+    (path: string) => {
+      if (!selectedAppId || path === "/") return;
+      setRouteHistory((prev) => {
+        const appHistory = prev[selectedAppId] || [];
+        // Remove if already exists (will re-add at top)
+        const filtered = appHistory.filter((p) => p !== path);
+        // Add to front, cap at 10
+        const updated = [path, ...filtered].slice(0, 10);
+        return { ...prev, [selectedAppId]: updated };
+      });
+    },
+    [selectedAppId, setRouteHistory],
+  );
+
+  // Remove a path from per-app route history
+  const removeFromHistory = useCallback(
+    (path: string) => {
+      if (!selectedAppId) return;
+      setRouteHistory((prev) => {
+        const appHistory = prev[selectedAppId] || [];
+        return {
+          ...prev,
+          [selectedAppId]: appHistory.filter((p) => p !== path),
+        };
+      });
+    },
+    [selectedAppId, setRouteHistory],
+  );
+
+  // Get filtered history and routes based on input
+  const appHistory = selectedAppId ? routeHistory[selectedAppId] || [] : [];
+  const filteredHistory = useMemo(() => {
+    if (!urlInputValue || urlInputValue === "/") return appHistory;
+    return appHistory.filter((p) =>
+      p.toLowerCase().includes(urlInputValue.toLowerCase()),
+    );
+  }, [appHistory, urlInputValue]);
+  const filteredRoutes = useMemo(() => {
+    if (!urlInputValue || urlInputValue === "/") return availableRoutes;
+    return availableRoutes.filter(
+      (r) =>
+        r.path.toLowerCase().includes(urlInputValue.toLowerCase()) ||
+        r.label.toLowerCase().includes(urlInputValue.toLowerCase()),
+    );
+  }, [availableRoutes, urlInputValue]);
+
+  // Handle submitting a URL from the address bar
+  const handleUrlSubmit = () => {
+    const path = urlInputValue.trim();
+    if (!path) return;
+    // Ensure path starts with /
+    const normalizedPath = path.startsWith("/") ? path : "/" + path;
+    navigateToRoute(normalizedPath);
+    addToHistory(normalizedPath);
+    setIsEditingUrl(false);
+  };
+
+  // Start editing the URL bar
+  const startEditingUrl = () => {
+    setUrlInputValue(getCurrentPath());
+    setIsEditingUrl(true);
+    // Focus and select after render
+    setTimeout(() => {
+      urlInputRef.current?.focus();
+      urlInputRef.current?.select();
+    }, 0);
+  };
 
   // Device configurations
   const deviceWidthConfig = {
@@ -1203,6 +1290,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
     setReloadKey((prevKey) => prevKey + 1);
     setErrorMessage(undefined);
+    setIsIframeLoading(true);
     // Reset visual editing state
     setVisualEditingSelectedComponent(null);
     setPendingChanges(new Map());
@@ -1218,6 +1306,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       const newUrl = `${baseUrl}${path}`;
 
       // Navigate to the URL
+      setIsIframeLoading(true);
       iframeRef.current.contentWindow.location.href = newUrl;
 
       // iframeRef.current.src = newUrl;
@@ -1231,6 +1320,22 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       setCurrentHistoryPosition(newHistory.length - 1);
       setCanGoBack(true);
       setCanGoForward(false);
+
+      // Preserve URL for tab switches / HMR remounts
+      if (selectedAppId) {
+        if (path === "/" || path === "") {
+          setPreservedUrls((prev) => {
+            const next = { ...prev };
+            delete next[selectedAppId];
+            return next;
+          });
+        } else {
+          setPreservedUrls((prev) => ({
+            ...prev,
+            [selectedAppId]: newUrl,
+          }));
+        }
+      }
     }
   };
 
@@ -1413,7 +1518,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     disabled={loading || !selectedAppId}
                     data-testid="preview-refresh-button"
                   >
-                    <RefreshCw size={16} />
+                    {isIframeLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={16} />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -1423,44 +1532,121 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             </TooltipProvider>
           </div>
 
-          {/* Address Bar with Routes Dropdown - using shadcn/ui dropdown-menu */}
+          {/* Address Bar - editable combobox with history */}
           <div className="relative flex-grow min-w-20">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
-                  <span
-                    className="truncate flex-1 mr-2 min-w-0"
-                    data-testid="preview-address-bar-path"
+            {isEditingUrl ? (
+              <>
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  value={urlInputValue}
+                  onChange={(e) => setUrlInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleUrlSubmit();
+                    } else if (e.key === "Escape") {
+                      setIsEditingUrl(false);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Don't close if clicking inside the suggestions dropdown
+                    if (e.relatedTarget?.closest("[data-address-suggestions]")) return;
+                    setIsEditingUrl(false);
+                  }}
+                  className="w-full px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 outline-none ring-2 ring-primary/50"
+                  data-testid="preview-address-bar-input"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {/* Suggestions dropdown */}
+                {(filteredHistory.length > 0 || filteredRoutes.length > 0) && (
+                  <div
+                    data-address-suggestions
+                    tabIndex={-1}
+                    className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md z-50 max-h-60 overflow-y-auto py-1"
                   >
-                    {navigationHistory[currentHistoryPosition]
-                      ? new URL(navigationHistory[currentHistoryPosition])
-                        .pathname
-                      : "/"}
-                  </span>
-                  <ChevronDown size={14} className="flex-shrink-0" />
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
-                {availableRoutes.length > 0 ? (
-                  availableRoutes.map((route) => (
-                    <DropdownMenuItem
-                      key={route.path}
-                      onClick={() => navigateToRoute(route.path)}
-                      className="flex justify-between"
-                    >
-                      <span>{route.label}</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">
-                        {route.path}
-                      </span>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>
-                    Loading routes...
-                  </DropdownMenuItem>
+                    {/* History section */}
+                    {filteredHistory.length > 0 && (
+                      <>
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Recientes
+                        </div>
+                        {filteredHistory.map((path) => (
+                          <div
+                            key={`hist-${path}`}
+                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground group"
+                          >
+                            <span
+                              className="truncate flex-1 min-w-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                navigateToRoute(path);
+                                setIsEditingUrl(false);
+                              }}
+                            >
+                              {path}
+                            </span>
+                            <button
+                              className="ml-2 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity flex-shrink-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeFromHistory(path);
+                              }}
+                              title="Eliminar del historial"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {/* Detected routes section */}
+                    {filteredRoutes.length > 0 && (
+                      <>
+                        {filteredHistory.length > 0 && (
+                          <div className="border-t border-border my-1" />
+                        )}
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Rutas detectadas
+                        </div>
+                        {filteredRoutes.map((route) => (
+                          <div
+                            key={`route-${route.path}`}
+                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              navigateToRoute(route.path);
+                              addToHistory(route.path);
+                              setIsEditingUrl(false);
+                            }}
+                          >
+                            <span>{route.label}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {route.path}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </>
+            ) : (
+              <div
+                className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0"
+                onClick={startEditingUrl}
+                data-testid="preview-address-bar-path"
+              >
+                <span className="truncate flex-1 mr-2 min-w-0">
+                  {getCurrentPath()}
+                </span>
+                {(availableRoutes.length > 0 || appHistory.length > 0) && (
+                  <ChevronDown size={14} className="flex-shrink-0 text-muted-foreground" />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -1636,6 +1822,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   setErrorMessage(undefined);
                   setLoadFailureCount(0);
                   setIsAutoRestarting(false);
+                  setIsIframeLoading(false);
 
                   console.log('[PreviewIframe] Successfully loaded iframe');
                   // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
@@ -1651,6 +1838,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   }
 
                   // Increment failure count
+                  setIsIframeLoading(false);
                   setLoadFailureCount((prev) => {
                     const newCount = prev + 1;
                     console.warn(`[PreviewIframe] Load failure ${newCount}`);

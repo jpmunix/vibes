@@ -117,6 +117,15 @@ export const RestartAppParamsSchema = z.object({
 });
 
 /**
+ * Schema for update app commands params.
+ */
+export const UpdateAppCommandsParamsSchema = z.object({
+  appId: z.number(),
+  installCommand: z.string().nullable(),
+  startCommand: z.string().nullable(),
+});
+
+/**
  * Schema for edit app file params.
  */
 export const EditAppFileParamsSchema = z.object({
@@ -146,6 +155,46 @@ export const ReadAppFileParamsSchema = z.object({
 export const RespondToAppInputParamsSchema = z.object({
   appId: z.number(),
   response: z.string(),
+});
+
+/**
+ * Schema for execute shell command params.
+ */
+export const ExecuteShellCommandParamsSchema = z.object({
+  appId: z.number(),
+  command: z.string(),
+  timeoutMs: z.number().optional().default(30000),
+});
+
+/**
+ * Schema for execute shell command result.
+ */
+export const ExecuteShellCommandResultSchema = z.object({
+  stdout: z.string(),
+  stderr: z.string(),
+  exitCode: z.number().nullable(),
+  error: z.string().optional(),
+  cancelled: z.boolean().optional(),
+  cwd: z.string().optional(),
+});
+
+/**
+ * Schema for cancel shell command params.
+ */
+export const CancelShellCommandParamsSchema = z.object({
+  appId: z.number(),
+});
+
+/**
+ * Schema for shell tab-completion params.
+ */
+export const GetShellCompletionsParamsSchema = z.object({
+  appId: z.number(),
+  partial: z.string(),
+});
+
+export const GetShellCompletionsResultSchema = z.object({
+  completions: z.array(z.string()),
 });
 
 /**
@@ -378,6 +427,29 @@ export const appContracts = {
     input: z.object({ appId: z.number() }),
     output: z.object({ title: z.string() }),
   }),
+  updateAppCommands: defineContract({
+    channel: "update-app-commands",
+    input: UpdateAppCommandsParamsSchema,
+    output: z.void(),
+  }),
+
+  executeShellCommand: defineContract({
+    channel: "execute-shell-command",
+    input: ExecuteShellCommandParamsSchema,
+    output: ExecuteShellCommandResultSchema,
+  }),
+
+  cancelShellCommand: defineContract({
+    channel: "cancel-shell-command",
+    input: CancelShellCommandParamsSchema,
+    output: z.void(),
+  }),
+
+  getShellCompletions: defineContract({
+    channel: "get-shell-completions",
+    input: GetShellCompletionsParamsSchema,
+    output: GetShellCompletionsResultSchema,
+  }),
 } as const;
 
 // =============================================================================
@@ -415,3 +487,12 @@ export type ChangeAppLocationResult = z.infer<
 export type ListAppsResponse = z.infer<typeof ListAppsResponseSchema>;
 export type RenameBranchParams = z.infer<typeof RenameBranchParamsSchema>;
 export type AppSearchResult = z.infer<typeof AppSearchResultSchema>;
+export type ExecuteShellCommandParams = z.infer<
+  typeof ExecuteShellCommandParamsSchema
+>;
+export type ExecuteShellCommandResult = z.infer<
+  typeof ExecuteShellCommandResultSchema
+>;
+export type CancelShellCommandParams = z.infer<
+  typeof CancelShellCommandParamsSchema
+>;

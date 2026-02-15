@@ -700,7 +700,7 @@ export function GithubBranchManager({
         </p>
       )}
 
-      <Card className="transition-all duration-200">
+      <Card className="transition-colors duration-200">
         <CardHeader
           className="p-2 cursor-pointer"
           onClick={() => setIsExpanded((prev) => !prev)}

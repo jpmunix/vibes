@@ -132,7 +132,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <input
             placeholder="Buscar chats, notas o tareas..."
-            className="w-full bg-accent/50 border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm transition-all shadow-inner outline-none"
+            className="w-full bg-accent/50 border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm transition-[box-shadow] shadow-inner outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

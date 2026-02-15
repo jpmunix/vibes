@@ -80,8 +80,8 @@ function base64ToFile(
   return new File([blob], filename, { type: mimeType });
 }
 
-// Footer component for Virtuoso - receives context via props
-function FooterComponent({ context }: { context?: FooterContext }) {
+// Footer component for Virtuoso - receives context via props (memoized to skip unnecessary renders)
+const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
   if (!context) return null;
 
   const {
@@ -391,7 +391,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
       <div ref={messagesEndRef} />
     </>
   );
-}
+});
 
 export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
   function MessagesList(

@@ -110,7 +110,7 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
                                             key={icon.name}
                                             onClick={() => handleIconClick(icon.name)}
                                             className={`
-                                                flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all
+                                                flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors
                                                 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700
                                                 ${isSelected
                                                     ? "bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400 dark:ring-blue-600"

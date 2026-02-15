@@ -126,7 +126,7 @@ export function UserMessageContent({
                                 key={index}
                                 onClick={() => handleImageClick(dataUrl)}
                                 style={{ width: 96, height: 96, flexShrink: 0 }}
-                                className="relative group rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all duration-200 hover:shadow-md cursor-pointer"
+                                className="relative group rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
                                 title="Click para ampliar"
                             >
                                 <img

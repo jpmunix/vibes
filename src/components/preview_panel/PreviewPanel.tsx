@@ -6,30 +6,58 @@ import {
   selectedAppIdAtom,
 } from "../../atoms/appAtoms";
 
-import { CodeView } from "./CodeView";
+import React, { Suspense } from "react";
+
+// Lazy load CodeView to defer Monaco Editor initialization (~3.4s CPU savings)
+// Monaco is only needed when user clicks the "Code" tab
+const CodeView = React.lazy(() =>
+  import("./CodeView").then((m) => ({ default: m.CodeView }))
+);
+
 import { PreviewIframe } from "./PreviewIframe";
 import { Problems } from "./Problems";
-import { ConfigurePanel } from "./ConfigurePanel";
 import { ChevronDown, ChevronUp, Logs } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Console } from "./Console";
 import { ConsoleTerminal } from "./ConsoleTerminal";
 import { useRunApp } from "@/hooks/useRunApp";
-import { PublishPanel } from "./PublishPanel";
-import { SecurityPanel } from "./SecurityPanel";
 import { useSupabase } from "@/hooks/useSupabase";
 import { VersionPane } from "../chat/VersionPane";
-import { GitPanel } from "../GitPanel";
-import { DatabasePanel } from "../database/DatabasePanel";
 import { cn } from "@/lib/utils";
-import { NaturalEditingPanel } from "./NaturalEditingPanel";
 import {
   naturalEditingPanelOpenAtom,
   visualEditingSelectedComponentAtom,
   previewIframeRefAtom,
 } from "@/atoms/previewAtoms";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
+
+// Lazy load heavy panels — they are only needed when user switches to their specific tab
+const ConfigurePanel = React.lazy(() =>
+  import("./ConfigurePanel").then((m) => ({ default: m.ConfigurePanel }))
+);
+const SecurityPanel = React.lazy(() =>
+  import("./SecurityPanel").then((m) => ({ default: m.SecurityPanel }))
+);
+const PublishPanel = React.lazy(() =>
+  import("./PublishPanel").then((m) => ({ default: m.PublishPanel }))
+);
+const GitPanel = React.lazy(() =>
+  import("../GitPanel").then((m) => ({ default: m.GitPanel }))
+);
+const DatabasePanel = React.lazy(() =>
+  import("../database/DatabasePanel").then((m) => ({ default: m.DatabasePanel }))
+);
+const NaturalEditingPanel = React.lazy(() =>
+  import("./NaturalEditingPanel").then((m) => ({ default: m.NaturalEditingPanel }))
+);
+
+// Lightweight fallback for lazy-loaded panels
+const LazyFallback = ({ text = "Cargando..." }: { text?: string }) => (
+  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+    {text}
+  </div>
+);
 
 interface ConsoleHeaderProps {
   isOpen: boolean;
@@ -209,9 +237,11 @@ export function PreviewPanel() {
                   onClose={() => setPreviewMode("preview")}
                 />
               ) : previewMode === "git" ? (
-                <GitPanel
-                  onClose={() => setPreviewMode("preview")}
-                />
+                <Suspense fallback={<LazyFallback />}>
+                  <GitPanel
+                    onClose={() => setPreviewMode("preview")}
+                  />
+                </Suspense>
               ) : previewMode === "preview" ? (
                 <div className="flex h-full">
                   <div className="flex-1 min-w-0 h-full">
@@ -219,22 +249,34 @@ export function PreviewPanel() {
                   </div>
                   {naturalEditingPanelOpen &&
                     visualEditingSelectedComponent && (
-                      <NaturalEditingPanel
-                        selectedComponent={visualEditingSelectedComponent}
-                        iframeRef={previewIframeRef}
-                      />
+                      <Suspense fallback={<LazyFallback />}>
+                        <NaturalEditingPanel
+                          selectedComponent={visualEditingSelectedComponent}
+                          iframeRef={previewIframeRef}
+                        />
+                      </Suspense>
                     )}
                 </div>
               ) : previewMode === "code" ? (
-                <CodeView loading={loading} app={app} />
+                <Suspense fallback={<LazyFallback text="Cargando editor..." />}>
+                  <CodeView loading={loading} app={app} />
+                </Suspense>
               ) : previewMode === "configure" ? (
-                <ConfigurePanel />
+                <Suspense fallback={<LazyFallback />}>
+                  <ConfigurePanel />
+                </Suspense>
               ) : previewMode === "publish" ? (
-                <PublishPanel />
+                <Suspense fallback={<LazyFallback />}>
+                  <PublishPanel />
+                </Suspense>
               ) : previewMode === "security" ? (
-                <SecurityPanel />
+                <Suspense fallback={<LazyFallback />}>
+                  <SecurityPanel />
+                </Suspense>
               ) : previewMode === "database" ? (
-                <DatabasePanel />
+                <Suspense fallback={<LazyFallback />}>
+                  <DatabasePanel />
+                </Suspense>
               ) : (
                 <Problems />
               )}

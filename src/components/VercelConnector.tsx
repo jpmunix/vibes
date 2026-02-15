@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {} from "@/components/ui/dialog";
+import { } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -173,13 +173,12 @@ function ConnectedVercelConnector({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        deployment.readyState === "READY"
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deployment.readyState === "READY"
                           ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300"
                           : deployment.readyState === "BUILDING"
                             ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
                             : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                      }`}
+                        }`}
                     >
                       {deployment.readyState}
                     </span>
@@ -363,7 +362,7 @@ function UnconnectedVercelConnector({
     } catch (err: any) {
       setCreateProjectError(
         err.message ||
-          `Error al ${projectSetupMode === "create" ? "crear" : "conectar al"} proyecto.`,
+        `Error al ${projectSetupMode === "create" ? "crear" : "conectar al"} proyecto.`,
       );
     } finally {
       setIsCreatingProject(false);
@@ -491,7 +490,7 @@ function UnconnectedVercelConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out`}
       >
         <div className="pt-0 space-y-4">
           {/* Mode Selection */}
@@ -500,11 +499,10 @@ function UnconnectedVercelConnector({
               <Button
                 type="button"
                 variant={projectSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${
-                  projectSetupMode === "create"
+                className={`flex-1 rounded-none rounded-l-md border-0 ${projectSetupMode === "create"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                  }`}
                 onClick={() => {
                   setProjectSetupMode("create");
                   setCreateProjectError(null);
@@ -516,11 +514,10 @@ function UnconnectedVercelConnector({
               <Button
                 type="button"
                 variant={projectSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${
-                  projectSetupMode === "existing"
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${projectSetupMode === "existing"
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                  }`}
                 onClick={() => {
                   setProjectSetupMode("existing");
                   setCreateProjectError(null);

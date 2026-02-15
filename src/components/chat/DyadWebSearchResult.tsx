@@ -25,9 +25,8 @@ export const DyadWebSearchResult: React.FC<DyadWebSearchResultProps> = ({
 
   return (
     <div
-      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
-        inProgress ? "border-blue-500" : "border-border"
-      }`}
+      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-blue-500" : "border-border"
+        }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
       aria-expanded={isExpanded}
@@ -58,7 +57,7 @@ export const DyadWebSearchResult: React.FC<DyadWebSearchResultProps> = ({
 
       {/* Main content with smooth transition */}
       <div
-        className="pt-6 overflow-hidden transition-all duration-300 ease-in-out"
+        className="pt-6 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "none" : "0px",
           opacity: isExpanded ? 1 : 0,

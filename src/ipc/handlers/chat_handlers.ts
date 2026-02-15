@@ -79,6 +79,7 @@ export function registerChatHandlers() {
         role: m.role as "user" | "assistant",
       })),
       isPlan: chat.isPlan ?? false,
+      planData: chat.planData ?? null,
     };
   });
 
@@ -116,14 +117,30 @@ export function registerChatHandlers() {
   });
 
   createTypedHandler(chatContracts.updateChat, async (_, params) => {
-    const { chatId, title, isPlan } = params;
+    const { chatId, title, isPlan, planData } = params;
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (isPlan !== undefined) updateData.isPlan = isPlan;
+    if (planData !== undefined) updateData.planData = planData;
 
     if (Object.keys(updateData).length > 0) {
       await db.update(chats).set(updateData).where(eq(chats.id, chatId));
     }
+  });
+
+  createTypedHandler(chatContracts.savePlanData, async (_, { chatId, planData }) => {
+    await db.update(chats).set({
+      planData,
+      isPlan: true,
+    }).where(eq(chats.id, chatId));
+  });
+
+  createTypedHandler(chatContracts.getPlanData, async (_, chatId) => {
+    const chat = await db.query.chats.findFirst({
+      where: eq(chats.id, chatId),
+      columns: { planData: true },
+    });
+    return chat?.planData ?? null;
   });
 
   createTypedHandler(chatContracts.deleteMessages, async (_, chatId) => {
@@ -137,7 +154,6 @@ export function registerChatHandlers() {
       .select({
         id: chats.id,
         appId: chats.appId,
-        title: chats.title,
         title: chats.title,
         createdAt: chats.createdAt,
         isPlan: chats.isPlan,
@@ -161,7 +177,6 @@ export function registerChatHandlers() {
       .select({
         id: chats.id,
         appId: chats.appId,
-        title: chats.title,
         title: chats.title,
         createdAt: chats.createdAt,
         isPlan: chats.isPlan,

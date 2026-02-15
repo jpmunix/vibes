@@ -1,6 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { markdownParser } from "@/workers/markdownParserWorkerClient";
+import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
 
 import { DyadWrite } from "./DyadWrite";
 import { DyadRename } from "./DyadRename";
@@ -20,7 +23,6 @@ import { isStreamingByIdAtom, selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CustomTagState } from "./stateTypes";
 import { DyadOutput } from "./DyadOutput";
 import { DyadProblemSummary } from "./DyadProblemSummary";
-import { ipc } from "@/ipc/types";
 import { DyadMcpToolCall } from "./DyadMcpToolCall";
 import { DyadMcpToolResult } from "./DyadMcpToolResult";
 import { DyadWebSearchResult } from "./DyadWebSearchResult";
@@ -72,21 +74,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-think",
 ];
 
-interface DyadMarkdownParserProps {
-  content: string;
-}
-
-type CustomTagInfo = {
-  tag: string;
-  attributes: Record<string, string>;
-  content: string;
-  fullMatch: string;
-  inProgress?: boolean;
-};
-
-type ContentPiece =
-  | { type: "markdown"; content: string }
-  | { type: "custom-tag"; tagInfo: CustomTagInfo };
+const REMARK_PLUGINS = [remarkGfm];
 
 const customLink = ({
   node: _node,
@@ -98,28 +86,25 @@ const customLink = ({
   <a
     {...props}
     onClick={(e) => {
-      const url = props.href;
-      if (url) {
-        e.preventDefault();
-        ipc.system.openExternalUrl(url);
-      }
+      e.preventDefault();
+      window.open(props.href, "_blank");
     }}
+    className="text-blue-400 hover:text-blue-300 underline"
   />
 );
 
-export const VanillaMarkdownParser = ({ content }: { content: string }) => {
+const MARKDOWN_COMPONENTS = {
+  a: customLink,
+  code: CodeHighlight,
+};
+
+export const VanillaMarkdownParser = React.memo(function VanillaMarkdownParser({ content }: { content: string }) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        code: CodeHighlight,
-        a: customLink,
-      }}
-    >
+    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
       {content}
     </ReactMarkdown>
   );
-};
+});
 
 interface DyadMarkdownParserProps {
   content: string;
@@ -130,23 +115,50 @@ interface DyadMarkdownParserProps {
 /**
  * Custom component to parse markdown content with Dyad-specific tags
  */
-export const DyadMarkdownParser: React.FC<DyadMarkdownParserProps> = ({
+export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
   content,
   isStreaming: forceStreaming,
   chatId: forceChatId,
-}) => {
+}: DyadMarkdownParserProps) {
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const chatId = forceChatId ?? selectedChatId;
   const isStreamingMap = useAtomValue(isStreamingByIdAtom);
   const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
 
-  // Extract content pieces (markdown and custom tags)
-  const contentPieces = useMemo(() => {
+  // Defer content updates during streaming
+  const deferredContent = useDeferredValue(content);
+
+  // Initialize with synchronous parse to avoid flash of content
+  const [contentPieces, setContentPieces] = useState<ContentPiece[]>(() => {
     return parseCustomTags(content);
-  }, [content]);
+  });
+
+  // Use worker for updates to avoid blocking main thread during streaming
+  useEffect(() => {
+    let isCancelled = false;
+
+    markdownParser
+      .parse(deferredContent)
+      .then((pieces) => {
+        if (!isCancelled) {
+          setContentPieces(pieces);
+        }
+      })
+      .catch((err) => {
+        console.error("Worker extraction failed, falling back to sync:", err);
+        if (!isCancelled) {
+          setContentPieces(parseCustomTags(deferredContent));
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [deferredContent]);
 
   // Extract error messages and track positions
   const { errorMessages, lastErrorIndex, errorCount } = useMemo(() => {
+
     const errors: string[] = [];
     let lastIndex = -1;
     let count = 0;
@@ -180,11 +192,8 @@ export const DyadMarkdownParser: React.FC<DyadMarkdownParserProps> = ({
           {piece.type === "markdown"
             ? piece.content && (
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code: CodeHighlight,
-                  a: customLink,
-                }}
+                remarkPlugins={REMARK_PLUGINS}
+                components={MARKDOWN_COMPONENTS}
               >
                 {piece.content}
               </ReactMarkdown>
@@ -205,7 +214,7 @@ export const DyadMarkdownParser: React.FC<DyadMarkdownParserProps> = ({
       ))}
     </>
   );
-};
+});
 
 /**
  * Pre-process content to handle unclosed custom tags

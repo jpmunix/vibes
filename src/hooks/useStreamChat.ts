@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, startTransition } from "react";
 import type {
   ComponentSelection,
   FileAttachment,
@@ -248,7 +248,10 @@ export function useStreamChat({
               if (!chunkRafId) {
                 chunkRafId = requestAnimationFrame(() => {
                   if (pendingChunkMessages) {
-                    updateMapAtom(setMessagesById, chatId, pendingChunkMessages);
+                    // Mark streaming updates as non-urgent so input/scroll stay responsive
+                    startTransition(() => {
+                      updateMapAtom(setMessagesById, chatId, pendingChunkMessages!);
+                    });
                     pendingChunkMessages = undefined;
                   }
                   chunkRafId = null;
@@ -295,53 +298,50 @@ export function useStreamChat({
                 });
               }
 
-              if (response.updatedFiles) {
-                if (settings?.autoExpandPreviewPanel) {
-                  setIsPreviewOpen(true);
-                }
-                refreshAppIframe();
-                if (settings?.enableAutoFixProblems) {
-                  checkProblems();
-                }
-
-                // Auto-repair integration: if this was a repair stream,
-                // notify the auto-repair system. Otherwise, activate monitoring.
-                if (autoRepair?.isRepairing) {
-                  autoRepair.onRepairStreamEnd(true);
-                } else {
-                  autoRepair?.activateMonitoring(chatId);
-                }
-              } else if (autoRepair?.isRepairing) {
-                // Repair stream ended but no files were updated
-                autoRepair.onRepairStreamEnd(false);
-              }
-              if (response.extraFiles) {
-                showExtraFilesToast({
-                  files: response.extraFiles,
-                  error: response.extraFilesError,
-                  posthog,
-                });
-              }
-              // Use queryClient directly with the chatId parameter to avoid stale closure issues
-              queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
-
-              refetchUserBudget();
-
-              // Invalidate free agent quota to update the UI after message
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.freeAgentQuota.status,
-              });
-
-              // Keep the same as below
+              // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
-              // Use queryClient directly with the chatId parameter to avoid stale closure issues
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.proposals.detail({ chatId }),
+
+              // Wrap all post-stream work in startTransition so it doesn't block input
+              // These are ~10 invalidations/refreshes that would otherwise cause cascading re-renders
+              startTransition(() => {
+                if (response.updatedFiles) {
+                  if (settings?.autoExpandPreviewPanel) {
+                    setIsPreviewOpen(true);
+                  }
+                  refreshAppIframe();
+                  if (settings?.enableAutoFixProblems) {
+                    checkProblems();
+                  }
+
+                  // Auto-repair integration
+                  if (autoRepair?.isRepairing) {
+                    autoRepair.onRepairStreamEnd(true);
+                  } else {
+                    autoRepair?.activateMonitoring(chatId);
+                  }
+                } else if (autoRepair?.isRepairing) {
+                  autoRepair.onRepairStreamEnd(false);
+                }
+                if (response.extraFiles) {
+                  showExtraFilesToast({
+                    files: response.extraFiles,
+                    error: response.extraFilesError,
+                    posthog,
+                  });
+                }
+                queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
+                refetchUserBudget();
+                queryClient.invalidateQueries({
+                  queryKey: queryKeys.freeAgentQuota.status,
+                });
+                queryClient.invalidateQueries({
+                  queryKey: queryKeys.proposals.detail({ chatId }),
+                });
+                invalidateChats();
+                refreshApp();
+                refreshVersions();
+                invalidateTokenCount();
               });
-              invalidateChats();
-              refreshApp();
-              refreshVersions();
-              invalidateTokenCount();
 
               onSettled?.();
             },

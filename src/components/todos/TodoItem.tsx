@@ -141,7 +141,7 @@ export function SortableTodoItem({
                 <div className="mt-2 flex items-center gap-3">
                   <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-300"
+                      className="h-full bg-primary transition-[width] duration-300"
                       style={{
                         width: `${(todo.checklist.filter((s) => s.completed).length /
                           todo.checklist.length) *
@@ -265,7 +265,7 @@ export function TodoItem({
                 <div className="mt-2 flex items-center gap-3">
                   <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-300"
+                      className="h-full bg-primary transition-[width] duration-300"
                       style={{
                         width: `${(todo.checklist.filter((s) => s.completed).length /
                           todo.checklist.length) *

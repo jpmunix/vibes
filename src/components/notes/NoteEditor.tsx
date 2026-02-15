@@ -197,7 +197,7 @@ export function NoteEditor({
   return (
     <div className="w-full px-8 flex flex-col items-center">
       {/* Floating Toolbar */}
-      <div className="sticky top-6 z-50 mb-8 transition-all duration-200 ease-in-out hover:scale-105">
+      <div className="sticky top-6 z-50 mb-8 transition-transform duration-200 ease-in-out hover:scale-105">
         <div className="flex items-center gap-1 p-1.5 bg-background/80 backdrop-blur-xl border border-border/50 rounded-full shadow-md overflow-x-auto no-scrollbar max-w-[90vw]">
           <Button
             size="sm"

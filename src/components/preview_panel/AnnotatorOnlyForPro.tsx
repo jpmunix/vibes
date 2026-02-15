@@ -16,7 +16,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
       {/* Go Back Button */}
       <button
         onClick={onGoBack}
-        className="absolute top-4 left-4 p-2 hover:bg-accent rounded-md transition-all z-10 group"
+        className="absolute top-4 left-4 p-2 hover:bg-accent rounded-md transition-colors z-10 group"
         aria-label="Volver"
       >
         <ArrowLeft
@@ -43,7 +43,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
         <Button
           onClick={handleGetPro}
           size="lg"
-          className="px-8 shadow-md hover:shadow-lg transition-all"
+          className="px-8 shadow-md hover:shadow-lg transition-[box-shadow]"
         >
           Get Dyad Pro
         </Button>

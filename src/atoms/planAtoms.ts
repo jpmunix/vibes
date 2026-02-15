@@ -23,14 +23,11 @@ export interface Plan {
 
 // --- Plan State (Scoped by Chat ID) ---
 
-/** Plans stored by chatId */
+/** Plans stored by chatId (in-memory cache, persisted to DB via savePlanData) */
 export const plansByChatIdAtom = atom<Map<number, Plan>>(new Map());
 
 /** Collapsed state by chatId (default: true) */
 export const planCollapsedByChatIdAtom = atom<Map<number, boolean>>(new Map());
-
-/** Read-only state by chatId (default: false) */
-export const planReadOnlyByChatIdAtom = atom<Map<number, boolean>>(new Map());
 
 /** Loading state by chatId (default: false) */
 export const planLoadingByChatIdAtom = atom<Map<number, boolean>>(new Map());

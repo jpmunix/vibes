@@ -125,6 +125,9 @@ export type {
   ChangeAppLocationResult,
   ListAppsResponse,
   RenameBranchParams,
+  ExecuteShellCommandParams,
+  ExecuteShellCommandResult,
+  CancelShellCommandParams,
 } from "./app";
 
 // Chat types

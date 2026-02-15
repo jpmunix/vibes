@@ -160,7 +160,7 @@ export function PromptsSettings() {
         {/* Sidebar */}
         <div
           className={cn(
-            "border-r flex flex-col bg-muted/10 shrink-0 transition-all duration-300",
+            "border-r flex flex-col bg-muted/10 shrink-0 transition-[width] duration-300",
             sidebarCollapsed
               ? "w-0 opacity-0 pointer-events-none border-0"
               : "w-110",
@@ -183,7 +183,7 @@ export function PromptsSettings() {
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg transition-all flex items-start gap-3 group relative",
+                  "w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-start gap-3 group relative",
                   activeTab === id
                     ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
                     : "hover:bg-muted text-muted-foreground hover:text-foreground",

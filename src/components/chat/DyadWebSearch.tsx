@@ -24,9 +24,8 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
 
   return (
     <div
-      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
-        inProgress ? "border-blue-500" : "border-border"
-      }`}
+      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-blue-500" : "border-border"
+        }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
       aria-expanded={isExpanded}
@@ -58,7 +57,7 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
 
       {/* Collapsed preview - show query */}
       <div
-        className="text-sm italic text-gray-600 dark:text-gray-300 mt-2 overflow-hidden transition-all duration-300 ease-in-out"
+        className="text-sm italic text-gray-600 dark:text-gray-300 mt-2 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "0px" : "3em",
           opacity: isExpanded ? 0 : 1,
@@ -69,7 +68,7 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
 
       {/* Expanded content */}
       <div
-        className="overflow-hidden transition-all duration-300 ease-in-out"
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "none" : "0px",
           opacity: isExpanded ? 1 : 0,

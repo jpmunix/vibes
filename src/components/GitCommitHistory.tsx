@@ -264,7 +264,7 @@ export function GitCommitHistory() {
                 <div
                     ref={listRef}
                     className={cn(
-                        "overflow-y-auto transition-all duration-200",
+                        "overflow-y-auto transition-[max-height] duration-200",
                         selectedCommit ? "w-[45%] border-r border-border/50" : "w-full",
                     )}
                 >
@@ -283,7 +283,7 @@ export function GitCommitHistory() {
                                     key={commit.hash}
                                     onClick={() => selectCommit(selectedCommit === commit.hash ? null : commit.hash)}
                                     className={cn(
-                                        "group px-3 py-2 cursor-pointer transition-all duration-150 border-b border-border/20",
+                                        "group px-3 py-2 cursor-pointer transition-colors duration-150 border-b border-border/20",
                                         "hover:bg-muted/40",
                                         selectedCommit === commit.hash && "bg-primary/8 border-l-2 border-l-primary",
                                     )}

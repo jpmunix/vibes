@@ -137,7 +137,7 @@ export const CodeHighlight = memo(
             </div>
             {code && (
               <button
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer border border-transparent hover:border-primary/10"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/10"
                 onClick={handleCopy}
                 type="button"
               >

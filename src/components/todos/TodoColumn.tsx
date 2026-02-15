@@ -136,7 +136,7 @@ export function TodoColumn({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex flex-col w-[420px] shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-all duration-200",
+        "flex flex-col w-[420px] shrink-0 bg-muted/30 rounded-xl border overflow-hidden max-h-full transition-colors duration-200",
         isDraggingOverlay &&
         "shadow-2xl ring-2 ring-primary border-primary rotate-1 opacity-90",
       )}

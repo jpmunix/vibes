@@ -36,6 +36,10 @@ export const previewPanelKeyAtom = atom<number>(0);
 // Maps appId to the current URL for that app
 export const previewCurrentUrlAtom = atom<Record<number, string>>({});
 
+// Per-app route history for the address bar combobox
+// Maps appId to an ordered list of visited paths (most recent first, max 10)
+export const routeHistoryAtom = atom<Record<number, string[]>>({});
+
 export const previewErrorMessageAtom = atom<
   { message: string; source: "preview-app" | "dyad-app" } | undefined
 >(undefined);

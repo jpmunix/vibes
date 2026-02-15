@@ -22,8 +22,8 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
   const tokenSavingsMatch =
     typeof children === "string"
       ? children.match(
-          /^dyad-token-savings\?original-tokens=([0-9.]+)&smart-context-tokens=([0-9.]+)$/,
-        )
+        /^dyad-token-savings\?original-tokens=([0-9.]+)&smart-context-tokens=([0-9.]+)$/,
+      )
       : null;
 
   // Collapse when transitioning from in-progress to not-in-progress
@@ -47,9 +47,8 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
 
   return (
     <div
-      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
-        inProgress ? "border-purple-500" : "border-border"
-      }`}
+      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-purple-500" : "border-border"
+        }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
       aria-expanded={isExpanded}
@@ -80,7 +79,7 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
 
       {/* Main content with smooth transition */}
       <div
-        className="pt-6 overflow-hidden transition-all duration-300 ease-in-out"
+        className="pt-6 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "none" : "0px",
           opacity: isExpanded ? 1 : 0,

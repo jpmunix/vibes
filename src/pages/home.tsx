@@ -270,7 +270,7 @@ export default function HomePage() {
                 }
                 className="flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-200
                            bg-white/50 backdrop-blur-sm
-                           transition-all duration-200
+                           transition-colors duration-200
                            hover:bg-white hover:shadow-md hover:border-gray-300
                            active:scale-[0.98]
                            dark:bg-gray-800/50 dark:border-gray-700
@@ -291,7 +291,7 @@ export default function HomePage() {
             onClick={() => setRandomPrompts(getRandomPrompts())}
             className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200
                        bg-white/50 backdrop-blur-sm
-                       transition-all duration-200
+                       transition-colors duration-200
                        hover:bg-white hover:shadow-md hover:border-gray-300
                        active:scale-[0.98]
                        dark:bg-gray-800/50 dark:border-gray-700

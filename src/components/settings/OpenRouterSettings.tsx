@@ -182,7 +182,7 @@ export function OpenRouterSettings({
     <div
       id="openrouter-settings"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
         isHighlighted
           ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
           : "",
@@ -243,7 +243,7 @@ export function OpenRouterSettings({
                   <div
                     key={key.id}
                     className={cn(
-                      "flex items-center justify-between p-4 rounded-xl border transition-all",
+                      "flex items-center justify-between p-4 rounded-xl border transition-colors",
                       isSelected
                         ? "bg-primary/5 border-primary/30 shadow-sm"
                         : "bg-card border-border hover:border-border/80"

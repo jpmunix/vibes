@@ -12,7 +12,7 @@ export function WebSearchSettings({
         <div
             id="serper-settings"
             className={cn(
-                "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+                "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
                 isHighlighted
                     ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
                     : "",

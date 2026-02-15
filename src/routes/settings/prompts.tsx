@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { createRoute } from "@tanstack/react-router";
 import { settingsRoute } from "../settings";
 
@@ -8,7 +9,7 @@ export const promptsSettingsRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/prompts",
   component: () => (
-    <Suspense>
+    <Suspense fallback={<PageLoader />}>
       <PromptsSettings />
     </Suspense>
   ),

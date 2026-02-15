@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { Route } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 
@@ -8,7 +9,7 @@ export const hubRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/hub",
   component: () => (
-    <Suspense>
+    <Suspense fallback={<PageLoader />}>
     <HubPage />
     </Suspense>
   ),

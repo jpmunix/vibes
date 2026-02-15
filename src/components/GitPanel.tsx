@@ -191,7 +191,7 @@ function FileRow({
                                 onToggle();
                             }}
                             disabled={isToggling}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity"
                         >
                             {isToggling ? (
                                 <Loader2 size={12} className="animate-spin" />
@@ -247,7 +247,7 @@ function StagedFileRow({
                     <button
                         onClick={onUnstage}
                         disabled={isUnstaging}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity"
                     >
                         {isUnstaging ? (
                             <Loader2 size={12} className="animate-spin" />

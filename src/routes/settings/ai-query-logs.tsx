@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { createRoute } from "@tanstack/react-router";
 import { settingsRoute } from "../settings";
 
@@ -8,7 +9,7 @@ export const aiQueryLogsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: "/ai-query-logs",
     component: () => (
-        <Suspense>
+        <Suspense fallback={<PageLoader />}>
             <AiQueryLogsPage />
         </Suspense>
     ),

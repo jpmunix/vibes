@@ -74,7 +74,7 @@ export const DyadCodeSearchResult: React.FC<DyadCodeSearchResultProps> = ({
 
       {/* Main content with smooth transition */}
       <div
-        className="pt-6 overflow-hidden transition-all duration-300 ease-in-out"
+        className="pt-6 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "1000px" : "0px",
           opacity: isExpanded ? 1 : 0,

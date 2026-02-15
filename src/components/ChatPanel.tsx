@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useDeferredValue } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
@@ -47,6 +47,27 @@ export function ChatPanel({
   // Sync plan state from chat messages (in plan mode)
   usePlanSync(chatId);
 
+  // When entering a chat that is NOT actively streaming, reset "plan" mode
+  // to the user's default. Plan mode is only forced on the Home screen for
+  // new app creation; once inside an existing app it should use the user's
+  // preferred mode (build / agent).
+  const hasResetModeRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!chatId || !settings) return;
+    // Only reset once per chatId
+    if (hasResetModeRef.current === chatId) return;
+
+    if (settings.selectedChatMode === "plan") {
+      const isStreaming = isStreamingById.get(chatId) ?? false;
+      if (!isStreaming) {
+        hasResetModeRef.current = chatId;
+        const defaultMode = settings.defaultChatMode || "build";
+        const resetTo = defaultMode === "plan" ? "build" : defaultMode;
+        updateSettings({ selectedChatMode: resetTo });
+      }
+    }
+  }, [chatId, settings, isStreamingById, updateSettings]);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,6 +85,8 @@ export function ChatPanel({
   const prevIsStreamingRef = useRef(false);
   // Ref to track if we're programmatically scrolling (to avoid triggering user scroll detection)
   const isProgrammaticScrollRef = useRef(false);
+  // RAF-based throttle for scroll events
+  const scrollRafRef = useRef<number | null>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     isProgrammaticScrollRef.current = true;
@@ -81,38 +104,41 @@ export function ChatPanel({
     setShowScrollButton(false);
   };
 
-  // Unified scroll tracking handler for both test and Virtuoso modes
+  // Unified scroll tracking handler — RAF-throttled to avoid firing setState on every pixel
   const handleScrollTracking = useCallback((container: HTMLElement) => {
     // Ignore scroll events triggered by our own programmatic scrolling
     if (isProgrammaticScrollRef.current) {
       return;
     }
 
-    const distanceFromBottom =
-      container.scrollHeight - (container.scrollTop + container.clientHeight);
-    distanceFromBottomRef.current = distanceFromBottom;
+    // Throttle: skip if a RAF is already pending
+    if (scrollRafRef.current) return;
 
-    const scrollAwayThreshold = 150; // pixels from bottom to consider "scrolled away"
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
 
-    // User has scrolled away from bottom
-    if (distanceFromBottom > scrollAwayThreshold) {
-      setIsUserScrolling(true);
-      setShowScrollButton(true);
+      const distanceFromBottom =
+        container.scrollHeight - (container.scrollTop + container.clientHeight);
+      distanceFromBottomRef.current = distanceFromBottom;
 
-      // Clear existing timeout
-      if (userScrollTimeoutRef.current) {
-        window.clearTimeout(userScrollTimeoutRef.current);
-      }
+      const scrollAwayThreshold = 150;
 
-      // Reset isUserScrolling after 1 second (reduced from 2 seconds)
-      userScrollTimeoutRef.current = window.setTimeout(() => {
+      if (distanceFromBottom > scrollAwayThreshold) {
+        setIsUserScrolling(true);
+        setShowScrollButton(true);
+
+        if (userScrollTimeoutRef.current) {
+          window.clearTimeout(userScrollTimeoutRef.current);
+        }
+
+        userScrollTimeoutRef.current = window.setTimeout(() => {
+          setIsUserScrolling(false);
+        }, 1000);
+      } else {
         setIsUserScrolling(false);
-      }, 1000);
-    } else {
-      // User is near bottom
-      setIsUserScrolling(false);
-      setShowScrollButton(false);
-    }
+        setShowScrollButton(false);
+      }
+    });
   }, []);
 
   // Callback to receive scrollerRef from Virtuoso (production mode)
@@ -158,23 +184,16 @@ export function ChatPanel({
       return next;
     });
 
-    // After messages are loaded, scroll to bottom so the user sees the latest.
-    // Use multiple scroll attempts to handle late-rendering content (like timestamps)
+    // Scroll to bottom after messages load
+    // Use double-RAF to ensure DOM is painted, then one idle callback for late-rendering content
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollToBottom("instant");
-        // First delayed scroll for Virtuoso layout
-        setTimeout(() => {
-          scrollToBottom("instant");
-          // Second delayed scroll for async content like timestamps
-          setTimeout(() => {
-            scrollToBottom("instant");
-            // Final scroll to ensure everything is visible
-            setTimeout(() => {
-              scrollToBottom("instant");
-            }, 1000);
-          }, 500);
-        }, 200);
+        // Single deferred scroll for async content (timestamps, etc.) instead of 3 nested setTimeouts
+        const idleCallback = typeof requestIdleCallback === 'function'
+          ? requestIdleCallback
+          : (cb: () => void) => setTimeout(cb, 200);
+        idleCallback(() => scrollToBottom("instant"));
       });
     });
   }, [chatId, setMessagesById]);
@@ -183,7 +202,10 @@ export function ChatPanel({
     fetchChatMessages();
   }, [fetchChatMessages]);
 
-  const messages = chatId ? (messagesById.get(chatId) ?? []) : [];
+  const rawMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+  // useDeferredValue lets React render a "stale" version of messages while computing the new one,
+  // keeping the chat input and scroll responsive during streaming
+  const messages = useDeferredValue(rawMessages);
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
 
   // Scroll to bottom when streaming completes to ensure footer content is visible
@@ -242,11 +264,14 @@ export function ChatPanel({
     }
   }, [messages, isUserScrolling, isStreaming, settings?.isTestMode]);
 
-  // Cleanup timeout and scroller listener on unmount
+  // Cleanup timeout, RAF, and scroller listener on unmount
   useEffect(() => {
     return () => {
       if (userScrollTimeoutRef.current) {
         window.clearTimeout(userScrollTimeoutRef.current);
+      }
+      if (scrollRafRef.current) {
+        cancelAnimationFrame(scrollRafRef.current);
       }
       if (scrollerCleanupRef.current) {
         scrollerCleanupRef.current();
@@ -310,7 +335,7 @@ export function ChatPanel({
                 <Button
                   onClick={handleScrollButtonClick}
                   size="icon"
-                  className="rounded-full shadow-lg hover:shadow-xl transition-all border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
+                  className="rounded-full shadow-lg hover:shadow-xl transition-[background-color,box-shadow] border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
                   variant="outline"
                   title={"Ir al final"}
                 >

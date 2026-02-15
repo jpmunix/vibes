@@ -20,26 +20,14 @@ export function ErrorBoundary({ error }: ErrorComponentProps) {
       // Get system debug info
       const debugInfo = await ipc.system.getSystemDebugInfo();
 
-      // Create a formatted issue body with the debug info and error information
-      const issueBody = `
-## Bug Description
-<!-- Please describe the issue you're experiencing -->
-
-## Steps to Reproduce
-<!-- Please list the steps to reproduce the issue -->
-
-## Expected Behavior
-<!-- What did you expect to happen? -->
-
-## Actual Behavior
-<!-- What actually happened? -->
-
-## Error Details
+      // Create a formatted email body with the debug info and error information
+      const emailBody = `
+== Error Details ==
 - Error Name: ${error?.name || "Unknown"}
 - Error Message: ${error?.message || "Unknown"}
-${error?.stack ? `\n\`\`\`\n${error.stack.slice(0, 1000)}\n\`\`\`` : ""}
+${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
 
-## System Information
+== System Information ==
 - App Version: ${debugInfo.dyadVersion}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
@@ -48,23 +36,20 @@ ${error?.stack ? `\n\`\`\`\n${error.stack.slice(0, 1000)}\n\`\`\`` : ""}
 - Node Path: ${debugInfo.nodePath || "Not available"}
 - Telemetry ID: ${debugInfo.telemetryId || "Not available"}
 
-## Logs
-\`\`\`
-${debugInfo.logs.slice(-3_500) || "No logs available"}
-\`\`\`
+== Logs ==
+${debugInfo.logs.slice(-500) || "No logs available"}
 `;
 
-      // Create the GitHub issue URL with the pre-filled body
-      const encodedBody = encodeURIComponent(issueBody);
-      const encodedTitle = encodeURIComponent("[bug] Error in application");
-      const githubIssueUrl = `https://github.com/minube/vibes/issues/new?title=${encodedTitle}&labels=bug,filed-from-app,client-error&body=${encodedBody}`;
+      const subject = encodeURIComponent(`[bug] Error en Vibes: ${error?.name || "Unknown"}`);
+      const body = encodeURIComponent(emailBody);
+      const mailtoUrl = `mailto:pablo@minube.com?subject=${subject}&body=${body}`;
 
-      // Open the pre-filled GitHub issue page
-      await ipc.system.openExternalUrl(githubIssueUrl);
+      // Open the email client with the pre-filled report
+      await ipc.system.openExternalUrl(mailtoUrl);
     } catch (err) {
       console.error("Failed to prepare bug report:", err);
-      // Fallback to opening the regular GitHub issue page
-      ipc.system.openExternalUrl("https://github.com/minube/vibes/issues/new");
+      // Fallback to opening a simple email
+      ipc.system.openExternalUrl("mailto:pablo@minube.com?subject=" + encodeURIComponent("[bug] Error en Vibes"));
     } finally {
       setIsLoading(false);
     }

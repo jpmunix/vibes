@@ -3,12 +3,11 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { chatMessagesByIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import {
     plansByChatIdAtom,
-    planCollapsedByChatIdAtom,
     planLoadingByChatIdAtom,
-    planReadOnlyByChatIdAtom,
 } from "@/atoms/planAtoms";
 import { parsePlanFromText } from "@/components/chat/PlanPanel";
 import { useSettings } from "./useSettings";
+import { ipc } from "@/ipc/types";
 
 function updateMapAtom<K, V>(
     setter: (fn: (prev: Map<K, V>) => Map<K, V>) => void,
@@ -24,20 +23,24 @@ function updateMapAtom<K, V>(
 
 /**
  * Hook that watches chat messages and parses plan responses when in plan mode.
- * When the AI finishes streaming in plan mode, the last assistant message
- * is parsed into the plan panel.
+ * When the AI finishes streaming in plan mode, the response is parsed into a plan,
+ * saved to the database, and the chat messages are cleared (plan generation is silent).
+ *
+ * Plans are persisted in the database (chats.planData column) and loaded on demand.
  */
 export function usePlanSync(chatId?: number) {
     const messagesById = useAtomValue(chatMessagesByIdAtom);
+    const setMessagesById = useSetAtom(chatMessagesByIdAtom);
     const isStreamingById = useAtomValue(isStreamingByIdAtom);
+    const plans = useAtomValue(plansByChatIdAtom);
     const setPlans = useSetAtom(plansByChatIdAtom);
-    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
     const setLoading = useSetAtom(planLoadingByChatIdAtom);
-    const setReadOnly = useSetAtom(planReadOnlyByChatIdAtom);
     const { settings, updateSettings } = useSettings();
 
     const prevStreamingRef = useRef(false);
+    const loadedChatIdsRef = useRef<Set<number>>(new Set());
 
+    // Effect 1: When streaming ends in plan mode, parse the plan, save to DB, clear chat
     useEffect(() => {
         if (!chatId) return;
 
@@ -63,10 +66,28 @@ export function usePlanSync(chatId?: number) {
         // Try to parse the response into a plan
         const parsed = parsePlanFromText(lastAssistantMsg.content);
         if (parsed) {
+            // Save plan to in-memory atom (panel stays collapsed — user decides when to open)
             updateMapAtom(setPlans, chatId, parsed);
-            updateMapAtom(setCollapsed, chatId, false); // auto-expand plan panel
-            updateMapAtom(setReadOnly, chatId, false);
             updateMapAtom(setLoading, chatId, false);
+
+            // Save plan to database (persistent, independent of chat messages)
+            ipc.chat.savePlanData({ chatId, planData: parsed }).then(() => {
+                window.dispatchEvent(new Event("plan-chat-db-update"));
+            }).catch(err =>
+                console.error("Failed to save plan data:", err)
+            );
+
+            // Clear chat messages (plan generation is silent)
+            ipc.chat.deleteMessages(chatId).then(() => {
+                // Clear from atom too
+                setMessagesById((prev) => {
+                    const next = new Map(prev);
+                    next.set(chatId, []);
+                    return next;
+                });
+            }).catch(err =>
+                console.error("Failed to clear chat messages:", err)
+            );
 
             // Switch back to the user's default chat mode now that the plan is ready
             const defaultMode = settings?.defaultChatMode || "build";
@@ -75,6 +96,19 @@ export function usePlanSync(chatId?: number) {
             } else {
                 updateSettings({ selectedChatMode: "build" });
             }
+
+            // Notify user via system notification if window is not focused
+            if (
+                settings?.enableChatCompletionNotifications !== false &&
+                Notification.permission === "granted" &&
+                !document.hasFocus()
+            ) {
+                new Notification("Plan listo", {
+                    body: parsed.objective.length > 80
+                        ? parsed.objective.slice(0, 80) + "…"
+                        : parsed.objective,
+                });
+            }
         }
     }, [
         chatId,
@@ -82,41 +116,45 @@ export function usePlanSync(chatId?: number) {
         messagesById,
         settings?.selectedChatMode,
         settings?.defaultChatMode,
+        settings?.enableChatCompletionNotifications,
         updateSettings,
         setPlans,
-        setCollapsed,
         setLoading,
-        setReadOnly,
+        setMessagesById,
     ]);
 
-    // Initial load: Try to recover plan from history if not present in atom
+    // Effect 2: Load plan from database when switching to a chat
     useEffect(() => {
         if (!chatId) return;
 
-        const messages = messagesById.get(chatId) ?? [];
-        if (messages.length === 0) return;
+        // Skip if already loaded or if plan already exists in memory
+        if (loadedChatIdsRef.current.has(chatId)) return;
+        if (plans.has(chatId)) return;
 
-        // If actively streaming, let the streaming effect handle it
-        if (isStreamingById.get(chatId)) return;
+        // Mark as loaded to avoid duplicate calls
+        loadedChatIdsRef.current.add(chatId);
 
-        setPlans((prev) => {
-            // If plan already exists in memory for this chat, preserve it (keeps user edits during session)
-            if (prev.has(chatId)) return prev;
+        const loadPlan = async () => {
+            try {
+                const planData = await ipc.chat.getPlanData(chatId);
+                if (planData) {
+                    setPlans((prev) => {
+                        // If plan was set in the meantime (e.g. by streaming), preserve it
+                        if (prev.has(chatId)) return prev;
 
-            // Otherwise, try to parse from last assistant message
-            const lastAssistantMsg = [...messages]
-                .reverse()
-                .find((m) => m.role === "assistant");
-
-            if (!lastAssistantMsg?.content) return prev;
-
-            const parsed = parsePlanFromText(lastAssistantMsg.content);
-            if (parsed) {
-                const next = new Map(prev);
-                next.set(chatId, parsed);
-                return next;
+                        const next = new Map(prev);
+                        next.set(chatId, planData);
+                        return next;
+                    });
+                    // Don't auto-expand — user decides when to open the plan
+                }
+            } catch (err) {
+                console.error("Failed to load plan data:", err);
+                // Allow retry on next visit
+                loadedChatIdsRef.current.delete(chatId);
             }
-            return prev;
-        });
-    }, [chatId, messagesById, isStreamingById, setPlans]);
+        };
+
+        loadPlan();
+    }, [chatId, plans, setPlans]);
 }

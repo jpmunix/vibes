@@ -26,9 +26,9 @@ export const CopyErrorMessage = ({
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isCopied
-          ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
-          : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isCopied
+        ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
+        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
         } ${className}`}
       title={isCopied ? "¡Copiado!" : "Copiar mensaje de error"}
     >

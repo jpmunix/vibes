@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { Route } from "@tanstack/react-router";
 import { rootRoute } from "./root";
 
@@ -8,7 +9,7 @@ export const libraryRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/library",
   component: () => (
-    <Suspense>
+    <Suspense fallback={<PageLoader />}>
     <LibraryPage />
     </Suspense>
   ),

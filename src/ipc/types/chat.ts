@@ -43,6 +43,7 @@ export const ChatSchema = z.object({
   initialCommitHash: z.string().nullable().optional(),
   dbTimestamp: z.string().nullable().optional(),
   isPlan: z.boolean().optional().default(false),
+  planData: z.any().nullable().optional(),
 });
 
 export type Chat = z.infer<typeof ChatSchema>;
@@ -153,6 +154,7 @@ export const UpdateChatParamsSchema = z.object({
   chatId: z.number(),
   title: z.string().optional(),
   isPlan: z.boolean().optional(),
+  planData: z.any().nullable().optional(),
 });
 
 export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;
@@ -280,6 +282,21 @@ export const chatContracts = {
     channel: "summarize-todays-chats",
     input: z.number(), // appId
     output: z.object({ summary: z.string() }),
+  }),
+
+  savePlanData: defineContract({
+    channel: "save-plan-data",
+    input: z.object({
+      chatId: z.number(),
+      planData: z.any(), // Plan JSON
+    }),
+    output: z.void(),
+  }),
+
+  getPlanData: defineContract({
+    channel: "get-plan-data",
+    input: z.number(), // chatId
+    output: z.any().nullable(), // Plan JSON or null
   }),
 } as const;
 

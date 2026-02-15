@@ -462,13 +462,14 @@ export function getEffectiveDefaultChatMode(
       return "build";
     }
     if (settings.defaultChatMode === "build") {
-      return "plan";
+      return "build";
     }
     return settings.defaultChatMode;
   }
 
-  // No explicit default set - default to "plan" (planning mode for new apps)
-  return "plan";
+  // No explicit default set - default to "build"
+  // (plan mode is only forced on the Home screen for new app creation)
+  return "build";
 }
 
 /**

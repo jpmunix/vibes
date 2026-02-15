@@ -329,7 +329,7 @@ export function TodoEditModal({
                   <div className="flex items-center gap-3 mr-2 animate-in fade-in duration-300">
                     <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden hidden sm:block">
                       <div
-                        className="h-full bg-primary transition-all duration-300"
+                        className="h-full bg-primary transition-[width] duration-300"
                         style={{
                           width: `${(checklist.filter((s) => s.completed).length /
                             checklist.length) *
@@ -365,7 +365,7 @@ export function TodoEditModal({
                       <div className="flex items-center gap-4">
                         <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all duration-300"
+                            className="h-full bg-primary transition-[width] duration-300"
                             style={{
                               width: `${(checklist.filter((s) => s.completed).length /
                                 checklist.length) *
