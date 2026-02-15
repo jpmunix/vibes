@@ -971,16 +971,14 @@ export function registerAppHandlers() {
     });
 
     // Initialize git repo and create first commit
-
-    await gitInit({ path: fullAppPath, ref: "main" });
-
-    // Stage all files
-    await gitAdd({ path: fullAppPath, filepath: "." });
-
-    // Create initial commit
-    const commitHash = await gitCommit({
-      path: fullAppPath,
-      message: "Init Dyad app",
+    // Wrap in withLock to prevent race conditions with frontend auto-commit
+    const commitHash = await withLock(app.id, async () => {
+      await gitInit({ path: fullAppPath, ref: "main" });
+      await gitAdd({ path: fullAppPath, filepath: "." });
+      return gitCommit({
+        path: fullAppPath,
+        message: "Init Dyad app",
+      });
     });
 
     // Update chat with initial commit hash
@@ -1041,15 +1039,14 @@ export function registerAppHandlers() {
 
     if (!withHistory) {
       // Initialize git repo and create first commit
-      await gitInit({ path: newAppPath, ref: "main" });
-
-      // Stage all files
-      await gitAdd({ path: newAppPath, filepath: "." });
-
-      // Create initial commit
-      await gitCommit({
-        path: newAppPath,
-        message: "Init Dyad app",
+      // Note: newDbApp doesn't exist yet, use path-based lock
+      await withLock(`git:${newAppName}`, async () => {
+        await gitInit({ path: newAppPath, ref: "main" });
+        await gitAdd({ path: newAppPath, filepath: "." });
+        await gitCommit({
+          path: newAppPath,
+          message: "Init Dyad app",
+        });
       });
     }
 

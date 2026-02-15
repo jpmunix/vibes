@@ -60,7 +60,7 @@ export function TodoList({ todos }: TodoListProps) {
             <>
               <ListTodo className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <span className="text-sm">
-                {completed} of {total} To-dos Completed
+                {completed} de {total} tareas completadas
               </span>
             </>
           ) : inProgressTask ? (

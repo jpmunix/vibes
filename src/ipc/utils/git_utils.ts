@@ -478,6 +478,13 @@ export async function gitInit({
   path,
   ref = "main",
 }: GitInitParams): Promise<void> {
+  // Safety: remove stale index.lock if it exists before init.
+  // If we're initializing a new repo, any existing lock is from a crashed process.
+  const lockFile = pathModule.join(path, ".git", "index.lock");
+  if (fs.existsSync(lockFile)) {
+    logger.warn(`Removing stale index.lock at ${lockFile}`);
+    fs.unlinkSync(lockFile);
+  }
   const settings = readSettings();
   if (settings.enableNativeGit) {
     await execOrThrow(
