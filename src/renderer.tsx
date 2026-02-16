@@ -291,6 +291,7 @@ function App() {
 const urlParams = new URLSearchParams(window.location.search);
 const windowType = urlParams.get("window");
 const appIdStr = urlParams.get("appId");
+const chatIdStr = urlParams.get("chatId");
 
 if (windowType === "database" && appIdStr) {
   // Lazy import to avoid loading full app dependencies
@@ -299,6 +300,20 @@ if (windowType === "database" && appIdStr) {
       createRoot(document.getElementById("root")!).render(
         <StrictMode>
           <DatabaseWindowApp appId={Number(appIdStr)} />
+        </StrictMode>,
+      );
+    },
+  );
+} else if (windowType === "chat" && appIdStr) {
+  // P18 — Dedicated chat+preview window (lightweight, no router/sidebar/posthog)
+  import("./components/chat_window/ChatWindowApp").then(
+    ({ ChatWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <ChatWindowApp
+            appId={Number(appIdStr)}
+            chatId={chatIdStr ? Number(chatIdStr) : undefined}
+          />
         </StrictMode>,
       );
     },

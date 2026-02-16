@@ -4,6 +4,9 @@ import log from "electron-log";
 import { platform } from "os";
 import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
+import { db } from "../../db";
+import { apps } from "../../db/schema";
+import { eq } from "drizzle-orm";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -12,6 +15,9 @@ const logger = log.scope("window-handlers");
 
 // Track database viewer windows to avoid duplicates
 const databaseWindows = new Map<number, BrowserWindow>();
+
+// Track chat windows to avoid duplicates (P18 — dedicated chat+preview)
+const chatWindows = new Map<number, BrowserWindow>();
 
 export function registerWindowHandlers() {
   logger.debug("Registering window control handlers");
@@ -93,5 +99,62 @@ export function registerWindowHandlers() {
     });
 
     logger.info(`Opened database viewer window for app ${appId}`);
+  });
+
+  // P18 — Dedicated chat+preview window for performance isolation
+  createTypedHandler(systemContracts.openChatWindow, async (event, { appId, chatId }) => {
+    // If a window for this appId already exists, focus it
+    const existing = chatWindows.get(appId);
+    if (existing && !existing.isDestroyed()) {
+      existing.focus();
+      return;
+    }
+
+    // Fetch app name for the window title
+    let appName = "Chat";
+    try {
+      const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+      if (app?.name) appName = app.name;
+    } catch (e) {
+      logger.warn(`Could not fetch app name for window title: ${e}`);
+    }
+
+    const chatWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      minWidth: 700,
+      minHeight: 500,
+      // No parent — independent window with its own taskbar entry
+      skipTaskbar: false,
+      title: `${appName} — Vibes Chat`,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+        v8CacheOptions: "bypassHeatCheck",
+        spellcheck: false,
+        backgroundThrottling: false,
+      },
+    });
+
+    const chatIdParam = chatId ? `&chatId=${chatId}` : "";
+    const queryParam = `?window=chat&appId=${appId}${chatIdParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      chatWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      chatWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    chatWindows.set(appId, chatWindow);
+
+    chatWindow.on("closed", () => {
+      chatWindows.delete(appId);
+    });
+
+    logger.info(`Opened chat window for app ${appId}${chatId ? `, chat ${chatId}` : ""}`);
   });
 }

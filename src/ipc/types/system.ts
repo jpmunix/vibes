@@ -293,6 +293,16 @@ export const systemContracts = {
     input: z.object({ appId: z.number() }),
     output: z.void(),
   }),
+
+  // Chat window (P18 — dedicated chat+preview for performance isolation)
+  openChatWindow: defineContract({
+    channel: "window:open-chat",
+    input: z.object({
+      appId: z.number(),
+      chatId: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
