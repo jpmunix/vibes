@@ -9,7 +9,7 @@ export default defineConfig({
     },
   },
   build: {
-    minify: false, // Desactiva la minificación de nombres de variables
+    minify: true,
     sourcemap: true, // Te ayudará a ver errores reales en la consola
     rollupOptions: {
       external: [
