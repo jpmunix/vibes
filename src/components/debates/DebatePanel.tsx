@@ -387,14 +387,14 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             size="sm"
             onClick={handleSummarize}
             disabled={isSummarizing}
-            className="gap-2 rounded-2xl hover:bg-amber-500/5 hover:border-amber-500/30 transition-colors active:scale-95 group min-w-[100px]"
+            className="gap-2 rounded-2xl hover:bg-primary/5 hover:border-primary/30 transition-colors active:scale-95 group min-w-[100px]"
           >
             {isSummarizing ? (
-              <Loader2 size={14} className="text-amber-500 animate-spin" />
+              <Loader2 size={14} className="text-primary animate-spin" />
             ) : (
               <Sparkles
                 size={14}
-                className="text-amber-500 group-hover:animate-pulse"
+                className="text-primary group-hover:animate-pulse"
               />
             )}
             <span className="hidden sm:inline">
@@ -460,7 +460,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   </span>
                 </div>
 
-                <div className={`space-y-4 ${m.role === "user" ? "w-full" : ""}`}>
+                <div className={`space-y-4 ${m.role === "user" ? "flex flex-col items-end" : ""}`}>
                   {m.injectedItems && m.injectedItems.length > 0 && (
                     <div className="flex flex-col gap-2 mb-2 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-xl relative overflow-hidden group/context">
                       <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
@@ -524,10 +524,10 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   ) : (
                     <div
                       className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary
-                          ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg"
-                          : m.role === "user"
-                            ? "bg-secondary text-secondary-foreground rounded-2xl px-4 py-3 inline-block"
-                            : ""
+                        ? "text-primary dark:text-primary border-l-4 border-primary/50 pl-4 py-2 bg-primary/5 dark:bg-primary/10 rounded-r-lg"
+                        : m.role === "user"
+                          ? "bg-primary/60 text-primary-foreground rounded-2xl px-4 py-3 inline-block max-w-[80%]"
+                          : ""
                         }`}
                     >
                       {m.isSummary && (
@@ -569,7 +569,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                                   showSuccess("Resumen guardado como nota");
                                 })
                             }
-                            className="gap-2 text-xs hover:bg-amber-500/20 h-7"
+                            className="gap-2 text-xs hover:bg-primary/20 h-7"
                           >
                             <FileText size={10} /> Guardar Nota
                           </Button>
@@ -578,35 +578,36 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className={`absolute ${m.role === "user" ? "-left-2" : "-right-2"} top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100`}>
-                {m.role === "user" && !isStreaming && (
+                {/* Action buttons below bubble */}
+                <div className={`flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {m.role === "user" && !isStreaming && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleEditMessage(m);
+                      }}
+                    >
+                      <Edit3 size={12} />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleEditMessage(m);
+                      handleDeleteMessage(m.id);
                     }}
                   >
-                    <Edit3 size={12} />
+                    <Trash2 size={12} />
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleDeleteMessage(m.id);
-                  }}
-                >
-                  <Trash2 size={12} />
-                </Button>
+                </div>
               </div>
             </div>
           ))}
