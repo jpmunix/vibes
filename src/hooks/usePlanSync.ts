@@ -4,6 +4,7 @@ import { chatMessagesByIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import {
     plansByChatIdAtom,
     planLoadingByChatIdAtom,
+    planCollapsedByChatIdAtom,
 } from "@/atoms/planAtoms";
 import { parsePlanFromText } from "@/components/chat/PlanPanel";
 import { useSettings } from "./useSettings";
@@ -35,6 +36,7 @@ export function usePlanSync(chatId?: number) {
     const plans = useAtomValue(plansByChatIdAtom);
     const setPlans = useSetAtom(plansByChatIdAtom);
     const setLoading = useSetAtom(planLoadingByChatIdAtom);
+    const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
     const { settings, updateSettings } = useSettings();
 
     const prevStreamingRef = useRef(false);
@@ -70,10 +72,16 @@ export function usePlanSync(chatId?: number) {
             updateMapAtom(setPlans, chatId, parsed);
             updateMapAtom(setLoading, chatId, false);
 
+            // Auto-expand the plan panel with a slight delay to ensure the "unfold" animation plays
+            // (The panel mounts collapsed first, then expands)
+            setTimeout(() => {
+                updateMapAtom(setCollapsed, chatId, false);
+            }, 150);
+
             // Save plan to database (persistent, independent of chat messages)
             ipc.chat.savePlanData({ chatId, planData: parsed }).then(() => {
                 window.dispatchEvent(new Event("plan-chat-db-update"));
-            }).catch(err =>
+            }).catch((err: any) =>
                 console.error("Failed to save plan data:", err)
             );
 
@@ -85,7 +93,7 @@ export function usePlanSync(chatId?: number) {
                     next.set(chatId, []);
                     return next;
                 });
-            }).catch(err =>
+            }).catch((err: any) =>
                 console.error("Failed to clear chat messages:", err)
             );
 
@@ -121,6 +129,7 @@ export function usePlanSync(chatId?: number) {
         setPlans,
         setLoading,
         setMessagesById,
+        setCollapsed,
     ]);
 
     // Effect 2: Load plan from database when switching to a chat

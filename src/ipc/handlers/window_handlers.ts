@@ -109,7 +109,7 @@ export function registerWindowHandlers() {
   });
 
   // P18 — Dedicated chat+preview window for performance isolation
-  createTypedHandler(systemContracts.openChatWindow, async (event, { appId, chatId, prompt, attachments }) => {
+  createTypedHandler(systemContracts.openChatWindow, async (event, { appId, chatId, prompt, chatMode, attachments }) => {
     // Store pending prompt data for the chat window to pick up
     if (prompt && chatId) {
       pendingChatPrompts.set(chatId, { prompt, attachments });
@@ -155,7 +155,8 @@ export function registerWindowHandlers() {
 
     const chatIdParam = chatId ? `&chatId=${chatId}` : "";
     const pendingParam = (prompt && chatId) ? `&hasPendingPrompt=true` : "";
-    const queryParam = `?window=chat&appId=${appId}${chatIdParam}${pendingParam}`;
+    const chatModeParam = chatMode ? `&chatMode=${chatMode}` : "";
+    const queryParam = `?window=chat&appId=${appId}${chatIdParam}${pendingParam}${chatModeParam}`;
 
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       chatWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);

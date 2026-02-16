@@ -226,6 +226,7 @@ export default function HomePage() {
         appId: result.app.id,
         chatId: result.chatId,
         prompt,
+        chatMode: settings?.selectedChatMode || "plan",
         attachments: convertedAttachments,
       });
       navigate({ to: "/app-details", search: { appId: result.app.id } });

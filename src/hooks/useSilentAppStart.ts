@@ -25,7 +25,7 @@ import { useSettings } from "./useSettings";
  *
  * IMPORTANT: Mount this hook ONCE in layout.tsx.
  */
-export function useSilentAppStart() {
+export function useSilentAppStart({ enabled = true }: { enabled?: boolean } = {}) {
     const selectedAppId = useAtomValue(selectedAppIdAtom);
     const appUrlObj = useAtomValue(appUrlAtom);
     const [silentlyStartedApps, setSilentlyStartedApps] = useAtom(
@@ -37,6 +37,7 @@ export function useSilentAppStart() {
     const startingRef = useRef<Set<number>>(new Set<number>());
 
     useEffect(() => {
+        if (!enabled) return;
         if (!selectedAppId) return;
         // Only if auto-repair is enabled (this is the main feature this supports)
         if (!settings?.enableAutoRepairRuntimeErrors) return;
@@ -79,6 +80,7 @@ export function useSilentAppStart() {
                 startingRef.current.delete(appId);
             });
     }, [
+        enabled,
         selectedAppId,
         appUrlObj.appUrl,
         appUrlObj.appId,

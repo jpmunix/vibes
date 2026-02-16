@@ -287,12 +287,99 @@ function App() {
   return <RouterProvider router={router} />;
 }
 
+/**
+ * Lightweight skeleton shown immediately while the ChatWindowApp JS bundle loads.
+ * Uses inline styles so it doesn't depend on any CSS file being loaded yet.
+ * Matches the chat+preview two-panel layout to feel like the real UI is loading.
+ */
+function ChatWindowSkeleton() {
+  const skeletonKeyframes = `
+    @keyframes skeletonPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.15; }
+    }
+  `;
+
+  const pulseStyle: React.CSSProperties = {
+    animation: "skeletonPulse 1.5s ease-in-out infinite",
+    borderRadius: "8px",
+    background: "linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%)",
+  };
+
+  // Detect dark mode
+  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+  if (isDark) {
+    pulseStyle.background = "linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%)";
+  }
+
+  return (
+    <div style={{
+      display: "flex",
+      height: "100vh",
+      width: "100%",
+      background: isDark ? "#0f172a" : "#ffffff",
+      fontFamily: "system-ui, -apple-system, sans-serif",
+    }}>
+      <style>{skeletonKeyframes}</style>
+
+      {/* Chat panel skeleton */}
+      <div style={{ flex: "1 1 50%", display: "flex", flexDirection: "column", padding: "16px", gap: "12px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingBottom: "8px" }}>
+          <div style={{ ...pulseStyle, width: "36px", height: "36px", borderRadius: "50%" }} />
+          <div style={{ ...pulseStyle, width: "140px", height: "16px" }} />
+          <div style={{ marginLeft: "auto", ...pulseStyle, width: "80px", height: "28px" }} />
+        </div>
+
+        {/* Message area */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "16px", paddingTop: "12px" }}>
+          {/* User message */}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ ...pulseStyle, width: "65%", height: "48px", animationDelay: "0.1s" }} />
+          </div>
+          {/* Assistant message */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ ...pulseStyle, width: "80%", height: "16px", animationDelay: "0.2s" }} />
+            <div style={{ ...pulseStyle, width: "70%", height: "16px", animationDelay: "0.3s" }} />
+            <div style={{ ...pulseStyle, width: "55%", height: "16px", animationDelay: "0.4s" }} />
+          </div>
+        </div>
+
+        {/* Input area */}
+        <div style={{ ...pulseStyle, width: "100%", height: "52px", animationDelay: "0.5s" }} />
+      </div>
+
+      {/* Separator */}
+      <div style={{
+        width: "4px",
+        background: isDark ? "#1e293b" : "#e2e8f0",
+        flexShrink: 0,
+      }} />
+
+      {/* Preview panel skeleton */}
+      <div style={{ flex: "1 1 50%", display: "flex", flexDirection: "column", padding: "16px", gap: "12px" }}>
+        {/* Preview header */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ ...pulseStyle, width: "24px", height: "24px", borderRadius: "6px", animationDelay: "0.2s" }} />
+          <div style={{ ...pulseStyle, width: "24px", height: "24px", borderRadius: "6px", animationDelay: "0.3s" }} />
+          <div style={{ ...pulseStyle, width: "24px", height: "24px", borderRadius: "6px", animationDelay: "0.4s" }} />
+          <div style={{ flex: 1 }} />
+          <div style={{ ...pulseStyle, width: "100px", height: "24px", animationDelay: "0.3s" }} />
+        </div>
+        {/* Preview content area */}
+        <div style={{ ...pulseStyle, flex: 1, animationDelay: "0.2s" }} />
+      </div>
+    </div>
+  );
+}
+
 // Check if this is a pop-out database window
 const urlParams = new URLSearchParams(window.location.search);
 const windowType = urlParams.get("window");
 const appIdStr = urlParams.get("appId");
 const chatIdStr = urlParams.get("chatId");
 const hasPendingPrompt = urlParams.get("hasPendingPrompt") === "true";
+const chatModeParam = urlParams.get("chatMode");
 
 if (windowType === "database" && appIdStr) {
   // Lazy import to avoid loading full app dependencies
@@ -306,15 +393,19 @@ if (windowType === "database" && appIdStr) {
     },
   );
 } else if (windowType === "chat" && appIdStr) {
-  // P18 — Dedicated chat+preview window (lightweight, no router/sidebar/posthog)
+  // P18 — Show skeleton loader immediately while JS loads
+  const root = createRoot(document.getElementById("root")!);
+  root.render(<ChatWindowSkeleton />);
+
   import("./components/chat_window/ChatWindowApp").then(
     ({ ChatWindowApp }) => {
-      createRoot(document.getElementById("root")!).render(
+      root.render(
         <StrictMode>
           <ChatWindowApp
             appId={Number(appIdStr)}
             chatId={chatIdStr ? Number(chatIdStr) : undefined}
             hasPendingPrompt={hasPendingPrompt}
+            initialChatMode={chatModeParam || undefined}
           />
         </StrictMode>,
       );

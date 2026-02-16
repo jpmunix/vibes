@@ -26,6 +26,8 @@ interface ChatPanelProps {
   autoStart?: boolean;
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
+  /** When true, don't reset plan mode to build on first load (used when opening a new app in plan mode) */
+  preservePlanMode?: boolean;
 }
 
 export function ChatPanel({
@@ -33,6 +35,7 @@ export function ChatPanel({
   autoStart,
   isPreviewOpen,
   onTogglePreview,
+  preservePlanMode,
 }: ChatPanelProps) {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
@@ -52,10 +55,21 @@ export function ChatPanel({
   // new app creation; once inside an existing app it should use the user's
   // preferred mode (build / agent).
   const hasResetModeRef = useRef<number | undefined>(undefined);
+  const preservePlanModeRef = useRef(preservePlanMode);
+
+  // Clear the preserve flag once streaming starts (plan mode has been "used")
+  useEffect(() => {
+    if (chatId && (isStreamingById.get(chatId) ?? false)) {
+      preservePlanModeRef.current = false;
+    }
+  }, [chatId, isStreamingById]);
+
   useEffect(() => {
     if (!chatId || !settings) return;
     // Only reset once per chatId
     if (hasResetModeRef.current === chatId) return;
+    // Don't reset plan mode if explicitly preserved (new app window in plan mode)
+    if (preservePlanModeRef.current) return;
 
     if (settings.selectedChatMode === "plan") {
       const isStreaming = isStreamingById.get(chatId) ?? false;

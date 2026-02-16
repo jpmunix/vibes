@@ -43,6 +43,7 @@ import { showError } from "@/lib/toast";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { currentAppAtom } from "@/atoms/appAtoms";
+import { useSettings } from "@/hooks/useSettings";
 
 /**
  * P18 — Lightweight chat+preview shell for dedicated chat windows.
@@ -96,10 +97,11 @@ interface ChatWindowAppProps {
     appId: number;
     chatId?: number;
     hasPendingPrompt?: boolean;
+    initialChatMode?: string;
 }
 
 // ─── Inner content (rendered inside router tree) ────────────────────────
-function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: ChatWindowAppProps) {
+function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, initialChatMode }: ChatWindowAppProps) {
     const setSelectedAppId = useSetAtom(selectedAppIdAtom);
     const [chatId, setChatId] = useAtom(selectedChatIdAtom);
     const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
@@ -109,6 +111,11 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
     const currentApp = useAtomValue(currentAppAtom);
     const hasAutoStreamedRef = useRef(false);
     const { streamMessage } = useStreamChat({ hasChatId: true });
+
+    // Defer server startup until the first AI message finishes streaming.
+    // When opening a brand-new app, the code hasn't been generated yet,
+    // so starting the dev server immediately always fails and wastes resources.
+    const [serverReady, setServerReady] = useState(!hasPendingPrompt);
 
     const previewRef = useRef<ImperativePanelHandle>(null);
     const chatRef = useRef<ImperativePanelHandle>(null);
@@ -120,6 +127,16 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
             setChatId(initialChatId);
         }
     }, [appId, setSelectedAppId, initialChatId, setChatId]);
+
+    // Apply initial chat mode (e.g. "plan") from the parent window on mount
+    const { updateSettings } = useSettings();
+    const hasAppliedInitialModeRef = useRef(false);
+    useEffect(() => {
+        if (initialChatMode && !hasAppliedInitialModeRef.current) {
+            hasAppliedInitialModeRef.current = true;
+            updateSettings({ selectedChatMode: initialChatMode as any });
+        }
+    }, [initialChatMode, updateSettings]);
 
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
     useEffect(() => {
@@ -155,7 +172,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
     }, [chatId, chats, loading]);
 
     useAppOutputSubscription();
-    useSilentAppStart();
+    useSilentAppStart({ enabled: serverReady });
 
     // Set document.title so the native title bar shows app name
     useEffect(() => {
@@ -276,6 +293,10 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
 
     useEffect(() => {
         const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
+            // Enable server startup after first stream completes
+            if (!serverReady) {
+                setServerReady(true);
+            }
             setPendingAgentConsents((prev) =>
                 prev.filter((consent) => consent.chatId !== chatId),
             );
@@ -295,7 +316,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
             });
         });
         return () => unsubscribe();
-    }, [setPendingAgentConsents, setAgentTodosByChatId]);
+    }, [setPendingAgentConsents, setAgentTodosByChatId, serverReady]);
 
     return (
         <div className="flex h-screen w-full bg-background">
@@ -312,6 +333,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
                             chatId={chatId}
                             autoStart={false}
                             isPreviewOpen={isPreviewOpen}
+                            preservePlanMode={hasPendingPrompt && initialChatMode === "plan"}
                             onTogglePreview={() => {
                                 setIsPreviewOpen(!isPreviewOpen);
                                 if (isPreviewOpen) {
@@ -361,11 +383,11 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: C
 // We use createMemoryHistory starting at /chat?id=<chatId> so that
 // useSearch({ from: "/chat" }) in useStreamChat finds an active match.
 // ChatWindowContent is the root route component → inside the router tree.
-function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt?: boolean) {
+function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt?: boolean, initialChatMode?: string) {
     const chatWindowRootRoute = createRootRoute({
         component: () => (
             <SidebarProvider defaultOpen={false}>
-                <ChatWindowContent appId={appId} chatId={chatId} hasPendingPrompt={hasPendingPrompt} />
+                <ChatWindowContent appId={appId} chatId={chatId} hasPendingPrompt={hasPendingPrompt} initialChatMode={initialChatMode} />
             </SidebarProvider>
         ),
     });
@@ -403,8 +425,8 @@ function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt
 }
 
 // ─── Shell (outermost providers) ────────────────────────────────────────
-export function ChatWindowApp({ appId, chatId, hasPendingPrompt }: ChatWindowAppProps) {
-    const [chatRouter] = useState(() => createChatWindowRouter(appId, chatId, hasPendingPrompt));
+export function ChatWindowApp({ appId, chatId, hasPendingPrompt, initialChatMode }: ChatWindowAppProps) {
+    const [chatRouter] = useState(() => createChatWindowRouter(appId, chatId, hasPendingPrompt, initialChatMode));
 
     return (
         <QueryClientProvider client={queryClient}>

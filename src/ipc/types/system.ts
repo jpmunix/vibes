@@ -301,6 +301,7 @@ export const systemContracts = {
       appId: z.number(),
       chatId: z.number().optional(),
       prompt: z.string().optional(),
+      chatMode: z.string().optional(),
       attachments: z.array(z.object({
         name: z.string(),
         type: z.string(),
