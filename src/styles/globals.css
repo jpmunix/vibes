@@ -319,6 +319,14 @@ body[data-scroll-locked] .app-region-drag {
 }
 
 /* Tiptap Styles */
+.prose ul > li::marker {
+  color: var(--foreground);
+}
+
+.prose ol > li::marker {
+  color: var(--foreground);
+}
+
 .prose pre {
   @apply bg-zinc-900 text-zinc-100 p-4 rounded-lg font-mono text-sm;
 }

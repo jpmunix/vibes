@@ -83,6 +83,7 @@ import { useAttachments } from "@/hooks/useAttachments";
 import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
 import { useSidebar } from "@/components/ui/sidebar";
+import { chatPositionAtom } from "@/atoms/uiAtoms";
 
 interface ErrorBannerProps {
   error: { message: string; source: "preview-app" | "dyad-app" } | undefined;
@@ -196,10 +197,17 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
 };
 
 // Expand/Collapse Preview Button
-const ExpandPreviewButton = () => {
+// position="left" → renders only when preview is on the left (chat right)
+// position="right" → renders only when preview is on the right (chat left)
+const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
   const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
+  const chatPosition = useAtomValue(chatPositionAtom);
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
   const sidebarWasOpenRef = useRef(true);
+
+  // Preview is on the opposite side of chat
+  const previewSide = chatPosition === "left" ? "right" : "left";
+  if (previewSide !== position) return null;
 
   const handleToggle = () => {
     if (!isExpanded) {
@@ -1431,8 +1439,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         <div className="flex items-center p-2 border-b space-x-2">
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
-            {/* Expand/Collapse Preview Button */}
-            <ExpandPreviewButton />
+            {/* ExpandPreview at left when preview is on the left (chat right) */}
+            <ExpandPreviewButton position="left" />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1759,6 +1767,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 </TooltipProvider>
               </PopoverContent>
             </Popover>
+            {/* ExpandPreview at right when preview is on the right (chat left) */}
+            <ExpandPreviewButton position="right" />
           </div>
         </div>
       )}

@@ -29,7 +29,7 @@ export function AppItem({
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
           className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
-            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+            ? "bg-primary/10 text-primary"
             : ""
             }`}
           data-testid={`app-list-item-${app.name}`}
@@ -41,7 +41,7 @@ export function AppItem({
               {app.name}
             </span>
             <span
-              className={`text-xs ${selectedAppId === app.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
+              className={`text-xs ${selectedAppId === app.id ? "text-primary/70" : "text-gray-500"}`}
             >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
@@ -55,7 +55,7 @@ export function AppItem({
         <div
           className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
           ${selectedAppId === app.id
-              ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+              ? "bg-gradient-to-l from-primary/10 via-primary/8 to-transparent"
               : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
             }`}
         />
@@ -72,8 +72,8 @@ export function AppItem({
               size={14}
               className={
                 app.isFavorite
-                  ? "fill-blue-500 text-blue-500"
-                  : "text-gray-400 hover:text-blue-500 hover:fill-blue-500"
+                  ? "fill-primary text-primary"
+                  : "text-gray-400 hover:text-primary hover:fill-primary"
               }
             />
           </SidebarMenuAction>

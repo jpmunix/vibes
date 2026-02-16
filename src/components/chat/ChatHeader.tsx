@@ -13,8 +13,11 @@ import {
   MessageSquare,
   Trash2,
   Pencil,
+  PanelLeft,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
-import { PanelRightClose } from "lucide-react";
+import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "../ui/button";
@@ -50,6 +53,8 @@ import {
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { KnowledgeBaseModal } from "../KnowledgeBaseModal";
+import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
   Dialog,
   DialogContent,
@@ -294,14 +299,18 @@ export function ChatHeader({
       )}
 
       {/* Why is this pt-0.5? Because the loading bar is h-1 (it always takes space) and we want the vertical spacing to be consistent.*/}
-      <div className="@container flex items-center pb-1.5 pt-0.5">
+      <div className="@container flex items-center px-1 py-2 border-b border-border">
         <div className="flex items-center shrink-0">
+          <ExpandChatButton
+            isPreviewOpen={isPreviewOpen}
+            onTogglePreview={onTogglePreview}
+          />
           <Button
             onClick={handleNewChat}
             variant="ghost"
-            className="hidden @2xs:flex items-center justify-start gap-2 mx-2 py-3"
+            className="hidden @2xs:flex items-center justify-start gap-1 mx-1 px-2.5 py-1 text-xs font-medium"
           >
-            <PlusCircle size={16} />
+            <PlusCircle size={15} />
             <span>Nuevo chat</span>
           </Button>
 
@@ -310,9 +319,9 @@ export function ChatHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
+                className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-md"
               >
-                <MoreHorizontal size={16} />
+                <MoreHorizontal size={15} />
                 <span className="hidden @xs:inline">Opciones</span>
               </Button>
             </DropdownMenuTrigger>
@@ -385,6 +394,7 @@ export function ChatHeader({
                 <Brain size={16} className="mr-2" />
                 Base de Conocimientos
               </DropdownMenuItem>
+              <ChatPositionToggle />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -456,18 +466,6 @@ export function ChatHeader({
             onClose={() => setIsKnowledgeBaseModalOpen(false)}
           />
         )}
-
-        <button
-          data-testid="toggle-preview-panel-button"
-          onClick={onTogglePreview}
-          className="cursor-pointer p-2 hover:bg-(--background-lightest) rounded-md ml-auto"
-        >
-          {isPreviewOpen ? (
-            <PanelRightClose size={20} />
-          ) : (
-            <PanelRightOpen size={20} />
-          )}
-        </button>
       </div>
 
       <ConfirmationDialog
@@ -563,3 +561,66 @@ export function ChatHeader({
     </div>
   );
 }
+
+function ChatPositionToggle() {
+  const [chatPosition, setChatPosition] = useAtom(chatPositionAtom);
+  const isLeft = chatPosition === "left";
+
+  return (
+    <DropdownMenuItem
+      onClick={() => setChatPosition(isLeft ? "right" : "left")}
+    >
+      {isLeft ? (
+        <PanelRightOpen size={16} className="mr-2" />
+      ) : (
+        <PanelLeft size={16} className="mr-2" />
+      )}
+      {isLeft ? "Chat a la derecha" : "Chat a la izquierda"}
+    </DropdownMenuItem>
+  );
+}
+
+function TogglePreviewInline({
+  isPreviewOpen,
+  onTogglePreview,
+}: {
+  isPreviewOpen: boolean;
+  onTogglePreview: () => void;
+}) {
+  const chatPosition = useAtomValue(chatPositionAtom);
+  const isLeft = chatPosition === "left";
+
+  // When chat is left → preview is right → use PanelRight icons
+  // When chat is right → preview is left → use PanelLeft icons
+  const OpenIcon = isLeft ? PanelRightOpen : PanelLeftOpen;
+  const CloseIcon = isLeft ? PanelRightClose : PanelLeftClose;
+
+  return (
+    <button
+      data-testid="toggle-preview-panel-button"
+      onClick={onTogglePreview}
+      className="cursor-pointer p-2 hover:bg-(--background-lightest) rounded-md ml-auto"
+    >
+      {isPreviewOpen ? <CloseIcon size={20} /> : <OpenIcon size={20} />}
+    </button>
+  );
+}
+
+function ExpandChatButton({
+  isPreviewOpen,
+  onTogglePreview,
+}: {
+  isPreviewOpen: boolean;
+  onTogglePreview: () => void;
+}) {
+  return (
+    <button
+      onClick={onTogglePreview}
+      className="p-1 ml-1 hover:bg-(--background-lightest) rounded-md transition-colors"
+      title={isPreviewOpen ? "Maximizar chat" : "Restaurar paneles"}
+    >
+      {isPreviewOpen ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+    </button>
+  );
+}
+

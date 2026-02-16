@@ -8,10 +8,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  MoreVertical,
+
   MessageCircle,
   Pencil,
   Folder,
+  FolderOpen,
+  FolderInput,
   Sparkles,
   ChevronDown,
   ChevronRight,
@@ -22,12 +24,13 @@ import {
   Copy,
   Trash2,
   Star,
+  Settings,
+  Info,
+  Calendar,
+  Clock,
+  MapPin,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -82,6 +85,7 @@ export default function AppDetailsPage() {
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [aiGeneratedTitle, setAiGeneratedTitle] = useState<string | null>(null);
   const [isIntegrationsSectionOpen, setIsIntegrationsSectionOpen] = useState(false);
+  const [isInfoSectionOpen, setIsInfoSectionOpen] = useState(false);
   const { toggleFavorite, isLoading: isFavoriteLoading } = useAddAppToFavorite();
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
@@ -331,123 +335,81 @@ export default function AppDetailsPage() {
 
   return (
     <div
-      className="relative min-h-screen p-4 w-full"
+      className="relative min-h-screen p-4 w-full flex items-center justify-center overflow-hidden"
       data-testid="app-details-page"
     >
-      <div className="w-full max-w-2xl mx-auto mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm relative">
-        <div className="flex items-center mb-3">
+      {/* Glow background effect */}
+      <div
+        aria-hidden
+        className="glow-breath pointer-events-none absolute rounded-full"
+        style={{
+          width: '1400px',
+          height: '1400px',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+      />
+
+      <style>{`
+        @keyframes breathe {
+          0% {
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0.3;
+            filter: blur(80px);
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 0.5;
+            filter: blur(100px);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0.3;
+            filter: blur(80px);
+          }
+        }
+
+        .glow-breath {
+          background: radial-gradient(
+            circle,
+            var(--primary) 0%,
+            color-mix(in oklch, var(--primary) 55%, transparent) 20%,
+            color-mix(in oklch, var(--primary) 30%, transparent) 40%,
+            color-mix(in oklch, var(--primary) 12%, transparent) 60%,
+            color-mix(in oklch, var(--primary) 4%, transparent) 80%,
+            transparent 100%
+          );
+          animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          z-index: 0;
+        }
+      `}</style>
+
+      <div className="w-full max-w-2xl mx-auto p-4 relative z-10">
+        {/* Hero */}
+        <div className="flex items-center justify-center gap-3 mb-8 mt-2">
+          <h1 className="text-4xl font-bold text-center tracking-tight">{selectedApp.name}</h1>
           <Button
             variant="ghost"
             size="sm"
-            className="p-0.5 h-auto mr-1"
+            className="p-1 h-auto transition-transform hover:scale-110 shrink-0"
             onClick={() => toggleFavorite(selectedApp.id)}
             disabled={isFavoriteLoading}
             title={selectedApp.isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
           >
             <Star
-              className={`h-5 w-5 transition-colors ${selectedApp.isFavorite
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-gray-400 hover:text-yellow-400"
+              className={`h-6 w-6 transition-all duration-200 ${selectedApp.isFavorite
+                ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]"
+                : "text-gray-400/60 hover:text-yellow-400"
                 }`}
             />
           </Button>
-          <h2 className="text-2xl font-bold">{selectedApp.name}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-1 p-0.5 h-auto"
-            onClick={handleOpenRenameDialog}
-            data-testid="app-details-rename-app-button"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-0.5 p-0.5 h-auto"
-            onClick={handleGenerateTitle}
-            disabled={isGeneratingTitle}
-            title="Asignar nombre de la app con inteligencia artificial"
-          >
-            {isGeneratingTitle ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-          </Button>
         </div>
 
-        {/* Overflow Menu in top right */}
-        <div className="absolute top-2 right-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                data-testid="app-details-more-options-button"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-40 p-2" align="end">
-              <div className="flex flex-col space-y-0.5">
-                <Button
-                  onClick={handleOpenRenameFolderDialog}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 justify-start text-xs"
-                >
-                  Renombrar carpeta
-                </Button>
-                <Button
-                  onClick={() => setIsChangeLocationDialogOpen(true)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 justify-start text-xs"
-                >
-                  Mover carpeta
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-          <div>
-            <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
-              Creado
-            </span>
-            <span className="text-xs">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <div>
-            <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
-              Última actualización
-            </span>
-            <span className="text-xs">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <div className="col-span-2">
-            <span className="block text-gray-500 dark:text-gray-400 mb-0.5 text-xs">
-              Ruta
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-[-8px] p-0.5 h-auto cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                onClick={() => {
-                  ipc.system.showItemInFolder(currentAppPath);
-                }}
-                title="Mostrar en carpeta"
-              >
-                <Folder className="h-3.5 w-3.5" />
-              </Button>
-              <span className="text-sm break-all">{currentAppPath}</span>
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-col gap-2">
+        {/* Action buttons */}
+        <div className="flex flex-col gap-2">
           <Button
+            variant="outline"
             onClick={() => {
               if (!appId) {
                 console.error("No app id found");
@@ -455,7 +417,7 @@ export default function AppDetailsPage() {
               }
               ipc.system.openChatWindow({ appId });
             }}
-            className="cursor-pointer w-full py-5 flex justify-center items-center gap-2"
+            className="cursor-pointer w-full py-5 flex justify-center items-center gap-2 backdrop-blur-md bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
             size="lg"
           >
             <MessageCircle className="h-4 w-4" />
@@ -464,25 +426,152 @@ export default function AppDetailsPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleOpenCopyDialog}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-foreground hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/15 transition-colors cursor-pointer"
             >
               <Copy className="h-4 w-4" />
               Clonar aplicación
             </button>
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
               <Trash2 className="h-4 w-4" />
               Borrar aplicación
             </button>
           </div>
+          {/* Collapsible Información y opciones section */}
+          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden backdrop-blur-md">
+            <button
+              type="button"
+              onClick={() => setIsInfoSectionOpen(!isInfoSectionOpen)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                {isInfoSectionOpen ? (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                )}
+                <div className="flex flex-col items-start">
+                  <span className="font-medium text-sm">Información y opciones</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Nombre, carpeta y datos de la aplicación</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Settings className="h-3.5 w-3.5 text-gray-400" />
+                <Info className="h-3.5 w-3.5 text-gray-400" />
+              </div>
+            </button>
+            <div
+              className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isInfoSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
+                }`}
+            >
+              <div className="p-4 space-y-3 border-t border-black/10 dark:border-white/08 bg-black/3 dark:bg-black/15">
+                {/* Opciones Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Settings className="h-5 w-5" />
+                      Opciones
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9"
+                      onClick={handleOpenRenameDialog}
+                      data-testid="app-details-rename-app-button"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Cambiar nombre
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9"
+                      onClick={handleGenerateTitle}
+                      disabled={isGeneratingTitle}
+                    >
+                      {isGeneratingTitle ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Generar nombre con IA
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9"
+                      onClick={handleOpenRenameFolderDialog}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      Renombrar carpeta
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9"
+                      onClick={() => setIsChangeLocationDialogOpen(true)}
+                    >
+                      <FolderInput className="h-4 w-4" />
+                      Mover carpeta
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9"
+                      onClick={() => ipc.system.showItemInFolder(currentAppPath)}
+                    >
+                      <Folder className="h-4 w-4" />
+                      Abrir carpeta de destino
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Información Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Info className="h-5 w-5" />
+                      Información
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Ruta</span>
+                        <span className="text-sm break-all">{currentAppPath}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Calendar className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Fecha de creación</span>
+                        <span className="text-sm">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Última actualización</span>
+                        <span className="text-sm">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+
           {/* Collapsible Repositorio e integraciones section */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden backdrop-blur-md">
             <button
               type="button"
               onClick={() => setIsIntegrationsSectionOpen(!isIntegrationsSectionOpen)}
-              className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+              className="w-full px-4 py-3 flex items-center justify-between bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 {isIntegrationsSectionOpen ? (
@@ -506,7 +595,7 @@ export default function AppDetailsPage() {
               className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isIntegrationsSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
                 }`}
             >
-              <div className="p-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="p-4 space-y-3 border-t border-black/10 dark:border-white/08 bg-black/3 dark:bg-black/15">
                 {/* GitHub */}
                 <Card>
                   <CardHeader className="pb-2">
@@ -545,7 +634,7 @@ export default function AppDetailsPage() {
             <Button
               variant="outline"
               onClick={() => setIsKnowledgeBaseModalOpen(true)}
-              className="w-full justify-between h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
             >
               <div className="flex items-center gap-2">
                 <ChevronRight className="h-4 w-4 text-gray-500" />
@@ -573,7 +662,7 @@ export default function AppDetailsPage() {
             <Button
               variant="outline"
               onClick={() => setIsDossierModalOpen(true)}
-              className="w-full justify-between h-auto py-3 px-4 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
             >
               <div className="flex items-center gap-2">
                 <ChevronRight className="h-4 w-4 text-gray-500" />

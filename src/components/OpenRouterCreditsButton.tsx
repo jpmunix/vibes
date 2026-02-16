@@ -46,24 +46,24 @@ export function OpenRouterCreditsButton() {
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="p-4 rounded-xl shadow-lg border-border bg-black text-white" arrowClassName="fill-black">
+        <TooltipContent side="right" className="p-4 rounded-xl shadow-lg border-border bg-popover text-popover-foreground" arrowClassName="fill-popover">
           <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 mb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
               {data.label || "OpenRouter"}
             </p>
             <div className="flex justify-between gap-4 text-sm">
-              <span className="text-gray-400">Gasto Total:</span>
-              <span className="font-mono font-bold text-red-500">${data.totalUsage.toFixed(2)}</span>
+              <span className="text-muted-foreground">Gasto Total:</span>
+              <span className="font-mono font-bold text-rose-500 dark:text-rose-400">${data.totalUsage.toFixed(2)}</span>
             </div>
             <div className="flex justify-between gap-4 text-sm">
-              <span className="text-gray-400">Créditos Restantes:</span>
-              <span className="font-mono font-bold text-green-500">${data.availableCredits.toFixed(2)}</span>
+              <span className="text-muted-foreground">Créditos Restantes:</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">${data.availableCredits.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between gap-4 text-sm border-t border-gray-800 mt-2 pt-2">
-              <span className="text-gray-400">Total Recargado:</span>
+            <div className="flex justify-between gap-4 text-sm border-t border-border mt-2 pt-2">
+              <span className="text-muted-foreground">Total Recargado:</span>
               <span className="font-mono">${data.totalCredits.toFixed(2)}</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-2 text-right italic">
+            <p className="text-[10px] text-muted-foreground/70 mt-2 text-right italic">
               Click para actualizar
             </p>
           </div>

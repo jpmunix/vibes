@@ -44,6 +44,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { currentAppAtom } from "@/atoms/appAtoms";
 import { useSettings } from "@/hooks/useSettings";
+import { chatPositionAtom } from "@/atoms/uiAtoms";
 
 /**
  * P18 — Lightweight chat+preview shell for dedicated chat windows.
@@ -106,6 +107,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     const [chatId, setChatId] = useAtom(selectedChatIdAtom);
     const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
     const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
+    const chatPosition = useAtomValue(chatPositionAtom);
     const [isResizing, setIsResizing] = useState(false);
     const { chats, loading } = useChats(appId);
     const currentApp = useAtomValue(currentAppAtom);
@@ -318,60 +320,67 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         return () => unsubscribe();
     }, [setPendingAgentConsents, setAgentTodosByChatId, serverReady]);
 
+    const chatPanelNode = (
+        <Panel
+            collapsible
+            collapsedSize={0}
+            ref={chatRef}
+            id="chat-panel"
+            order={chatPosition === "left" ? 1 : 3}
+            minSize={30}
+        >
+            <div className="h-full w-full">
+                <ChatPanel
+                    chatId={chatId}
+                    autoStart={false}
+                    isPreviewOpen={isPreviewOpen}
+                    preservePlanMode={hasPendingPrompt && initialChatMode === "plan"}
+                    onTogglePreview={() => {
+                        setIsPreviewOpen(!isPreviewOpen);
+                        if (isPreviewOpen) {
+                            previewRef.current?.collapse();
+                        } else {
+                            previewRef.current?.expand();
+                        }
+                    }}
+                />
+            </div>
+        </Panel>
+    );
+
+    const previewPanelNode = (
+        <Panel
+            collapsible
+            ref={previewRef}
+            id="preview-panel"
+            order={chatPosition === "left" ? 3 : 1}
+            minSize={20}
+            className={cn(
+                !isResizing && "transition-[opacity] duration-150 ease-in-out",
+            )}
+        >
+            <div className="flex flex-col h-full">
+                <ActionHeader />
+                <div className="flex-1 min-h-0">
+                    <PreviewPanel />
+                </div>
+            </div>
+        </Panel>
+    );
+
     return (
         <div className="flex h-screen w-full bg-background">
-            <PanelGroup autoSaveId={`chat-window-${appId}`} direction="horizontal">
-                <Panel
-                    collapsible
-                    collapsedSize={0}
-                    ref={chatRef}
-                    id="chat-panel"
-                    minSize={30}
-                >
-                    <div className="h-full w-full">
-                        <ChatPanel
-                            chatId={chatId}
-                            autoStart={false}
-                            isPreviewOpen={isPreviewOpen}
-                            preservePlanMode={hasPendingPrompt && initialChatMode === "plan"}
-                            onTogglePreview={() => {
-                                setIsPreviewOpen(!isPreviewOpen);
-                                if (isPreviewOpen) {
-                                    previewRef.current?.collapse();
-                                } else {
-                                    previewRef.current?.expand();
-                                }
-                            }}
-                        />
-                    </div>
-                </Panel>
-
-                <>
-                    <PanelResizeHandle
-                        onDragging={(e) => setIsResizing(e)}
-                        className={cn(
-                            "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
-                            isPreviewExpanded && "invisible",
-                        )}
-                        disabled={isPreviewExpanded}
-                    />
-                    <Panel
-                        collapsible
-                        ref={previewRef}
-                        id="preview-panel"
-                        minSize={20}
-                        className={cn(
-                            !isResizing && "transition-[opacity] duration-150 ease-in-out",
-                        )}
-                    >
-                        <div className="flex flex-col h-full">
-                            <ActionHeader />
-                            <div className="flex-1 min-h-0">
-                                <PreviewPanel />
-                            </div>
-                        </div>
-                    </Panel>
-                </>
+            <PanelGroup autoSaveId={`chat-window-${appId}-${chatPosition}`} direction="horizontal">
+                {chatPosition === "left" ? chatPanelNode : previewPanelNode}
+                <PanelResizeHandle
+                    onDragging={(e) => setIsResizing(e)}
+                    className={cn(
+                        "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
+                        isPreviewExpanded && "invisible",
+                    )}
+                    disabled={isPreviewExpanded}
+                />
+                {chatPosition === "left" ? previewPanelNode : chatPanelNode}
             </PanelGroup>
             <Toaster richColors />
         </div>
