@@ -147,6 +147,12 @@ export function registerWindowHandlers() {
       skipTaskbar: false,
       autoHideMenuBar: true,
       title: `${appName} — Vibes Chat`,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: {
+        x: 10,
+        y: 8,
+      },
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

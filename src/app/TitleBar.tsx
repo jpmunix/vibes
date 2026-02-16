@@ -5,40 +5,12 @@ import { useLoadApps } from "@/hooks/useLoadApps";
 import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
 import { useVersions } from "@/hooks/useVersions";
-import { Button } from "@/components/ui/button";
-// @ts-ignore
-import logo from "../../assets/logo.svg";
-import { cn } from "@/lib/utils";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { useEffect, useState } from "react";
 import { DyadProSuccessDialog } from "@/components/DyadProSuccessDialog";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ipc } from "@/ipc/types";
-import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
-import type { UserBudgetInfo } from "@/ipc/types";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
-import { UserHeaderActions } from "@/components/preview_panel/UserHeaderActions";
-import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import { AuthModal } from "@/components/AuthModal";
-import { userAtom } from "@/atoms/authAtoms";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { ProfileModal } from "@/components/ProfileModal";
-import { BackupModal } from "@/components/BackupModal";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon, Palette, CloudUpload, ScrollText, Database } from "lucide-react";
 
 export const TitleBar = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
@@ -48,20 +20,10 @@ export const TitleBar = () => {
   const { settings, refreshSettings } = useSettings();
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-  const user = useAtomValue(userAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
+
 
   useEffect(() => {
     // Check if we're running on Windows
@@ -109,17 +71,7 @@ export const TitleBar = () => {
       <div className="@container z-11 w-full h-11 bg-(--sidebar) absolute top-0 left-0 app-region-drag flex items-center">
         <div className={`${showWindowControls ? "pl-2" : "pl-18"}`}></div>
 
-        <img src={logo} alt="Vibes Logo" className="w-6 h-6 mr-0.5" />
-        <Button
-          data-testid="title-bar-app-name-button"
-          variant="outline"
-          size="sm"
-          className={`hidden @2xl:block no-app-region-drag text-xs max-w-60 truncate font-medium ${selectedApp ? "cursor-pointer" : ""
-            }`}
-          onClick={handleAppClick}
-        >
-          {displayText}
-        </Button>
+        {/* Logo hidden for now */}
 
 
         {
@@ -132,17 +84,6 @@ export const TitleBar = () => {
                 />
               )
             }
-            <UserHeaderActions
-              user={user}
-              isAuthModalOpen={isAuthModalOpen}
-              setIsAuthModalOpen={setIsAuthModalOpen}
-              isProfileModalOpen={isProfileModalOpen}
-              setIsProfileModalOpen={setIsProfileModalOpen}
-              isBackupModalOpen={isBackupModalOpen}
-              setIsBackupModalOpen={setIsBackupModalOpen}
-              handleLogout={handleLogout}
-              navigate={navigate}
-            />
           </div>
         }
 
@@ -153,27 +94,6 @@ export const TitleBar = () => {
         isOpen={isSuccessDialogOpen}
         onClose={() => setIsSuccessDialogOpen(false)}
       />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
-
-      {
-        user && (
-          <>
-            <ProfileModal
-              isOpen={isProfileModalOpen}
-              onClose={() => setIsProfileModalOpen(false)}
-              user={user}
-            />
-            <BackupModal
-              isOpen={isBackupModalOpen}
-              onClose={() => setIsBackupModalOpen(false)}
-            />
-          </>
-        )
-      }
     </>
   );
 };

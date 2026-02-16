@@ -45,6 +45,7 @@ import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { currentAppAtom } from "@/atoms/appAtoms";
 import { useSettings } from "@/hooks/useSettings";
 import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { ChatTitleBar } from "./ChatTitleBar";
 
 /**
  * P18 — Lightweight chat+preview shell for dedicated chat windows.
@@ -369,19 +370,22 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     );
 
     return (
-        <div className="flex h-screen w-full bg-background">
-            <PanelGroup autoSaveId={`chat-window-${appId}-${chatPosition}`} direction="horizontal">
-                {chatPosition === "left" ? chatPanelNode : previewPanelNode}
-                <PanelResizeHandle
-                    onDragging={(e) => setIsResizing(e)}
-                    className={cn(
-                        "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
-                        isPreviewExpanded && "invisible",
-                    )}
-                    disabled={isPreviewExpanded}
-                />
-                {chatPosition === "left" ? previewPanelNode : chatPanelNode}
-            </PanelGroup>
+        <div className="flex flex-col h-screen w-full bg-background">
+            <ChatTitleBar />
+            <div className="flex flex-1 min-h-0">
+                <PanelGroup autoSaveId={`chat-window-${appId}-${chatPosition}`} direction="horizontal">
+                    {chatPosition === "left" ? chatPanelNode : previewPanelNode}
+                    <PanelResizeHandle
+                        onDragging={(e) => setIsResizing(e)}
+                        className={cn(
+                            "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
+                            isPreviewExpanded && "invisible",
+                        )}
+                        disabled={isPreviewExpanded}
+                    />
+                    {chatPosition === "left" ? previewPanelNode : chatPanelNode}
+                </PanelGroup>
+            </div>
             <Toaster richColors />
         </div>
     );

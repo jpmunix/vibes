@@ -407,9 +407,22 @@ export function ChatHeader({
                 variant="ghost"
                 className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
               >
-                <MessageSquare size={16} className="shrink-0" />
-                <span>
-                  {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
+                <span className="flex items-center gap-2">
+                  {chats.find((c) => c.id === selectedChatId)?.isPlan ? (
+                    <>
+                      <Brain size={14} className="text-primary" />
+                      <span className="truncate max-w-[200px] font-semibold text-primary">
+                        Planificación
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare size={14} className="shrink-0" />
+                      <span className="truncate max-w-[200px]">
+                        {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
+                      </span>
+                    </>
+                  )}
                 </span>
                 <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
               </Button>
@@ -420,40 +433,65 @@ export function ChatHeader({
                   <span className="text-muted-foreground text-sm">Sin chats</span>
                 </DropdownMenuItem>
               ) : (
-                chats.map((chat) => (
-                  <DropdownMenuItem
-                    key={chat.id}
-                    onClick={() => {
-                      setSelectedChatId(chat.id);
-                      navigate({
-                        to: "/chat",
-                        search: { id: chat.id },
-                      });
-                    }}
-                    className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
-                  >
-                    <MessageSquare size={14} className="mr-2 shrink-0" />
-                    <span className="truncate flex-1">{chat.title || `Chat ${chat.id}`}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChatToRename({ id: chat.id, title: chat.title || `Chat ${chat.id}` });
+                [...chats]
+                  .sort((a, b) => {
+                    if (a.isPlan && !b.isPlan) return -1;
+                    if (!a.isPlan && b.isPlan) return 1;
+                    return 0;
+                  })
+                  .map((chat) => (
+                    <DropdownMenuItem
+                      key={chat.id}
+                      onClick={() => {
+                        setSelectedChatId(chat.id);
+                        navigate({
+                          to: "/chat",
+                          search: { id: chat.id },
+                        });
                       }}
-                      className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
+                      className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
                     >
-                      <Pencil size={12} className="text-amber-500" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChatToDelete({ id: chat.id, title: chat.title || `Chat ${chat.id}` });
-                      }}
-                      className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
-                    >
-                      <Trash2 size={12} className="text-destructive" />
-                    </button>
-                  </DropdownMenuItem>
-                ))
+                      {chat.isPlan ? (
+                        <>
+                          <Brain size={14} className="mr-2 shrink-0 text-primary" />
+                          <span className="truncate flex-1 font-semibold text-primary">
+                            Planificación
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare size={14} className="mr-2 shrink-0" />
+                          <span className="truncate flex-1">
+                            {chat.title || `Chat ${chat.id}`}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setChatToRename({
+                                id: chat.id,
+                                title: chat.title || `Chat ${chat.id}`,
+                              });
+                            }}
+                            className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
+                          >
+                            <Pencil size={12} className="text-amber-500" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setChatToDelete({
+                                id: chat.id,
+                                title: chat.title || `Chat ${chat.id}`,
+                              });
+                            }}
+                            className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                          >
+                            <Trash2 size={12} className="text-destructive" />
+                          </button>
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  ))
               )}
             </DropdownMenuContent>
           </DropdownMenu>

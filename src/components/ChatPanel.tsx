@@ -294,6 +294,8 @@ export function ChatPanel({
     };
   }, []);
 
+  const isPlanMode = settings?.selectedChatMode === "plan" || preservePlanMode;
+
   return (
     <div className="flex flex-col h-full">
       <div className="relative">
@@ -314,7 +316,7 @@ export function ChatPanel({
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 relative overflow-hidden">
-            {settings?.selectedChatMode !== "plan" ? (
+            {!isPlanMode ? (
               <MessagesList
                 messages={messages}
                 messagesEndRef={messagesEndRef}
@@ -332,19 +334,12 @@ export function ChatPanel({
                       Diseñando el plan...
                     </p>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 opacity-20">
-                    <ListChecks className="h-16 w-16" />
-                    <p className="text-sm font-medium">
-                      Modo Planificación
-                    </p>
-                  </div>
-                )}
+                ) : null}
               </div>
             )}
 
             {/* Scroll to bottom button */}
-            {showScrollButton && (
+            {showScrollButton && !isPlanMode && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
                 <Button
                   onClick={handleScrollButtonClick}
@@ -368,7 +363,11 @@ export function ChatPanel({
             />
           )}
           <PlanPanel chatId={chatId} />
-          <ChatInput chatId={chatId} autoStart={autoStart} />
+          <ChatInput
+            chatId={chatId}
+            autoStart={autoStart}
+            isPlanMode={isPlanMode}
+          />
         </div>
       </div>
     </div>

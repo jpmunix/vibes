@@ -80,9 +80,11 @@ import { queryKeys } from "@/lib/queryKeys";
 export function ChatInput({
   chatId,
   autoStart,
+  isPlanMode,
 }: {
   chatId?: number;
   autoStart?: boolean;
+  isPlanMode?: boolean;
 }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
@@ -447,7 +449,7 @@ export function ChatInput({
                 proposal &&
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&
-                settings.selectedChatMode !== "plan" &&
+                !isPlanMode &&
                 settings.selectedChatMode !== "local-agent" && (
                   <ChatInputActions
                     proposal={proposal}

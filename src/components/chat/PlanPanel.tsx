@@ -544,47 +544,74 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     return (
         <div
             className={cn(
-                "flex flex-col overflow-hidden border-t border-border/80 bg-muted/40 transition-[height] duration-200 mb-2",
-                collapsed ? "max-h-10" : "max-h-[60vh]",
+                "flex flex-col overflow-hidden border-t border-border/80 bg-muted/40 transition-[max-height] duration-300 mb-2",
+                collapsed ? "max-h-28" : "max-h-[70vh]",
             )}
         >
             {/* Header bar (always visible) */}
-            <button
-                onClick={() => updateMapAtom(setCollapsed, chatId, !collapsed)}
-                className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/60 transition-colors"
-            >
-                <div className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium text-foreground">
-                        Plan
+            <div className="w-full flex items-center justify-between px-6 py-6 bg-primary/5 border-b border-primary/10 transition-colors">
+                <button
+                    onClick={() => updateMapAtom(setCollapsed, chatId, !collapsed)}
+                    className="flex-1 flex items-center gap-3 cursor-pointer text-left"
+                >
+                    <ListChecks className="h-5 w-5 text-primary" />
+                    <span className="text-base font-bold text-foreground tracking-tight">
+                        Plan de Desarrollo
                     </span>
                     {plan.objective && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            — {plan.objective}
+                        <span className="text-sm text-muted-foreground truncate max-w-[300px] border-l border-primary/20 pl-3 ml-1">
+                            {plan.objective}
                         </span>
                     )}
-                    <span className="text-xs text-muted-foreground">
-                        ({completedTasks}/{totalTasks})
+                    <span className="text-sm font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full ml-2">
+                        {completedTasks}/{totalTasks}
                     </span>
                     {allCompleted && (
-                        <span className="text-xs font-medium text-primary flex items-center gap-1 ml-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Plan completado
+                        <span className="text-sm font-semibold text-primary flex items-center gap-1.5 ml-2">
+                            <CheckCircle className="h-4 w-4" />
+                            Completado
                         </span>
                     )}
-                </div>
-                {collapsed ? (
-                    <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
-                ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="ml-2">
+                        {collapsed ? (
+                            <ChevronUp className="h-4 w-4 text-primary/40" />
+                        ) : (
+                            <ChevronDown className="h-4 w-4 text-primary/40" />
+                        )}
+                    </div>
+                </button>
+
+                {!effectiveReadOnly && (
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            disabled={isStreaming}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDevelop(hasChecked && !allChecked);
+                            }}
+                            className={cn(
+                                "text-xs h-9 px-4 gap-2 text-white transition-all shadow-sm hover:shadow-md",
+                                isStreaming && "opacity-50 cursor-not-allowed",
+                                "bg-primary hover:bg-primary/90"
+                            )}
+                        >
+                            <Rocket className="h-4 w-4" />
+                            <span className="hidden sm:inline">
+                                {hasChecked && !allChecked
+                                    ? `Desarrollar selección (${selectedTasks})`
+                                    : "Desarrollar Plan Completo"}
+                            </span>
+                        </Button>
+                    </div>
                 )}
-            </button>
+            </div>
 
             {/* Expanded content */}
             {!collapsed && (
                 <div className="flex flex-col overflow-hidden min-h-0 flex-1">
                     {/* Scrollable plan stages */}
-                    <div className="flex-1 overflow-y-auto px-6 pb-4">
+                    <div className="flex-1 overflow-y-auto px-6 pt-8 pb-4">
                         {plan.stages.map((stage) => (
                             <PlanStageSection
                                 key={stage.id}
@@ -598,14 +625,14 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
                     {/* Action bar (hidden when read-only or all tasks completed) */}
                     {!effectiveReadOnly && (
-                        <div className="border-t border-border/50 px-6 py-4 space-y-4">
-                            {/* Toggle all + Develop buttons */}
-                            <div className="flex items-center gap-4">
+                        <div className="border-t border-border/50 px-6 py-6 space-y-4 bg-muted/20">
+                            {/* Toggle all */}
+                            <div className="flex items-center justify-between">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={toggleAll}
-                                    className="text-xs h-9 px-3 gap-2"
+                                    className="text-xs h-9 px-3 gap-2 hover:bg-primary/10 hover:text-primary transition-colors"
                                 >
                                     {allChecked ? (
                                         <Square className="h-4 w-4" />
@@ -614,56 +641,39 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                                     )}
                                     {allChecked ? "Desmarcar todo" : "Marcar todo"}
                                 </Button>
-
-                                <div className="flex-1" />
-
-                                <Button
-                                    size="sm"
-                                    disabled={isStreaming}
-                                    onClick={() => handleDevelop(hasChecked && !allChecked)}
-                                    className={cn(
-                                        "text-xs h-9 px-4 gap-2 text-white transition-colors",
-                                        isStreaming && "opacity-50 cursor-not-allowed",
-                                        hasChecked && !allChecked
-                                            ? "bg-primary hover:bg-primary/90"
-                                            : "bg-primary hover:bg-primary/90"
-                                    )}
-                                >
-                                    <Rocket className="h-4 w-4" />
-                                    {hasChecked && !allChecked
-                                        ? `Desarrollar selección (${selectedTasks})`
-                                        : "Desarrollar Plan Completo"}
-                                </Button>
                             </div>
 
-                            {/* Plan modification input */}
-                            <div className="flex items-center gap-2">
-                                <input
-                                    value={planInput}
-                                    onChange={(e) => updateMapAtom(setPlanInput, chatId, e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                            e.preventDefault();
-                                            handlePlanInputSubmit();
-                                        }
-                                    }}
-                                    placeholder="Pide cambios al plan..."
-                                    className="flex-1 text-xs bg-muted/50 border border-border/50 rounded-md px-2.5 py-1.5 outline-none focus:border-primary/50 transition-colors"
-                                    disabled={loading}
-                                />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handlePlanInputSubmit}
-                                    disabled={!planInput.trim() || loading}
-                                    className="h-7 w-7 p-0"
-                                >
-                                    {loading ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                        <Send className="h-3.5 w-3.5" />
-                                    )}
-                                </Button>
+                            {/* Plan modification input - Styled like main chat input */}
+                            <div className="relative group">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-primary/10 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300" />
+                                <div className="relative flex items-center gap-2 bg-background border border-border/50 rounded-xl px-4 py-2 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                                    <input
+                                        value={planInput}
+                                        onChange={(e) => updateMapAtom(setPlanInput, chatId, e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handlePlanInputSubmit();
+                                            }
+                                        }}
+                                        placeholder="Pulir el plan o pedir cambios..."
+                                        className="flex-1 text-sm bg-transparent outline-none disabled:opacity-50"
+                                        disabled={loading}
+                                    />
+                                    <Button
+                                        size="icon"
+                                        variant="primary"
+                                        onClick={handlePlanInputSubmit}
+                                        disabled={!planInput.trim() || loading}
+                                        className="h-8 w-8 rounded-lg"
+                                    >
+                                        {loading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Send className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}

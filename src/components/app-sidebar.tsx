@@ -11,10 +11,29 @@ import {
   StickyNote,
   MessageCircle,
   HelpCircle,
+  LogOut,
+  User as UserIcon,
+  CloudUpload,
+  Database,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 import { DocumentationDialog } from "./DocumentationDialog";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { userAtom } from "@/atoms/authAtoms";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { AuthModal } from "@/components/AuthModal";
+import { ProfileModal } from "@/components/ProfileModal";
+import { BackupModal } from "@/components/BackupModal";
+import { useRouter } from "@tanstack/react-router";
 
 import {
   Sidebar,
@@ -82,6 +101,22 @@ export function AppSidebar() {
   const expandedByHover = useRef(false);
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
+
+  // User avatar state
+  const user = useAtomValue(userAtom);
+  const { navigate } = useRouter();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
 
   const routerState = useRouterState();
   const isAppRoute =
@@ -179,6 +214,95 @@ export function AppSidebar() {
                   Docs
                 </span>
               </button>
+
+              {/* User Avatar */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14"
+                      title={user.displayName || user.email || "Usuario"}
+                    >
+                      <SimpleAvatar
+                        src={user.photoURL || undefined}
+                        className="h-7 w-7"
+                        fallbackText={(
+                          user.displayName?.[0] ||
+                          user.email?.[0] ||
+                          "U"
+                        ).toUpperCase()}
+                      />
+                      <span className="text-[10px] font-bold leading-none mt-0.5 truncate max-w-[50px]">
+                        {(user.displayName || "Perfil").split(" ")[0]}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="end" className="w-64 p-2 shadow-xl border-border/50">
+                    <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                      Cuenta
+                    </DropdownMenuLabel>
+                    <div className="flex items-center gap-3 px-2 py-3">
+                      <div className="h-10 w-10">
+                        <SimpleAvatar
+                          src={user.photoURL || undefined}
+                          fallbackText={(
+                            user.displayName?.[0] ||
+                            user.email?.[0] ||
+                            "U"
+                          ).toUpperCase()}
+                        />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold truncate">
+                          {user.displayName || "Usuario"}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {user.email}
+                        </span>
+                      </div>
+                    </div>
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent"
+                      onClick={() => setIsProfileModalOpen(true)}
+                    >
+                      <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Editar Perfil</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent"
+                      onClick={() => setIsBackupModalOpen(true)}
+                    >
+                      <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Copias de seguridad</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent"
+                      onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+                    >
+                      <Database className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Logs de Consultas IA</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent text-foreground"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Cerrar sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <button
+                  className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
+                  title="Iniciar sesión"
+                  onClick={() => setIsAuthModalOpen(true)}
+                >
+                  <SimpleAvatar className="h-7 w-7" fallbackText={<UserIcon className="h-4 w-4" />} />
+                  <span className="text-[10px] font-bold leading-none mt-0.5">
+                    Login
+                  </span>
+                </button>
+              )}
             </div>
           </div>
           {/* Right Column: Chat List Section */}
@@ -195,6 +319,25 @@ export function AppSidebar() {
 
       <SidebarRail />
       <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
+
+      {/* User modals */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+      {user && (
+        <>
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            user={user}
+          />
+          <BackupModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+          />
+        </>
+      )}
     </Sidebar>
   );
 }
