@@ -544,7 +544,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     return (
         <div
             className={cn(
-                "flex flex-col overflow-hidden border-t border-border bg-background/95 backdrop-blur-sm transition-[height] duration-200",
+                "flex flex-col overflow-hidden border-t border-border bg-background transition-[height] duration-200",
                 collapsed ? "max-h-10" : "max-h-[60vh]",
             )}
         >

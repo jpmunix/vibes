@@ -189,7 +189,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                         <button
                           data-testid="copy-message-button"
                           onClick={handleCopyFormatted}
-                          className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200 cursor-pointer"
+                          className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
                         >
                           {copied ? (
                             <Check className="h-4 w-4 text-green-500" />
@@ -212,7 +212,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => setIsCollapsed(!isCollapsed)}
-                          className="flex items-center justify-center p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200 cursor-pointer"
+                          className="flex items-center justify-center p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
                         >
                           {isCollapsed ? (
                             <ChevronDown className="h-4 w-4" />
@@ -311,7 +311,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                             // noop
                           });
                       }}
-                      className="flex items-center space-x-1 px-1 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200 cursor-pointer"
+                      className="flex items-center space-x-1 px-1 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
                     >
                       {copiedRequestId ? (
                         <Check className="h-3 w-3 text-green-500" />

@@ -335,7 +335,7 @@ export function ChatPanel({
                 <Button
                   onClick={handleScrollButtonClick}
                   size="icon"
-                  className="rounded-full shadow-lg hover:shadow-xl transition-[background-color,box-shadow] border border-border/50 backdrop-blur-sm bg-background/95 hover:bg-accent"
+                  className="rounded-full shadow-lg hover:shadow-xl transition-[background-color,box-shadow] border border-border/50 bg-background hover:bg-accent"
                   variant="outline"
                   title={"Ir al final"}
                 >

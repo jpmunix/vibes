@@ -124,7 +124,7 @@ export const CodeHighlight = memo(
         className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code"
       >
         {language ? (
-          <div className="flex items-center justify-between px-4 py-2 bg-(--background-lighter) dark:bg-zinc-900/80 backdrop-blur-sm border-b border-border/40">
+          <div className="flex items-center justify-between px-4 py-2 bg-(--background-lighter) dark:bg-zinc-900 border-b border-border/40">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5 mr-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/30" />

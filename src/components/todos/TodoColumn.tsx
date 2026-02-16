@@ -144,7 +144,7 @@ export function TodoColumn({
       <div
         {...attributes}
         {...listeners}
-        className="p-3 flex items-center justify-between group bg-background/50 backdrop-blur-sm border-b cursor-grab active:cursor-grabbing"
+        className="p-3 flex items-center justify-between group bg-background border-b cursor-grab active:cursor-grabbing"
       >
         {isEditingTitle && section ? (
           <Input

@@ -271,7 +271,7 @@ export function GitCommitHistory() {
                     {groupedCommits.map((group) => (
                         <div key={group.label}>
                             {/* Date group header */}
-                            <div className="sticky top-0 z-10 px-3 py-1.5 bg-muted/60 backdrop-blur-sm border-b border-border/30">
+                            <div className="sticky top-0 z-10 px-3 py-1.5 bg-muted border-b border-border/30">
                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                     {group.label}
                                 </span>

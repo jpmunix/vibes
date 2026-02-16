@@ -92,7 +92,7 @@
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nep-close-btn:hover {
@@ -190,7 +190,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .nep-align-btn:not(:last-child) {
@@ -290,7 +290,7 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   box-shadow: 0 2px 8px hsla(267, 96%, 56%, 0.3);
 }
 
@@ -430,7 +430,7 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
 }
 

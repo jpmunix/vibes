@@ -327,7 +327,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background/30">
       {/* Header section with glassmorphism */}
-      <div className="border-b p-4 flex items-center justify-between bg-background/60 backdrop-blur-xl sticky top-0 z-20 shadow-sm">
+      <div className="border-b p-4 flex items-center justify-between bg-background sticky top-0 z-20 shadow-sm">
         <div className="flex flex-col overflow-hidden mr-4 flex-1">
           {isEditingTitle ? (
             <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
       </div>
 
       {/* Modern Input Area */}
-      <div className="p-4 md:p-6 border-t bg-background/50 backdrop-blur-2xl">
+      <div className="p-4 md:p-6 border-t bg-background">
         <div className="max-w-3xl mx-auto flex flex-col gap-4">
           {injectedItems.length > 0 && (
             <div className="flex flex-wrap gap-2 px-2 animate-in slide-in-from-bottom-2">
