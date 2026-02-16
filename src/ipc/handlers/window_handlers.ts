@@ -19,6 +19,13 @@ const databaseWindows = new Map<number, BrowserWindow>();
 // Track chat windows to avoid duplicates (P18 — dedicated chat+preview)
 const chatWindows = new Map<number, BrowserWindow>();
 
+// Temporary store for pending prompts+attachments passed to chat windows via IPC
+// Keyed by chatId — the chat window retrieves and clears this on mount
+const pendingChatPrompts = new Map<number, {
+  prompt: string;
+  attachments?: Array<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }>;
+}>();
+
 export function registerWindowHandlers() {
   logger.debug("Registering window control handlers");
 
@@ -102,7 +109,12 @@ export function registerWindowHandlers() {
   });
 
   // P18 — Dedicated chat+preview window for performance isolation
-  createTypedHandler(systemContracts.openChatWindow, async (event, { appId, chatId }) => {
+  createTypedHandler(systemContracts.openChatWindow, async (event, { appId, chatId, prompt, attachments }) => {
+    // Store pending prompt data for the chat window to pick up
+    if (prompt && chatId) {
+      pendingChatPrompts.set(chatId, { prompt, attachments });
+    }
+
     // If a window for this appId already exists, focus it
     const existing = chatWindows.get(appId);
     if (existing && !existing.isDestroyed()) {
@@ -126,6 +138,7 @@ export function registerWindowHandlers() {
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
+      autoHideMenuBar: true,
       title: `${appName} — Vibes Chat`,
       webPreferences: {
         nodeIntegration: false,
@@ -137,8 +150,12 @@ export function registerWindowHandlers() {
       },
     });
 
+    // Remove native menu bar entirely (File, Edit, View, etc.)
+    chatWindow.removeMenu();
+
     const chatIdParam = chatId ? `&chatId=${chatId}` : "";
-    const queryParam = `?window=chat&appId=${appId}${chatIdParam}`;
+    const pendingParam = (prompt && chatId) ? `&hasPendingPrompt=true` : "";
+    const queryParam = `?window=chat&appId=${appId}${chatIdParam}${pendingParam}`;
 
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       chatWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
@@ -156,5 +173,15 @@ export function registerWindowHandlers() {
     });
 
     logger.info(`Opened chat window for app ${appId}${chatId ? `, chat ${chatId}` : ""}`);
+  });
+
+  // Retrieve and clear pending prompt data
+  createTypedHandler(systemContracts.getPendingChatPrompt, async (_event, chatId) => {
+    const pending = pendingChatPrompts.get(chatId);
+    if (pending) {
+      pendingChatPrompts.delete(chatId);
+      return pending;
+    }
+    return null;
   });
 }

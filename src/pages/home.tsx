@@ -9,7 +9,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { SetupBanner } from "@/components/SetupBanner";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useStreamChat } from "@/hooks/useStreamChat";
+
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
 import { usePostHog } from "posthog-js/react";
 import { INSPIRATION_PROMPTS } from "@/prompts/inspiration_prompts";
@@ -50,7 +50,7 @@ export default function HomePage() {
     platform?: string;
     recentLogs?: string;
   }>({});
-  const { streamMessage } = useStreamChat({ hasChatId: false });
+
   const posthog = usePostHog();
   const appVersion = useAppVersion();
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
@@ -189,15 +189,31 @@ export default function HomePage() {
         });
       }
 
-      // Stream the message with attachments
-      streamMessage({
-        prompt: inputValue,
-        chatId: result.chatId,
-        attachments,
-      });
-      await new Promise((resolve) =>
-        setTimeout(resolve, settings?.isTestMode ? 0 : 2000),
-      );
+      // Stream the message in the dedicated chat window (not here — avoids race condition)
+      const prompt = inputValue;
+
+      // Convert FileAttachments to base64 ChatAttachments for IPC transfer
+      let convertedAttachments: Array<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }> | undefined;
+      if (attachments && attachments.length > 0) {
+        convertedAttachments = await Promise.all(
+          attachments.map(
+            (attachment) =>
+              new Promise<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  resolve({
+                    name: attachment.file.name,
+                    type: attachment.file.type,
+                    data: reader.result as string,
+                    attachmentType: attachment.type,
+                  });
+                };
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(attachment.file);
+              }),
+          ),
+        );
+      }
 
       setInputValue("");
       setSelectedAppId(result.app.id);
@@ -205,7 +221,14 @@ export default function HomePage() {
       await refreshApps(); // Ensure refreshApps is awaited if it's async
       await invalidateAppQuery(queryClient, { appId: result.app.id });
       posthog.capture("home:chat-submit");
-      navigate({ to: "/chat", search: { id: result.chatId } });
+      // Open chat window with prompt + attachments — the window will start streaming on mount
+      ipc.system.openChatWindow({
+        appId: result.app.id,
+        chatId: result.chatId,
+        prompt,
+        attachments: convertedAttachments,
+      });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
     } catch (error) {
       console.error("Failed to create chat:", error);
       showError("Error al crear la aplicación. " + (error as any).toString());

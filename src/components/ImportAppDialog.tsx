@@ -145,7 +145,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      navigate({ to: "/chat", search: { id: chatId } });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -181,7 +182,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      navigate({ to: "/chat", search: { id: chatId } });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -285,7 +287,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       );
       onClose();
 
-      navigate({ to: "/chat", search: { id: result.chatId } });
+      navigate({ to: "/app-details", search: { appId: result.appId } });
+      ipc.system.openChatWindow({ appId: result.appId, chatId: result.chatId });
       if (!hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,

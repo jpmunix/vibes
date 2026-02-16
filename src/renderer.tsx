@@ -292,6 +292,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const windowType = urlParams.get("window");
 const appIdStr = urlParams.get("appId");
 const chatIdStr = urlParams.get("chatId");
+const hasPendingPrompt = urlParams.get("hasPendingPrompt") === "true";
 
 if (windowType === "database" && appIdStr) {
   // Lazy import to avoid loading full app dependencies
@@ -313,6 +314,7 @@ if (windowType === "database" && appIdStr) {
           <ChatWindowApp
             appId={Number(appIdStr)}
             chatId={chatIdStr ? Number(chatIdStr) : undefined}
+            hasPendingPrompt={hasPendingPrompt}
           />
         </StrictMode>,
       );

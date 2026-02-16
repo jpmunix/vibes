@@ -7,7 +7,6 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   CheckSquare,
   Home,
-  Inbox,
   Settings,
   StickyNote,
   MessageCircle,
@@ -29,7 +28,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppList } from "./AppList";
-import { ChatList } from "./ChatList";
 import { LibraryList } from "./LibraryList";
 import { NotesList } from "./NotesList";
 import { SettingsList } from "./SettingsList";
@@ -42,11 +40,6 @@ const items = [
     title: "Apps",
     to: "/",
     icon: Home,
-  },
-  {
-    title: "Chat",
-    to: "/chat",
-    icon: Inbox,
   },
   {
     title: "Notas",
@@ -73,7 +66,6 @@ const items = [
 // Hover state types
 type HoverState =
   | "start-hover:app"
-  | "start-hover:chat"
   | "start-hover:notes"
   | "start-hover:todos"
   | "start-hover:settings"
@@ -95,7 +87,6 @@ export function AppSidebar() {
   const isAppRoute =
     routerState.location.pathname === "/" ||
     routerState.location.pathname.startsWith("/app-details");
-  const isChatRoute = routerState.location.pathname === "/chat";
   const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
   const isLibraryRoute =
     routerState.location.pathname.startsWith("/library") ||
@@ -106,8 +97,6 @@ export function AppSidebar() {
   useEffect(() => {
     if (isAppRoute) {
       setActiveTab("Aplicaciones");
-    } else if (isChatRoute) {
-      setActiveTab("Chat");
     } else if (routerState.location.pathname.startsWith("/notes")) {
       setActiveTab("Notas");
     } else if (isTodosRoute) {
@@ -121,7 +110,6 @@ export function AppSidebar() {
     }
   }, [
     isAppRoute,
-    isChatRoute,
     isSettingsRoute,
     isLibraryRoute,
     isTodosRoute,
@@ -196,7 +184,6 @@ export function AppSidebar() {
           {/* Right Column: Chat List Section */}
           <div className={cn("flex-1 min-w-0", state === "collapsed" && "hidden")}>
             <AppList show={selectedItem === "Aplicaciones"} />
-            <ChatList show={selectedItem === "Chat"} />
             <NotesList show={selectedItem === "Notas"} />
             <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
@@ -247,8 +234,6 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                     onClick={() => {
                       if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
-                      } else if (item.title === "Chat") {
-                        onTabChange("Chat");
                       } else if (item.title === "Notas") {
                         onTabChange("Notas");
                       } else if (item.title === "Ajustes") {

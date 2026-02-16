@@ -300,8 +300,30 @@ export const systemContracts = {
     input: z.object({
       appId: z.number(),
       chatId: z.number().optional(),
+      prompt: z.string().optional(),
+      attachments: z.array(z.object({
+        name: z.string(),
+        type: z.string(),
+        data: z.string(),
+        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+      })).optional(),
     }),
     output: z.void(),
+  }),
+
+  // Retrieve and clear pending prompt data stored by openChatWindow
+  getPendingChatPrompt: defineContract({
+    channel: "window:get-pending-chat-prompt",
+    input: z.number(), // chatId
+    output: z.object({
+      prompt: z.string(),
+      attachments: z.array(z.object({
+        name: z.string(),
+        type: z.string(),
+        data: z.string(),
+        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+      })).optional(),
+    }).nullable(),
   }),
 } as const;
 

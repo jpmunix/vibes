@@ -1027,7 +1027,7 @@ export function registerAppHandlers() {
       await gitAdd({ path: fullAppPath, filepath: "." });
       return gitCommit({
         path: fullAppPath,
-        message: "Init Dyad app",
+        message: "Init vibes app",
       });
     });
 
@@ -1095,7 +1095,7 @@ export function registerAppHandlers() {
         await gitAdd({ path: newAppPath, filepath: "." });
         await gitCommit({
           path: newAppPath,
-          message: "Init Dyad app",
+          message: "Init vibes app",
         });
       });
     }

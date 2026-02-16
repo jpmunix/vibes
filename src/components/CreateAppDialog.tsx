@@ -17,6 +17,7 @@ import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { NEON_TEMPLATE_IDS, Template } from "@/shared/templates";
 
 import { useRouter } from "@tanstack/react-router";
+import { ipc } from "@/ipc/types";
 
 import { Loader2 } from "lucide-react";
 import { neonTemplateHook } from "@/client_logic/template_hook";
@@ -60,10 +61,11 @@ export function CreateAppDialog({
         });
       }
       setSelectedAppId(result.app.id);
-      // Navigate to the new app's first chat
+      // Open chat in a dedicated window
+      ipc.system.openChatWindow({ appId: result.app.id, chatId: result.chatId });
       router.navigate({
-        to: "/chat",
-        search: { id: result.chatId },
+        to: "/app-details",
+        search: { appId: result.app.id },
       });
       setAppName("");
       onOpenChange(false);

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import {
     PanelGroup,
     Panel,
@@ -26,6 +26,7 @@ import { useSetAtom, useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { isPreviewOpenAtom, isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
+    selectedChatIdAtom,
     pendingAgentConsentsAtom,
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
@@ -33,6 +34,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
+import { useStreamChat } from "@/hooks/useStreamChat";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useSilentAppStart } from "@/hooks/useSilentAppStart";
 import { cn } from "@/lib/utils";
@@ -93,24 +95,58 @@ const noopPosthogClient = posthog.init("phc_noop_chat_window", {
 interface ChatWindowAppProps {
     appId: number;
     chatId?: number;
+    hasPendingPrompt?: boolean;
 }
 
 // ─── Inner content (rendered inside router tree) ────────────────────────
-function ChatWindowContent({ appId, chatId: initialChatId }: ChatWindowAppProps) {
+function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt }: ChatWindowAppProps) {
     const setSelectedAppId = useSetAtom(selectedAppIdAtom);
-    const [chatId, setChatId] = useState<number | undefined>(initialChatId);
+    const [chatId, setChatId] = useAtom(selectedChatIdAtom);
     const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
     const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
     const [isResizing, setIsResizing] = useState(false);
     const { chats, loading } = useChats(appId);
     const currentApp = useAtomValue(currentAppAtom);
+    const hasAutoStreamedRef = useRef(false);
+    const { streamMessage } = useStreamChat({ hasChatId: true });
 
     const previewRef = useRef<ImperativePanelHandle>(null);
     const chatRef = useRef<ImperativePanelHandle>(null);
 
     useEffect(() => {
         setSelectedAppId(appId);
-    }, [appId, setSelectedAppId]);
+        // Initialize chatId atom with the value from URL params
+        if (initialChatId) {
+            setChatId(initialChatId);
+        }
+    }, [appId, setSelectedAppId, initialChatId, setChatId]);
+
+    // Fetch and stream pending prompt+attachments via IPC when the chat window loads
+    useEffect(() => {
+        if (
+            hasPendingPrompt &&
+            chatId &&
+            !hasAutoStreamedRef.current
+        ) {
+            hasAutoStreamedRef.current = true;
+            ipc.system.getPendingChatPrompt(chatId).then((pending) => {
+                if (pending) {
+                    streamMessage({
+                        prompt: pending.prompt,
+                        chatId,
+                        attachments: pending.attachments?.map(a => ({
+                            file: new File(
+                                [Uint8Array.from(atob(a.data.split(",")[1] || a.data), c => c.charCodeAt(0))],
+                                a.name,
+                                { type: a.type },
+                            ),
+                            type: a.attachmentType,
+                        })),
+                    });
+                }
+            });
+        }
+    }, [hasPendingPrompt, chatId, streamMessage]);
 
     useEffect(() => {
         if (!chatId && chats.length && !loading) {
@@ -325,11 +361,11 @@ function ChatWindowContent({ appId, chatId: initialChatId }: ChatWindowAppProps)
 // We use createMemoryHistory starting at /chat?id=<chatId> so that
 // useSearch({ from: "/chat" }) in useStreamChat finds an active match.
 // ChatWindowContent is the root route component → inside the router tree.
-function createChatWindowRouter(appId: number, chatId?: number) {
+function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt?: boolean) {
     const chatWindowRootRoute = createRootRoute({
         component: () => (
             <SidebarProvider defaultOpen={false}>
-                <ChatWindowContent appId={appId} chatId={chatId} />
+                <ChatWindowContent appId={appId} chatId={chatId} hasPendingPrompt={hasPendingPrompt} />
             </SidebarProvider>
         ),
     });
@@ -367,8 +403,8 @@ function createChatWindowRouter(appId: number, chatId?: number) {
 }
 
 // ─── Shell (outermost providers) ────────────────────────────────────────
-export function ChatWindowApp({ appId, chatId }: ChatWindowAppProps) {
-    const [chatRouter] = useState(() => createChatWindowRouter(appId, chatId));
+export function ChatWindowApp({ appId, chatId, hasPendingPrompt }: ChatWindowAppProps) {
+    const [chatRouter] = useState(() => createChatWindowRouter(appId, chatId, hasPendingPrompt));
 
     return (
         <QueryClientProvider client={queryClient}>

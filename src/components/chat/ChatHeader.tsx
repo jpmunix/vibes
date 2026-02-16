@@ -9,6 +9,8 @@ import {
   FileText,
   MoreHorizontal,
   Brain,
+  ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -297,6 +299,46 @@ export function ChatHeader({
             <PlusCircle size={16} />
             <span>Nuevo chat</span>
           </Button>
+
+          {/* Chat selector dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md max-w-[200px]"
+              >
+                <MessageSquare size={16} className="shrink-0" />
+                <span className="truncate hidden @xs:inline">
+                  {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
+                </span>
+                <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
+              {chats.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground text-sm">Sin chats</span>
+                </DropdownMenuItem>
+              ) : (
+                chats.map((chat) => (
+                  <DropdownMenuItem
+                    key={chat.id}
+                    onClick={() => {
+                      setSelectedChatId(chat.id);
+                      navigate({
+                        to: "/chat",
+                        search: { id: chat.id },
+                      });
+                    }}
+                    className={selectedChatId === chat.id ? "bg-accent" : ""}
+                  >
+                    <MessageSquare size={14} className="mr-2 shrink-0" />
+                    <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Menú desplegable con las demás opciones */}
           <DropdownMenu>
