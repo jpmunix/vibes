@@ -514,7 +514,7 @@ export function ChatInput({
                   toggleShowTokenBar={toggleShowTokenBar}
                   appId={appId ?? undefined}
                 />
-                <div className="flex items-center ml-1">
+                <div className="flex items-center ml-2.5">
                   <ChatInputControls showContextFilesPicker={false} />
                 </div>
 

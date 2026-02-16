@@ -419,7 +419,8 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
           {debate.messages.map((m, index) => (
             <div
               key={m.id}
-              className="flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative"
+              className={`flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative ${m.role === "user" ? "flex-row-reverse" : ""
+                }`}
             >
               <div
                 className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${m.role === "user"
@@ -442,8 +443,8 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                 )}
               </div>
 
-              <div className="flex-1 space-y-4 overflow-hidden">
-                <div className="flex items-center justify-between">
+              <div className={`flex-1 space-y-4 overflow-hidden ${m.role === "user" ? "flex flex-col items-end" : ""}`}>
+                <div className={`flex items-center gap-2 ${m.role === "user" ? "flex-row-reverse" : "justify-between"}`}>
                   <span className="text-sm font-bold tracking-tight">
                     {m.isSummary
                       ? "Resumen"
@@ -459,7 +460,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                <div className={`space-y-4 ${m.role === "user" ? "w-full" : ""}`}>
                   {m.injectedItems && m.injectedItems.length > 0 && (
                     <div className="flex flex-col gap-2 mb-2 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-xl relative overflow-hidden group/context">
                       <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
@@ -522,7 +523,12 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     </div>
                   ) : (
                     <div
-                      className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg" : ""}`}
+                      className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary
+                          ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg"
+                          : m.role === "user"
+                            ? "bg-secondary text-secondary-foreground rounded-2xl px-4 py-3 inline-block"
+                            : ""
+                        }`}
                     >
                       {m.isSummary && (
                         <div className="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-70">
@@ -574,7 +580,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                 </div>
               </div>
 
-              <div className="absolute -right-2 top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100">
+              <div className={`absolute ${m.role === "user" ? "-left-2" : "-right-2"} top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100`}>
                 {m.role === "user" && !isStreaming && (
                   <Button
                     type="button"

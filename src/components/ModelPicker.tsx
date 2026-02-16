@@ -1,4 +1,5 @@
 import { isDyadProEnabled, type LargeLanguageModel } from "@/lib/schemas";
+import { type LanguageModel } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
+import { ModelInfoDialog } from "@/components/ModelInfoDialog";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -33,6 +35,7 @@ export function ModelPicker() {
   };
 
   const [open, setOpen] = useState(false);
+  const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
 
   // Cloud models from providers
   const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
@@ -65,162 +68,138 @@ export function ModelPicker() {
     return selectedModel.name;
   };
 
-  // Get auto provider models (if any)
-
   if (!settings) {
     return null;
   }
   const selectedModel = settings?.selectedModel;
   const modelDisplayName = getModelDisplayName();
-  // Split providers into primary and secondary groups (excluding auto)
-  // const providerEntries =
-  //   !loading && modelsByProviders
-  //     ? Object.entries(modelsByProviders).filter(
-  //         ([providerId]) => providerId !== "auto",
-  //       )
-  //     : [];
-  // const primaryProviders = providerEntries.filter(([providerId, models]) => {
-  //   if (models.length === 0) return false;
-  //   const provider = providers?.find((p) => p.id === providerId);
-  //   return !(provider && provider.secondary);
-  // });
-  // if (settings && isDyadProEnabled(settings)) {
-  //   primaryProviders.unshift(["auto", TURBO_MODELS]);
-  // }
-  // const secondaryProviders = providerEntries.filter(([providerId, models]) => {
-  //   if (models.length === 0) return false;
-  //   const provider = providers?.find((p) => p.id === providerId);
-  //   return !!(provider && provider.secondary);
-  // });
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center justify-between h-9 w-full max-w-[290px] px-4 text-xs-sm rounded-md"
-            >
-              <span className="truncate flex-1 text-left">{modelDisplayName}</span>
-              <div className="flex items-center gap-2 ml-2">
-                {selectedModel.provider === "auto-router" &&
-                  selectedModel.name === "auto" && <AutoRouterBadge />}
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-between !h-6 w-fit max-w-[200px] px-1.5 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border bg-background hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+              >
+                <span className="truncate flex-1 text-left">{modelDisplayName}</span>
+                <div className="flex items-center gap-0.5 ml-1.5 text-muted-foreground">
+                  {selectedModel.provider === "auto-router" &&
+                    selectedModel.name === "auto" && <AutoRouterBadge />}
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{modelDisplayName}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent
+          className="w-72 max-h-[280px] overflow-y-auto"
+          align="start"
+          side="top"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          {!isTrial &&
+            (loading ? (
+              <div className="text-xs text-center py-2 text-muted-foreground">
+                Cargando modelos...
               </div>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{modelDisplayName}</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent
-        className="w-72 max-h-[280px] overflow-y-auto"
-        align="start"
-        side="top"
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
-        {!isTrial &&
-          (loading ? (
-            <div className="text-xs text-center py-2 text-muted-foreground">
-              Cargando modelos...
-            </div>
-          ) : !modelsByProviders ||
-            (!modelsByProviders["openrouter"] &&
-              !modelsByProviders["auto-router"]) ? (
-            <div className="text-xs text-center py-2 text-muted-foreground">
-              No hay modelos disponibles
-            </div>
-          ) : (
-            /* Models loaded */
-            <>
-              {/* Auto-Router section */}
-              {modelsByProviders["auto-router"] &&
-                modelsByProviders["auto-router"].length > 0 &&
-                modelsByProviders["auto-router"].map((model) => (
-                  <Tooltip key={`auto-router-${model.apiName}`}>
-                    <TooltipTrigger asChild>
+            ) : !modelsByProviders ||
+              (!modelsByProviders["openrouter"] &&
+                !modelsByProviders["auto-router"]) ? (
+              <div className="text-xs text-center py-2 text-muted-foreground">
+                No hay modelos disponibles
+              </div>
+            ) : (
+              /* Models loaded */
+              <>
+                {/* Auto-Router section */}
+                {modelsByProviders["auto-router"] &&
+                  modelsByProviders["auto-router"].length > 0 &&
+                  modelsByProviders["auto-router"].map((model) => (
+                    <DropdownMenuItem
+                      key={`auto-router-${model.apiName}`}
+                      className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "auto-router" &&
+                        selectedModel.name === model.apiName
+                        ? "bg-secondary"
+                        : ""
+                        }`}
+                      onClick={() => {
+                        onModelSelect({
+                          name: model.apiName,
+                          provider: "auto-router",
+                        });
+                        setOpen(false);
+                      }}
+                    >
+                      <ModelItemContent
+                        model={model}
+                        showAutoRouterBadge
+                        isAutoRouter
+                        onInfoClick={setInfoModel}
+                      />
+                    </DropdownMenuItem>
+                  ))}
+
+                {/* Divider if both exist */}
+                {modelsByProviders["auto-router"] &&
+                  modelsByProviders["auto-router"].length > 0 &&
+                  modelsByProviders["openrouter"] &&
+                  modelsByProviders["openrouter"].length > 0 && (
+                    <div className="h-px bg-border my-1 mx-1" />
+                  )}
+
+                {/* OpenRouter section */}
+                {modelsByProviders["openrouter"] &&
+                  modelsByProviders["openrouter"].length > 0 &&
+                  modelsByProviders["openrouter"]
+                    .filter((model) => {
+                      // Don't show free models if Dyad Pro is enabled because
+                      // we will use the paid models (in Dyad Pro backend) which
+                      // don't have the free limitations.
+                      if (
+                        isDyadProEnabled(settings) &&
+                        model.apiName.endsWith(":free")
+                      ) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((model) => (
                       <DropdownMenuItem
-                        className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "auto-router" &&
+                        key={`openrouter-${model.apiName}`}
+                        className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
                           selectedModel.name === model.apiName
                           ? "bg-secondary"
                           : ""
                           }`}
                         onClick={() => {
+                          const customModelId =
+                            model.type === "custom" ? model.id : undefined;
                           onModelSelect({
                             name: model.apiName,
-                            provider: "auto-router",
+                            provider: "openrouter",
+                            customModelId,
                           });
                           setOpen(false);
                         }}
                       >
-                        <ModelItemContent
-                          model={model}
-                          showAutoRouterBadge
-                          isAutoRouter
-                        />
+                        <ModelItemContent model={model} onInfoClick={setInfoModel} />
                       </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {model.description}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
+                    ))}
+              </>
+            ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-              {/* Divider if both exist */}
-              {modelsByProviders["auto-router"] &&
-                modelsByProviders["auto-router"].length > 0 &&
-                modelsByProviders["openrouter"] &&
-                modelsByProviders["openrouter"].length > 0 && (
-                  <div className="h-px bg-border my-1 mx-1" />
-                )}
-
-              {/* OpenRouter section */}
-              {modelsByProviders["openrouter"] &&
-                modelsByProviders["openrouter"].length > 0 &&
-                modelsByProviders["openrouter"]
-                  .filter((model) => {
-                    // Don't show free models if Dyad Pro is enabled because
-                    // we will use the paid models (in Dyad Pro backend) which
-                    // don't have the free limitations.
-                    if (
-                      isDyadProEnabled(settings) &&
-                      model.apiName.endsWith(":free")
-                    ) {
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map((model) => (
-                    <Tooltip key={`openrouter-${model.apiName}`}>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuItem
-                          className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
-                            selectedModel.name === model.apiName
-                            ? "bg-secondary"
-                            : ""
-                            }`}
-                          onClick={() => {
-                            const customModelId =
-                              model.type === "custom" ? model.id : undefined;
-                            onModelSelect({
-                              name: model.apiName,
-                              provider: "openrouter",
-                              customModelId,
-                            });
-                            setOpen(false);
-                          }}
-                        >
-                          <ModelItemContent model={model} />
-                        </DropdownMenuItem>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {model.description}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-            </>
-          ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {infoModel && (
+        <ModelInfoDialog
+          open={!!infoModel}
+          onOpenChange={(open) => !open && setInfoModel(null)}
+          model={infoModel}
+          isAutoRouter={infoModel.provider === "auto-router"}
+        />
+      )}
+    </>
   );
 }

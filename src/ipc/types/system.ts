@@ -308,6 +308,8 @@ export const systemContracts = {
         data: z.string(),
         attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
       })).optional(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
     }),
     output: z.void(),
   }),

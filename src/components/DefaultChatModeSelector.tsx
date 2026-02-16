@@ -30,13 +30,7 @@ export function DefaultChatModeSelector() {
   const handleDefaultChatModeChange = (value: ChatMode) => {
     updateSettings({ defaultChatMode: value });
   };
-  function NewBadge() {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-        beta
-      </span>
-    );
-  }
+
   const getModeDisplayName = (mode: ChatMode) => {
     switch (mode) {
       case "build":
@@ -83,7 +77,6 @@ export function DefaultChatModeSelector() {
               <div className="flex flex-col items-start">
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">Agente inteligente</span>
-                  <NewBadge />
                 </div>
                 <span className="text-xs text-muted-foreground">
                   El mejor modo de trabajo para el día a día

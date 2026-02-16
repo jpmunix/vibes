@@ -83,10 +83,10 @@ const ChatListItem = React.memo(function ChatListItem({
                 aria-label="Chat en progreso"
               />
             ) : chat.isPlan ? (
-              <div className="flex items-center justify-center h-6 w-6 rounded-md bg-green-500/10 flex-shrink-0">
+              <div className="flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 flex-shrink-0">
                 <ListChecks
                   size={14}
-                  className="text-green-600 dark:text-green-400"
+                  className="text-primary"
                   aria-label="Chat de Planificación"
                 />
               </div>

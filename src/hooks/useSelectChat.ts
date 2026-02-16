@@ -5,12 +5,14 @@ import { useSettings } from "./useSettings";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 import { useFreeAgentQuota } from "./useFreeAgentQuota";
 import { ipc } from "@/ipc/types";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function useSelectChat() {
   const setSelectedChatId = useSetAtom(selectedChatIdAtom);
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const { settings, updateSettings, envVars } = useSettings();
   const { isQuotaExceeded, isLoading: isQuotaLoading } = useFreeAgentQuota();
+  const { theme, intensity } = useTheme();
 
   return {
     selectChat: ({ chatId, appId }: { chatId: number; appId: number }) => {
@@ -32,7 +34,7 @@ export function useSelectChat() {
       }
 
       // Open chat in a dedicated window
-      ipc.system.openChatWindow({ appId, chatId });
+      ipc.system.openChatWindow({ appId, chatId, theme, themeIntensity: intensity });
     },
   };
 }

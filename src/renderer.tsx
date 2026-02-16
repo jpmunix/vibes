@@ -306,8 +306,13 @@ function ChatWindowSkeleton() {
     background: "linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%)",
   };
 
-  // Detect dark mode
-  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+  // Detect dark mode — respect the app's localStorage theme preference first,
+  // only falling back to OS prefers-color-scheme when theme is "system" or unset.
+  const savedTheme = localStorage.getItem("theme"); // "light" | "dark" | "system" | null
+  const systemPrefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+  const isDark =
+    savedTheme === "dark" ||
+    (savedTheme !== "light" && systemPrefersDark);
   if (isDark) {
     pulseStyle.background = "linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%)";
   }
@@ -380,6 +385,8 @@ const appIdStr = urlParams.get("appId");
 const chatIdStr = urlParams.get("chatId");
 const hasPendingPrompt = urlParams.get("hasPendingPrompt") === "true";
 const chatModeParam = urlParams.get("chatMode");
+const themeParam = urlParams.get("theme");
+const intensityParam = urlParams.get("intensity");
 
 if (windowType === "database" && appIdStr) {
   // Lazy import to avoid loading full app dependencies
@@ -393,9 +400,20 @@ if (windowType === "database" && appIdStr) {
     },
   );
 } else if (windowType === "chat" && appIdStr) {
+  // P18 — Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    // Apply intensity immediately to CSS variable so it's ready for skeleton
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
   // P18 — Show skeleton loader immediately while JS loads
   const root = createRoot(document.getElementById("root")!);
   root.render(<ChatWindowSkeleton />);
+
 
   import("./components/chat_window/ChatWindowApp").then(
     ({ ChatWindowApp }) => {

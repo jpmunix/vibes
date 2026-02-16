@@ -135,9 +135,9 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     <div
       className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
     >
-      <div className={`mt-4 mb-4 w-full max-w-3xl mx-auto group`}>
+      <div className={`mt-4 mb-4 ${message.role === "assistant" ? "w-full max-w-3xl" : "max-w-[85%]"} mx-auto group`}>
         <div
-          className={`rounded-lg p-2 ${message.role === "assistant" ? "" : "ml-24 bg-(--sidebar-accent)"
+          className={`rounded-2xl ${message.role === "assistant" ? "p-2" : "px-4 py-3 bg-secondary text-secondary-foreground"
             }`}
         >
           {message.role === "assistant" &&

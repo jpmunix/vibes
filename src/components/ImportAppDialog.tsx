@@ -43,6 +43,8 @@ interface ImportAppDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+import { useTheme } from "@/contexts/ThemeContext";
+
 export const AI_RULES_PROMPT =
   "Genera un archivo AI_RULES.md para esta aplicación. Describe el stack tecnológico en 5-10 puntos y describe reglas claras sobre qué librerías usar para qué.";
 export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
@@ -65,6 +67,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [importing, setImporting] = useState(false);
   const { settings, refreshSettings } = useSettings();
   const isAuthenticated = !!settings?.githubAccessToken;
+  const { theme, intensity } = useTheme();
 
   const [githubAppName, setGithubAppName] = useState("");
   const [githubNameExists, setGithubNameExists] = useState(false);
@@ -145,7 +148,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      ipc.system.openChatWindow({ appId: result.app.id, chatId });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
       navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
@@ -182,7 +185,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      ipc.system.openChatWindow({ appId: result.app.id, chatId });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
       navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
@@ -288,7 +291,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       onClose();
 
       navigate({ to: "/app-details", search: { appId: result.appId } });
-      ipc.system.openChatWindow({ appId: result.appId, chatId: result.chatId });
+      ipc.system.openChatWindow({ appId: result.appId, chatId: result.chatId, theme, themeIntensity: intensity });
       if (!hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,

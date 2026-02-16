@@ -205,9 +205,9 @@ function ensureChatsPlanDataColumn(sqlite: Database.Database): void {
       sqlite.exec(`ALTER TABLE \`chats\` ADD \`plan_data\` text`);
     }
 
-    // Ensure migration is recorded
-    const MIGRATION_HASH_PLAN_DATA = "plan_data_migration_hash";
-    const MIGRATION_CREATED_AT_PLAN_DATA = Date.now();
+    // Ensure migration 0041 is recorded
+    const MIGRATION_HASH_PLAN_DATA = "755d79856101ae8f46da1ce66f9bc2e7b285d1c52860f09c7424e04fc7f34a60";
+    const MIGRATION_CREATED_AT_PLAN_DATA = 1771148269145;
 
     try {
       const migrationsTableExists = sqlite
@@ -215,17 +215,19 @@ function ensureChatsPlanDataColumn(sqlite: Database.Database): void {
         .get();
 
       if (migrationsTableExists) {
-        // Check if the 0041 migration file hash exists
-        // We'll use the actual hash from the generated migration
-        const migrationFiles = sqlite
-          .prepare(`SELECT hash FROM __drizzle_migrations`)
-          .all() as Array<{ hash: string }>;
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_HASH_PLAN_DATA);
 
-        // If plan_data column exists but no migration for it, mark it
-        // The actual hash will be resolved on first real migrate() call
+        if (!migrationExists) {
+          logger.log("Marking migration 0041 (plan_data) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_HASH_PLAN_DATA, MIGRATION_CREATED_AT_PLAN_DATA);
+        }
       }
     } catch (migError) {
-      logger.log("Could not check plan_data migration status");
+      logger.log("Could not record plan_data migration status");
     }
   } catch (error) {
     logger.error("Error ensuring chats plan_data column:", error);
@@ -274,6 +276,8 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
   const sqlite = new Database(dbPath, { timeout: 10000 });
   sqlite.pragma("foreign_keys = ON");
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("busy_timeout = 5000");
 
   _db = drizzle(sqlite, { schema });
 

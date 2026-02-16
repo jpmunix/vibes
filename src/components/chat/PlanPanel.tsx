@@ -213,9 +213,9 @@ function PlanTaskItem({
                 title={task.isDeveloped ? "Desarrollado" : task.checked ? "Desmarcar" : "Marcar"}
             >
                 {task.isDeveloped ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-primary" />
                 ) : task.checked ? (
-                    <CheckSquare className="h-4 w-4 text-teal-500" />
+                    <CheckSquare className="h-4 w-4 text-primary" />
                 ) : (
                     <Square className="h-4 w-4" />
                 )}
@@ -232,9 +232,9 @@ function PlanTaskItem({
                             if (e.key === "Enter") confirmEdit();
                             if (e.key === "Escape") cancelEdit();
                         }}
-                        className="flex-1 bg-transparent border-b border-teal-400 text-sm outline-none py-0.5"
+                        className="flex-1 bg-transparent border-b border-primary text-sm outline-none py-0.5"
                     />
-                    <button onClick={confirmEdit} className="text-teal-500 hover:text-teal-400">
+                    <button onClick={confirmEdit} className="text-primary hover:text-primary/80">
                         <Check className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground">
@@ -337,14 +337,14 @@ function PlanStageSection({
                                     setEditingTitle(false);
                                 }
                             }}
-                            className="flex-1 bg-transparent border-b border-teal-400 text-sm font-semibold outline-none"
+                            className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none"
                         />
                     </div>
                 ) : (
                     <h4
                         className={cn(
                             "text-sm font-semibold text-foreground",
-                            !readOnly && "cursor-pointer hover:text-teal-500 transition-colors",
+                            !readOnly && "cursor-pointer hover:text-primary transition-colors",
                         )}
                         onClick={() => {
                             if (!readOnly) {
@@ -544,17 +544,17 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     return (
         <div
             className={cn(
-                "flex flex-col overflow-hidden border-t border-border bg-background transition-[height] duration-200",
+                "flex flex-col overflow-hidden border-t border-border/80 bg-muted/40 transition-[height] duration-200 mb-2",
                 collapsed ? "max-h-10" : "max-h-[60vh]",
             )}
         >
             {/* Header bar (always visible) */}
             <button
                 onClick={() => updateMapAtom(setCollapsed, chatId, !collapsed)}
-                className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/60 transition-colors"
             >
                 <div className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-teal-500" />
+                    <ListChecks className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium text-foreground">
                         Plan
                     </span>
@@ -567,7 +567,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                         ({completedTasks}/{totalTasks})
                     </span>
                     {allCompleted && (
-                        <span className="text-xs font-medium text-green-500 flex items-center gap-1 ml-1">
+                        <span className="text-xs font-medium text-primary flex items-center gap-1 ml-1">
                             <CheckCircle className="h-3 w-3" />
                             Plan completado
                         </span>
@@ -625,7 +625,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                                         "text-xs h-9 px-4 gap-2 text-white transition-colors",
                                         isStreaming && "opacity-50 cursor-not-allowed",
                                         hasChecked && !allChecked
-                                            ? "bg-teal-600 hover:bg-teal-700"
+                                            ? "bg-primary hover:bg-primary/90"
                                             : "bg-primary hover:bg-primary/90"
                                     )}
                                 >
@@ -648,7 +648,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                                         }
                                     }}
                                     placeholder="Pide cambios al plan..."
-                                    className="flex-1 text-xs bg-muted/50 border border-border/50 rounded-md px-2.5 py-1.5 outline-none focus:border-teal-500/50 transition-colors"
+                                    className="flex-1 text-xs bg-muted/50 border border-border/50 rounded-md px-2.5 py-1.5 outline-none focus:border-primary/50 transition-colors"
                                     disabled={loading}
                                 />
                                 <Button

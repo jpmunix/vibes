@@ -327,7 +327,7 @@ export function ChatPanel({
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-300">
                 {chatId && isStreamingById.get(chatId) ? (
                   <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-teal-500" />
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     <p className="text-sm font-medium">
                       Diseñando el plan...
                     </p>

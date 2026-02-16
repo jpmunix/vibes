@@ -64,6 +64,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function AppDetailsPage() {
 
   const queryClient = useQueryClient();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
+  const { theme, intensity } = useTheme();
 
   const debouncedNewCopyAppName = useDebounce(newCopyAppName, 150);
   const { data: checkNameResult, isLoading: isCheckingName } = useCheckName(
@@ -415,7 +417,7 @@ export default function AppDetailsPage() {
                 console.error("No app id found");
                 return;
               }
-              ipc.system.openChatWindow({ appId });
+              ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
             }}
             className="cursor-pointer w-full py-5 flex justify-center items-center gap-2 backdrop-blur-md bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
             size="lg"

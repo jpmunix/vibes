@@ -54,7 +54,7 @@ export default function HomePage() {
   const posthog = usePostHog();
   const appVersion = useAppVersion();
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
 
   // Listen for force-close events
@@ -228,6 +228,8 @@ export default function HomePage() {
         prompt,
         chatMode: settings?.selectedChatMode || "plan",
         attachments: convertedAttachments,
+        theme,
+        themeIntensity: intensity,
       });
       navigate({ to: "/app-details", search: { appId: result.app.id } });
     } catch (error) {
@@ -241,8 +243,55 @@ export default function HomePage() {
   // Loading overlay for app creation
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center max-w-5xl m-auto p-8">
-        <div className="w-full flex flex-col items-center">
+      <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
+        {/* Glow background effect */}
+        <div
+          aria-hidden
+          className="glow-breath pointer-events-none absolute rounded-full"
+          style={{
+            width: "1400px",
+            height: "1400px",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+
+        <style>{`
+          @keyframes breathe {
+            0% {
+              transform: translate(-50%, -50%) scale(0.9);
+              opacity: 0.3;
+              filter: blur(80px);
+            }
+            50% {
+              transform: translate(-50%, -50%) scale(1.1);
+              opacity: 0.5;
+              filter: blur(100px);
+            }
+            100% {
+              transform: translate(-50%, -50%) scale(0.9);
+              opacity: 0.3;
+              filter: blur(80px);
+            }
+          }
+
+          .glow-breath {
+            background: radial-gradient(
+              circle,
+              var(--primary) 0%,
+              color-mix(in oklch, var(--primary) 55%, transparent) 20%,
+              color-mix(in oklch, var(--primary) 30%, transparent) 40%,
+              color-mix(in oklch, var(--primary) 12%, transparent) 60%,
+              color-mix(in oklch, var(--primary) 4%, transparent) 80%,
+              transparent 100%
+            );
+            animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            z-index: 0;
+          }
+        `}</style>
+
+        <div className="relative z-10 w-full max-w-5xl flex flex-col items-center p-8">
           {/* Loading Spinner */}
           <div className="relative w-24 h-24 mb-8">
             <div className="absolute top-0 left-0 w-full h-full border-8 border-gray-200 dark:border-gray-700 rounded-full"></div>
@@ -262,90 +311,132 @@ export default function HomePage() {
 
   // Main Home Page Content
   return (
-    <div className="flex flex-col items-center justify-center max-w-5xl w-full m-auto p-8 relative">
-      {/*<div className="fixed top-16 right-8 z-50">*/}
-      {/*  {settings && hasDyadProKey(settings) ? (*/}
-      {/*    <ManageDyadProButton className="mt-0 w-auto h-9 px-3 text-base shadow-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800" />*/}
-      {/*  ) : (*/}
-      {/*    <SetupDyadProButton />*/}
-      {/*  )}*/}
-      {/*</div>*/}
-      <ForceCloseDialog
-        isOpen={forceCloseDialogOpen}
-        onClose={() => setForceCloseDialogOpen(false)}
-        performanceData={forceCloseData.performanceData}
-        appVersion={forceCloseData.appVersion}
-        platform={forceCloseData.platform}
-        recentLogs={forceCloseData.recentLogs}
+    <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
+      {/* Glow background effect */}
+      <div
+        aria-hidden
+        className="glow-breath pointer-events-none absolute rounded-full"
+        style={{
+          width: "1400px",
+          height: "1400px",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
       />
-      <SetupBanner />
 
-      <div className="w-full">
-        <HomeChatInput onSubmit={handleSubmit} />
+      <style>{`
+        @keyframes breathe {
+          0% {
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0.3;
+            filter: blur(80px);
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 0.5;
+            filter: blur(100px);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0.3;
+            filter: blur(80px);
+          }
+        }
 
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="flex flex-wrap gap-4 justify-center">
-            {randomPrompts.map((item, index) => (
-              <button
-                type="button"
-                key={index}
-                onClick={() =>
-                  setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
-                }
-                className="flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-200
-                           bg-white/50 backdrop-blur-sm
-                           transition-colors duration-200
-                           hover:bg-white hover:shadow-md hover:border-gray-300
-                           active:scale-[0.98]
-                           dark:bg-gray-800/50 dark:border-gray-700
-                           dark:hover:bg-gray-800 dark:hover:border-gray-600"
-              >
-                <span className="text-gray-700 dark:text-gray-300">
-                  {item.icon}
-                </span>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
+        .glow-breath {
+          background: radial-gradient(
+            circle,
+            var(--primary) 0%,
+            color-mix(in oklch, var(--primary) 55%, transparent) 20%,
+            color-mix(in oklch, var(--primary) 30%, transparent) 40%,
+            color-mix(in oklch, var(--primary) 12%, transparent) 60%,
+            color-mix(in oklch, var(--primary) 4%, transparent) 80%,
+            transparent 100%
+          );
+          animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          z-index: 0;
+        }
+      `}</style>
 
-          <button
-            type="button"
-            onClick={() => setRandomPrompts(getRandomPrompts())}
-            className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200
-                       bg-white/50 backdrop-blur-sm
-                       transition-colors duration-200
-                       hover:bg-white hover:shadow-md hover:border-gray-300
-                       active:scale-[0.98]
-                       dark:bg-gray-800/50 dark:border-gray-700
-                       dark:hover:bg-gray-800 dark:hover:border-gray-600"
-          >
-            <svg
-              className="w-5 h-5 text-gray-700 dark:text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      <div className="relative z-10 w-full max-w-5xl flex flex-col items-center p-8">
+        <ForceCloseDialog
+          isOpen={forceCloseDialogOpen}
+          onClose={() => setForceCloseDialogOpen(false)}
+          performanceData={forceCloseData.performanceData}
+          appVersion={forceCloseData.appVersion}
+          platform={forceCloseData.platform}
+          recentLogs={forceCloseData.recentLogs}
+        />
+        <SetupBanner />
+
+        <div className="w-full">
+          <HomeChatInput onSubmit={handleSubmit} />
+
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-wrap gap-4 justify-center">
+              {randomPrompts.map((item, index) => (
+                <button
+                  type="button"
+                  key={index}
+                  onClick={() =>
+                    setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
+                  }
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-200
+                             bg-white/50 backdrop-blur-sm
+                             transition-colors duration-200
+                             hover:bg-white hover:shadow-md hover:border-gray-300
+                             active:scale-[0.98]
+                             dark:bg-gray-800/50 dark:border-gray-700
+                             dark:hover:bg-gray-800 dark:hover:border-gray-600"
+                >
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {item.icon}
+                  </span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setRandomPrompts(getRandomPrompts())}
+              className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200
+                         bg-white/50 backdrop-blur-sm
+                         transition-colors duration-200
+                         hover:bg-white hover:shadow-md hover:border-gray-300
+                         active:scale-[0.98]
+                         dark:bg-gray-800/50 dark:border-gray-700
+                         dark:hover:bg-gray-800 dark:hover:border-gray-600"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Más ideas
-            </span>
-          </button>
+              <svg
+                className="w-5 h-5 text-gray-700 dark:text-gray-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Más ideas
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
-      {/*<PrivacyBanner />*/}
+        {/*<PrivacyBanner />*/}
 
-      <ReleaseNotesDialog
-        isOpen={releaseNotesOpen}
-        onOpenChange={setReleaseNotesOpen}
-      />
+        <ReleaseNotesDialog
+          isOpen={releaseNotesOpen}
+          onOpenChange={setReleaseNotesOpen}
+        />
+      </div>
     </div>
   );
 }

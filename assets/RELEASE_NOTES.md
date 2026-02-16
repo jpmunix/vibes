@@ -5,6 +5,11 @@
 - mejoras en los prompts generales, estados de la interfaz, manejo de errores
 - mejoras en la configuracion para añadir comandos específicos de arranque o reinstalacion para los proyectos
 - posibilidad de escribir rutas a mano en la barra de direcciones, con historial + detección de rutas existentes
+- mejoras en el agente inteligente
+- Las apps ahora se abren a nueva ventana para aumentar la velocidad del interfaz y para poder abrir más de una a la vez
+- Ahora se pueden cambiar los parámetros de instalación de dependencias y de arranque desde los ajustes
+- La vista previa ahora se puede cambiar al lado izquierdo
+- Posibilidad de exportar e importar los ajustes en json
 
 ### ✏️ Editor visual
 - **Editor visual de la página** mediante el icono de lápiz. Permite modificar textos, iconos, colores y tamaños directamente desde la interfaz, incluyendo el uso de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.

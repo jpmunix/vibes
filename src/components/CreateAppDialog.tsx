@@ -22,6 +22,7 @@ import { ipc } from "@/ipc/types";
 import { Loader2 } from "lucide-react";
 import { neonTemplateHook } from "@/client_logic/template_hook";
 import { showError } from "@/lib/toast";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface CreateAppDialogProps {
   open: boolean;
@@ -40,6 +41,8 @@ export function CreateAppDialog({
   const { createApp } = useCreateApp();
   const { data: nameCheckResult } = useCheckName(appName);
   const router = useRouter();
+  const { theme, intensity } = useTheme();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -62,7 +65,7 @@ export function CreateAppDialog({
       }
       setSelectedAppId(result.app.id);
       // Open chat in a dedicated window
-      ipc.system.openChatWindow({ appId: result.app.id, chatId: result.chatId });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId: result.chatId, theme, themeIntensity: intensity });
       router.navigate({
         to: "/app-details",
         search: { appId: result.app.id },

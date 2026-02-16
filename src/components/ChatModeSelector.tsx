@@ -22,13 +22,7 @@ import { LocalAgentNewChatToast } from "./LocalAgentNewChatToast";
 import { useAtomValue } from "jotai";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 
-function NewBadge() {
-  return (
-    <span className="inline-flex items-center rounded-full px-2 text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-      beta
-    </span>
-  );
-}
+
 
 export function ChatModeSelector() {
   const { settings, updateSettings } = useSettings();
@@ -100,11 +94,11 @@ export function ChatModeSelector() {
           <MiniSelectTrigger
             data-testid="chat-mode-selector"
             className={cn(
-              "h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors",
+              "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors",
               selectedMode === "build" || selectedMode === "local-agent"
                 ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
                 : selectedMode === "plan"
-                  ? "bg-teal-500/10 hover:bg-teal-500/20 focus:bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                  ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
                   : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
             )}
             size="sm"
@@ -137,7 +131,6 @@ export function ChatModeSelector() {
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
                 <span className="font-medium">Agente inteligente</span>
-                <NewBadge />
               </div>
               <span className="text-xs text-muted-foreground">
                 El mejor modo de trabajo para el día a día
