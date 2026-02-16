@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+/**
+ * In production, skip Zod runtime validation for IPC data that originates
+ * from our own main process (trusted source). TypeScript enforces types at
+ * compile time; Zod validation in hot paths (streaming chunks) adds ~0.3ms
+ * per call × thousands of chunks per AI response.
+ * In development, validation is kept to catch handler bugs early.
+ */
+const IS_DEV = (import.meta as any).env?.MODE === "development";
+
 // =============================================================================
 // Contract Type Definitions
 // =============================================================================
@@ -221,14 +230,19 @@ export function createEventClient<
       }
 
       const listener = (data: unknown) => {
-        const parsed = event.payload.safeParse(data);
-        if (parsed.success) {
-          handler(parsed.data);
+        if (IS_DEV) {
+          const parsed = event.payload.safeParse(data);
+          if (parsed.success) {
+            handler(parsed.data);
+          } else {
+            console.error(
+              `[${event.channel}] Invalid payload:`,
+              parsed.error.format(),
+            );
+          }
         } else {
-          console.error(
-            `[${event.channel}] Invalid payload:`,
-            parsed.error.format(),
-          );
+          // Production: skip validation, data comes from our own main process
+          handler(data as z.infer<typeof event.payload>);
         }
       };
 
@@ -292,33 +306,54 @@ export function createStreamClient<
     if (!ipcRenderer) return;
 
     ipcRenderer.on(contract.events.chunk.channel, (data: unknown) => {
-      const parsed = contract.events.chunk.payload.safeParse(data);
-      if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
-        streams.get(key)?.onChunk(parsed.data);
+      if (IS_DEV) {
+        const parsed = contract.events.chunk.payload.safeParse(data);
+        if (parsed.success) {
+          const key = (parsed.data as Record<string, unknown>)[
+            contract.keyField
+          ] as KeyValue;
+          streams.get(key)?.onChunk(parsed.data);
+        }
+      } else {
+        // Production fast path: skip Zod validation for streaming chunks
+        const typedData = data as Record<string, unknown>;
+        const key = typedData[contract.keyField] as KeyValue;
+        streams.get(key)?.onChunk(typedData as any);
       }
     });
 
     ipcRenderer.on(contract.events.end.channel, (data: unknown) => {
-      const parsed = contract.events.end.payload.safeParse(data);
-      if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
-        streams.get(key)?.onEnd(parsed.data);
+      if (IS_DEV) {
+        const parsed = contract.events.end.payload.safeParse(data);
+        if (parsed.success) {
+          const key = (parsed.data as Record<string, unknown>)[
+            contract.keyField
+          ] as KeyValue;
+          streams.get(key)?.onEnd(parsed.data);
+          streams.delete(key);
+        }
+      } else {
+        const typedData = data as Record<string, unknown>;
+        const key = typedData[contract.keyField] as KeyValue;
+        streams.get(key)?.onEnd(typedData as any);
         streams.delete(key);
       }
     });
 
     ipcRenderer.on(contract.events.error.channel, (data: unknown) => {
-      const parsed = contract.events.error.payload.safeParse(data);
-      if (parsed.success) {
-        const key = (parsed.data as Record<string, unknown>)[
-          contract.keyField
-        ] as KeyValue;
-        streams.get(key)?.onError(parsed.data);
+      if (IS_DEV) {
+        const parsed = contract.events.error.payload.safeParse(data);
+        if (parsed.success) {
+          const key = (parsed.data as Record<string, unknown>)[
+            contract.keyField
+          ] as KeyValue;
+          streams.get(key)?.onError(parsed.data);
+          streams.delete(key);
+        }
+      } else {
+        const typedData = data as Record<string, unknown>;
+        const key = typedData[contract.keyField] as KeyValue;
+        streams.get(key)?.onError(typedData as any);
         streams.delete(key);
       }
     });
