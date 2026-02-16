@@ -396,152 +396,153 @@ export function ChatInput({
           Error al cargar la propuesta: {proposalError.message}
         </div>
       )}
-      <div className="p-4" data-testid="chat-input-container">
-        <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-            }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Show todo list if there are todos for this chat */}
-          {chatTodos.length > 0 && <TodoList todos={chatTodos} />}
-          {/* Show agent consent banner if there's a pending consent request */}
-          {pendingAgentConsent && (
-            <AgentConsentBanner
-              consent={pendingAgentConsent}
-              queueTotal={consentsForThisChat.length}
-              onDecision={(decision) => {
-                ipc.agent.respondToConsent({
-                  requestId: pendingAgentConsent.requestId,
-                  decision,
-                });
-                // Remove this consent from the queue by requestId
-                setPendingAgentConsents((prev) =>
-                  prev.filter(
-                    (c) => c.requestId !== pendingAgentConsent.requestId,
-                  ),
-                );
-              }}
-              onClose={() => {
-                ipc.agent.respondToConsent({
-                  requestId: pendingAgentConsent.requestId,
-                  decision: "decline",
-                });
-                // Remove this consent from the queue by requestId
-                setPendingAgentConsents((prev) =>
-                  prev.filter(
-                    (c) => c.requestId !== pendingAgentConsent.requestId,
-                  ),
-                );
-              }}
-            />
-          )}
-          {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
-          {!pendingAgentConsent &&
-            proposal &&
-            proposalResult?.chatId === chatId &&
-            settings.selectedChatMode !== "ask" &&
-            settings.selectedChatMode !== "plan" &&
-            settings.selectedChatMode !== "local-agent" && (
-              <ChatInputActions
-                proposal={proposal}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                isApprovable={
-                  !isProposalLoading &&
-                  !!proposal &&
-                  !!messageId &&
-                  !isApproving &&
-                  !isRejecting &&
-                  !isStreaming
-                }
-                isApproving={isApproving}
-                isRejecting={isRejecting}
-              />
-            )}
-
-          <VisualEditingChangesDialog
-            iframeRef={
-              previewIframeRef
-                ? { current: previewIframeRef }
-                : { current: null }
-            }
-            onReset={() => {
-              // Exit component selection mode and visual editing
-              setSelectedComponents([]);
-              setVisualEditingSelectedComponent(null);
-              setCurrentComponentCoordinates(null);
-              setPendingVisualChanges(new Map());
-              refreshAppIframe();
-
-              // Deactivate component selector in iframe
-              if (previewIframeRef?.contentWindow) {
-                previewIframeRef.contentWindow.postMessage(
-                  { type: "deactivate-dyad-component-selector" },
-                  "*",
-                );
-              }
+      <div className="px-4 pb-4" data-testid="chat-input-container">
+        <div className="max-w-3xl mx-auto">
+          <div
+            className="rounded-lg p-[1.5px]"
+            style={{
+              background: `linear-gradient(to bottom, oklch(0.58 0.09 260 / 0.4), var(--border) 50%, oklch(0.58 0.09 260 / 0.15))`,
             }}
-          />
+          >
+            <div
+              className={`relative flex flex-col rounded-lg bg-(--background-lighter) overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
+                }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Show todo list if there are todos for this chat */}
+              {chatTodos.length > 0 && <TodoList todos={chatTodos} />}
+              {/* Show agent consent banner if there's a pending consent request */}
+              {pendingAgentConsent && (
+                <AgentConsentBanner
+                  consent={pendingAgentConsent}
+                  queueTotal={consentsForThisChat.length}
+                  onDecision={(decision) => {
+                    ipc.agent.respondToConsent({
+                      requestId: pendingAgentConsent.requestId,
+                      decision,
+                    });
+                    setPendingAgentConsents((prev) =>
+                      prev.filter(
+                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                      ),
+                    );
+                  }}
+                  onClose={() => {
+                    ipc.agent.respondToConsent({
+                      requestId: pendingAgentConsent.requestId,
+                      decision: "decline",
+                    });
+                    setPendingAgentConsents((prev) =>
+                      prev.filter(
+                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                      ),
+                    );
+                  }}
+                />
+              )}
+              {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
+              {!pendingAgentConsent &&
+                proposal &&
+                proposalResult?.chatId === chatId &&
+                settings.selectedChatMode !== "ask" &&
+                settings.selectedChatMode !== "plan" &&
+                settings.selectedChatMode !== "local-agent" && (
+                  <ChatInputActions
+                    proposal={proposal}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    isApprovable={
+                      !isProposalLoading &&
+                      !!proposal &&
+                      !!messageId &&
+                      !isApproving &&
+                      !isRejecting &&
+                      !isStreaming
+                    }
+                    isApproving={isApproving}
+                    isRejecting={isRejecting}
+                  />
+                )}
 
-
-          {/* SelectedComponentsDisplay hidden — visual editor panel handles this */}
-          {/* <SelectedComponentsDisplay /> */}
-
-          {/* Use the AttachmentsList component */}
-          <AttachmentsList
-            attachments={attachments}
-            onRemove={removeAttachment}
-          />
-
-          {/* Use the DragDropOverlay component */}
-          <DragDropOverlay isDraggingOver={isDraggingOver} />
-
-          <div className="flex items-start space-x-2 ">
-            <LexicalChatInput
-              value={inputValue}
-              onChange={setInputValue}
-              onSubmit={handleSubmit}
-              onPaste={handlePaste}
-              placeholder="Pídele a vibes que haga..."
-              excludeCurrentApp={true}
-              disableSendButton={disableSendButton}
-            />
-
-            {isStreaming ? (
-              <button
-                onClick={handleCancel}
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg"
-                title="Cancelar generación"
-              >
-                <StopCircleIcon size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  (!inputValue.trim() && attachments.length === 0) ||
-                  disableSendButton
+              <VisualEditingChangesDialog
+                iframeRef={
+                  previewIframeRef
+                    ? { current: previewIframeRef }
+                    : { current: null }
                 }
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Enviar mensaje"
-              >
-                <SendHorizontalIcon size={20} />
-              </button>
-            )}
-          </div>
-          <div className="pl-2 pr-1 flex items-center justify-between pb-2">
-            <div className="flex items-center">
-              <ChatInputControls showContextFilesPicker={false} />
-            </div>
+                onReset={() => {
+                  setSelectedComponents([]);
+                  setVisualEditingSelectedComponent(null);
+                  setCurrentComponentCoordinates(null);
+                  setPendingVisualChanges(new Map());
+                  refreshAppIframe();
+                  if (previewIframeRef?.contentWindow) {
+                    previewIframeRef.contentWindow.postMessage(
+                      { type: "deactivate-dyad-component-selector" },
+                      "*",
+                    );
+                  }
+                }}
+              />
 
-            <AuxiliaryActionsMenu
-              onFileSelect={handleFileSelect}
-              showTokenBar={showTokenBar}
-              toggleShowTokenBar={toggleShowTokenBar}
-              appId={appId ?? undefined}
-            />
+              {/* Use the AttachmentsList component */}
+              <AttachmentsList
+                attachments={attachments}
+                onRemove={removeAttachment}
+              />
+
+              {/* Use the DragDropOverlay component */}
+              <DragDropOverlay isDraggingOver={isDraggingOver} />
+
+              <LexicalChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSubmit={handleSubmit}
+                onPaste={handlePaste}
+                placeholder="Pídele a vibes que haga..."
+                excludeCurrentApp={true}
+                disableSendButton={disableSendButton}
+              />
+
+              {/* Bottom controls bar */}
+              <div className="px-3 py-5 flex items-center border-t border-border/50">
+                <AuxiliaryActionsMenu
+                  onFileSelect={handleFileSelect}
+                  showTokenBar={showTokenBar}
+                  toggleShowTokenBar={toggleShowTokenBar}
+                  appId={appId ?? undefined}
+                />
+                <div className="flex items-center ml-1">
+                  <ChatInputControls showContextFilesPicker={false} />
+                </div>
+
+                <div className="ml-auto">
+                  {isStreaming ? (
+                    <button
+                      onClick={handleCancel}
+                      className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors"
+                      title="Cancelar generación"
+                    >
+                      <StopCircleIcon size={18} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={
+                        (!inputValue.trim() && attachments.length === 0) ||
+                        disableSendButton
+                      }
+                      className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm"
+                      title="Enviar mensaje"
+                    >
+                      <SendHorizontalIcon size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           {/* TokenBar is only displayed when showTokenBar is true */}
           {showTokenBar && <TokenBar chatId={chatId} />}
@@ -757,7 +758,7 @@ export function mapActionToButton(action: SuggestedAction) {
 }
 
 // Deshabilitado: Botones de sugerencias (Resumir en un nuevo chat, Continuar)
-// function ActionProposalActions({ proposal }: { proposal: ActionProposal }) {
+// function ActionProposalActions({proposal}: {proposal: ActionProposal }) {
 //   return (
 //     <div className="border-b border-border p-2 pb-0 flex items-center justify-between">
 //       <div className="flex items-center space-x-2 overflow-x-auto pb-2">

@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, Menu, MenuItem } from "electron";
 import * as path from "node:path";
 import log from "electron-log";
 import { platform } from "os";
@@ -7,6 +7,7 @@ import { systemContracts } from "../types/system";
 import { db } from "../../db";
 import { apps } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { readSettings, writeSettings } from "../../main/settings";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -131,9 +132,15 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for window title: ${e}`);
     }
 
+    // Load saved window state
+    const settings = readSettings();
+    const windowState = settings.windowState;
+
     const chatWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
+      width: windowState?.width ?? 1200,
+      height: windowState?.height ?? 800,
+      x: windowState?.x,
+      y: windowState?.y,
       minWidth: 700,
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
@@ -150,8 +157,42 @@ export function registerWindowHandlers() {
       },
     });
 
+    if (windowState?.isMaximized) {
+      chatWindow.maximize();
+    }
+
     // Remove native menu bar entirely (File, Edit, View, etc.)
     chatWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element (dev tools)
+    chatWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => {
+          chatWindow.webContents.inspectElement(params.x, params.y);
+        },
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts lost by removeMenu()
+    chatWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      // Ctrl+Shift+R or F5 → hard reload
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        chatWindow.webContents.reloadIgnoringCache();
+      }
+      // Ctrl+R → normal reload
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        chatWindow.webContents.reload();
+      }
+      // F12 or Ctrl+Shift+I → toggle DevTools
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        chatWindow.webContents.toggleDevTools();
+      }
+    });
 
     const chatIdParam = chatId ? `&chatId=${chatId}` : "";
     const pendingParam = (prompt && chatId) ? `&hasPendingPrompt=true` : "";
@@ -168,6 +209,23 @@ export function registerWindowHandlers() {
     }
 
     chatWindows.set(appId, chatWindow);
+
+    chatWindow.on("close", () => {
+      // Save window state before closing
+      if (!chatWindow.isDestroyed()) {
+        const bounds = chatWindow.getBounds();
+        const isMaximized = chatWindow.isMaximized();
+        writeSettings({
+          windowState: {
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            isMaximized,
+          },
+        });
+      }
+    });
 
     chatWindow.on("closed", () => {
       chatWindows.delete(appId);

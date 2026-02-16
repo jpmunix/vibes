@@ -11,6 +11,8 @@ import {
   Brain,
   ChevronDown,
   MessageSquare,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { PanelRightClose } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -48,6 +50,13 @@ import {
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { KnowledgeBaseModal } from "../KnowledgeBaseModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
 
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
@@ -74,6 +83,8 @@ export function ChatHeader({
   );
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<{ id: number; title: string } | null>(null);
+  const [chatToRename, setChatToRename] = useState<{ id: number; title: string } | null>(null);
   const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
 
   const {
@@ -184,12 +195,6 @@ export function ChatHeader({
       });
 
       showSuccess("Nota guardada correctamente");
-
-      // Navegar a la nota creada
-      navigate({
-        to: "/notes/$noteId",
-        params: { noteId: noteId.toString() },
-      });
     } catch (error) {
       showError(`Error al guardar la nota: ${(error as any).toString()}`);
     } finally {
@@ -289,8 +294,8 @@ export function ChatHeader({
       )}
 
       {/* Why is this pt-0.5? Because the loading bar is h-1 (it always takes space) and we want the vertical spacing to be consistent.*/}
-      <div className="@container flex items-center justify-between pb-1.5 pt-0.5">
-        <div className="flex items-center space-x-2">
+      <div className="@container flex items-center pb-1.5 pt-0.5">
+        <div className="flex items-center shrink-0">
           <Button
             onClick={handleNewChat}
             variant="ghost"
@@ -299,46 +304,6 @@ export function ChatHeader({
             <PlusCircle size={16} />
             <span>Nuevo chat</span>
           </Button>
-
-          {/* Chat selector dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md max-w-[200px]"
-              >
-                <MessageSquare size={16} className="shrink-0" />
-                <span className="truncate hidden @xs:inline">
-                  {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
-                </span>
-                <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
-              {chats.length === 0 ? (
-                <DropdownMenuItem disabled>
-                  <span className="text-muted-foreground text-sm">Sin chats</span>
-                </DropdownMenuItem>
-              ) : (
-                chats.map((chat) => (
-                  <DropdownMenuItem
-                    key={chat.id}
-                    onClick={() => {
-                      setSelectedChatId(chat.id);
-                      navigate({
-                        to: "/chat",
-                        search: { id: chat.id },
-                      });
-                    }}
-                    className={selectedChatId === chat.id ? "bg-accent" : ""}
-                  >
-                    <MessageSquare size={14} className="mr-2 shrink-0" />
-                    <span className="truncate">{chat.title || `Chat ${chat.id}`}</span>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Menú desplegable con las demás opciones */}
           <DropdownMenu>
@@ -424,6 +389,66 @@ export function ChatHeader({
           </DropdownMenu>
         </div>
 
+        {/* Chat selector dropdown — adapts to chat title width */}
+        <div className="mx-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
+              >
+                <MessageSquare size={16} className="shrink-0" />
+                <span>
+                  {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
+                </span>
+                <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
+              {chats.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground text-sm">Sin chats</span>
+                </DropdownMenuItem>
+              ) : (
+                chats.map((chat) => (
+                  <DropdownMenuItem
+                    key={chat.id}
+                    onClick={() => {
+                      setSelectedChatId(chat.id);
+                      navigate({
+                        to: "/chat",
+                        search: { id: chat.id },
+                      });
+                    }}
+                    className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
+                  >
+                    <MessageSquare size={14} className="mr-2 shrink-0" />
+                    <span className="truncate flex-1">{chat.title || `Chat ${chat.id}`}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChatToRename({ id: chat.id, title: chat.title || `Chat ${chat.id}` });
+                      }}
+                      className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
+                    >
+                      <Pencil size={12} className="text-amber-500" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChatToDelete({ id: chat.id, title: chat.title || `Chat ${chat.id}` });
+                      }}
+                      className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                    >
+                      <Trash2 size={12} className="text-destructive" />
+                    </button>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         {appId && (
           <KnowledgeBaseModal
             appId={appId}
@@ -435,7 +460,7 @@ export function ChatHeader({
         <button
           data-testid="toggle-preview-panel-button"
           onClick={onTogglePreview}
-          className="cursor-pointer p-2 hover:bg-(--background-lightest) rounded-md"
+          className="cursor-pointer p-2 hover:bg-(--background-lightest) rounded-md ml-auto"
         >
           {isPreviewOpen ? (
             <PanelRightClose size={20} />
@@ -456,6 +481,85 @@ export function ChatHeader({
         onConfirm={handleEmptyChat}
         onCancel={() => setIsConfirmEmptyDialogOpen(false)}
       />
+
+      <ConfirmationDialog
+        isOpen={!!chatToDelete}
+        title="¿Eliminar chat?"
+        message={`Se eliminará el chat "${chatToDelete?.title}" de forma permanente. No se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        confirmButtonClass="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
+        showOverlay={false}
+        onConfirm={async () => {
+          if (!chatToDelete) return;
+          try {
+            await ipc.chat.deleteChat(chatToDelete.id);
+            await invalidateChats();
+            if (selectedChatId === chatToDelete.id) {
+              const remaining = chats.filter((c) => c.id !== chatToDelete.id);
+              if (remaining.length > 0) {
+                setSelectedChatId(remaining[0].id);
+                navigate({ to: "/chat", search: { id: remaining[0].id } });
+              } else {
+                if (appId) {
+                  const newId = await ipc.chat.createChat(appId);
+                  setSelectedChatId(newId);
+                  navigate({ to: "/chat", search: { id: newId } });
+                  await invalidateChats();
+                }
+              }
+            }
+            showSuccess("Chat eliminado");
+          } catch (error) {
+            showError(`Error al eliminar el chat: ${(error as any).toString()}`);
+          } finally {
+            setChatToDelete(null);
+          }
+        }}
+        onCancel={() => setChatToDelete(null)}
+      />
+
+      <Dialog open={!!chatToRename} onOpenChange={(open) => { if (!open) setChatToRename(null); }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renombrar chat</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!chatToRename) return;
+              const formData = new FormData(e.currentTarget);
+              const newTitle = (formData.get("title") as string).trim();
+              if (newTitle && newTitle !== chatToRename.title) {
+                try {
+                  await ipc.chat.updateChat({ chatId: chatToRename.id, title: newTitle });
+                  await invalidateChats();
+                  showSuccess("Título actualizado");
+                } catch (err) {
+                  showError(`Error al renombrar: ${(err as any).toString()}`);
+                }
+              }
+              setChatToRename(null);
+            }}
+          >
+            <input
+              name="title"
+              autoFocus
+              defaultValue={chatToRename?.title || ""}
+              className="w-full bg-transparent border border-border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Título del chat"
+            />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="ghost" onClick={() => setChatToRename(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit">
+                Guardar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
