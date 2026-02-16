@@ -21,19 +21,20 @@ export function AutoFixModelSelector() {
           name: "SAME_AS_CHAT",
           provider: "openrouter",
         },
-      });
+      }, { showToast: true });
     } else {
       await updateSettings({
         autoFixModel: {
           name: value,
           provider: "openrouter",
         },
-      });
+      }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}

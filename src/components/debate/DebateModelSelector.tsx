@@ -18,14 +18,15 @@ export function DebateModelSelector() {
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ debateModel: "SAME_AS_CHAT" });
+      await updateSettings({ debateModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ debateModel: value });
+      await updateSettings({ debateModel: value }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}

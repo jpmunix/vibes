@@ -25,7 +25,7 @@ export function AIBehaviorSettings({
       | "enableVerboseChatLogs",
     value: boolean,
   ) => {
-    await updateSettings({ [field]: value } as any);
+    await updateSettings({ [field]: value } as any, { showToast: true });
   };
 
   return (

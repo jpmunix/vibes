@@ -15,7 +15,7 @@ export function DossierModelSelector() {
             : settings?.dossierModel;
 
     const handleChange = async (value: string) => {
-        await updateSettings({ dossierModel: value });
+        await updateSettings({ dossierModel: value }, { showToast: true });
     };
 
     const defaultModelInList = openRouterModels?.find(
@@ -24,6 +24,7 @@ export function DossierModelSelector() {
 
     return (
         <SettingsModelSelector
+            size="md"
             selectedModel={currentValue}
             onModelSelect={handleChange}
             models={(openRouterModels || []).filter(

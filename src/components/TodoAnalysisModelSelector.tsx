@@ -19,14 +19,15 @@ export function TodoAnalysisModelSelector() {
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ todoAnalysisModel: "SAME_AS_CHAT" });
+      await updateSettings({ todoAnalysisModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ todoAnalysisModel: value });
+      await updateSettings({ todoAnalysisModel: value }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}

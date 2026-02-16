@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import {
+  PrimaryColorPicker,
+  DEFAULT_LIGHT_COLOR,
+  DEFAULT_DARK_COLOR,
+} from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { AutomationSettings } from "@/components/settings/AutomationSettings";
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
@@ -94,6 +99,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Zoom",
     description: "Ajustar el nivel de zoom de la aplicación",
     keywords: ["zoom", "tamaño", "escala", "agrandar", "achicar"],
+    section: "Ajustes generales",
+    sectionId: "general-settings",
+  },
+  {
+    id: "primary-color",
+    label: "Color primario",
+    description: "Elige el color de acento principal para modo claro y oscuro",
+    keywords: ["color", "primario", "acento", "tema", "personalizar", "primary"],
     section: "Ajustes generales",
     sectionId: "general-settings",
   },
@@ -849,7 +862,7 @@ export function GeneralSettings({
   isHighlighted?: boolean;
   onShowReleaseNotes?: () => void;
 }) {
-  const { theme, setTheme, intensity, setIntensity } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors } = useTheme();
   const { settings, updateSettings } = useSettings();
 
   useEffect(() => {
@@ -861,6 +874,13 @@ export function GeneralSettings({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings?.themeIntensity, setIntensity]);
+
+  // Apply primary colors from settings on load
+  useEffect(() => {
+    if (settings) {
+      applyPrimaryColors(settings.primaryColorLight, settings.primaryColorDark);
+    }
+  }, [settings?.primaryColorLight, settings?.primaryColorDark, applyPrimaryColors]);
 
   return (
     <div
@@ -979,6 +999,41 @@ export function GeneralSettings({
             <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/40 w-14 text-center">
               Oscuro
             </span>
+          </div>
+        </div>
+
+        {/* Primary Color Picker */}
+        <div className="space-y-6 pt-6 border-t border-border">
+          <div className="flex-1">
+            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
+              Color primario
+            </Label>
+            <p className="text-base text-muted-foreground mt-1">
+              Elige el color de acento principal para cada modo de tema
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-5 rounded-2xl bg-white border border-border space-y-3">
+              <PrimaryColorPicker
+                label="Tema claro"
+                selectedColor={settings?.primaryColorLight || DEFAULT_LIGHT_COLOR}
+                onColorSelect={async (colorId) => {
+                  await updateSettings({ primaryColorLight: colorId }, { showToast: true });
+                  applyPrimaryColors(colorId, settings?.primaryColorDark);
+                }}
+              />
+            </div>
+            <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-700 space-y-3">
+              <PrimaryColorPicker
+                label="Tema oscuro"
+                selectedColor={settings?.primaryColorDark || DEFAULT_DARK_COLOR}
+                onColorSelect={async (colorId) => {
+                  await updateSettings({ primaryColorDark: colorId }, { showToast: true });
+                  applyPrimaryColors(settings?.primaryColorLight, colorId);
+                }}
+              />
+            </div>
           </div>
         </div>
 

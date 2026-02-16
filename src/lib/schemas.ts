@@ -402,6 +402,8 @@ export const UserSettingsSchema = z
     chatLanguage: ChatLanguageSchema.optional(),
     serperApiKey: SecretSchema.optional(),
     themeIntensity: z.number().optional(),
+    primaryColorLight: z.string().optional(),
+    primaryColorDark: z.string().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
     windowState: z

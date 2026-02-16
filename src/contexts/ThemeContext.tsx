@@ -1,4 +1,9 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import {
+  getColorById,
+  DEFAULT_LIGHT_COLOR,
+  DEFAULT_DARK_COLOR,
+} from "@/components/PrimaryColorPicker";
 
 type Theme = "system" | "light" | "dark";
 
@@ -7,9 +12,29 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   intensity: number;
   setIntensity: (intensity: number) => void;
+  applyPrimaryColors: (lightColorId?: string, darkColorId?: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+/**
+ * Apply the selected primary color CSS variables to the document root.
+ * We set both light and dark values so the correct one is picked
+ * by the existing :root / .dark rule cascade.
+ */
+function applyColorToDOM(lightColorId?: string, darkColorId?: string) {
+  const lightColor = getColorById(lightColorId || DEFAULT_LIGHT_COLOR);
+  const darkColor = getColorById(darkColorId || DEFAULT_DARK_COLOR);
+
+  const root = document.documentElement;
+
+  if (lightColor) {
+    root.style.setProperty("--primary-color-light", lightColor.light);
+  }
+  if (darkColor) {
+    root.style.setProperty("--primary-color-dark", darkColor.dark);
+  }
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -22,6 +47,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const savedIntensity = localStorage.getItem("theme-intensity");
     return savedIntensity ? parseFloat(savedIntensity) : 0.58;
   });
+
+  const applyPrimaryColors = useCallback(
+    (lightColorId?: string, darkColorId?: string) => {
+      applyColorToDOM(lightColorId, darkColorId);
+    },
+    [],
+  );
 
   useEffect(() => {
     // Save theme preference to localStorage
@@ -57,7 +89,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [intensity]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, intensity, setIntensity }}>
+    <ThemeContext.Provider
+      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -69,7 +103,8 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity } = context;
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors } =
+    context;
 
   // Determine if dark mode is active when component mounts or theme changes
   useEffect(() => {
@@ -87,5 +122,12 @@ export function useTheme() {
       darkModeQuery.removeEventListener("change", updateTheme);
     };
   }, [theme]);
-  return { theme, isDarkMode, setTheme, intensity, setIntensity };
+  return {
+    theme,
+    isDarkMode,
+    setTheme,
+    intensity,
+    setIntensity,
+    applyPrimaryColors,
+  };
 }

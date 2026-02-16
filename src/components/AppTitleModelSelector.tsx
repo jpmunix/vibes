@@ -18,14 +18,15 @@ export function AppTitleModelSelector() {
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ appTitleGenerationModel: "SAME_AS_CHAT" });
+      await updateSettings({ appTitleGenerationModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ appTitleGenerationModel: value });
+      await updateSettings({ appTitleGenerationModel: value }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}

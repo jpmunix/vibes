@@ -17,6 +17,7 @@ import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useSettings } from "@/hooks/useSettings";
+import { getColorById, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
 import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
@@ -73,6 +74,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
     return () => { };
   }, [settings?.zoomLevel]);
+
+  // Apply user's primary color on startup
+  useEffect(() => {
+    if (settings) {
+      const lightColor = getColorById(settings.primaryColorLight || DEFAULT_LIGHT_COLOR);
+      const darkColor = getColorById(settings.primaryColorDark || DEFAULT_DARK_COLOR);
+      const root = document.documentElement;
+      if (lightColor) root.style.setProperty("--primary-color-light", lightColor.light);
+      if (darkColor) root.style.setProperty("--primary-color-dark", darkColor.dark);
+    }
+  }, [settings?.primaryColorLight, settings?.primaryColorDark]);
   // Global keyboard listener for refresh events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

@@ -16,7 +16,7 @@ export function KnowledgeModelSelector() {
             : settings?.knowledgeExtractionModel;
 
     const handleChange = async (value: string) => {
-        await updateSettings({ knowledgeExtractionModel: value });
+        await updateSettings({ knowledgeExtractionModel: value }, { showToast: true });
     };
 
     // Check if default model is in the list
@@ -24,6 +24,7 @@ export function KnowledgeModelSelector() {
 
     return (
         <SettingsModelSelector
+            size="md"
             selectedModel={currentValue}
             onModelSelect={handleChange}
             models={(openRouterModels || []).filter(m => m.apiName !== DEFAULT_VALUE)}

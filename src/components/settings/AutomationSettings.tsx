@@ -23,7 +23,7 @@ export function AutomationSettings({
   ) => {
     if (setSaving) setSaving((v) => true);
     try {
-      await updateSettings({ [field]: value } as any);
+      await updateSettings({ [field]: value } as any, { showToast: true });
     } catch (error) {
       showError("No se pudo actualizar el ajuste");
     } finally {
@@ -37,7 +37,7 @@ export function AutomationSettings({
     fallback: number,
   ) => {
     const parsed = Number.isFinite(value) && value > 0 ? value : fallback;
-    await updateSettings({ [field]: parsed } as any);
+    await updateSettings({ [field]: parsed } as any, { showToast: true });
   };
 
   return (

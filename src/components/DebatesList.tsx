@@ -210,7 +210,7 @@ export function DebatesList({ show }: { show?: boolean }) {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={confirmDelete}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  className="bg-destructive hover:bg-destructive/90 text-white"
                 >
                   Eliminar
                 </AlertDialogAction>

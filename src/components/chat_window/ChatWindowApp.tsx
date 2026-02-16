@@ -20,6 +20,7 @@ import {
 import { PostHogProvider } from "posthog-js/react";
 import posthog from "posthog-js";
 import { ThemeProvider } from "../../contexts/ThemeContext";
+import { getColorById, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
@@ -132,7 +133,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     }, [appId, setSelectedAppId, initialChatId, setChatId]);
 
     // Apply initial chat mode (e.g. "plan") from the parent window on mount
-    const { updateSettings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const hasAppliedInitialModeRef = useRef(false);
     useEffect(() => {
         if (initialChatMode && !hasAppliedInitialModeRef.current) {
@@ -140,6 +141,17 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             updateSettings({ selectedChatMode: initialChatMode as any });
         }
     }, [initialChatMode, updateSettings]);
+
+    // Apply primary colors from settings
+    useEffect(() => {
+        if (settings) {
+            const lightColor = getColorById(settings.primaryColorLight || DEFAULT_LIGHT_COLOR);
+            const darkColor = getColorById(settings.primaryColorDark || DEFAULT_DARK_COLOR);
+            const root = document.documentElement;
+            if (lightColor) root.style.setProperty("--primary-color-light", lightColor.light);
+            if (darkColor) root.style.setProperty("--primary-color-dark", darkColor.dark);
+        }
+    }, [settings?.primaryColorLight, settings?.primaryColorDark]);
 
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
     useEffect(() => {

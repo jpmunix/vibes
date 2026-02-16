@@ -18,14 +18,15 @@ export function TurboEditModelSelector() {
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ turboEditModel: "SAME_AS_CHAT" });
+      await updateSettings({ turboEditModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ turboEditModel: value });
+      await updateSettings({ turboEditModel: value }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}

@@ -5,6 +5,7 @@ import { ipc } from "@/ipc/types";
 import { type UserSettings, hasDyadProKey } from "@/lib/schemas";
 import { usePostHog } from "posthog-js/react";
 import { useAppVersion } from "./useAppVersion";
+import { showSuccess } from "@/lib/toast";
 
 const TELEMETRY_CONSENT_KEY = "dyadTelemetryConsent";
 const TELEMETRY_USER_ID_KEY = "dyadTelemetryUserId";
@@ -60,7 +61,7 @@ export function useSettings() {
     loadInitialData();
   }, [loadInitialData]);
 
-  const updateSettings = async (newSettings: Partial<UserSettings>) => {
+  const updateSettings = async (newSettings: Partial<UserSettings>, options?: { showToast?: boolean }) => {
     setLoading(true);
     try {
       const updatedSettings = await ipc.settings.setUserSettings(newSettings);
@@ -69,6 +70,9 @@ export function useSettings() {
       posthog.people.set({ isPro: hasDyadProKey(updatedSettings) });
 
       setError(null);
+      if (options?.showToast) {
+        showSuccess("Ajustes guardados");
+      }
       return updatedSettings;
     } catch (error) {
       console.error("Error updating settings:", error);

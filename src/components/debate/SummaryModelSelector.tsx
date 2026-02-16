@@ -18,14 +18,15 @@ export function SummaryModelSelector() {
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ summaryModel: "SAME_AS_CHAT" });
+      await updateSettings({ summaryModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ summaryModel: value });
+      await updateSettings({ summaryModel: value }, { showToast: true });
     }
   };
 
   return (
     <SettingsModelSelector
+      size="md"
       selectedModel={currentValue}
       onModelSelect={handleChange}
       models={openRouterModels || []}
