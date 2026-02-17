@@ -1,65 +1,71 @@
-## 🔥 Novedades principales
+## 🔥 Novedades Principales
 
-- Generacion del dossier + documentación + copia automática en mi cuenta de vibes (si estoy logueado)
-- Modo planificación
-- mejoras en los prompts generales, estados de la interfaz, manejo de errores
-- mejoras en la configuracion para añadir comandos específicos de arranque o reinstalacion para los proyectos
-- posibilidad de escribir rutas a mano en la barra de direcciones, con historial + detección de rutas existentes
-- mejoras en el agente inteligente
-- Las apps ahora se abren a nueva ventana para aumentar la velocidad del interfaz y para poder abrir más de una a la vez
-- Ahora se pueden cambiar los parámetros de instalación de dependencias y de arranque desde los ajustes
-- La vista previa ahora se puede cambiar al lado izquierdo
-- Posibilidad de exportar e importar los ajustes en json
-- Mejoras en la interfaz de la página de ajustes
-- Consolidación de los temas claros y oscuros porque había incongruencias. Selector de color primario para cada tema
-- Selector de color primario para cada tema
-- Posibilidad de crear el esqueleto para una app en blanco o vacía
-- Git tools avanzadas
+Hemos enfocado nuestros esfuerzos en potenciar vuestra creatividad, facilitar vuestro flujo de trabajo y optimizar el rendimiento general de la aplicación.
 
-### ✏️ Editor visual
-- **Editor visual de la página** mediante el icono de lápiz. Permite modificar textos, iconos, colores y tamaños directamente desde la interfaz, incluyendo el uso de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.
+### 🚀 Flujo de Trabajo y Productividad
 
-### 🖼️ Capturas de pantalla
-- **Mejoras en las capturas de pantalla** que permiten seleccionar de una manera más sencilla los colores, incluir flechas, copiar la imagen al portapapeles y guardarla en disco en formato png
+*   **Generación de Dossier Avanzada**: Ahora puedes generar dossiers completos y documentación con un solo clic. Además, se realiza una copia automática en tu cuenta de Vibes si estás logueado, asegurando que tu trabajo esté siempre accesible.
+*   **Modo Planificación**: Una nueva funcionalidad que te permite organizar y estructurar tus proyectos de manera más eficiente, planificando pasos y recursos.
+*   **Gestión de Proyectos Mejorada**:
+    *   **Configuración de Comandos**: Añade comandos específicos de arranque o reinstalación para tus proyectos desde la configuración, facilitando la gestión de entornos de desarrollo.
+    *   **Creación de Proyectos Rápidos**: Posibilidad de generar el esqueleto para una aplicación en blanco o vacía, acelerando el inicio de nuevos proyectos.
+*   **Navegación Intuitiva**:
+    *   **Barra de Direcciones Interactiva**: Escribe rutas a mano en la barra de direcciones con historial, incluyendo detección de rutas existentes para una navegación más rápida.
+    *   **Ventanas Múltiples para Apps**: Las aplicaciones ahora se abren en nuevas ventanas, permitiendo una mayor velocidad de interfaz y la posibilidad de trabajar con múltiples apps simultáneamente.
+*   **Exportación y Importación de Ajustes**: Traslada tus configuraciones entre entornos o restaura estados previos gracias a la nueva funcionalidad de exportación e importación de ajustes en formato JSON.
 
-### ⚡ Performance
-- **Corrección de un bloqueo del Agente inteligente** que se producía cuando no existían reglas de contexto definidas. El agente ahora gestiona correctamente estados sin configuración previa.
+### 🧠 Agente Inteligente & IA
+
+*   **Agente Inteligente Potenciado**: Hemos introducido mejoras significativas en el agente inteligente, haciéndolo más capaz y predictivo.
+*   **Nuevos Modelos Orientados a Programación**: Se han añadido modelos de IA optimizados específicamente para tareas de edición, análisis y generación de código, brindando asistencia inteligente a los desarrolladores.
+*   **Corrección de Bloqueo del Agente Inteligente**: Se ha resuelto un problema que causaba un bloqueo cuando no existían reglas de contexto definidas. El agente ahora gestiona correctamente estados sin configuración previa.
+*   **Refactor del Sistema de Conocimiento Automático**: Hemos optimizado el sistema de conocimiento automático, reduciendo el "ruido" y minimizando los falsos positivos en el contexto aprendido de forma autónoma.
+
+### ✏️ Editor Visual de la Página
+
+*   **Edición Directa por IA**: Utiliza el icono de lápiz para modificar textos, iconos, colores y tamaños directamente desde la interfaz. Incluye la integración de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.
 
 ---
+
+## ✨ Mejoras y Optimizaciones
+
+Hemos trabajado en cada rincón de la aplicación para ofrecer una experiencia más fluida, robusta y agradable.
+
+### 🎨 Interfaz de Usuario (UI) y Experiencia de Usuario (UX)
+
+*   **Consistencia Visual Reforzada**:
+    *   **Temas Claros y Oscuros Consolidados**: Se han resuelto incongruencias entre los temas claros y oscuros, proporcionando una experiencia visual más coherente.
+    *   **Selector de Color Primario**: Personaliza la aplicación a tu gusto con el nuevo selector de color primario para cada tema.
+*   **Ajustes Renovados**:
+    *   **Interfaz de Ajustes Optimizada**: Mejoras generales en la interfaz de la página de ajustes para una navegación más clara y sencilla.
+    *   **Reorganización de los Ajustes**: Estructura más lógica y fácil de navegar para encontrar lo que necesitas rápidamente.
+*   **Vista Previa Versátil**: La vista previa ahora se puede anclar al lado izquierdo, ofreciendo mayor flexibilidad en tu espacio de trabajo.
+*   **Mejoras Generales de la Interfaz**: Optimizaciones en toda la aplicación para aumentar la consistencia visual y la claridad operativa, eliminando elementos innecesarios y reduciendo distracciones.
+*   **Mejoras en Prompts y Estados**: Hemos pulido los prompts generales, los estados de la interfaz y el manejo de errores para una interacción más fluida.
 
 ### 💬 Chat
-- **Bloques de respuesta colapsables** para facilitar la navegación por conversaciones largas y permitir localizar con mayor rapidez los mensajes del usuario.
-- **Función Undo mejorada**, permitiendo recuperar prompts y assets tras deshacer acciones dentro del flujo del chat.
-- **Preview de adjuntos** en el chat para tener una referencia de lo que estamos haciendo
-- **Simplificación de la barra de acciones del chat**, reduciendo ruido visual y mejorando la accesibilidad de funciones clave.
-- **Expandir / colapsar vista previa**, ofreciendo mayor control sobre el espacio de lectura y edición.
 
----
-
-### 📝 Notas
-- **Exportación de notas a formato DOCX**, compatible con Word, LibreOffice y Google Docs.
-
----
-
-### 🎨 UI
-- **Mejoras en la pantalla de aplicación** para eliminar elementos innecesarios y reducir distracciones.
-- **Mejoras generales en la interfaz** en toda la aplicación, aumentando consistencia visual y claridad operativa.
-- **Reorganización de los ajustes**, con una estructura más lógica y fácil de navegar.
-- **Exportación e importación de ajustes**, permitiendo trasladar configuraciones entre entornos o restaurar estados previos.
-- **Herramientas de captura de pantalla optimizadas**, con mayor estabilidad y precisión.
-
----
-
-### 🧠 Core
-- **Refactor del sistema de conocimiento automático**, reduciendo ruido y minimizando falsos positivos en el contexto aprendido de forma autónoma.
-
----
+*   **Bloques de Respuesta Colapsables**: Facilita la navegación por conversaciones largas, permitiendo localizar con mayor rapidez los mensajes del usuario.
+*   **Función Undo Mejorada**: Recupera prompts y assets tras deshacer acciones dentro del flujo del chat, brindando mayor seguridad.
+*   **Preview de Adjuntos**: Ten una referencia visual de lo que estás haciendo con la nueva previsualización de adjuntos en el chat.
+*   **Barra de Acciones Simplificada**: Reducción del ruido visual y mejora de la accesibilidad de funciones clave en la barra de acciones del chat.
+*   **Expandir / Colapsar Vista Previa**: Mayor control sobre el espacio de lectura y edición en las conversaciones.
 
 ### 🛠 Herramientas
-- **Nuevas herramientas de control Git**, proporcionando mayor precisión en operaciones sobre el repositorio.
-- **Visor para Supabase** que permite visualizar tablas, valores, añadir o eliminar registros.
-- **Añadidos nuevos modelos orientados a programación**, optimizados para tareas de edición, análisis y generación de código.
+
+*   **Herramientas Git Avanzadas**:
+    *   **Solución de Problemas Comunes**: Herramientas mejoradas para resolver los problemas comunes al trabajar con repositorios.
+    *   **Avisos Inteligentes**: Alertas ante fallos más comunes, así como herramientas para eliminar locks, abortar merges y rebases.
+    *   **Control Git Preciso**: Nuevas herramientas que proporcionan mayor precisión en operaciones sobre el repositorio.
+*   **Visor para Supabase**: Visualiza tablas, valores y gestiona registros (añadir/eliminar) directamente desde la aplicación.
+*   **Capturas de Pantalla Optimizadas**:
+    *   **Edición Avanzada**: Selecciona colores fácilmente, incluye flechas, copia la imagen al portapapeles y guárdala en disco en formato PNG.
+    *   **Estabilidad y Precisión**: Las herramientas de captura de pantalla son ahora más estables y precisas.
+
+### 📝 Notas
+
+*   **Exportación a DOCX**: Hemos añadido la posibilidad de exportar tus notas a formato DOCX, compatible con Word, LibreOffice y Google Docs, facilitando la integración con otras herramientas.
 
 ---
 
-#### ✨ ¡Disfruta las vibraciones! ✨
+#### ✨ ¡Disfruta las vibraciones de esta nueva actualización! ✨
