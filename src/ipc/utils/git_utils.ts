@@ -1997,3 +1997,119 @@ export async function gitShowCommitDetail({
     diff,
   };
 }
+
+/**
+ * Get the conflict diff for a single file during a merge.
+ * Shows the raw file content with conflict markers (<<<<<<< / ======= / >>>>>>>).
+ */
+export async function gitGetConflictFileDiff({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ diff: string; hasConflictMarkers: boolean }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Conflict diff requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  // First try git diff to show the unmerged diff
+  const diffResult = await execGit(
+    ["diff", "--no-color", "--", filepath],
+    path,
+  );
+
+  const diff = diffResult.stdout.toString();
+
+  // Also read the raw file to check for conflict markers
+  const fullPath = pathModule.join(path, filepath);
+  let hasConflictMarkers = false;
+  try {
+    if (fs.existsSync(fullPath)) {
+      const content = fs.readFileSync(fullPath, "utf-8");
+      hasConflictMarkers = content.includes("<<<<<<<") && content.includes(">>>>>>>");
+    }
+  } catch {
+    // Ignore read errors
+  }
+
+  return { diff, hasConflictMarkers };
+}
+
+/**
+ * Resolve a single file's merge conflict by accepting "ours" (current branch).
+ * Runs: git checkout --ours <filepath> && git add <filepath>
+ */
+export async function gitResolveFileOurs({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  if (!isGitMergeInProgress({ path }) && !isGitRebaseInProgress({ path })) {
+    return { resolved: false, message: "No hay merge/rebase en progreso." };
+  }
+
+  const checkoutResult = await execGit(
+    ["checkout", "--ours", "--", filepath],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve '${filepath}' with --ours: ${checkoutResult.stderr}`);
+  }
+
+  await execOrThrow(
+    ["add", "--", filepath],
+    path,
+    `Failed to stage resolved file '${filepath}'`,
+  );
+
+  return {
+    resolved: true,
+    message: `'${filepath}' resuelto con tus cambios locales.`,
+  };
+}
+
+/**
+ * Resolve a single file's merge conflict by accepting "theirs" (incoming changes).
+ * Runs: git checkout --theirs <filepath> && git add <filepath>
+ */
+export async function gitResolveFileTheirs({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  if (!isGitMergeInProgress({ path }) && !isGitRebaseInProgress({ path })) {
+    return { resolved: false, message: "No hay merge/rebase en progreso." };
+  }
+
+  const checkoutResult = await execGit(
+    ["checkout", "--theirs", "--", filepath],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve '${filepath}' with --theirs: ${checkoutResult.stderr}`);
+  }
+
+  await execOrThrow(
+    ["add", "--", filepath],
+    path,
+    `Failed to stage resolved file '${filepath}'`,
+  );
+
+  return {
+    resolved: true,
+    message: `'${filepath}' resuelto con los cambios entrantes.`,
+  };
+}

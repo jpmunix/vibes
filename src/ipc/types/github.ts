@@ -470,6 +470,27 @@ export const gitContracts = {
     input: z.object({ appId: z.number() }),
     output: z.void(),
   }),
+
+  getConflictFileDiff: defineContract({
+    channel: "git:get-conflict-file-diff",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({
+      diff: z.string(),
+      hasConflictMarkers: z.boolean(),
+    }),
+  }),
+
+  resolveFileOurs: defineContract({
+    channel: "git:resolve-file-ours",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
+
+  resolveFileTheirs: defineContract({
+    channel: "git:resolve-file-theirs",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

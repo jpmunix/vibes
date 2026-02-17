@@ -28,6 +28,9 @@ import {
   gitResolveMergeOurs,
   gitResolveMergeTheirs,
   gitGetMergeConflicts,
+  gitGetConflictFileDiff,
+  gitResolveFileOurs,
+  gitResolveFileTheirs,
 } from "../utils/git_utils";
 import { getDyadAppPath } from "../../paths/paths";
 import { db } from "../../db";
@@ -563,6 +566,39 @@ async function handleAbortMergeFromGit(
   await gitMergeAbort({ path: appPath });
 }
 
+async function handleGetConflictFileDiff(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitGetConflictFileDiff({ path: appPath, filepath });
+}
+
+async function handleResolveFileOurs(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitResolveFileOurs({ path: appPath, filepath });
+}
+
+async function handleResolveFileTheirs(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitResolveFileTheirs({ path: appPath, filepath });
+}
+
 // --- Registration ---
 export function registerGithubBranchHandlers() {
   createTypedHandler(githubContracts.mergeAbort, handleAbortMerge);
@@ -597,5 +633,8 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.resolveMergeOurs, handleResolveMergeOurs);
   createTypedHandler(gitContracts.resolveMergeTheirs, handleResolveMergeTheirs);
   createTypedHandler(gitContracts.abortMerge, handleAbortMergeFromGit);
+  createTypedHandler(gitContracts.getConflictFileDiff, handleGetConflictFileDiff);
+  createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
+  createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
 }
 

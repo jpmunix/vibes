@@ -291,6 +291,10 @@ export function GitPanel({ onClose }: GitPanelProps) {
         abortMerge,
         isResolvingMerge,
         isAbortingMerge,
+        resolveFileOurs,
+        resolveFileTheirs,
+        getConflictFileDiff,
+        isResolvingFile,
     } = useGitPanel(appId);
 
     const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set());
@@ -299,6 +303,12 @@ export function GitPanel({ onClose }: GitPanelProps) {
     const [isLoadingDiff, setIsLoadingDiff] = useState(false);
     const [showUnstaged, setShowUnstaged] = useState(true);
     const [showStaged, setShowStaged] = useState(true);
+
+    // Conflict resolution state
+    const [expandedConflictFile, setExpandedConflictFile] = useState<string | null>(null);
+    const [conflictDiff, setConflictDiff] = useState<string>("");
+    const [isLoadingConflictDiff, setIsLoadingConflictDiff] = useState(false);
+    const [showConflicts, setShowConflicts] = useState(true);
 
     // Separate files into staged and unstaged
     // Since git status --porcelain gives us both, we track staged state client-side
@@ -370,6 +380,26 @@ export function GitPanel({ onClose }: GitPanelProps) {
             }
         },
         [expandedFile, getFileDiff],
+    );
+
+    const handleViewConflictDiff = useCallback(
+        async (filepath: string) => {
+            if (expandedConflictFile === filepath) {
+                setExpandedConflictFile(null);
+                return;
+            }
+            setExpandedConflictFile(filepath);
+            setIsLoadingConflictDiff(true);
+            try {
+                const result = await getConflictFileDiff(filepath);
+                setConflictDiff(result?.diff ?? "");
+            } catch {
+                setConflictDiff("");
+            } finally {
+                setIsLoadingConflictDiff(false);
+            }
+        },
+        [expandedConflictFile, getConflictFileDiff],
     );
 
     const handleCommit = useCallback(async () => {
@@ -491,7 +521,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
                 <>
                     {/* Changes Content */}
 
-                    {/* Merge Conflict Resolution Banner */}
+                    {/* Merge Conflict Resolution Section */}
                     {gitState?.mergeInProgress && (
                         <div className="border-b border-amber-500/30 bg-amber-500/5">
                             <div className="px-3 py-3 space-y-3">
@@ -500,65 +530,241 @@ export function GitPanel({ onClose }: GitPanelProps) {
                                     <div className="p-1.5 rounded-md bg-amber-500/15">
                                         <GitMerge size={16} className="text-amber-600 dark:text-amber-400" />
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                         <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                                             Merge en progreso — Conflictos detectados
                                         </p>
                                         <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">
-                                            Resuelve los conflictos rápidamente eligiendo una estrategia
+                                            Resuelve por archivo con diff o aplica una estrategia global
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Conflicting files list */}
+                                {/* Per-file conflict resolution with diff */}
                                 {conflictFiles.length > 0 && (
-                                    <div className="bg-amber-500/8 border border-amber-500/20 rounded-md px-2.5 py-2 space-y-1">
-                                        <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                                            Archivos en conflicto ({conflictFiles.length})
-                                        </p>
-                                        <div className="max-h-24 overflow-y-auto space-y-0.5">
-                                            {conflictFiles.map((file) => (
-                                                <div key={file} className="flex items-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-200">
-                                                    <AlertTriangle size={10} className="text-amber-500 shrink-0" />
-                                                    <span className="font-mono truncate">{file}</span>
-                                                </div>
-                                            ))}
+                                    <div className="bg-amber-500/8 border border-amber-500/20 rounded-md overflow-hidden">
+                                        {/* Conflict files header */}
+                                        <div
+                                            className="flex items-center justify-between px-2.5 py-1.5 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                                            onClick={() => setShowConflicts(!showConflicts)}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                <ChevronDown
+                                                    size={12}
+                                                    className={cn(
+                                                        "text-amber-600 dark:text-amber-400 transition-transform",
+                                                        !showConflicts && "-rotate-90",
+                                                    )}
+                                                />
+                                                <AlertTriangle size={11} className="text-amber-500" />
+                                                <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                                                    Archivos en conflicto ({conflictFiles.length})
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {/* Conflict file rows */}
+                                        {showConflicts && (
+                                            <div className="border-t border-amber-500/15">
+                                                {conflictFiles.map((file) => {
+                                                    const fileName = file.split("/").pop() || file;
+                                                    const dirPath = file.includes("/")
+                                                        ? file.substring(0, file.lastIndexOf("/"))
+                                                        : "";
+                                                    const isExpanded = expandedConflictFile === file;
+
+                                                    return (
+                                                        <div key={file}>
+                                                            {/* File row */}
+                                                            <div
+                                                                className={cn(
+                                                                    "group flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer hover:bg-amber-500/10 transition-colors",
+                                                                    isExpanded && "bg-amber-500/8",
+                                                                )}
+                                                                onClick={() => handleViewConflictDiff(file)}
+                                                            >
+                                                                <ChevronRight
+                                                                    size={11}
+                                                                    className={cn(
+                                                                        "text-amber-500/60 transition-transform shrink-0",
+                                                                        isExpanded && "rotate-90",
+                                                                    )}
+                                                                />
+                                                                <AlertTriangle size={11} className="text-amber-500 shrink-0" />
+                                                                <div className="flex-1 min-w-0 flex items-center gap-1">
+                                                                    <span className="text-[11px] font-medium text-amber-800 dark:text-amber-200 truncate">
+                                                                        {fileName}
+                                                                    </span>
+                                                                    {dirPath && (
+                                                                        <span className="text-[9px] text-amber-600/50 dark:text-amber-400/50 truncate">
+                                                                            {dirPath}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Per-file resolution buttons */}
+                                                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    resolveFileOurs(file);
+                                                                                }}
+                                                                                disabled={isResolvingFile || isResolvingMerge}
+                                                                                className="p-1 rounded hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+                                                                            >
+                                                                                <ShieldCheck size={12} />
+                                                                            </button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Conservar mi versión (ours)</TooltipContent>
+                                                                    </Tooltip>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    resolveFileTheirs(file);
+                                                                                }}
+                                                                                disabled={isResolvingFile || isResolvingMerge}
+                                                                                className="p-1 rounded hover:bg-green-500/20 text-green-600 dark:text-green-400 transition-colors"
+                                                                            >
+                                                                                <ArrowDownToLine size={12} />
+                                                                            </button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top">Aceptar su versión (theirs)</TooltipContent>
+                                                                    </Tooltip>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Expanded diff viewer */}
+                                                            {isExpanded && (
+                                                                <div className="bg-background/50 border-t border-amber-500/10">
+                                                                    {isLoadingConflictDiff ? (
+                                                                        <div className="flex items-center justify-center py-4">
+                                                                            <Loader2
+                                                                                size={14}
+                                                                                className="animate-spin text-amber-500"
+                                                                            />
+                                                                        </div>
+                                                                    ) : conflictDiff ? (
+                                                                        <div className="overflow-x-auto max-h-72">
+                                                                            <pre className="text-[11px] leading-[18px] font-mono">
+                                                                                {conflictDiff.split("\n").map((line, i) => {
+                                                                                    let bgColor = "";
+                                                                                    let textColor = "text-foreground";
+
+                                                                                    // Conflict markers get special styling
+                                                                                    if (line.startsWith("<<<<<<<")) {
+                                                                                        bgColor = "bg-blue-500/15";
+                                                                                        textColor = "text-blue-600 dark:text-blue-400 font-semibold";
+                                                                                    } else if (line.startsWith("=======")) {
+                                                                                        bgColor = "bg-purple-500/15";
+                                                                                        textColor = "text-purple-600 dark:text-purple-400 font-semibold";
+                                                                                    } else if (line.startsWith(">>>>>>>")) {
+                                                                                        bgColor = "bg-orange-500/15";
+                                                                                        textColor = "text-orange-600 dark:text-orange-400 font-semibold";
+                                                                                    } else if (line.startsWith("+") && !line.startsWith("+++")) {
+                                                                                        bgColor = "bg-green-500/10";
+                                                                                        textColor = "text-green-700 dark:text-green-400";
+                                                                                    } else if (line.startsWith("-") && !line.startsWith("---")) {
+                                                                                        bgColor = "bg-red-500/10";
+                                                                                        textColor = "text-red-700 dark:text-red-400";
+                                                                                    } else if (line.startsWith("@@")) {
+                                                                                        bgColor = "bg-blue-500/10";
+                                                                                        textColor = "text-blue-600 dark:text-blue-400";
+                                                                                    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
+                                                                                        textColor = "text-muted-foreground";
+                                                                                    }
+
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={i}
+                                                                                            className={cn("px-3 py-0", bgColor, textColor)}
+                                                                                        >
+                                                                                            {line || " "}
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </pre>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="p-3 text-xs text-muted-foreground italic">
+                                                                            No hay diferencias disponibles
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Per-file action bar */}
+                                                                    <div className="flex items-center gap-1.5 px-2.5 py-2 border-t border-amber-500/10 bg-muted/30">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="flex-1 h-7 text-[11px] font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                                                                            onClick={() => resolveFileOurs(file)}
+                                                                            disabled={isResolvingFile || isResolvingMerge}
+                                                                        >
+                                                                            {isResolvingFile ? (
+                                                                                <Loader2 size={11} className="animate-spin mr-1" />
+                                                                            ) : (
+                                                                                <ShieldCheck size={11} className="mr-1" />
+                                                                            )}
+                                                                            Mío (local)
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="flex-1 h-7 text-[11px] font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
+                                                                            onClick={() => resolveFileTheirs(file)}
+                                                                            disabled={isResolvingFile || isResolvingMerge}
+                                                                        >
+                                                                            {isResolvingFile ? (
+                                                                                <Loader2 size={11} className="animate-spin mr-1" />
+                                                                            ) : (
+                                                                                <ArrowDownToLine size={11} className="mr-1" />
+                                                                            )}
+                                                                            Suyo (remoto)
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
-                                {/* Action buttons */}
+                                {/* Bulk action buttons */}
                                 <div className="flex flex-col gap-1.5">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full h-8 text-xs font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                                        onClick={() => resolveMergeOurs()}
-                                        disabled={isResolvingMerge || isAbortingMerge}
-                                    >
-                                        {isResolvingMerge ? (
-                                            <Loader2 size={13} className="animate-spin mr-1.5" />
-                                        ) : (
-                                            <ShieldCheck size={13} className="mr-1.5" />
-                                        )}
-                                        Aceptar mis cambios
-                                        <span className="ml-1 text-[10px] opacity-60">(local)</span>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full h-8 text-xs font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
-                                        onClick={() => resolveMergeTheirs()}
-                                        disabled={isResolvingMerge || isAbortingMerge}
-                                    >
-                                        {isResolvingMerge ? (
-                                            <Loader2 size={13} className="animate-spin mr-1.5" />
-                                        ) : (
-                                            <ArrowDownToLine size={13} className="mr-1.5" />
-                                        )}
-                                        Aceptar sus cambios
-                                        <span className="ml-1 text-[10px] opacity-60">(remoto)</span>
-                                    </Button>
+                                    <div className="flex gap-1.5">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                                            onClick={() => resolveMergeOurs()}
+                                            disabled={isResolvingMerge || isAbortingMerge}
+                                        >
+                                            {isResolvingMerge ? (
+                                                <Loader2 size={13} className="animate-spin mr-1.5" />
+                                            ) : (
+                                                <ShieldCheck size={13} className="mr-1.5" />
+                                            )}
+                                            Conservar todos mis cambios
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
+                                            onClick={() => resolveMergeTheirs()}
+                                            disabled={isResolvingMerge || isAbortingMerge}
+                                        >
+                                            {isResolvingMerge ? (
+                                                <Loader2 size={13} className="animate-spin mr-1.5" />
+                                            ) : (
+                                                <ArrowDownToLine size={13} className="mr-1.5" />
+                                            )}
+                                            Aceptar todos sus cambios
+                                        </Button>
+                                    </div>
                                     <Button
                                         variant="ghost"
                                         size="sm"

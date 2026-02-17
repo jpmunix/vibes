@@ -216,6 +216,43 @@ export function useGitPanel(appId: number | null) {
         onError: (err: Error) => toast.error(`Error al abortar merge: ${err.message}`),
     });
 
+    // Per-file conflict resolution: accept ours (local)
+    const resolveFileOursMutation = useMutation({
+        mutationFn: async (filepath: string) => {
+            if (!appId) throw new Error("No app selected");
+            return ipc.git.resolveFileOurs({ appId, filepath });
+        },
+        onSuccess: (result) => {
+            refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-conflicts", appId] });
+            toast.success(result.message);
+        },
+        onError: (err: Error) => toast.error(`Error al resolver archivo: ${err.message}`),
+    });
+
+    // Per-file conflict resolution: accept theirs (incoming)
+    const resolveFileTheirsMutation = useMutation({
+        mutationFn: async (filepath: string) => {
+            if (!appId) throw new Error("No app selected");
+            return ipc.git.resolveFileTheirs({ appId, filepath });
+        },
+        onSuccess: (result) => {
+            refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-conflicts", appId] });
+            toast.success(result.message);
+        },
+        onError: (err: Error) => toast.error(`Error al resolver archivo: ${err.message}`),
+    });
+
+    // Get conflict diff for a specific file
+    const getConflictFileDiff = useCallback(
+        async (filepath: string) => {
+            if (!appId) return null;
+            return ipc.git.getConflictFileDiff({ appId, filepath });
+        },
+        [appId],
+    );
+
     return {
         // Data
         uncommittedFiles,
@@ -243,6 +280,9 @@ export function useGitPanel(appId: number | null) {
         resolveMergeOurs: resolveMergeOursMutation.mutateAsync,
         resolveMergeTheirs: resolveMergeTheirsMutation.mutateAsync,
         abortMerge: abortMergeMutation.mutateAsync,
+        resolveFileOurs: resolveFileOursMutation.mutateAsync,
+        resolveFileTheirs: resolveFileTheirsMutation.mutateAsync,
+        getConflictFileDiff,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -252,6 +292,7 @@ export function useGitPanel(appId: number | null) {
         isGeneratingMessage,
         isResolvingMerge: resolveMergeOursMutation.isPending || resolveMergeTheirsMutation.isPending,
         isAbortingMerge: abortMergeMutation.isPending,
+        isResolvingFile: resolveFileOursMutation.isPending || resolveFileTheirsMutation.isPending,
     };
 }
 
