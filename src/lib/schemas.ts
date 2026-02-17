@@ -404,6 +404,8 @@ export const UserSettingsSchema = z
     themeIntensity: z.number().optional(),
     primaryColorLight: z.string().optional(),
     primaryColorDark: z.string().optional(),
+    primaryChromaLight: z.number().optional(),
+    primaryChromaDark: z.number().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
     windowState: z

@@ -949,7 +949,7 @@ function ChatInputActions({
                         size={16}
                         className="text-muted-foreground flex-shrink-0"
                       />
-                      <span className="cursor-pointer text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                      <span className="cursor-pointer text-primary hover:text-primary/80">
                         {pkg}
                       </span>
                     </li>

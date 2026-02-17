@@ -49,9 +49,9 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
       label: "Éxito",
     },
     info: {
-      border: "border-blue-500",
-      text: "text-blue-500",
-      icon: <Info size={16} className="text-blue-500" />,
+      border: "border-primary",
+      text: "text-primary",
+      icon: <Info size={16} className="text-primary" />,
       label: "Info",
     },
   };
@@ -79,7 +79,7 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
     >
       {/* Top-left label badge */}
       <div
-        className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${iconColor} bg-white dark:bg-gray-900`}
+        className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${iconColor} bg-background`}
         style={{ zIndex: 1 }}
       >
         {icon}
@@ -90,7 +90,7 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
       <div className="flex items-center justify-between pl-24 pr-6">
         <div className="flex items-center gap-2">
           {message && (
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+            <span className="text-foreground font-medium text-sm">
               {message.slice(0, isContentVisible ? undefined : 100) +
                 (!isContentVisible ? "..." : "")}
             </span>
@@ -100,12 +100,12 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             />
           )}
         </div>
@@ -113,7 +113,7 @@ export const DyadOutput: React.FC<DyadOutputProps> = ({
 
       {/* Content area */}
       {isContentVisible && children && (
-        <div className="mt-4 pl-20 text-sm text-gray-800 dark:text-gray-200">
+        <div className="mt-4 pl-20 text-sm text-foreground">
           {children}
         </div>
       )}

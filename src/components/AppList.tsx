@@ -147,7 +147,7 @@ export function AppList({ show }: { show?: boolean }) {
             </Button>
 
             {loading ? (
-              <div className="py-2 px-4 text-sm text-gray-500">
+              <div className="py-2 px-4 text-sm text-muted-foreground">
                 Cargando aplicaciones...
               </div>
             ) : error ? (
@@ -155,7 +155,7 @@ export function AppList({ show }: { show?: boolean }) {
                 Error al cargar las aplicaciones
               </div>
             ) : apps.length === 0 ? (
-              <div className="py-2 px-4 text-sm text-gray-500">
+              <div className="py-2 px-4 text-sm text-muted-foreground">
                 No se encontraron aplicaciones
               </div>
             ) : (

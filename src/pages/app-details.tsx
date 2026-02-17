@@ -677,7 +677,7 @@ export default function AppDetailsPage() {
                   </span>
                 </div>
               </div>
-              <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
+              <FileTextIcon className="h-3.5 w-3.5 text-primary" />
             </Button>
           )}
           {appId && selectedApp && (

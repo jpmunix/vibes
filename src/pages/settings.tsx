@@ -878,9 +878,9 @@ export function GeneralSettings({
   // Apply primary colors from settings on load
   useEffect(() => {
     if (settings) {
-      applyPrimaryColors(settings.primaryColorLight, settings.primaryColorDark);
+      applyPrimaryColors(settings.primaryColorLight, settings.primaryColorDark, settings.primaryChromaLight, settings.primaryChromaDark);
     }
-  }, [settings?.primaryColorLight, settings?.primaryColorDark, applyPrimaryColors]);
+  }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark, applyPrimaryColors]);
 
   return (
     <div
@@ -909,7 +909,7 @@ export function GeneralSettings({
                 className={cn(
                   "px-6 py-2.5 text-sm font-bold rounded-xl transition-colors duration-200",
                   theme === option
-                    ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-black/5"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
                 )}
               >
@@ -1013,24 +1013,37 @@ export function GeneralSettings({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-5 rounded-2xl bg-white border border-border space-y-3">
+          <div className="flex flex-wrap gap-4">
+            <div className="p-3 rounded-2xl bg-white dark:bg-white/5 border border-border">
               <PrimaryColorPicker
-                label="Tema claro"
+                label="Claro"
+                defaultColor={DEFAULT_LIGHT_COLOR}
                 selectedColor={settings?.primaryColorLight || DEFAULT_LIGHT_COLOR}
+                chroma={settings?.primaryChromaLight ?? 100}
                 onColorSelect={async (colorId) => {
                   await updateSettings({ primaryColorLight: colorId }, { showToast: true });
-                  applyPrimaryColors(colorId, settings?.primaryColorDark);
+                  applyPrimaryColors(colorId, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark);
+                }}
+                onChromaChange={async (value) => {
+                  await updateSettings({ primaryChromaLight: value });
+                  applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, value, settings?.primaryChromaDark);
                 }}
               />
             </div>
-            <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-700 space-y-3">
+            <div className="p-3 rounded-2xl bg-zinc-900 dark:bg-zinc-800/50 border border-zinc-700/50">
               <PrimaryColorPicker
-                label="Tema oscuro"
+                label="Oscuro"
+                variant="dark"
+                defaultColor={DEFAULT_DARK_COLOR}
                 selectedColor={settings?.primaryColorDark || DEFAULT_DARK_COLOR}
+                chroma={settings?.primaryChromaDark ?? 100}
                 onColorSelect={async (colorId) => {
                   await updateSettings({ primaryColorDark: colorId }, { showToast: true });
-                  applyPrimaryColors(settings?.primaryColorLight, colorId);
+                  applyPrimaryColors(settings?.primaryColorLight, colorId, settings?.primaryChromaLight, settings?.primaryChromaDark);
+                }}
+                onChromaChange={async (value) => {
+                  await updateSettings({ primaryChromaDark: value });
+                  applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, value);
                 }}
               />
             </div>

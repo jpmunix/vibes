@@ -142,7 +142,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Cerrar"
           >
-            <X size={20} className="text-gray-500 dark:text-gray-400" />
+            <X size={20} className="text-muted-foreground" />
           </button>
         </div>
 
@@ -179,7 +179,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
 
         {/* Botones de acción */}
         {!isDockerError && error.source === "preview-app" && (
-          <div className="flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
+          <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/50 rounded-b-lg">
             <CopyErrorMessage errorMessage={error.message} />
             <button
               disabled={isStreaming}
@@ -231,10 +231,10 @@ const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
           <button
             onClick={handleToggle}
             className={cn(
-              "p-1 rounded transition-colors duration-200 dark:text-gray-300",
+              "p-1 rounded transition-colors duration-200 text-foreground",
               isExpanded
-                ? "bg-gray-200 dark:bg-gray-700 text-foreground"
-                : "hover:bg-gray-200 dark:hover:bg-gray-700",
+                ? "bg-accent"
+                : "hover:bg-accent",
             )}
             data-testid="preview-expand-button"
             aria-label={isExpanded ? "Contraer vista" : "Expandir vista"}
@@ -1402,13 +1402,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   if (loading || isAutoRestarting) {
     return (
       <div className="flex flex-col h-full relative">
-        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
+        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-background">
           <div className="relative w-5 h-5 animate-spin">
             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-primary rounded-full"></div>
             <div className="absolute bottom-0 left-0 w-2 h-2 bg-primary rounded-full opacity-80"></div>
             <div className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-full opacity-60"></div>
           </div>
-          <p className="text-gray-600 dark:text-gray-300">
+          <p className="text-muted-foreground">
             {isAutoRestarting
               ? "Reiniciando servidor (error de conexión detectado)..."
               : "Preparing app preview..."}
@@ -1421,7 +1421,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   // Display message if no app is selected
   if (selectedAppId === null) {
     return (
-      <div className="p-4 text-gray-500 dark:text-gray-400">
+      <div className="p-4 text-muted-foreground">
         Select an app to see the preview.
       </div>
     );
@@ -1502,7 +1502,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               </Tooltip>
             </TooltipProvider>
             <button
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={!canGoBack || loading || !selectedAppId}
               onClick={handleNavigateBack}
               data-testid="preview-navigate-back-button"
@@ -1510,7 +1510,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               <ArrowLeft size={16} />
             </button>
             <button
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={!canGoForward || loading || !selectedAppId}
               onClick={handleNavigateForward}
               data-testid="preview-navigate-forward-button"
@@ -1522,7 +1522,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleReload}
-                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+                    className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
                     disabled={loading || !selectedAppId}
                     data-testid="preview-refresh-button"
                   >
@@ -1562,7 +1562,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     if (e.relatedTarget?.closest("[data-address-suggestions]")) return;
                     setIsEditingUrl(false);
                   }}
-                  className="w-full px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 outline-none ring-2 ring-primary/50"
+                  className="w-full px-3 py-1 bg-muted rounded text-sm text-foreground outline-none ring-2 ring-primary/50"
                   data-testid="preview-address-bar-input"
                   spellCheck={false}
                   autoComplete="off"
@@ -1643,7 +1643,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               </>
             ) : (
               <div
-                className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0"
+                className="flex items-center justify-between px-3 py-1 bg-muted rounded text-sm text-foreground cursor-pointer w-full min-w-0"
                 onClick={startEditingUrl}
                 data-testid="preview-address-bar-path"
               >
@@ -1674,7 +1674,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   ipc.system.openExternalUrl(originalUrl);
                 }
               }}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
             >
               <ExternalLink size={16} />
             </button>
@@ -1691,8 +1691,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     setIsDevicePopoverOpen(!isDevicePopoverOpen);
                   }}
                   className={cn(
-                    "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300",
-                    deviceMode !== "desktop" && "bg-gray-200 dark:bg-gray-700",
+                    "p-1 rounded hover:bg-accent text-foreground",
+                    deviceMode !== "desktop" && "bg-accent",
                   )}
                   title="Modo de dispositivo"
                 >
@@ -1788,9 +1788,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         />
 
         {!appUrl ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
-            <p className="text-gray-600 dark:text-gray-300">
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-background">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">
               Starting your app server...
             </p>
           </div>
@@ -1810,7 +1810,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               }
             >
               {annotatorMode && screenshotDataUrl && (
-                <div className="absolute inset-0 z-50 bg-white dark:bg-gray-950">
+                <div className="absolute inset-0 z-50 bg-background">
                   <Annotator
                     screenshotUrl={screenshotDataUrl}
                     onSubmit={addAttachments}
@@ -1869,7 +1869,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 key={reloadKey}
                 title={`Preview for App ${selectedAppId}`}
                 className={cn(
-                  "w-full h-full border-none bg-white dark:bg-gray-950",
+                  "w-full h-full border-none bg-background",
                   annotatorMode && "invisible",
                 )}
                 src={iframeSrc}

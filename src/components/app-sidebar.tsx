@@ -220,7 +220,7 @@ export function AppSidebar() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14"
+                      className="no-app-region-drag cursor-pointer relative flex items-center justify-center px-2 py-2 rounded-2xl hover:bg-sidebar-accent transition-colors w-14 h-14"
                       title={user.displayName || user.email || "Usuario"}
                     >
                       <SimpleAvatar
@@ -232,9 +232,6 @@ export function AppSidebar() {
                           "U"
                         ).toUpperCase()}
                       />
-                      <span className="text-[10px] font-bold leading-none mt-0.5 truncate max-w-[50px]">
-                        {(user.displayName || "Perfil").split(" ")[0]}
-                      </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="right" align="end" className="w-64 p-2 shadow-xl border-border/50">
@@ -293,14 +290,11 @@ export function AppSidebar() {
                 </DropdownMenu>
               ) : (
                 <button
-                  className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
+                  className="no-app-region-drag cursor-pointer relative flex items-center justify-center px-2 py-2 rounded-2xl hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
                   title="Iniciar sesión"
                   onClick={() => setIsAuthModalOpen(true)}
                 >
                   <SimpleAvatar className="h-7 w-7" fallbackText={<UserIcon className="h-4 w-4" />} />
-                  <span className="text-[10px] font-bold leading-none mt-0.5">
-                    Login
-                  </span>
                 </button>
               )}
             </div>

@@ -300,12 +300,6 @@ function ChatWindowSkeleton() {
     }
   `;
 
-  const pulseStyle: React.CSSProperties = {
-    animation: "skeletonPulse 1.5s ease-in-out infinite",
-    borderRadius: "8px",
-    background: "linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%)",
-  };
-
   // Detect dark mode — respect the app's localStorage theme preference first,
   // only falling back to OS prefers-color-scheme when theme is "system" or unset.
   const savedTheme = localStorage.getItem("theme"); // "light" | "dark" | "system" | null
@@ -313,16 +307,57 @@ function ChatWindowSkeleton() {
   const isDark =
     savedTheme === "dark" ||
     (savedTheme !== "light" && systemPrefersDark);
+
+  // Read theme intensity to compute background lightness
+  const savedIntensity = localStorage.getItem("theme-intensity");
+  const intensity = savedIntensity ? parseFloat(savedIntensity) : 0.58;
+
+  // Compute neutral gray based on intensity (-1=light, 0=middle, 1=dark)
+  // Dark mode base lightness ~28%, Light mode base ~98.5% (from globals.css)
+  let bgL: number;
+  let pulseL1: number;
+  let pulseL2: number;
+  let sepL: number;
+
   if (isDark) {
-    pulseStyle.background = "linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%)";
+    // intensity goes -1..1; offset shifts lightness
+    const lOffset = intensity * -0.15;
+    bgL = Math.max(0, Math.min(1, 0.28 + lOffset));
+    pulseL1 = bgL + 0.06;
+    pulseL2 = bgL + 0.10;
+    sepL = bgL + 0.04;
+  } else {
+    const lOffset = intensity * -0.15;
+    bgL = Math.max(0, Math.min(1, 0.985 + lOffset));
+    pulseL1 = bgL - 0.06;
+    pulseL2 = bgL - 0.10;
+    sepL = bgL - 0.04;
   }
+
+  // Convert oklch-ish lightness to approximate hex gray
+  const toHex = (l: number) => {
+    // oklch lightness to sRGB approximation (perceptual, not exact)
+    const v = Math.round(Math.pow(Math.max(0, Math.min(1, l)), 0.75) * 255);
+    return `#${v.toString(16).padStart(2, '0').repeat(3)}`;
+  };
+
+  const bgColor = toHex(bgL);
+  const pulse1 = toHex(pulseL1);
+  const pulse2 = toHex(pulseL2);
+  const sepColor = toHex(sepL);
+
+  const pulseStyle: React.CSSProperties = {
+    animation: "skeletonPulse 1.5s ease-in-out infinite",
+    borderRadius: "8px",
+    background: `linear-gradient(90deg, ${pulse1} 0%, ${pulse2} 50%, ${pulse1} 100%)`,
+  };
 
   return (
     <div style={{
       display: "flex",
       height: "100vh",
       width: "100%",
-      background: isDark ? "#0f172a" : "#ffffff",
+      background: bgColor,
       fontFamily: "system-ui, -apple-system, sans-serif",
     }}>
       <style>{skeletonKeyframes}</style>
@@ -357,7 +392,7 @@ function ChatWindowSkeleton() {
       {/* Separator */}
       <div style={{
         width: "4px",
-        background: isDark ? "#1e293b" : "#e2e8f0",
+        background: sepColor,
         flexShrink: 0,
       }} />
 

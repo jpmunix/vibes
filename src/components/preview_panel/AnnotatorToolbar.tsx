@@ -42,11 +42,11 @@ interface AnnotatorToolbarProps {
 }
 
 const activeClass =
-  "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700";
+  "bg-primary text-primary-foreground hover:bg-primary/90";
 const inactiveClass =
-  "text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900";
+  "text-primary hover:bg-primary/15";
 const actionClass =
-  "p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed";
+  "p-1 rounded transition-colors duration-200 text-primary hover:bg-primary/15 disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const AnnotatorToolbar = ({
   tool,
@@ -90,11 +90,11 @@ export const AnnotatorToolbar = ({
   );
 
   const Divider = () => (
-    <div className="w-px bg-gray-200 dark:bg-gray-700 h-4" />
+    <div className="w-px bg-border h-4" />
   );
 
   return (
-    <div className="flex items-center justify-center p-2 border-b space-x-2">
+    <div className="flex items-center justify-center p-2 border-b border-border bg-muted/50 space-x-2">
       <TooltipProvider>
         <div className="flex space-x-1">
           {toolBtn("select", "Seleccionar", MousePointer2)}
@@ -105,7 +105,7 @@ export const AnnotatorToolbar = ({
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="p-1 rounded transition-colors duration-200 hover:bg-blue-200 dark:hover:bg-blue-900">
+              <div className="p-1 rounded transition-colors duration-200 hover:bg-primary/15">
                 <ToolbarColorPicker color={color} onChange={onColorChange} />
               </div>
             </TooltipTrigger>
@@ -220,7 +220,7 @@ export const AnnotatorToolbar = ({
               <button
                 onClick={onDeactivate}
                 aria-label="Cerrar anotador"
-                className="p-1 rounded transition-colors duration-200 text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-900"
+                className="p-1 rounded transition-colors duration-200 text-primary hover:bg-primary/15"
               >
                 <X size={16} />
               </button>

@@ -255,7 +255,7 @@ export function DossierModal({
                     <DialogHeader>
                         <div className="flex items-center gap-2">
                             <DialogTitle className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-indigo-500" />
+                                <FileText className="h-5 w-5 text-primary" />
                                 Dossier de la App
                             </DialogTitle>
                             {isGenerating && (
@@ -301,7 +301,7 @@ export function DossierModal({
                                     <Button
                                         variant="outline"
                                         onClick={handleDownloadExisting}
-                                        className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-900/20"
+                                        className="gap-2 text-primary border-primary/20 hover:bg-primary/10 dark:border-primary/30 dark:hover:bg-primary/10"
                                     >
                                         <Download className="h-4 w-4" />
                                         Descargar Dossier
@@ -343,7 +343,7 @@ export function DossierModal({
                     {(isGenerating || isDone || isError) && (
                         <div
                             ref={scrollRef}
-                            className="flex-1 overflow-y-auto min-h-[250px] max-h-[400px] rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 space-y-1.5"
+                            className="flex-1 overflow-y-auto min-h-[250px] max-h-[400px] rounded-md border border-border bg-muted/30 p-3 space-y-1.5"
                         >
                             {messages.length === 0 && isGenerating && (
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -423,7 +423,7 @@ export function DossierModal({
                                         zipData.fileName,
                                     )
                                 }
-                                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-900/20"
+                                className="text-primary border-primary/20 hover:bg-primary/10 dark:border-primary/30 dark:hover:bg-primary/10"
                             >
                                 <Download className="h-4 w-4 mr-1" />
                                 Descargar Dossier

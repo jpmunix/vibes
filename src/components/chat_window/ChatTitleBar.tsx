@@ -29,9 +29,9 @@ function WindowsControls() {
     const { isDarkMode } = useTheme();
 
     return (
-        <div className="ml-auto flex no-app-region-drag pointer-events-auto">
+        <div className="ml-auto flex items-center h-full pr-1 no-app-region-drag pointer-events-auto">
             <button
-                className="w-10 h-10 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="w-11 h-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 onClick={() => ipc.system.minimizeWindow()}
                 aria-label="Minimize"
             >
@@ -40,7 +40,7 @@ function WindowsControls() {
                 </svg>
             </button>
             <button
-                className="w-10 h-10 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="w-11 h-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 onClick={() => ipc.system.maximizeWindow()}
                 aria-label="Maximize"
             >
@@ -49,7 +49,7 @@ function WindowsControls() {
                 </svg>
             </button>
             <button
-                className="w-10 h-10 flex items-center justify-center hover:bg-red-500 transition-colors"
+                className="w-11 h-full flex items-center justify-center hover:bg-red-500 transition-colors"
                 onClick={() => ipc.system.closeWindow()}
                 aria-label="Close"
             >

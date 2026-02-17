@@ -71,7 +71,7 @@ const ChatListItem = React.memo(function ChatListItem({
           variant="ghost"
           onClick={() => onChatClick({ chatId: chat.id, appId: chat.appId })}
           className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${isSelected
-            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
+            ? "bg-primary/10 text-primary"
             : ""
             }`}
         >
@@ -79,7 +79,7 @@ const ChatListItem = React.memo(function ChatListItem({
             {isStreaming ? (
               <Loader2
                 size={16}
-                className="text-blue-500 animate-spin flex-shrink-0"
+                className="text-primary animate-spin flex-shrink-0"
                 aria-label="Chat en progreso"
               />
             ) : chat.isPlan ? (
@@ -98,7 +98,7 @@ const ChatListItem = React.memo(function ChatListItem({
                 {chat.title || "Nuevo chat"}
               </span>
               <span
-                className={`text-xs ${isSelected ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
+                className={`text-xs ${isSelected ? "text-primary/70" : "text-muted-foreground"}`}
               >
                 {formatDistanceToNow(new Date(chat.createdAt), {
                   addSuffix: true,
@@ -419,11 +419,11 @@ export function ChatList({ show }: { show?: boolean }) {
             </Button>
 
             {loading ? (
-              <div className="py-3 px-4 text-sm text-gray-500">
+              <div className="py-3 px-4 text-sm text-muted-foreground">
                 Cargando chats...
               </div>
             ) : chats.length === 0 ? (
-              <div className="py-3 px-4 text-sm text-gray-500">
+              <div className="py-3 px-4 text-sm text-muted-foreground">
                 No se encontraron chats
               </div>
             ) : (

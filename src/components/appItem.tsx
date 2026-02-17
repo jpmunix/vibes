@@ -41,7 +41,7 @@ export function AppItem({
               {app.name}
             </span>
             <span
-              className={`text-xs ${selectedAppId === app.id ? "text-primary/70" : "text-gray-500"}`}
+              className={`text-xs ${selectedAppId === app.id ? "text-primary/70" : "text-muted-foreground"}`}
             >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
@@ -73,7 +73,7 @@ export function AppItem({
               className={
                 app.isFavorite
                   ? "fill-primary text-primary"
-                  : "text-gray-400 hover:text-primary hover:fill-primary"
+                  : "text-muted-foreground hover:text-primary hover:fill-primary"
               }
             />
           </SidebarMenuAction>

@@ -20,7 +20,7 @@ import {
 import { PostHogProvider } from "posthog-js/react";
 import posthog from "posthog-js";
 import { ThemeProvider } from "../../contexts/ThemeContext";
-import { getColorById, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
+import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
@@ -147,11 +147,13 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         if (settings) {
             const lightColor = getColorById(settings.primaryColorLight || DEFAULT_LIGHT_COLOR);
             const darkColor = getColorById(settings.primaryColorDark || DEFAULT_DARK_COLOR);
+            const lightFactor = (settings.primaryChromaLight ?? 100) / 100;
+            const darkFactor = (settings.primaryChromaDark ?? 100) / 100;
             const root = document.documentElement;
-            if (lightColor) root.style.setProperty("--primary-color-light", lightColor.light);
-            if (darkColor) root.style.setProperty("--primary-color-dark", darkColor.dark);
+            if (lightColor) root.style.setProperty("--primary-color-light", adjustChroma(lightColor.light, lightFactor));
+            if (darkColor) root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
         }
-    }, [settings?.primaryColorLight, settings?.primaryColorDark]);
+    }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
 
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
     useEffect(() => {

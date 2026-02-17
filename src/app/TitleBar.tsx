@@ -114,9 +114,9 @@ function WindowsControls() {
   };
 
   return (
-    <div className="ml-auto flex no-app-region-drag">
+    <div className="ml-auto flex items-center h-full pr-1 no-app-region-drag">
       <button
-        className="w-10 h-10 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        className="w-11 h-full flex items-center justify-center hover:bg-accent transition-colors"
         onClick={minimizeWindow}
         aria-label="Minimize"
       >
@@ -135,7 +135,7 @@ function WindowsControls() {
         </svg>
       </button>
       <button
-        className="w-10 h-10 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        className="w-11 h-full flex items-center justify-center hover:bg-accent transition-colors"
         onClick={maximizeWindow}
         aria-label="Maximize"
       >
@@ -156,7 +156,7 @@ function WindowsControls() {
         </svg>
       </button>
       <button
-        className="w-10 h-10 flex items-center justify-center hover:bg-red-500 transition-colors"
+        className="w-11 h-full flex items-center justify-center hover:bg-red-500 transition-colors"
         onClick={closeWindow}
         aria-label="Close"
       >

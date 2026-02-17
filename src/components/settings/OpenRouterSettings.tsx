@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -57,6 +59,7 @@ export function OpenRouterSettings({
   const { data: allProviders, isLoading: providersLoading } =
     useLanguageModelProviders();
 
+  const queryClient = useQueryClient();
   const providerId = "openrouter";
   const providerData = allProviders?.find((p) => p.id === providerId);
 
@@ -120,6 +123,11 @@ export function OpenRouterSettings({
         },
       });
 
+      // If it's the first key, refetch credits for the new key
+      if (keys.length === 0) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.system.openRouterCredits });
+      }
+
       setNewKeyInput("");
       setNewKeyAlias("");
       setShowAddForm(false);
@@ -152,6 +160,7 @@ export function OpenRouterSettings({
           },
         },
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.system.openRouterCredits });
       showSuccess("Clave API eliminada");
     } catch (error: any) {
       showError("Error al eliminar la clave API");
@@ -172,6 +181,8 @@ export function OpenRouterSettings({
           },
         },
       });
+      // Refetch credits for the newly selected key
+      queryClient.invalidateQueries({ queryKey: queryKeys.system.openRouterCredits });
       showSuccess("Clave API seleccionada como predeterminada");
     } catch (error: any) {
       showError("Error al seleccionar la clave API");

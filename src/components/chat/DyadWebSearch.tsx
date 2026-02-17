@@ -24,7 +24,7 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
 
   return (
     <div
-      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-blue-500" : "border-border"
+      className={`bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-primary" : "border-border"
         }`}
       onClick={() => setIsExpanded(!isExpanded)}
       role="button"
@@ -39,25 +39,25 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Globe size={16} className="text-blue-600" />
-          <div className="text-xs text-blue-600 font-medium">
+          <Globe size={16} className="text-primary" />
+          <div className="text-xs text-primary font-medium">
             {t("webSearch", language)}
           </div>
           {inProgress && (
-            <div className="flex items-center text-blue-600 text-xs">
+            <div className="flex items-center text-primary text-xs">
               <Loader size={14} className="mr-1 animate-spin" />
               <span>{t("searching", language)}</span>
             </div>
           )}
         </div>
-        <div className="p-1 text-gray-500">
+        <div className="p-1 text-muted-foreground">
           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>
 
       {/* Collapsed preview - show query */}
       <div
-        className="text-sm italic text-gray-600 dark:text-gray-300 mt-2 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        className="text-sm italic text-muted-foreground mt-2 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "0px" : "3em",
           opacity: isExpanded ? 0 : 1,
@@ -75,10 +75,10 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
           marginTop: isExpanded ? "0.5rem" : "0",
         }}
       >
-        <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+        <div className="text-sm text-muted-foreground space-y-2">
           {query && (
             <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-medium text-muted-foreground">
                 Query:
               </span>
               <div className="italic mt-0.5">{query}</div>
@@ -86,7 +86,7 @@ export const DyadWebSearch: React.FC<DyadWebSearchProps> = ({
           )}
           {children && (
             <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-medium text-muted-foreground">
                 Results:
               </span>
               <div className="mt-0.5">{children}</div>

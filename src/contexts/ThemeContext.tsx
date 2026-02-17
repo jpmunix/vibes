@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import {
   getColorById,
+  adjustChroma,
   DEFAULT_LIGHT_COLOR,
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
@@ -12,7 +13,7 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   intensity: number;
   setIntensity: (intensity: number) => void;
-  applyPrimaryColors: (lightColorId?: string, darkColorId?: string) => void;
+  applyPrimaryColors: (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,17 +23,20 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
  * We set both light and dark values so the correct one is picked
  * by the existing :root / .dark rule cascade.
  */
-function applyColorToDOM(lightColorId?: string, darkColorId?: string) {
+function applyColorToDOM(lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) {
   const lightColor = getColorById(lightColorId || DEFAULT_LIGHT_COLOR);
   const darkColor = getColorById(darkColorId || DEFAULT_DARK_COLOR);
+
+  const lightFactor = (lightChroma ?? 100) / 100;
+  const darkFactor = (darkChroma ?? 100) / 100;
 
   const root = document.documentElement;
 
   if (lightColor) {
-    root.style.setProperty("--primary-color-light", lightColor.light);
+    root.style.setProperty("--primary-color-light", adjustChroma(lightColor.light, lightFactor));
   }
   if (darkColor) {
-    root.style.setProperty("--primary-color-dark", darkColor.dark);
+    root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
   }
 }
 
@@ -49,8 +53,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   const applyPrimaryColors = useCallback(
-    (lightColorId?: string, darkColorId?: string) => {
-      applyColorToDOM(lightColorId, darkColorId);
+    (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => {
+      applyColorToDOM(lightColorId, darkColorId, lightChroma, darkChroma);
     },
     [],
   );
