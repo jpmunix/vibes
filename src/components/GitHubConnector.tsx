@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSetAtom } from "jotai";
+import { previewModeAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
 import {
   Github,
@@ -153,6 +155,40 @@ function ConnectedGitHubConnector({
       setIsFixingError(false);
     }
   }, [appId]);
+
+  // Handler: resolve all conflicts with ours (keep local)
+  const handleResolveAllOurs = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.resolveMergeOurs({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al resolver conflictos.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Handler: resolve all conflicts with theirs (accept remote)
+  const handleResolveAllTheirs = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.resolveMergeTheirs({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al resolver conflictos.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Open GitPanel for manual conflict resolution
+  const setPreviewMode = useSetAtom(previewModeAtom);
+  const handleOpenGitPanel = useCallback(() => {
+    setPreviewMode("git");
+  }, [setPreviewMode]);
 
   useEffect(() => {
     // Fetch git state (ahead/behind) to decide UI visibility
@@ -650,7 +686,7 @@ function ConnectedGitHubConnector({
               </Button>
             </div>
           ) : errorType === "merge-conflict" ? (
-            <div className="rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2">
+            <div className="rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2.5">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
                 <div>
@@ -658,24 +694,65 @@ function ConnectedGitHubConnector({
                     Conflictos de merge detectados
                   </p>
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
-                    Hay archivos en conflicto. Ve a la pestaña "Cambios" del panel Git para resolverlos manualmente.
+                    Hay archivos con cambios incompatibles entre tu versión local y la remota. Elige cómo resolverlos:
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              {/* Quick resolution buttons */}
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={handleResolveAllOurs}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="flex-1 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Conservar lo mío
+                </Button>
+                <Button
+                  onClick={handleResolveAllTheirs}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="flex-1 border-green-400 dark:border-green-600 text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-800/30"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <ArrowDownToLine className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Aceptar lo suyo
+                </Button>
+              </div>
+              {/* Manual resolution & abort */}
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={handleOpenGitPanel}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-orange-400 dark:border-orange-600 text-orange-800 dark:text-orange-200"
+                >
+                  <GitMerge className="h-3.5 w-3.5 mr-1.5" />
+                  Resolver manualmente
+                </Button>
                 <Button
                   onClick={handleAbortMergeAndRetry}
                   variant="outline"
                   size="sm"
                   disabled={isFixingError}
-                  className="flex-1 border-orange-400 dark:border-orange-600 text-orange-800 dark:text-orange-200"
+                  className="border-red-400 dark:border-red-600 text-red-700 dark:text-red-300"
                 >
                   {isFixingError ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   ) : (
-                    <Ban className="h-4 w-4 mr-2" />
+                    <Ban className="h-3.5 w-3.5 mr-1.5" />
                   )}
-                  Cancelar merge
+                  Abortar
                 </Button>
               </div>
             </div>
