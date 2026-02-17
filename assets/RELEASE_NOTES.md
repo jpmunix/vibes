@@ -13,6 +13,7 @@
 - Mejoras en la interfaz de la página de ajustes
 - Consolidación de los temas claros y oscuros porque había incongruencias. Selector de color primario para cada tema
 - Selector de color primario para cada tema
+- Posibilidad de crear el esqueleto para una app en blanco o vacía
 
 ### ✏️ Editor visual
 - **Editor visual de la página** mediante el icono de lápiz. Permite modificar textos, iconos, colores y tamaños directamente desde la interfaz, incluyendo el uso de IA para realizar ajustes simples y rápidos sin necesidad de editar código manualmente.

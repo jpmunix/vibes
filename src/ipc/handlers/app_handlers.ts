@@ -1018,6 +1018,7 @@ export function registerAppHandlers() {
     await createFromTemplate({
       fullAppPath,
       appName: params.name,
+      forceDefaultScaffold: params.useDefaultScaffold,
     });
 
     // Initialize git repo and create first commit

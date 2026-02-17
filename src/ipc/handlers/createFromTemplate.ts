@@ -12,12 +12,14 @@ const logger = log.scope("createFromTemplate");
 export async function createFromTemplate({
   fullAppPath,
   appName,
+  forceDefaultScaffold,
 }: {
   fullAppPath: string;
   appName?: string;
+  forceDefaultScaffold?: boolean;
 }) {
   const settings = readSettings();
-  const templateId = settings.selectedTemplateId;
+  const templateId = forceDefaultScaffold ? "react" : settings.selectedTemplateId;
 
   if (templateId === "react") {
     await copyDirectoryRecursive(

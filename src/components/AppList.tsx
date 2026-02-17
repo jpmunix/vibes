@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, FolderPlus, Loader2 } from "lucide-react";
 import { useAtom, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
@@ -9,6 +9,8 @@ import {
   SidebarMenu,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useMemo, useState } from "react";
@@ -26,6 +28,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImportAppButton } from "./ImportAppButton";
+import { useCreateApp } from "@/hooks/useCreateApp";
+import { useCheckName } from "@/hooks/useCheckName";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useSettings } from "@/hooks/useSettings";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -34,6 +40,9 @@ export function AppList({ show }: { show?: boolean }) {
   const { apps, loading, error, refreshApps } = useLoadApps();
   const { toggleFavorite, isLoading: isFavoriteLoading } =
     useAddAppToFavorite();
+  const { createApp } = useCreateApp();
+  const { theme, intensity } = useTheme();
+  const { settings } = useSettings();
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
 
@@ -42,6 +51,12 @@ export function AppList({ show }: { show?: boolean }) {
   const [deleteAppId, setDeleteAppId] = useState<number | null>(null);
   const [deleteAppName, setDeleteAppName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // empty app dialog state
+  const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
+  const [emptyAppName, setEmptyAppName] = useState("");
+  const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
+  const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
 
   const allApps = useMemo(
     () =>
@@ -89,6 +104,38 @@ export function AppList({ show }: { show?: boolean }) {
     toggleFavorite(appId);
   };
 
+  const handleCreateEmptyApp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emptyAppName.trim() || emptyAppNameCheck?.exists) return;
+
+    try {
+      setIsCreatingEmptyApp(true);
+      const result = await createApp({
+        name: emptyAppName.trim(),
+        useDefaultScaffold: true,
+      });
+
+      // Apply theme if one is selected
+      if (settings?.selectedThemeId) {
+        await ipc.template.setAppTheme({
+          appId: result.app.id,
+          themeId: settings.selectedThemeId,
+        });
+      }
+
+      setSelectedAppId(result.app.id);
+      setEmptyAppName("");
+      setIsEmptyAppDialogOpen(false);
+      await refreshApps();
+
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsCreatingEmptyApp(false);
+    }
+  };
+
   const handleDeleteAppClick = (appId: number, appName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setDeleteAppId(appId);
@@ -134,6 +181,15 @@ export function AppList({ show }: { show?: boolean }) {
             >
               <PlusCircle size={16} />
               <span>Nueva aplicación</span>
+            </Button>
+            <Button
+              onClick={() => setIsEmptyAppDialogOpen(true)}
+              variant="outline"
+              className="flex items-center justify-start gap-2 mx-2 py-2"
+              data-testid="new-empty-app-button"
+            >
+              <FolderPlus size={16} />
+              <span>Nueva aplicación vacía</span>
             </Button>
             <ImportAppButton className="mx-2 px-0 pb-0" />
             <Button
@@ -251,6 +307,66 @@ export function AppList({ show }: { show?: boolean }) {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Empty App Creation Dialog */}
+      <Dialog open={isEmptyAppDialogOpen} onOpenChange={(open) => {
+        setIsEmptyAppDialogOpen(open);
+        if (!open) setEmptyAppName("");
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Crear aplicación vacía</DialogTitle>
+            <DialogDescription>
+              Se creará una aplicación con el scaffold por defecto, lista para editar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateEmptyApp}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="emptyAppName">Nombre de la aplicación</Label>
+                <Input
+                  id="emptyAppName"
+                  value={emptyAppName}
+                  onChange={(e) => setEmptyAppName(e.target.value)}
+                  placeholder="Introduce el nombre de la aplicación..."
+                  className={emptyAppNameCheck?.exists ? "border-red-500" : ""}
+                  disabled={isCreatingEmptyApp}
+                  autoFocus
+                />
+                {emptyAppNameCheck?.exists && (
+                  <p className="text-sm text-red-500">
+                    Ya existe una aplicación con este nombre
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEmptyAppDialogOpen(false);
+                  setEmptyAppName("");
+                }}
+                disabled={isCreatingEmptyApp}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={!emptyAppName.trim() || !!emptyAppNameCheck?.exists || isCreatingEmptyApp}
+              >
+                {isCreatingEmptyApp && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isCreatingEmptyApp ? "Creando..." : "Crear aplicación"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>
