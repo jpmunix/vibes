@@ -11,6 +11,11 @@ import {
   Trash2,
   Upload,
   Download,
+  Loader2,
+  Ban,
+  ShieldCheck,
+  ArrowDownToLine,
+  Wrench,
 } from "lucide-react";
 import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
@@ -106,6 +111,48 @@ function ConnectedGitHubConnector({
   const [gitPreview, setGitPreview] = useState<GitPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
+  const [isFixingError, setIsFixingError] = useState(false);
+
+  // Smart error type detection
+  const errorType = syncError
+    ? syncError.includes("merge is in progress")
+      ? "merge-in-progress"
+      : syncError.includes("index.lock") || syncError.includes("index'.lock")
+        ? "index-lock"
+        : syncError.includes("Merge conflict") || syncError.includes("GitConflictError")
+          ? "merge-conflict"
+          : syncError.includes("ENOENT") || syncError.includes("Git failed to execute")
+            ? "git-not-found"
+            : null
+    : null;
+
+  // Handler: abort merge and retry
+  const handleAbortMergeAndRetry = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.abortMerge({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al abortar el merge.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Handler: remove stale lock file
+  const handleRemoveLockFile = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.removeIndexLock({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al eliminar el lock file.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
 
   useEffect(() => {
     // Fetch git state (ahead/behind) to decide UI visibility
@@ -545,20 +592,133 @@ function ConnectedGitHubConnector({
       />
       {syncError && (
         <div className="mt-2 space-y-2">
-          <p className="text-red-600">
-            {syncError}{" "}
-            <a
-              onClick={(e) => {
-                e.preventDefault();
-                ipc.system.openExternalUrl("https://github.com/minube/vibes/");
-              }}
-              className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ver guía de solución de problemas
-            </a>
-          </p>
+          {/* Smart error recovery UI */}
+          {errorType === "merge-in-progress" ? (
+            <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Hay un merge en progreso que bloquea esta operación
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Puedes abortar el merge para desbloquear la operación.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleAbortMergeAndRetry}
+                variant="outline"
+                size="sm"
+                disabled={isFixingError}
+                className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+              >
+                {isFixingError ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                Abortar merge y desbloquear
+              </Button>
+            </div>
+          ) : errorType === "index-lock" ? (
+            <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Git está bloqueado por un proceso anterior
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                    Un proceso de git previo dejó un archivo lock. Se puede eliminar de forma segura.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRemoveLockFile}
+                variant="outline"
+                size="sm"
+                disabled={isFixingError}
+                className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+              >
+                {isFixingError ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wrench className="h-4 w-4 mr-2" />
+                )}
+                Eliminar lock y desbloquear
+              </Button>
+            </div>
+          ) : errorType === "merge-conflict" ? (
+            <div className="rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                    Conflictos de merge detectados
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                    Hay archivos en conflicto. Ve a la pestaña "Cambios" del panel Git para resolverlos manualmente.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleAbortMergeAndRetry}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="flex-1 border-orange-400 dark:border-orange-600 text-orange-800 dark:text-orange-200"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Ban className="h-4 w-4 mr-2" />
+                  )}
+                  Cancelar merge
+                </Button>
+              </div>
+            </div>
+          ) : errorType === "git-not-found" ? (
+            <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                    Git no encontrado en el sistema
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                    Asegúrate de que Git esté instalado en tu sistema. Puedes descargarlo desde git-scm.com.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                variant="outline"
+                size="sm"
+                className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar Git
+              </Button>
+            </div>
+          ) : (
+            /* Fallback: original error display for unrecognized errors */
+            <p className="text-red-600">
+              {syncError}{" "}
+              <a
+                onClick={(e) => {
+                  e.preventDefault();
+                  ipc.system.openExternalUrl("https://github.com/minube/vibes/");
+                }}
+                className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver guía de solución de problemas
+              </a>
+            </p>
+          )}
           {showRebaseRecoveryOptions && (
             <div className="space-y-2 rounded-md border border-orange-200 p-3 dark:border-orange-800 dark:bg-orange-900/20">
               <p className="text-sm text-orange-800 dark:text-orange-100">
@@ -627,8 +787,7 @@ function ConnectedGitHubConnector({
         </div>
       )}
       {/* Conflict Resolver */}
-      {conflicts.length > 0 && (
-        //show a message that there are conflicts and to resolve them in Editor
+      {conflicts.length > 0 && !errorType && (
         <p className="text-sm text-red-600">
           Hay conflictos en el repositorio. Por favor, resuélvelos en el editor.
         </p>
@@ -746,6 +905,46 @@ export function UnconnectedGitHubConnector({
   const [isCreatingRepo, setIsCreatingRepo] = useState(false);
   const [createRepoError, setCreateRepoError] = useState<string | null>(null);
   const [createRepoSuccess, setCreateRepoSuccess] = useState<boolean>(false);
+  const [isFixingSetupError, setIsFixingSetupError] = useState(false);
+
+  // Smart error type detection for setup errors
+  const setupErrorType = createRepoError
+    ? createRepoError.includes("merge is in progress")
+      ? "merge-in-progress"
+      : createRepoError.includes("index.lock") || createRepoError.includes("index'.lock")
+        ? "index-lock"
+        : createRepoError.includes("ENOENT") || createRepoError.includes("Git failed to execute")
+          ? "git-not-found"
+          : null
+    : null;
+
+  // Handler: abort merge (for setup flow)
+  const handleFixMergeForSetup = useCallback(async () => {
+    if (!appId) return;
+    setIsFixingSetupError(true);
+    try {
+      await ipc.git.abortMerge({ appId });
+      setCreateRepoError(null);
+    } catch (err: any) {
+      setCreateRepoError(err.message || "Error al abortar el merge.");
+    } finally {
+      setIsFixingSetupError(false);
+    }
+  }, [appId]);
+
+  // Handler: remove lock file (for setup flow)
+  const handleFixLockForSetup = useCallback(async () => {
+    if (!appId) return;
+    setIsFixingSetupError(true);
+    try {
+      await ipc.git.removeIndexLock({ appId });
+      setCreateRepoError(null);
+    } catch (err: any) {
+      setCreateRepoError(err.message || "Error al eliminar el lock file.");
+    } finally {
+      setIsFixingSetupError(false);
+    }
+  }, [appId]);
 
   // Assume org is the authenticated user for now (could add org input later)
   const githubOrg = ""; // Use empty string for now (GitHub API will default to the authenticated user)
@@ -1284,7 +1483,93 @@ export function UnconnectedGitHubConnector({
           </form>
 
           {createRepoError && (
-            <p className="text-red-600 mt-2">{createRepoError}</p>
+            <div className="mt-2">
+              {setupErrorType === "merge-in-progress" ? (
+                <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Hay un merge en progreso que bloquea esta operación
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                        Abórtalo para poder conectar el repositorio.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleFixMergeForSetup}
+                    variant="outline"
+                    size="sm"
+                    disabled={isFixingSetupError}
+                    className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+                  >
+                    {isFixingSetupError ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Ban className="h-4 w-4 mr-2" />
+                    )}
+                    Abortar merge y reintentar
+                  </Button>
+                </div>
+              ) : setupErrorType === "index-lock" ? (
+                <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                        Git está bloqueado por un proceso anterior
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                        Se puede eliminar el lock de forma segura.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleFixLockForSetup}
+                    variant="outline"
+                    size="sm"
+                    disabled={isFixingSetupError}
+                    className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+                  >
+                    {isFixingSetupError ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Wrench className="h-4 w-4 mr-2" />
+                    )}
+                    Eliminar lock y reintentar
+                  </Button>
+                </div>
+              ) : setupErrorType === "git-not-found" ? (
+                <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                        Git no encontrado en el sistema
+                      </p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                        Necesitas Git instalado para conectar repositorios.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar Git
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-red-600">{createRepoError}</p>
+              )}
+            </div>
           )}
           {createRepoSuccess && (
             <p className="text-sm text-muted-foreground mt-2">

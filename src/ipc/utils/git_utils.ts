@@ -2113,3 +2113,24 @@ export async function gitResolveFileTheirs({
     message: `'${filepath}' resuelto con los cambios entrantes.`,
   };
 }
+
+/**
+ * Remove stale .git/index.lock file that prevents git operations.
+ * This typically happens when a git process crashes or is killed.
+ */
+export function gitRemoveIndexLock({
+  path,
+}: GitBaseParams): { removed: boolean; message: string } {
+  const lockFile = pathModule.join(path, ".git", "index.lock");
+  if (fs.existsSync(lockFile)) {
+    try {
+      fs.unlinkSync(lockFile);
+      logger.info(`Removed stale index.lock at ${lockFile}`);
+      return { removed: true, message: "Archivo index.lock eliminado correctamente." };
+    } catch (err: any) {
+      throw new Error(`No se pudo eliminar el lock file: ${err.message}`);
+    }
+  }
+  return { removed: false, message: "No existe archivo index.lock." };
+}
+

@@ -491,6 +491,12 @@ export const gitContracts = {
     input: z.object({ appId: z.number(), filepath: z.string() }),
     output: z.object({ resolved: z.boolean(), message: z.string() }),
   }),
+
+  removeIndexLock: defineContract({
+    channel: "git:remove-index-lock",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ removed: z.boolean(), message: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

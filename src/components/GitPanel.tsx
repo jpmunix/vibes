@@ -26,6 +26,8 @@ import {
     Ban,
     ShieldCheck,
     ArrowDownToLine,
+    Wrench,
+    Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,8 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { GitCommitHistory } from "@/components/GitCommitHistory";
+import { ipc } from "@/ipc/types";
+import { toast } from "sonner";
 
 interface GitPanelProps {
     onClose: () => void;
@@ -309,6 +313,10 @@ export function GitPanel({ onClose }: GitPanelProps) {
     const [conflictDiff, setConflictDiff] = useState<string>("");
     const [isLoadingConflictDiff, setIsLoadingConflictDiff] = useState(false);
     const [showConflicts, setShowConflicts] = useState(true);
+
+    // Git Tools section state
+    const [showGitTools, setShowGitTools] = useState(false);
+    const [isRemovingLock, setIsRemovingLock] = useState(false);
 
     // Separate files into staged and unstaged
     // Since git status --porcelain gives us both, we track staged state client-side
@@ -1052,6 +1060,123 @@ export function GitPanel({ onClose }: GitPanelProps) {
                                 </Button>
                             </div>
                         )}
+
+                    {/* Git Tools Section */}
+                    <div className="border-t border-border">
+                        <div
+                            className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                            onClick={() => setShowGitTools(!showGitTools)}
+                        >
+                            <ChevronDown
+                                size={14}
+                                className={cn(
+                                    "text-muted-foreground transition-transform",
+                                    !showGitTools && "-rotate-90",
+                                )}
+                            />
+                            <Wrench size={13} className="text-muted-foreground" />
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Herramientas Git
+                            </span>
+                        </div>
+                        {showGitTools && (
+                            <div className="px-3 pb-3 space-y-1.5">
+                                <p className="text-[10px] text-muted-foreground mb-2">
+                                    Herramientas de reparación para problemas comunes de Git.
+                                </p>
+
+                                {/* Remove index.lock */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full h-8 text-xs justify-start"
+                                    disabled={isRemovingLock}
+                                    onClick={async () => {
+                                        if (!appId) return;
+                                        setIsRemovingLock(true);
+                                        try {
+                                            const result = await ipc.git.removeIndexLock({ appId });
+                                            if (result.removed) {
+                                                toast.success("Lock eliminado correctamente");
+                                            } else {
+                                                toast.info("No hay ningún lock file activo");
+                                            }
+                                        } catch (err: any) {
+                                            toast.error(err.message || "Error al eliminar el lock");
+                                        } finally {
+                                            setIsRemovingLock(false);
+                                        }
+                                    }}
+                                >
+                                    {isRemovingLock ? (
+                                        <Loader2 size={13} className="animate-spin mr-2" />
+                                    ) : (
+                                        <Wrench size={13} className="mr-2" />
+                                    )}
+                                    Eliminar lock file (.git/index.lock)
+                                </Button>
+
+                                {/* Abort merge */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "w-full h-8 text-xs justify-start",
+                                        gitState?.mergeInProgress && "border-amber-500/40 text-amber-700 dark:text-amber-300",
+                                    )}
+                                    disabled={isAbortingMerge}
+                                    onClick={async () => {
+                                        try {
+                                            await abortMerge();
+                                            toast.success("Merge abortado correctamente");
+                                        } catch (err: any) {
+                                            toast.error(err.message || "Error al abortar el merge");
+                                        }
+                                    }}
+                                >
+                                    {isAbortingMerge ? (
+                                        <Loader2 size={13} className="animate-spin mr-2" />
+                                    ) : (
+                                        <Ban size={13} className="mr-2" />
+                                    )}
+                                    Abortar merge
+                                    {gitState?.mergeInProgress && (
+                                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium">
+                                            activo
+                                        </span>
+                                    )}
+                                </Button>
+
+                                {/* Abort rebase */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "w-full h-8 text-xs justify-start",
+                                        gitState?.rebaseInProgress && "border-orange-500/40 text-orange-700 dark:text-orange-300",
+                                    )}
+                                    disabled={false}
+                                    onClick={async () => {
+                                        if (!appId) return;
+                                        try {
+                                            await ipc.github.rebaseAbort({ appId });
+                                            toast.success("Rebase abortado correctamente");
+                                        } catch (err: any) {
+                                            toast.error(err.message || "Error al abortar el rebase");
+                                        }
+                                    }}
+                                >
+                                    <Ban size={13} className="mr-2" />
+                                    Abortar rebase
+                                    {gitState?.rebaseInProgress && (
+                                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium">
+                                            activo
+                                        </span>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </>
             )}
         </div>

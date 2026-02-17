@@ -31,6 +31,7 @@ import {
   gitGetConflictFileDiff,
   gitResolveFileOurs,
   gitResolveFileTheirs,
+  gitRemoveIndexLock,
 } from "../utils/git_utils";
 import { getDyadAppPath } from "../../paths/paths";
 import { db } from "../../db";
@@ -599,6 +600,17 @@ async function handleResolveFileTheirs(
   return gitResolveFileTheirs({ path: appPath, filepath });
 }
 
+async function handleRemoveIndexLock(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+) {
+  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!app) throw new Error("App not found");
+  const appPath = getDyadAppPath(app.path);
+
+  return gitRemoveIndexLock({ path: appPath });
+}
+
 // --- Registration ---
 export function registerGithubBranchHandlers() {
   createTypedHandler(githubContracts.mergeAbort, handleAbortMerge);
@@ -636,5 +648,6 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.getConflictFileDiff, handleGetConflictFileDiff);
   createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
   createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
+  createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
 }
 
