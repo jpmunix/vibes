@@ -82,6 +82,7 @@ export function ChatHeader({
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const { chats, invalidateChats } = useChats(appId);
   const { isStreaming } = useStreamChat();
+  const { settings } = useSettings();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const { handleSummarize } = useSummarizeInNewChat();
   const isAnyCheckoutVersionInProgress = useAtomValue(
@@ -300,7 +301,7 @@ export function ChatHeader({
       )}
 
       {/* Why is this pt-0.5? Because the loading bar is h-1 (it always takes space) and we want the vertical spacing to be consistent.*/}
-      <div className="@container flex items-center px-1 py-2 border-b border-border">
+      <div className="@container flex items-center px-1 py-2 border-b border-border no-app-region-drag">
         <div className="flex items-center shrink-0">
           <ExpandChatButton
             isPreviewOpen={isPreviewOpen}
@@ -379,7 +380,7 @@ export function ChatHeader({
                 <Eraser size={16} className="mr-2" />
                 Vaciar chat
               </DropdownMenuItem>
-              {onToggleLogs && (
+              {onToggleLogs && settings?.enableAllStatsAndLogs && (
                 <DropdownMenuItem
                   onClick={onToggleLogs}
                   disabled={!selectedChatId}
