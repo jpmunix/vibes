@@ -351,8 +351,7 @@ export const UserSettingsSchema = z
     enableLocalSmartContext: z.boolean().optional(),
     // Allow using MCP server for smart context/file ranking
     enableMcpSmartContext: z.boolean().optional(),
-    // Enable semantic search with local embeddings (vector search)
-    enableSemanticSearch: z.boolean().optional(),
+
     // Maximum files to include in context (reduces tokens)
     maxContextFiles: z.number().optional(),
     // Persist token stats for charts/logging
@@ -379,6 +378,7 @@ export const UserSettingsSchema = z
     enableBackgroundProblemAutoFix: z.boolean().optional(),
     enableAutoRepairRuntimeErrors: z.boolean().optional(),
     autoExpandPreviewPanel: z.boolean().optional(),
+    previewPosition: z.enum(["left", "right"]).optional(),
     showTokenBar: z.boolean().optional(),
     enableNativeGit: z.boolean().optional(),
     enableAutoUpdate: z.boolean().optional(),

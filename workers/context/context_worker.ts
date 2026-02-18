@@ -5,7 +5,6 @@ import type {
   ContextWorkerOutput,
 } from "../../shared/context_types";
 import { extractCodebase, CodebaseFile } from "../../src/utils/codebase";
-import { getSemanticContext } from "../../src/ipc/utils/semantic_context";
 import {
   rankFilesLocally,
   buildCodebaseXml,
@@ -36,46 +35,23 @@ parentPort.on("message", async (input: ContextWorkerInput) => {
     let finalFiles: CodebaseFile[] = extractedFiles;
     let finalCodebaseInfo = initialCodebaseInfo;
 
-    // Step 2: Apply smart context if needed
-    if (input.useSemanticSearch && extractedFiles.length > input.maxFiles) {
+    // Step 2: Apply smart context ranking if too many files
+    if (extractedFiles.length > input.maxFiles) {
       logger.log(
-        `[CONTEXT WORKER] Applying semantic search (max ${input.maxFiles} files)...`,
+        `[CONTEXT WORKER] Applying keyword ranking (max ${input.maxFiles} files)...`,
       );
 
-      try {
-        const rankedFiles = await getSemanticContext({
-          appPath: input.appPath,
-          prompt: input.prompt,
-          files: extractedFiles,
-          maxFiles: input.maxFiles,
-          useSemanticSearch: true,
-          buildIndexIfNeeded: true,
-        });
+      const rankedFiles = rankFilesLocally({
+        prompt: input.prompt,
+        files: extractedFiles,
+        maxResults: input.maxFiles,
+      });
 
-        finalFiles = rankedFiles;
-        finalCodebaseInfo = buildCodebaseXml(rankedFiles);
-        logger.log(
-          `[CONTEXT WORKER] Semantic search completed: ${rankedFiles.length} files selected`,
-        );
-      } catch (error) {
-        logger.error(
-          `[CONTEXT WORKER] Semantic search failed, falling back to keyword ranking:`,
-          error,
-        );
-
-        // Fallback to keyword ranking
-        const rankedFiles = rankFilesLocally({
-          prompt: input.prompt,
-          files: extractedFiles,
-          maxResults: input.maxFiles,
-        });
-
-        finalFiles = rankedFiles;
-        finalCodebaseInfo = buildCodebaseXml(rankedFiles);
-        logger.log(
-          `[CONTEXT WORKER] Keyword ranking fallback: ${rankedFiles.length} files selected`,
-        );
-      }
+      finalFiles = rankedFiles;
+      finalCodebaseInfo = buildCodebaseXml(rankedFiles);
+      logger.log(
+        `[CONTEXT WORKER] Keyword ranking: ${rankedFiles.length} files selected`,
+      );
     }
 
     const endTime = Date.now();

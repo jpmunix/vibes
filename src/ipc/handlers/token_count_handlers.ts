@@ -26,7 +26,7 @@ import { readSettings } from "@/main/settings";
 import { extractMentionedAppsCodebases } from "../utils/mention_apps";
 import { parseAppMentions } from "@/shared/parse_mention_apps";
 import { isTurboEditsV2Enabled } from "@/lib/schemas";
-import { getIncrementalIndexer } from "../utils/file_watcher";
+
 
 const logger = log.scope("token_count_handlers");
 
@@ -106,23 +106,8 @@ export function registerTokenCountHandlers() {
         const appPath = getDyadAppPath(chat.app.path);
 
         if (selectedMode === "local-agent") {
-          // Optimized logic for intelligent agent: only estimate based on paths
-          const useSemanticSearch = settings.enableSemanticSearch !== false;
-          if (useSemanticSearch) {
-            try {
-              const indexer = getIncrementalIndexer(appPath);
-              const index = indexer.getIndex();
-              const relevantPaths = await index.search(req.input, 15);
-              if (relevantPaths.length > 0) {
-                const pathsInfo = `\n\n# Potential Relevant Files\nBased on your request, these files might be relevant. Use the \`read_file\` tool to examine those you need:\n${relevantPaths.map((p) => `- ${p}`).join("\n")}`;
-                codebaseTokens = estimateTokens(pathsInfo);
-              }
-            } catch (error) {
-              codebaseTokens = 100; // Minimal fallback estimate
-            }
-          } else {
-            codebaseTokens = 200; // "Starting with no context" estimate
-          }
+          // Agent mode starts with no file context (uses tools to explore)
+          codebaseTokens = 200;
         } else {
           // Standard extraction for build mode and others
           const { formattedOutput, files } = await extractCodebase({

@@ -54,6 +54,7 @@ import {
 } from "../ui/dropdown-menu";
 import { KnowledgeBaseModal } from "../KnowledgeBaseModal";
 import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { useSettings } from "@/hooks/useSettings";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
   Dialog,
@@ -602,11 +603,18 @@ export function ChatHeader({
 
 function ChatPositionToggle() {
   const [chatPosition, setChatPosition] = useAtom(chatPositionAtom);
+  const { updateSettings } = useSettings();
   const isLeft = chatPosition === "left";
 
   return (
     <DropdownMenuItem
-      onClick={() => setChatPosition(isLeft ? "right" : "left")}
+      onClick={() => {
+        const newPosition = isLeft ? "right" : "left";
+        setChatPosition(newPosition);
+        // The preview is on the opposite side of the chat
+        const previewPos = newPosition === "left" ? "right" : "left";
+        updateSettings({ previewPosition: previewPos });
+      }}
     >
       {isLeft ? (
         <PanelRightOpen size={16} className="mr-2" />

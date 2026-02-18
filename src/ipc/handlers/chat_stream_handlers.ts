@@ -98,8 +98,7 @@ import z from "zod";
 import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
 import { buildCodebaseXml } from "../utils/local_ranker";
-import { getSemanticContext } from "../utils/semantic_context";
-import { getIncrementalIndexer } from "../utils/file_watcher";
+
 import {
   isDyadProEnabled,
   isBasicAgentMode,
@@ -800,10 +799,9 @@ ${componentSnippet}
           // This is especially important for large codebases and semantic search
           if (useLocalContext) {
             const maxFiles = settings.maxContextFiles ?? 20;
-            const useSemanticSearch = settings.enableSemanticSearch !== false;
 
             logger.log(
-              `[BUILD MODE] Using context worker for analysis (maxFiles: ${maxFiles}, semantic: ${useSemanticSearch})`,
+              `[BUILD MODE] Using context worker for analysis (maxFiles: ${maxFiles})`,
             );
 
             try {
@@ -812,7 +810,7 @@ ${componentSnippet}
                 appPath,
                 chatContext,
                 prompt: req.prompt,
-                useSemanticSearch,
+                useSemanticSearch: false,
                 maxFiles,
               });
 
@@ -1633,29 +1631,10 @@ This conversation includes one or more image attachments. When the user uploads 
           let localAgentSystemPrompt = systemPrompt;
 
           if (!isSummarizeIntent) {
-            // AGENT MODE OPTIMIZATION: Start with minimal codebase context to save tokens.
-            // The agent is instructed to use tools (read_file, code_search, grep, etc.)
+            // AGENT MODE: Start with no initial file context to save tokens.
+            // The agent uses tools (read_file, code_search, grep, list_files, etc.)
             // to explore the codebase agentically.
-            try {
-              const useSemanticSearch = settings.enableSemanticSearch !== false;
-              if (useSemanticSearch) {
-                logger.log("[AGENT MODE] Searching for relevant paths using semantic index...");
-                const indexer = getIncrementalIndexer(appPath);
-                const index = indexer.getIndex();
-                // We only get paths, NO content. This is extremely token-efficient.
-                const relevantPaths = await index.search(req.prompt, 15);
-
-                if (relevantPaths.length > 0) {
-                  localAgentSystemPrompt += `\n\n# Potential Relevant Files\nBased on your request, these files might be relevant. Use the \`read_file\` tool to examine those you need:\n${relevantPaths.map(p => `- ${p}`).join("\n")}`;
-                  logger.log(`[AGENT MODE] Added ${relevantPaths.length} relevant paths (no content) to prompt`);
-                }
-              } else {
-                localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find the files needed to solve the task.";
-              }
-            } catch (error) {
-              logger.warn("[AGENT MODE] Failed to add semantic path context:", error);
-              localAgentSystemPrompt += "\n\n# Codebase Context\nUse your tools to explore the codebase and find the files needed to solve the task.";
-            }
+            localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find the files needed to solve the task.";
           } else {
             logger.log(
               `[AGENT MODE] Skipping codebase context for summarize intent`,

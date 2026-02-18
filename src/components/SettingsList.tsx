@@ -19,7 +19,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "integrations", label: "Integraciones" },
   { id: "agent-permissions", label: "Permisos del agente" },
   { id: "stats-settings", label: "Estadísticas" },
-  { id: "experiments", label: "Experimentos" },
   { id: "danger-zone", label: "Zona peligrosa" },
 ];
 

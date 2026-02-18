@@ -25,10 +25,7 @@ export default defineConfig({
         "electron",
         "electron-log",
         "glob",
-        "onnxruntime-web",
-        "onnxruntime-node",
         "@huggingface/jinja",
-        "@xenova/transformers",
         "sharp",
         // Linux
         "@img/sharp-linux-x64",

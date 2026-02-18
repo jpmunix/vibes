@@ -55,7 +55,7 @@ export { noteContracts } from "./note";
 export { todoContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
-export { embeddingsContracts } from "./embeddings";
+
 export { debateContracts, debateStreamContract } from "./debate";
 export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
@@ -91,7 +91,7 @@ export { upgradeClient } from "./upgrade";
 export { visualEditingClient } from "./visual-editing";
 export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
-export { embeddingsClient } from "./embeddings";
+
 export { debateClient, debateStreamClient } from "./debate";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
@@ -404,7 +404,7 @@ import { capacitorClient } from "./capacitor";
 import { chatClient, chatStreamClient } from "./chat";
 import { chatLogsClient } from "./chat_logs";
 import { contextClient } from "./context";
-import { embeddingsClient } from "./embeddings";
+
 import { freeAgentQuotaClient } from "./free_agent_quota";
 import { gitClient, githubClient, githubEventClient } from "./github";
 import { helpClient, helpStreamClient } from "./help";
@@ -495,7 +495,7 @@ export const ipc = {
   freeAgentQuota: freeAgentQuotaClient,
   tokenStats: tokenStatsClient,
   chatLogs: chatLogsClient,
-  embeddings: embeddingsClient,
+
   knowledge: knowledgeClient,
   aiQueryLogs: aiQueryLogClient,
   dossier: dossierClient,

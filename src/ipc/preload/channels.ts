@@ -22,7 +22,7 @@ import { firebaseContracts } from "../types/firebase";
 import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
 import { debateContracts, debateStreamContract } from "../types/debate";
-import { embeddingsContracts } from "../types/embeddings";
+
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
 import { helpContracts, helpStreamContract } from "../types/help";
@@ -112,7 +112,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(freeAgentQuotaContracts),
   ...getInvokeChannels(tokenStatsContracts),
   ...getInvokeChannels(chatLogsContracts),
-  ...getInvokeChannels(embeddingsContracts),
+
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(knowledgeContracts),
   ...getInvokeChannels(aiQueryLogContracts),

@@ -59,7 +59,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { EmbeddingsPlayground } from "@/components/EmbeddingsPlayground";
+
 import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
 import Fuse from "fuse.js";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
@@ -368,30 +368,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Permisos del Agente",
     sectionId: "agent-permissions",
   },
-  // Experiments
-  {
-    id: "native-git",
-    label: "Git nativo",
-    description: "Usar implementación de Git nativa sin instalación externa",
-    keywords: ["git", "nativo", "native", "experimento", "experiment"],
-    section: "Experimentos",
-    sectionId: "experiments",
-  },
-  {
-    id: "embeddings-playground",
-    label: "Playground de Embeddings",
-    description: "Probar el modelo MiniLM para búsqueda semántica",
-    keywords: [
-      "embeddings",
-      "playground",
-      "minilm",
-      "busqueda",
-      "semantica",
-      "semantic",
-    ],
-    section: "Experimentos",
-    sectionId: "experiments",
-  },
   // Danger Zone
   {
     id: "reset-all",
@@ -461,8 +437,7 @@ function SettingItem({
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [isEmbeddingsPlaygroundOpen, setIsEmbeddingsPlaygroundOpen] =
-    useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedSection, setHighlightedSection] = useState<string | null>(
     null,
@@ -777,38 +752,7 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "stats-settings"}
           />
 
-          {/* Experiments Section */}
-          <div
-            id="experiments"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "experiments"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
-          >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Laboratorio y Experimentos
-            </h2>
-            <p className="text-sm text-muted-foreground mb-8">
-              Funcionalidades en fase de prueba que pueden cambiar o
-              desaparecer.
-            </p>
-            <div className="space-y-8">
-              <SettingItem
-                label="Playground de Embeddings"
-                description="Prueba el modelo MiniLM para búsqueda semántica local de archivos en tu codebase"
-                control={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEmbeddingsPlaygroundOpen(true)}
-                    className="h-10 px-4 font-bold border-border hover:bg-muted rounded-xl"
-                  >
-                    Abrir Playground
-                  </Button>
-                }
-              />
-            </div>
-          </div>
+
 
           {/* Danger Zone */}
           <div
@@ -857,11 +801,7 @@ export default function SettingsPage() {
         onCancel={() => setIsResetDialogOpen(false)}
       />
 
-      {/* Embeddings Playground Dialog */}
-      <EmbeddingsPlayground
-        open={isEmbeddingsPlaygroundOpen}
-        onOpenChange={setIsEmbeddingsPlaygroundOpen}
-      />
+
     </div>
   );
 }
@@ -1156,6 +1096,31 @@ export function WorkflowSettings({
                   updateSettings({ autoExpandPreviewPanel: checked })
                 }
               />
+            }
+          />
+
+          <SettingItem
+            label="Posición del preview"
+            description="Elige en qué lado se muestra el panel de vista previa."
+            control={
+              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+                {(["left", "right"] as const).map((option) => (
+                  <button
+                    key={option}
+                    onClick={() =>
+                      updateSettings({ previewPosition: option })
+                    }
+                    className={cn(
+                      "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200",
+                      (settings?.previewPosition ?? "right") === option
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
+                    )}
+                  >
+                    {option === "left" ? "Izquierda" : "Derecha"}
+                  </button>
+                ))}
+              </div>
             }
           />
 

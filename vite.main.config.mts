@@ -14,10 +14,6 @@ export default defineConfig({
     rollupOptions: {
       external: [
         "better-sqlite3",
-        "onnxruntime-web",
-        "onnxruntime-node",
-        "onnxruntime-common",
-        "@xenova/transformers",
         "@huggingface/jinja",
         "sharp",
         "semver",

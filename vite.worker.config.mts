@@ -11,26 +11,7 @@ const workersConfig: Record<string, string[]> = {
     "node:worker_threads",
     "electron-log",
     "glob",
-    "onnxruntime-web",
-    "onnxruntime-node",
     "@huggingface/jinja",
-    "@xenova/transformers",
-    "sharp",
-    // Linux
-    "@img/sharp-linux-x64",
-    "@img/sharp-libvips-linux-x64",
-    // macOS
-    "@img/sharp-darwin-x64",
-    "@img/sharp-libvips-darwin-x64",
-    "@img/sharp-darwin-arm64",
-    "@img/sharp-libvips-darwin-arm64",
-  ],
-  embeddings_worker: [
-    "node:worker_threads",
-    "electron-log",
-    "onnxruntime-node",
-    "@huggingface/jinja",
-    "@xenova/transformers",
     "sharp",
     // Linux
     "@img/sharp-linux-x64",
@@ -50,9 +31,7 @@ export default defineConfig(() => {
   const entry = process.env.VITE_WORKER_ENTRY || "workers/tsc/tsc_worker.ts";
   const workerName = entry.includes("context_worker")
     ? "context_worker"
-    : entry.includes("embeddings_worker")
-      ? "embeddings_worker"
-      : "tsc_worker";
+    : "tsc_worker";
   const external = workersConfig[workerName] || [];
 
   return {

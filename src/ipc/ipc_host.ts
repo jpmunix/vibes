@@ -13,7 +13,7 @@ import { registerFirebaseHandlers } from "./handlers/firebase_handlers";
 import { registerContextPathsHandlers } from "./handlers/context_paths_handlers";
 import { registerDebugHandlers } from "./handlers/debug_handlers";
 import { registerDependencyHandlers } from "./handlers/dependency_handlers";
-import { registerEmbeddingsHandlers } from "./handlers/embeddings_handlers_register";
+
 import { registerFreeAgentQuotaHandlers } from "./handlers/free_agent_quota_handlers";
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
 import { registerGithubHandlers } from "./handlers/github_handlers";
@@ -97,7 +97,7 @@ export function registerIpcHandlers() {
   registerFreeAgentQuotaHandlers();
   registerTokenStatsHandlers();
   registerChatLogsHandlers();
-  registerEmbeddingsHandlers();
+
   registerDebateHandlers();
   registerDebateStreamHandlers();
   registerBackupHandlers();

@@ -27,7 +27,6 @@ const ignore = (file: string): boolean => {
 
   if (
     file.includes("/node_modules/@img") ||
-    file.includes("/node_modules/@xenova") ||
     file.includes("/node_modules/sharp") ||
     file.includes("/node_modules/styled-jsx") ||
     file.includes("/node_modules/geist")
@@ -35,9 +34,7 @@ const ignore = (file: string): boolean => {
     return false;
   }
 
-  if (file.includes("/node_modules/@xenova/transformers/node_modules")) {
-    return true;
-  }
+
 
   // Ignore date-fns/fp (1500+ unused files, functional programming API)
   // Prevents ENOTEMPTY race condition in electron-packager
@@ -91,7 +88,7 @@ const config: ForgeConfig = {
       // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
       // styled-jsx se desempaqueta para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
-        "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
+        "{**/node_modules/@img/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,
@@ -112,7 +109,7 @@ const config: ForgeConfig = {
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
-    extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
+    extraModules: ["better-sqlite3", "sharp"],
     force: false,
   },
   makers: [
@@ -188,11 +185,7 @@ const config: ForgeConfig = {
           config: "vite.context-worker.config.mts",
           target: "main",
         },
-        {
-          entry: "workers/embeddings/embeddings_worker.ts",
-          config: "vite.embeddings-worker.config.mts",
-          target: "main",
-        },
+
       ],
       renderer: [
         {

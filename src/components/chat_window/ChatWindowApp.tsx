@@ -109,7 +109,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     const [chatId, setChatId] = useAtom(selectedChatIdAtom);
     const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
     const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
-    const chatPosition = useAtomValue(chatPositionAtom);
+    const [chatPosition, setChatPosition] = useAtom(chatPositionAtom);
     const [isResizing, setIsResizing] = useState(false);
     const { chats, loading } = useChats(appId);
     const currentApp = useAtomValue(currentAppAtom);
@@ -141,6 +141,15 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             updateSettings({ selectedChatMode: initialChatMode as any });
         }
     }, [initialChatMode, updateSettings]);
+
+    // Sync preview position from user settings
+    useEffect(() => {
+        if (settings?.previewPosition) {
+            // previewPosition is where the preview is; chatPosition is the opposite
+            const chatPos = settings.previewPosition === "left" ? "right" : "left";
+            setChatPosition(chatPos);
+        }
+    }, [settings?.previewPosition, setChatPosition]);
 
     // Apply primary colors from settings
     useEffect(() => {
