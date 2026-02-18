@@ -374,13 +374,6 @@ export async function handleLocalAgentStream(
         mentionedAppsCodebases: [],
         builtinProviderId: modelClient.builtinProviderId,
         settings,
-        // OpenResponses: chain with previous response ID for multi-turn
-        previousResponseId: modelClient.supportsResponses
-          ? chat.messages
-            ?.filter((m: any) => m.role === "assistant" && m.previousResponseId)
-            ?.at(-1)
-            ?.previousResponseId ?? undefined
-          : undefined,
       }),
       maxOutputTokens: await getMaxTokens(settings.selectedModel),
       temperature: await getTemperature(settings.selectedModel),
@@ -457,18 +450,6 @@ export async function handleLocalAgentStream(
             .set({ maxTokensUsed: totalTokens })
             .where(eq(messages.id, placeholderMessageId))
             .catch((err) => logger.error("Failed to save token count", err));
-
-          // OpenResponses: capture and persist the response ID for multi-turn chaining
-          const openResponseId = (response as any)?.response?.id;
-          if (openResponseId) {
-            void db
-              .update(messages)
-              .set({ previousResponseId: openResponseId })
-              .where(eq(messages.id, placeholderMessageId))
-              .catch((err) =>
-                logger.error("Failed to save OpenResponses response ID", err),
-              );
-          }
 
           // Log token usage for verbose chat logs and token stats panel
           void logChatInfo(

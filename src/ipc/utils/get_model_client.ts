@@ -60,8 +60,6 @@ const AUTO_MODELS = [
 export interface ModelClient {
   model: LanguageModel;
   builtinProviderId?: string;
-  /** Whether this model client was created via the Responses API (.responses()) */
-  supportsResponses?: boolean;
 }
 
 const logger = log.scope("getModelClient");
@@ -232,16 +230,15 @@ function getProModelClient({
       // Using openAI as the default provider.
       // TODO: we should remove this and rely on the provider id passed into the provider().
       builtinProviderId: "openai",
-      supportsResponses: true,
     };
   }
-  // OpenAI models always use Responses API for full feature support
-  // (thinking summaries, previous_response_id, reasoning effort)
-  if (model.provider === "openai") {
+  if (
+    settings.selectedChatMode === "local-agent" &&
+    model.provider === "openai"
+  ) {
     return {
       model: provider.responses(modelId, { providerId: model.provider }),
       builtinProviderId: model.provider,
-      supportsResponses: true,
     };
   }
   return {
@@ -290,7 +287,6 @@ function getRegularModelClient(
         modelClient: {
           model: provider.responses(model.name),
           builtinProviderId: providerId,
-          supportsResponses: true,
         },
         backupModelClients: [],
       };

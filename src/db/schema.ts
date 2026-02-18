@@ -121,8 +121,6 @@ export const messages = sqliteTable("messages", {
   usingFreeAgentModeQuota: integer("using_free_agent_mode_quota", {
     mode: "boolean",
   }),
-  // OpenResponses API: response ID for multi-turn conversation chaining
-  previousResponseId: text("previous_response_id"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

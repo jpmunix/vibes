@@ -1325,13 +1325,6 @@ This conversation includes one or more image attachments. When the user uploads 
             mentionedAppsCodebases,
             builtinProviderId: modelClient.builtinProviderId,
             settings,
-            // OpenResponses: look up previous response ID from last assistant message
-            previousResponseId: modelClient.supportsResponses
-              ? updatedChat.messages
-                ?.filter((m: any) => m.role === "assistant" && m.previousResponseId)
-                ?.at(-1)
-                ?.previousResponseId ?? undefined
-              : undefined,
           });
 
           logger.log(
@@ -1441,21 +1434,6 @@ This conversation includes one or more image attachments. When the user uploads 
                       error,
                     );
                   });
-
-                // OpenResponses: capture and persist the response ID for multi-turn chaining
-                const openResponseId = (response as any)?.response?.id;
-                if (openResponseId) {
-                  void db
-                    .update(messages)
-                    .set({ previousResponseId: openResponseId })
-                    .where(eq(messages.id, placeholderAssistantMessage.id))
-                    .catch((error) => {
-                      logger.error(
-                        "Failed to save OpenResponses response ID",
-                        error,
-                      );
-                    });
-                }
 
                 logger.log(
                   `Total tokens used (aggregated for message ${placeholderAssistantMessage.id}): ${maxTokensUsed}`,

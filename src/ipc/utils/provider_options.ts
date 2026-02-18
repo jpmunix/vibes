@@ -20,8 +20,6 @@ export interface GetProviderOptionsParams {
   mentionedAppsCodebases: MentionedAppCodebase[];
   builtinProviderId: string | undefined;
   settings: UserSettings;
-  /** OpenResponses: chain conversation with previous response ID */
-  previousResponseId?: string;
 }
 
 /**
@@ -38,7 +36,6 @@ export function getProviderOptions({
   mentionedAppsCodebases,
   builtinProviderId,
   settings,
-  previousResponseId,
 }: GetProviderOptionsParams): Record<string, any> {
   const providerOptions: Record<string, any> = {
     "dyad-engine": {
@@ -56,8 +53,6 @@ export function getProviderOptions({
     "dyad-gateway": getExtraProviderOptions(builtinProviderId, settings),
     openai: {
       reasoningSummary: "auto",
-      ...(previousResponseId && { previousResponseId }),
-      ...(settings.reasoningEffort && { reasoningEffort: settings.reasoningEffort }),
     } satisfies OpenAIResponsesProviderOptions,
   };
 

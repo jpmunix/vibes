@@ -1,1 +1,0 @@
-ALTER TABLE `messages` ADD `previous_response_id` text;

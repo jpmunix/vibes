@@ -234,31 +234,6 @@ function ensureChatsPlanDataColumn(sqlite: Database.Database): void {
   }
 }
 
-/**
- * Ensure the previous_response_id column exists in messages table.
- * Migration 0042 adds this column for OpenResponses API multi-turn support.
- */
-function ensureMessagesPreviousResponseIdColumn(sqlite: Database.Database): void {
-  try {
-    const tableExists = sqlite
-      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages'`)
-      .get();
-    if (!tableExists) return;
-
-    const columns = sqlite
-      .prepare(`PRAGMA table_info(messages)`)
-      .all() as Array<{ name: string }>;
-    const columnNames = new Set(columns.map((c) => c.name));
-
-    if (!columnNames.has("previous_response_id")) {
-      logger.log("Adding missing 'previous_response_id' column to messages");
-      sqlite.exec(`ALTER TABLE \`messages\` ADD \`previous_response_id\` text`);
-    }
-  } catch (error) {
-    logger.error("Error ensuring messages previous_response_id column:", error);
-  }
-}
-
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -335,9 +310,6 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure chats has plan_data column (safety net for migration 0041)
       ensureChatsPlanDataColumn(sqlite);
-
-      // Ensure messages has previous_response_id column (safety net for migration 0042)
-      ensureMessagesPreviousResponseIdColumn(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });
