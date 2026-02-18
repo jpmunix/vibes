@@ -13,6 +13,10 @@ export interface ModelOption {
   tagColor?: string;
   maxOutputTokens?: number;
   contextWindow?: number;
+  pricingInput?: string;
+  pricingOutput?: string;
+  inputModalities?: string[];
+  outputModalities?: string[];
 }
 
 export const GPT_5_2_MODEL_NAME = "gpt-5.2";
@@ -214,6 +218,25 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
     },
   ],
 };
+
+export const DEFAULT_ENABLED_MODELS: string[] = [
+  "google/gemini-3-flash-preview",
+  "google/gemini-3-pro-preview",
+  "google/gemini-2.5-pro",
+  "google/gemini-2.5-flash",
+  "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-opus-4.6",
+  "openai/gpt-5.1-codex-mini",
+  "openai/gpt-4.1",
+  "openai/gpt-4.1-mini",
+  "openai/gpt-4.1-nano",
+  GPT_5_MINI,
+  "qwen/qwen-plus-2025-07-28",
+  "x-ai/grok-4.1-fast",
+  "moonshotai/kimi-k2.5",
+  "minimax/minimax-m2.5",
+  "x-ai/grok-code-fast-1",
+];
 
 export const FREE_OPENROUTER_MODEL_NAMES = MODEL_OPTIONS.openrouter
   .filter((model) => model.name.endsWith(":free"))

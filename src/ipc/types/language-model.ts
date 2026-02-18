@@ -32,6 +32,10 @@ export const LanguageModelSchema = z.object({
   temperature: z.number().optional(),
   dollarSigns: z.number().optional(),
   brainSigns: z.number().optional(),
+  pricingInput: z.string().optional(),
+  pricingOutput: z.string().optional(),
+  inputModalities: z.array(z.string()).optional(),
+  outputModalities: z.array(z.string()).optional(),
   type: z.enum(["custom", "local", "cloud"]).optional(),
 });
 

@@ -194,6 +194,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   },
   // AI Settings
   {
+    id: "enabled-models",
+    label: "Modelos habilitados",
+    description: "Gestiona qué modelos aparecen en el selector del chat",
+    keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
+    section: "Modelos e IA",
+    sectionId: "models-and-connectivity",
+  },
+  {
     id: "reasoning-effort",
     label: "Esfuerzo de razonamiento",
     description: "Controla cuánto razonamiento usa el modelo antes de responder",

@@ -1,6 +1,8 @@
 ## 🔥 Novedades Beta 4
 - Settings -> Esfuerzo de razonamiento para modelos que lo soportan. Hace un poco más fina la precisión de las respuestas en tareas de razonamiento complejo.
 - Poder visualizar las api keys de openrouter
+- Selector de modelos de openrouter dinámico. Ahora se pueden activar o desactivar desde settings los modelos preexistentes y añadir nuevos en un buscador de openrouter
+- En la modal de información de un modelo se muestra información de los costes y los parámetros de tipos de entrada y salida soportados
 
 ## 🔥 Novedades Principales (Acumulativa)
 

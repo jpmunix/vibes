@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AlertTriangle, PlusIcon, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateCustomModelDialog } from "@/components/CreateCustomModelDialog";
 import { EditCustomModelDialog } from "@/components/EditCustomModelDialog";
-import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider"; // Use the hook directly here
-import { useDeleteCustomModel } from "@/hooks/useDeleteCustomModel"; // Import the new hook
+import { ModelInfoDialog } from "@/components/ModelInfoDialog";
+import { AddModelDialog } from "@/components/settings/AddModelDialog";
+import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
+import { useDeleteCustomModel } from "@/hooks/useDeleteCustomModel";
+import { useSettings } from "@/hooks/useSettings";
+import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
+import { type LanguageModel } from "@/ipc/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,13 +39,18 @@ interface ModelsSectionProps {
 
 export function ModelsSection({ providerId }: ModelsSectionProps) {
   const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
+  const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
   const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
     useState(false);
   const [modelToDelete, setModelToDelete] = useState<string | null>(null);
   const [modelToEdit, setModelToEdit] = useState<any | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
   const queryClient = useQueryClient();
+  const { settings, updateSettings } = useSettings();
+
+  const enabledModelIds =
+    settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
 
   const invalidateModels = () => {
     queryClient.invalidateQueries({
@@ -50,7 +61,6 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
     });
   };
 
-  // Fetch custom models within this component now
   const {
     data: models,
     isLoading: modelsLoading,
@@ -59,14 +69,18 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
 
   const { mutate: deleteModel, isPending: isDeleting } = useDeleteCustomModel({
     onSuccess: () => {
-      // Optionally show a success toast here
       invalidateModels();
     },
     onError: (error: Error) => {
-      // Optionally show an error toast here
       console.error("Failed to delete model:", error);
     },
   });
+
+  // Only show enabled models
+  const enabledModels = useMemo(() => {
+    if (!models) return [];
+    return models.filter((m) => enabledModelIds.includes(m.apiName));
+  }, [models, enabledModelIds]);
 
   const handleDeleteClick = (modelApiName: string) => {
     setModelToDelete(modelApiName);
@@ -78,16 +92,6 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
     setIsEditModelDialogOpen(true);
   };
 
-  const handleModelClick = (modelApiName: string) => {
-    setSelectedModel(selectedModel === modelApiName ? null : modelApiName);
-  };
-
-  const handleModelDoubleClick = (model: any) => {
-    if (model.type === "custom") {
-      handleEditClick(model);
-    }
-  };
-
   const handleConfirmDelete = () => {
     if (modelToDelete) {
       deleteModel({ providerId, modelApiName: modelToDelete });
@@ -96,14 +100,27 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
     setIsConfirmDeleteDialogOpen(false);
   };
 
+  const handleToggleModel = (modelApiName: string, enabled: boolean) => {
+    const current = settings?.enabledOpenRouterModels ?? [
+      ...DEFAULT_ENABLED_MODELS,
+    ];
+    let newEnabled: string[];
+    if (enabled) {
+      newEnabled = [...current, modelApiName];
+    } else {
+      newEnabled = current.filter((id) => id !== modelApiName);
+    }
+    updateSettings({ enabledOpenRouterModels: newEnabled });
+  };
+
   return (
     <div className="mt-4">
       <h2 className="text-xl font-semibold mb-2">Modelos</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Administre modelos específicos disponibles a través de este proveedor.
+        Modelos habilitados en el selector del chat. Haz click en una tarjeta
+        para ver más detalles.
       </p>
 
-      {/* Custom Models List Area */}
       {modelsLoading && (
         <div className="space-y-3 mt-4">
           <Skeleton className="h-24 w-full rounded-lg" />
@@ -117,15 +134,13 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           <AlertDescription>{modelsError.message}</AlertDescription>
         </Alert>
       )}
-      {!modelsLoading && !modelsError && models && models.length > 0 && (
+      {!modelsLoading && !modelsError && enabledModels.length > 0 && (
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {models.map((model) => (
+          {enabledModels.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className={`p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md transition-shadow flex flex-col h-[180px] ${selectedModel === model.apiName ? "ring-2 ring-primary" : ""
-                }`}
-              onClick={() => handleModelClick(model.apiName)}
-              onDoubleClick={() => handleModelDoubleClick(model)}
+              className="p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:border-primary/30 transition-all flex flex-col h-[180px]"
+              onClick={() => setInfoModel(model)}
             >
               <div className="flex justify-between items-start gap-2">
                 <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-1">
@@ -179,49 +194,83 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                   {model.description}
                 </p>
               )}
-              <div className="flex flex-wrap gap-1 mt-auto pt-2">
-                {model.contextWindow && model.maxOutputTokens ? (
-                  <>
-                    <span className="inline-block bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      Contexto: {formatTokens(model.contextWindow)}
+              <div className="flex items-center justify-between mt-auto pt-2">
+                <div className="flex flex-wrap gap-1">
+                  {model.contextWindow && model.maxOutputTokens ? (
+                    <>
+                      <span className="inline-block bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        Contexto: {formatTokens(model.contextWindow)}
+                      </span>
+                      <span className="inline-block bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        Salida: {formatTokens(model.maxOutputTokens)}
+                      </span>
+                    </>
+                  ) : model.type === "custom" ? (
+                    <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      Personalizado
                     </span>
-                    <span className="inline-block bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      Salida: {formatTokens(model.maxOutputTokens)}
+                  ) : null}
+                  {model.tag && (
+                    <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      {model.tag}
                     </span>
-                  </>
-                ) : model.type === "custom" ? (
-                  <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                    Personalizado
-                  </span>
-                ) : null}
-                {model.tag && (
-                  <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                    {model.tag}
-                  </span>
-                )}
+                  )}
+                </div>
+                {/* Disable switch */}
+                <Switch
+                  checked={true}
+                  onCheckedChange={() =>
+                    handleToggleModel(model.apiName, false)
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-shrink-0 ml-2"
+                />
               </div>
             </div>
           ))}
         </div>
       )}
-      {!modelsLoading && !modelsError && (!models || models.length === 0) && (
-        <p className="text-muted-foreground mt-4">
-          No se han agregado modelos personalizados para este proveedor aún.
-        </p>
-      )}
-      {/* End Custom Models List Area */}
+      {!modelsLoading &&
+        !modelsError &&
+        enabledModels.length === 0 && (
+          <p className="text-muted-foreground mt-4">
+            No hay modelos habilitados. Usa "Añadir más modelos" para
+            activar algunos.
+          </p>
+        )}
 
       {providerId !== "auto" && (
-        <Button
-          onClick={() => setIsCustomModelDialogOpen(true)}
-          variant="outline"
-          className="mt-6"
-        >
-          <PlusIcon className="mr-2 h-4 w-4" /> Añadir modelo personalizado
-        </Button>
+        <div className="flex gap-3 mt-6">
+          <Button
+            onClick={() => setIsAddModelDialogOpen(true)}
+            variant="outline"
+          >
+            <PlusIcon className="mr-2 h-4 w-4" /> Añadir más modelos
+          </Button>
+          <Button
+            onClick={() => setIsCustomModelDialogOpen(true)}
+            variant="outline"
+          >
+            <PlusIcon className="mr-2 h-4 w-4" /> Modelo personalizado
+          </Button>
+        </div>
       )}
 
-      {/* Render the dialogs */}
+      {/* Model Info Dialog */}
+      {infoModel && (
+        <ModelInfoDialog
+          open={!!infoModel}
+          onOpenChange={(open) => !open && setInfoModel(null)}
+          model={infoModel}
+        />
+      )}
+
+      {/* Add Model Dialog (search OpenRouter models) */}
+      <AddModelDialog
+        open={isAddModelDialogOpen}
+        onOpenChange={setIsAddModelDialogOpen}
+      />
+
       <CreateCustomModelDialog
         isOpen={isCustomModelDialogOpen}
         onClose={() => setIsCustomModelDialogOpen(false)}

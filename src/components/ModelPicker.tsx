@@ -22,6 +22,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelInfoDialog } from "@/components/ModelInfoDialog";
+import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -152,41 +153,44 @@ export function ModelPicker() {
                 {/* OpenRouter section */}
                 {modelsByProviders["openrouter"] &&
                   modelsByProviders["openrouter"].length > 0 &&
-                  modelsByProviders["openrouter"]
-                    .filter((model) => {
-                      // Don't show free models if Dyad Pro is enabled because
-                      // we will use the paid models (in Dyad Pro backend) which
-                      // don't have the free limitations.
-                      if (
-                        isDyadProEnabled(settings) &&
-                        model.apiName.endsWith(":free")
-                      ) {
-                        return false;
-                      }
-                      return true;
-                    })
-                    .map((model) => (
-                      <DropdownMenuItem
-                        key={`openrouter-${model.apiName}`}
-                        className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
-                          selectedModel.name === model.apiName
-                          ? "bg-secondary"
-                          : ""
-                          }`}
-                        onClick={() => {
-                          const customModelId =
-                            model.type === "custom" ? model.id : undefined;
-                          onModelSelect({
-                            name: model.apiName,
-                            provider: "openrouter",
-                            customModelId,
-                          });
-                          setOpen(false);
-                        }}
-                      >
-                        <ModelItemContent model={model} onInfoClick={setInfoModel} />
-                      </DropdownMenuItem>
-                    ))}
+                  (() => {
+                    const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+                    return modelsByProviders["openrouter"]
+                      .filter((model) => {
+                        // Only show enabled models
+                        if (!enabledModels.includes(model.apiName)) return false;
+                        // Don't show free models if Dyad Pro is enabled
+                        if (
+                          isDyadProEnabled(settings) &&
+                          model.apiName.endsWith(":free")
+                        ) {
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((model) => (
+                        <DropdownMenuItem
+                          key={`openrouter-${model.apiName}`}
+                          className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
+                            selectedModel.name === model.apiName
+                            ? "bg-secondary"
+                            : ""
+                            }`}
+                          onClick={() => {
+                            const customModelId =
+                              model.type === "custom" ? model.id : undefined;
+                            onModelSelect({
+                              name: model.apiName,
+                              provider: "openrouter",
+                              customModelId,
+                            });
+                            setOpen(false);
+                          }}
+                        >
+                          <ModelItemContent model={model} onInfoClick={setInfoModel} />
+                        </DropdownMenuItem>
+                      ))
+                  })()}
               </>
             ))}
         </DropdownMenuContent>

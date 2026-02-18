@@ -11,6 +11,7 @@ import {
   MODEL_OPTIONS,
   PROVIDER_TO_ENV_VAR,
 } from "./language_model_constants";
+import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
 /**
  * Fetches language model providers from both the database (custom) and hardcoded constants (cloud),
  * merging them with custom providers taking precedence.
@@ -134,7 +135,25 @@ export async function getLanguageModels({
   // If it's a cloud provider, also get the hardcoded models
   let hardcodedModels: LanguageModel[] = [];
   if (provider.type === "cloud") {
-    if (providerId in MODEL_OPTIONS) {
+    if (providerId === "openrouter") {
+      // Dynamically fetch from OpenRouter API (cached)
+      const dynamicModels = await fetchOpenRouterModels();
+      if (dynamicModels.length > 0) {
+        hardcodedModels = dynamicModels.map((model) => ({
+          ...model,
+          apiName: model.name,
+          type: "cloud" as const,
+        }));
+      } else {
+        // Fallback to hardcoded models if API fetch fails
+        const fallback = MODEL_OPTIONS[providerId] || [];
+        hardcodedModels = fallback.map((model) => ({
+          ...model,
+          apiName: model.name,
+          type: "cloud" as const,
+        }));
+      }
+    } else if (providerId in MODEL_OPTIONS) {
       const models = MODEL_OPTIONS[providerId] || [];
       hardcodedModels = models.map((model) => ({
         ...model,

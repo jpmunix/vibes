@@ -28,6 +28,8 @@ export const MessageSchema = z.object({
   // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
   // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
   aiMessagesJson: z.any().nullable().optional(),
+  // OpenResponses API: response ID for multi-turn conversation chaining
+  previousResponseId: z.string().nullable().optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;
@@ -116,6 +118,8 @@ export const ChatResponseEndSchema = z.object({
   totalTokens: z.number().optional(),
   contextWindow: z.number().optional(),
   chatSummary: z.string().optional(),
+  // OpenResponses API: response ID from last response (for multi-turn chaining)
+  responseId: z.string().optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;
