@@ -35,8 +35,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableProSmartFilesContextMode: true,
   enableLocalSmartContext: true,
   enableMcpSmartContext: false,
-  enableTokenStats: true,
-  enableVerboseChatLogs: true,
+
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
   autoFixModel: {

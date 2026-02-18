@@ -32,6 +32,7 @@ export interface UserHeaderActionsProps {
     setIsBackupModalOpen?: (open: boolean) => void;
     handleLogout?: () => void;
     navigate?: any;
+    enableAllStatsAndLogs?: boolean;
 }
 
 export const UserHeaderActions = ({
@@ -41,6 +42,7 @@ export const UserHeaderActions = ({
     setIsBackupModalOpen,
     handleLogout,
     navigate,
+    enableAllStatsAndLogs,
 }: UserHeaderActionsProps) => {
     return (
         <TooltipProvider>
@@ -100,13 +102,15 @@ export const UserHeaderActions = ({
                                 <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-medium">Copias de seguridad</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="py-2 cursor-pointer focus:bg-accent"
-                                onClick={() => navigate?.({ to: "/settings/ai-query-logs" })}
-                            >
-                                <Database className="mr-3 h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Logs de Consultas IA</span>
-                            </DropdownMenuItem>
+                            {enableAllStatsAndLogs && (
+                                <DropdownMenuItem
+                                    className="py-2 cursor-pointer focus:bg-accent"
+                                    onClick={() => navigate?.({ to: "/settings/ai-query-logs" })}
+                                >
+                                    <Database className="mr-3 h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm font-medium">Logs de Consultas IA</span>
+                                </DropdownMenuItem>
+                            )}
 
                             <DropdownMenuItem
                                 className="py-2 cursor-pointer focus:bg-accent text-foreground"

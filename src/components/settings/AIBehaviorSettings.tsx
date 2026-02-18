@@ -19,10 +19,7 @@ export function AIBehaviorSettings({
   const navigate = useNavigate();
 
   const handleToggle = async (
-    field:
-      | "enableLocalSmartContext"
-      | "enableTokenStats"
-      | "enableVerboseChatLogs",
+    field: "enableLocalSmartContext",
     value: boolean,
   ) => {
     await updateSettings({ [field]: value } as any, { showToast: true });
@@ -99,40 +96,6 @@ export function AIBehaviorSettings({
               checked={settings?.enableLocalSmartContext !== false}
               onCheckedChange={(checked) =>
                 handleToggle("enableLocalSmartContext", checked)
-              }
-            />
-          </div>
-
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Métricas de tokens
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Guarda el historial de consumo para las estadísticas.
-              </p>
-            </div>
-            <Switch
-              checked={settings?.enableTokenStats !== false}
-              onCheckedChange={(checked) =>
-                handleToggle("enableTokenStats", checked)
-              }
-            />
-          </div>
-
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Logs verbosos
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Información técnica detallada en el panel de chat.
-              </p>
-            </div>
-            <Switch
-              checked={!!settings?.enableVerboseChatLogs}
-              onCheckedChange={(checked) =>
-                handleToggle("enableVerboseChatLogs", checked)
               }
             />
           </div>

@@ -467,7 +467,7 @@ export async function handleLocalAgentStream(
             placeholderMessageId,
           );
 
-          if (settings.enableTokenStats !== false) {
+          if (settings.enableAllStatsAndLogs && settings.enableTokenStats !== false) {
             logTokenUsage({
               chatId: ctx.chatId,
               messageId: placeholderMessageId,

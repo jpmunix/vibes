@@ -35,8 +35,8 @@ export async function logChatInternal(options: ChatLogOptions): Promise<void> {
   try {
     const settings = readSettings();
 
-    // Skip if verbose logging is disabled
-    if (!settings.enableVerboseChatLogs) {
+    // Skip if master stats switch or verbose logging is disabled
+    if (!settings.enableAllStatsAndLogs || !settings.enableVerboseChatLogs) {
       return;
     }
 

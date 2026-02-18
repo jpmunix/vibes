@@ -1457,7 +1457,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Persist simple token stats for charts/logs
-                if (settings.enableTokenStats !== false) {
+                if (settings.enableAllStatsAndLogs && settings.enableTokenStats !== false) {
                   logTokenUsage({
                     chatId: req.chatId,
                     messageId: placeholderAssistantMessage.id,

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
+import { useSettings } from "@/hooks/useSettings";
 import { DocumentationDialog } from "./DocumentationDialog";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import {
@@ -105,6 +106,7 @@ export function AppSidebar() {
   // User avatar state
   const user = useAtomValue(userAtom);
   const { navigate } = useRouter();
+  const { settings } = useSettings();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
@@ -272,13 +274,15 @@ export function AppSidebar() {
                       <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Copias de seguridad</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="py-2 cursor-pointer focus:bg-accent"
-                      onClick={() => navigate({ to: "/settings/ai-query-logs" })}
-                    >
-                      <Database className="mr-3 h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Logs de Consultas IA</span>
-                    </DropdownMenuItem>
+                    {settings?.enableAllStatsAndLogs && (
+                      <DropdownMenuItem
+                        className="py-2 cursor-pointer focus:bg-accent"
+                        onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+                      >
+                        <Database className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Logs de Consultas IA</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       className="py-2 cursor-pointer focus:bg-accent text-foreground"
                       onClick={handleLogout}

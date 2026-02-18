@@ -268,16 +268,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Guardar métricas de tokens",
     description: "Guardar uso de tokens para logs y gráficas",
     keywords: ["tokens", "metricas", "estadisticas", "stats", "uso"],
-    section: "Configuración Asistente",
-    sectionId: "ai-behavior",
+    section: "Estadísticas",
+    sectionId: "stats-settings",
   },
   {
     id: "verbose-logs",
     label: "Logs verbosos de chat",
     description: "Registrar información detallada del chat para debugging",
     keywords: ["logs", "verboso", "debug", "debugging", "detallado", "chat"],
-    section: "Configuración Asistente",
-    sectionId: "ai-behavior",
+    section: "Estadísticas",
+    sectionId: "stats-settings",
   },
   // Stats
   {
@@ -1150,13 +1150,17 @@ export function WorkflowSettings({
 
 function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   const navigate = useNavigate();
+  const { settings, updateSettings } = useSettings();
   const [entries, setEntries] = useState<TokenStatEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<TokenStatEntry | null>(
     null,
   );
 
+  const allStatsEnabled = !!settings?.enableAllStatsAndLogs;
+
   const load = async () => {
+    if (!allStatsEnabled) return;
     setLoading(true);
     try {
       const data = await tokenStatsClient.getTokenStats();
@@ -1169,8 +1173,12 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
   };
 
   useEffect(() => {
-    void load();
-  }, []);
+    if (allStatsEnabled) {
+      void load();
+    } else {
+      setEntries([]);
+    }
+  }, [allStatsEnabled]);
 
   // Calculate total stats
   const totalStats = entries.reduce(
@@ -1217,6 +1225,17 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
 
   const maxModelTokens = Math.max(...modelStats.map((m) => m.tokens), 1);
 
+  const handleToggleMaster = async (checked: boolean) => {
+    await updateSettings({ enableAllStatsAndLogs: checked } as any, { showToast: true });
+  };
+
+  const handleToggleSubSetting = async (
+    field: "enableTokenStats" | "enableVerboseChatLogs",
+    value: boolean,
+  ) => {
+    await updateSettings({ [field]: value } as any, { showToast: true });
+  };
+
   return (
     <div
       id="stats-settings"
@@ -1227,371 +1246,433 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           : "",
       )}
     >
-      <div className="flex items-center justify-between mb-12">
+      {/* Header with master switch */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Estadísticas Globales
+            Estadísticas y Logs
           </h2>
           <p className="text-base text-muted-foreground mt-1">
-            Uso de tokens en todos los chats registrados
+            Controla el registro de métricas, estadísticas y logs de la aplicación.
           </p>
-        </div>
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
-            onClick={() => {
-              const header = [
-                "timestamp",
-                "chatId",
-                "messageId",
-                "totalTokens",
-                "promptTokens",
-                "completionTokens",
-                "model",
-                "filesSent",
-                "toolsUsed",
-              ].join(",");
-              const lines = entries.map((e) =>
-                [
-                  new Date(e.timestamp).toISOString(),
-                  e.chatId,
-                  e.messageId,
-                  e.totalTokens,
-                  e.promptTokens ?? "",
-                  e.completionTokens ?? "",
-                  e.model ?? "",
-                  (e.filesSent || []).join("|"),
-                  (e.toolsUsed || []).join("|"),
-                ].join(","),
-              );
-              const csv = [header, ...lines].join("\n");
-              const blob = new Blob([csv], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "token-stats.csv";
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Exportar CSV
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="rounded-xl h-10 px-4 font-bold text-primary hover:text-primary hover:bg-primary/5 border border-primary/20"
-            onClick={() => navigate({ to: "/settings/ai-query-logs" })}
-          >
-            <Database className="mr-2 h-4 w-4" />
-            Inspeccionar Logs de IA
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={load}
-            disabled={loading}
-            className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
-          >
-            {loading ? "Cargando..." : "Refrescar"}
-          </Button>
         </div>
       </div>
 
-      {entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <TrendingUp className="text-muted-foreground/20 mb-6" size={64} />
-          <p className="text-xl font-semibold text-gray-900 dark:text-white">
-            Aún no hay datos
-          </p>
-          <p className="text-base text-muted-foreground mt-2">
-            Envía un mensaje para registrar tus estadísticas de uso
+      {/* Master Switch */}
+      <div className="p-6 rounded-2xl bg-muted/30 border border-border flex items-center justify-between gap-4">
+        <div>
+          <Label className="text-base font-bold text-gray-900 dark:text-white">
+            Activar todas las estadísticas y logs
+          </Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            Activa o desactiva todo el sistema de métricas, logs y estadísticas.
+            Desactivarlo mejora el rendimiento.
           </p>
         </div>
-      ) : (
-        <div className="space-y-12">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <Zap className="text-primary" size={20} />
-                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                  Total
-                </span>
+        <Switch
+          checked={allStatsEnabled}
+          onCheckedChange={handleToggleMaster}
+        />
+      </div>
+
+      {/* Everything below only shows when master switch is ON */}
+      {allStatsEnabled && (
+        <div className="mt-8 space-y-12">
+          {/* Sub-setting toggles (moved from AI Behavior) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
+              <div>
+                <Label className="text-base font-bold text-gray-900 dark:text-white">
+                  Métricas de tokens
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Guarda el historial de consumo para las estadísticas.
+                </p>
               </div>
-              <p className="text-4xl font-black text-gray-900 dark:text-white">
-                {totalStats.total.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                tokens en {entries.length} mensajes
-              </p>
+              <Switch
+                checked={settings?.enableTokenStats !== false}
+                onCheckedChange={(checked) =>
+                  handleToggleSubSetting("enableTokenStats", checked)
+                }
+              />
             </div>
 
-            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <TrendingUp className="text-primary" size={20} />
-                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                  Entrada
-                </span>
+            <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
+              <div>
+                <Label className="text-base font-bold text-gray-900 dark:text-white">
+                  Logs verbosos
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Información técnica detallada en el panel de chat.
+                </p>
               </div>
-              <p className="text-4xl font-black text-gray-900 dark:text-white">
-                {totalStats.input.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                tokens de prompt (contexto)
-              </p>
-            </div>
-
-            <div className="bg-muted/30 rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-3 mb-4">
-                <TrendingUp className="text-primary" size={20} />
-                <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
-                  Salida
-                </span>
-              </div>
-              <p className="text-4xl font-black text-gray-900 dark:text-white">
-                {totalStats.output.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                tokens generados por la IA
-              </p>
+              <Switch
+                checked={!!settings?.enableVerboseChatLogs}
+                onCheckedChange={(checked) =>
+                  handleToggleSubSetting("enableVerboseChatLogs", checked)
+                }
+              />
             </div>
           </div>
 
-          {/* Hourly Chart */}
-          {hourlyStats.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <Clock className="text-muted-foreground/60" size={20} />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Uso por Hora
-                </h3>
-              </div>
-              <div className="space-y-4 p-8 rounded-2xl bg-muted/30 border border-border">
-                {hourlyStats.map((stat) => (
-                  <div key={stat.hour} className="flex items-center gap-6">
-                    <span className="text-sm font-mono font-bold text-muted-foreground w-16">
-                      {stat.hour}
+          {/* Action buttons */}
+          <div className="flex gap-4 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
+              onClick={() => {
+                const header = [
+                  "timestamp",
+                  "chatId",
+                  "messageId",
+                  "totalTokens",
+                  "promptTokens",
+                  "completionTokens",
+                  "model",
+                  "filesSent",
+                  "toolsUsed",
+                ].join(",");
+                const lines = entries.map((e) =>
+                  [
+                    new Date(e.timestamp).toISOString(),
+                    e.chatId,
+                    e.messageId,
+                    e.totalTokens,
+                    e.promptTokens ?? "",
+                    e.completionTokens ?? "",
+                    e.model ?? "",
+                    (e.filesSent || []).join("|"),
+                    (e.toolsUsed || []).join("|"),
+                  ].join(","),
+                );
+                const csv = [header, ...lines].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "token-stats.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Exportar CSV
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-xl h-10 px-4 font-bold text-primary hover:text-primary hover:bg-primary/5 border border-primary/20"
+              onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+            >
+              <Database className="mr-2 h-4 w-4" />
+              Inspeccionar Logs de IA
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={load}
+              disabled={loading}
+              className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
+            >
+              {loading ? "Cargando..." : "Refrescar"}
+            </Button>
+          </div>
+
+          {entries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <TrendingUp className="text-muted-foreground/20 mb-6" size={64} />
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                Aún no hay datos
+              </p>
+              <p className="text-base text-muted-foreground mt-2">
+                Envía un mensaje para registrar tus estadísticas de uso
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-12">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Zap className="text-primary" size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                      Total
                     </span>
-                    <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-[width] duration-300 flex items-center justify-end pr-4"
-                        style={{
-                          width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
-                        }}
-                      >
-                        {stat.tokens > maxHourlyTokens * 0.3 && (
-                          <span className="text-[10px] font-black text-primary-foreground uppercase tracking-widest">
+                  </div>
+                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                    {totalStats.total.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    tokens en {entries.length} mensajes
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+                  <div className="flex items-center gap-3 mb-4">
+                    <TrendingUp className="text-primary" size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                      Entrada
+                    </span>
+                  </div>
+                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                    {totalStats.input.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    tokens de prompt (contexto)
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 rounded-2xl p-6 border border-border">
+                  <div className="flex items-center gap-3 mb-4">
+                    <TrendingUp className="text-primary" size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">
+                      Salida
+                    </span>
+                  </div>
+                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                    {totalStats.output.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    tokens generados por la IA
+                  </p>
+                </div>
+              </div>
+
+              {/* Hourly Chart */}
+              {hourlyStats.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <Clock className="text-muted-foreground/60" size={20} />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Uso por Hora
+                    </h3>
+                  </div>
+                  <div className="space-y-4 p-8 rounded-2xl bg-muted/30 border border-border">
+                    {hourlyStats.map((stat) => (
+                      <div key={stat.hour} className="flex items-center gap-6">
+                        <span className="text-sm font-mono font-bold text-muted-foreground w-16">
+                          {stat.hour}
+                        </span>
+                        <div className="flex-1 h-8 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-[width] duration-300 flex items-center justify-end pr-4"
+                            style={{
+                              width: `${(stat.tokens / maxHourlyTokens) * 100}%`,
+                            }}
+                          >
+                            {stat.tokens > maxHourlyTokens * 0.3 && (
+                              <span className="text-[10px] font-black text-primary-foreground uppercase tracking-widest">
+                                {stat.tokens.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {stat.tokens <= maxHourlyTokens * 0.3 && (
+                          <span className="text-sm font-bold text-foreground w-24">
                             {stat.tokens.toLocaleString()}
                           </span>
                         )}
-                      </div>
-                    </div>
-                    {stat.tokens <= maxHourlyTokens * 0.3 && (
-                      <span className="text-sm font-bold text-foreground w-24">
-                        {stat.tokens.toLocaleString()}
-                      </span>
-                    )}
-                    <span className="text-xs font-bold text-muted-foreground/40 w-24 text-right">
-                      {stat.count} msgs
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Top Models and Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Top Models */}
-            <div className="space-y-6 flex flex-col h-full">
-              <div className="flex items-center gap-3">
-                <Sparkles className="text-muted-foreground/60" size={20} />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Top Modelos
-                </h3>
-              </div>
-              <div className="space-y-6 p-6 rounded-2xl bg-muted/30 border border-border h-full overflow-hidden">
-                {modelStats.map((stat, idx) => (
-                  <div key={stat.model} className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest flex-shrink-0">
-                          #{idx + 1}
+                        <span className="text-xs font-bold text-muted-foreground/40 w-24 text-right">
+                          {stat.count} msgs
                         </span>
-                        <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                          {stat.model}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Top Models and Recent Activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {/* Top Models */}
+                <div className="space-y-6 flex flex-col h-full">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="text-muted-foreground/60" size={20} />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Top Modelos
+                    </h3>
+                  </div>
+                  <div className="space-y-6 p-6 rounded-2xl bg-muted/30 border border-border h-full overflow-hidden">
+                    {modelStats.map((stat, idx) => (
+                      <div key={stat.model} className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest flex-shrink-0">
+                              #{idx + 1}
+                            </span>
+                            <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                              {stat.model}
+                            </div>
+                          </div>
+                          <span className="text-sm font-black text-primary/80 flex-shrink-0">
+                            {stat.tokens.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-[width] duration-300"
+                            style={{
+                              width: `${(stat.tokens / maxModelTokens) * 100}%`,
+                            }}
+                          />
                         </div>
                       </div>
-                      <span className="text-sm font-black text-primary/80 flex-shrink-0">
-                        {stat.tokens.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-[width] duration-300"
-                        style={{
-                          width: `${(stat.tokens / maxModelTokens) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Recent Activity */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <TrendingUp className="text-muted-foreground/60" size={20} />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                  Actividad Reciente
-                </h3>
-              </div>
-              <div className="space-y-3 p-4 rounded-2xl bg-muted/30 border border-border max-h-[460px] overflow-y-auto">
-                {entries.slice(0, 10).map((entry) => (
-                  <button
-                    key={`${entry.timestamp}-${entry.messageId}`}
-                    onClick={() => setSelectedEntry(entry)}
-                    className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-border group shadow-none hover:shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                        Chat #{entry.chatId} · {entry.model || "IA"}
-                      </span>
-                      <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-                        {formatDistanceToNow(new Date(entry.timestamp), {
-                          addSuffix: true,
-                          locale: es,
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-[width]"
-                          style={{
-                            width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-black text-gray-900 dark:text-white">
-                        {entry.totalTokens.toLocaleString()}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Details Dialog */}
-      <Dialog
-        open={!!selectedEntry}
-        onOpenChange={() => setSelectedEntry(null)}
-      >
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles del Token Stat</DialogTitle>
-          </DialogHeader>
-          {selectedEntry && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Chat ID
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                    #{selectedEntry.chatId}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Message ID
-                  </label>
-                  <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                    {selectedEntry.messageId}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Total Tokens
-                  </label>
-                  <p className="text-2xl font-bold text-primary mt-1">
-                    {selectedEntry.totalTokens.toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Input Tokens
-                  </label>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                    {selectedEntry.promptTokens?.toLocaleString() ?? "?"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Output Tokens
-                  </label>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
-                    {selectedEntry.completionTokens?.toLocaleString() ?? "?"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Modelo
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                  {selectedEntry.model || "unknown"}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Timestamp
-                </label>
-                <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                  {new Date(selectedEntry.timestamp).toLocaleString()}
-                </p>
-              </div>
-              {selectedEntry.filesSent &&
-                selectedEntry.filesSent.length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Archivos Enviados ({selectedEntry.filesSent.length})
-                    </label>
-                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-2 overflow-x-auto max-h-40">
-                      {selectedEntry.filesSent.join("\n")}
-                    </pre>
+                {/* Recent Activity */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <TrendingUp className="text-muted-foreground/60" size={20} />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Actividad Reciente
+                    </h3>
                   </div>
-                )}
-              {selectedEntry.toolsUsed &&
-                selectedEntry.toolsUsed.length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Herramientas Usadas
-                    </label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {selectedEntry.toolsUsed.map((tool) => (
-                        <span
-                          key={tool}
-                          className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        >
-                          {tool}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="space-y-3 p-4 rounded-2xl bg-muted/30 border border-border max-h-[460px] overflow-y-auto">
+                    {entries.slice(0, 10).map((entry) => (
+                      <button
+                        key={`${entry.timestamp}-${entry.messageId}`}
+                        onClick={() => setSelectedEntry(entry)}
+                        className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-border group shadow-none hover:shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                            Chat #{entry.chatId} · {entry.model || "IA"}
+                          </span>
+                          <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                            {formatDistanceToNow(new Date(entry.timestamp), {
+                              addSuffix: true,
+                              locale: es,
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-[width]"
+                              style={{
+                                width: `${(entry.totalTokens / Math.max(...entries.map((e) => e.totalTokens))) * 100}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-black text-gray-900 dark:text-white">
+                            {entry.totalTokens.toLocaleString()}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                )}
+                </div>
+              </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+
+          {/* Details Dialog */}
+          <Dialog
+            open={!!selectedEntry}
+            onOpenChange={() => setSelectedEntry(null)}
+          >
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Detalles del Token Stat</DialogTitle>
+              </DialogHeader>
+              {selectedEntry && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Chat ID
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                        #{selectedEntry.chatId}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Message ID
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                        {selectedEntry.messageId}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Total Tokens
+                      </label>
+                      <p className="text-2xl font-bold text-primary mt-1">
+                        {selectedEntry.totalTokens.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Input Tokens
+                      </label>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                        {selectedEntry.promptTokens?.toLocaleString() ?? "?"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Output Tokens
+                      </label>
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+                        {selectedEntry.completionTokens?.toLocaleString() ?? "?"}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Modelo
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                      {selectedEntry.model || "unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Timestamp
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                      {new Date(selectedEntry.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  {selectedEntry.filesSent &&
+                    selectedEntry.filesSent.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Archivos Enviados ({selectedEntry.filesSent.length})
+                        </label>
+                        <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-2 overflow-x-auto max-h-40">
+                          {selectedEntry.filesSent.join("\n")}
+                        </pre>
+                      </div>
+                    )}
+                  {selectedEntry.toolsUsed &&
+                    selectedEntry.toolsUsed.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Herramientas Usadas
+                        </label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {selectedEntry.toolsUsed.map((tool) => (
+                            <span
+                              key={tool}
+                              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                            >
+                              {tool}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
     </div>
   );
 }

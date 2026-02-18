@@ -358,6 +358,8 @@ export const UserSettingsSchema = z
     enableTokenStats: z.boolean().optional(),
     // Enable verbose internal chat logs (debugging/diagnostics)
     enableVerboseChatLogs: z.boolean().optional(),
+    // Master switch: enable all stats, logs, and metrics (default off for performance)
+    enableAllStatsAndLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
     // Control GitHub auto-commit behavior

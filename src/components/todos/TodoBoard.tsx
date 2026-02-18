@@ -9,7 +9,6 @@ import {
   useSensors,
   closestCenter,
   closestCorners,
-  defaultDropAnimationSideEffects,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -479,17 +478,7 @@ export function TodoBoard({
               })}
             </SortableContext>
 
-            <DragOverlay
-              dropAnimation={{
-                sideEffects: defaultDropAnimationSideEffects({
-                  styles: {
-                    active: {
-                      opacity: "0.5",
-                    },
-                  },
-                }),
-              }}
-            >
+            <DragOverlay dropAnimation={null}>
               {activeId && activeType === "todo" && activeTodo ? (
                 <div className="w-[420px] opacity-90 rotate-1">
                   <SortableTodoItem
