@@ -341,6 +341,7 @@ export const UserSettingsSchema = z
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
+    reasoningEffort: z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]).optional(),
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),

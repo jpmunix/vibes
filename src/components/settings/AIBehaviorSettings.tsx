@@ -2,7 +2,7 @@ import React from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
+import { ReasoningEffortSelector } from "@/components/ReasoningEffortSelector";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { cn } from "@/lib/utils";
@@ -51,10 +51,10 @@ export function AIBehaviorSettings({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="space-y-4">
             <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Presupuesto de pensamiento
+              Esfuerzo de razonamiento
             </Label>
-            <div className="p-1 rounded-2xl p-5 bg-muted/30 border border-border w-fit">
-              <ThinkingBudgetSelector />
+            <div className="rounded-2xl p-5 bg-muted/30 border border-border w-fit">
+              <ReasoningEffortSelector />
             </div>
           </div>
 

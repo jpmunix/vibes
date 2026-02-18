@@ -1,4 +1,8 @@
-## 🔥 Novedades Principales
+## 🔥 Novedades Beta 4
+- Settings -> Esfuerzo de razonamiento para modelos que lo soportan. Hace un poco más fina la precisión de las respuestas en tareas de razonamiento complejo.
+- Poder visualizar las api keys de openrouter
+
+## 🔥 Novedades Principales (Acumulativa)
 
 Hemos enfocado nuestros esfuerzos en potenciar vuestra creatividad, facilitar vuestro flujo de trabajo y optimizar el rendimiento general de la aplicación.
 

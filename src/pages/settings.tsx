@@ -14,7 +14,7 @@ import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
 import { AutoApproveSwitch } from "@/components/AutoApproveSwitch";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
-import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
+
 import { useSettings } from "@/hooks/useSettings";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { Button } from "@/components/ui/button";
@@ -194,10 +194,10 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   },
   // AI Settings
   {
-    id: "thinking-budget",
-    label: "Presupuesto de pensamiento",
-    description: "Configurar el presupuesto de tokens para el modo thinking",
-    keywords: ["thinking", "pensamiento", "presupuesto", "tokens", "budget"],
+    id: "reasoning-effort",
+    label: "Esfuerzo de razonamiento",
+    description: "Controla cuánto razonamiento usa el modelo antes de responder",
+    keywords: ["reasoning", "effort", "esfuerzo", "razonamiento", "thinking", "openrouter"],
     section: "Configuración Asistente",
     sectionId: "ai-behavior",
   },
@@ -593,99 +593,104 @@ export default function SettingsPage() {
       id="settings-scroll-container"
       className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto"
     >
-      <div className="w-full mx-auto px-8 pt-12 pb-12">
-        <div className="flex justify-between items-center mb-12 gap-4">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-            Ajustes
-          </h1>
+      {/* Sticky header bar */}
+      <div className="sticky top-0 z-20 bg-muted/80 backdrop-blur-xl border-b border-border/50">
+        <div className="w-full mx-auto px-8 py-4">
+          <div className="flex justify-between items-center gap-4">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+              Ajustes
+            </h1>
 
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Buscar ajustes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 bg-card/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
-            />
-            {searchQuery && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar ajustes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 bg-card/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Export/Import Buttons */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleExportSettings}
               >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+                <Download className="w-4 h-4" />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleImportSettings}
+              >
+                <Upload className="w-4 h-4" />
+                Importar
+              </Button>
+            </div>
           </div>
 
-          {/* Export/Import Buttons */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleExportSettings}
-            >
-              <Download className="w-4 h-4" />
-              Exportar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleImportSettings}
-            >
-              <Upload className="w-4 h-4" />
-              Importar
-            </Button>
-          </div>
+          {/* Search Results Dropdown */}
+          {searchQuery && (
+            <div className="mt-4 bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+              {searchResults.length > 0 ? (
+                <div className="p-2">
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      onClick={() => {
+                        handleSearchResultClick(result.sectionId);
+                        clearSearch();
+                      }}
+                      className="w-full text-left p-4 rounded-xl hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-medium text-gray-900 dark:text-white">
+                            {result.label}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {result.description}
+                          </div>
+                        </div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-primary/60 whitespace-nowrap">
+                          {result.section}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-12 text-center">
+                  <Search className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    No se encontraron ajustes
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Intenta con otros términos de búsqueda
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Search Results Dropdown */}
-        {searchQuery && (
-          <div className="mb-12 bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-            {searchResults.length > 0 ? (
-              <div className="p-2">
-                {searchResults.map((result) => (
-                  <button
-                    key={result.id}
-                    onClick={() => {
-                      handleSearchResultClick(result.sectionId);
-                      clearSearch();
-                    }}
-                    className="w-full text-left p-4 rounded-xl hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-medium text-gray-900 dark:text-white">
-                          {result.label}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          {result.description}
-                        </div>
-                      </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-primary/60 whitespace-nowrap">
-                        {result.section}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="p-12 text-center">
-                <Search className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-lg font-medium text-gray-900 dark:text-white">
-                  No se encontraron ajustes
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Intenta con otros términos de búsqueda
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
+      <div className="w-full mx-auto px-8 pt-8 pb-12">
         <div className="space-y-12 pb-24">
           <GeneralSettings
             appVersion={appVersion}

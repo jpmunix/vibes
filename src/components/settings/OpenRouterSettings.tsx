@@ -26,6 +26,8 @@ import {
   Plus,
   ExternalLink,
   MoreVertical,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,6 +70,7 @@ export function OpenRouterSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
+  const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(new Set());
 
   // Cast to any to access new custom properties if TS doesn't pick them up immediately
   const openRouterSettings = settings?.providerSettings?.[providerId] as any;
@@ -285,9 +288,35 @@ export function OpenRouterSettings({
                               {key.alias || "Sin nombre"}
                             </p>
                           </div>
-                          <p className="text-xs font-mono text-muted-foreground truncate">
-                            {key.key.value.substring(0, 8)}...{key.key.value.substring(key.key.value.length - 4)}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-mono text-muted-foreground truncate">
+                              {visibleKeyIds.has(key.id)
+                                ? key.key.value
+                                : `${key.key.value.substring(0, 8)}...${key.key.value.substring(key.key.value.length - 4)}`}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVisibleKeyIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(key.id)) {
+                                    next.delete(key.id);
+                                  } else {
+                                    next.add(key.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className="shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                              title={visibleKeyIds.has(key.id) ? "Ocultar clave" : "Mostrar clave"}
+                            >
+                              {visibleKeyIds.has(key.id) ? (
+                                <EyeOff className="h-3.5 w-3.5" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
 
