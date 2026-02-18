@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Todo, TodoSection } from "@/ipc/types";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { TodoColumn } from "./TodoColumn";
 import { SortableTodoItem } from "./TodoItem";
 import { TodoEditModal } from "./TodoEditModal";
@@ -85,6 +85,51 @@ export function TodoBoard({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
   const dragStartSectionOrder = useRef<string[]>([]);
+
+  // --- Drag-to-scroll (grab & pan) on the board background ---
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingScroll = useRef(false);
+  const dragStartX = useRef(0);
+  const scrollStartX = useRef(0);
+  const [isGrabbing, setIsGrabbing] = useState(false);
+
+  const handleScrollMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    // Only activate when clicking directly on the scroll container or the inner flex wrapper
+    const target = e.target as HTMLElement;
+    const isContainer = target === container;
+    const isInnerWrapper = target.hasAttribute('data-board-scroll-area');
+    if (!isContainer && !isInnerWrapper) return;
+    // Don't activate on right-click or middle-click
+    if (e.button !== 0) return;
+
+    isDraggingScroll.current = true;
+    dragStartX.current = e.clientX;
+    scrollStartX.current = container.scrollLeft;
+    setIsGrabbing(true);
+    e.preventDefault();
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingScroll.current || !scrollContainerRef.current) return;
+      const dx = e.clientX - dragStartX.current;
+      scrollContainerRef.current.scrollLeft = scrollStartX.current - dx;
+    };
+    const handleMouseUp = () => {
+      if (isDraggingScroll.current) {
+        isDraggingScroll.current = false;
+        setIsGrabbing(false);
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   // Initialize and sync cloned items
   useEffect(() => {
@@ -423,8 +468,13 @@ export function TodoBoard({
         )}
       </div>
 
-      <div className="flex-1 overflow-x-auto min-h-0">
-        <div className="flex gap-4 h-full pb-4 items-start">
+      <div
+        ref={scrollContainerRef}
+        className={`flex-1 overflow-x-auto min-h-0 ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}`}
+        onMouseDown={handleScrollMouseDown}
+        style={{ userSelect: isGrabbing ? 'none' : undefined }}
+      >
+        <div className="flex gap-4 h-full pb-4 items-start" data-board-scroll-area>
           <DndContext
             sensors={sensors}
             collisionDetection={(args) => {

@@ -6,6 +6,7 @@ import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
 import log from "electron-log";
+import { copyScaffoldNodeModules } from "../utils/scaffold_cache";
 
 const logger = log.scope("createFromTemplate");
 
@@ -28,6 +29,8 @@ export async function createFromTemplate({
     );
     // Sustituir wildcards en la plantilla
     await replaceTemplateWildcards(fullAppPath, appName);
+    // Copy pre-cached node_modules for instant startup
+    await copyScaffoldNodeModules(fullAppPath);
     return;
   }
 
@@ -39,6 +42,8 @@ export async function createFromTemplate({
   await copyRepoToApp(repoCachePath, fullAppPath);
   // También sustituir wildcards en templates de GitHub
   await replaceTemplateWildcards(fullAppPath, appName);
+  // Copy pre-cached node_modules (only matches scaffold deps, but still speeds things up)
+  await copyScaffoldNodeModules(fullAppPath);
 }
 
 async function replaceTemplateWildcards(

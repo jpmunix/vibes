@@ -3,6 +3,8 @@
 - Poder visualizar las api keys de openrouter
 - Selector de modelos de openrouter dinámico. Ahora se pueden activar o desactivar desde settings los modelos preexistentes y añadir nuevos en un buscador de openrouter
 - En la modal de información de un modelo se muestra información de los costes y los parámetros de tipos de entrada y salida soportados
+- Mejoras a la hora de crear apps nuevas
+- Mejoras en "Tareas"
 
 ## 🔥 Novedades Principales (Acumulativa)
 

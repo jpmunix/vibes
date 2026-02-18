@@ -1499,7 +1499,7 @@ async function handleGenerateCommitMessage(
     const settings = readSettings();
 
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
     const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
     if (!app) {

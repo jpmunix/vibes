@@ -2487,14 +2487,17 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+
+    logger.info(`[AppTitle] Generating short title with model: ${model}`);
+    logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
 
     try {
       const data = await openRouterCompletion({
         model,
         title: "app-title-short",
         temperature: 0.3,
-        max_tokens: 20,
+        max_tokens: 30,
         messages: [
           {
             role: "system",
@@ -2507,15 +2510,21 @@ export function registerAppHandlers() {
         ],
       });
 
-      const title =
-        data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+      const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+      if (!rawTitle) {
+        const fallback = generateCuteAppName();
+        logger.warn(`[AppTitle] API returned empty title, using fallback: "${fallback}"`);
+        return { title: fallback };
+      }
 
       // Sanitize title (remove quotes, etc)
-      const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 30);
+      const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 30);
+      logger.info(`[AppTitle] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
       return { title: sanitizedTitle };
     } catch (error) {
-      logger.error("Error generating app title:", error);
-      return { title: generateCuteAppName() };
+      const fallback = generateCuteAppName();
+      logger.error(`[AppTitle] Error generating title, using fallback: "${fallback}"`, error);
+      return { title: fallback };
     }
   });
 
@@ -2531,7 +2540,9 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+        settings.appTitleGenerationModel || "openai/gpt-4.1-mini";
+
+      logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 
       try {
         // Fetch the first user message where they define what they want
@@ -2546,16 +2557,19 @@ export function registerAppHandlers() {
           .limit(1);
 
         if (!firstUserMessage.length) {
-          return { title: generateCuteAppName() };
+          const fallback = generateCuteAppName();
+          logger.warn(`[AppNamePro] No user message found for appId=${appId}, using fallback: "${fallback}"`);
+          return { title: fallback };
         }
 
         const userPrompt = firstUserMessage[0].content;
+        logger.info(`[AppNamePro] User prompt: "${userPrompt.slice(0, 100)}${userPrompt.length > 100 ? '...' : ''}"`);
 
         const data = await openRouterCompletion({
           model,
           title: "app-name-pro",
-          temperature: 0.3,
-          max_tokens: 20,
+          temperature: 0.5,
+          max_tokens: 30,
           messages: [
             {
               role: "system",
@@ -2568,15 +2582,22 @@ export function registerAppHandlers() {
           ],
         });
 
-        const title =
-          data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+        const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+        logger.info(`[AppNamePro] API response: data=${data ? 'present' : 'null'}, choices=${data?.choices?.length ?? 'none'}, content="${rawTitle ?? '<empty>'}", finish_reason=${data?.choices?.[0]?.finish_reason ?? 'unknown'}`);
+        if (!rawTitle) {
+          const fallback = generateCuteAppName();
+          logger.warn(`[AppNamePro] API returned empty name, using fallback: "${fallback}". Full response: ${JSON.stringify(data)?.slice(0, 500)}`);
+          return { title: fallback };
+        }
 
         // Sanitize title
-        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 40);
+        const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 40);
+        logger.info(`[AppNamePro] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
         return { title: sanitizedTitle };
       } catch (error) {
-        logger.error("Error generating app title from history:", error);
-        return { title: generateCuteAppName() };
+        const fallback = generateCuteAppName();
+        logger.error(`[AppNamePro] Error generating name for appId=${appId}, using fallback: "${fallback}"`, error);
+        return { title: fallback };
       }
     },
   );

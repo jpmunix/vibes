@@ -15,6 +15,7 @@ import {
   FileSearch,
   Wand2,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 
 import { useRef } from "react";
@@ -40,6 +41,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   build_system_postfix: <Terminal className="w-4 h-4" />,
   summarize_chat_system: <Lightbulb className="w-4 h-4" />,
   agent_mode_system: <Search className="w-4 h-4" />,
+  plan_mode_system: <ClipboardList className="w-4 h-4" />,
   turbo_edit_system: <Zap className="w-4 h-4" />,
   app_title_short: <Sparkles className="w-4 h-4" />,
   app_name_pro: <ShieldCheck className="w-4 h-4" />,

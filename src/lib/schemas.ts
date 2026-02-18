@@ -476,7 +476,6 @@ export function getEffectiveDefaultChatMode(
   }
 
   // No explicit default set - default to "build"
-  // (plan mode is only forced on the Home screen for new app creation)
   return "build";
 }
 

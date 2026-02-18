@@ -9,10 +9,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { type LanguageModel } from "@/ipc/types";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelInfoDialog } from "@/components/ModelInfoDialog";
+import { useSettings } from "@/hooks/useSettings";
+import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 
 interface SettingsModelSelectorProps {
     selectedModel: string | undefined;
@@ -42,6 +44,13 @@ export function SettingsModelSelector({
 }: SettingsModelSelectorProps) {
     const [open, setOpen] = useState(false);
     const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
+    const { settings } = useSettings();
+
+    // Filter models to only show user-enabled ones (consistent with main ModelPicker)
+    const filteredModels = useMemo(() => {
+        const enabledModels = settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+        return models.filter((model) => enabledModels.includes(model.apiName));
+    }, [models, settings?.enabledOpenRouterModels]);
 
     // Get display name for the selected model
     const getModelDisplayName = () => {
@@ -53,7 +62,7 @@ export function SettingsModelSelector({
             return specialOption.label;
         }
 
-        // Look up in models
+        // Look up in models (search all models, not just filtered, so current selection always shows)
         const foundModel = models.find(
             (model) => model.apiName === selectedModel,
         );
@@ -75,8 +84,8 @@ export function SettingsModelSelector({
                         <DropdownMenuTrigger asChild>
                             <button
                                 className={`flex items-center justify-between w-fit font-medium rounded-md shadow-none gap-0.5 border bg-background hover:bg-muted/50 focus:bg-muted/50 transition-colors ${size === "md"
-                                        ? "h-9 max-w-[300px] px-3 py-1 text-sm"
-                                        : "!h-6 max-w-[240px] px-1.5 py-0 text-xs-sm"
+                                    ? "h-9 max-w-[300px] px-3 py-1 text-sm"
+                                    : "!h-6 max-w-[240px] px-1.5 py-0 text-xs-sm"
                                     } ${className}`}
                             >
                                 <span className="truncate flex-1 text-left">
@@ -97,7 +106,7 @@ export function SettingsModelSelector({
                         <div className="text-xs text-center py-2 text-muted-foreground">
                             Cargando modelos...
                         </div>
-                    ) : models.length === 0 && specialOptions.length === 0 ? (
+                    ) : filteredModels.length === 0 && specialOptions.length === 0 ? (
                         <div className="text-xs text-center py-2 text-muted-foreground">
                             No hay modelos disponibles
                         </div>
@@ -128,12 +137,12 @@ export function SettingsModelSelector({
                             ))}
 
                             {/* Divider if both exist */}
-                            {specialOptions.length > 0 && models.length > 0 && (
+                            {specialOptions.length > 0 && filteredModels.length > 0 && (
                                 <div className="h-px bg-border my-1 mx-1" />
                             )}
 
                             {/* Regular models */}
-                            {models.map((model) => (
+                            {filteredModels.map((model) => (
                                 <DropdownMenuItem
                                     key={model.apiName}
                                     className={`py-1.5 px-3 cursor-pointer ${selectedModel === model.apiName ? "bg-secondary" : ""

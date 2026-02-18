@@ -115,7 +115,7 @@ export async function openRouterCompletion(
   } = options;
 
   const defaultModel =
-    settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+    settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
   const finalModel = model || defaultModel;
 
   const body: any = {

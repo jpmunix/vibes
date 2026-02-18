@@ -248,7 +248,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
     try {
       const todoTitle = todo.content;
@@ -470,7 +470,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
     const chatsContext = chat.messages
       .map((msg) => `${msg.role}: ${msg.content}`)

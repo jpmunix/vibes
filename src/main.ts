@@ -32,6 +32,7 @@ import { cleanupOldAiMessagesJson } from "./pro/main/ipc/handlers/local_agent/ai
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getDyadAppsBaseDirectory } from "./paths/paths";
+import { warmUpScaffoldCache } from "./ipc/utils/scaffold_cache";
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -174,6 +175,12 @@ export async function onReady() {
 
     // Start performance monitoring after everything is initialized
     startPerformanceMonitoring();
+
+    // Pre-install scaffold dependencies in background cache
+    // so new apps start instantly without waiting for npm install
+    warmUpScaffoldCache().catch((e) =>
+      logger.error("Error warming up scaffold cache", e),
+    );
 
     logger.info("Background initialization completed");
   });

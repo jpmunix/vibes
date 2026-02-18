@@ -2,7 +2,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "./SettingsModelSelector";
 
-const DEFAULT_VALUE = "openai/gpt-4.1-mini";
+const DEFAULT_VALUE = "openai/gpt-5.1-codex-mini";
 
 export function KnowledgeModelSelector() {
     const { settings, updateSettings } = useSettings();

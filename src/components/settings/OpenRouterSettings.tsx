@@ -39,7 +39,6 @@ import {
 import { showError, showSuccess } from "@/lib/toast";
 import { ModelsSection } from "./ModelsSection";
 import { cn } from "@/lib/utils";
-import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
 import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
 import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
 import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
@@ -431,17 +430,6 @@ export function OpenRouterSettings({
                   <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
                     Genera el título de la aplicación a partir de tu prompt
                     inicial.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Turbo Edits
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <TurboEditModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Modelo optimizado para ediciones rápidas de archivos.
                   </p>
                 </div>
               </div>

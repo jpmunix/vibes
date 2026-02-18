@@ -96,7 +96,7 @@ export function registerDebateStreamHandlers() {
         try {
           const settings = readSettings();
           const titleModel =
-            settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite"; // Fast model
+            settings.appTitleGenerationModel || "openai/gpt-4.1-nano"; // Fast model
           const { getLanguageModelProviders, getLanguageModels } =
             await import("../shared/language_model_helpers");
           const allModels = await getLanguageModels({

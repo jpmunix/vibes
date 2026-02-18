@@ -82,7 +82,7 @@ export function ModelPicker() {
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center justify-between !h-6 w-fit max-w-[200px] px-1.5 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border bg-background hover:bg-muted/50 focus:bg-muted/50 transition-colors"
+                className="flex items-center justify-between !h-6 w-fit max-w-[200px] px-1.5 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors"
               >
                 <span className="truncate flex-1 text-left">{modelDisplayName}</span>
                 <div className="flex items-center gap-0.5 ml-1.5 text-muted-foreground">

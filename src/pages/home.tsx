@@ -133,18 +133,22 @@ export default function HomePage() {
     }
   }, [appId, navigate]);
 
-  // Enforce "plan" mode as the absolute default on Home screen for new apps
+  // Apply the user's preferred default chat mode on Home screen for new apps
   const hasAppliedDefaultChatMode = useRef(false);
   useEffect(() => {
     // Wait for settings to load
-    if (settings && !hasAppliedDefaultChatMode.current) {
+    if (settings && envVars && !hasAppliedDefaultChatMode.current) {
       hasAppliedDefaultChatMode.current = true;
-      // Always force Plan mode on Home screen, regardless of user preferences or quota
-      if (settings.selectedChatMode !== "plan") {
-        updateSettings({ selectedChatMode: "plan" });
+      const effectiveDefault = getEffectiveDefaultChatMode(
+        settings,
+        envVars,
+        !isQuotaExceeded,
+      );
+      if (settings.selectedChatMode !== effectiveDefault) {
+        updateSettings({ selectedChatMode: effectiveDefault });
       }
     }
-  }, [settings, updateSettings]);
+  }, [settings, envVars, isQuotaExceeded, updateSettings]);
 
   const handleSubmit = async (options?: HomeSubmitOptions) => {
     const attachments = options?.attachments || [];
@@ -226,7 +230,7 @@ export default function HomePage() {
         appId: result.app.id,
         chatId: result.chatId,
         prompt,
-        chatMode: settings?.selectedChatMode || "plan",
+        chatMode: settings?.selectedChatMode || "build",
         attachments: convertedAttachments,
         theme,
         themeIntensity: intensity,
@@ -240,8 +244,58 @@ export default function HomePage() {
     // No finally block needed for setIsLoading(false) here if navigation happens on success
   };
 
+  // Dynamic loading phases for app creation
+  const CREATION_PHASES = [
+    { title: "Pensando un nombre genial", subtitle: "La IA está eligiendo el nombre perfecto para tu app…", icon: "💭" },
+    { title: "Preparando el proyecto", subtitle: "Creando la estructura de archivos y configuración…", icon: "📁" },
+    { title: "Instalando dependencias", subtitle: "Copiando librerías pre-cacheadas para arrancar al instante…", icon: "📦" },
+    { title: "Inicializando el repositorio", subtitle: "Configurando Git para control de versiones…", icon: "🔧" },
+    { title: "Aplicando tu tema", subtitle: "Personalizando los estilos y colores de la app…", icon: "🎨" },
+    { title: "¡Casi listo!", subtitle: "Abriendo el entorno de desarrollo…", icon: "🚀" },
+  ];
+
+  const [creationPhase, setCreationPhase] = useState(0);
+  const [phaseVisible, setPhaseVisible] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setCreationPhase(0);
+      setPhaseVisible(true);
+      return;
+    }
+
+    // Timings that roughly match real operations
+    const phaseTimings = [1800, 2200, 3000, 1500, 1200, 5000];
+    let timeoutId: NodeJS.Timeout;
+    let fadeTimeoutId: NodeJS.Timeout;
+
+    const advancePhase = (currentPhase: number) => {
+      if (currentPhase >= CREATION_PHASES.length - 1) return;
+
+      const delay = phaseTimings[currentPhase] || 2000;
+      timeoutId = setTimeout(() => {
+        // Fade out
+        setPhaseVisible(false);
+        fadeTimeoutId = setTimeout(() => {
+          // Switch phase and fade in
+          setCreationPhase(currentPhase + 1);
+          setPhaseVisible(true);
+          advancePhase(currentPhase + 1);
+        }, 300);
+      }, delay);
+    };
+
+    advancePhase(0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(fadeTimeoutId);
+    };
+  }, [isLoading]);
+
   // Loading overlay for app creation
   if (isLoading) {
+    const phase = CREATION_PHASES[creationPhase];
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
         {/* Glow background effect */}
@@ -289,6 +343,23 @@ export default function HomePage() {
             animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             z-index: 0;
           }
+
+          .phase-fade {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+          }
+          .phase-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          .phase-fade.hidden {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+
+          @keyframes progress-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
         `}</style>
 
         <div className="relative z-10 w-full max-w-5xl flex flex-col items-center p-8">
@@ -297,13 +368,35 @@ export default function HomePage() {
             <div className="absolute top-0 left-0 w-full h-full border-8 border-gray-200 dark:border-gray-700 rounded-full"></div>
             <div className="absolute top-0 left-0 w-full h-full border-8 border-t-primary rounded-full animate-spin"></div>
           </div>
-          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">
-            Construyendo tu aplicación
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-8">
-            Estamos configurando tu app con magia de IA. <br />
-            Esto puede tardar un momento.
-          </p>
+
+          <div className="relative w-full" style={{ minHeight: '5rem' }}>
+            <div className={`phase-fade ${phaseVisible ? 'visible' : 'hidden'} flex flex-col items-center w-full`}>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">
+                {phase.title}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-6">
+                {phase.subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress dots */}
+          <div className="flex items-center gap-2 mt-2">
+            {CREATION_PHASES.map((_, i) => (
+              <div
+                key={i}
+                className="rounded-full transition-all duration-500"
+                style={{
+                  width: i === creationPhase ? 24 : 8,
+                  height: 8,
+                  backgroundColor: i <= creationPhase
+                    ? 'var(--primary)'
+                    : 'var(--muted)',
+                  opacity: i <= creationPhase ? 1 : 0.3,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );

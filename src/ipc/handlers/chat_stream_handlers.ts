@@ -584,7 +584,7 @@ ${componentSnippet}
         ) {
           // Use the appTitleGenerationModel from settings
           const titleModel =
-            settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+            settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
           // Parse the model string (format: "provider/model")
           const [provider, ...modelParts] = titleModel.split("/");

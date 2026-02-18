@@ -225,7 +225,7 @@ export function registerChatHandlers() {
       const settings = readSettings();
 
       const model =
-        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+        settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
       try {
         let messageContent = prompt;
@@ -351,7 +351,7 @@ export function registerChatHandlers() {
     const settings = readSettings();
 
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
 
     // Get today's start timestamp (midnight local time)
     const todayLocalMidnight = new Date();

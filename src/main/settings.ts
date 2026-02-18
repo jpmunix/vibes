@@ -23,9 +23,9 @@ const DEFAULT_SETTINGS: UserSettings = {
   },
   providerSettings: {},
   turboEditModel: "openai/gpt-4.1",
-  appTitleGenerationModel: "openai/gpt-5-mini",
-  debateModel: "x-ai/grok-4.1-fast",
-  summaryModel: "x-ai/grok-4.1-fast",
+  appTitleGenerationModel: "openai/gpt-4.1-nano",
+  debateModel: "openai/gpt-5-mini",
+  summaryModel: "google/gemini-3-flash-preview",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
@@ -189,6 +189,49 @@ export function readSettings(): UserSettings {
     // "conservative" is deprecated, use undefined to use the default value
     if (validatedSettings.proSmartContextOption === "conservative") {
       validatedSettings.proSmartContextOption = undefined;
+    }
+
+    // ── Migration: v1 model defaults ──
+    // Apply curated model defaults to existing users who haven't customized.
+    // This runs once: the flag is persisted so it won't re-run on future launches.
+    if (!(validatedSettings as any)._migrations?.v1_model_defaults_applied) {
+      const OLD_DEFAULTS = [
+        "", "SAME_AS_CHAT",
+        "x-ai/grok-4.1-fast", "x-ai/grok-code-fast-1",
+        "google/gemini-2.5-flash-lite", "openai/gpt-4.1-mini",
+      ];
+      const shouldMigrate = (current: string | undefined) =>
+        !current || OLD_DEFAULTS.includes(current);
+
+      const migrated: Partial<UserSettings> = {};
+      if (shouldMigrate(validatedSettings.appTitleGenerationModel))
+        (migrated as any).appTitleGenerationModel = "openai/gpt-4.1-nano";
+      if (shouldMigrate(validatedSettings.debateModel))
+        (migrated as any).debateModel = "openai/gpt-5-mini";
+      if (shouldMigrate(validatedSettings.summaryModel))
+        (migrated as any).summaryModel = "google/gemini-3-flash-preview";
+      if (shouldMigrate((validatedSettings as any).todoAnalysisModel))
+        (migrated as any).todoAnalysisModel = "google/gemini-3-flash-preview";
+      if (shouldMigrate((validatedSettings as any).knowledgeExtractionModel))
+        (migrated as any).knowledgeExtractionModel = "openai/gpt-5.1-codex-mini";
+      if (shouldMigrate((validatedSettings as any).dossierModel))
+        (migrated as any).dossierModel = "google/gemini-3-flash-preview";
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v1_model_defaults_applied: true },
+      };
+      logger.info("[Migration] Applied v1 model defaults:", Object.keys(migrated));
+      // Write back so it persists
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v1 model defaults:", e);
+      }
+      cachedSettings = migratedSettings as UserSettings;
+      return migratedSettings as UserSettings;
     }
 
     // Update cache
