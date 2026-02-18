@@ -275,8 +275,11 @@ export function useAutoRepair() {
                 return;
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- we intentionally
+        // depend on .length instead of the full array to avoid re-running on every
+        // mutation. The effect uses consoleEntriesLengthRef to scan only new entries.
     }, [
-        consoleEntries,
+        consoleEntries.length,
         repairState,
         selectedAppId,
         isStreamingById,

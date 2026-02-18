@@ -529,6 +529,8 @@ export async function handleLocalAgentStream(
           break;
 
         case "reasoning-delta":
+          // Skip [REDACTED] from OpenRouter encrypted reasoning tokens
+          if (part.text === "[REDACTED]") break;
           if (!inThinkingBlock) {
             chunk = "<think>";
             inThinkingBlock = true;

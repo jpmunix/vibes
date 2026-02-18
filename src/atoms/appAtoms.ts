@@ -20,7 +20,25 @@ export const previewModeAtom = atom<
 >("preview");
 export const selectedVersionIdAtom = atom<string | null>(null);
 
-export const appConsoleEntriesAtom = atom<ConsoleEntry[]>([]);
+// Cap console entries to match backend MAX_LOGS_PER_APP to prevent
+// unbounded growth causing increasingly expensive re-renders.
+const MAX_CONSOLE_ENTRIES = 1000;
+const _consoleEntriesBaseAtom = atom<ConsoleEntry[]>([]);
+export const appConsoleEntriesAtom = atom(
+  (get) => get(_consoleEntriesBaseAtom),
+  (
+    _get,
+    set,
+    update: ConsoleEntry[] | ((prev: ConsoleEntry[]) => ConsoleEntry[]),
+  ) => {
+    set(_consoleEntriesBaseAtom, (prev) => {
+      const next = typeof update === "function" ? update(prev) : update;
+      return next.length > MAX_CONSOLE_ENTRIES
+        ? next.slice(next.length - MAX_CONSOLE_ENTRIES)
+        : next;
+    });
+  },
+);
 export const appUrlAtom = atom<
   | { appUrl: string; appId: number; originalUrl: string }
   | { appUrl: null; appId: null; originalUrl: null }

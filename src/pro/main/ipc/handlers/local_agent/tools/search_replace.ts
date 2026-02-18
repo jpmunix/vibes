@@ -142,19 +142,7 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
     await fs.promises.writeFile(fullFilePath, result.content);
     logger.log(`Successfully applied search-replace to: ${fullFilePath}`);
 
-    // Emit visual success feedback to the chat
-    const recoveryMsg = result.recoveryStrategy
-      ? ` (Recovered via ${result.recoveryStrategy})`
-      : "";
-    const uiMessage = `Applied changes to ${path.basename(args.file_path)}${recoveryMsg}`;
 
-    // Use onXmlComplete to render the success component in the chat
-    // Note: ctx.onXmlComplete handles the XML injection into the stream
-    if (ctx.onXmlComplete) {
-      ctx.onXmlComplete(
-        `<dyad-output type="success" message="${escapeXmlAttr(uiMessage)}"></dyad-output>`,
-      );
-    }
 
     sendTelemetryEvent("local_agent:search_replace:success", {
       filePath: args.file_path,

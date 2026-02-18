@@ -1,17 +1,10 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI as createGoogle } from "@ai-sdk/google";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createXai } from "@ai-sdk/xai";
-import { createVertex as createGoogleVertex } from "@ai-sdk/google-vertex";
-import { createAzure } from "@ai-sdk/azure";
+// TODO: Switch back when reasoning_details encryption issue is fixed
+// import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModel } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
 import type {
   LargeLanguageModel,
   UserSettings,
-  VertexProviderSetting,
-  AzureProviderSetting,
 } from "../../lib/schemas";
 import { getEnvVar } from "./read_env";
 import log from "electron-log";
@@ -281,86 +274,11 @@ function getRegularModelClient(
   const providerId = providerConfig.id;
   // Create client based on provider ID or type
   switch (providerId) {
-    case "openai": {
-      const provider = createOpenAI({ apiKey });
-      return {
-        modelClient: {
-          model: provider.responses(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "anthropic": {
-      const provider = createAnthropic({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "xai": {
-      const provider = createXai({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "google": {
-      const provider = createGoogle({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "vertex": {
-      // Vertex uses Google service account credentials with project/location
-      const vertexSettings = settings.providerSettings?.[
-        model.provider
-      ] as VertexProviderSetting;
-      const project = vertexSettings?.projectId;
-      const location = vertexSettings?.location;
-      const serviceAccountKey = vertexSettings?.serviceAccountKey?.value;
-
-      // Use a baseURL that does NOT pin to publishers/google so that
-      // full publisher model IDs (e.g. publishers/deepseek-ai/models/...) work.
-      const regionHost = `${location === "global" ? "" : `${location}-`}aiplatform.googleapis.com`;
-      const baseURL = `https://${regionHost}/v1/projects/${project}/locations/${location}`;
-      const provider = createGoogleVertex({
-        project,
-        location,
-        baseURL,
-        googleAuthOptions: serviceAccountKey
-          ? {
-            // Expecting the user to paste the full JSON of the service account key
-            credentials: JSON.parse(serviceAccountKey),
-          }
-          : undefined,
-      });
-      return {
-        modelClient: {
-          // For built-in Google models on Vertex, the path must include
-          // publishers/google/models/<model>. For partner MaaS models the
-          // full publisher path is already included.
-          model: provider(
-            model.name.includes("/")
-              ? model.name
-              : `publishers/google/models/${model.name}`,
-          ),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
     case "openrouter": {
+      // NOTE: Using createOpenAICompatible instead of createOpenRouter because
+      // the official SDK (@openrouter/ai-sdk-provider) prioritizes encrypted
+      // reasoning_details over plain text reasoning, causing [REDACTED] to appear.
+      // Switch back to createOpenRouter when this is fixed upstream.
       const provider = createOpenAICompatible({
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
@@ -374,67 +292,7 @@ function getRegularModelClient(
         backupModelClients: [],
       };
     }
-    case "azure": {
-      // Check if we're in e2e testing mode
-      const testAzureBaseUrl = getEnvVar("TEST_AZURE_BASE_URL");
 
-      if (testAzureBaseUrl) {
-        // Use fake server for e2e testing
-        logger.info(`Using test Azure base URL: ${testAzureBaseUrl}`);
-        const provider = createOpenAICompatible({
-          name: "azure-test",
-          baseURL: testAzureBaseUrl,
-          apiKey: "fake-api-key-for-testing",
-        });
-        return {
-          modelClient: {
-            model: provider(model.name),
-            builtinProviderId: providerId,
-          },
-          backupModelClients: [],
-        };
-      }
-
-      const azureSettings = settings.providerSettings?.azure as
-        | AzureProviderSetting
-        | undefined;
-      const azureApiKeyFromSettings = (
-        azureSettings?.apiKey?.value ?? ""
-      ).trim();
-      const azureResourceNameFromSettings = (
-        azureSettings?.resourceName ?? ""
-      ).trim();
-      const envResourceName = (getEnvVar("AZURE_RESOURCE_NAME") ?? "").trim();
-      const envAzureApiKey = (getEnvVar("AZURE_API_KEY") ?? "").trim();
-
-      const resourceName = azureResourceNameFromSettings || envResourceName;
-      const azureApiKey = azureApiKeyFromSettings || envAzureApiKey;
-
-      if (!resourceName) {
-        throw new Error(
-          "Azure OpenAI resource name is required. Provide it in Settings or set the AZURE_RESOURCE_NAME environment variable.",
-        );
-      }
-
-      if (!azureApiKey) {
-        throw new Error(
-          "Azure OpenAI API key is required. Provide it in Settings or set the AZURE_API_KEY environment variable.",
-        );
-      }
-
-      const provider = createAzure({
-        resourceName,
-        apiKey: azureApiKey,
-      });
-
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
     case "ollama": {
       const provider = createOllamaProvider({ baseURL: getOllamaApiUrl() });
       return {
@@ -459,21 +317,7 @@ function getRegularModelClient(
         backupModelClients: [],
       };
     }
-    case "bedrock": {
-      // AWS Bedrock supports API key authentication using AWS_BEARER_TOKEN_BEDROCK
-      // See: https://sdk.vercel.ai/providers/ai-sdk-providers/amazon-bedrock#api-key-authentication
-      const provider = createAmazonBedrock({
-        apiKey: apiKey,
-        region: getEnvVar("AWS_REGION") || "us-east-1",
-      });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
+
     default: {
       // Handle custom providers
       if (providerConfig.type === "custom") {

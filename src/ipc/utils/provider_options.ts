@@ -1,7 +1,6 @@
 import type { SmartContextMode, UserSettings } from "../../lib/schemas";
 import type { CodebaseFile } from "../../utils/codebase";
 import type { VersionedFiles } from "./versioned_codebase_context";
-import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 import { getExtraProviderOptions } from "./thinking_utils";
 
@@ -24,7 +23,6 @@ export interface GetProviderOptionsParams {
 
 /**
  * Builds provider options for the AI SDK streamText call.
- * Handles provider-specific configuration including thinking configs for Google/Vertex.
  */
 export function getProviderOptions({
   dyadAppId,
@@ -37,6 +35,7 @@ export function getProviderOptions({
   builtinProviderId,
   settings,
 }: GetProviderOptionsParams): Record<string, any> {
+  const extraOptions = getExtraProviderOptions(builtinProviderId, settings);
   const providerOptions: Record<string, any> = {
     "dyad-engine": {
       dyadAppId,
@@ -50,38 +49,12 @@ export function getProviderOptions({
         files,
       })),
     },
-    "dyad-gateway": getExtraProviderOptions(builtinProviderId, settings),
+    "dyad-gateway": extraOptions,
+    openrouter: extraOptions,
     openai: {
       reasoningSummary: "auto",
     } satisfies OpenAIResponsesProviderOptions,
   };
-
-  // Conditionally include Google thinking config only for supported models
-  const selectedModelName = settings.selectedModel.name || "";
-  const providerId = builtinProviderId;
-  const isVertex = providerId === "vertex";
-  const isGoogle = providerId === "google";
-  const isPartnerModel = selectedModelName.includes("/");
-  const isGeminiModel = selectedModelName.startsWith("gemini");
-  const isFlashLite = selectedModelName.includes("flash-lite");
-
-  // Keep Google provider behavior unchanged: always include includeThoughts
-  if (isGoogle) {
-    providerOptions.google = {
-      thinkingConfig: {
-        includeThoughts: true,
-      },
-    } satisfies GoogleGenerativeAIProviderOptions;
-  }
-
-  // Vertex-specific fix: only enable thinking on supported Gemini models
-  if (isVertex && isGeminiModel && !isFlashLite && !isPartnerModel) {
-    providerOptions.google = {
-      thinkingConfig: {
-        includeThoughts: true,
-      },
-    } satisfies GoogleGenerativeAIProviderOptions;
-  }
 
   return providerOptions;
 }
@@ -92,15 +65,9 @@ export interface GetAiHeadersParams {
 
 /**
  * Returns AI request headers based on the provider.
- * Currently adds Anthropic-specific beta header for extended context.
  */
 export function getAiHeaders({
   builtinProviderId,
 }: GetAiHeadersParams): Record<string, string> | undefined {
-  if (builtinProviderId === "anthropic") {
-    return {
-      "anthropic-beta": "context-1m-2025-08-07",
-    };
-  }
   return undefined;
 }

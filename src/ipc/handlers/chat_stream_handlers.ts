@@ -209,6 +209,8 @@ async function processStreamChunks({
     if (part.type === "text-delta") {
       chunk += part.text;
     } else if (part.type === "reasoning-delta") {
+      // Skip [REDACTED] from OpenRouter encrypted reasoning tokens
+      if (part.text === "[REDACTED]") continue;
       if (!inThinkingBlock) {
         chunk = "<think>";
         inThinkingBlock = true;

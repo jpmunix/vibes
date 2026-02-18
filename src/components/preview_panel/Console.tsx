@@ -175,26 +175,13 @@ export const Console = () => {
       }
     });
 
-    // Subscribe to immediate output (proxy events, etc)
-    const unsubscribeOutput = ipc.events.misc.onAppOutput((output) => {
-      if (output.appId === selectedAppId) {
-        // Ignore input-requested as it's handled by useRunApp
-        if (output.type === "input-requested") return;
-
-        setConsoleEntries((prev) => [...prev, {
-          level: output.type === "stderr" || output.type === "client-error" ? "error" as const : "info" as const,
-          type: "server" as const,
-          message: output.message,
-          appId: output.appId,
-          timestamp: output.timestamp ?? Date.now(),
-        }]);
-      }
-    });
+    // Note: we intentionally do NOT subscribe to onAppOutput here.
+    // The batch subscription above already covers all app output.
+    // Proxy events and client errors are handled by useAppOutputSubscription in layout.tsx.
 
     return () => {
       isMounted = false;
       unsubscribeBatch();
-      unsubscribeOutput();
     };
   }, [selectedAppId, setConsoleEntries]);
 
@@ -215,21 +202,19 @@ export const Console = () => {
     return Array.from(sources).sort();
   }, [consoleEntries]);
 
-  // Filter and sort console entries by timestamp
+  // Filter console entries (logs arrive in chronological order from the backend)
   const filteredEntries = useMemo(() => {
-    return consoleEntries
-      .filter((entry) => {
-        if (levelFilter !== "all" && entry.level !== levelFilter) return false;
-        if (typeFilter !== "all" && entry.type !== typeFilter) return false;
-        if (
-          sourceFilter &&
-          sourceFilter !== "all" &&
-          entry.sourceName !== sourceFilter
-        )
-          return false;
-        return true;
-      })
-      .sort((a, b) => a.timestamp - b.timestamp);
+    return consoleEntries.filter((entry) => {
+      if (levelFilter !== "all" && entry.level !== levelFilter) return false;
+      if (typeFilter !== "all" && entry.type !== typeFilter) return false;
+      if (
+        sourceFilter &&
+        sourceFilter !== "all" &&
+        entry.sourceName !== sourceFilter
+      )
+        return false;
+      return true;
+    });
   }, [consoleEntries, levelFilter, typeFilter, sourceFilter]);
 
   const handleExportLogs = useCallback(async () => {
