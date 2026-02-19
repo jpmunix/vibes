@@ -332,6 +332,27 @@ function trackFileEditTool(
   ctx.fileEditTracker[filePath][toolName as FileEditToolName]++;
 }
 
+function isTransientError(error: any): boolean {
+  const msg = String(error?.message || error);
+  // File system locks
+  if (
+    msg.includes("EBUSY") ||
+    msg.includes("ETXTBSY") ||
+    msg.includes("EAGAIN")
+  )
+    return true;
+  // Network (if applicable)
+  if (
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("network timeout")
+  )
+    return true;
+  // Generic "Too many open files"
+  if (msg.includes("EMFILE")) return true;
+  return false;
+}
+
 /**
  * Build ToolSet for AI SDK from tool definitions
  */
@@ -377,7 +398,22 @@ export function buildAgentToolSet(
           // (including failures) for retry/fallback telemetry
           trackFileEditTool(ctx, tool.name, processedArgs);
 
-          const result = await tool.execute(processedArgs, ctx);
+
+          let result;
+          let retries = 2;
+          while (true) {
+            try {
+              result = await tool.execute(processedArgs, ctx);
+              break;
+            } catch (err) {
+              if (retries > 0 && isTransientError(err)) {
+                retries--;
+                await new Promise((r) => setTimeout(r, 300)); // Wait 300ms before retry
+                continue;
+              }
+              throw err;
+            }
+          }
 
           return convertToolResultForAiSdk(result);
         } catch (error) {

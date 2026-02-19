@@ -372,7 +372,32 @@ export async function handleLocalAgentStream(
       ? messageOverride
       : chat.messages
         .filter((msg) => msg.content || msg.aiMessagesJson)
-        .flatMap((msg) => parseAiMessagesJson(msg));
+        .flatMap((msg) => {
+          const parsedMessages = parseAiMessagesJson(msg);
+
+          // Phase 3: Resume - Annotate incomplete messages to help model recover context
+          if (
+            (msg as any).status === "incomplete" &&
+            msg.role === "assistant"
+          ) {
+            const lastMsg = parsedMessages[parsedMessages.length - 1];
+            if (
+              lastMsg &&
+              lastMsg.role === "assistant"
+            ) {
+              if (typeof lastMsg.content === "string") {
+                lastMsg.content +=
+                  "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]";
+              } else if (Array.isArray(lastMsg.content)) {
+                (lastMsg.content as any[]).push({
+                  type: "text",
+                  text: "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]"
+                });
+              }
+            }
+          }
+          return parsedMessages;
+        });
     logger.log(
       `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
     );

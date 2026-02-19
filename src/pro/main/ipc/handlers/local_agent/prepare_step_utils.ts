@@ -105,7 +105,7 @@ export function injectMessagesAtPositions<T>(
  */
 export function prepareStepMessages<
   TMessage extends ModelMessage,
-  T extends { messages: TMessage[]; [key: string]: unknown },
+  T extends { messages: TMessage[];[key: string]: unknown },
 >(
   options: T,
   pendingUserMessages: UserMessageContentPart[][],
@@ -120,17 +120,103 @@ export function prepareStepMessages<
     messages.length,
   );
 
-  // If no messages to inject, don't modify
-  if (allInjectedMessages.length === 0) {
+  let outputMessages: TMessage[] | undefined;
+
+  // 1. Handle user message injections
+  if (allInjectedMessages.length > 0) {
+    // injectMessagesAtPositions returns a new array
+    outputMessages = injectMessagesAtPositions(
+      messages,
+      allInjectedMessages,
+    ) as TMessage[];
+  }
+
+  // 2. Post-Error Tool Choice Logic & Smart Fallback
+  // Check if the last message in history was a failed tool result.
+  const lastHistoryMsg = messages[messages.length - 1];
+
+  let hasError = false;
+  let failedToolName: string | undefined;
+
+  if (
+    lastHistoryMsg &&
+    lastHistoryMsg.role === "tool" &&
+    Array.isArray(lastHistoryMsg.content)
+  ) {
+    const content = lastHistoryMsg.content as any[];
+    for (const part of content) {
+      if (part.type === "tool-result") {
+        const res = part.result;
+        if (
+          (typeof res === "object" && res !== null && res.isError === true) ||
+          (typeof res === "string" && res.startsWith("Error:"))
+        ) {
+          hasError = true;
+          failedToolName = part.toolName || part.toolCallId;
+          break;
+        }
+      }
+    }
+  }
+
+  if (hasError) {
+    // If we haven't created a new array yet (no injections), copy original
+    if (!outputMessages) {
+      outputMessages = [...messages];
+    }
+
+    // Check for consecutive failures of the same tool to suggest fallback
+    let consecutiveFailures = 1;
+    if (failedToolName) {
+      // Look back for previous failures of the same tool
+      for (let i = messages.length - 2; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.role === "tool" && Array.isArray(msg.content)) {
+          const content = msg.content as any[];
+          const foundSameError = content.some(part =>
+            part.type === "tool-result" &&
+            (part.toolName === failedToolName || part.toolCallId === failedToolName) &&
+            ((typeof part.result === "object" && part.result?.isError === true) ||
+              (typeof part.result === "string" && String(part.result).startsWith("Error:")))
+          );
+
+          if (foundSameError) {
+            consecutiveFailures++;
+          } else {
+            // Different tool result break sequence? 
+            // If intervening successful tool call, maybe break.
+            // If intervening failed OTHER tool call, maybe keep looking?
+            // Simple logic: if another tool result found without this error, break.
+            break;
+          }
+        } else if (msg.role === "user") {
+          break; // User message resets retry context
+        }
+      }
+    }
+
+    let instruction = "The previous tool execution failed. You MUST correct the parameters and retry immediately. Do not explain, just call the tool again.";
+
+    // Smart Fallback Suggestions
+    if (consecutiveFailures >= 2) {
+      if (failedToolName?.includes("search_replace")) {
+        instruction += "\n\nSystem Note: `search_replace` has failed multiple times. The file content might be different than expected. Please switch to `write_file` to overwrite the file with the correct content, or use `read_file` to check content first.";
+      } else if (failedToolName?.includes("edit_file")) {
+        instruction += "\n\nSystem Note: `edit_file` has failed multiple times. Please switch to `write_file` to overwrite the file completely.";
+      }
+    }
+
+    // Append system instruction forcing retry
+    outputMessages.push({
+      role: "system",
+      content: instruction,
+    } as any);
+  }
+
+  // If no modifications (no injections AND no error), return undefined
+  if (!outputMessages) {
     return undefined;
   }
 
-  // Build the new messages array with injections
-  // Cast is safe because InjectedMessage["message"] is a valid ModelMessage
-  const newMessages = injectMessagesAtPositions(
-    messages,
-    allInjectedMessages,
-  ) as TMessage[];
-
-  return { messages: newMessages, ...rest };
+  return { messages: outputMessages, ...rest };
 }
