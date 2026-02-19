@@ -301,36 +301,17 @@ export default function HomePage() {
         {/* Glow background effect */}
         <div
           aria-hidden
-          className="glow-breath pointer-events-none absolute rounded-full"
+          className="glow-static pointer-events-none absolute rounded-full"
           style={{
             width: "1400px",
             height: "1400px",
             top: "50%",
             left: "50%",
-            transform: "translate(-50%, -50%)",
           }}
         />
 
         <style>{`
-          @keyframes breathe {
-            0% {
-              transform: translate(-50%, -50%) scale(0.9);
-              opacity: 0.3;
-              filter: blur(80px);
-            }
-            50% {
-              transform: translate(-50%, -50%) scale(1.1);
-              opacity: 0.5;
-              filter: blur(100px);
-            }
-            100% {
-              transform: translate(-50%, -50%) scale(0.9);
-              opacity: 0.3;
-              filter: blur(80px);
-            }
-          }
-
-          .glow-breath {
+          .glow-static {
             background: radial-gradient(
               circle,
               var(--primary) 0%,
@@ -340,7 +321,9 @@ export default function HomePage() {
               color-mix(in oklch, var(--primary) 4%, transparent) 80%,
               transparent 100%
             );
-            animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            filter: blur(90px);
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 0.5;
             z-index: 0;
           }
 
@@ -385,7 +368,7 @@ export default function HomePage() {
             {CREATION_PHASES.map((_, i) => (
               <div
                 key={i}
-                className="rounded-full transition-all duration-500"
+                className="rounded-full transition-[width,background-color,opacity] duration-500"
                 style={{
                   width: i === creationPhase ? 24 : 8,
                   height: 8,
@@ -408,36 +391,17 @@ export default function HomePage() {
       {/* Glow background effect */}
       <div
         aria-hidden
-        className="glow-breath pointer-events-none absolute rounded-full"
+        className="glow-static pointer-events-none absolute rounded-full"
         style={{
           width: "1400px",
           height: "1400px",
           top: "50%",
           left: "50%",
-          transform: "translate(-50%, -50%)",
         }}
       />
 
       <style>{`
-        @keyframes breathe {
-          0% {
-            transform: translate(-50%, -50%) scale(0.9);
-            opacity: 0.3;
-            filter: blur(80px);
-          }
-          50% {
-            transform: translate(-50%, -50%) scale(1.1);
-            opacity: 0.5;
-            filter: blur(100px);
-          }
-          100% {
-            transform: translate(-50%, -50%) scale(0.9);
-            opacity: 0.3;
-            filter: blur(80px);
-          }
-        }
-
-        .glow-breath {
+        .glow-static {
           background: radial-gradient(
             circle,
             var(--primary) 0%,
@@ -447,7 +411,9 @@ export default function HomePage() {
             color-mix(in oklch, var(--primary) 4%, transparent) 80%,
             transparent 100%
           );
-          animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          filter: blur(90px);
+          transform: translate(-50%, -50%) scale(1.1);
+          opacity: 0.5;
           z-index: 0;
         }
       `}</style>
@@ -476,7 +442,7 @@ export default function HomePage() {
                     setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
                   }
                   className="flex items-center gap-3 px-4 py-2 rounded-xl border border-primary/20
-                             bg-primary/5 backdrop-blur-sm
+                             bg-primary/5
                              transition-colors duration-200
                              hover:bg-primary/10 hover:shadow-md hover:border-primary/30
                              active:scale-[0.98]"
@@ -495,7 +461,7 @@ export default function HomePage() {
               type="button"
               onClick={() => setRandomPrompts(getRandomPrompts())}
               className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/20
-                         bg-primary/5 backdrop-blur-sm
+                         bg-primary/5
                          transition-colors duration-200
                          hover:bg-primary/10 hover:shadow-md hover:border-primary/30
                          active:scale-[0.98]"

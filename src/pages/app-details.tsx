@@ -343,36 +343,17 @@ export default function AppDetailsPage() {
       {/* Glow background effect */}
       <div
         aria-hidden
-        className="glow-breath pointer-events-none absolute rounded-full"
+        className="glow-static pointer-events-none absolute rounded-full"
         style={{
           width: '1400px',
           height: '1400px',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
         }}
       />
 
       <style>{`
-        @keyframes breathe {
-          0% {
-            transform: translate(-50%, -50%) scale(0.9);
-            opacity: 0.3;
-            filter: blur(80px);
-          }
-          50% {
-            transform: translate(-50%, -50%) scale(1.1);
-            opacity: 0.5;
-            filter: blur(100px);
-          }
-          100% {
-            transform: translate(-50%, -50%) scale(0.9);
-            opacity: 0.3;
-            filter: blur(80px);
-          }
-        }
-
-        .glow-breath {
+        .glow-static {
           background: radial-gradient(
             circle,
             var(--primary) 0%,
@@ -382,7 +363,9 @@ export default function AppDetailsPage() {
             color-mix(in oklch, var(--primary) 4%, transparent) 80%,
             transparent 100%
           );
-          animation: breathe 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          filter: blur(90px);
+          transform: translate(-50%, -50%) scale(1.1);
+          opacity: 0.5;
           z-index: 0;
         }
       `}</style>
@@ -419,7 +402,7 @@ export default function AppDetailsPage() {
               }
               ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
             }}
-            className="cursor-pointer w-full py-5 flex justify-center items-center gap-2 backdrop-blur-md bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
+            className="cursor-pointer w-full py-5 flex justify-center items-center gap-2 bg-background/90 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
             size="lg"
           >
             <MessageCircle className="h-4 w-4" />
@@ -428,21 +411,21 @@ export default function AppDetailsPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleOpenCopyDialog}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/15 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/90 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/15 transition-colors cursor-pointer"
             >
               <Copy className="h-4 w-4" />
               Clonar aplicación
             </button>
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-background/90 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
               <Trash2 className="h-4 w-4" />
               Borrar aplicación
             </button>
           </div>
           {/* Collapsible Información y opciones section */}
-          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden backdrop-blur-md">
+          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={() => setIsInfoSectionOpen(!isInfoSectionOpen)}
@@ -569,7 +552,7 @@ export default function AppDetailsPage() {
           </div>
 
           {/* Collapsible Repositorio e integraciones section */}
-          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden backdrop-blur-md">
+          <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={() => setIsIntegrationsSectionOpen(!isIntegrationsSectionOpen)}
@@ -636,7 +619,7 @@ export default function AppDetailsPage() {
             <Button
               variant="outline"
               onClick={() => setIsKnowledgeBaseModalOpen(true)}
-              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
+              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 bg-background/90 hover:bg-black/10 dark:hover:bg-white/12"
             >
               <div className="flex items-center gap-2">
                 <ChevronRight className="h-4 w-4 text-gray-500" />
@@ -664,7 +647,7 @@ export default function AppDetailsPage() {
             <Button
               variant="outline"
               onClick={() => setIsDossierModalOpen(true)}
-              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 backdrop-blur-md bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
+              className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 bg-background/90 hover:bg-black/10 dark:hover:bg-white/12"
             >
               <div className="flex items-center gap-2">
                 <ChevronRight className="h-4 w-4 text-gray-500" />
