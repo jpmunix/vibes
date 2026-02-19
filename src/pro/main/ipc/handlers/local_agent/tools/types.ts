@@ -128,9 +128,37 @@ export type UserMessageContentPart =
   | { type: "image-url"; url: string };
 
 /**
- * Tool result can be a simple string or a structured result with content parts
+ * Structured error class for tool failures.
+ * When a tool throws ToolError, the catch in buildAgentToolSet will
+ * return it as a structured tool result (not re-throw), allowing
+ * the model to see the error and self-correct.
  */
-export type ToolResult = string;
+export class ToolError extends Error {
+  readonly retryable: boolean;
+  readonly hint?: string;
+
+  constructor(message: string, options: { retryable?: boolean; hint?: string } = {}) {
+    super(message);
+    this.name = "ToolError";
+    this.retryable = options.retryable ?? true;
+    this.hint = options.hint;
+  }
+}
+
+/**
+ * Structured tool result with metadata about success/failure.
+ */
+export interface StructuredToolResult {
+  content: string;
+  isError: boolean;
+  retryable?: boolean;
+  hint?: string;
+}
+
+/**
+ * Tool result can be a simple string or a structured result
+ */
+export type ToolResult = string | StructuredToolResult;
 
 // ============================================================================
 // Tool Definition Interface

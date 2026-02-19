@@ -18,7 +18,7 @@ export function ChatTitleBar() {
     }, []);
 
     return (
-        <div className="z-50 w-full h-9 absolute top-0 left-0 app-region-drag flex items-center">
+        <div className="z-50 w-full h-9 app-region-drag flex items-center shrink-0">
             <div className="flex-1" />
             {showWindowControls && <WindowsControls />}
         </div>

@@ -56,6 +56,7 @@ export function registerHelpBotHandlers() {
         providerOptions: {
           openai: {
             reasoningSummary: "auto",
+            serviceTier: "flex",
           } satisfies OpenAIResponsesProviderOptions,
         },
         tools: {

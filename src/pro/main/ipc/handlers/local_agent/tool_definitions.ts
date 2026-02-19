@@ -33,11 +33,11 @@ import { grepTool } from "./tools/grep";
 import { codeSearchTool } from "./tools/code_search";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
-  escapeXmlAttr,
-  escapeXmlContent,
   type ToolDefinition,
   type AgentContext,
   type ToolResult,
+  type StructuredToolResult,
+  ToolError,
   type FileEditToolName,
   FILE_EDIT_TOOL_NAMES,
 } from "./tools/types";
@@ -276,7 +276,9 @@ async function processArgPlaceholders<T extends Record<string, any>>(
 }
 
 /**
- * Convert our ToolResult to AI SDK format
+ * Convert our ToolResult to AI SDK format.
+ * StructuredToolResult with isError=true formats the error message
+ * with context so the model can self-correct.
  */
 function convertToolResultForAiSdk(
   result: ToolResult,
@@ -284,7 +286,15 @@ function convertToolResultForAiSdk(
   if (typeof result === "string") {
     return { type: "text", value: result };
   }
-  throw new Error(`Unsupported tool result type: ${typeof result}`);
+  // StructuredToolResult
+  const parts: string[] = [result.content];
+  if (result.hint) {
+    parts.push(`Hint: ${result.hint}`);
+  }
+  if (result.isError && result.retryable) {
+    parts.push("This error is retryable. Please try again with corrected input.");
+  }
+  return { type: "text", value: parts.join("\n") };
 }
 
 export interface BuildAgentToolSetOptions {
@@ -374,17 +384,14 @@ export function buildAgentToolSet(
           const errorMessage =
             error instanceof Error ? error.message : String(error);
 
-          // Suppress specific network errors from being "painted" to the user
-          // These errors are handled by triggering a fallback in the agent (e.g. using write_file)
-          const isSilentError = errorMessage.includes("Fallo crítico en la fusión de archivos (Network Error)");
-
-          if (!isSilentError) {
-            ctx.onXmlComplete(
-              `<dyad-output type="error" message="Tool '${tool.name}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorMessage)}</dyad-output>`,
-            );
-          }
-          throw error;
-
+          // Return error as structured tool result so the model can self-correct
+          // instead of aborting the step with an exception.
+          return convertToolResultForAiSdk({
+            content: `Error: ${errorMessage}`,
+            isError: true,
+            retryable: error instanceof ToolError ? error.retryable : true,
+            hint: error instanceof ToolError ? error.hint : undefined,
+          });
         }
       },
     };

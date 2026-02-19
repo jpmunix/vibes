@@ -19,6 +19,8 @@ export interface GetProviderOptionsParams {
   mentionedAppsCodebases: MentionedAppCodebase[];
   builtinProviderId: string | undefined;
   settings: UserSettings;
+  /** OpenRouter service_tier for request prioritization */
+  serviceTier?: "default" | "batch";
 }
 
 /**
@@ -34,8 +36,15 @@ export function getProviderOptions({
   mentionedAppsCodebases,
   builtinProviderId,
   settings,
+  serviceTier,
 }: GetProviderOptionsParams): Record<string, any> {
   const extraOptions = getExtraProviderOptions(builtinProviderId, settings);
+
+  // Merge service_tier into openrouter/gateway options when provided
+  const routerOptions = serviceTier
+    ? { ...extraOptions, service_tier: serviceTier }
+    : extraOptions;
+
   const providerOptions: Record<string, any> = {
     "dyad-engine": {
       dyadAppId,
@@ -49,8 +58,8 @@ export function getProviderOptions({
         files,
       })),
     },
-    "dyad-gateway": extraOptions,
-    openrouter: extraOptions,
+    "dyad-gateway": routerOptions,
+    openrouter: routerOptions,
     openai: {
       reasoningSummary: "auto",
     } satisfies OpenAIResponsesProviderOptions,

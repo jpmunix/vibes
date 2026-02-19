@@ -678,6 +678,10 @@ images: ${imagesPart}`;
           system: systemPrompt,
           maxRetries: 1,
           messages: [{ role: "user", content: contentParts }],
+          providerOptions: {
+            openrouter: { service_tier: "batch" },
+            "dyad-gateway": { service_tier: "batch" },
+          },
         });
 
         const result = await stream.text;
@@ -871,7 +875,7 @@ source: Live website (screenshot and content provided)`;
       const truncatedMarkdown =
         crawlResult.markdown.length > MAX_MARKDOWN_LENGTH
           ? crawlResult.markdown.slice(0, MAX_MARKDOWN_LENGTH) +
-            "\n<!-- truncated -->"
+          "\n<!-- truncated -->"
           : crawlResult.markdown;
 
       // Sanitize crawled content to prevent prompt injection

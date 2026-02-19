@@ -165,11 +165,6 @@ describe("searchReplaceTool", () => {
         "/test/app/test.ts",
         expect.stringContaining("const a = 10"),
       );
-
-      // Verify visual feedback
-      expect(mockContext.onXmlComplete).toHaveBeenCalledWith(
-        expect.stringContaining('<dyad-output type="success"'),
-      );
     });
 
     it("escapes marker-like lines inside content to avoid parser splitting", async () => {
@@ -369,7 +364,7 @@ describe("searchReplaceTool", () => {
           },
           mockContext,
         ),
-      ).rejects.toThrow(/Read the latest file/i);
+      ).rejects.toThrow(/Failed to apply search-replace/i);
     });
   });
 

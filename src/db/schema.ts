@@ -121,6 +121,10 @@ export const messages = sqliteTable("messages", {
   usingFreeAgentModeQuota: integer("using_free_agent_mode_quota", {
     mode: "boolean",
   }),
+  // Link to the previous response in the chain (for agent state recovery)
+  previousResponseId: integer("previous_response_id"),
+  // Status of the message/response (completed = default, incomplete = stopped/interrupted, failed = tool error)
+  status: text("status", { enum: ["completed", "incomplete", "failed"] }).default("completed"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

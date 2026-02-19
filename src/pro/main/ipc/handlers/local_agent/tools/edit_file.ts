@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import log from "electron-log";
-import { ToolDefinition, AgentContext, escapeXmlAttr } from "./types";
+import { ToolDefinition, ToolError, AgentContext, escapeXmlAttr } from "./types";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import { deploySupabaseFunction } from "../../../../../../supabase_admin/supabase_management_client";
 import {
@@ -60,16 +60,18 @@ async function callTurboFileEdit(
     });
   } catch (error) {
     logger.warn("Turbo edit request failed", error);
-    throw new Error(
+    throw new ToolError(
       `Fallo crítico en la fusión de archivos (Network Error). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
     );
   }
 
   if (!response || !response.ok) {
     const errorText = await response?.text().catch(() => "Unknown error");
     logger.error("Turbo edit failed", errorText);
-    throw new Error(
+    throw new ToolError(
       `No se pudo fusionar el archivo correctamente (Engine Error: ${response?.status}). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
     );
   }
 
@@ -78,8 +80,9 @@ async function callTurboFileEdit(
   // FINAL SAFETY CHECK: Never allow returning content that still has placeholders
   if (containsPlaceholders(data.result)) {
     logger.error("Turbo edit returned content with placeholders", data.result);
-    throw new Error(
+    throw new ToolError(
       "El motor de fusión devolvió un archivo incompleto (contiene marcadores de posición). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.",
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
     );
   }
 
@@ -173,7 +176,10 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
 
     // Read original file content
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.path}`);
+      throw new ToolError(`File does not exist: ${args.path}`, {
+        retryable: false,
+        hint: "Check the file path. Use list_files to see available files.",
+      });
     }
 
     const originalContent = await readFile(fullFilePath, "utf8");
@@ -192,8 +198,9 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
     );
 
     if (!newContent) {
-      throw new Error(
+      throw new ToolError(
         "Failed to extract content from turbo-file-edit response",
+        { retryable: true, hint: "Try using search_replace instead." },
       );
     }
 

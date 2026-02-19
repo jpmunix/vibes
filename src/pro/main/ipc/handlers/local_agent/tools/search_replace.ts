@@ -4,6 +4,7 @@ import { z } from "zod";
 import log from "electron-log";
 import {
   ToolDefinition,
+  ToolError,
   AgentContext,
   escapeXmlAttr,
   escapeXmlContent,
@@ -103,7 +104,9 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
   execute: async (args, ctx: AgentContext) => {
     // Validate old_string !== new_string
     if (args.old_string === args.new_string) {
-      throw new Error("old_string and new_string must be different");
+      throw new ToolError("old_string and new_string must be different", {
+        retryable: false,
+      });
     }
 
     const fullFilePath = safeJoin(ctx.appPath, args.file_path);
@@ -114,7 +117,10 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
     }
 
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.file_path}`);
+      throw new ToolError(`File does not exist: ${args.file_path}`, {
+        retryable: false,
+        hint: "Check the file path and try again.",
+      });
     }
 
     const original = await fs.promises.readFile(fullFilePath, "utf8");
@@ -134,8 +140,12 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
         filePath: args.file_path,
         error: result.error ?? "unknown",
       });
-      throw new Error(
-        `Failed to apply search-replace: ${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""} Read the latest file and include more surrounding lines before retrying.`,
+      throw new ToolError(
+        `Failed to apply search-replace: ${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""}`,
+        {
+          retryable: true,
+          hint: "Read the latest file content with read_file and include more surrounding context lines in old_string, or use write_file to rewrite the entire file.",
+        },
       );
     }
 

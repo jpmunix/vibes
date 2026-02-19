@@ -1267,6 +1267,8 @@ This conversation includes one or more image attachments. When the user uploads 
           systemPromptOverride = systemPrompt,
           dyadDisableFiles = false,
           files,
+          toolChoice,
+          serviceTier,
         }: {
           chatMessages: ModelMessage[];
           modelClient: ModelClient;
@@ -1274,6 +1276,8 @@ This conversation includes one or more image attachments. When the user uploads 
           tools?: ToolSet;
           systemPromptOverride?: string;
           dyadDisableFiles?: boolean;
+          toolChoice?: Parameters<typeof streamText>[0]["toolChoice"];
+          serviceTier?: "default" | "batch";
         }) => {
           if (isEngineEnabled) {
             logger.log(
@@ -1325,6 +1329,7 @@ This conversation includes one or more image attachments. When the user uploads 
             mentionedAppsCodebases,
             builtinProviderId: modelClient.builtinProviderId,
             settings,
+            serviceTier,
           });
 
           logger.log(
@@ -1383,6 +1388,7 @@ This conversation includes one or more image attachments. When the user uploads 
             stopWhen: [stepCountIs(20), hasToolCall("edit-code")],
             providerOptions,
             system: systemPromptOverride,
+            toolChoice,
             tools,
             messages: chatMessages.filter((m: any) => m.content),
             onFinish: async (response: any) => {
@@ -1829,6 +1835,7 @@ ${formattedSearchReplaceIssues}`,
                   ],
                   modelClient: autoFixModelClient,
                   files: files,
+                  toolChoice: "required",
                 });
               previousAttempts.push(userPrompt);
               const result = await processStreamChunks({
@@ -1999,6 +2006,7 @@ ${problemReport.problems
                 const { fullStream } = await simpleStreamText({
                   modelClient: problemFixModelClient,
                   files: files,
+                  toolChoice: "required",
                   chatMessages: [
                     ...chatMessages.map((msg, index) => {
                       if (

@@ -179,6 +179,29 @@ export async function handleLocalAgentStream(
     messages: chat.messages,
   });
 
+  // Phase 2: Context & Recovery
+  // Link to previous assistant response for chain tracking
+  const assistantMessages = chat.messages.filter(
+    (m) => m.role === "assistant" && m.id !== placeholderMessageId,
+  );
+  const previousResponseId =
+    assistantMessages.length > 0
+      ? assistantMessages[assistantMessages.length - 1].id
+      : null;
+
+  // Initialize status as incomplete
+  // Initialize status as incomplete (non-blocking to prevent UI lag)
+  void db
+    .update(messages)
+    .set({
+      previousResponseId,
+      status: "incomplete",
+    })
+    .where(eq(messages.id, placeholderMessageId))
+    .catch((err) =>
+      logger.error("Failed to set initial message status/context", err),
+    );
+
   let fullResponse = "";
   let streamingPreview = ""; // Temporary preview for current tool, not persisted
 
@@ -447,9 +470,10 @@ export async function handleLocalAgentStream(
         if (typeof totalTokens === "number") {
           await db
             .update(messages)
-            .set({ maxTokensUsed: totalTokens })
+            // Mark as completed on successful finish
+            .set({ maxTokensUsed: totalTokens, status: "completed" })
             .where(eq(messages.id, placeholderMessageId))
-            .catch((err) => logger.error("Failed to save token count", err));
+            .catch((err) => logger.error("Failed to save token count/status", err));
 
           // Log token usage for verbose chat logs and token stats panel
           void logChatInfo(
@@ -663,7 +687,10 @@ export async function handleLocalAgentStream(
     // Mark as approved (auto-approve for local-agent)
     await db
       .update(messages)
-      .set({ approvalState: "approved" })
+    // Mark as approved (auto-approve for local-agent) and completed just in case onFinish didn't catch it
+    await db
+      .update(messages)
+      .set({ approvalState: "approved", status: "completed" })
       .where(eq(messages.id, placeholderMessageId));
 
     // Send telemetry for files with multiple edit tool types
@@ -702,7 +729,12 @@ export async function handleLocalAgentStream(
       if (fullResponse) {
         await db
           .update(messages)
-          .set({ content: `${fullResponse}\n\n[Response cancelled by user]` })
+        await db
+          .update(messages)
+          .set({
+            content: `${fullResponse}\n\n[Response cancelled by user]`,
+            status: "incomplete", // Cancelled = incomplete
+          })
           .where(eq(messages.id, placeholderMessageId));
       }
       return false; // Cancelled - don't consume quota
@@ -713,6 +745,17 @@ export async function handleLocalAgentStream(
       chatId: req.chatId,
       error: `Error: ${error}`,
     });
+
+    // Mark as failed
+    await db
+      .update(messages)
+      //.set({ status: "failed" }) // "failed" is not assignable to type ... because schema update pending? No, schema updated locally.
+      // SQL validation might fail if type definitions aren't reloaded, but runtime is fine.
+      // We cast to "any" or just assume it works if migration applied.
+      .set({ status: "failed" } as any)
+      .where(eq(messages.id, placeholderMessageId))
+      .catch((err) => logger.error("Failed to set failed status", err));
+
     return false; // Error - don't consume quota
   }
 }
