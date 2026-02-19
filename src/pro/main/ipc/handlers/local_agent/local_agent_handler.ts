@@ -10,7 +10,6 @@ import {
   stepCountIs,
   hasToolCall,
   ModelMessage,
-  type ToolExecutionOptions,
 } from "ai";
 import log from "electron-log";
 
@@ -18,6 +17,16 @@ import { db } from "@/db";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { chats, messages } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  initMessageStatus,
+  updateMessageContent,
+  markCompleted,
+  markApprovedAndCompleted,
+  markCancelled,
+  markFailed,
+  saveAiMessagesJson,
+  saveCommitHash,
+} from "./message_persistence";
 
 import { isDyadProEnabled, isBasicAgentMode } from "@/lib/schemas";
 import { readSettings } from "@/main/settings";
@@ -42,9 +51,7 @@ import {
   deployAllFunctionsIfNeeded,
   commitAllChanges,
 } from "./processors/file_operations";
-import { mcpManager } from "@/ipc/utils/mcp_manager";
-import { mcpServers } from "@/db/schema";
-import { requireMcpToolConsent } from "@/ipc/utils/mcp_consent";
+import { getMcpTools } from "./mcp_tools";
 import { getAiMessagesJsonIfWithinLimit } from "@/ipc/utils/ai_messages_utils";
 
 import {
@@ -53,8 +60,6 @@ import {
   parsePartialJson,
   type AgentContext,
   type FileEditTracker,
-  escapeXmlAttr,
-  escapeXmlContent,
   UserMessageContentPart,
 } from "./tools/types";
 
@@ -66,7 +71,6 @@ import {
 } from "./prepare_step_utils";
 import { TOOL_DEFINITIONS } from "./tool_definitions";
 import { parseAiMessagesJson } from "@/ipc/utils/ai_messages_utils";
-import { parseMcpToolKey, sanitizeMcpName } from "@/ipc/utils/mcp_tool_utils";
 import { addIntegrationTool } from "./tools/add_integration";
 import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
 
@@ -189,18 +193,8 @@ export async function handleLocalAgentStream(
       ? assistantMessages[assistantMessages.length - 1].id
       : null;
 
-  // Initialize status as incomplete
   // Initialize status as incomplete (non-blocking to prevent UI lag)
-  void db
-    .update(messages)
-    .set({
-      previousResponseId,
-      status: "incomplete",
-    })
-    .where(eq(messages.id, placeholderMessageId))
-    .catch((err) =>
-      logger.error("Failed to set initial message status/context", err),
-    );
+  initMessageStatus(placeholderMessageId, previousResponseId);
 
   let fullResponse = "";
   let streamingPreview = ""; // Temporary preview for current tool, not persisted
@@ -211,87 +205,7 @@ export async function handleLocalAgentStream(
   const allInjectedMessages: InjectedMessage[] = [];
 
   try {
-    // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
-    // Auto-routing: if provider is "auto-router", analyze task and select best model
-    let selectedModel = settings.selectedModel;
-
-    // if (
-    //   settings.selectedModel.provider === "auto-router" &&
-    //   settings.selectedModel.name === "auto"
-    // ) {
-    //   try {
-    //     logger.info(
-    //       "Auto-routing enabled for local agent, analyzing task complexity...",
-    //     );
-
-    //     // Notify frontend that model selection is starting
-    //     safeSend(event.sender, "chat:model:selecting", {
-    //       chatId: req.chatId,
-    //     });
-
-    //     // Get all available models from enabled providers
-    //     const modelsByProviders = await getLanguageModelsByProviders();
-    //     const availableModels: Array<{
-    //       model: typeof settings.selectedModel;
-    //       dollarSigns?: number;
-    //       brainSigns?: number;
-    //       displayName: string;
-    //     }> = [];
-
-    //     for (const [providerId, models] of Object.entries(modelsByProviders)) {
-    //       // Skip auto-router provider itself
-    //       if (providerId === "auto-router") continue;
-
-    //       for (const model of models) {
-    //         availableModels.push({
-    //           model: {
-    //             provider: providerId,
-    //             name: model.apiName,
-    //             customModelId: model.id,
-    //           },
-    //           dollarSigns: model.dollarSigns,
-    //           brainSigns: model.brainSigns,
-    //           displayName: model.displayName,
-    //         });
-    //       }
-    //     }
-
-    //     if (availableModels.length === 0) {
-    //       logger.error(
-    //         "No models available for auto-routing. Please configure at least one AI provider.",
-    //       );
-    //       throw new Error(
-    //         "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
-    //       );
-    //     }
-
-    //     const attachmentCount = req.attachments?.length ?? 0;
-    //     const analysis = await analyzeAndRouteModel(
-    //       req.prompt,
-    //       availableModels,
-    //       settings,
-    //       attachmentCount,
-    //     );
-
-    //     selectedModel = analysis.recommendedModel;
-
-    //     logger.info(
-    //       `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
-    //     );
-
-    //     // Send model selection info to frontend
-    //     safeSend(event.sender, "chat:model:selected", {
-    //       chatId: req.chatId,
-    //       model: selectedModel,
-    //       complexity: analysis.complexity,
-    //       taskType: analysis.taskType,
-    //       reasoning: analysis.reasoning,
-    //     });
-    //   } catch (error) {
-    //     logger.error("Error during auto-routing:", error);
-    //     throw error; // Re-throw to show error to user
-    //   }
-    // }
+    const selectedModel = settings.selectedModel;
 
     // Get model client
     const { modelClient } = await getModelClient(selectedModel, settings);
@@ -493,12 +407,7 @@ export async function handleLocalAgentStream(
         }
 
         if (typeof totalTokens === "number") {
-          await db
-            .update(messages)
-            // Mark as completed on successful finish
-            .set({ maxTokensUsed: totalTokens, status: "completed" })
-            .where(eq(messages.id, placeholderMessageId))
-            .catch((err) => logger.error("Failed to save token count/status", err));
+          await markCompleted(placeholderMessageId, totalTokens);
 
           // Log token usage for verbose chat logs and token stats panel
           void logChatInfo(
@@ -684,10 +593,7 @@ export async function handleLocalAgentStream(
       const response = await streamResult.response;
       const aiMessagesJson = getAiMessagesJsonIfWithinLimit(response.messages);
       if (aiMessagesJson) {
-        await db
-          .update(messages)
-          .set({ aiMessagesJson })
-          .where(eq(messages.id, placeholderMessageId));
+        await saveAiMessagesJson(placeholderMessageId, aiMessagesJson);
       }
     } catch (err) {
       logger.warn("Failed to save AI messages JSON:", err);
@@ -702,21 +608,12 @@ export async function handleLocalAgentStream(
       const commitResult = await commitAllChanges(ctx, ctx.chatSummary);
 
       if (commitResult.commitHash) {
-        await db
-          .update(messages)
-          .set({ commitHash: commitResult.commitHash })
-          .where(eq(messages.id, placeholderMessageId));
+        await saveCommitHash(placeholderMessageId, commitResult.commitHash);
       }
     }
 
-    // Mark as approved (auto-approve for local-agent)
-    await db
-      .update(messages)
-    // Mark as approved (auto-approve for local-agent) and completed just in case onFinish didn't catch it
-    await db
-      .update(messages)
-      .set({ approvalState: "approved", status: "completed" })
-      .where(eq(messages.id, placeholderMessageId));
+    // Mark as approved and completed (safety net if onFinish didn't catch it)
+    await markApprovedAndCompleted(placeholderMessageId);
 
     // Send telemetry for files with multiple edit tool types
     for (const [filePath, counts] of Object.entries(fileEditTracker)) {
@@ -752,15 +649,7 @@ export async function handleLocalAgentStream(
     if (abortController.signal.aborted) {
       // Handle cancellation
       if (fullResponse) {
-        await db
-          .update(messages)
-        await db
-          .update(messages)
-          .set({
-            content: `${fullResponse}\n\n[Response cancelled by user]`,
-            status: "incomplete", // Cancelled = incomplete
-          })
-          .where(eq(messages.id, placeholderMessageId));
+        await markCancelled(placeholderMessageId, fullResponse);
       }
       return false; // Cancelled - don't consume quota
     }
@@ -772,26 +661,14 @@ export async function handleLocalAgentStream(
     });
 
     // Mark as failed
-    await db
-      .update(messages)
-      //.set({ status: "failed" }) // "failed" is not assignable to type ... because schema update pending? No, schema updated locally.
-      // SQL validation might fail if type definitions aren't reloaded, but runtime is fine.
-      // We cast to "any" or just assume it works if migration applied.
-      .set({ status: "failed" } as any)
-      .where(eq(messages.id, placeholderMessageId))
-      .catch((err) => logger.error("Failed to set failed status", err));
+    await markFailed(placeholderMessageId);
 
     return false; // Error - don't consume quota
   }
 }
 
-async function updateResponseInDb(messageId: number, content: string) {
-  await db
-    .update(messages)
-    .set({ content })
-    .where(eq(messages.id, messageId))
-    .catch((err) => logger.error("Failed to update message", err));
-}
+// Delegate to centralized persistence
+const updateResponseInDb = updateMessageContent;
 
 function sendResponseChunk(
   event: IpcMainInvokeEvent,
@@ -810,82 +687,4 @@ function sendResponseChunk(
     chatId,
     messages: currentMessages,
   });
-}
-
-async function getMcpTools(
-  event: IpcMainInvokeEvent,
-  ctx: AgentContext,
-): Promise<ToolSet> {
-  const mcpToolSet: ToolSet = {};
-
-  try {
-    const servers = await db
-      .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.enabled, true as any));
-
-    for (const s of servers) {
-      const client = await mcpManager.getClient(s.id);
-      const toolSet = await client.tools();
-
-      for (const [name, mcpTool] of Object.entries(toolSet)) {
-        const key = `${sanitizeMcpName(s.name || "")}__${sanitizeMcpName(name)}`;
-
-        mcpToolSet[key] = {
-          description: mcpTool.description,
-          inputSchema: mcpTool.inputSchema,
-          execute: async (args: unknown, execCtx: ToolExecutionOptions) => {
-            try {
-              const inputPreview =
-                typeof args === "string"
-                  ? args
-                  : Array.isArray(args)
-                    ? args.join(" ")
-                    : JSON.stringify(args).slice(0, 500);
-
-              const ok = await requireMcpToolConsent(event, {
-                serverId: s.id,
-                serverName: s.name,
-                toolName: name,
-                toolDescription: mcpTool.description,
-                inputPreview,
-              });
-
-              if (!ok) throw new Error(`User declined running tool ${key}`);
-
-              // Emit XML for UI (MCP tools don't stream, so use onXmlComplete directly)
-              const { serverName, toolName } = parseMcpToolKey(key);
-              const content = JSON.stringify(args, null, 2);
-              ctx.onXmlComplete(
-                `<dyad-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</dyad-mcp-tool-call>`,
-              );
-
-              const res = await mcpTool.execute(args, execCtx);
-              const resultStr =
-                typeof res === "string" ? res : JSON.stringify(res);
-
-              ctx.onXmlComplete(
-                `<dyad-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</dyad-mcp-tool-result>`,
-              );
-
-              return resultStr;
-            } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              const errorStack =
-                error instanceof Error && error.stack ? error.stack : "";
-              ctx.onXmlComplete(
-                `<dyad-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</dyad-output>`,
-              );
-              throw error;
-            }
-          },
-        };
-      }
-    }
-  } catch (e) {
-    logger.warn("Failed building MCP toolset for local-agent", e);
-  }
-
-  return mcpToolSet;
 }

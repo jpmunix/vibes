@@ -76,10 +76,7 @@ export function ChatModeSelector() {
         return "Planificación";
       case "ask":
         return "Preguntar";
-      case "agent":
-        return "Build (MCP)";
       case "local-agent":
-        // Show "Basic Agent" for non-Pro users, "Agent" for Pro users
         return isProEnabled ? "Agente inteligente" : "Agente inteligente";
       default:
         return "Build";

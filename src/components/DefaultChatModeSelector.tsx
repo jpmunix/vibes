@@ -35,8 +35,6 @@ export function DefaultChatModeSelector() {
     switch (mode) {
       case "build":
         return "Construir";
-      case "agent":
-        return "Build (MCP)";
       case "plan":
         return "Planificación";
       case "local-agent":
@@ -44,7 +42,7 @@ export function DefaultChatModeSelector() {
       case "ask":
         return "Preguntar";
       default:
-        throw new Error(`Unknown chat mode: ${mode}`);
+        return "Construir";
     }
   };
 
