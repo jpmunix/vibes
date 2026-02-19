@@ -16,11 +16,13 @@ import {
   Bot,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { userAtom } from "@/atoms/authAtoms";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import {
@@ -33,8 +35,10 @@ import {
   selectedChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
+  collapseAllMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 
 interface ChatMessageProps {
   message: Message;
@@ -55,7 +59,14 @@ const formatTimestamp = (timestamp: string | Date) => {
 
 const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const collapseAll = useAtomValue(collapseAllMessagesAtom);
+  const [isCollapsedLocal, setIsCollapsedLocal] = useState(false);
+  // Sync with global toggle
+  useEffect(() => {
+    setIsCollapsedLocal(collapseAll);
+  }, [collapseAll]);
+  const isCollapsed = isCollapsedLocal;
+  const setIsCollapsed = setIsCollapsedLocal;
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions: liveVersions } = useVersions(appId);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
@@ -64,6 +75,10 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const isSelectingModel = selectedChatId
     ? (isSelectingModelById.get(selectedChatId) ?? false)
     : false;
+  const user = useAtomValue(userAtom);
+
+  const isUser = message.role === "user";
+  const isAssistant = message.role === "assistant";
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = useCallback(async () => {
@@ -132,140 +147,167 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
 
 
   return (
-    <div
-      className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-    >
-      <div className={`mt-4 mb-4 ${message.role === "assistant" ? "w-full max-w-3xl" : "max-w-[85%]"} mx-auto group`}>
-        <div
-          className={`rounded-2xl ${message.role === "assistant" ? "p-2" : "px-4 py-3 bg-secondary text-secondary-foreground"
-            }`}
-        >
-          {message.role === "assistant" &&
-            !message.content &&
-            isStreaming &&
-            isLastMessage &&
-            !isSelectingModel ? (
-            <StreamingLoadingAnimation
-              variant="initial"
-              label={loadingPhrases[loadingPhraseIndex]}
-            />
-          ) : !isSelectingModel ? (
+    <div className="flex justify-center">
+      <div className="mt-4 mb-4 w-full max-w-4xl mx-auto group">
+        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+          {/* Avatar */}
+          <div className="flex-shrink-0 mt-1">
+            {isUser ? (
+              <SimpleAvatar
+                src={user?.photoURL || undefined}
+                className="h-7 w-7"
+                fallbackText={
+                  user
+                    ? (user.displayName?.[0] || user.email?.[0] || "U").toUpperCase()
+                    : "Yo"
+                }
+              />
+            ) : (
+              <img
+                src="../../assets/icon/logo.png"
+                alt="AI"
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            )}
+          </div>
+
+          {/* Message bubble */}
+          <div className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             <div
-              className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
-              suppressHydrationWarning
+              className={`rounded-2xl ${isAssistant
+                ? "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
+                : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
+                }`}
             >
-              {message.role === "assistant" ? (
-                <>
-                  <DyadMarkdownParser content={message.content} />
-                  {isLastMessage && isStreaming && !isSelectingModel && (
-                    <StreamingLoadingAnimation
-                      variant="streaming"
-                      label={loadingPhrases[loadingPhraseIndex]}
+              {isAssistant &&
+                !message.content &&
+                isStreaming &&
+                isLastMessage &&
+                !isSelectingModel ? (
+                <StreamingLoadingAnimation
+                  variant="initial"
+                  label={loadingPhrases[loadingPhraseIndex]}
+                />
+              ) : !isSelectingModel ? (
+                <div
+                  className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
+                  suppressHydrationWarning
+                >
+                  {isAssistant ? (
+                    <>
+                      <DyadMarkdownParser content={message.content} />
+                      {isLastMessage && isStreaming && !isSelectingModel && (
+                        <StreamingLoadingAnimation
+                          variant="streaming"
+                          label={loadingPhrases[loadingPhraseIndex]}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <UserMessageContent
+                      content={message.content}
+                      aiMessagesJson={message.aiMessagesJson}
                     />
                   )}
-                </>
-              ) : (
-                <UserMessageContent
-                  content={message.content}
-                  aiMessagesJson={message.aiMessagesJson}
-                />
-              )}
-            </div>
-          ) : null}
-          {(message.role === "assistant" && message.content && !isStreaming) ||
-            message.approvalState ? (
-            <div
-              className={`mt-2 flex items-center ${message.role === "assistant" && message.content && !isStreaming
-                ? "justify-between"
-                : ""
-                } text-xs`}
-            >
-              {message.role === "assistant" &&
-                message.content &&
-                !isStreaming && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          data-testid="copy-message-button"
-                          onClick={handleCopyFormatted}
-                          className="flex items-center space-x-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
-                        >
-                          {copied ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                          <span className="hidden sm:inline"></span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {copied ? "¡Copiado!" : "Copiar"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              <div className="flex flex-wrap gap-2">
-                {message.role === "assistant" && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => setIsCollapsed(!isCollapsed)}
-                          className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
-                        >
-                          {isCollapsed ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronUp className="h-4 w-4" />
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isCollapsed ? "Expandir respuesta" : "Colapsar respuesta"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                {message.approvalState && (
-                  <div className="flex items-center space-x-1">
-                    {message.approvalState === "approved" ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Aprobado</span>
-                      </>
-                    ) : message.approvalState === "rejected" ? (
-                      <>
-                        <XCircle className="h-4 w-4 text-red-500" />
-                        <span>Rechazado</span>
-                      </>
-                    ) : null}
-                  </div>
-                )}
-                {message.role === "assistant" && message.model && (
-                  <>
-                    {selectedChatId &&
-                      autoRouterModelInfo.get(selectedChatId) ? (
-                      <AutoRouterModelBadge
-                        modelInfo={autoRouterModelInfo.get(selectedChatId)!}
-                        showInline={false}
-                      />
-                    ) : (
-                      <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
-                        <Bot className="h-4 w-4 flex-shrink-0" />
-                        <span>{message.model}</span>
+                </div>
+              ) : null}
+              {(isAssistant && message.content && !isStreaming) ||
+                message.approvalState ? (
+                <div
+                  className={`mt-2 flex items-center ${isAssistant && message.content && !isStreaming
+                    ? "justify-between"
+                    : ""
+                    } text-xs`}
+                >
+                  {isAssistant &&
+                    message.content &&
+                    !isStreaming &&
+                    !isCollapsed && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              data-testid="copy-message-button"
+                              onClick={handleCopyFormatted}
+                              className="flex items-center space-x-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
+                            >
+                              {copied ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                              <span className="hidden sm:inline"></span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {copied ? "¡Copiado!" : "Copiar"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  <div className="flex flex-wrap gap-2">
+                    {isAssistant && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => setIsCollapsed(!isCollapsed)}
+                              className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
+                            >
+                              {isCollapsed ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronUp className="h-4 w-4" />
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isCollapsed ? "Expandir respuesta" : "Colapsar respuesta"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    {message.approvalState && (
+                      <div className="flex items-center space-x-1">
+                        {message.approvalState === "approved" ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span>Aprobado</span>
+                          </>
+                        ) : message.approvalState === "rejected" ? (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <span>Rechazado</span>
+                          </>
+                        ) : null}
                       </div>
                     )}
-                  </>
-                )}
-              </div>
+                    {isAssistant && message.model && (
+                      <>
+                        {selectedChatId &&
+                          autoRouterModelInfo.get(selectedChatId) ? (
+                          <AutoRouterModelBadge
+                            modelInfo={autoRouterModelInfo.get(selectedChatId)!}
+                            showInline={false}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
+                            <Bot className="h-4 w-4 flex-shrink-0" />
+                            <span>{message.model}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
         {/* Timestamp and commit info for assistant messages - only visible on hover */}
-        {message.role === "assistant" && message.createdAt && (
+        {isAssistant && message.createdAt && (
           <div className="mt-3 flex flex-wrap items-center justify-start space-x-2 text-xs text-muted-foreground ">
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 ml-10">
               <Clock className="h-3 w-3" />
               <span>{formatTimestamp(message.createdAt)}</span>
             </div>

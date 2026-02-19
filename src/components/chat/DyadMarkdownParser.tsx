@@ -40,6 +40,7 @@ import { mapActionToButton } from "./ChatInput";
 import { SuggestedAction } from "@/lib/schemas";
 import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
+import { CompactToolBadge, shouldCompact, getToolDetail, type ToolBadgeState } from "./CompactToolBadge";
 
 const DYAD_CUSTOM_TAGS = [
   "dyad-write",
@@ -185,35 +186,135 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
     };
   }, [contentPieces]);
 
-  return (
-    <>
-      {contentPieces.map((piece, index) => (
-        <React.Fragment key={index}>
-          {piece.type === "markdown"
-            ? piece.content && (
+  // Group content pieces for compact rendering
+  const renderPieces = () => {
+    const elements: React.ReactNode[] = [];
+    let badgeGroup: React.ReactNode[] = [];
+    // Track the pending badge separately — it renders below the finished row
+    let pendingBadge: React.ReactNode | null = null;
+
+    const flushBadgeGroup = () => {
+      if (badgeGroup.length > 0 || pendingBadge) {
+        elements.push(
+          <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
+            {badgeGroup.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {badgeGroup}
+              </div>
+            )}
+            {pendingBadge}
+          </div>
+        );
+        badgeGroup = [];
+        pendingBadge = null;
+      }
+    };
+
+    // Helper: check if the next non-whitespace piece is a compactable tag
+    const isNextPieceCompactable = (currentIndex: number): boolean => {
+      for (let i = currentIndex + 1; i < contentPieces.length; i++) {
+        const next = contentPieces[i];
+        if (next.type === "markdown") {
+          if (next.content && next.content.trim()) return false; // real markdown text
+          continue; // whitespace-only, skip
+        }
+        if (next.type === "custom-tag") {
+          return shouldCompact(next.tagInfo.tag);
+        }
+      }
+      return false;
+    };
+
+    contentPieces.forEach((piece, index) => {
+      if (piece.type === "markdown") {
+        const isWhitespaceOnly = !piece.content || !piece.content.trim();
+        // Only flush if this is real markdown content AND we're not between compactable tags
+        if (isWhitespaceOnly && (badgeGroup.length > 0 || pendingBadge) && isNextPieceCompactable(index)) {
+          // Skip whitespace between compactable tags — don't break the row
+          return;
+        }
+        flushBadgeGroup();
+        if (piece.content && piece.content.trim()) {
+          elements.push(
+            <React.Fragment key={index}>
               <ReactMarkdown
                 remarkPlugins={REMARK_PLUGINS}
                 components={MARKDOWN_COMPONENTS}
               >
                 {piece.content}
               </ReactMarkdown>
-            )
-            : renderCustomTag(piece.tagInfo, { isStreaming })}
-          {index === lastErrorIndex &&
-            errorCount > 1 &&
-            !isStreaming &&
-            chatId && (
-              <div className="mt-3 w-full flex">
-                <FixAllErrorsButton
-                  errorMessages={errorMessages}
-                  chatId={chatId}
+            </React.Fragment>
+          );
+        }
+      } else {
+        const { tag, attributes, inProgress } = piece.tagInfo;
+        const state = getState({ isStreaming, inProgress });
+
+        if (shouldCompact(tag)) {
+          const detail = getToolDetail(tag, attributes);
+          const originalContent = renderCustomTag(piece.tagInfo, { isStreaming });
+          const badgeState: ToolBadgeState = state;
+
+          if (badgeState === "pending") {
+            // Pending badge goes below the finished row
+            pendingBadge = (
+              <React.Fragment key={index}>
+                <CompactToolBadge
+                  tag={tag}
+                  state={badgeState}
+                  detail={detail}
+                  originalContent={originalContent}
                 />
-              </div>
-            )}
-        </React.Fragment>
-      ))}
-    </>
-  );
+              </React.Fragment>
+            );
+          } else {
+            // Finished/aborted items accumulate as inline badges
+            badgeGroup.push(
+              <React.Fragment key={index}>
+                <CompactToolBadge
+                  tag={tag}
+                  state={badgeState}
+                  detail={detail}
+                  originalContent={originalContent}
+                />
+              </React.Fragment>
+            );
+          }
+        } else {
+          // Non-compactable tags render normally
+          flushBadgeGroup();
+          elements.push(
+            <React.Fragment key={index}>
+              {renderCustomTag(piece.tagInfo, { isStreaming })}
+            </React.Fragment>
+          );
+        }
+
+        // Error button after last error
+        if (
+          index === lastErrorIndex &&
+          errorCount > 1 &&
+          !isStreaming &&
+          chatId
+        ) {
+          flushBadgeGroup();
+          elements.push(
+            <div key={`fix-errors-${index}`} className="mt-3 w-full flex">
+              <FixAllErrorsButton
+                errorMessages={errorMessages}
+                chatId={chatId}
+              />
+            </div>
+          );
+        }
+      }
+    });
+
+    flushBadgeGroup();
+    return elements;
+  };
+
+  return <>{renderPieces()}</>;
 });
 
 /**

@@ -49,3 +49,6 @@ export const autoRouterModelInfoByChatIdAtom = atom<
 
 // Auto-router model selection loading state per chat
 export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
+
+// Global collapse/expand all AI messages
+export const collapseAllMessagesAtom = atom<boolean>(false);

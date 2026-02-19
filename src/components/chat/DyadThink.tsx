@@ -1,23 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { Brain, ChevronDown, ChevronUp, Loader } from "lucide-react";
+import React from "react";
 import { VanillaMarkdownParser } from "./DyadMarkdownParser";
 import { CustomTagState } from "./stateTypes";
 import { DyadTokenSavings } from "./DyadTokenSavings";
-import { useSettings } from "@/hooks/useSettings";
-import { t } from "@/lib/i18n";
 
 interface DyadThinkProps {
   node?: any;
   children?: React.ReactNode;
 }
 
-export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
-  const { settings } = useSettings();
-  const language = settings?.chatLanguage || "es";
-  const state = node?.properties?.state as CustomTagState;
-  const inProgress = state === "pending";
-  const [isExpanded, setIsExpanded] = useState(inProgress);
-
+/**
+ * DyadThink renders inside the CompactToolBadge modal.
+ * It just renders the thinking content as markdown.
+ * The compact badge / modal behavior is handled by CompactToolBadge.
+ */
+export const DyadThink: React.FC<DyadThinkProps> = ({ children }) => {
   // Check if content matches token savings format
   const tokenSavingsMatch =
     typeof children === "string"
@@ -25,13 +21,6 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
         /^dyad-token-savings\?original-tokens=([0-9.]+)&smart-context-tokens=([0-9.]+)$/,
       )
       : null;
-
-  // Collapse when transitioning from in-progress to not-in-progress
-  useEffect(() => {
-    if (!inProgress && isExpanded) {
-      setIsExpanded(false);
-    }
-  }, [inProgress]);
 
   // If it's token savings format, render DyadTokenSavings component
   if (tokenSavingsMatch) {
@@ -46,54 +35,12 @@ export const DyadThink: React.FC<DyadThinkProps> = ({ children, node }) => {
   }
 
   return (
-    <div
-      className={`relative bg-(--background-lightest) dark:bg-zinc-900 hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress ? "border-purple-500" : "border-border"
-        }`}
-      onClick={() => setIsExpanded(!isExpanded)}
-      role="button"
-      aria-expanded={isExpanded}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setIsExpanded(!isExpanded);
-        }
-      }}
-    >
-      {/* Top-left label badge */}
-      <div
-        className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold text-purple-500 bg-white dark:bg-zinc-900"
-        style={{ zIndex: 1 }}
-      >
-        <Brain size={16} className="text-purple-500" />
-        <span>{t("thinking", language)}</span>
-        {inProgress && (
-          <Loader size={14} className="ml-1 text-purple-500 animate-spin" />
-        )}
-      </div>
-
-      {/* Indicator icon */}
-      <div className="absolute top-2 right-2 p-1 text-gray-500">
-        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </div>
-
-      {/* Main content with smooth transition */}
-      <div
-        className="pt-6 overflow-hidden transition-[max-height] duration-300 ease-in-out"
-        style={{
-          maxHeight: isExpanded ? "none" : "0px",
-          opacity: isExpanded ? 1 : 0,
-          marginBottom: isExpanded ? "0" : "-6px", // Compensate for padding
-        }}
-      >
-        <div className="px-0 text-sm text-gray-600 dark:text-gray-300">
-          {typeof children === "string" ? (
-            <VanillaMarkdownParser content={children} />
-          ) : (
-            children
-          )}
-        </div>
-      </div>
+    <div className="prose dark:prose-invert prose-sm max-w-none">
+      {typeof children === "string" ? (
+        <VanillaMarkdownParser content={children} />
+      ) : (
+        children
+      )}
     </div>
   );
 };
