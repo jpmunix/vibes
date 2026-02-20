@@ -83,7 +83,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   }, [copyMessageContent, message.content]);
   // Extract the real current action from the streaming content
   const streamingInfo = useMemo(() => {
-    const defaultInfo = { label: "Pensando", dotColorClass: undefined as string | undefined, labelColorClass: undefined as string | undefined };
+    const defaultInfo = { label: "Pensando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined };
     if (!isStreaming || !isLastMessage) return defaultInfo;
     if (!message.content || !message.content.trim()) return defaultInfo;
 

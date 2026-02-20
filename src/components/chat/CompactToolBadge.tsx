@@ -14,7 +14,7 @@ import {
     Code,
     FolderOpen,
     Eye,
-    Loader,
+
     CircleX,
     Wrench,
     BarChart3,
@@ -33,36 +33,62 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
-/** Maps a custom tag name to its icon, label, and color */
-export const TOOL_META: Record<string, { icon: LucideIcon; label: string; color: string }> = {
-    "dyad-write": { icon: Pencil, label: "Escribir", color: "text-blue-500" },
-    "dyad-edit": { icon: Pencil, label: "Editar", color: "text-amber-500" },
-    "dyad-search-replace": { icon: Pencil, label: "Buscar/Reemplazar", color: "text-amber-500" },
-    "dyad-rename": { icon: ArrowRightLeft, label: "Renombrar", color: "text-indigo-500" },
-    "dyad-delete": { icon: Trash2, label: "Eliminar", color: "text-red-500" },
-    "dyad-read": { icon: Eye, label: "Leer", color: "text-cyan-500" },
-    "dyad-grep": { icon: Search, label: "Grep", color: "text-green-500" },
-    "dyad-code-search": { icon: Code, label: "Buscar código", color: "text-green-500" },
+export interface ToolMetaEntry {
+    icon: LucideIcon;
+    label: string;
+    pendingLabel?: string;
+    color: string;
+}
+
+/** Maps a custom tag name to its icon, label (finished), pendingLabel (in-progress), and color */
+export const TOOL_META: Record<string, ToolMetaEntry> = {
+    "dyad-write": { icon: Pencil, label: "Escrito", pendingLabel: "Escribiendo", color: "text-blue-500" },
+    "dyad-edit": { icon: Pencil, label: "Editado", pendingLabel: "Editando", color: "text-amber-500" },
+    "dyad-search-replace": { icon: Pencil, label: "Reemplazado", pendingLabel: "Reemplazando", color: "text-amber-500" },
+    "dyad-rename": { icon: ArrowRightLeft, label: "Renombrado", pendingLabel: "Renombrando", color: "text-indigo-500" },
+    "dyad-delete": { icon: Trash2, label: "Eliminado", pendingLabel: "Eliminando", color: "text-red-500" },
+    "dyad-read": { icon: Eye, label: "Leído", pendingLabel: "Leyendo", color: "text-cyan-500" },
+    "dyad-grep": { icon: Search, label: "Grep", pendingLabel: "Buscando", color: "text-green-500" },
+    "dyad-code-search": { icon: Code, label: "Búsqueda", pendingLabel: "Buscando código", color: "text-green-500" },
     "dyad-code-search-result": { icon: Code, label: "Resultado", color: "text-green-500" },
-    "dyad-list-files": { icon: FolderOpen, label: "Listar", color: "text-slate-500" },
-    "dyad-web-search": { icon: Globe, label: "Web", color: "text-blue-500" },
+    "dyad-list-files": { icon: FolderOpen, label: "Listado", pendingLabel: "Listando", color: "text-slate-500" },
+    "dyad-web-search": { icon: Globe, label: "Web", pendingLabel: "Buscando en web", color: "text-blue-500" },
     "dyad-web-search-result": { icon: Globe, label: "Web", color: "text-blue-500" },
-    "dyad-web-crawl": { icon: Globe, label: "Crawl", color: "text-blue-500" },
-    "dyad-add-dependency": { icon: Package, label: "Dependencia", color: "text-purple-500" },
-    "dyad-add-integration": { icon: Wrench, label: "Integración", color: "text-purple-500" },
-    "dyad-execute-sql": { icon: Database, label: "SQL", color: "text-orange-500" },
-    "dyad-read-logs": { icon: ScrollText, label: "Logs", color: "text-gray-500" },
-    "dyad-codebase-context": { icon: FileText, label: "Contexto", color: "text-cyan-500" },
-    "dyad-database-schema": { icon: Database, label: "Esquema BD", color: "text-orange-500" },
-    "dyad-supabase-table-schema": { icon: Database, label: "Tabla", color: "text-emerald-500" },
-    "dyad-supabase-project-info": { icon: Database, label: "Supabase", color: "text-emerald-500" },
-    "dyad-status": { icon: BarChart3, label: "Estado", color: "text-blue-500" },
-    "dyad-mcp-tool-call": { icon: Wrench, label: "Herramienta", color: "text-purple-500" },
+    "dyad-web-crawl": { icon: Globe, label: "Crawl", pendingLabel: "Crawleando", color: "text-blue-500" },
+    "dyad-add-dependency": { icon: Package, label: "Dependencia", pendingLabel: "Instalando", color: "text-purple-500" },
+    "dyad-add-integration": { icon: Wrench, label: "Integración", pendingLabel: "Integrando", color: "text-purple-500" },
+    "dyad-execute-sql": { icon: Database, label: "SQL", pendingLabel: "Ejecutando SQL", color: "text-orange-500" },
+    "dyad-read-logs": { icon: ScrollText, label: "Logs", pendingLabel: "Leyendo logs", color: "text-gray-500" },
+    "dyad-codebase-context": { icon: FileText, label: "Contexto", pendingLabel: "Cargando contexto", color: "text-cyan-500" },
+    "dyad-database-schema": { icon: Database, label: "Esquema BD", pendingLabel: "Cargando esquema", color: "text-orange-500" },
+    "dyad-supabase-table-schema": { icon: Database, label: "Tabla", pendingLabel: "Cargando tabla", color: "text-emerald-500" },
+    "dyad-supabase-project-info": { icon: Database, label: "Supabase", pendingLabel: "Cargando Supabase", color: "text-emerald-500" },
+    "dyad-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
+    "dyad-mcp-tool-call": { icon: Wrench, label: "Herramienta", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
     "dyad-mcp-tool-result": { icon: Wrench, label: "Resultado", color: "text-purple-500" },
-    "think": { icon: Brain, label: "Pensamiento", color: "text-purple-500" },
-    "dyad-think": { icon: Brain, label: "Pensamiento", color: "text-purple-500" },
-    "dyad-git": { icon: GitBranch, label: "Git", color: "text-orange-500" },
+    "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
+    "dyad-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
+    "dyad-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
 };
+
+/** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
+const TEXT_TO_BG: Record<string, string> = {
+    "text-blue-500": "bg-blue-500",
+    "text-amber-500": "bg-amber-500",
+    "text-indigo-500": "bg-indigo-500",
+    "text-red-500": "bg-red-500",
+    "text-cyan-500": "bg-cyan-500",
+    "text-green-500": "bg-green-500",
+    "text-slate-500": "bg-slate-500",
+    "text-purple-500": "bg-purple-500",
+    "text-orange-500": "bg-orange-500",
+    "text-gray-500": "bg-gray-500",
+    "text-emerald-500": "bg-emerald-500",
+};
+
+export function getBgColorClass(textColorClass: string): string | undefined {
+    return TEXT_TO_BG[textColorClass];
+}
 
 export type ToolBadgeState = "pending" | "finished" | "aborted";
 
@@ -93,16 +119,9 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
     const meta = resolveToolMeta(tag, attributes);
     const Icon = meta.icon;
 
+    // Pending state: no inline badge — the streaming loader handles this
     if (state === "pending") {
-        return (
-            <div className="flex items-center gap-2 py-1.5 my-0.5">
-                <Loader size={15} className={`${meta.color} animate-spin flex-shrink-0`} />
-                <span className={`text-sm font-medium ${meta.color}`}>
-                    {meta.label}
-                    {detail && <span className="text-muted-foreground font-normal ml-1">{detail}</span>}
-                </span>
-            </div>
-        );
+        return null;
     }
 
     if (state === "aborted") {

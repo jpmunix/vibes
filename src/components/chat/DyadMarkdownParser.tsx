@@ -192,29 +192,23 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
   const renderPieces = () => {
     const elements: React.ReactNode[] = [];
     let badgeGroup: BadgeItem[] = [];
-    // Track the pending badge separately — it renders below the finished row
-    let pendingBadge: React.ReactNode | null = null;
     let groupIndex = 0;
 
     const flushBadgeGroup = () => {
-      if (badgeGroup.length > 0 || pendingBadge) {
+      if (badgeGroup.length > 0) {
         const capturedBadges = [...badgeGroup];
         const currentGroupIndex = groupIndex;
         groupIndex++;
         elements.push(
           <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
-            {capturedBadges.length > 0 && (
-              <GroupedToolBadges
-                badges={capturedBadges}
-                isStreaming={isStreaming}
-                isFirstGroup={currentGroupIndex === 0}
-              />
-            )}
-            {pendingBadge}
+            <GroupedToolBadges
+              badges={capturedBadges}
+              isStreaming={isStreaming}
+              isFirstGroup={currentGroupIndex === 0}
+            />
           </div>
         );
         badgeGroup = [];
-        pendingBadge = null;
       }
     };
 
@@ -237,7 +231,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
       if (piece.type === "markdown") {
         const isWhitespaceOnly = !piece.content || !piece.content.trim();
         // Only flush if this is real markdown content AND we're not between compactable tags
-        if (isWhitespaceOnly && (badgeGroup.length > 0 || pendingBadge) && isNextPieceCompactable(index)) {
+        if (isWhitespaceOnly && badgeGroup.length > 0 && isNextPieceCompactable(index)) {
           // Skip whitespace between compactable tags — don't break the row
           return;
         }
@@ -264,18 +258,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
           const badgeState: ToolBadgeState = state;
 
           if (badgeState === "pending") {
-            // Pending badge goes below the finished row
-            pendingBadge = (
-              <React.Fragment key={index}>
-                <CompactToolBadge
-                  tag={tag}
-                  state={badgeState}
-                  detail={detail}
-                  originalContent={originalContent}
-                  attributes={attributes}
-                />
-              </React.Fragment>
-            );
+            // Pending state: skip — the streaming loader handles in-progress indication
           } else {
             // Finished/aborted items accumulate as structured badge data
             badgeGroup.push({
