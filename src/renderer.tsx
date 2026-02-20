@@ -463,7 +463,48 @@ if (windowType === "database" && appIdStr) {
         </StrictMode>,
       );
     },
-  );
+  ).catch((err) => {
+    console.error("Failed to load ChatWindowApp:", err);
+    // Replace skeleton with error UI so the animation stops consuming resources
+    root.render(
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        width: "100%",
+        background: "var(--background, #1a1a1a)",
+        color: "var(--foreground, #e5e5e5)",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+        gap: "16px",
+        padding: "24px",
+        textAlign: "center",
+      }}>
+        <div style={{ fontSize: "24px" }}>⚠️</div>
+        <p style={{ fontSize: "14px", opacity: 0.8 }}>
+          Error al cargar la ventana de chat
+        </p>
+        <p style={{ fontSize: "12px", opacity: 0.5, maxWidth: "400px" }}>
+          {String(err?.message || err)}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: "8px 20px",
+            borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "rgba(255,255,255,0.1)",
+            color: "inherit",
+            cursor: "pointer",
+            fontSize: "13px",
+          }}
+        >
+          Reintentar
+        </button>
+      </div>,
+    );
+  });
 } else {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
