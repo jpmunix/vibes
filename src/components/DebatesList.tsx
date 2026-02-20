@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   PlusCircle,
   Trash2,
@@ -164,6 +165,7 @@ export function DebatesList({ show }: { show?: boolean }) {
                         >
                           {formatDistanceToNow(new Date(debate.updatedAt), {
                             addSuffix: true,
+                            locale: es,
                           })}
                         </span>
                       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, startTransition } fro
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   PlusCircle,
   Trash2,
@@ -102,6 +103,7 @@ const ChatListItem = React.memo(function ChatListItem({
               >
                 {formatDistanceToNow(new Date(chat.createdAt), {
                   addSuffix: true,
+                  locale: es,
                 })}
               </span>
             </div>

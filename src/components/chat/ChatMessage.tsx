@@ -5,7 +5,7 @@ import {
 import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
-import { TOOL_META, getToolDetail } from "./CompactToolBadge";
+import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
 import {
   CheckCircle,
   XCircle,
@@ -21,6 +21,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -53,9 +54,9 @@ const formatTimestamp = (timestamp: string | Date) => {
   const diffInHours =
     (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
   if (diffInHours < 24) {
-    return formatDistanceToNow(messageTime, { addSuffix: true });
+    return formatDistanceToNow(messageTime, { addSuffix: true, locale: es });
   } else {
-    return format(messageTime, "MMM d, yyyy 'at' h:mm a");
+    return format(messageTime, "d 'de' MMM yyyy, H:mm", { locale: es });
   }
 };
 
@@ -80,40 +81,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const handleCopyFormatted = useCallback(async () => {
     await copyMessageContent(message.content);
   }, [copyMessageContent, message.content]);
-  const loadingPhrases = useMemo(
-    () => [
-      "Pensando",
-      "Analizando contexto",
-      "Preparando respuesta",
-    ],
-    [],
-  );
-  const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0);
-
-  // Rotate the "Thinking" phrase while streaming
-  useEffect(() => {
-    if (
-      isAssistant &&
-      isStreaming &&
-      isLastMessage &&
-      !isSelectingModel
-    ) {
-      const interval = setInterval(() => {
-        setLoadingPhraseIndex((prev) => (prev + 1) % loadingPhrases.length);
-      }, 2200);
-      return () => clearInterval(interval);
-    }
-  }, [
-    isAssistant,
-    isLastMessage,
-    isStreaming,
-    isSelectingModel,
-    loadingPhrases.length,
-  ]);
-
   // Extract the real current action from the streaming content
-  const streamingLabel = useMemo(() => {
-    if (!message.content || !isStreaming || !isLastMessage) return undefined;
+  const streamingInfo = useMemo(() => {
+    const defaultInfo = { label: "Pensando", dotColorClass: undefined as string | undefined, labelColorClass: undefined as string | undefined };
+    if (!isStreaming || !isLastMessage) return defaultInfo;
+    if (!message.content || !message.content.trim()) return defaultInfo;
 
     // Find the last unclosed (in-progress) custom tag
     const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|think|dyad-think)\s*([^>]*)>/g;
@@ -152,18 +124,23 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           attributes[attrMatch[1]] = attrMatch[2];
         }
         const detail = getToolDetail(lastOpenTag, attributes);
-        return detail ? `${meta.label} ${detail}` : meta.label;
+        const activeLabel = meta.pendingLabel ?? meta.label;
+        return {
+          label: detail ? `${activeLabel} ${detail}` : activeLabel,
+          dotColorClass: getBgColorClass(meta.color),
+          labelColorClass: meta.color,
+        };
       }
     }
 
-    // Fallback: check if the last completed tool was git (still executing or waiting for model response)
+    // Fallback: check if the last completed tool was git
     const lastGitTag = message.content.lastIndexOf("<dyad-git ");
     if (lastGitTag !== -1) {
-      return "Consultando repositorio";
+      return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500" };
     }
 
     // Generic fallback
-    return "Generando respuesta";
+    return defaultInfo;
   }, [message.content, isStreaming, isLastMessage]);
   // Find the version that was active when this message was sent
   const messageVersion = useMemo(() => {
@@ -232,30 +209,27 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
                 }`}
             >
-              {/* === Assistant: ternary — loader OR content === */}
-              {isAssistant &&
-                !message.content &&
-                isStreaming &&
-                isLastMessage &&
-                !isSelectingModel ? (
-                <StreamingLoadingAnimation
-                  variant="initial"
-                  label={loadingPhrases[loadingPhraseIndex]}
-                />
-              ) : isAssistant && !isSelectingModel ? (
-                <div
-                  className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
-                  suppressHydrationWarning
-                >
-                  <DyadMarkdownParser content={message.content} />
-                  {isLastMessage && isStreaming && (
+              {/* === Assistant messages === */}
+              {isAssistant && !isSelectingModel && (
+                <>
+                  <div
+                    className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
+                    suppressHydrationWarning
+                  >
+                    <DyadMarkdownParser content={message.content} />
+                  </div>
+                  {/* Streaming loader: always visible while streaming, always "initial" variant (big pulsing dots).
+                      Also shown if content is empty even after streaming ends (covers error/empty response). */}
+                  {isLastMessage && (isStreaming || (!message.content || !message.content.trim())) && (
                     <StreamingLoadingAnimation
-                      variant="streaming"
-                      label={streamingLabel}
+                      variant="initial"
+                      label={streamingInfo.label}
+                      dotColorClass={streamingInfo.dotColorClass}
+                      labelColorClass={streamingInfo.labelColorClass}
                     />
                   )}
-                </div>
-              ) : null}
+                </>
+              )}
               {/* === User messages === */}
               {isUser && !isSelectingModel && (
                 <div
