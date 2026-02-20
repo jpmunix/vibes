@@ -138,7 +138,7 @@ export class ContextFilesPickerDialog {
   constructor(
     public page: Page,
     public close: () => Promise<void>,
-  ) {}
+  ) { }
 
   async addManualContextFile(path: string) {
     await this.page.getByTestId("manual-context-files-input").fill(path);
@@ -183,7 +183,7 @@ class ProModesDialog {
   constructor(
     public page: Page,
     public close: () => Promise<void>,
-  ) {}
+  ) { }
 
   async setSmartContextMode(mode: "balanced" | "off" | "deep") {
     await this.page
@@ -208,7 +208,7 @@ class ProModesDialog {
 }
 
 class GitHubConnector {
-  constructor(public page: Page) {}
+  constructor(public page: Page) { }
 
   async connect() {
     await this.page.getByRole("button", { name: "Connect to GitHub" }).click();
@@ -321,7 +321,7 @@ class GitHubConnector {
     if (!matchingEvent) {
       throw new Error(
         `Expected push event not found. Expected: ${JSON.stringify(expectedEvent)}. ` +
-          `Actual events: ${JSON.stringify(pushEvents)}`,
+        `Actual events: ${JSON.stringify(pushEvents)}`,
       );
     }
 
@@ -916,8 +916,8 @@ export class PageObject {
       prettifyDump(
         // responses API
         parsedDump["body"]["input"] ??
-          // chat completion API
-          parsedDump["body"]["messages"],
+        // chat completion API
+        parsedDump["body"]["messages"],
         {
           onlyLastMessage: type === "last-message",
         },
@@ -1331,7 +1331,7 @@ export class PageObject {
 
   async goToAppsTab() {
     await this.page.getByRole("link", { name: "Apps" }).click();
-    await expect(this.page.getByText("Hagamos magia")).toBeVisible();
+    await expect(this.page.getByText("vibes.start()")).toBeVisible({ timeout: 5000 });
   }
 
   async goToChatTab() {
@@ -1467,7 +1467,7 @@ export const test = base.extend<{
   po: PageObject;
 }>({
   electronConfig: [
-    async ({}, use) => {
+    async ({ }, use) => {
       // Default configuration - tests can override this fixture
       await use({});
     },
@@ -1597,7 +1597,7 @@ export const test = base.extend<{
 
 export function testWithConfig(config: ElectronConfig) {
   return test.extend({
-    electronConfig: async ({}, use) => {
+    electronConfig: async ({ }, use) => {
       await use(config);
     },
   });
@@ -1608,7 +1608,7 @@ export function testWithConfigSkipIfWindows(config: ElectronConfig) {
     return test.skip;
   }
   return test.extend({
-    electronConfig: async ({}, use) => {
+    electronConfig: async ({ }, use) => {
       await use(config);
     },
   });
@@ -1631,17 +1631,17 @@ function prettifyDump(
       const content = Array.isArray(message.content)
         ? JSON.stringify(message.content)
         : message.content
-            .replace(BUILD_SYSTEM_PREFIX, "\n${BUILD_SYSTEM_PREFIX}")
-            .replace(BUILD_SYSTEM_POSTFIX, "${BUILD_SYSTEM_POSTFIX}")
-            // Normalize line endings to always use \n
-            .replace(/\r\n/g, "\n")
-            // We remove package.json because it's flaky.
-            // Depending on whether pnpm install is run, it will be modified,
-            // and the contents and timestamp (thus affecting order) will be affected.
-            .replace(
-              /\n<dyad-file path="package\.json">[\s\S]*?<\/dyad-file>\n/g,
-              "",
-            );
+          .replace(BUILD_SYSTEM_PREFIX, "\n${BUILD_SYSTEM_PREFIX}")
+          .replace(BUILD_SYSTEM_POSTFIX, "${BUILD_SYSTEM_POSTFIX}")
+          // Normalize line endings to always use \n
+          .replace(/\r\n/g, "\n")
+          // We remove package.json because it's flaky.
+          // Depending on whether pnpm install is run, it will be modified,
+          // and the contents and timestamp (thus affecting order) will be affected.
+          .replace(
+            /\n<dyad-file path="package\.json">[\s\S]*?<\/dyad-file>\n/g,
+            "",
+          );
       return `===\nrole: ${message.role}\nmessage: ${content}`;
     })
     .join("\n\n");

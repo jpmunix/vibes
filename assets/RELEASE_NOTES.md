@@ -1,3 +1,15 @@
+- Nueva capacidad del agente de trabajar con el reposition git. Opciones status, diff, diff_file, log, show_commit, current_branch, list_branches, commit, create_branch, checkout, stash_save, stash_pop, stash_list, revert_file
+- Búsqueda semántica avanzada para identificar patrones en el código y enviar el contexto más relevante al modelo de LLM. Del mismo modo, se ha mejorado la precisión la base de conocimientos utilizando el mismo patrón de semántica.
+- Se ha intentado mitigar el problema en el que el usuario escribe un prompt y la IA en vez de ejecutar la acción completa el mensaje del usuario.
+
+**feat: add semantic search settings and caching support for embeddings**
+- Introduced "Búsqueda Semántica" settings for enabling AI-powered contextual search using vector embeddings.
+- Added support for selecting and configuring embedding models in a dedicated settings UI.
+- Implemented a new `EmbeddingsCache` table for storing vector embeddings indexed by file, debate, or message.
+- Updated handlers to fetch the initial prompt for a selected app and cache embeddings for semantic ranking.
+- Enabled semantic re-ranking of search results combining keyword and similarity scores.
+- Enhanced fallback logic to ensure the `EmbeddingsCache` table and migrations are created if missing during initialization.
+
 ## 🔥 Novedades v5.0 ~ Beta 1
 
 El rediseño completo de la experiencia de chat y la arquitectura de ventanas dedicadas marca un nuevo hito en rendimiento y usabilidad.

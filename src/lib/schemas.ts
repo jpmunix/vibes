@@ -412,6 +412,9 @@ export const UserSettingsSchema = z
     primaryChromaDark: z.number().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
     aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
+    // Embeddings for semantic search
+    embeddingsEnabled: z.boolean().optional(),
+    embeddingsModel: z.string().optional(),
     windowState: z
       .object({
         x: z.number().optional(),

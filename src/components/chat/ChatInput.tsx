@@ -388,11 +388,14 @@ export function ChatInput({
         />
       )}
       {/* Display loading or error state for proposal */}
-      {isProposalLoading && (
-        <div className="p-4 text-sm text-muted-foreground">
-          Cargando propuesta...
-        </div>
-      )}
+      {isProposalLoading &&
+        settings.selectedChatMode !== "ask" &&
+        settings.selectedChatMode !== "local-agent" &&
+        !isPlanMode && (
+          <div className="p-4 text-sm text-muted-foreground">
+            Cargando propuesta...
+          </div>
+        )}
       {proposalError && (
         <div className="p-4 text-sm text-red-600">
           Error al cargar la propuesta: {proposalError.message}

@@ -149,9 +149,13 @@ function findSemanticDuplicate(
 
 /**
  * Builds a compressed knowledge base prompt from active entries.
- * v2: Denser format, prioritizes rules, limits to top entries.
+ * v3: Uses embeddings to filter entries by semantic relevance to the user prompt.
+ * - Rules are ALWAYS included (non-negotiable directives)
+ * - Non-rule entries are ranked by cosine similarity to the user prompt
+ * - Only top N most relevant non-rule entries are included
+ * - Falls back to v2 behavior (include all) if embeddings unavailable
  */
-async function buildKnowledgePrompt(appId: number): Promise<string> {
+async function buildKnowledgePrompt(appId: number, userPrompt?: string): Promise<string> {
     const entries = await db.query.knowledgeEntries.findMany({
         where: and(
             eq(knowledgeEntries.appId, appId),
@@ -163,12 +167,106 @@ async function buildKnowledgePrompt(appId: number): Promise<string> {
 
     if (entries.length === 0) return "";
 
-    // Always include ALL rules regardless of limit
+    // Always include ALL rules regardless of filtering
     const rules = entries.filter((e) => e.category === "rule");
-    const rest = entries
-        .filter((e) => e.category !== "rule")
-        .slice(0, Math.max(30, MAX_KNOWLEDGE_ENTRIES - rules.length));
-    const finalEntries = [...rules, ...rest];
+    const nonRules = entries.filter((e) => e.category !== "rule");
+
+    let selectedNonRules = nonRules;
+    const MAX_SEMANTIC_ENTRIES = 8;
+
+    // If we have a prompt and embeddings are available, filter non-rules semantically
+    if (userPrompt && nonRules.length > MAX_SEMANTIC_ENTRIES) {
+        try {
+            const { isEmbeddingsAvailable, generateEmbedding, generateEmbeddingsBatched, cosineSimilarity, getEmbeddingModel, getConfiguredDims } = await import("../utils/embeddings_service");
+            const { getCachedEmbedding, setCachedEmbedding, computeContentHash } = await import("../utils/embeddings_cache");
+
+            if (isEmbeddingsAvailable()) {
+                const model = getEmbeddingModel();
+                const dims = getConfiguredDims();
+
+                // Generate prompt embedding
+                const promptEmbedding = await generateEmbedding(userPrompt);
+
+                // Get/generate embeddings for all non-rule entries (lazy backfill)
+                const entryEmbeddings: (number[] | null)[] = new Array(nonRules.length).fill(null);
+                const toGenerate: { index: number; content: string }[] = [];
+
+                for (let i = 0; i < nonRules.length; i++) {
+                    const entry = nonRules[i];
+                    const contentHash = computeContentHash(entry.content);
+                    const cached = await getCachedEmbedding(
+                        "knowledge",
+                        appId,
+                        `knowledge-${entry.id}`,
+                        contentHash,
+                        model,
+                    );
+
+                    if (cached) {
+                        entryEmbeddings[i] = cached;
+                    } else {
+                        toGenerate.push({ index: i, content: entry.content });
+                    }
+                }
+
+                // Batch generate missing embeddings (lazy backfill of existing entries)
+                if (toGenerate.length > 0) {
+                    logger.log(
+                        `[KNOWLEDGE v3] Backfilling ${toGenerate.length} knowledge entry embeddings`,
+                    );
+                    const newEmbeddings = await generateEmbeddingsBatched(
+                        toGenerate.map((t) => t.content),
+                        5,
+                        50,
+                    );
+
+                    for (let i = 0; i < toGenerate.length; i++) {
+                        const { index } = toGenerate[i];
+                        const entry = nonRules[index];
+                        const embedding = newEmbeddings[i];
+                        entryEmbeddings[index] = embedding;
+
+                        // Cache for future use
+                        void setCachedEmbedding(
+                            "knowledge",
+                            appId,
+                            `knowledge-${entry.id}`,
+                            computeContentHash(entry.content),
+                            embedding,
+                            model,
+                            dims,
+                        );
+                    }
+                }
+
+                // Rank non-rules by cosine similarity to prompt
+                const scored = nonRules.map((entry, i) => {
+                    const embedding = entryEmbeddings[i];
+                    let similarity = 0;
+                    if (embedding) {
+                        similarity = cosineSimilarity(promptEmbedding, embedding);
+                    }
+                    return { entry, similarity };
+                });
+
+                scored.sort((a, b) => b.similarity - a.similarity);
+                selectedNonRules = scored.slice(0, MAX_SEMANTIC_ENTRIES).map((s) => s.entry);
+
+                logger.log(
+                    `[KNOWLEDGE v3] Semantic filter: ${nonRules.length} → ${selectedNonRules.length} entries (rules: ${rules.length} always included)`,
+                );
+            }
+        } catch (error) {
+            logger.error("[KNOWLEDGE v3] Semantic filtering failed, using all entries:", error);
+            // Fallback: use original behavior
+            selectedNonRules = nonRules.slice(0, Math.max(30, MAX_KNOWLEDGE_ENTRIES - rules.length));
+        }
+    } else {
+        // No prompt or few entries: include all (original behavior)
+        selectedNonRules = nonRules.slice(0, Math.max(30, MAX_KNOWLEDGE_ENTRIES - rules.length));
+    }
+
+    const finalEntries = [...rules, ...selectedNonRules];
 
     // Group by category
     const grouped: Record<string, string[]> = {};

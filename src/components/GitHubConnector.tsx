@@ -93,7 +93,7 @@ function ConnectedGitHubConnector({
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+  const [syncSuccess, setSyncSuccess] = useState<"push" | "pull" | false>(false);
   const [showForceDialog, setShowForceDialog] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
@@ -309,7 +309,7 @@ function ConnectedGitHubConnector({
           forceWithLease,
           commitMessage: hasUncommittedFiles ? commitMessage : undefined,
         });
-        setSyncSuccess(true);
+        setSyncSuccess("push");
         setRebaseInProgress(false);
         setConflicts([]); // Clear conflicts on successful sync
         setRebaseStatusMessage(null);
@@ -581,7 +581,7 @@ function ConnectedGitHubConnector({
             setIsPulling(true);
             try {
               await ipc.github.pull({ appId });
-              setSyncSuccess(true);
+              setSyncSuccess("pull");
               refreshApp();
             } catch (err: any) {
               setSyncError(err.message || "Error al descargar del repositorio.");
@@ -875,7 +875,9 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {syncSuccess && (
-        <p className="text-sm text-muted-foreground mt-2">¡Subido a GitHub con éxito!</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {syncSuccess === "pull" ? "¡Descargado de GitHub con éxito!" : "¡Subido a GitHub con éxito!"}
+        </p>
       )}
       {disconnectError && (
         <p className="text-red-600 mt-2">{disconnectError}</p>

@@ -4,7 +4,7 @@ import { useAtom, useSetAtom } from "jotai";
 import { appsListAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { useLoadApps } from "@/hooks/useLoadApps";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -29,6 +29,9 @@ import {
   Calendar,
   Clock,
   MapPin,
+  MessageSquareText,
+  ClipboardCopy,
+  Check,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -95,6 +98,9 @@ export default function AppDetailsPage() {
     useState(false);
   const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
   const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState<{ content: string | null; createdAt: Date | string | null } | null>(null);
+  const [isLoadingInitialPrompt, setIsLoadingInitialPrompt] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const queryClient = useQueryClient();
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
@@ -109,6 +115,23 @@ export default function AppDetailsPage() {
   // Get the appId from search params and find the corresponding app
   const appId = search.appId ? Number(search.appId) : null;
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
+
+  // Fetch initial prompt when the info section opens
+  useEffect(() => {
+    if (isInfoSectionOpen && appId && !initialPrompt && !isLoadingInitialPrompt) {
+      setIsLoadingInitialPrompt(true);
+      ipc.chat.getInitialPrompt(appId)
+        .then((result) => {
+          setInitialPrompt(result);
+        })
+        .catch((err) => {
+          console.error("Error fetching initial prompt:", err);
+        })
+        .finally(() => {
+          setIsLoadingInitialPrompt(false);
+        });
+    }
+  }, [isInfoSectionOpen, appId, initialPrompt, isLoadingInitialPrompt]);
 
   const handleDeleteApp = async () => {
     if (!appId) return;
@@ -545,6 +568,53 @@ export default function AppDetailsPage() {
                         <span className="text-sm">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Prompt Inicial Card */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <MessageSquareText className="h-5 w-5" />
+                      Prompt inicial
+                    </CardTitle>
+                    <CardDescription>El mensaje que dio origen a esta aplicación</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingInitialPrompt ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Cargando...
+                      </div>
+                    ) : initialPrompt?.content ? (
+                      <div className="space-y-2">
+                        <div className="relative group">
+                          <div className="text-sm whitespace-pre-wrap break-words bg-black/5 dark:bg-white/5 rounded-lg p-3 border border-black/5 dark:border-white/5 max-h-48 overflow-y-auto">
+                            {initialPrompt.content}
+                          </div>
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/10 dark:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/20 dark:hover:bg-white/20 cursor-pointer"
+                            onClick={() => {
+                              navigator.clipboard.writeText(initialPrompt.content!);
+                              setCopiedPrompt(true);
+                              setTimeout(() => setCopiedPrompt(false), 2000);
+                            }}
+                            title="Copiar prompt"
+                          >
+                            {copiedPrompt ? (
+                              <Check className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <ClipboardCopy className="h-3.5 w-3.5 text-gray-500" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                        No se encontró el prompt inicial de esta aplicación.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>

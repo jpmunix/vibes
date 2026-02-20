@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { ChevronDown, ChevronUp, Wrench, type LucideIcon } from "lucide-react";
-import { TOOL_META, type ToolBadgeState } from "./CompactToolBadge";
+import { TOOL_META, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import {
     Dialog,
     DialogContent,
@@ -13,6 +13,7 @@ export interface BadgeItem {
     state: ToolBadgeState;
     detail?: string;
     originalContent: React.ReactNode;
+    attributes?: Record<string, string>;
 }
 
 interface GroupEntry {
@@ -28,6 +29,8 @@ const GROUP_THRESHOLD = 4;
 
 interface GroupedToolBadgesProps {
     badges: BadgeItem[];
+    isStreaming?: boolean;
+    isFirstGroup?: boolean;
 }
 
 /**
@@ -37,15 +40,22 @@ interface GroupedToolBadgesProps {
  *
  * If fewer than GROUP_THRESHOLD badges, renders them individually (ungrouped).
  */
-export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, isStreaming, isFirstGroup }) => {
+    const [isExpanded, setIsExpanded] = useState(!!(isStreaming && isFirstGroup));
+
+    // Auto-collapse when streaming ends
+    useEffect(() => {
+        if (!isStreaming && isFirstGroup) {
+            setIsExpanded(false);
+        }
+    }, [isStreaming, isFirstGroup]);
     const [modalItem, setModalItem] = useState<BadgeItem | null>(null);
 
     // Group badges by icon (not tag), so tools sharing an icon merge in the summary
     const groups: GroupEntry[] = useMemo(() => {
         const seen = new Map<string, GroupEntry>();
         for (const b of badges) {
-            const meta = TOOL_META[b.tag] || { icon: Wrench, label: b.tag, color: "text-gray-500" };
+            const meta = resolveToolMeta(b.tag, b.attributes);
             // Use icon.displayName as grouping key so e.g. Pencil groups write+edit+search-replace
             const iconKey = meta.icon.displayName || meta.icon.name || b.tag;
             if (seen.has(iconKey)) {
@@ -68,7 +78,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges }) 
         return (
             <div className="flex flex-wrap items-center gap-1">
                 {badges.map((b, i) => {
-                    const meta = TOOL_META[b.tag] || { icon: Wrench, label: b.tag, color: "text-gray-500" };
+                    const meta = resolveToolMeta(b.tag, b.attributes);
                     const Icon = meta.icon;
                     return (
                         <button
@@ -130,7 +140,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges }) 
                 {isExpanded && (
                     <div className="border-t border-border/30">
                         {badges.map((b, i) => {
-                            const meta = TOOL_META[b.tag] || { icon: Wrench, label: b.tag, color: "text-gray-500" };
+                            const meta = resolveToolMeta(b.tag, b.attributes);
                             const Icon = meta.icon;
                             return (
                                 <button
@@ -162,7 +172,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges }) 
 /** Shared modal for displaying tool content */
 function ModalDialog({ item, onClose }: { item: BadgeItem | null; onClose: () => void }) {
     if (!item) return null;
-    const meta = TOOL_META[item.tag] || { icon: Wrench, label: item.tag, color: "text-gray-500" };
+    const meta = resolveToolMeta(item.tag, item.attributes);
     const Icon = meta.icon;
 
     return (

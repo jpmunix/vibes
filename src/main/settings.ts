@@ -61,6 +61,9 @@ const DEFAULT_SETTINGS: UserSettings = {
   showTokenBar: false,
   aiQueryLogRotationThreshold: "200",
   windowState: undefined,
+  // Embeddings (enabled by default)
+  embeddingsEnabled: true,
+  embeddingsModel: "openai/text-embedding-3-small",
 };
 
 const SETTINGS_FILE = "user-settings.json";

@@ -33,6 +33,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-supabase-project-info",
     "dyad-status",
     "dyad-think",
+    "dyad-git",
 ];
 
 /**

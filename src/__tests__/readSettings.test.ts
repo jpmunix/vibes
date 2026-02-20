@@ -53,7 +53,8 @@ describe("readSettings", () => {
       );
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-5-mini",
+          "aiQueryLogRotationThreshold": "200",
+          "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
           "autoFixMaxAttempts": 1,
           "autoFixMaxDurationMs": 20000,
@@ -63,7 +64,9 @@ describe("readSettings", () => {
             "provider": "openrouter",
           },
           "chatLanguage": "es",
-          "debateModel": "x-ai/grok-4.1-fast",
+          "debateModel": "openai/gpt-5-mini",
+          "embeddingsEnabled": false,
+          "embeddingsModel": "openai/text-embedding-3-small",
           "enableAutoFixProblems": false,
           "enableAutoRepairRuntimeErrors": true,
           "enableBackgroundProblemAutoFix": false,
@@ -74,13 +77,12 @@ describe("readSettings", () => {
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
-          "enableTokenStats": true,
           "enableTurboEditsV2": true,
-          "enableVerboseChatLogs": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
+          "previewPosition": "right",
           "providerSettings": {},
           "selectedChatMode": "build",
           "selectedModel": {
@@ -90,10 +92,11 @@ describe("readSettings", () => {
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "showTokenBar": false,
-          "summaryModel": "x-ai/grok-4.1-fast",
+          "summaryModel": "google/gemini-3-flash-preview",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
           "turboEditModel": "openai/gpt-4.1",
+          "windowState": undefined,
         }
       `);
     });
@@ -329,7 +332,8 @@ describe("readSettings", () => {
 
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-5-mini",
+          "aiQueryLogRotationThreshold": "200",
+          "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
           "autoFixMaxAttempts": 1,
           "autoFixMaxDurationMs": 20000,
@@ -339,7 +343,9 @@ describe("readSettings", () => {
             "provider": "openrouter",
           },
           "chatLanguage": "es",
-          "debateModel": "x-ai/grok-4.1-fast",
+          "debateModel": "openai/gpt-5-mini",
+          "embeddingsEnabled": false,
+          "embeddingsModel": "openai/text-embedding-3-small",
           "enableAutoFixProblems": false,
           "enableAutoRepairRuntimeErrors": true,
           "enableBackgroundProblemAutoFix": false,
@@ -350,13 +356,12 @@ describe("readSettings", () => {
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
-          "enableTokenStats": true,
           "enableTurboEditsV2": true,
-          "enableVerboseChatLogs": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
+          "previewPosition": "right",
           "providerSettings": {},
           "selectedChatMode": "build",
           "selectedModel": {
@@ -366,10 +371,11 @@ describe("readSettings", () => {
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "showTokenBar": false,
-          "summaryModel": "x-ai/grok-4.1-fast",
+          "summaryModel": "google/gemini-3-flash-preview",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
           "turboEditModel": "openai/gpt-4.1",
+          "windowState": undefined,
         }
       `);
     });

@@ -128,9 +128,7 @@ testSetup.describe("Setup Flow", () => {
     await po.goToAppsTab();
 
     // After configuring a provider, the setup banner should be gone
-    await expect(
-      po.page.getByText("Hagamos magia", { exact: true }),
-    ).not.toBeVisible();
-    await expect(po.page.getByText("Hagamos magia")).toBeVisible();
+    // and the vibes.start() animation should be visible
+    await expect(po.page.getByText("vibes.start()")).toBeVisible({ timeout: 5000 });
   });
 });

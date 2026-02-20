@@ -234,6 +234,108 @@ function ensureChatsPlanDataColumn(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure the previous_response_id and status columns exist in messages table.
+ * These columns were added to the schema for agent state recovery but no
+ * Drizzle migration was generated. This is a safety net for existing databases.
+ */
+function ensureMessagesAgentColumns(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(messages)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("previous_response_id")) {
+      logger.log("Adding missing 'previous_response_id' column to messages");
+      sqlite.exec(`ALTER TABLE \`messages\` ADD \`previous_response_id\` integer`);
+    }
+    if (!columnNames.has("status")) {
+      logger.log("Adding missing 'status' column to messages");
+      sqlite.exec(`ALTER TABLE \`messages\` ADD \`status\` text DEFAULT 'completed'`);
+    }
+  } catch (error) {
+    logger.error("Error ensuring messages agent columns:", error);
+  }
+}
+
+/**
+ * Ensure the embeddings_cache table exists.
+ * Migration 0042_sad_iron_fist creates this table but can fail on upgrade.
+ * This is a safety net that creates the table if missing and marks the migration as applied.
+ */
+function ensureEmbeddingsCacheTable(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='embeddings_cache'`)
+      .get();
+
+    if (!tableExists) {
+      logger.log("Creating missing 'embeddings_cache' table (migration fallback)");
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS \`embeddings_cache\` (
+          \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+          \`scope\` text NOT NULL,
+          \`source_id\` integer NOT NULL,
+          \`content_key\` text NOT NULL,
+          \`content_hash\` text NOT NULL,
+          \`embedding\` text NOT NULL,
+          \`model\` text NOT NULL,
+          \`dimensions\` integer NOT NULL,
+          \`created_at\` integer DEFAULT (unixepoch()) NOT NULL
+        )
+      `);
+      sqlite.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS \`embeddings_scope_source_key_model\`
+          ON \`embeddings_cache\` (\`scope\`, \`source_id\`, \`content_key\`, \`model\`)
+      `);
+    }
+
+    // Ensure the index exists even if table was partially created
+    const indexExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='index' AND name='embeddings_scope_source_key_model'`)
+      .get();
+    if (!indexExists) {
+      sqlite.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS \`embeddings_scope_source_key_model\`
+          ON \`embeddings_cache\` (\`scope\`, \`source_id\`, \`content_key\`, \`model\`)
+      `);
+    }
+
+    // Mark migration 0042 as applied so migrate() skips it
+    const MIGRATION_0042_HASH = "f601278af7fdde66d4c53494515f825e571a85672d6cc8f139f51c6f7efb9636";
+    const MIGRATION_0042_CREATED_AT = 1771607647967;
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_0042_HASH);
+
+        if (!migrationExists) {
+          logger.log("Marking migration 0042 (embeddings_cache) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_0042_HASH, MIGRATION_0042_CREATED_AT);
+        }
+      }
+    } catch (migError) {
+      logger.log("Could not mark migration 0042 as applied (will likely be handled by migrate)");
+    }
+  } catch (error) {
+    logger.error("Error ensuring embeddings_cache table:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -310,6 +412,12 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure chats has plan_data column (safety net for migration 0041)
       ensureChatsPlanDataColumn(sqlite);
+
+      // Ensure messages has previous_response_id and status columns (agent recovery)
+      ensureMessagesAgentColumns(sqlite);
+
+      // Ensure embeddings_cache table exists (semantic search, migration 0042 fallback)
+      ensureEmbeddingsCacheTable(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });

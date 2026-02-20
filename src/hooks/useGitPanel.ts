@@ -253,6 +253,22 @@ export function useGitPanel(appId: number | null) {
         [appId],
     );
 
+    // Switch branch mutation
+    const switchBranchMutation = useMutation({
+        mutationFn: async (branch: string) => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.github.switchBranch({ appId, branch });
+        },
+        onSuccess: () => {
+            refreshFiles();
+            refreshBranch();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({ queryKey: ["git-panel", "local-branches", appId] });
+            toast.success("Rama cambiada correctamente");
+        },
+        onError: (err: Error) => toast.error(`Error al cambiar de rama: ${err.message}`),
+    });
+
     return {
         // Data
         uncommittedFiles,
@@ -283,6 +299,7 @@ export function useGitPanel(appId: number | null) {
         resolveFileOurs: resolveFileOursMutation.mutateAsync,
         resolveFileTheirs: resolveFileTheirsMutation.mutateAsync,
         getConflictFileDiff,
+        switchBranch: switchBranchMutation.mutateAsync,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -293,6 +310,7 @@ export function useGitPanel(appId: number | null) {
         isResolvingMerge: resolveMergeOursMutation.isPending || resolveMergeTheirsMutation.isPending,
         isAbortingMerge: abortMergeMutation.isPending,
         isResolvingFile: resolveFileOursMutation.isPending || resolveFileTheirsMutation.isPending,
+        isSwitchingBranch: switchBranchMutation.isPending,
     };
 }
 

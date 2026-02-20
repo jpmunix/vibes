@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
     Brain,
+    GitBranch,
     Pencil,
     FileText,
     Search,
@@ -60,6 +61,7 @@ export const TOOL_META: Record<string, { icon: LucideIcon; label: string; color:
     "dyad-mcp-tool-result": { icon: Wrench, label: "Resultado", color: "text-purple-500" },
     "think": { icon: Brain, label: "Pensamiento", color: "text-purple-500" },
     "dyad-think": { icon: Brain, label: "Pensamiento", color: "text-purple-500" },
+    "dyad-git": { icon: GitBranch, label: "Git", color: "text-orange-500" },
 };
 
 export type ToolBadgeState = "pending" | "finished" | "aborted";
@@ -71,6 +73,7 @@ interface CompactToolBadgeProps {
     detail?: string;
     /** The original rendered content to show in the modal */
     originalContent: React.ReactNode;
+    attributes?: Record<string, string>;
 }
 
 /**
@@ -84,9 +87,10 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
     state,
     detail,
     originalContent,
+    attributes,
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const meta = TOOL_META[tag] || { icon: Wrench, label: tag, color: "text-gray-500" };
+    const meta = resolveToolMeta(tag, attributes);
     const Icon = meta.icon;
 
     if (state === "pending") {
@@ -162,6 +166,14 @@ export function shouldCompact(tag: string): boolean {
     return !NON_COMPACTABLE_TAGS.has(tag) && isCompactableTag(tag);
 }
 
+export function resolveToolMeta(tag: string, attributes?: Record<string, string>) {
+    const defaultMeta = TOOL_META[tag] || { icon: Wrench, label: tag, color: "text-gray-500" };
+    if ((tag === "dyad-read" || tag === "dyad-delete" || tag === "dyad-write" || tag === "dyad-edit") && attributes?.path?.includes(".git/")) {
+        return TOOL_META["dyad-git"];
+    }
+    return defaultMeta;
+}
+
 /** Extract a short detail string from tag attributes */
 export function getToolDetail(tag: string, attributes: Record<string, string>): string | undefined {
     switch (tag) {
@@ -171,6 +183,7 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
         case "dyad-read":
         case "dyad-delete": {
             const path = attributes.path || "";
+            if (path.includes(".git/")) return undefined; // No label for git internal files
             return path ? path.split("/").pop() : undefined;
         }
         case "dyad-rename":
@@ -189,6 +202,8 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes.directory || undefined;
         case "dyad-status":
             return attributes.title || undefined;
+        case "dyad-git":
+            return undefined;
         default:
             return undefined;
     }

@@ -124,17 +124,13 @@ export function SetupBanner() {
   }
 
   if (itemsNeedAction.length === 0) {
-    // Don't show "Hagamos magia" while still loading initial data
+    // Don't show the heading while still loading initial data
     // (nodeSystemInfo null or providers loading) to avoid a flash
     // of this heading in windows like the chat that mount SetupBanner transiently.
     if (!nodeSystemInfo || loading) {
       return null;
     }
-    return (
-      <h1 className="text-center text-5xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 tracking-tight">
-        Hagamos magia
-      </h1>
-    );
+    return <VibesStartHeading />;
   }
 
   const bannerClasses = cn(
@@ -313,6 +309,77 @@ export function SetupBanner() {
         onClose={() => setShowDyadProTrialDialog(false)}
       />
     </>
+  );
+}
+
+function VibesStartHeading() {
+  const full = "vibes.start()";
+  const [text, setText] = useState<string>("");
+
+  useEffect(() => {
+    let i = 0;
+    const timer: number = window.setInterval(() => {
+      i += 1;
+      setText(full.slice(0, i));
+      if (i >= full.length) {
+        window.clearInterval(timer);
+      }
+    }, 85);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center mb-8">
+      <h1 className="relative text-5xl font-semibold tracking-tight">
+        <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400">
+          {text}
+          <span
+            className="inline-block ml-1 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400"
+            style={{ animation: "vibes-start-blink 1.1s step-end infinite" }}
+          >
+            |
+          </span>
+        </span>
+
+        {/* glow respirando */}
+        <span
+          aria-hidden
+          className="absolute inset-[-120%] -z-10 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--primary) 55%, transparent) 0%, color-mix(in srgb, var(--primary) 35%, transparent) 35%, color-mix(in srgb, var(--primary) 15%, transparent) 55%, color-mix(in srgb, var(--primary) 5%, transparent) 70%, transparent 80%)",
+            animation:
+              "vibes-start-breathe 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+          }}
+        />
+      </h1>
+
+      <style>{`
+        @keyframes vibes-start-blink {
+          0%, 45% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+
+        @keyframes vibes-start-breathe {
+          0% {
+            transform: scale(0.9);
+            opacity: 0.45;
+            filter: blur(48px);
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.75;
+            filter: blur(72px);
+          }
+          100% {
+            transform: scale(0.9);
+            opacity: 0.45;
+            filter: blur(48px);
+          }
+        }
+      `}</style>
+    </div>
   );
 }
 

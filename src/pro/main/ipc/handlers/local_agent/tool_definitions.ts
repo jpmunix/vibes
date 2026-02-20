@@ -31,6 +31,7 @@ import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
 import { grepTool } from "./tools/grep";
 import { codeSearchTool } from "./tools/code_search";
+import { gitOperationsTool } from "./tools/git_operations";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
   type ToolDefinition,
@@ -67,6 +68,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   webCrawlTool,
   updateTodosTool,
   runTypeChecksTool,
+  gitOperationsTool,
 ];
 // ============================================================================
 // Agent Tool Name Type (derived from TOOL_DEFINITIONS)

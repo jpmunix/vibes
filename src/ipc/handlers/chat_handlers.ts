@@ -503,5 +503,51 @@ export function registerChatHandlers() {
     }
   });
 
+  createTypedHandler(
+    chatContracts.getInitialPrompt,
+    async (_, appId) => {
+      try {
+        // Find the oldest chat for this app
+        const oldestChat = await db.query.chats.findFirst({
+          where: eq(chats.appId, appId),
+          orderBy: (chats, { asc }) => [asc(chats.createdAt)],
+          columns: { id: true },
+        });
+
+        if (!oldestChat) {
+          return { content: null, createdAt: null };
+        }
+
+        // Get the first user message in that chat
+        const firstUserMessage = await db
+          .select({
+            content: messages.content,
+            createdAt: messages.createdAt,
+          })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.chatId, oldestChat.id),
+              eq(messages.role, "user"),
+            ),
+          )
+          .orderBy(messages.createdAt)
+          .limit(1);
+
+        if (!firstUserMessage.length) {
+          return { content: null, createdAt: null };
+        }
+
+        return {
+          content: firstUserMessage[0].content,
+          createdAt: firstUserMessage[0].createdAt,
+        };
+      } catch (error) {
+        logger.error("Error getting initial prompt:", error);
+        return { content: null, createdAt: null };
+      }
+    },
+  );
+
   logger.debug("Registered chat IPC handlers");
 }

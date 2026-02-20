@@ -12,6 +12,7 @@ import { DyadAddDependency } from "./DyadAddDependency";
 import { DyadExecuteSql } from "./DyadExecuteSql";
 import { DyadLogs } from "./DyadLogs";
 import { DyadGrep } from "./DyadGrep";
+import { DyadGit } from "./DyadGit";
 import { DyadAddIntegration } from "./DyadAddIntegration";
 import { DyadEdit } from "./DyadEdit";
 import { DyadSearchReplace } from "./DyadSearchReplace";
@@ -74,6 +75,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-supabase-project-info",
   "dyad-status",
   "dyad-think",
+  "dyad-git",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -193,14 +195,21 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
     let badgeGroup: BadgeItem[] = [];
     // Track the pending badge separately — it renders below the finished row
     let pendingBadge: React.ReactNode | null = null;
+    let groupIndex = 0;
 
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0 || pendingBadge) {
         const capturedBadges = [...badgeGroup];
+        const currentGroupIndex = groupIndex;
+        groupIndex++;
         elements.push(
           <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
             {capturedBadges.length > 0 && (
-              <GroupedToolBadges badges={capturedBadges} />
+              <GroupedToolBadges
+                badges={capturedBadges}
+                isStreaming={isStreaming}
+                isFirstGroup={currentGroupIndex === 0}
+              />
             )}
             {pendingBadge}
           </div>
@@ -264,6 +273,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
                   state={badgeState}
                   detail={detail}
                   originalContent={originalContent}
+                  attributes={attributes}
                 />
               </React.Fragment>
             );
@@ -274,6 +284,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
               state: badgeState,
               detail,
               originalContent,
+              attributes,
             });
           }
         } else {
@@ -842,6 +853,28 @@ function renderCustomTag(
         </DyadStatus>
       );
 
+    case "dyad-git":
+      return (
+        <DyadGit
+          node={{
+            properties: {
+              state: getState({ isStreaming, inProgress }),
+              operation: attributes.operation || "",
+              file_path: attributes.file_path,
+              commit: attributes.commit,
+              branch: attributes.branch,
+              ref: attributes.ref,
+              message: attributes.message,
+              limit: attributes.limit,
+              offset: attributes.offset,
+              index: attributes.index,
+            },
+          }}
+        >
+          {content}
+        </DyadGit>
+      );
+
     default:
       return null;
   }
@@ -1273,6 +1306,25 @@ function renderModalContent(
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-muted/20 p-3 rounded">
               {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Git operations ===
+    case "dyad-git": {
+      const operation = attributes.operation || "";
+      return (
+        <div className="space-y-2">
+          {operation && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium">git {operation}</span>
+            </div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-log">{content}</CodeHighlight>
             </div>
           )}
         </div>

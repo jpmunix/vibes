@@ -36,6 +36,11 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { GitCommitHistory } from "@/components/GitCommitHistory";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
@@ -272,6 +277,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
     const {
         uncommittedFiles,
         currentBranch,
+        branches,
         gitState,
         commitMessage,
         setCommitMessage,
@@ -299,6 +305,8 @@ export function GitPanel({ onClose }: GitPanelProps) {
         resolveFileTheirs,
         getConflictFileDiff,
         isResolvingFile,
+        switchBranch,
+        isSwitchingBranch,
     } = useGitPanel(appId);
 
     const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set());
@@ -316,6 +324,8 @@ export function GitPanel({ onClose }: GitPanelProps) {
 
     // Git Tools section state
     const [showGitTools, setShowGitTools] = useState(false);
+    // Branch switcher popover
+    const [showBranchPopover, setShowBranchPopover] = useState(false);
     const [isRemovingLock, setIsRemovingLock] = useState(false);
 
     // Separate files into staged and unstaged
@@ -448,17 +458,67 @@ export function GitPanel({ onClose }: GitPanelProps) {
                     <h2 className="text-sm font-semibold">Control de Git</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Current branch badge */}
+                    {/* Current branch badge — click to switch */}
                     {currentBranch && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
-                            <GitBranch size={12} />
-                            {currentBranch}
-                            {gitState?.ahead !== undefined && gitState.ahead > 0 && (
-                                <span className="ml-1 text-[10px] bg-primary/20 px-1 rounded">
-                                    ↑{gitState.ahead}
-                                </span>
-                            )}
-                        </div>
+                        <Popover open={showBranchPopover} onOpenChange={setShowBranchPopover}>
+                            <PopoverTrigger asChild>
+                                <button
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium",
+                                        "hover:bg-primary/20 transition-colors cursor-pointer",
+                                        isSwitchingBranch && "opacity-60 pointer-events-none",
+                                    )}
+                                    disabled={isSwitchingBranch}
+                                >
+                                    {isSwitchingBranch ? (
+                                        <Loader2 size={12} className="animate-spin" />
+                                    ) : (
+                                        <GitBranch size={12} />
+                                    )}
+                                    {currentBranch}
+                                    {gitState?.ahead !== undefined && gitState.ahead > 0 && (
+                                        <span className="ml-1 text-[10px] bg-primary/20 px-1 rounded">
+                                            ↑{gitState.ahead}
+                                        </span>
+                                    )}
+                                    <ChevronDown size={10} className="ml-0.5 opacity-60" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-56 p-1">
+                                <div className="px-2 py-1.5">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cambiar rama</p>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    {branches.length === 0 ? (
+                                        <p className="px-2 py-2 text-xs text-muted-foreground italic">No hay ramas disponibles</p>
+                                    ) : (
+                                        branches.map((branch) => (
+                                            <button
+                                                key={branch}
+                                                className={cn(
+                                                    "flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs transition-colors text-left",
+                                                    branch === currentBranch
+                                                        ? "bg-primary/10 text-primary font-semibold"
+                                                        : "hover:bg-muted text-foreground",
+                                                )}
+                                                disabled={branch === currentBranch || isSwitchingBranch}
+                                                onClick={async () => {
+                                                    setShowBranchPopover(false);
+                                                    await switchBranch(branch);
+                                                }}
+                                            >
+                                                {branch === currentBranch ? (
+                                                    <Check size={12} className="text-primary shrink-0" />
+                                                ) : (
+                                                    <GitBranch size={12} className="text-muted-foreground shrink-0" />
+                                                )}
+                                                <span className="truncate">{branch}</span>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     )}
                     {/* Merge/rebase warnings */}
                     {gitState?.mergeInProgress && (

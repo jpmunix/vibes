@@ -298,6 +298,15 @@ export const chatContracts = {
     input: z.number(), // chatId
     output: z.any().nullable(), // Plan JSON or null
   }),
+
+  getInitialPrompt: defineContract({
+    channel: "get-initial-prompt",
+    input: z.number(), // appId
+    output: z.object({
+      content: z.string().nullable(),
+      createdAt: z.union([z.date(), z.string()]).nullable(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

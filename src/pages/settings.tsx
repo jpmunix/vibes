@@ -9,6 +9,7 @@ import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { AutomationSettings } from "@/components/settings/AutomationSettings";
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 import { WebSearchSettings } from "@/components/settings/WebSearchSettings";
+import { EmbeddingsSettings } from "@/components/settings/EmbeddingsSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
@@ -191,6 +192,23 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     keywords: ["notificacion", "respuesta", "completada", "chat", "alerta"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
+  },
+  // Embeddings Settings
+  {
+    id: "embeddings",
+    label: "Búsqueda Semántica",
+    description: "Mejorar la comprensión del código usando vectores semánticos",
+    keywords: ["embeddings", "semantica", "busqueda", "vectores", "ia", "contexto"],
+    section: "Configuración Semántica",
+    sectionId: "embeddings-settings",
+  },
+  {
+    id: "embeddings-model",
+    label: "Modelo de Embeddings",
+    description: "Configurar el modelo usado para la búsqueda semántica",
+    keywords: ["modelo", "embeddings", "openrouter", "dimensiones", "coste"],
+    section: "Configuración Semántica",
+    sectionId: "embeddings-settings",
   },
   // AI Settings
   {
@@ -692,6 +710,10 @@ export default function SettingsPage() {
 
           <WebSearchSettings
             isHighlighted={highlightedSection === "serper-settings"}
+          />
+
+          <EmbeddingsSettings
+            isHighlighted={highlightedSection === "embeddings-settings"}
           />
 
           <AIBehaviorSettings

@@ -116,7 +116,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     if (!message.content || !isStreaming || !isLastMessage) return undefined;
 
     // Find the last unclosed (in-progress) custom tag
-    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|think|dyad-think)\s*([^>]*)>/g;
+    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|think|dyad-think)\s*([^>]*)>/g;
     const closePattern = (tag: string) => new RegExp(`</${tag}>`, "g");
 
     let lastOpenTag: string | null = null;
@@ -156,7 +156,13 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
       }
     }
 
-    // Fallback: check if there's markdown text being written
+    // Fallback: check if the last completed tool was git (still executing or waiting for model response)
+    const lastGitTag = message.content.lastIndexOf("<dyad-git ");
+    if (lastGitTag !== -1) {
+      return "Consultando repositorio";
+    }
+
+    // Generic fallback
     return "Generando respuesta";
   }, [message.content, isStreaming, isLastMessage]);
   // Find the version that was active when this message was sent

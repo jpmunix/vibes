@@ -219,6 +219,41 @@ export function useStreamChat({
         }
       })();
 
+      // Optimistic UI update: instantly show the user message and a loading assistant message
+      setMessagesById((prev) => {
+        const next = new Map(prev);
+        const currentMessages = next.get(chatId) ?? [];
+
+        // Generate temporary negative IDs for optimistic messages
+        const tempUserId = -Math.floor(Math.random() * 1000000);
+        const tempAssistantId = tempUserId - 1;
+
+        const newMessages = [...currentMessages];
+
+        // Add user message if not a redo
+        if (!redo && prompt.trim()) {
+          newMessages.push({
+            id: tempUserId,
+            chatId,
+            role: "user",
+            content: prompt,
+            createdAt: new Date().toISOString(),
+          } as any);
+        }
+
+        // Add loading assistant message
+        newMessages.push({
+          id: tempAssistantId,
+          chatId,
+          role: "assistant",
+          content: "", // Empty content triggers the loading animation in ChatMessage
+          createdAt: new Date().toISOString(),
+        } as any);
+
+        next.set(chatId, newMessages);
+        return next;
+      });
+
       let hasIncrementedStreamCount = false;
       // RAF throttling: batch onChunk updates to max 1 per animation frame
       let pendingChunkMessages: typeof undefined | Parameters<Parameters<typeof ipc.chatStream.start>[1]["onChunk"]>[0]["messages"] = undefined;

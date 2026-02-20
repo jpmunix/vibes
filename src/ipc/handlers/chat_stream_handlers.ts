@@ -79,6 +79,8 @@ import { generateProblemReport } from "../processors/tsc";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { AsyncVirtualFileSystem } from "../../../shared/VirtualFilesystem";
 import { analyzeContextInWorker } from "../processors/context_worker_client";
+import { semanticRerank } from "../utils/semantic_ranker";
+import { buildCodebaseXml } from "../utils/local_ranker";
 import { escapeXmlAttr, escapeXmlContent } from "../../../shared/xmlEscape";
 import {
   getDyadAddDependencyTags,
@@ -812,7 +814,7 @@ ${componentSnippet}
                 appPath,
                 chatContext,
                 prompt: req.prompt,
-                useSemanticSearch: false,
+                useSemanticSearch: Boolean(settings.embeddingsEnabled),
                 maxFiles,
               });
 
@@ -822,6 +824,38 @@ ${componentSnippet}
               logger.log(
                 `[BUILD MODE] Context worker completed: ${files.length} files selected`,
               );
+
+              // Step 2b: Apply semantic re-ranking if enabled
+              if (settings.embeddingsEnabled && files.length > 0) {
+                logger.log(
+                  `[BUILD MODE] Applying semantic re-ranking on ${files.length} files...`,
+                );
+                try {
+                  const rankedFilesWithScores = files.map((f: any) => ({
+                    ...f,
+                    score: f.score ?? 1,
+                  }));
+
+                  const semanticFiles = await semanticRerank(
+                    req.prompt,
+                    rankedFilesWithScores,
+                    updatedChat?.app?.id ?? chat.app.id,
+                    maxFiles,
+                  );
+
+                  files = semanticFiles;
+                  codebaseInfo = buildCodebaseXml(semanticFiles);
+
+                  logger.log(
+                    `[BUILD MODE] Semantic re-ranking: ${semanticFiles.length} files (top hybrid score: ${semanticFiles[0]?.hybridScore?.toFixed(3) ?? "N/A"})`,
+                  );
+                } catch (semanticError) {
+                  logger.error(
+                    "[BUILD MODE] Semantic re-ranking failed, keeping keyword ranking:",
+                    semanticError,
+                  );
+                }
+              }
             } catch (error) {
               // Fallback to synchronous extraction if worker fails
               logger.error(
@@ -1013,7 +1047,7 @@ ${componentSnippet}
         });
 
         // Inject knowledge base prompt (auto-learned project rules)
-        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id);
+        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, req.prompt);
         if (knowledgePrompt) {
           systemPrompt += "\n\n" + knowledgePrompt;
           logger.log(

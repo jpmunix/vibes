@@ -530,3 +530,37 @@ export const knowledgeEntriesRelations = relations(
     }),
   }),
 );
+
+// --- Embeddings Cache table ---
+// Stores vector embeddings for semantic search across files, debates, etc.
+export const embeddingsCache = sqliteTable(
+  "embeddings_cache",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    // Scope: 'file' | 'debate' | 'debate_message' | 'knowledge'
+    scope: text("scope").notNull(),
+    // Reference to the source (app_id for files, debate_id for debates)
+    sourceId: integer("source_id").notNull(),
+    // Unique identifier within the scope (path for files, message_id for messages)
+    contentKey: text("content_key").notNull(),
+    // Hash of the original content for invalidation
+    contentHash: text("content_hash").notNull(),
+    // The vector as a JSON array of floats
+    embedding: text("embedding").notNull(),
+    // Model used to generate the embedding
+    model: text("model").notNull(),
+    // Dimensions of the vector
+    dimensions: integer("dimensions").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    unique("embeddings_scope_source_key_model").on(
+      table.scope,
+      table.sourceId,
+      table.contentKey,
+      table.model,
+    ),
+  ],
+);

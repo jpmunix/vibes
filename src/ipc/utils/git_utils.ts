@@ -2134,3 +2134,88 @@ export function gitRemoveIndexLock({
   return { removed: false, message: "No existe archivo index.lock." };
 }
 
+// ============================================================================
+// Stash Operations
+// ============================================================================
+
+/**
+ * Stash current working directory changes.
+ * Equivalent to: git stash push -m <message>
+ */
+export async function gitStash({
+  path,
+  message,
+}: GitBaseParams & { message?: string }): Promise<string> {
+  const args = ["stash", "push"];
+  if (message) {
+    args.push("-m", message);
+  }
+  const result = await execGit(args, path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash failed: ${result.stderr}`);
+  }
+  return result.stdout.trim() || "No local changes to save";
+}
+
+/**
+ * Pop the latest stash entry and apply it to the working directory.
+ * Equivalent to: git stash pop [index]
+ */
+export async function gitStashPop({
+  path,
+  index,
+}: GitBaseParams & { index?: number }): Promise<string> {
+  const args = ["stash", "pop"];
+  if (index != null) {
+    args.push(`stash@{${index}}`);
+  }
+  const result = await execGit(args, path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash pop failed: ${result.stderr}`);
+  }
+  return result.stdout.trim();
+}
+
+/**
+ * List all stash entries.
+ * Equivalent to: git stash list
+ */
+export async function gitStashList({
+  path,
+}: GitBaseParams): Promise<Array<{ index: number; message: string }>> {
+  const result = await execGit(["stash", "list"], path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash list failed: ${result.stderr}`);
+  }
+  if (!result.stdout.trim()) {
+    return [];
+  }
+  return result.stdout
+    .trim()
+    .split("\n")
+    .map((line, idx) => {
+      // Format: stash@{0}: WIP on main: abc1234 commit message
+      // or:    stash@{0}: On main: custom message
+      const match = line.match(/^stash@\{(\d+)\}:\s*(.+)$/);
+      return {
+        index: match ? parseInt(match[1], 10) : idx,
+        message: match ? match[2] : line,
+      };
+    });
+}
+
+/**
+ * Discard working directory changes for a specific file.
+ * Equivalent to: git checkout -- <filepath>
+ */
+export async function gitDiscardFile({
+  path,
+  filepath,
+}: GitFileParams): Promise<void> {
+  await execOrThrow(
+    ["checkout", "--", filepath],
+    path,
+    `Failed to discard changes for ${filepath}`,
+  );
+}
+
