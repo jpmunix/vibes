@@ -9,6 +9,11 @@
 - Updated handlers to fetch the initial prompt for a selected app and cache embeddings for semantic ranking.
 - Enabled semantic re-ranking of search results combining keyword and similarity scores.
 - Enhanced fallback logic to ensure the `EmbeddingsCache` table and migrations are created if missing during initialization.
+  **feat: update UI styles and implement anti-continuation for user messages**
+- Adjusted `h-screenish` and container height styles for improved layout consistency across components.
+- Updated input styles in settings to remove shadow effects for a cleaner appearance.
+- Implemented anti-continuation logic to wrap the last user message (`<user_request>` tags) in `local_agent_handler` and `chat_stream_handlers` to prevent the model from continuing user text.
+
 
 ## 🔥 Novedades v5.0 ~ Beta 1
 

@@ -610,7 +610,7 @@ export default function SettingsPage() {
                 placeholder="Buscar ajustes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 bg-card/50 border-none shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20"
+                className="pl-10 pr-10 bg-card/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
               />
               {searchQuery && (
                 <button

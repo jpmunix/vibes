@@ -1411,6 +1411,15 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log(`Capping maxOutputTokens from ${requestedMaxOutput} to ${finalMaxOutputTokens} to fit in context window of ${contextWindow} (estimated input: ${estimatedInputTokens})`);
           }
 
+          // Anti-continuation: wrap last user message to prevent the model from
+          // continuing/completing the user's text instead of responding as assistant.
+          const framedMessages = chatMessages.filter((m: any) => m.content).map((m, i, arr) => {
+            if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
+              return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
+            }
+            return m;
+          });
+
           const streamResult = streamText({
             headers: getAiHeaders({
               builtinProviderId: modelClient.builtinProviderId,
@@ -1424,7 +1433,7 @@ This conversation includes one or more image attachments. When the user uploads 
             system: systemPromptOverride,
             toolChoice,
             tools,
-            messages: chatMessages.filter((m: any) => m.content),
+            messages: framedMessages,
             onFinish: async (response: any) => {
               const totalTokens = response.usage?.totalTokens;
               // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens

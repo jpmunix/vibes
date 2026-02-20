@@ -323,6 +323,15 @@ export async function handleLocalAgentStream(
     logger.log(
       `[AGENT] System prompt length: ${systemPrompt.length} characters`,
     );
+    // Anti-continuation: wrap last user message to prevent the model from
+    // continuing/completing the user's text instead of responding as assistant.
+    const framedMessageHistory = messageHistory.map((m, i, arr) => {
+      if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
+        return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
+      }
+      return m;
+    });
+
     const streamResult = streamText({
       model: modelClient.model,
       headers: getAiHeaders({
@@ -341,7 +350,7 @@ export async function handleLocalAgentStream(
       temperature: await getTemperature(settings.selectedModel),
       maxRetries: 2,
       system: systemPrompt,
-      messages: messageHistory,
+      messages: framedMessageHistory,
       tools: allTools,
       stopWhen: [stepCountIs(25), hasToolCall(addIntegrationTool.name)], // Allow multiple tool call rounds, stop on add_integration
       abortSignal: abortController.signal,
