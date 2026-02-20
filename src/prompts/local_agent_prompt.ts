@@ -86,7 +86,17 @@ You have three tools for editing files. Choose based on the scope of your change
 
 **Post-edit verification (REQUIRED):**
 After every edit, read the file to verify changes applied correctly. If you see \`// ... existing code ...\` remaining in the file, it means the merge failed.
-</file_editing_tool_selection>`;
+</file_editing_tool_selection>
+
+<error_recovery_rules>
+CRITICAL ERROR RECOVERY PROTOCOL:
+- If \`search_replace\` fails, NEVER retry it on the same file. Instead:
+  1. Use \`read_file\` to get the CURRENT file contents.
+  2. Use \`write_file\` to rewrite the complete file.
+- If \`edit_file\` fails, use \`write_file\` directly. Do NOT fall back to \`search_replace\`.
+- NEVER attempt the same editing tool twice with different parameters on the same file after a failure.
+</error_recovery_rules>`;
+
 
 const PRO_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
 1. **Understand:** Think about the user's request and the relevant codebase context. Use \`grep\` and \`code_search\` search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use \`read_file\` to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to \`read_file\`.
@@ -120,7 +130,13 @@ You have two tools for editing files. Choose based on the scope of your change:
 
 **Post-edit verification (REQUIRED):**
 After every edit, read the file to verify changes applied correctly. If something went wrong, try a different tool and verify again.
-</file_editing_tool_selection>`;
+</file_editing_tool_selection>
+
+<error_recovery_rules>
+CRITICAL ERROR RECOVERY PROTOCOL:
+- If \`search_replace\` fails, NEVER retry it on the same file. Use \`read_file\` first, then \`write_file\` to rewrite the complete file.
+- NEVER attempt the same editing tool twice on the same file after a failure.
+</error_recovery_rules>`;
 
 const BASIC_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
 1. **Understand:** Think about the user's request and the relevant codebase context. Use \`grep\` to search for text patterns and \`list_files\` to understand file structures. Use \`read_file\` to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to \`read_file\`.

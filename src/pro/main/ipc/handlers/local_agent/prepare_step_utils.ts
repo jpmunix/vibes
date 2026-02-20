@@ -96,6 +96,29 @@ export function injectMessagesAtPositions<T>(
 }
 
 /**
+ * Detect whether a tool result represents an error.
+ * The AI SDK can store results in multiple formats:
+ * - Array of content parts: [{ type: "text", value: "Error: ..." }]
+ * - Raw string: "Error: ..."
+ * - Object with isError flag: { isError: true, ... }
+ */
+function isToolResultError(res: unknown): boolean {
+  if (typeof res === "object" && res !== null && (res as any).isError === true)
+    return true;
+  if (typeof res === "string" && res.startsWith("Error:")) return true;
+  // AI SDK format: array of content parts (most common path)
+  if (Array.isArray(res)) {
+    return res.some(
+      (part) =>
+        part?.type === "text" &&
+        typeof part.value === "string" &&
+        part.value.startsWith("Error:"),
+    );
+  }
+  return false;
+}
+
+/**
  * The complete prepareStep logic as a pure function.
  *
  * @param options - The step options containing messages and other properties
@@ -147,10 +170,7 @@ export function prepareStepMessages<
     for (const part of content) {
       if (part.type === "tool-result") {
         const res = part.result;
-        if (
-          (typeof res === "object" && res !== null && res.isError === true) ||
-          (typeof res === "string" && res.startsWith("Error:"))
-        ) {
+        if (isToolResultError(res)) {
           hasError = true;
           failedToolName = part.toolName || part.toolCallId;
           break;
@@ -176,17 +196,12 @@ export function prepareStepMessages<
           const foundSameError = content.some(part =>
             part.type === "tool-result" &&
             (part.toolName === failedToolName || part.toolCallId === failedToolName) &&
-            ((typeof part.result === "object" && part.result?.isError === true) ||
-              (typeof part.result === "string" && String(part.result).startsWith("Error:")))
+            isToolResultError(part.result)
           );
 
           if (foundSameError) {
             consecutiveFailures++;
           } else {
-            // Different tool result break sequence? 
-            // If intervening successful tool call, maybe break.
-            // If intervening failed OTHER tool call, maybe keep looking?
-            // Simple logic: if another tool result found without this error, break.
             break;
           }
         } else if (msg.role === "user") {
@@ -197,8 +212,8 @@ export function prepareStepMessages<
 
     let instruction = "The previous tool execution failed. You MUST correct the parameters and retry immediately. Do not explain, just call the tool again.";
 
-    // Smart Fallback Suggestions
-    if (consecutiveFailures >= 2) {
+    // Smart Fallback — trigger immediately on first failure for search_replace
+    if (consecutiveFailures >= 1) {
       if (failedToolName?.includes("search_replace")) {
         instruction += `\n\nSYSTEM DIRECTIVE: search_replace has failed ${consecutiveFailures} consecutive times. You MUST NOT use search_replace again for this file. Use read_file to check the current file content, then use write_file to rewrite the entire file. This is mandatory — do not attempt search_replace again.`;
       } else if (failedToolName?.includes("edit_file")) {

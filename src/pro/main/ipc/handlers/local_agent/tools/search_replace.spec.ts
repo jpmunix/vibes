@@ -232,7 +232,7 @@ describe("searchReplaceTool", () => {
           },
           mockContext,
         ),
-      ).rejects.toThrow(/ambiguous|multiple/i);
+      ).rejects.toThrow(/search_replace failed.*old_string not found/i);
     });
 
     it("matches with fuzzy matching when whitespace differs", async () => {
@@ -364,7 +364,7 @@ describe("searchReplaceTool", () => {
           },
           mockContext,
         ),
-      ).rejects.toThrow(/Failed to apply search-replace/i);
+      ).rejects.toThrow(/search_replace failed.*old_string not found/i);
     });
   });
 

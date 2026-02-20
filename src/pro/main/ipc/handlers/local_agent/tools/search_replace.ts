@@ -102,10 +102,10 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
   },
 
   execute: async (args, ctx: AgentContext) => {
-    // Hard cap: after 3 failed search_replace attempts on the same file, force fallback
+    // Hard cap: after 2 failed search_replace attempts on the same file, force fallback
     if (ctx?.fileEditTracker?.[args.file_path]) {
       const srCount = ctx.fileEditTracker[args.file_path].search_replace;
-      if (srCount >= 3) {
+      if (srCount >= 2) {
         throw new ToolError(
           `search_replace has failed ${srCount} times on ${args.file_path}. You MUST use 'read_file' to check the current file contents and then use 'write_file' to rewrite the entire file. Do NOT attempt search_replace on this file again.`,
           { retryable: false, hint: "Use read_file + write_file instead." },
@@ -152,10 +152,10 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
         error: result.error ?? "unknown",
       });
       throw new ToolError(
-        `Failed to apply search-replace: ${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""}`,
+        `search_replace failed: old_string not found in ${args.file_path}. Use read_file to check current content, then use write_file.`,
         {
-          retryable: true,
-          hint: "Read the latest file content with read_file and include more surrounding context lines in old_string, or use write_file to rewrite the entire file.",
+          retryable: false,
+          hint: "Do NOT retry search_replace. Use read_file to see actual file content, then write_file to rewrite.",
         },
       );
     }

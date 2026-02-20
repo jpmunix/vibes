@@ -300,7 +300,12 @@ function convertToolResultForAiSdk(
   if (result.isError && result.retryable) {
     parts.push("This error is retryable. Please try again with corrected input.");
   }
-  return { type: "text", value: parts.join("\n") };
+  // Truncate long error messages to avoid bloating the conversation context
+  let value = parts.join("\n");
+  if (result.isError && value.length > 500) {
+    value = value.slice(0, 500) + "\n[error truncated — use read_file to see actual file content]";
+  }
+  return { type: "text", value };
 }
 
 export interface BuildAgentToolSetOptions {
@@ -400,9 +405,6 @@ export function buildAgentToolSet(
             throw new Error(`User denied permission for ${tool.name}`);
           }
 
-          // Track file edit tool usage before execution to capture all attempts
-          // (including failures) for retry/fallback telemetry
-          trackFileEditTool(ctx, tool.name, processedArgs);
 
 
           let result;
