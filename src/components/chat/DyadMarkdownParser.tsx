@@ -252,7 +252,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
 
         if (shouldCompact(tag)) {
           const detail = getToolDetail(tag, attributes);
-          const originalContent = renderCustomTag(piece.tagInfo, { isStreaming });
+          const originalContent = renderModalContent(piece.tagInfo, { isStreaming });
           const badgeState: ToolBadgeState = state;
 
           if (badgeState === "pending") {
@@ -848,5 +848,443 @@ function renderCustomTag(
 
     default:
       return null;
+  }
+}
+
+/**
+ * Render clean modal body content for a compactable tag.
+ * Unlike renderCustomTag, this renders ONLY the useful body content (path, description,
+ * code, file listing, etc.) without the wrapper UI (borders, headers, icons, expand/collapse buttons).
+ * The CompactToolBadge modal already provides the title, icon, and detail.
+ */
+function renderModalContent(
+  tagInfo: CustomTagInfo,
+  { isStreaming }: { isStreaming: boolean },
+): React.ReactNode {
+  const { tag, attributes, content, inProgress } = tagInfo;
+
+  switch (tag) {
+    // === Think: already renders clean content, reuse existing ===
+    case "think":
+    case "dyad-think":
+      return renderCustomTag(tagInfo, { isStreaming });
+
+    // === File operations: path + description + code ===
+    case "dyad-write":
+    case "dyad-edit":
+    case "dyad-search-replace": {
+      const path = attributes.path || "";
+      const description = attributes.description || "";
+      const retryCount = attributes["retry-count"] || "";
+      return (
+        <div className="space-y-3">
+          {path && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              {path}
+              {retryCount && Number(retryCount) > 1 && (
+                <span className="ml-2 italic text-amber-500">(reintento {Number(retryCount) - 1})</span>
+              )}
+            </div>
+          )}
+          {description && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium">Summary: </span>{description}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-typescript">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Read file ===
+    case "dyad-read": {
+      const path = attributes.path || "";
+      const startLine = attributes.start_line;
+      const endLine = attributes.end_line;
+      let lineRangeText = "";
+      if (startLine && endLine) lineRangeText = `líneas ${startLine}-${endLine}`;
+      else if (startLine) lineRangeText = `desde línea ${startLine}`;
+      else if (endLine) lineRangeText = `hasta línea ${endLine}`;
+
+      return (
+        <div className="space-y-2">
+          {path && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              {path}
+              {lineRangeText && <span className="ml-2 text-muted-foreground">({lineRangeText})</span>}
+            </div>
+          )}
+          {content && (
+            <div className="text-sm text-muted-foreground">{content}</div>
+          )}
+        </div>
+      );
+    }
+
+    // === Delete file ===
+    case "dyad-delete": {
+      const path = attributes.path || "";
+      return (
+        <div className="space-y-2">
+          {path && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              {path}
+            </div>
+          )}
+          {content && <div className="text-sm text-muted-foreground">{content}</div>}
+        </div>
+      );
+    }
+
+    // === Rename file ===
+    case "dyad-rename": {
+      const from = attributes.from || "";
+      const to = attributes.to || "";
+      return (
+        <div className="space-y-2">
+          {from && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              <span className="font-medium">From:</span> {from}
+            </div>
+          )}
+          {to && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              <span className="font-medium">To:</span> {to}
+            </div>
+          )}
+          {content && <div className="text-sm text-muted-foreground">{content}</div>}
+        </div>
+      );
+    }
+
+    // === Grep ===
+    case "dyad-grep": {
+      const query = attributes.query || "";
+      const includePattern = attributes.include || "";
+      const excludePattern = attributes.exclude || "";
+      const count = attributes.count || "";
+      let description = `"${query}"`;
+      if (includePattern) description += ` in ${includePattern}`;
+      if (excludePattern) description += ` excluding ${excludePattern}`;
+      const resultSummary = count ? `${count} match${count === "1" ? "" : "es"}` : "";
+
+      return (
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground">
+            {description}
+            {resultSummary && <span className="ml-2 text-muted-foreground/70">({resultSummary})</span>}
+          </div>
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-log">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Code search ===
+    case "dyad-code-search": {
+      const query = attributes.query || "";
+      return (
+        <div className="space-y-2">
+          {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap break-all">{content}</div>
+          )}
+        </div>
+      );
+    }
+
+    // === Code search result ===
+    case "dyad-code-search-result": {
+      const files = content ? content.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("<") && !l.startsWith(">")) : [];
+      return (
+        <div className="space-y-2">
+          {files.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {files.map((file, i) => {
+                const fileName = file.split("/").pop() || file;
+                const pathPart = file.substring(0, file.length - fileName.length) || "";
+                return (
+                  <div key={i} className="px-2 py-1 bg-muted rounded-lg">
+                    <div className="text-sm font-medium">{fileName}</div>
+                    {pathPart && <div className="text-xs text-muted-foreground">{pathPart}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            content && <div className="text-xs font-mono whitespace-pre-wrap break-all">{content}</div>
+          )}
+        </div>
+      );
+    }
+
+    // === List files ===
+    case "dyad-list-files": {
+      const directory = attributes.directory || "";
+      const isRecursive = attributes.recursive === "true";
+      return (
+        <div className="space-y-2">
+          {directory && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded">
+              {directory}{isRecursive ? " (recursive)" : ""}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Web search ===
+    case "dyad-web-search": {
+      const query = attributes.query || content || "";
+      return (
+        <div className="space-y-2">
+          {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
+          {content && content !== query && (
+            <div className="text-sm text-muted-foreground">{content}</div>
+          )}
+        </div>
+      );
+    }
+
+    // === Web search result ===
+    case "dyad-web-search-result":
+      return (
+        <div className="prose dark:prose-invert prose-sm max-w-none">
+          {typeof content === "string" ? (
+            <VanillaMarkdownParser content={content} />
+          ) : (
+            content
+          )}
+        </div>
+      );
+
+    // === Web crawl ===
+    case "dyad-web-crawl":
+      return (
+        <div className="text-sm text-muted-foreground">
+          {content || ""}
+        </div>
+      );
+
+    // === Add dependency ===
+    case "dyad-add-dependency": {
+      const packages = (attributes.packages || "").split(" ").filter(Boolean);
+      return (
+        <div className="space-y-2">
+          {packages.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {packages.map((p) => (
+                <span key={p} className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                  {p}
+                </span>
+              ))}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-shell">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Add integration ===
+    case "dyad-add-integration":
+      return renderCustomTag(tagInfo, { isStreaming });
+
+    // === Execute SQL ===
+    case "dyad-execute-sql": {
+      const queryDescription = attributes.description || "";
+      return (
+        <div className="space-y-2">
+          {queryDescription && (
+            <div className="text-sm text-muted-foreground">{queryDescription}</div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-sql">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Read logs ===
+    case "dyad-read-logs": {
+      const logCount = attributes.count || "";
+      const logType = attributes.type || "all";
+      const logLevel = attributes.level || "all";
+      const filters: string[] = [];
+      if (logType !== "all") filters.push(`type: ${logType}`);
+      if (logLevel !== "all") filters.push(`level: ${logLevel}`);
+      const filterDesc = filters.length > 0 ? ` (${filters.join(", ")})` : "";
+
+      return (
+        <div className="space-y-2">
+          {(logCount || filterDesc) && (
+            <div className="text-sm text-muted-foreground">
+              {logCount ? `${logCount} logs` : "Logs"}{filterDesc}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-log">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Codebase context ===
+    case "dyad-codebase-context": {
+      const files = (attributes.files || "").split(",").map(f => f.trim()).filter(Boolean);
+      return (
+        <div className="space-y-2">
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {files.map((file, i) => {
+                const fileName = file.split("/").pop() || file;
+                const pathPart = file.substring(0, file.length - fileName.length) || "";
+                return (
+                  <div key={i} className="px-2 py-1 bg-muted rounded-lg">
+                    <div className="text-sm font-medium">{fileName}</div>
+                    {pathPart && <div className="text-xs text-muted-foreground">{pathPart}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === MCP tool call ===
+    case "dyad-mcp-tool-call": {
+      const serverName = attributes.server || "";
+      const toolName = attributes.tool || "";
+      let prettyJson = content;
+      try {
+        prettyJson = JSON.stringify(JSON.parse(content), null, 2);
+      } catch { /* use raw */ }
+
+      return (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            {serverName && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-zinc-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-zinc-700">
+                {serverName}
+              </span>
+            )}
+            {toolName && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground border border-border">
+                {toolName}
+              </span>
+            )}
+          </div>
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-json">{prettyJson}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === MCP tool result ===
+    case "dyad-mcp-tool-result": {
+      const serverName = attributes.server || "";
+      const toolName = attributes.tool || "";
+      let prettyJson = content;
+      try {
+        prettyJson = JSON.stringify(JSON.parse(content), null, 2);
+      } catch { /* use raw */ }
+
+      return (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            {serverName && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-zinc-700">
+                {serverName}
+              </span>
+            )}
+            {toolName && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground border border-border">
+                {toolName}
+              </span>
+            )}
+          </div>
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-json">{prettyJson}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Database schema ===
+    case "dyad-database-schema":
+      return (
+        <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
+          {content || ""}
+        </div>
+      );
+
+    // === Supabase table schema ===
+    case "dyad-supabase-table-schema": {
+      const table = attributes.table || "";
+      return (
+        <div className="space-y-2">
+          {table && (
+            <div className="text-sm text-muted-foreground font-medium">{table}</div>
+          )}
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === Supabase project info ===
+    case "dyad-supabase-project-info":
+      return (
+        <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
+          {content || ""}
+        </div>
+      );
+
+    // === Status ===
+    case "dyad-status": {
+      const title = attributes.title || "Processing...";
+      return (
+        <div className="space-y-2">
+          <div className="text-sm font-medium">{title}</div>
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    default:
+      // Fallback: render the full component
+      return renderCustomTag(tagInfo, { isStreaming });
   }
 }

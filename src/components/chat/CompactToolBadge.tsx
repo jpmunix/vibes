@@ -130,7 +130,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
             </Tooltip>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-6xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className={`flex items-center gap-2 ${meta.color}`}>
                             <Icon size={20} />
@@ -138,7 +138,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
                             {detail && <span className="text-muted-foreground font-normal text-sm ml-1">{detail}</span>}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="mt-2">{originalContent}</div>
+                    <div className="mt-2 overflow-hidden min-w-0">{originalContent}</div>
                 </DialogContent>
             </Dialog>
         </>
