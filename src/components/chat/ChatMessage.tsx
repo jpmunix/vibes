@@ -20,6 +20,7 @@ import {
   ChevronUp,
   Sparkles,
   User as UserIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -201,6 +202,44 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     // Generic fallback
     return defaultInfo;
   }, [message.content, isStreaming, isLastMessage]);
+
+  // Plain-text excerpt for collapsed view (~80 chars)
+  const plainTextExcerpt = useMemo(() => {
+    if (!message.content || !isAssistant) return "";
+    const stripped = message.content
+      .replace(/<(dyad-[\w-]+|think|dyad-think)[^>]*>[\s\S]*?<\/\1>/g, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/[#*_`~>\-|]/g, "")
+      .replace(/\n+/g, " ")
+      .trim();
+    return stripped.length > 80 ? stripped.slice(0, 80) + "…" : stripped;
+  }, [message.content, isAssistant]);
+
+  // Tool usage summary grouped by icon (for collapsed badges)
+  const toolSummary = useMemo(() => {
+    if (!message.content || !isAssistant) return [];
+    const tagPattern = /<(dyad-[\w-]+)\s[^>]*>[\s\S]*?<\/\1>/g;
+    const counts = new Map<string, number>();
+    let match;
+    while ((match = tagPattern.exec(message.content)) !== null) {
+      const tag = match[1];
+      if (TOOL_META[tag]) {
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      }
+    }
+    const byIcon = new Map<string, { icon: LucideIcon; color: string; count: number }>();
+    for (const [tag, count] of counts) {
+      const meta = TOOL_META[tag];
+      const key = meta.icon.displayName || meta.icon.name || tag;
+      if (byIcon.has(key)) {
+        byIcon.get(key)!.count += count;
+      } else {
+        byIcon.set(key, { icon: meta.icon, color: meta.color, count });
+      }
+    }
+    return Array.from(byIcon.values());
+  }, [message.content, isAssistant]);
+
   // Find the version that was active when this message was sent
   const messageVersion = useMemo(() => {
     if (
@@ -261,10 +300,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           {/* Message bubble */}
           <div className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             <div
+              onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
               className={`rounded-2xl ${isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
-                  : "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
+                  : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
                 : isFixError
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
                   : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
@@ -314,31 +354,16 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
               )}
               {(isAssistant && message.content && !isStreaming) ? (
                 <div
-                  className={`mt-2 flex items-center justify-between text-xs`}
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  className="mt-2 flex items-center justify-between text-xs cursor-pointer hover:bg-accent/50 rounded-lg px-1 py-1 -mx-1 transition-colors"
                 >
-                  {isAssistant &&
-                    message.content &&
-                    !isStreaming && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setIsCollapsed(!isCollapsed)}
-                              className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
-                            >
-                              {isCollapsed ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronUp className="h-4 w-4" />
-                              )}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {isCollapsed ? "Expandir respuesta" : "Colapsar respuesta"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    {isCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
                     )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {isAssistant && message.model && (
                       <>
@@ -359,6 +384,31 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   </div>
                 </div>
               ) : null}
+              {/* === Compact collapsed summary === */}
+              {isAssistant && isCollapsed && message.content && (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">
+                    {plainTextExcerpt}
+                  </span>
+                  {toolSummary.length > 0 && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {toolSummary.map((g, i) => {
+                        const Icon = g.icon;
+                        return (
+                          <div key={i} className="inline-flex items-center gap-0.5 text-xs">
+                            <Icon size={12} className={g.color} />
+                            {g.count > 1 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                ×{g.count}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
