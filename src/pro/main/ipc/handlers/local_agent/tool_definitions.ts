@@ -32,6 +32,7 @@ import { runTypeChecksTool } from "./tools/run_type_checks";
 import { grepTool } from "./tools/grep";
 import { codeSearchTool } from "./tools/code_search";
 import { gitOperationsTool } from "./tools/git_operations";
+import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
   type ToolDefinition,
@@ -69,6 +70,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   updateTodosTool,
   runTypeChecksTool,
   gitOperationsTool,
+  askUserTool,
 ];
 // ============================================================================
 // Agent Tool Name Type (derived from TOOL_DEFINITIONS)
@@ -120,6 +122,8 @@ export function clearPendingConsentsForChat(chatId: number): void {
       entry.resolve("decline");
     }
   }
+  // Also clean up any pending ask_user requests for this chat
+  clearPendingAskUsersForChat(chatId);
 }
 
 export function getDefaultConsent(toolName: AgentToolName): AgentToolConsent {

@@ -29,6 +29,7 @@ import { isPreviewOpenAtom, isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
     selectedChatIdAtom,
     pendingAgentConsentsAtom,
+    pendingAskUsersAtom,
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
@@ -234,6 +235,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
 
     // === Streaming event listeners ===
     const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
+    const setPendingAskUsers = useSetAtom(pendingAskUsersAtom);
     const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
     const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
     const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
@@ -326,6 +328,23 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         return () => unsubscribe();
     }, [setPendingAgentConsents]);
 
+    // Agent ask_user requests
+    useEffect(() => {
+        const unsubscribe = ipc.events.agent.onAskUserRequest((payload) => {
+            setPendingAskUsers((prev) => [
+                ...prev,
+                {
+                    requestId: payload.requestId,
+                    chatId: payload.chatId,
+                    question: payload.question,
+                    options: payload.options,
+                    context: payload.context,
+                },
+            ]);
+        });
+        return () => unsubscribe();
+    }, [setPendingAskUsers]);
+
     useEffect(() => {
         const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
             // Enable server startup after first stream completes
@@ -334,6 +353,9 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             }
             setPendingAgentConsents((prev) =>
                 prev.filter((consent) => consent.chatId !== chatId),
+            );
+            setPendingAskUsers((prev) =>
+                prev.filter((ask) => ask.chatId !== chatId),
             );
             setAgentTodosByChatId((prev) => {
                 const todos = prev.get(chatId);
@@ -351,7 +373,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             });
         });
         return () => unsubscribe();
-    }, [setPendingAgentConsents, setAgentTodosByChatId, serverReady]);
+    }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId, serverReady]);
 
     const chatPanelNode = (
         <Panel

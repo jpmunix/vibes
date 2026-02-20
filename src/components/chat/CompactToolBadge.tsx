@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
     Brain,
     GitBranch,
+    MessageCircleQuestion,
     Pencil,
     FileText,
     Search,
@@ -69,6 +70,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
+    "dyad-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta", color: "text-violet-500" },
 };
 
 /** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
@@ -84,6 +86,7 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-orange-500": "bg-orange-500",
     "text-gray-500": "bg-gray-500",
     "text-emerald-500": "bg-emerald-500",
+    "text-violet-500": "bg-violet-500",
 };
 
 export function getBgColorClass(textColorClass: string): string | undefined {
@@ -223,6 +226,8 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes.title || undefined;
         case "dyad-git":
             return undefined;
+        case "dyad-ask-user":
+            return attributes.question || undefined;
         default:
             return undefined;
     }

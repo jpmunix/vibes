@@ -151,6 +151,8 @@ export type {
   AgentToolConsentRequestPayload,
   AgentToolConsentDecision,
   AgentToolConsentResponseParams,
+  AskUserRequestPayload,
+  AskUserResponseParams,
   AgentTodosUpdatePayload,
   AgentProblemsUpdatePayload,
   SetAgentToolConsentParams,

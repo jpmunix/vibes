@@ -16,6 +16,7 @@ import { ipc } from "./ipc/types";
 import { useSetAtom } from "jotai";
 import {
   pendingAgentConsentsAtom,
+  pendingAskUsersAtom,
   agentTodosByChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
@@ -138,6 +139,7 @@ function App() {
 
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
+  const setPendingAskUsers = useSetAtom(pendingAskUsersAtom);
   const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
   const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
   const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
@@ -237,11 +239,31 @@ function App() {
     return () => unsubscribe();
   }, [setPendingAgentConsents]);
 
+  // Agent ask_user requests
+  useEffect(() => {
+    const unsubscribe = ipc.events.agent.onAskUserRequest((payload) => {
+      setPendingAskUsers((prev) => [
+        ...prev,
+        {
+          requestId: payload.requestId,
+          chatId: payload.chatId,
+          question: payload.question,
+          options: payload.options,
+          context: payload.context,
+        },
+      ]);
+    });
+    return () => unsubscribe();
+  }, [setPendingAskUsers]);
+
   // Clear pending agent consents and finalize in-progress todos when a chat stream ends
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
       setPendingAgentConsents((prev) =>
         prev.filter((consent) => consent.chatId !== chatId),
+      );
+      setPendingAskUsers((prev) =>
+        prev.filter((ask) => ask.chatId !== chatId),
       );
       // Finalize any in_progress todos to completed (safety net for when
       // the model doesn't return the correct schema to close out its todos)
@@ -261,7 +283,7 @@ function App() {
       });
     });
     return () => unsubscribe();
-  }, [setPendingAgentConsents, setAgentTodosByChatId]);
+  }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId]);
 
   // Forward telemetry events from main process to PostHog
   useEffect(() => {

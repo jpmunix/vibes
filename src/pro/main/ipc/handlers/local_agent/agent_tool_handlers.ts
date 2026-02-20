@@ -10,12 +10,14 @@ import {
   getDefaultConsent,
   type AgentToolName,
 } from "./tool_definitions";
+import { resolveAskUserResponse } from "./tools/ask_user";
 import { createLoggedHandler } from "@/ipc/handlers/safe_handle";
 import log from "electron-log";
 import type {
   AgentTool,
   SetAgentToolConsentParams,
   AgentToolConsentResponseParams,
+  AskUserResponseParams,
 } from "@/ipc/types";
 
 const logger = log.scope("agent_tool_handlers");
@@ -46,6 +48,14 @@ export function registerAgentToolHandlers() {
     "agent-tool:consent-response",
     async (_event, params: AgentToolConsentResponseParams) => {
       resolveAgentToolConsent(params.requestId, params.decision);
+    },
+  );
+
+  // Handle ask_user response from renderer
+  handle(
+    "agent-tool:ask-user-response",
+    async (_event, params: AskUserResponseParams) => {
+      resolveAskUserResponse(params.requestId, params.response);
     },
   );
 }

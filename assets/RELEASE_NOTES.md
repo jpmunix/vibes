@@ -1,3 +1,9 @@
+
+**feat: implement `ask_user` tool for user input handling and persist error messages**
+
+----------------------------
+
+
 Esta versión marca un hito fundamental en la evolución de Vibes, introduciendo búsqueda semántica basada en IA, capacidades avanzadas de Git para el agente y una arquitectura de ventanas dedicadas que transforma el rendimiento.
 
 ### 🧠 Búsqueda Semántica & IA

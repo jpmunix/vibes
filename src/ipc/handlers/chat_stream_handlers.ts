@@ -112,7 +112,7 @@ import {
   markMessageAsUsingFreeAgentQuota,
   unmarkMessageAsUsingFreeAgentQuota,
 } from "./free_agent_quota_handlers";
-import { AI_STREAMING_ERROR_MESSAGE_PREFIX } from "@/shared/texts";
+import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import {
@@ -253,6 +253,7 @@ async function processStreamChunks({
 function registerChatStreamHandlers() {
   ipcMain.handle("chat:stream", async (event, req: ChatStreamParams) => {
     let attachmentPaths: string[] = [];
+    let outerPlaceholderMessageId: number | undefined;
     try {
       const fileUploadsState = FileUploadsState.getInstance();
       // Clear any stale state from previous requests for this chat
@@ -547,6 +548,7 @@ ${componentSnippet}
             }),
           })
           .returning();
+        outerPlaceholderMessageId = placeholderAssistantMessage.id;
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
@@ -729,6 +731,7 @@ ${componentSnippet}
             }),
           })
           .returning();
+        outerPlaceholderMessageId = placeholderAssistantMessage.id;
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
@@ -1557,10 +1560,17 @@ This conversation includes one or more image attachments. When the user uploads 
                 placeholderAssistantMessage.id,
               );
 
+              const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
               event.sender.send("chat:response:error", {
                 chatId: req.chatId,
-                error: `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`,
+                error: fullErrorText,
               });
+              // Persist error text in DB so it survives reload
+              void db
+                .update(messages)
+                .set({ content: `${PERSISTED_ERROR_PREFIX}${fullErrorText}`, status: "failed" as any })
+                .where(eq(messages.id, placeholderAssistantMessage.id))
+                .catch((err) => logger.error("Failed to persist error in message content", err));
               // Clean up the abort controller
               activeStreams.delete(req.chatId);
             },
@@ -2226,10 +2236,19 @@ ${problemReport.problems
       return req.chatId;
     } catch (error) {
       logger.error("Error calling LLM:", error);
+      const catchErrorText = `Sorry, there was an error processing your request: ${error}`;
       safeSend(event.sender, "chat:response:error", {
         chatId: req.chatId,
-        error: `Sorry, there was an error processing your request: ${error}`,
+        error: catchErrorText,
       });
+      // Persist error text in DB so it survives reload
+      if (outerPlaceholderMessageId) {
+        void db
+          .update(messages)
+          .set({ content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`, status: "failed" as any })
+          .where(eq(messages.id, outerPlaceholderMessageId))
+          .catch((err) => logger.error("Failed to persist error in message content", err));
+      }
 
       return "error";
     } finally {

@@ -57,7 +57,7 @@ import { DragDropOverlay } from "./DragDropOverlay";
 import { showExtraFilesToast } from "@/lib/toast";
 import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 import { ChatInputControls } from "../ChatInputControls";
-import { ChatErrorBox } from "./ChatErrorBox";
+
 import { AgentConsentBanner } from "./AgentConsentBanner";
 import { TodoList } from "./TodoList";
 import {
@@ -106,7 +106,7 @@ export function ChatInput({
   useEffect(() => {
     autoRepairHook.setStreamMessage(streamMessage);
   }, [streamMessage, autoRepairHook.setStreamMessage]);
-  const [showError, setShowError] = useState(true);
+
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
   const hasAutoStartedRef = useRef(false);
@@ -212,11 +212,7 @@ export function ChatInput({
 
   const { userBudget } = useUserBudgetInfo();
 
-  useEffect(() => {
-    if (error) {
-      setShowError(true);
-    }
-  }, [error]);
+
 
   // Reset hasAutoStartedRef when chatId changes
   useEffect(() => {
@@ -307,9 +303,7 @@ export function ChatInput({
     setIsStreaming(false);
   };
 
-  const dismissError = () => {
-    setShowError(false);
-  };
+
 
   const handleApprove = async () => {
     if (!chatId || !messageId || isApproving || isRejecting || isStreaming)
@@ -380,13 +374,7 @@ export function ChatInput({
 
   return (
     <>
-      {error && showError && (
-        <ChatErrorBox
-          onDismiss={dismissError}
-          error={error}
-          isDyadProEnabled={settings.enableDyadPro ?? false}
-        />
-      )}
+
       {/* Display loading or error state for proposal */}
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&

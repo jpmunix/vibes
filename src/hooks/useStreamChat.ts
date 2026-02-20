@@ -12,6 +12,7 @@ import {
   isStreamingByIdAtom,
   recentStreamChatIdsAtom,
 } from "@/atoms/chatAtoms";
+import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import type { ChatResponseEnd, App } from "@/ipc/types";
@@ -393,6 +394,21 @@ export function useStreamChat({
 
               console.error(`[CHAT] Stream error for ${chatId}:`, errorMessage);
               updateMapAtom(setErrorById, chatId, errorMessage);
+
+              // Persist error text into the optimistic assistant message
+              // so it survives reloads via the DB save on the backend
+              setMessagesById((prev) => {
+                const msgs = prev.get(chatId);
+                if (!msgs) return prev;
+                const updated = [...msgs];
+                const last = updated[updated.length - 1];
+                if (last?.role === "assistant" && (!last.content || !last.content.trim())) {
+                  updated[updated.length - 1] = { ...last, content: `${PERSISTED_ERROR_PREFIX}${errorMessage}` };
+                }
+                const next = new Map(prev);
+                next.set(chatId, updated);
+                return next;
+              });
 
               // Invalidate free agent quota to update the UI after error
               // (the server may have refunded the quota)

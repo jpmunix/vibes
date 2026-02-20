@@ -29,6 +29,17 @@ export interface PendingAgentConsent {
 
 export const pendingAgentConsentsAtom = atom<PendingAgentConsent[]>([]);
 
+// Agent ask_user request queue
+export interface PendingAskUser {
+  requestId: string;
+  chatId: number;
+  question: string;
+  options: string[] | null;
+  context: string | null;
+}
+
+export const pendingAskUsersAtom = atom<PendingAskUser[]>([]);
+
 // Agent todos per chat
 export const agentTodosByChatIdAtom = atom<Map<number, AgentTodo[]>>(new Map());
 

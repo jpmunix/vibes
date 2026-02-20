@@ -13,6 +13,7 @@ import { DyadExecuteSql } from "./DyadExecuteSql";
 import { DyadLogs } from "./DyadLogs";
 import { DyadGrep } from "./DyadGrep";
 import { DyadGit } from "./DyadGit";
+import { DyadAskUser } from "./DyadAskUser";
 import { DyadAddIntegration } from "./DyadAddIntegration";
 import { DyadEdit } from "./DyadEdit";
 import { DyadSearchReplace } from "./DyadSearchReplace";
@@ -75,6 +76,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-status",
   "dyad-think",
   "dyad-git",
+  "dyad-ask-user",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -839,6 +841,23 @@ function renderCustomTag(
         >
           {content}
         </DyadGit>
+      );
+
+    case "dyad-ask-user":
+      return (
+        <DyadAskUser
+          node={{
+            properties: {
+              state: getState({ isStreaming, inProgress }),
+              question: attributes.question || "",
+              options: attributes.options || "",
+              context: attributes.context || "",
+              requestId: attributes.requestid || "",
+            },
+          }}
+        >
+          {content}
+        </DyadAskUser>
       );
 
     default:

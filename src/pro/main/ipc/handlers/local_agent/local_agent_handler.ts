@@ -16,6 +16,7 @@ import log from "electron-log";
 import { db } from "@/db";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { chats, messages } from "@/db/schema";
+import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { eq } from "drizzle-orm";
 import {
   initMessageStatus,
@@ -449,11 +450,14 @@ export async function handleLocalAgentStream(
       },
       onError: (error: any) => {
         const errorMessage = error?.error?.message || JSON.stringify(error);
+        const fullErrorText = `AI error: ${errorMessage}`;
         logger.error("Local agent stream error:", errorMessage);
         safeSend(event.sender, "chat:response:error", {
           chatId: req.chatId,
-          error: `AI error: ${errorMessage}`,
+          error: fullErrorText,
         });
+        // Persist error text in DB so it survives reload
+        void updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${fullErrorText}`);
       },
     });
 
@@ -608,11 +612,14 @@ export async function handleLocalAgentStream(
 
     // If the model produced zero output, send an error instead of an empty bubble
     if (!fullResponse.trim()) {
+      const zeroOutputError = "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.";
       logger.error("[AGENT] Model produced no output — sending error to user");
+      // Persist error text in DB so it survives reload
+      await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${zeroOutputError}`);
       await markFailed(placeholderMessageId);
       safeSend(event.sender, "chat:response:error", {
         chatId: req.chatId,
-        error: "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.",
+        error: zeroOutputError,
       });
       return false;
     }
@@ -673,12 +680,14 @@ export async function handleLocalAgentStream(
     }
 
     logger.error("Local agent error:", error);
+    const catchErrorText = `Error: ${error}`;
     safeSend(event.sender, "chat:response:error", {
       chatId: req.chatId,
-      error: `Error: ${error}`,
+      error: catchErrorText,
     });
 
-    // Mark as failed
+    // Persist error text in DB and mark as failed
+    await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${catchErrorText}`);
     await markFailed(placeholderMessageId);
 
     return false; // Error - don't consume quota

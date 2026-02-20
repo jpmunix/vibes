@@ -1,4 +1,5 @@
 import type { Message } from "@/ipc/types";
+import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import {
   DyadMarkdownParser,
 } from "./DyadMarkdownParser";
@@ -133,9 +134,16 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
 
-  // Is this an error message? (last assistant message, empty content, error set)
-  const isErrorMessage = isAssistant && isLastMessage && !isStreaming
-    && (!message.content || !message.content.trim()) && !!chatError;
+  // Detect persisted errors (content starts with $$DYAD_ERROR$$)
+  const persistedError = isAssistant && message.content?.startsWith(PERSISTED_ERROR_PREFIX)
+    ? message.content.slice(PERSISTED_ERROR_PREFIX.length)
+    : null;
+
+  // Error from in-memory atom (current session) OR from persisted content
+  const effectiveError = (isLastMessage && chatError) || persistedError;
+
+  // Is this an error message? (assistant, not streaming, error exists)
+  const isErrorMessage = isAssistant && !isStreaming && !!effectiveError;
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = useCallback(async () => {
@@ -148,7 +156,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     if (!message.content || !message.content.trim()) return defaultInfo;
 
     // Find the last unclosed (in-progress) custom tag
-    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|think|dyad-think)\s*([^>]*)>/g;
+    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|dyad-ask-user|think|dyad-think)\s*([^>]*)>/g;
     const closePattern = (tag: string) => new RegExp(`</${tag}>`, "g");
 
     let lastOpenTag: string | null = null;
@@ -317,7 +325,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                     /* Error state: show translated error inline */
                     <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                       <AlertTriangle size={16} className="flex-shrink-0" />
-                      <span className="text-sm font-medium">{translateError(chatError!)}</span>
+                      <span className="text-sm font-medium">{translateError(effectiveError!)}</span>
                     </div>
                   ) : (
                     <>
