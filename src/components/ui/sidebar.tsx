@@ -33,6 +33,10 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
+// Exported so lightweight stubs (e.g. ChatWindowApp) can provide the
+// context without mounting the full SidebarProvider component.
+export { SidebarContext, type SidebarContextProps };
+
 function useSidebar() {
   const context = React.useContext(SidebarContext);
   if (!context) {

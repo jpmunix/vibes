@@ -297,7 +297,7 @@ export function ChatInput({
       selectedComponents: componentsToSend,
     });
     clearAttachments();
-    posthog.capture("chat:submit", { chatMode: settings?.selectedChatMode });
+    posthog?.capture("chat:submit", { chatMode: settings?.selectedChatMode });
   };
 
   const handleCancel = () => {
@@ -318,7 +318,7 @@ export function ChatInput({
       `Approving proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsApproving(true);
-    posthog.capture("chat:approve");
+    posthog?.capture("chat:approve");
     try {
       const result = await ipc.proposal.approveProposal({
         chatId,
@@ -357,7 +357,7 @@ export function ChatInput({
       `Rejecting proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsRejecting(true);
-    posthog.capture("chat:reject");
+    posthog?.capture("chat:reject");
     try {
       await ipc.proposal.rejectProposal({
         chatId,
@@ -653,7 +653,7 @@ function RebuildButton() {
   const onClick = useCallback(async () => {
     if (!selectedAppId) return;
 
-    posthog.capture("action:rebuild");
+    posthog?.capture("action:rebuild");
     await restartApp({ removeNodeModules: true });
   }, [selectedAppId, posthog, restartApp]);
 
@@ -672,7 +672,7 @@ function RestartButton() {
   const onClick = useCallback(async () => {
     if (!selectedAppId) return;
 
-    posthog.capture("action:restart");
+    posthog?.capture("action:restart");
     await restartApp();
   }, [selectedAppId, posthog, restartApp]);
 
@@ -693,11 +693,11 @@ function RefreshButton() {
   const onClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.shiftKey) {
-        posthog.capture("action:restart_from_refresh");
+        posthog?.capture("action:restart_from_refresh");
         restartApp();
         return;
       }
-      posthog.capture("action:refresh");
+      posthog?.capture("action:refresh");
       refreshAppIframe();
     },
     [posthog, refreshAppIframe, restartApp],

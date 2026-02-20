@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useDeferredValue } from "react";
+import React, { useState, useRef, useEffect, useCallback, useDeferredValue, Suspense } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
@@ -12,13 +12,17 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 import { FreeAgentQuotaBanner } from "./chat/FreeAgentQuotaBanner";
-import { ChatLogsPanel } from "./chat/ChatLogsPanel";
+const ChatLogsPanel = React.lazy(() =>
+  import("./chat/ChatLogsPanel").then((m) => ({ default: m.ChatLogsPanel }))
+);
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2, ListChecks } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 import { isBasicAgentMode } from "@/lib/schemas";
-import { PlanPanel } from "./chat/PlanPanel";
+const PlanPanel = React.lazy(() =>
+  import("./chat/PlanPanel").then((m) => ({ default: m.PlanPanel }))
+);
 import { usePlanSync } from "@/hooks/usePlanSync";
 
 interface ChatPanelProps {
@@ -40,6 +44,7 @@ export function ChatPanel({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(!!chatId);
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { settings, updateSettings } = useSettings();
@@ -198,16 +203,21 @@ export function ChatPanel({
       return next;
     });
 
-    // Scroll to bottom after messages load
-    // Use double-RAF to ensure DOM is painted, then one idle callback for late-rendering content
+    // Scroll to bottom after messages load, then reveal.
+    // Use double-RAF to ensure Virtuoso has measured & painted all items,
+    // then one idle callback for late-rendering content (timestamps, avatars, etc.)
+    // Only AFTER that, remove the skeleton overlay so the user sees no jumps.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         scrollToBottom("instant");
-        // Single deferred scroll for async content (timestamps, etc.) instead of 3 nested setTimeouts
         const idleCallback = typeof requestIdleCallback === 'function'
           ? requestIdleCallback
           : (cb: () => void) => setTimeout(cb, 200);
-        idleCallback(() => scrollToBottom("instant"));
+        idleCallback(() => {
+          scrollToBottom("instant");
+          // Reveal messages now that Virtuoso layout is stable
+          setIsLoadingMessages(false);
+        });
       });
     });
   }, [chatId, setMessagesById]);
@@ -215,6 +225,14 @@ export function ChatPanel({
   useEffect(() => {
     fetchChatMessages();
   }, [fetchChatMessages]);
+
+  // Reset loading state when chatId changes — ensures skeleton shows
+  // even when chatId arrives late (e.g. set via atom after first render)
+  useEffect(() => {
+    if (chatId && !messagesById.has(chatId)) {
+      setIsLoadingMessages(true);
+    }
+  }, [chatId]);
 
   const rawMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
   // useDeferredValue lets React render a "stale" version of messages while computing the new one,
@@ -306,25 +324,39 @@ export function ChatPanel({
           onToggleLogs={() => setIsLogsOpen(!isLogsOpen)}
         />
         {chatId && (
-          <ChatLogsPanel
-            chatId={chatId}
-            isOpen={isLogsOpen}
-            onClose={() => setIsLogsOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <ChatLogsPanel
+              chatId={chatId}
+              isOpen={isLogsOpen}
+              onClose={() => setIsLogsOpen(false)}
+            />
+          </Suspense>
         )}
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 relative overflow-hidden">
             {!isPlanMode ? (
-              <MessagesList
-                messages={messages}
-                messagesEndRef={messagesEndRef}
-                ref={messagesContainerRef}
-                onScrollerRef={handleScrollerRef}
-                distanceFromBottomRef={distanceFromBottomRef}
-                isUserScrolling={isUserScrolling}
-              />
+              <>
+                {/* Always mount MessagesList so Virtuoso can measure items
+                    while the skeleton is still visible on top */}
+                <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
+                  <MessagesList
+                    messages={messages}
+                    messagesEndRef={messagesEndRef}
+                    ref={messagesContainerRef}
+                    onScrollerRef={handleScrollerRef}
+                    distanceFromBottomRef={distanceFromBottomRef}
+                    isUserScrolling={isUserScrolling}
+                  />
+                </div>
+                {/* Skeleton overlay — covers MessagesList while it renders */}
+                {isLoadingMessages && (
+                  <div className="absolute inset-0 z-10 bg-background">
+                    <ChatMessagesSkeleton />
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-300">
                 {chatId && isStreamingById.get(chatId) ? (
@@ -362,12 +394,56 @@ export function ChatPanel({
               }
             />
           )}
-          <PlanPanel chatId={chatId} />
+          <Suspense fallback={null}>
+            <PlanPanel chatId={chatId} />
+          </Suspense>
           <ChatInput
             chatId={chatId}
             autoStart={autoStart}
             isPlanMode={isPlanMode}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Skeleton shown while messages load from IPC ────────────────────────
+function ChatMessagesSkeleton() {
+  return (
+    <div className="h-full overflow-hidden px-4 animate-in fade-in duration-200">
+      <div className="max-w-3xl mx-auto flex flex-col gap-5 pt-6">
+        {/* User message skeleton */}
+        <div className="flex justify-end">
+          <div className="w-[55%] h-11 rounded-2xl bg-muted/60 animate-pulse" style={{ animationDelay: "0ms" }} />
+        </div>
+
+        {/* Assistant message skeleton */}
+        <div className="flex flex-col gap-2.5 pl-1">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-7 h-7 rounded-full bg-muted/60 animate-pulse" />
+            <div className="w-16 h-3.5 rounded bg-muted/60 animate-pulse" />
+          </div>
+          <div className="w-[85%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "75ms" }} />
+          <div className="w-[72%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "150ms" }} />
+          <div className="w-[60%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "225ms" }} />
+          <div className="w-[40%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "300ms" }} />
+        </div>
+
+        {/* Second user message skeleton */}
+        <div className="flex justify-end">
+          <div className="w-[40%] h-11 rounded-2xl bg-muted/60 animate-pulse" style={{ animationDelay: "200ms" }} />
+        </div>
+
+        {/* Second assistant message skeleton */}
+        <div className="flex flex-col gap-2.5 pl-1">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-7 h-7 rounded-full bg-muted/60 animate-pulse" style={{ animationDelay: "250ms" }} />
+            <div className="w-16 h-3.5 rounded bg-muted/60 animate-pulse" style={{ animationDelay: "250ms" }} />
+          </div>
+          <div className="w-[90%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "325ms" }} />
+          <div className="w-[78%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "400ms" }} />
+          <div className="w-[65%] h-3.5 rounded bg-muted/50 animate-pulse" style={{ animationDelay: "475ms" }} />
         </div>
       </div>
     </div>

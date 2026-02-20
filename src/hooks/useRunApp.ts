@@ -148,15 +148,26 @@ export function useRunApp() {
     try {
       console.debug("Running app", appId);
 
-      // Always clear the URL so the iframe shows "Starting your app server..."
-      // until the proxy emits a fresh URL event. This prevents loading a stale
-      // proxy URL when the app/proxy was stopped and restarted.
-      setAppUrlObj({ appUrl: null, appId: null, originalUrl: null });
+      // Only clear the URL if it belongs to a *different* app, to avoid showing
+      // a stale preview from a previous app. If the URL already belongs to
+      // this app (or is null), keep it — the main process will re-emit the
+      // stored proxy URL if the server is already running, and clearing it
+      // here would cause a race condition where the VibesInitLoader flashes
+      // or stays permanently because the re-emitted URL event gets lost
+      // between React batching cycles.
+      // Full URL clearing is done in restartApp() where we intentionally
+      // want to show the "Preparing server…" state.
+      setAppUrlObj((prev) => {
+        if (prev.appId !== null && prev.appId !== appId) {
+          return { appUrl: null, appId: null, originalUrl: null };
+        }
+        return prev;
+      });
 
       const logEntry = {
         level: "info" as const,
         type: "server" as const,
-        message: "Trying to restart app...",
+        message: "Trying to start app...",
         appId,
         timestamp: Date.now(),
       };

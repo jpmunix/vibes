@@ -84,6 +84,7 @@ import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { VibesInitLoader } from "./VibesInitLoader";
 
 interface ErrorBannerProps {
   error: { message: string; source: "preview-app" | "dyad-app" } | undefined;
@@ -1402,18 +1403,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   if (loading || isAutoRestarting) {
     return (
       <div className="flex flex-col h-full relative">
-        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-background">
-          <div className="relative w-5 h-5 animate-spin">
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-primary rounded-full"></div>
-            <div className="absolute bottom-0 left-0 w-2 h-2 bg-primary rounded-full opacity-80"></div>
-            <div className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-full opacity-60"></div>
-          </div>
-          <p className="text-muted-foreground">
-            {isAutoRestarting
-              ? "Reiniciando servidor (error de conexión detectado)..."
-              : "Preparing app preview..."}
-          </p>
-        </div>
+        <VibesInitLoader
+          subtitle={
+            isAutoRestarting
+              ? "Reiniciando servidor..."
+              : undefined
+          }
+        />
       </div>
     );
   }
@@ -1444,21 +1440,23 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={handleActivateComponentSelector}
-                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
-                      ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                      }`}
-                    disabled={
-                      loading ||
-                      !selectedAppId ||
-                      !isComponentSelectorInitialized
-                    }
-                    data-testid="preview-pick-element-button"
-                  >
-                    <MousePointerClick size={16} />
-                  </button>
+                  <div className="inline-flex">
+                    <button
+                      onClick={handleActivateComponentSelector}
+                      className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
+                        ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
+                        : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      disabled={
+                        loading ||
+                        !selectedAppId ||
+                        !isComponentSelectorInitialized
+                      }
+                      data-testid="preview-pick-element-button"
+                    >
+                      <MousePointerClick size={16} />
+                    </button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
@@ -1471,36 +1469,38 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               </Tooltip>
             </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <DropdownMenu>
+            <DropdownMenu>
+              <TooltipProvider>
+                <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
-                        disabled={loading || !selectedAppId}
-                        data-testid="preview-screenshot-button"
-                      >
-                        <Camera size={16} />
-                      </button>
-                    </DropdownMenuTrigger>
+                    <div className="inline-flex">
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
+                          disabled={loading || !selectedAppId}
+                          data-testid="preview-screenshot-button"
+                        >
+                          <Camera size={16} />
+                        </button>
+                      </DropdownMenuTrigger>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Take Screenshot</p>
                   </TooltipContent>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onSelect={handleAnnotatorClick}>
-                      <Monitor size={14} className="mr-2" />
-                      <span>Full Page</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleStartSelection}>
-                      <Crop size={14} className="mr-2" />
-                      <span>Selection</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Tooltip>
-            </TooltipProvider>
+                </Tooltip>
+              </TooltipProvider>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={handleAnnotatorClick}>
+                  <Monitor size={14} className="mr-2" />
+                  <span>Full Page</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleStartSelection}>
+                  <Crop size={14} className="mr-2" />
+                  <span>Selection</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={!canGoBack || loading || !selectedAppId}
@@ -1788,12 +1788,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         />
 
         {!appUrl ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-background">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Starting your app server...
-            </p>
-          </div>
+          <VibesInitLoader subtitle="Preparando el servidor..." />
         ) : (
           <div
             className={cn(
@@ -1835,6 +1830,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   setIsIframeLoading(false);
 
                   console.log('[PreviewIframe] Successfully loaded iframe');
+                  setIsComponentSelectorInitialized(true);
                   // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
                   // This prevents re-renders from accidentally changing the iframe src
                 }}

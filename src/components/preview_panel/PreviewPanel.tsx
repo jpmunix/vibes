@@ -14,7 +14,9 @@ const CodeView = React.lazy(() =>
   import("./CodeView").then((m) => ({ default: m.CodeView }))
 );
 
-import { PreviewIframe } from "./PreviewIframe";
+const PreviewIframe = React.lazy(() =>
+  import("./PreviewIframe").then((m) => ({ default: m.PreviewIframe }))
+);
 import { Problems } from "./Problems";
 import { ChevronDown, ChevronUp, Logs } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -245,7 +247,9 @@ export function PreviewPanel() {
               ) : previewMode === "preview" ? (
                 <div className="flex h-full">
                   <div className="flex-1 min-w-0 h-full">
-                    <PreviewIframe key={key} loading={loading} />
+                    <Suspense fallback={<LazyFallback />}>
+                      <PreviewIframe key={key} loading={loading} />
+                    </Suspense>
                   </div>
                   {naturalEditingPanelOpen &&
                     visualEditingSelectedComponent && (

@@ -18,7 +18,7 @@ import {
     RouterProvider,
 } from "@tanstack/react-router";
 import { PostHogProvider } from "posthog-js/react";
-import posthog from "posthog-js";
+
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
@@ -41,7 +41,7 @@ import { useSilentAppStart } from "@/hooks/useSilentAppStart";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { showError } from "@/lib/toast";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { currentAppAtom } from "@/atoms/appAtoms";
 import { useSettings } from "@/hooks/useSettings";
@@ -83,17 +83,26 @@ const queryClient = new QueryClient({
 });
 
 // ─── No-op PostHog client ───────────────────────────────────────────────
-const noopPosthogClient = posthog.init("phc_noop_chat_window", {
-    api_host: "https://localhost",
-    autocapture: false,
-    capture_exceptions: false,
-    capture_pageview: false,
-    opt_out_capturing_by_default: true,
-    disable_session_recording: true,
-    loaded: (ph) => {
-        ph.opt_out_capturing();
-    },
-});
+// Instead of initializing the full PostHog SDK (which sets up localStorage,
+// timers, and internal data structures), we pass null. The PostHogProvider
+// from posthog-js/react gracefully handles this — `usePostHog()` will
+// return null/undefined, and posthog.capture() calls become no-ops.
+const noopPosthogClient = null;
+
+// ─── Lightweight sidebar context for chat window ────────────────────────
+// The full SidebarProvider (780 lines) adds keyboard shortcuts, cookie
+// management, resize handlers, and wrapping DOM. The chat window only needs
+// the context value so PreviewIframe's ExpandPreviewButton doesn't crash.
+const SIDEBAR_STUB_VALUE: SidebarContextProps = {
+    state: "collapsed",
+    open: false,
+    setOpen: () => { },
+    toggleSidebar: () => { },
+    width: "0",
+    setWidth: () => { },
+    isResizing: false,
+    setIsResizing: () => { },
+};
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface ChatWindowAppProps {
@@ -422,9 +431,9 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
 function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt?: boolean, initialChatMode?: string) {
     const chatWindowRootRoute = createRootRoute({
         component: () => (
-            <SidebarProvider defaultOpen={false}>
+            <SidebarContext.Provider value={SIDEBAR_STUB_VALUE}>
                 <ChatWindowContent appId={appId} chatId={chatId} hasPendingPrompt={hasPendingPrompt} initialChatMode={initialChatMode} />
-            </SidebarProvider>
+            </SidebarContext.Provider>
         ),
     });
 

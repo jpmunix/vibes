@@ -20,7 +20,7 @@ export function SimpleAvatar({ src, alt, fallbackText, className }: SimpleAvatar
 
   return (
     <div className={cn(
-      "flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium",
+      "flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden text-xs font-medium text-foreground select-none",
       className
     )}>
       {showImage ? (
@@ -28,6 +28,7 @@ export function SimpleAvatar({ src, alt, fallbackText, className }: SimpleAvatar
           src={src}
           alt={alt}
           className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
           onError={() => setHasError(true)}
         />
       ) : (

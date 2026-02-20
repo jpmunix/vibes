@@ -5,6 +5,7 @@ import {
 import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
+import { TOOL_META, getToolDetail } from "./CompactToolBadge";
 import {
   CheckCircle,
   XCircle,
@@ -39,6 +40,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import { auth } from "@/lib/firebase";
 
 interface ChatMessageProps {
   message: Message;
@@ -57,7 +59,7 @@ const formatTimestamp = (timestamp: string | Date) => {
   }
 };
 
-const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
+const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const appId = useAtomValue(selectedAppIdAtom);
@@ -68,7 +70,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const isSelectingModel = selectedChatId
     ? (isSelectingModelById.get(selectedChatId) ?? false)
     : false;
-  const user = useAtomValue(userAtom);
+
+  const activeUser = user || auth.currentUser;
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -79,9 +82,8 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   }, [copyMessageContent, message.content]);
   const loadingPhrases = useMemo(
     () => [
+      "Pensando",
       "Analizando contexto",
-      "Consultando archivos",
-      "Solicitando a la IA",
       "Preparando respuesta",
     ],
     [],
@@ -97,7 +99,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     ) {
       const interval = setInterval(() => {
         setLoadingPhraseIndex((prev) => (prev + 1) % loadingPhrases.length);
-      }, 1800);
+      }, 2200);
       return () => clearInterval(interval);
     }
   }, [
@@ -108,6 +110,55 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
     message.content,
     message.role,
   ]);
+
+  // Extract the real current action from the streaming content
+  const streamingLabel = useMemo(() => {
+    if (!message.content || !isStreaming || !isLastMessage) return undefined;
+
+    // Find the last unclosed (in-progress) custom tag
+    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|think|dyad-think)\s*([^>]*)>/g;
+    const closePattern = (tag: string) => new RegExp(`</${tag}>`, "g");
+
+    let lastOpenTag: string | null = null;
+    let lastAttrs: string = "";
+    let match;
+
+    // Collect all opening tags
+    const openings: { tag: string; attrs: string; index: number }[] = [];
+    while ((match = tagPattern.exec(message.content)) !== null) {
+      openings.push({ tag: match[1], attrs: match[2], index: match.index });
+    }
+
+    // Find the last tag that has no closing tag after it
+    for (let i = openings.length - 1; i >= 0; i--) {
+      const { tag, attrs } = openings[i];
+      const closes = (message.content.match(closePattern(tag)) || []).length;
+      const opens = openings.filter((o) => o.tag === tag).length;
+      if (opens > closes) {
+        lastOpenTag = tag;
+        lastAttrs = attrs;
+        break;
+      }
+    }
+
+    if (lastOpenTag) {
+      const meta = TOOL_META[lastOpenTag];
+      if (meta) {
+        // Parse attributes to get detail
+        const attributes: Record<string, string> = {};
+        const attrPattern = /([\w-]+)="([^"]*)"/g;
+        let attrMatch;
+        while ((attrMatch = attrPattern.exec(lastAttrs)) !== null) {
+          attributes[attrMatch[1]] = attrMatch[2];
+        }
+        const detail = getToolDetail(lastOpenTag, attributes);
+        return detail ? `${meta.label} ${detail}` : meta.label;
+      }
+    }
+
+    // Fallback: check if there's markdown text being written
+    return "Generando respuesta";
+  }, [message.content, isStreaming, isLastMessage]);
   // Find the version that was active when this message was sent
   const messageVersion = useMemo(() => {
     if (
@@ -148,11 +199,11 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
           <div className="flex-shrink-0 mt-1">
             {isUser ? (
               <SimpleAvatar
-                src={user?.photoURL || undefined}
+                src={activeUser?.photoURL || undefined}
                 className="h-7 w-7"
                 fallbackText={
-                  user
-                    ? (user.displayName?.[0] || user.email?.[0] || "U").toUpperCase()
+                  activeUser
+                    ? (activeUser.displayName?.[0] || activeUser.email?.[0] || "U").toUpperCase()
                     : <UserIcon className="h-4 w-4" />
                 }
               />
@@ -195,7 +246,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                       {isLastMessage && isStreaming && !isSelectingModel && (
                         <StreamingLoadingAnimation
                           variant="streaming"
-                          label={loadingPhrases[loadingPhraseIndex]}
+                          label={streamingLabel}
                         />
                       )}
                     </>

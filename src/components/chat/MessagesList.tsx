@@ -1,9 +1,14 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
-import { forwardRef, useState, useCallback, useMemo } from "react";
+import { forwardRef, useState, useCallback, useMemo, Suspense } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ChatMessage from "./ChatMessage";
-import { OpenRouterSetupBanner, SetupBanner } from "../SetupBanner";
+const SetupBanner = React.lazy(() =>
+  import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
+);
+const OpenRouterSetupBanner = React.lazy(() =>
+  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner }))
+);
 
 import { useStreamChat } from "@/hooks/useStreamChat";
 import {
@@ -11,6 +16,7 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
+import { userAtom } from "@/atoms/authAtoms";
 import { useAtomValue, useSetAtom } from "jotai";
 import { CheckCircle2, Loader2, RefreshCw, Undo, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -420,6 +426,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const isSelectingModel = selectedChatId
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
+    const user = useAtomValue(userAtom);
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -457,16 +464,31 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
     // Stabilize renderSetupBanner with proper dependencies
     const renderSetupBanner = useCallback(() => {
+      // SetupBanner is only relevant in the main window. In the dedicated
+      // chat window (URL contains ?window=chat) it should never render —
+      // it pulls in navigation/settings UI that doesn't work in memory router.
+      if (window.location.search.includes("window=chat")) {
+        return null;
+      }
+
       const selectedModel = settings?.selectedModel;
       if (
         selectedModel?.name === "free" &&
         selectedModel?.provider === "auto" &&
         !isProviderSetup("openrouter")
       ) {
-        return <OpenRouterSetupBanner className="w-full" />;
+        return (
+          <Suspense fallback={null}>
+            <OpenRouterSetupBanner className="w-full" />
+          </Suspense>
+        );
       }
       if (!isAnyProviderSetup()) {
-        return <SetupBanner />;
+        return (
+          <Suspense fallback={null}>
+            <SetupBanner />
+          </Suspense>
+        );
       }
       return null;
     }, [
@@ -505,6 +527,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
               <MemoizedChatMessage
                 message={message}
                 isLastMessage={isLastMessage}
+                user={user}
               />
             </div>
             {shouldShowAutoRouter && (
@@ -522,6 +545,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         autoRouterModelInfo,
         selectedChatId,
         messages,
+        user,
       ],
     );
 
@@ -633,6 +657,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                   <ChatMessage
                     message={message}
                     isLastMessage={isLastMessage}
+                    user={user}
                   />
                 </div>
                 {shouldShowAutoRouter && (
