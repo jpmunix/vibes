@@ -1,4 +1,4 @@
-import React from "react";
+
 import {
   PanelRightOpen,
   PlusCircle,
@@ -17,8 +17,7 @@ import {
   PanelLeft,
   Maximize2,
   Minimize2,
-  ChevronsDownUp,
-  ChevronsUpDown,
+
 } from "lucide-react";
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -32,7 +31,7 @@ import {
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom, collapseAllMessagesAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
@@ -502,15 +501,6 @@ export function ChatHeader({
           </DropdownMenu>
         </div>
 
-        {/* Collapse/Expand all AI messages */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <CollapseAllToggle />
-            </TooltipTrigger>
-            <TooltipContent>Colapsar/Expandir respuestas</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
 
         {appId && (
           <KnowledgeBaseModal
@@ -684,18 +674,3 @@ function ExpandChatButton({
   );
 }
 
-const CollapseAllToggle = React.forwardRef<HTMLButtonElement>((props, ref) => {
-  const [collapseAll, setCollapseAll] = useAtom(collapseAllMessagesAtom);
-
-  return (
-    <button
-      ref={ref}
-      onClick={() => setCollapseAll(!collapseAll)}
-      className="p-1.5 hover:bg-(--background-lightest) rounded-md transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-      {...props}
-    >
-      {collapseAll ? <ChevronsUpDown size={16} /> : <ChevronsDownUp size={16} />}
-    </button>
-  );
-});
-CollapseAllToggle.displayName = "CollapseAllToggle";

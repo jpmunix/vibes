@@ -35,7 +35,6 @@ import {
   selectedChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
-  collapseAllMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -59,14 +58,7 @@ const formatTimestamp = (timestamp: string | Date) => {
 
 const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
-  const collapseAll = useAtomValue(collapseAllMessagesAtom);
-  const [isCollapsedLocal, setIsCollapsedLocal] = useState(false);
-  // Sync with global toggle
-  useEffect(() => {
-    setIsCollapsedLocal(collapseAll);
-  }, [collapseAll]);
-  const isCollapsed = isCollapsedLocal;
-  const setIsCollapsed = setIsCollapsedLocal;
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions: liveVersions } = useVersions(appId);
   const selectedChatId = useAtomValue(selectedChatIdAtom);
