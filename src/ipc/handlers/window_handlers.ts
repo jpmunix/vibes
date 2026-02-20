@@ -17,6 +17,9 @@ const logger = log.scope("window-handlers");
 // Track database viewer windows to avoid duplicates
 const databaseWindows = new Map<number, BrowserWindow>();
 
+// Track Git viewer windows to avoid duplicates
+const gitWindows = new Map<number, BrowserWindow>();
+
 // Track chat windows to avoid duplicates (P18 — dedicated chat+preview)
 const chatWindows = new Map<number, BrowserWindow>();
 
@@ -107,6 +110,64 @@ export function registerWindowHandlers() {
     });
 
     logger.info(`Opened database viewer window for app ${appId}`);
+  });
+
+  // Git viewer window — lazy, only loaded on demand
+  createTypedHandler(systemContracts.openGitWindow, async (event, { appId, commitHash, theme, themeIntensity }) => {
+    // If a window for this appId already exists, focus it
+    const existing = gitWindows.get(appId);
+    if (existing && !existing.isDestroyed()) {
+      existing.focus();
+      return;
+    }
+
+    const parentWindow = BrowserWindow.fromWebContents(event.sender);
+
+    // Fetch app name for the window title
+    let appName = "Git";
+    try {
+      const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+      if (app?.name) appName = app.name;
+    } catch (e) {
+      logger.warn(`Could not fetch app name for git window title: ${e}`);
+    }
+
+    const gitWindow = new BrowserWindow({
+      width: 1100,
+      height: 750,
+      minWidth: 700,
+      minHeight: 500,
+      parent: parentWindow ?? undefined,
+      title: `${appName} — Control de Git`,
+      autoHideMenuBar: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    const commitParam = commitHash ? `&commitHash=${encodeURIComponent(commitHash)}` : "";
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=git&appId=${appId}${commitParam}${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      gitWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      gitWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    gitWindows.set(appId, gitWindow);
+
+    gitWindow.on("closed", () => {
+      gitWindows.delete(appId);
+    });
+
+    logger.info(`Opened git viewer window for app ${appId}${commitHash ? `, commit ${commitHash}` : ""}`);
   });
 
   // P18 — Dedicated chat+preview window for performance isolation

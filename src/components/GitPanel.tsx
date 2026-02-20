@@ -47,6 +47,8 @@ import { toast } from "sonner";
 
 interface GitPanelProps {
     onClose: () => void;
+    initialTab?: "changes" | "history";
+    initialCommitHash?: string;
 }
 
 function getStatusIcon(status: string) {
@@ -271,9 +273,9 @@ function StagedFileRow({
     );
 }
 
-export function GitPanel({ onClose }: GitPanelProps) {
+export function GitPanel({ onClose, initialTab, initialCommitHash }: GitPanelProps) {
     const appId = useAtomValue(selectedAppIdAtom);
-    const [activeTab, setActiveTab] = useState<"changes" | "history">("changes");
+    const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
     const {
         uncommittedFiles,
         currentBranch,
@@ -583,7 +585,7 @@ export function GitPanel({ onClose }: GitPanelProps) {
             {/* Tab Content */}
             {activeTab === "history" ? (
                 <div className="flex-1 overflow-hidden">
-                    <GitCommitHistory />
+                    <GitCommitHistory initialCommitHash={initialCommitHash} />
                 </div>
             ) : (
                 <>

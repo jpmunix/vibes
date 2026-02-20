@@ -1,6 +1,6 @@
 
 **feat: implement `ask_user` tool for user input handling and persist error messages**
-
+feat: add Git viewer window with commit navigation and theme syncing
 ----------------------------
 
 

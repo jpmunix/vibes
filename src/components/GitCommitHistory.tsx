@@ -155,7 +155,7 @@ function CommitDiffViewer({ diff }: { diff: string }) {
     );
 }
 
-export function GitCommitHistory() {
+export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: string }) {
     const appId = useAtomValue(selectedAppIdAtom);
     const {
         commits,
@@ -210,6 +210,23 @@ export function GitCommitHistory() {
     useEffect(() => {
         selectCommit(null);
     }, [currentPage, selectCommit]);
+
+    // Auto-select initial commit when provided and data is loaded
+    useEffect(() => {
+        if (initialCommitHash && commits.length > 0 && !selectedCommit) {
+            // Try to find the commit in current page
+            const found = commits.find(c =>
+                c.hash.startsWith(initialCommitHash) ||
+                initialCommitHash.startsWith(c.hash.slice(0, 7))
+            );
+            if (found) {
+                selectCommit(found.hash);
+            } else {
+                // Commit not on this page — select by hash directly (will trigger detail fetch)
+                selectCommit(initialCommitHash);
+            }
+        }
+    }, [initialCommitHash, commits, selectedCommit, selectCommit]);
 
     if (isLoadingHistory && commits.length === 0) {
         return (

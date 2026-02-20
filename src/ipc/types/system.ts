@@ -294,6 +294,18 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Git viewer window — lazy, only opened on demand
+  openGitWindow: defineContract({
+    channel: "window:open-git",
+    input: z.object({
+      appId: z.number(),
+      commitHash: z.string().optional(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Chat window (P18 — dedicated chat+preview for performance isolation)
   openChatWindow: defineContract({
     channel: "window:open-chat",

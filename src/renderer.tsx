@@ -456,6 +456,30 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "git" && appIdStr) {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Lazy import — Git module only loads when this window type is opened
+  const commitHashParam = urlParams.get("commitHash") || undefined;
+  import("./components/git_window/GitWindowApp").then(
+    ({ GitWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <GitWindowApp
+            appId={Number(appIdStr)}
+            commitHash={commitHashParam}
+          />
+        </StrictMode>,
+      );
+    },
+  );
 } else if (windowType === "chat" && appIdStr) {
   // P18 — Sync theme from parent window via URL params
   if (themeParam) {

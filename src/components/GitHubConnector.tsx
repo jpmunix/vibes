@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSetAtom } from "jotai";
-import { previewModeAtom } from "@/atoms/appAtoms";
+import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {
   Github,
@@ -19,7 +18,6 @@ import {
   ArrowDownToLine,
   Wrench,
 } from "lucide-react";
-import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
@@ -184,11 +182,14 @@ function ConnectedGitHubConnector({
     }
   }, [appId]);
 
-  // Open GitPanel for manual conflict resolution
-  const setPreviewMode = useSetAtom(previewModeAtom);
+  // Open GitPanel in a dedicated window
   const handleOpenGitPanel = useCallback(() => {
-    setPreviewMode("git");
-  }, [setPreviewMode]);
+    ipc.system.openGitWindow({
+      appId,
+      theme: (localStorage.getItem("theme") as "light" | "dark" | "system") ?? undefined,
+      themeIntensity: parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
+    });
+  }, [appId]);
 
   useEffect(() => {
     // Fetch git state (ahead/behind) to decide UI visibility

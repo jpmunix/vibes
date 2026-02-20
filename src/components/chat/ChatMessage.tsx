@@ -1,4 +1,5 @@
 import type { Message } from "@/ipc/types";
+import { ipc } from "@/ipc/types";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import {
   DyadMarkdownParser,
@@ -433,15 +434,27 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                 {messageVersion && messageVersion.message && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="max-w-50 truncate font-medium">
+                      <button
+                        className="max-w-50 truncate font-medium cursor-pointer hover:text-foreground hover:underline transition-colors"
+                        onClick={() => {
+                          if (appId != null) {
+                            ipc.system.openGitWindow({
+                              appId,
+                              commitHash: message.commitHash ?? undefined,
+                              theme: (localStorage.getItem("theme") as "light" | "dark" | "system") ?? undefined,
+                              themeIntensity: parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
+                            });
+                          }
+                        }}
+                      >
                         {
                           messageVersion.message
                             .replace(/^\[(dyad|vibes)\]\s*/i, "")
                             .split("\n")[0]
                         }
-                      </span>
+                      </button>
                     </TooltipTrigger>
-                    <TooltipContent>{messageVersion.message}</TooltipContent>
+                    <TooltipContent>Ver en Control de Git</TooltipContent>
                   </Tooltip>
                 )}
               </div>
