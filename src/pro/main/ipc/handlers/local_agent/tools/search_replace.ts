@@ -102,6 +102,17 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
   },
 
   execute: async (args, ctx: AgentContext) => {
+    // Hard cap: after 3 failed search_replace attempts on the same file, force fallback
+    if (ctx?.fileEditTracker?.[args.file_path]) {
+      const srCount = ctx.fileEditTracker[args.file_path].search_replace;
+      if (srCount >= 3) {
+        throw new ToolError(
+          `search_replace has failed ${srCount} times on ${args.file_path}. You MUST use 'read_file' to check the current file contents and then use 'write_file' to rewrite the entire file. Do NOT attempt search_replace on this file again.`,
+          { retryable: false, hint: "Use read_file + write_file instead." },
+        );
+      }
+    }
+
     // Validate old_string !== new_string
     if (args.old_string === args.new_string) {
       throw new ToolError("old_string and new_string must be different", {

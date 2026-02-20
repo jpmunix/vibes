@@ -37,7 +37,6 @@ import { DyadDatabaseSchema } from "./DyadDatabaseSchema";
 import { DyadSupabaseTableSchema } from "./DyadSupabaseTableSchema";
 import { DyadSupabaseProjectInfo } from "./DyadSupabaseProjectInfo";
 import { DyadStatus } from "./DyadStatus";
-import { mapActionToButton } from "./ChatInput";
 import { SuggestedAction } from "@/lib/schemas";
 import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
@@ -765,23 +764,7 @@ function renderCustomTag(
       return null;
 
     case "dyad-command":
-      if (attributes.type) {
-        const commandTypes = [attributes.type];
-        // If it's a refresh, we also suggest a restart as a more powerful alternative
-        if (attributes.type === "refresh") {
-          commandTypes.push("restart");
-        }
-
-        return (
-          <div className="flex flex-wrap gap-2 my-3">
-            {commandTypes.map((type) => (
-              <React.Fragment key={type}>
-                {mapActionToButton({ id: type } as SuggestedAction)}
-              </React.Fragment>
-            ))}
-          </div>
-        );
-      }
+      // Botones de "Actualizar vista" y "Reiniciar app" eliminados a petición del usuario
       return null;
 
     case "dyad-list-files":

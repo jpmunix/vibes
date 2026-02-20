@@ -177,11 +177,9 @@ export async function handleLocalAgentStream(
 
   const appPath = getDyadAppPath(chat.app.path);
 
-  // Send initial message update
-  safeSend(event.sender, "chat:response:chunk", {
-    chatId: req.chatId,
-    messages: chat.messages,
-  });
+  // The frontend handles optimistic UI updates (showing the loader).
+  // We should NOT send `chat.messages` here because it doesn't contain the assistant placeholder yet,
+  // and sending it would overwrite the frontend's optimistic loader, causing it to disappear.
 
   // Phase 2: Context & Recovery
   // Link to previous assistant response for chain tracking
@@ -606,6 +604,17 @@ export async function handleLocalAgentStream(
       }
     } catch (err) {
       logger.warn("Failed to save AI messages JSON:", err);
+    }
+
+    // If the model produced zero output, send an error instead of an empty bubble
+    if (!fullResponse.trim()) {
+      logger.error("[AGENT] Model produced no output — sending error to user");
+      await markFailed(placeholderMessageId);
+      safeSend(event.sender, "chat:response:error", {
+        chatId: req.chatId,
+        error: "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.",
+      });
+      return false;
     }
 
     // In read-only mode, skip deploys and commits

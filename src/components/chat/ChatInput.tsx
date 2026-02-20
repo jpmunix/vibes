@@ -648,74 +648,6 @@ function WriteCodeProperlyButton() {
   );
 }
 
-function RebuildButton() {
-  const { restartApp } = useRunApp();
-  const posthog = usePostHog();
-  const selectedAppId = useAtomValue(selectedAppIdAtom);
-
-  const onClick = useCallback(async () => {
-    if (!selectedAppId) return;
-
-    posthog?.capture("action:rebuild");
-    await restartApp({ removeNodeModules: true });
-  }, [selectedAppId, posthog, restartApp]);
-
-  return (
-    <SuggestionButton onClick={onClick} tooltipText="Reconstruye la aplicación">
-      Reconstruir app
-    </SuggestionButton>
-  );
-}
-
-function RestartButton() {
-  const { restartApp } = useRunApp();
-  const posthog = usePostHog();
-  const selectedAppId = useAtomValue(selectedAppIdAtom);
-
-  const onClick = useCallback(async () => {
-    if (!selectedAppId) return;
-
-    posthog?.capture("action:restart");
-    await restartApp();
-  }, [selectedAppId, posthog, restartApp]);
-
-  return (
-    <SuggestionButton
-      onClick={onClick}
-      tooltipText="Reinicia el servidor de desarrollo"
-    >
-      Reiniciar app
-    </SuggestionButton>
-  );
-}
-
-function RefreshButton() {
-  const { refreshAppIframe, restartApp } = useRunApp();
-  const posthog = usePostHog();
-
-  const onClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.shiftKey) {
-        posthog?.capture("action:restart_from_refresh");
-        restartApp();
-        return;
-      }
-      posthog?.capture("action:refresh");
-      refreshAppIframe();
-    },
-    [posthog, refreshAppIframe, restartApp],
-  );
-
-  return (
-    <SuggestionButton
-      onClick={onClick}
-      tooltipText="Actualiza la vista previa (Shift + Click para reiniciar)"
-    >
-      Actualizar vista
-    </SuggestionButton>
-  );
-}
-
 function KeepGoingButton() {
   const { streamMessage } = useStreamChat();
   const chatId = useAtomValue(selectedChatIdAtom);
@@ -744,12 +676,6 @@ export function mapActionToButton(action: SuggestedAction) {
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":
       return <WriteCodeProperlyButton />;
-    case "rebuild":
-      return <RebuildButton />;
-    case "restart":
-      return <RestartButton />;
-    case "refresh":
-      return <RefreshButton />;
     case "keep-going":
       return <KeepGoingButton />;
     default:

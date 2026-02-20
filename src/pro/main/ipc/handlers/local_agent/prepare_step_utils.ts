@@ -200,9 +200,9 @@ export function prepareStepMessages<
     // Smart Fallback Suggestions
     if (consecutiveFailures >= 2) {
       if (failedToolName?.includes("search_replace")) {
-        instruction += "\n\nSystem Note: `search_replace` has failed multiple times. The file content might be different than expected. Please switch to `write_file` to overwrite the file with the correct content, or use `read_file` to check content first.";
+        instruction += `\n\nSYSTEM DIRECTIVE: search_replace has failed ${consecutiveFailures} consecutive times. You MUST NOT use search_replace again for this file. Use read_file to check the current file content, then use write_file to rewrite the entire file. This is mandatory — do not attempt search_replace again.`;
       } else if (failedToolName?.includes("edit_file")) {
-        instruction += "\n\nSystem Note: `edit_file` has failed multiple times. Please switch to `write_file` to overwrite the file completely.";
+        instruction += `\n\nSYSTEM DIRECTIVE: edit_file has failed ${consecutiveFailures} consecutive times. You MUST switch to write_file to overwrite the file completely. This is mandatory.`;
       }
     }
 

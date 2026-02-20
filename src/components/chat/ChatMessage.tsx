@@ -89,10 +89,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     [],
   );
   const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0);
+
+  // Rotate the "Thinking" phrase while streaming
   useEffect(() => {
     if (
-      message.role === "assistant" &&
-      !message.content &&
+      isAssistant &&
       isStreaming &&
       isLastMessage &&
       !isSelectingModel
@@ -103,12 +104,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
       return () => clearInterval(interval);
     }
   }, [
+    isAssistant,
     isLastMessage,
     isStreaming,
     isSelectingModel,
     loadingPhrases.length,
-    message.content,
-    message.role,
   ]);
 
   // Extract the real current action from the streaming content
@@ -232,6 +232,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
                 }`}
             >
+              {/* === Assistant: ternary — loader OR content === */}
               {isAssistant &&
                 !message.content &&
                 isStreaming &&
@@ -241,29 +242,32 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   variant="initial"
                   label={loadingPhrases[loadingPhraseIndex]}
                 />
-              ) : !isSelectingModel ? (
+              ) : isAssistant && !isSelectingModel ? (
                 <div
                   className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
                   suppressHydrationWarning
                 >
-                  {isAssistant ? (
-                    <>
-                      <DyadMarkdownParser content={message.content} />
-                      {isLastMessage && isStreaming && !isSelectingModel && (
-                        <StreamingLoadingAnimation
-                          variant="streaming"
-                          label={streamingLabel}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <UserMessageContent
-                      content={message.content}
-                      aiMessagesJson={message.aiMessagesJson}
+                  <DyadMarkdownParser content={message.content} />
+                  {isLastMessage && isStreaming && (
+                    <StreamingLoadingAnimation
+                      variant="streaming"
+                      label={streamingLabel}
                     />
                   )}
                 </div>
               ) : null}
+              {/* === User messages === */}
+              {isUser && !isSelectingModel && (
+                <div
+                  className="prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+                  suppressHydrationWarning
+                >
+                  <UserMessageContent
+                    content={message.content}
+                    aiMessagesJson={message.aiMessagesJson}
+                  />
+                </div>
+              )}
               {(isAssistant && message.content && !isStreaming) ? (
                 <div
                   className={`mt-2 flex items-center justify-between text-xs`}

@@ -1,44 +1,34 @@
-- Nueva capacidad del agente de trabajar con el reposition git. Opciones status, diff, diff_file, log, show_commit, current_branch, list_branches, commit, create_branch, checkout, stash_save, stash_pop, stash_list, revert_file
-- Búsqueda semántica avanzada para identificar patrones en el código y enviar el contexto más relevante al modelo de LLM. Del mismo modo, se ha mejorado la precisión la base de conocimientos utilizando el mismo patrón de semántica.
-- Se ha intentado mitigar el problema en el que el usuario escribe un prompt y la IA en vez de ejecutar la acción completa el mensaje del usuario.
+Esta versión marca un hito fundamental en la evolución de Vibes, introduciendo búsqueda semántica basada en IA, capacidades avanzadas de Git para el agente y una arquitectura de ventanas dedicadas que transforma el rendimiento.
 
-**feat: add semantic search settings and caching support for embeddings**
-- Introduced "Búsqueda Semántica" settings for enabling AI-powered contextual search using vector embeddings.
-- Added support for selecting and configuring embedding models in a dedicated settings UI.
-- Implemented a new `EmbeddingsCache` table for storing vector embeddings indexed by file, debate, or message.
-- Updated handlers to fetch the initial prompt for a selected app and cache embeddings for semantic ranking.
-- Enabled semantic re-ranking of search results combining keyword and similarity scores.
-- Enhanced fallback logic to ensure the `EmbeddingsCache` table and migrations are created if missing during initialization.
-  **feat: update UI styles and implement anti-continuation for user messages**
-- Adjusted `h-screenish` and container height styles for improved layout consistency across components.
-- Updated input styles in settings to remove shadow effects for a cleaner appearance.
-- Implemented anti-continuation logic to wrap the last user message (`<user_request>` tags) in `local_agent_handler` and `chat_stream_handlers` to prevent the model from continuing user text.
+### 🧠 Búsqueda Semántica & IA
 
+*   **Búsqueda Semántica Avanzada**: Implementación de búsqueda contextual mediante embeddings vectoriales para identificar patrones en el código y enviar el contexto más relevante al modelo.
+*   **Re-ranking Híbrido**: Los resultados de búsqueda ahora combinan puntuación de palabras clave con similitud vectorial para una precisión sin precedentes.
+*   **Base de Conocimientos Inteligente**: El sistema de conocimiento ahora utiliza filtrado semántico para inyectar solo las reglas y convenciones más relevantes al prompt actual, reduciendo drásticamente el ruido.
+*   **Gestión de Embeddings**: Nueva sección en Ajustes para activar la búsqueda semántica, seleccionar modelos de embedding (OpenAI, Voyage, etc.) y visualizar el estado del cache.
+*   **Caché de Embeddings SQLite**: Persistencia eficiente de vectores con invalidación inteligente mediante hashes SHA-256 de contenido.
+*   **Esfuerzo de Razonamiento Configurable**: Selector `ReasoningEffortSelector` para modelos compatibles, permitiendo ajustar niveles de razonamiento (none, low, medium, high).
+*   **Nuevos Modelos por Defecto**: Actualización a OpenAI `gpt-4.1-nano` y `gpt-5.1-codex-mini` para una respuesta más rápida y precisa.
+*   **Selector Dinámico OpenRouter**: Capacidad de activar/desactivar modelos y añadir nuevos mediante un buscador integrado.
 
-## 🔥 Novedades v5.0 ~ Beta 1
+### 🛠️ Herramientas Git Avanzadas
 
-El rediseño completo de la experiencia de chat y la arquitectura de ventanas dedicadas marca un nuevo hito en rendimiento y usabilidad.
+*   **Agente con Superpoderes Git**: El agente ahora puede interactuar íntegramente con el repositorio. Incluye soporte para: `status`, `diff`, `log`, `show_commit`, `commit`, `checkout`, `branching`, `stash` y `revert`.
+*   **Visualización de Errores Git**: Detección inteligente de problemas comunes en operaciones Git con sugerencias de resolución automática.
 
-### 🎨 Rediseño Completo del Chat
+### 🎨 Rediseño de Interfaz & UX
 
-*   **Nueva Interfaz de Chat**: Rediseño integral de la interfaz de chat con detección inteligente de errores, insignias de error mejoradas y disposición optimizada de mensajes para mayor claridad y legibilidad.
-*   **Gestión de Estado Simplificada**: Eliminación de la lógica global de colapsar/expandir mensajes, simplificando la gestión de estado interna del componente `ChatMessage` para un rendimiento más fluido.
-*   **Ventanas de Chat Dedicadas**: Migración de la funcionalidad de chat a ventanas independientes con aislamiento de rendimiento, mejorando la velocidad de la interfaz principal y eliminando interferencias entre componentes.
-*   **Estilos Optimizados**: Eliminación de estilos innecesarios para un renderizado de la UI más limpio y rápido.
+*   **Rediseño Integral del Chat**: Nueva UI de chat optimizada para legibilidad con insignias de estado mejoradas y manejo de errores nativo.
+*   **Ventanas de Chat Dedicadas**: Migración de la lógica de chat a ventanas independientes, eliminando latencia en la interfaz principal.
+*    **Mitigación de Continuación IA**: Implementación de lógica anti-continuación envolviendo los prompts en tags `<user_request>`, evitando que la IA intente predecir o completar el texto del usuario.
+*   **Layout "Solid Edge"**: Eliminación de márgenes externos, bordes y redondeados del contenedor principal para un diseño más limpio y enrasado con la barra de título.
+*   **Header Bar Simplificada**: Rediseño del sticky header bar con desenfoque de fondo (backdrop-blur) y barra de búsqueda simplificada sin sombras.
 
-### 🧠 Agente Inteligente & IA
+### 🚀 Arquitectura y Rendimiento
 
-*   **Esfuerzo de Razonamiento Configurable**: Nuevo selector `ReasoningEffortSelector` con niveles granulares (none, minimal, low, medium, high, xhigh) para modelos que soportan razonamiento, permitiendo ajuste fino de precisión en tareas complejas.
-*   **Modelos por Defecto Actualizados**: Actualización de los modelos por defecto a OpenAI `gpt-4.1-nano` y `gpt-5.1-codex-mini` en todos los selectores y componentes.
-*   **Selector Dinámico de Modelos OpenRouter**: Los modelos preexistentes se pueden activar/desactivar desde los ajustes y añadir nuevos mediante un buscador de OpenRouter.
-*   **Información de Modelos Enriquecida**: La modal de información de un modelo muestra costes, parámetros de entrada y salida soportados.
-*   **Visibilidad de API Keys**: Función para visualizar/ocultar las API keys de OpenRouter directamente desde los ajustes.
-
-
-### 🚀 Rendimiento y Arquitectura
-
-*   **Eliminación de Extensiones Innecesarias**: Limpieza de dependencias para reducir la superficie del proyecto.
-*   **Core Rescrito**: Reescritura completa del núcleo de la aplicación para mejorar resiliencia, robustez y rendimiento general.
+*   **Core Rewritten**: Reescritura completa del núcleo de la aplicación para mejorar la resiliencia y el aislamiento de procesos.
+*   **Limpieza de Dependencias**: Eliminación de extensiones y librerías innecesarias para reducir el tiempo de carga y el tamaño del bundle.
+*   **Aislamiento de Rendimiento**: La separación de ventanas garantiza que las tareas pesadas de la IA no bloqueen la navegación del usuario.
 
 ---
 
