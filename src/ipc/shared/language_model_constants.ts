@@ -118,6 +118,28 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       brainSigns: 2,
     },
     {
+      name: "openai/gpt-5.1-codex-max",
+      displayName: "GPT 5.1 Codex Max",
+      description:
+        "La versión más potente de Codex 5.1: razonamiento extendido con presupuesto de tokens alto para las tareas de código más exigentes.",
+      maxOutputTokens: 128_000,
+      contextWindow: 400_000,
+      temperature: 0,
+      dollarSigns: 4,
+      brainSigns: 3,
+    },
+    {
+      name: "openai/gpt-5.2-codex",
+      displayName: "GPT 5.2 Codex",
+      description:
+        "La última generación de modelos de código de OpenAI. Máximo rendimiento en SWE-bench con razonamiento avanzado y agentes de largo aliento.",
+      maxOutputTokens: 128_000,
+      contextWindow: 400_000,
+      temperature: 0,
+      dollarSigns: 4,
+      brainSigns: 3,
+    },
+    {
       name: "openai/gpt-4.1",
       displayName: "GPT 4.1",
       description:
@@ -220,22 +242,16 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
 };
 
 export const DEFAULT_ENABLED_MODELS: string[] = [
-  "google/gemini-3-flash-preview",
-  "google/gemini-3.1-pro-preview",
-  "google/gemini-2.5-pro",
-  "google/gemini-2.5-flash",
-  "anthropic/claude-sonnet-4.5",
   "anthropic/claude-opus-4.6",
+  "google/gemini-3.1-pro-preview",
+  "google/gemini-3-flash-preview",
+  "openai/gpt-5.1-codex-max",
+  "openai/gpt-5.2-codex",
   "openai/gpt-5.1-codex-mini",
-  "openai/gpt-4.1",
-  "openai/gpt-4.1-mini",
-  "openai/gpt-4.1-nano",
-  GPT_5_MINI,
-  "qwen/qwen-plus-2025-07-28",
-  "x-ai/grok-4.1-fast",
+  "x-ai/grok-code-fast-1",
   "moonshotai/kimi-k2.5",
   "minimax/minimax-m2.5",
-  "x-ai/grok-code-fast-1",
+  "qwen/qwen-plus-2025-07-28",
 ];
 
 export const FREE_OPENROUTER_MODEL_NAMES = MODEL_OPTIONS.openrouter

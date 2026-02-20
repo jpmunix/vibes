@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { DEFAULT_THEME_ID } from "@/shared/themes";
+import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
@@ -227,13 +228,13 @@ export function readSettings(): UserSettings {
         _migrations: { ...((validatedSettings as any)._migrations || {}), v1_model_defaults_applied: true },
       };
       logger.info("[Migration] Applied v1 model defaults:", Object.keys(migrated));
-      // Write back so it persists
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
+      cachedSettings = migratedSettings as UserSettings;
       try {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v1 model defaults:", e);
       }
-      cachedSettings = migratedSettings as UserSettings;
       return migratedSettings as UserSettings;
     }
 
@@ -279,12 +280,49 @@ export function readSettings(): UserSettings {
         _migrations: { ...((validatedSettings as any)._migrations || {}), v2_gemini31_pro_applied: true },
       };
       logger.info("[Migration] Applied v2 gemini-3.1-pro swap:", Object.keys(migrated));
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
+      cachedSettings = migratedSettings as UserSettings;
       try {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v2 gemini-3.1-pro swap:", e);
       }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v3 curated model list ──
+    // Replace enabledOpenRouterModels with the new curated 10-model list.
+    // Also migrate selectedModel if it's no longer in the curated set.
+    if (!(validatedSettings as any)._migrations?.v3_curated_models_applied) {
+      const migrated: Partial<UserSettings> = {};
+
+      // Force the curated list
+      (migrated as any).enabledOpenRouterModels = [...DEFAULT_ENABLED_MODELS];
+
+      // If the currently selected model is not in the new curated list, switch to default
+      const currentModelName = validatedSettings.selectedModel?.name;
+      if (currentModelName && !DEFAULT_ENABLED_MODELS.includes(currentModelName)) {
+        migrated.selectedModel = {
+          name: "google/gemini-3-flash-preview",
+          provider: "openrouter",
+        };
+        logger.info(`[Migration v3] Migrated selectedModel from ${currentModelName} to gemini-3-flash-preview`);
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v3_curated_models_applied: true },
+      };
+      logger.info("[Migration] Applied v3 curated model list");
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
       cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v3 curated model list:", e);
+      }
       return migratedSettings as UserSettings;
     }
 

@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 3; // Bumped: adds gemini-3.1-pro-preview
+const CACHE_VERSION = 4; // Bumped: curated model list reduced to 10
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -100,22 +100,16 @@ export function clearOpenRouterModelsCache(): void {
 // =============================================================================
 
 const CURATED_MODEL_IDS = new Set([
-    "google/gemini-3-flash-preview",
-    "google/gemini-3.1-pro-preview",
-    "google/gemini-2.5-pro",
-    "google/gemini-2.5-flash",
-    "anthropic/claude-sonnet-4.5",
     "anthropic/claude-opus-4.6",
+    "google/gemini-3.1-pro-preview",
+    "google/gemini-3-flash-preview",
+    "openai/gpt-5.1-codex-max",
+    "openai/gpt-5.2-codex",
     "openai/gpt-5.1-codex-mini",
-    "openai/gpt-4.1",
-    "openai/gpt-4.1-mini",
-    "openai/gpt-4.1-nano",
-    "openai/gpt-5-mini",
-    "qwen/qwen-plus-2025-07-28",
-    "x-ai/grok-4.1-fast",
+    "x-ai/grok-code-fast-1",
     "moonshotai/kimi-k2.5",
     "minimax/minimax-m2.5",
-    "x-ai/grok-code-fast-1",
+    "qwen/qwen-plus-2025-07-28",
 ]);
 
 // =============================================================================
