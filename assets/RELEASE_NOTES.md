@@ -5,6 +5,7 @@
 - En la modal de información de un modelo se muestra información de los costes y los parámetros de tipos de entrada y salida soportados
 - Mejoras a la hora de crear apps nuevas
 - Mejoras en "Tareas"
+- Rediseño completo de la interfaz de chat para quitar ruido y hacerla más rápida
 
 ## 🔥 Novedades Principales (Acumulativa)
 

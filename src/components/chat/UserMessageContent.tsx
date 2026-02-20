@@ -127,17 +127,17 @@ export function UserMessageContent({
             {/* Render content: compact badge for fix-error, normal markdown otherwise */}
             {isFixError ? (
                 <>
-                    <button
+                    <div
                         onClick={() => setErrorModalOpen(true)}
-                        className="not-prose inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors cursor-pointer"
+                        className="not-prose flex items-center gap-2 cursor-pointer"
                     >
-                        <Wrench size={14} className="text-red-500" />
-                        <span className="text-sm font-medium text-red-500">Soluciona este error</span>
-                    </button>
+                        <Wrench size={14} className="text-rose-400 flex-shrink-0" />
+                        <span className="text-sm font-medium text-foreground">Soluciona este error</span>
+                    </div>
                     <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
                         <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-red-500">
+                                <DialogTitle className="flex items-center gap-2 text-rose-400">
                                     <Wrench size={20} />
                                     Detalle del error
                                 </DialogTitle>

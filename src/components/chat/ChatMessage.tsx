@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  User as UserIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useVersions } from "@/hooks/useVersions";
@@ -137,6 +138,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
   }, []);
 
 
+  const isFixError = isUser && message.content?.startsWith("Fix error:");
 
   return (
     <div className="flex justify-center">
@@ -151,7 +153,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                 fallbackText={
                   user
                     ? (user.displayName?.[0] || user.email?.[0] || "U").toUpperCase()
-                    : "Yo"
+                    : <UserIcon className="h-4 w-4" />
                 }
               />
             ) : (
@@ -168,7 +170,9 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
             <div
               className={`rounded-2xl ${isAssistant
                 ? "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
-                : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
+                : isFixError
+                  ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
+                  : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
                 }`}
             >
               {isAssistant &&
@@ -203,42 +207,13 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                   )}
                 </div>
               ) : null}
-              {(isAssistant && message.content && !isStreaming) ||
-                message.approvalState ? (
+              {(isAssistant && message.content && !isStreaming) ? (
                 <div
-                  className={`mt-2 flex items-center ${isAssistant && message.content && !isStreaming
-                    ? "justify-between"
-                    : ""
-                    } text-xs`}
+                  className={`mt-2 flex items-center justify-between text-xs`}
                 >
                   {isAssistant &&
                     message.content &&
-                    !isStreaming &&
-                    !isCollapsed && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              data-testid="copy-message-button"
-                              onClick={handleCopyFormatted}
-                              className="flex items-center space-x-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded cursor-pointer"
-                            >
-                              {copied ? (
-                                <Check className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                              <span className="hidden sm:inline"></span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {copied ? "¡Copiado!" : "Copiar"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  <div className="flex flex-wrap gap-2">
-                    {isAssistant && (
+                    !isStreaming && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -259,21 +234,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                         </Tooltip>
                       </TooltipProvider>
                     )}
-                    {message.approvalState && (
-                      <div className="flex items-center space-x-1">
-                        {message.approvalState === "approved" ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span>Aprobado</span>
-                          </>
-                        ) : message.approvalState === "rejected" ? (
-                          <>
-                            <XCircle className="h-4 w-4 text-red-500" />
-                            <span>Rechazado</span>
-                          </>
-                        ) : null}
-                      </div>
-                    )}
+                  <div className="flex flex-wrap gap-2">
                     {isAssistant && message.model && (
                       <>
                         {selectedChatId &&
@@ -284,7 +245,7 @@ const ChatMessage = ({ message, isLastMessage }: ChatMessageProps) => {
                           />
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
-                            <Bot className="h-4 w-4 flex-shrink-0" />
+                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             <span>{message.model}</span>
                           </div>
                         )}
