@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 
 /** Maps a custom tag name to its icon, label, and color */
-const TOOL_META: Record<string, { icon: LucideIcon; label: string; color: string }> = {
+export const TOOL_META: Record<string, { icon: LucideIcon; label: string; color: string }> = {
     "dyad-write": { icon: Pencil, label: "Escribir", color: "text-blue-500" },
     "dyad-edit": { icon: Pencil, label: "Editar", color: "text-amber-500" },
     "dyad-search-replace": { icon: Pencil, label: "Buscar/Reemplazar", color: "text-amber-500" },

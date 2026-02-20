@@ -41,6 +41,7 @@ import { SuggestedAction } from "@/lib/schemas";
 import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
 import { CompactToolBadge, shouldCompact, getToolDetail, type ToolBadgeState } from "./CompactToolBadge";
+import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 
 const DYAD_CUSTOM_TAGS = [
   "dyad-write",
@@ -189,18 +190,17 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
   // Group content pieces for compact rendering
   const renderPieces = () => {
     const elements: React.ReactNode[] = [];
-    let badgeGroup: React.ReactNode[] = [];
+    let badgeGroup: BadgeItem[] = [];
     // Track the pending badge separately — it renders below the finished row
     let pendingBadge: React.ReactNode | null = null;
 
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0 || pendingBadge) {
+        const capturedBadges = [...badgeGroup];
         elements.push(
           <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
-            {badgeGroup.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {badgeGroup}
-              </div>
+            {capturedBadges.length > 0 && (
+              <GroupedToolBadges badges={capturedBadges} />
             )}
             {pendingBadge}
           </div>
@@ -268,17 +268,13 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
               </React.Fragment>
             );
           } else {
-            // Finished/aborted items accumulate as inline badges
-            badgeGroup.push(
-              <React.Fragment key={index}>
-                <CompactToolBadge
-                  tag={tag}
-                  state={badgeState}
-                  detail={detail}
-                  originalContent={originalContent}
-                />
-              </React.Fragment>
-            );
+            // Finished/aborted items accumulate as structured badge data
+            badgeGroup.push({
+              tag,
+              state: badgeState,
+              detail,
+              originalContent,
+            });
           }
         } else {
           // Non-compactable tags render normally

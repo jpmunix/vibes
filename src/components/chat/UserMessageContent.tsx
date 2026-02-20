@@ -1,6 +1,12 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./DyadMarkdownParser";
-import { Image as ImageIcon, X } from "lucide-react";
+import { Image as ImageIcon, X, Wrench } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface UserMessageContentProps {
     content: string;
@@ -100,8 +106,13 @@ export function UserMessageContent({
         return text.trim();
     }, [content]);
 
+    // Detect "Fix error:" messages
+    const isFixError = cleanContent.startsWith("Fix error:");
+
     // Check if there are image attachment references in the raw content
     const hasAttachmentText = content.includes("\n\nAttachments:\n");
+
+    const [errorModalOpen, setErrorModalOpen] = useState(false);
 
     const handleImageClick = useCallback((dataUrl: string) => {
         setExpandedImage(dataUrl);
@@ -113,8 +124,33 @@ export function UserMessageContent({
 
     return (
         <>
-            {/* Render the clean text content */}
-            {cleanContent && <VanillaMarkdownParser content={cleanContent} />}
+            {/* Render content: compact badge for fix-error, normal markdown otherwise */}
+            {isFixError ? (
+                <>
+                    <button
+                        onClick={() => setErrorModalOpen(true)}
+                        className="not-prose inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors cursor-pointer"
+                    >
+                        <Wrench size={14} className="text-red-500" />
+                        <span className="text-sm font-medium text-red-500">Soluciona este error</span>
+                    </button>
+                    <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
+                        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-red-500">
+                                    <Wrench size={20} />
+                                    Detalle del error
+                                </DialogTitle>
+                            </DialogHeader>
+                            <div className="mt-2 prose dark:prose-invert prose-sm max-w-none">
+                                <VanillaMarkdownParser content={cleanContent} />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </>
+            ) : (
+                cleanContent && <VanillaMarkdownParser content={cleanContent} />
+            )}
 
             {/* Render image thumbnails if we have images from aiMessagesJson */}
             {images.length > 0 && (
