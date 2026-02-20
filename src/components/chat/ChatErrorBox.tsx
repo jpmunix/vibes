@@ -20,7 +20,7 @@ export function ChatErrorBox({
   if (error.includes("doesn't have a free quota tier")) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
-        {error} or switch to another model.
+        {error} — prueba con otro modelo.
       </ChatErrorContainer>
     );
   }
@@ -40,11 +40,6 @@ export function ChatErrorBox({
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
         {error}
-        <div className="mt-2 space-y-2 space-x-2">
-          <ExternalLink href="https://github.com/minube/vibes/help/ai-rate-limit">
-            Troubleshooting guide
-          </ExternalLink>
-        </div>
       </ChatErrorContainer>
     );
   }
@@ -53,7 +48,7 @@ export function ChatErrorBox({
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
         <span>
-          You have used all of your Vibes AI credits this month.
+          Se han agotado los créditos de IA de este mes.
         </span>
       </ChatInfoContainer>
     );

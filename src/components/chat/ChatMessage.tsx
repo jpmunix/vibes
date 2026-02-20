@@ -6,6 +6,7 @@ import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
+import { AlertTriangle } from "lucide-react";
 import {
   CheckCircle,
   XCircle,
@@ -38,6 +39,7 @@ import {
   selectedChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
+  chatErrorByIdAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -48,6 +50,55 @@ interface ChatMessageProps {
   isLastMessage: boolean;
 }
 // Hoisted to module level — pure function, no component state needed
+
+/** Translate common AI error messages to user-friendly Spanish */
+function translateError(raw: string): string {
+  // Strip common prefixes
+  let msg = raw
+    .replace(/^Sorry, there was an error from the AI:\s*/i, "")
+    .replace(/^\[req:[^\]]*\]\s*/i, "")
+    .replace(/^AI error:\s*/i, "")
+    .trim();
+
+  // Map common patterns
+  if (/rate.?limit|resource.*(exhausted|exceeded)|too many requests|429/i.test(msg)) {
+    return "Se ha superado el límite de solicitudes. Espera un momento e inténtalo de nuevo.";
+  }
+  if (/provider returned error/i.test(msg)) {
+    return "El proveedor de IA devolvió un error. Inténtalo de nuevo.";
+  }
+  if (/exceeded.*budget|ExceededBudget/i.test(msg)) {
+    return "Se han agotado los créditos de IA de este mes.";
+  }
+  if (/no.?output.?generated|empty.*response|zero.*tokens/i.test(msg)) {
+    return "La IA no generó ninguna respuesta. Inténtalo de nuevo.";
+  }
+  if (/API key|unauthorized|authentication|forbidden|401|403/i.test(msg)) {
+    return "Error de autenticación con el proveedor de IA. Revisa tu clave API en ajustes.";
+  }
+  if (/network|ECONNREFUSED|ETIMEDOUT|fetch failed|socket/i.test(msg)) {
+    return "Error de conexión con el proveedor de IA. Comprueba tu conexión a internet.";
+  }
+  if (/context.*(too long|exceeded|limit)|max.*tokens|token.*limit/i.test(msg)) {
+    return "El mensaje es demasiado largo para el modelo. Intenta resumir o abrir un nuevo chat.";
+  }
+  if (/model.*not.*found|does not exist|invalid.*model/i.test(msg)) {
+    return "El modelo seleccionado no está disponible. Prueba con otro modelo.";
+  }
+  if (/timeout|timed?\s*out/i.test(msg)) {
+    return "La solicitud tardó demasiado. Inténtalo de nuevo.";
+  }
+  if (/server.*error|internal.*error|500|502|503/i.test(msg)) {
+    return "Error del servidor de IA. Inténtalo de nuevo en unos segundos.";
+  }
+  if (/content.*filter|safety|blocked|moderation/i.test(msg)) {
+    return "El contenido fue bloqueado por los filtros de seguridad del modelo.";
+  }
+
+  // Fallback: return stripped message as-is
+  return msg || "Ha ocurrido un error inesperado.";
+}
+
 const formatTimestamp = (timestamp: string | Date) => {
   const now = new Date();
   const messageTime = new Date(timestamp);
@@ -72,10 +123,18 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     ? (isSelectingModelById.get(selectedChatId) ?? false)
     : false;
 
+  // Error state for this chat
+  const errorById = useAtomValue(chatErrorByIdAtom);
+  const chatError = selectedChatId ? (errorById.get(selectedChatId) ?? null) : null;
+
   const activeUser = user || auth.currentUser;
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
+
+  // Is this an error message? (last assistant message, empty content, error set)
+  const isErrorMessage = isAssistant && isLastMessage && !isStreaming
+    && (!message.content || !message.content.trim()) && !!chatError;
   //handle copy chat
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = useCallback(async () => {
@@ -203,7 +262,9 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           <div className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             <div
               className={`rounded-2xl ${isAssistant
-                ? "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
+                ? isErrorMessage
+                  ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
+                  : "px-4 py-3 bg-secondary/50 dark:bg-secondary/30 border border-secondary/40"
                 : isFixError
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
                   : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
@@ -212,21 +273,30 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
               {/* === Assistant messages === */}
               {isAssistant && !isSelectingModel && (
                 <>
-                  <div
-                    className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
-                    suppressHydrationWarning
-                  >
-                    <DyadMarkdownParser content={message.content} />
-                  </div>
-                  {/* Streaming loader: always visible while streaming, always "initial" variant (big pulsing dots).
-                      Also shown if content is empty even after streaming ends (covers error/empty response). */}
-                  {isLastMessage && (isStreaming || (!message.content || !message.content.trim())) && (
-                    <StreamingLoadingAnimation
-                      variant="initial"
-                      label={streamingInfo.label}
-                      dotColorClass={streamingInfo.dotColorClass}
-                      labelColorClass={streamingInfo.labelColorClass}
-                    />
+                  {isErrorMessage ? (
+                    /* Error state: show translated error inline */
+                    <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                      <AlertTriangle size={16} className="flex-shrink-0" />
+                      <span className="text-sm font-medium">{translateError(chatError!)}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
+                        suppressHydrationWarning
+                      >
+                        <DyadMarkdownParser content={message.content} />
+                      </div>
+                      {/* Streaming loader: visible while streaming, hidden on error */}
+                      {isLastMessage && isStreaming && (
+                        <StreamingLoadingAnimation
+                          variant="initial"
+                          label={streamingInfo.label}
+                          dotColorClass={streamingInfo.dotColorClass}
+                          labelColorClass={streamingInfo.labelColorClass}
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}
