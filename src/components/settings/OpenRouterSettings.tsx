@@ -21,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   KeyRound,
   Trash2,
-  Valid, // Wait, Lucide might not have Valid. Check or use Check.
   Check,
   Plus,
   ExternalLink,
@@ -205,7 +204,7 @@ export function OpenRouterSettings({
   return (
     <>
       <div
-        id="openrouter-settings"
+        id="models-connectivity"
         className={cn(
           "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
           isHighlighted

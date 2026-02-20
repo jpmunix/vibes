@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 2; // Bump when model shape changes
+const CACHE_VERSION = 3; // Bumped: adds gemini-3.1-pro-preview
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -101,7 +101,7 @@ export function clearOpenRouterModelsCache(): void {
 
 const CURATED_MODEL_IDS = new Set([
     "google/gemini-3-flash-preview",
-    "google/gemini-3-pro-preview",
+    "google/gemini-3.1-pro-preview",
     "google/gemini-2.5-pro",
     "google/gemini-2.5-flash",
     "anthropic/claude-sonnet-4.5",

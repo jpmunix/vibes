@@ -234,6 +234,57 @@ export function readSettings(): UserSettings {
       return migratedSettings as UserSettings;
     }
 
+    // ── Migration: v2 gemini-3-pro → gemini-3.1-pro ──
+    // Replace the deprecated gemini-3-pro-preview with gemini-3.1-pro-preview
+    // in enabledOpenRouterModels and selectedModel. Runs once.
+    if (!(validatedSettings as any)._migrations?.v2_gemini31_pro_applied) {
+      const OLD_MODEL = "google/gemini-3-pro-preview";
+      const NEW_MODEL = "google/gemini-3.1-pro-preview";
+      const migrated: Partial<UserSettings> = {};
+
+      // Migrate enabledOpenRouterModels
+      const enabledModels = (validatedSettings as any).enabledOpenRouterModels as string[] | undefined;
+      if (enabledModels && Array.isArray(enabledModels)) {
+        const idx = enabledModels.indexOf(OLD_MODEL);
+        if (idx !== -1) {
+          const updated = [...enabledModels];
+          // Replace old with new, unless new is already present
+          if (!updated.includes(NEW_MODEL)) {
+            updated[idx] = NEW_MODEL;
+          } else {
+            updated.splice(idx, 1);
+          }
+          (migrated as any).enabledOpenRouterModels = updated;
+        } else if (!enabledModels.includes(NEW_MODEL)) {
+          // Old model not present and new model not present either — add the new one
+          (migrated as any).enabledOpenRouterModels = [...enabledModels, NEW_MODEL];
+        }
+      }
+
+      // Migrate selectedModel if it points to the old model
+      if (validatedSettings.selectedModel?.name === OLD_MODEL) {
+        migrated.selectedModel = {
+          ...validatedSettings.selectedModel,
+          name: NEW_MODEL,
+        };
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v2_gemini31_pro_applied: true },
+      };
+      logger.info("[Migration] Applied v2 gemini-3.1-pro swap:", Object.keys(migrated));
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v2 gemini-3.1-pro swap:", e);
+      }
+      cachedSettings = migratedSettings as UserSettings;
+      return migratedSettings as UserSettings;
+    }
+
     // Update cache
     cachedSettings = validatedSettings;
 

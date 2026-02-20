@@ -12,7 +12,8 @@ type SettingsSection = {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "General" },
-  { id: "models-connectivity", label: "Modelos y Conectividad" },
+  { id: "models-connectivity", label: "Modelos e IA" },
+  { id: "serper-settings", label: "Búsqueda Web" },
   { id: "ai-behavior", label: "Configuración Asistente" },
   { id: "automation-settings", label: "Automatización" },
   { id: "workflow-settings", label: "Flujo de trabajo" },

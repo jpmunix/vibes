@@ -53,7 +53,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       brainSigns: 2,
     },
     {
-      name: "google/gemini-3-pro-preview",
+      name: "google/gemini-3.1-pro-preview",
       displayName: "Gemini 3 Pro",
       description: "Ideal para resolver bugs o problemas más complejos",
       maxOutputTokens: 65_000,
@@ -221,7 +221,7 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
 
 export const DEFAULT_ENABLED_MODELS: string[] = [
   "google/gemini-3-flash-preview",
-  "google/gemini-3-pro-preview",
+  "google/gemini-3.1-pro-preview",
   "google/gemini-2.5-pro",
   "google/gemini-2.5-flash",
   "anthropic/claude-sonnet-4.5",

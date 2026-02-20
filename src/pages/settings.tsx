@@ -199,7 +199,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     description: "Gestiona qué modelos aparecen en el selector del chat",
     keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
     section: "Modelos e IA",
-    sectionId: "models-and-connectivity",
+    sectionId: "models-connectivity",
   },
   {
     id: "reasoning-effort",
@@ -302,7 +302,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     description: "Configurar clave API de OpenRouter y modelos",
     keywords: ["openrouter", "api", "key", "clave", "ia"],
     section: "Modelos e IA",
-    sectionId: "openrouter-settings",
+    sectionId: "models-connectivity",
   },
   // Integrations
   {

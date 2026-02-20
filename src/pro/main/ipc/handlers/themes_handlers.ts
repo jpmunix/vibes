@@ -37,7 +37,7 @@ const THEME_GENERATION_MODEL_MAP: Record<
   string,
   { provider: string; name: string }
 > = {
-  "gemini-3-pro": { provider: "google", name: "gemini-3-pro-preview" },
+  "gemini-3-pro": { provider: "google", name: "gemini-3.1-pro-preview" },
   "claude-opus-4.5": {
     provider: "anthropic",
     name: "claude-opus-4-5",

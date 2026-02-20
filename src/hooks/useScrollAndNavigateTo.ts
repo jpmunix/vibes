@@ -23,7 +23,16 @@ export function useScrollAndNavigateTo(
   return useCallback(
     async (id: string) => {
       await navigate({ to });
-      const element = document.getElementById(id);
+
+      // The element may not exist immediately after navigation.
+      // Retry a few times with short delays.
+      let element: HTMLElement | null = null;
+      for (let i = 0; i < 10; i++) {
+        element = document.getElementById(id);
+        if (element) break;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
       if (element) {
         element.scrollIntoView({
           behavior: options?.behavior ?? "smooth",
