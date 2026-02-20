@@ -35,6 +35,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-think",
     "dyad-git",
     "dyad-ask-user",
+    "dyad-patch",
 ];
 
 /**

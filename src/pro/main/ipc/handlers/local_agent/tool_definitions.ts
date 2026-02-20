@@ -25,6 +25,7 @@ import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
 import { editFileTool } from "./tools/edit_file";
 import { searchReplaceTool } from "./tools/search_replace";
+import { patchFileTool } from "./tools/patch_file";
 import { webSearchTool } from "./tools/web_search";
 import { webCrawlTool } from "./tools/web_crawl";
 import { updateTodosTool } from "./tools/update_todos";
@@ -51,6 +52,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   writeFileTool,
   editFileTool,
   searchReplaceTool,
+  patchFileTool,
   deleteFileTool,
   renameFileTool,
   addDependencyTool,
@@ -338,6 +340,7 @@ function trackFileEditTool(
       write_file: 0,
       edit_file: 0,
       search_replace: 0,
+      patch_file: 0,
     };
   }
   ctx.fileEditTracker[filePath][toolName as FileEditToolName]++;

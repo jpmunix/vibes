@@ -351,7 +351,7 @@ export async function handleLocalAgentStream(
       system: systemPrompt,
       messages: framedMessageHistory,
       tools: allTools,
-      stopWhen: [stepCountIs(25), hasToolCall(addIntegrationTool.name)], // Allow multiple tool call rounds, stop on add_integration
+      stopWhen: [stepCountIs(15), hasToolCall(addIntegrationTool.name)], // Allow multiple tool call rounds, stop on add_integration
       abortSignal: abortController.signal,
       // Inject pending user messages (e.g., images from web_crawl) between steps
       // We must re-inject all accumulated messages each step because the AI SDK
@@ -539,6 +539,7 @@ export async function handleLocalAgentStream(
                       write_file: 0,
                       edit_file: 0,
                       search_replace: 0,
+                      patch_file: 0,
                     };
                   }
                   ctx.fileEditTracker[path][entry.toolName as FileEditToolName]++;

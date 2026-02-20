@@ -17,6 +17,7 @@ import { DyadAskUser } from "./DyadAskUser";
 import { DyadAddIntegration } from "./DyadAddIntegration";
 import { DyadEdit } from "./DyadEdit";
 import { DyadSearchReplace } from "./DyadSearchReplace";
+import { DyadPatch } from "./DyadPatch";
 import { DyadCodebaseContext } from "./DyadCodebaseContext";
 import { DyadThink } from "./DyadThink";
 import { CodeHighlight } from "./CodeHighlight";
@@ -77,6 +78,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-think",
   "dyad-git",
   "dyad-ask-user",
+  "dyad-patch",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -685,6 +687,23 @@ function renderCustomTag(
         </DyadSearchReplace>
       );
 
+    case "dyad-patch":
+      return (
+        <DyadPatch
+          node={{
+            properties: {
+              path: attributes.path || "",
+              description: attributes.description || "",
+              lines: attributes.lines || "",
+              retryCount: attributes["retry-count"] || "",
+              state: getState({ isStreaming, inProgress }),
+            },
+          }}
+        >
+          {content}
+        </DyadPatch>
+      );
+
     case "dyad-codebase-context":
       return (
         <DyadCodebaseContext
@@ -886,7 +905,8 @@ function renderModalContent(
     // === File operations: path + description + code ===
     case "dyad-write":
     case "dyad-edit":
-    case "dyad-search-replace": {
+    case "dyad-search-replace":
+    case "dyad-patch": {
       const path = attributes.path || "";
       const description = attributes.description || "";
       const retryCount = attributes["retry-count"] || "";

@@ -157,7 +157,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     if (!message.content || !message.content.trim()) return defaultInfo;
 
     // Find the last unclosed (in-progress) custom tag
-    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|dyad-ask-user|think|dyad-think)\s*([^>]*)>/g;
+    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-patch|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|dyad-ask-user|think|dyad-think)\s*([^>]*)>/g;
     const closePattern = (tag: string) => new RegExp(`</${tag}>`, "g");
 
     let lastOpenTag: string | null = null;

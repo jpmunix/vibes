@@ -6,6 +6,7 @@ import {
     Pencil,
     FileText,
     Search,
+    Scissors,
     Trash2,
     ArrowRightLeft,
     Package,
@@ -46,6 +47,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-write": { icon: Pencil, label: "Escrito", pendingLabel: "Escribiendo", color: "text-blue-500" },
     "dyad-edit": { icon: Pencil, label: "Editado", pendingLabel: "Editando", color: "text-amber-500" },
     "dyad-search-replace": { icon: Pencil, label: "Reemplazado", pendingLabel: "Reemplazando", color: "text-amber-500" },
+    "dyad-patch": { icon: Scissors, label: "Parcheado", pendingLabel: "Parcheando", color: "text-teal-500" },
     "dyad-rename": { icon: ArrowRightLeft, label: "Renombrado", pendingLabel: "Renombrando", color: "text-indigo-500" },
     "dyad-delete": { icon: Trash2, label: "Eliminado", pendingLabel: "Eliminando", color: "text-red-500" },
     "dyad-read": { icon: Eye, label: "Leído", pendingLabel: "Leyendo", color: "text-cyan-500" },
@@ -87,6 +89,7 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-gray-500": "bg-gray-500",
     "text-emerald-500": "bg-emerald-500",
     "text-violet-500": "bg-violet-500",
+    "text-teal-500": "bg-teal-500",
 };
 
 export function getBgColorClass(textColorClass: string): string | undefined {
@@ -203,7 +206,8 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
         case "dyad-edit":
         case "dyad-search-replace":
         case "dyad-read":
-        case "dyad-delete": {
+        case "dyad-delete":
+        case "dyad-patch": {
             const path = attributes.path || "";
             if (path.includes(".git/")) return undefined; // No label for git internal files
             return path ? path.split("/").pop() : undefined;

@@ -31,6 +31,7 @@ export const FILE_EDIT_TOOL_NAMES = [
   "write_file",
   "edit_file",
   "search_replace",
+  "patch_file",
 ] as const;
 export type FileEditToolName = (typeof FILE_EDIT_TOOL_NAMES)[number];
 export interface FileEditTracker {
@@ -38,6 +39,7 @@ export interface FileEditTracker {
     write_file: number;
     edit_file: number;
     search_replace: number;
+    patch_file: number;
   };
 }
 

@@ -69,13 +69,19 @@ const PRO_TOOL_CALLING_BEST_PRACTICES_BLOCK = `<tool_calling_best_practices>
 </tool_calling_best_practices>`;
 
 const PRO_FILE_EDITING_TOOL_SELECTION_BLOCK = `<file_editing_tool_selection>
-You have three tools for editing files. Choose based on the scope of your change:
+You have four tools for editing files. Choose based on the scope of your change:
 
 | Scope | Tool | Examples |
 |-------|------|----------|
 | **Small** (1-3 lines) | \`search_replace\` | Fix a typo, rename a variable, update a value |
+| **Precise** (specific line ranges) | \`patch_file\` | Change specific lines after reading with \`read_file\`, surgical multi-line edits |
 | **Medium** (one function or section) | \`edit_file\` | Rewrite a function, add a new component |
 | **Large** (most of the file) | \`write_file\` | Major refactor, rewrite a module |
+
+- Use \`search_replace\` for small, surgical changes where the text to find is unique and short.
+- Use \`patch_file\` when you know exact line numbers (after \`read_file\`). This is the most reliable tool for targeted edits.
+- Use \`edit_file\` when rewriting a function/section. Always include enough UNCHANGED context lines.
+- Use \`write_file\` to create new files or for large-scale rewrites. Never use placeholders.
 
 **Tips for \`edit_file\`:**
 - ALWAYS use the \`// ... existing code ...\` marker to skip unchanged sections.
@@ -91,9 +97,9 @@ After every edit, read the file to verify changes applied correctly. If you see 
 <error_recovery_rules>
 CRITICAL ERROR RECOVERY PROTOCOL:
 - If \`search_replace\` fails, NEVER retry it on the same file. Instead:
-  1. Use \`read_file\` to get the CURRENT file contents.
-  2. Use \`write_file\` to rewrite the complete file.
-- If \`edit_file\` fails, use \`write_file\` directly. Do NOT fall back to \`search_replace\`.
+  1. Use \`read_file\` to get the CURRENT file contents with line numbers.
+  2. Use \`patch_file\` with exact line numbers, OR use \`write_file\` to rewrite the complete file.
+- If \`edit_file\` fails, use \`patch_file\` or \`write_file\` directly. Do NOT fall back to \`search_replace\`.
 - NEVER attempt the same editing tool twice with different parameters on the same file after a failure.
 </error_recovery_rules>`;
 

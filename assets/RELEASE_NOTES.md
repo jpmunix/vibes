@@ -5,6 +5,7 @@
 
 **feat: enhance error handling and add fallback logic for tool execution**
 
+**feat: add `patch_file` tool with precise line-based editing and UI integration**
 
 ----------------------------
 
