@@ -525,6 +525,7 @@ ${componentSnippet}
       // Declare placeholderAssistantMessage and updatedChat at a higher scope
       let placeholderAssistantMessage: any;
       let updatedChat: any;
+      let streamStartedAt = Date.now();
 
       if (testResponse) {
         // For test prompts, we need to create the placeholder first
@@ -726,6 +727,9 @@ ${componentSnippet}
           })
           .returning();
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
+
+        // Reset stream start time for the actual streaming phase
+        streamStartedAt = Date.now();
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
@@ -1793,6 +1797,7 @@ This conversation includes one or more image attachments. When the user uploads 
             model: selectedModel
               ? `${selectedModel.provider}/${selectedModel.name}`
               : placeholderAssistantMessage.model,
+            durationMs: Date.now() - streamStartedAt,
           })
           .where(eq(messages.id, placeholderAssistantMessage.id));
 

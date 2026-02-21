@@ -13,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Timer,
   GitCommit,
   Copy,
   Check,
@@ -112,6 +113,15 @@ const formatTimestamp = (timestamp: string | Date) => {
   } else {
     return format(messageTime, "d 'de' MMM yyyy, H:mm", { locale: es });
   }
+};
+
+/** Format milliseconds into a human-readable duration (e.g. "23s", "1m 23s") */
+const formatDurationMs = (ms: number): string => {
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 };
 
 const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
@@ -390,6 +400,12 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         )}
                       </>
                     )}
+                    {message.durationMs != null && message.durationMs > 0 && (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Timer className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        <span>{formatDurationMs(message.durationMs)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -414,6 +430,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {message.durationMs != null && message.durationMs > 0 && (
+                    <div className="inline-flex items-center gap-0.5 text-xs">
+                      <Timer size={12} className="text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -502,7 +523,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {isLastMessage && message.totalTokens && (
+            {message.totalTokens && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -517,6 +538,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                 </Tooltip>
               </TooltipProvider>
             )}
+
           </div>
         )}
       </div>

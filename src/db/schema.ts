@@ -125,6 +125,8 @@ export const messages = sqliteTable("messages", {
   previousResponseId: integer("previous_response_id"),
   // Status of the message/response (completed = default, incomplete = stopped/interrupted, failed = tool error)
   status: text("status", { enum: ["completed", "incomplete", "failed"] }).default("completed"),
+  // Duration in milliseconds for how long the AI response took
+  durationMs: integer("duration_ms"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

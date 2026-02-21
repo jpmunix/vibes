@@ -24,6 +24,7 @@ export const MessageSchema = z.object({
   createdAt: z.union([z.date(), z.string()]).optional(),
   requestId: z.string().nullable().optional(),
   totalTokens: z.number().nullable().optional(),
+  durationMs: z.number().nullable().optional(),
   model: z.string().nullable().optional(),
   // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
   // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream

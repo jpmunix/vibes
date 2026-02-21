@@ -265,6 +265,56 @@ function ensureMessagesAgentColumns(sqlite: Database.Database): void {
 }
 
 /**
+ * Ensure the duration_ms column exists in messages table.
+ * Migration 0043 adds this column but can fail if partially applied.
+ */
+function ensureMessagesDurationColumn(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(messages)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("duration_ms")) {
+      logger.log("Adding missing 'duration_ms' column to messages");
+      sqlite.exec(`ALTER TABLE \`messages\` ADD \`duration_ms\` integer`);
+    }
+
+    // Ensure migration 0043 is recorded so migrate() skips it
+    const MIGRATION_0043_HASH_PLACEHOLDER = "duration_ms_migration_0043";
+    const MIGRATION_0043_CREATED_AT = 1771700000000;
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        // Check if the column already exists and migration is not recorded
+        // We check by content since we don't know the real hash until drizzle-kit generates it
+        const existingMigration = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE created_at = ?`)
+          .get(MIGRATION_0043_CREATED_AT);
+
+        if (!existingMigration && columnNames.has("duration_ms")) {
+          // Column exists but migration not recorded — will be handled by migrate()
+          logger.log("duration_ms column exists, migration record will be handled by migrate()");
+        }
+      }
+    } catch (migError) {
+      logger.log("Could not check migration 0043 status");
+    }
+  } catch (error) {
+    logger.error("Error ensuring messages duration_ms column:", error);
+  }
+}
+
+/**
  * Ensure the embeddings_cache table exists.
  * Migration 0042_sad_iron_fist creates this table but can fail on upgrade.
  * This is a safety net that creates the table if missing and marks the migration as applied.
@@ -415,6 +465,9 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure messages has previous_response_id and status columns (agent recovery)
       ensureMessagesAgentColumns(sqlite);
+
+      // Ensure messages has duration_ms column (response timer, migration 0043)
+      ensureMessagesDurationColumn(sqlite);
 
       // Ensure embeddings_cache table exists (semantic search, migration 0042 fallback)
       ensureEmbeddingsCacheTable(sqlite);

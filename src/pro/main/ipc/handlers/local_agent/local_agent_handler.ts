@@ -331,6 +331,7 @@ export async function handleLocalAgentStream(
       return m;
     });
 
+    const streamStartedAt = Date.now();
     const streamResult = streamText({
       model: modelClient.model,
       headers: getAiHeaders({
@@ -641,6 +642,21 @@ export async function handleLocalAgentStream(
 
     // Mark as approved and completed (safety net if onFinish didn't catch it)
     await markApprovedAndCompleted(placeholderMessageId);
+
+    // Persist response duration and send final chunk with durationMs included
+    const durationMs = Date.now() - streamStartedAt;
+    await db
+      .update(messages)
+      .set({ durationMs })
+      .where(eq(messages.id, placeholderMessageId))
+      .catch((err) => logger.error("Failed to save durationMs", err));
+
+    // Include durationMs in the in-memory message so the final chunk carries it
+    const lastMsg = chat.messages[chat.messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant") {
+      (lastMsg as any).durationMs = durationMs;
+    }
+    sendResponseChunk(event, req.chatId, chat, fullResponse);
 
     // Send telemetry for files with multiple edit tool types
     for (const [filePath, counts] of Object.entries(fileEditTracker)) {
