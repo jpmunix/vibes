@@ -1,3 +1,14 @@
+- Refinado el sistema de importación de apps
+- feat: improve file editing and recovery logic with new validation and patch tools
+    - Introduced `expected_original` validation for precise `patch_file` operations to prevent blind edits.
+    - Implemented syntax validation to catch common JS/TS errors (e.g., unbalanced braces, duplicate imports) during edits.
+    - Enhanced error recovery rules to enforce safer fallbacks (`read_file` + `overwrite`) after repeated failures.
+    - Updated `read_file` to return line-numbered output for accurate patching.
+    - Refactored `logTokenUsage` with stricter settings checks to respect user preferences.
+    - Improved telemetry tracking and introduced hard caps for repeated tool failures.
+
+
+---------------------------
 ### 🧠 Agente & IA
 
 *   **Herramientas Unificadas**: `file_editor` fusiona `write_file`, `edit_file`, `search_replace` y `patch_file` en una sola herramienta basada en acciones. `explore_codebase` consolida `read_file`, `list_files`, `grep` y `code_search` en una única interfaz de exploración.

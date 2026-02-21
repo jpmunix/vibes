@@ -52,6 +52,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [hasAiRules, setHasAiRules] = useState<boolean | null>(null);
   const [customAppName, setCustomAppName] = useState<string>("");
   const [nameExists, setNameExists] = useState<boolean>(false);
+  const [existingAppId, setExistingAppId] = useState<number | null>(null);
   const [isCheckingName, setIsCheckingName] = useState<boolean>(false);
   const [installCommand, setInstallCommand] = useState("");
   const [startCommand, setStartCommand] = useState("");
@@ -240,6 +241,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         skipCopy,
       });
       setNameExists(result.exists);
+      setExistingAppId(result.existingAppId ?? null);
     } catch (error: unknown) {
       showError(
         "Error al comprobar el nombre de la app: " + (error as any).toString(),
@@ -319,6 +321,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     setHasAiRules(null);
     setCustomAppName("");
     setNameExists(false);
+    setExistingAppId(null);
     setInstallCommand("");
     setStartCommand("");
     setCopyToDyadApps(true);
@@ -349,13 +352,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
-          <Alert className="border-blue-500/20 text-blue-500 mb-2">
-            <Info className="h-4 w-4 flex-shrink-0" />
-            <AlertDescription className="text-xs sm:text-sm">
-              La importación de apps es una función experimental. Si encuentras
-              algún problema, infórmalo usando el botón de Ayuda.
-            </AlertDescription>
-          </Alert>
+
           <Tabs defaultValue="local-folder" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger
@@ -441,10 +438,15 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     </div>
 
                     <div className="space-y-2">
-                      {nameExists && (
+                      {nameExists && !existingAppId && (
                         <p className="text-xs sm:text-sm text-yellow-500">
                           Ya existe una aplicación con este nombre. Por favor,
                           elige un nombre diferente:
+                        </p>
+                      )}
+                      {nameExists && existingAppId && (
+                        <p className="text-xs sm:text-sm text-blue-500">
+                          Esta app ya está registrada. Se abrirá directamente.
                         </p>
                       )}
                       <div className="relative">
@@ -549,17 +551,28 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   Cancelar
                 </Button>
                 <Button
-                  onClick={handleImport}
+                  onClick={() => {
+                    if (existingAppId) {
+                      // Open the existing app directly
+                      setSelectedAppId(existingAppId);
+                      navigate({ to: "/app-details", search: { appId: existingAppId } });
+                      onClose();
+                    } else {
+                      handleImport();
+                    }
+                  }}
                   disabled={
                     !selectedPath ||
                     importAppMutation.isPending ||
-                    nameExists ||
+                    (nameExists && !existingAppId) ||
                     !commandsValid
                   }
                   className="w-full sm:w-auto min-w-[80px]"
                 >
                   {importAppMutation.isPending ? (
                     <>Importando...</>
+                  ) : existingAppId ? (
+                    "Abrir"
                   ) : (
                     "Importar"
                   )}

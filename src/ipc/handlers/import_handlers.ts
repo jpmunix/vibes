@@ -56,6 +56,13 @@ export function registerImportHandlers() {
         const appPath = getDyadAppPath(appName);
         try {
           await fs.access(appPath);
+          // Folder exists in dyad-apps — check if it's already registered in the DB
+          const existingApp = await db.query.apps.findFirst({
+            where: eq(apps.name, appName),
+          });
+          if (existingApp) {
+            return { exists: true, existingAppId: existingApp.id };
+          }
           return { exists: true };
         } catch {
           // Path doesn't exist, continue checking database
@@ -67,7 +74,10 @@ export function registerImportHandlers() {
         where: eq(apps.name, appName),
       });
 
-      return { exists: !!existingApp };
+      return {
+        exists: !!existingApp,
+        existingAppId: existingApp?.id,
+      };
     },
   );
 

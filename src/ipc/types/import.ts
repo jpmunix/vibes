@@ -29,6 +29,7 @@ export const CheckAppNameParamsSchema = z.object({
 
 export const CheckAppNameResultSchema = z.object({
   exists: z.boolean(),
+  existingAppId: z.number().optional(),
 });
 
 export const CheckAiRulesParamsSchema = z.object({

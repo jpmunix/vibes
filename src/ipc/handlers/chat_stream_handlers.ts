@@ -230,6 +230,7 @@ async function processStreamChunks({
     fullResponse += chunk;
     incrementalResponse += chunk;
     fullResponse = cleanFullResponse(fullResponse);
+    fullResponse = stripAssistantWrapperTags(fullResponse);
     fullResponse = await processResponseChunkUpdate({
       fullResponse,
     });
@@ -2071,7 +2072,7 @@ function removeNonEssentialTags(text: string): string {
 }
 
 function removeThinkingTags(text: string): string {
-  const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+  const thinkRegex = /<(?:think|thought)>([\s\S]*?)<\/(?:think|thought)>/g;
   return text.replace(thinkRegex, "").trim();
 }
 
@@ -2115,7 +2116,25 @@ function escapeDyadTags(text: string): string {
   // and are mishandled by:
   // 1. FE markdown parser
   // 2. Main process response processor
-  return text.replace(/<dyad/g, "＜dyad").replace(/<\/dyad/g, "＜/dyad");
+  return text
+    .replace(/<dyad/g, "＜dyad")
+    .replace(/<\/dyad/g, "＜/dyad")
+    .replace(/<assistant_/g, "＜assistant_")
+    .replace(/<\/assistant_/g, "＜/assistant_");
+}
+
+/**
+ * Strip Gemini-style wrapper tags from streamed content.
+ * - <assistant_response>...</assistant_response> → keeps inner content (the actual response)
+ * - <assistant_thought>...</assistant_thought> → converts to <think>...</think> (already handled by the app)
+ */
+function stripAssistantWrapperTags(text: string): string {
+  return text
+    .replace(/<\/?assistant_response>/g, "")
+    .replace(
+      /<assistant_thought>([\s\S]*?)<\/assistant_thought>/g,
+      "<think>$1</think>",
+    );
 }
 
 const CODEBASE_PROMPT_PREFIX = "This is my codebase.";
