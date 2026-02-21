@@ -265,6 +265,8 @@ Choose the right action via the "action" field:
 | search_code   | Find files related to a concept or feature name. Provide "query".   |
 
 You can call this tool multiple times in parallel to read several files at once.
+
+IMPORTANT: read_file returns line-numbered output in the format "N: content" with a metadata header showing total lines. Use these exact line numbers when using patch_file operations.
 `;
 
 // ============================================================================
@@ -366,23 +368,31 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                 const content = await readFileFs(fullFilePath, "utf8");
                 if (!content) return "";
 
+                const hasTrailingNewline = content.endsWith("\n");
+                const allLines = (
+                    hasTrailingNewline ? content.slice(0, -1) : content
+                ).split("\n");
+                const totalLines = allLines.length;
+
                 const start = args.start_line;
                 const end = args.end_line;
 
-                if (start == null && end == null) {
-                    return content;
-                }
-
-                const hasTrailingNewline = content.endsWith("\n");
-                const lines = (
-                    hasTrailingNewline ? content.slice(0, -1) : content
-                ).split("\n");
                 const startIdx = Math.max(0, (start ?? 1) - 1);
-                const endIdx = Math.min(lines.length, end ?? lines.length);
-                const result = lines.slice(startIdx, endIdx).join("\n");
-                return endIdx >= lines.length && hasTrailingNewline
-                    ? result + "\n"
-                    : result;
+                const endIdx = Math.min(totalLines, end ?? totalLines);
+                const selectedLines = allLines.slice(startIdx, endIdx);
+
+                // Always prefix with line numbers for precise patch operations
+                const numberedLines = selectedLines.map(
+                    (line, i) => `${startIdx + i + 1}: ${line}`,
+                );
+
+                const rangeInfo =
+                    start != null || end != null
+                        ? ` | Showing: ${startIdx + 1}-${endIdx}`
+                        : "";
+                const header = `[File: ${args.path} | Total lines: ${totalLines}${rangeInfo}]`;
+
+                return `${header}\n${numberedLines.join("\n")}`;
             }
 
             // ────────────────────────────────────────────────

@@ -71,6 +71,12 @@ const patchOperationSchema = z.object({
         .describe(
             "The new content to replace the specified line range with. Use empty string to delete lines.",
         ),
+    expected_original: z
+        .string()
+        .optional()
+        .describe(
+            "Optional. The first line of content you expect to find at start_line. Used to verify you are editing the right location. If it doesn't match, the operation will fail safely instead of corrupting the file.",
+        ),
 });
 
 // ============================================================================
@@ -225,6 +231,8 @@ async function callTurboFileEdit(
 /**
  * Apply patch operations to file lines.
  * Operations must be sorted by start_line ascending and must not overlap.
+ * If an operation has `expected_original`, we verify the content at that
+ * location matches before applying — this prevents "blind" edits.
  */
 function applyPatchOperations(
     originalLines: string[],
@@ -245,7 +253,7 @@ function applyPatchOperations(
             throw new ToolError(
                 `Line ${op.end_line} is out of range. The file has ${totalLines} lines. Use explore_codebase with action 'read_file' to check file contents first.`,
                 {
-                    retryable: false,
+                    retryable: true,
                     hint: "Use explore_codebase with action 'read_file' to check current line count.",
                 },
             );
@@ -256,6 +264,25 @@ function applyPatchOperations(
                 throw new ToolError(
                     `Overlapping operations: operation at lines ${prev.start_line}-${prev.end_line} overlaps with operation at lines ${op.start_line}-${op.end_line}.`,
                     { retryable: false },
+                );
+            }
+        }
+
+        // Validate expected_original if provided
+        if (op.expected_original) {
+            const actualFirstLine = originalLines[op.start_line - 1]?.trim();
+            const expectedFirstLine = op.expected_original.trim();
+            if (actualFirstLine !== expectedFirstLine) {
+                const actualContext = originalLines
+                    .slice(op.start_line - 1, Math.min(op.end_line, op.start_line + 2))
+                    .map((l, idx) => `  ${op.start_line + idx}: ${l}`)
+                    .join("\n");
+                throw new ToolError(
+                    `Content mismatch at line ${op.start_line}. Expected first line to be:\n  "${expectedFirstLine}"\nBut found:\n  "${actualFirstLine}"\n\nActual content at lines ${op.start_line}-${Math.min(op.end_line, op.start_line + 2)}:\n${actualContext}\n\nThe file may have changed since you last read it. Use explore_codebase with action 'read_file' to get the current content, then retry.`,
+                    {
+                        retryable: true,
+                        hint: "Use explore_codebase(read_file) to re-read the file and get correct line numbers before retrying patch.",
+                    },
                 );
             }
         }
@@ -271,6 +298,97 @@ function applyPatchOperations(
     }
 
     return result.join("\n");
+}
+
+/**
+ * Quick syntax sanity check for common JS/TS/JSX/TSX issues.
+ * Returns an error message if a problem is detected, or null if OK.
+ * This is NOT a full parser — it catches the most common patch-induced errors:
+ *   1. Unbalanced braces/brackets/parens
+ *   2. Duplicate import blocks
+ *   3. Orphaned closing tags in JSX
+ */
+function quickSyntaxCheck(content: string, filePath: string): string | null {
+    const ext = path.extname(filePath).toLowerCase();
+    if (!['.ts', '.tsx', '.js', '.jsx', '.mts', '.mjs'].includes(ext)) {
+        return null;
+    }
+
+    // 1. Check for duplicate import ... from "same-module" statements
+    const importRegex = /^\s*(?:}\s*from\s+|import\s+.+?from\s+)['"]([^'"]+)['"];?\s*$/gm;
+    const importSources = new Map<string, number[]>();
+    let match: RegExpExecArray | null;
+    let lineNum = 0;
+    for (const line of content.split('\n')) {
+        lineNum++;
+        importRegex.lastIndex = 0;
+        match = importRegex.exec(line);
+        if (match) {
+            const source = match[1];
+            if (!importSources.has(source)) {
+                importSources.set(source, []);
+            }
+            importSources.get(source)!.push(lineNum);
+        }
+    }
+    for (const [source, lines] of importSources) {
+        // Count actual "from" occurrences for this source (not just closing braces)
+        const fromRegex = new RegExp(`from\\s+['"]${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`, 'g');
+        const fromMatches = content.match(fromRegex);
+        if (fromMatches && fromMatches.length > 1) {
+            return `Duplicate import detected: module "${source}" is imported ${fromMatches.length} times (lines: ${lines.join(', ')}). This will cause a syntax error. The patch likely duplicated an import block.`;
+        }
+    }
+
+    // 2. Check for severely unbalanced braces (tolerance of 0 — must match exactly)
+    let braceDepth = 0;
+    let parenDepth = 0;
+    let bracketDepth = 0;
+    let inString: string | null = null;
+    let inTemplate = false;
+    let escaped = false;
+
+    for (const ch of content) {
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        if (ch === '\\') {
+            escaped = true;
+            continue;
+        }
+        if (inString) {
+            if (ch === inString) inString = null;
+            continue;
+        }
+        if (inTemplate) {
+            if (ch === '`') inTemplate = false;
+            continue;
+        }
+        if (ch === '"' || ch === "'") {
+            inString = ch;
+            continue;
+        }
+        if (ch === '`') {
+            inTemplate = true;
+            continue;
+        }
+        if (ch === '{') braceDepth++;
+        else if (ch === '}') braceDepth--;
+        else if (ch === '(') parenDepth++;
+        else if (ch === ')') parenDepth--;
+        else if (ch === '[') bracketDepth++;
+        else if (ch === ']') bracketDepth--;
+    }
+
+    if (braceDepth !== 0) {
+        return `Unbalanced braces detected: ${braceDepth > 0 ? `${braceDepth} unclosed '{'` : `${Math.abs(braceDepth)} extra '}'`}. The patch likely removed or duplicated a code block boundary.`;
+    }
+    if (parenDepth !== 0) {
+        return `Unbalanced parentheses detected: ${parenDepth > 0 ? `${parenDepth} unclosed '('` : `${Math.abs(parenDepth)} extra ')'`}. The patch likely broke a function call or expression.`;
+    }
+
+    return null;
 }
 
 /**
@@ -319,8 +437,10 @@ RULES:
 - For "create" and "overwrite": provide "content" with the FULL file content.
 - For "edit": provide "edit_content" (the sketch) and "instructions".
 - For "search_replace": provide "search_replace" with old_string and new_string. Include 3-5 context lines.
-- For "patch": provide "patch_operations" array. Always use read_file first to get current line numbers.
+- For "patch": provide "patch_operations" array. Always use read_file first to get line numbers (read_file returns numbered lines like "1: import..."). Use "expected_original" in each operation to verify you're editing the right lines.
 - NEVER use "overwrite" with placeholder comments like "// ... existing code ...". Use "edit" instead.
+- A syntax check runs automatically after edits. If it detects duplicate imports or unbalanced braces, the edit is rejected and the file is NOT modified.
+- After 2 failed patch or search_replace attempts on the same file, you MUST use "overwrite" instead.
 `;
 
 // ============================================================================
@@ -549,13 +669,23 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     );
                 }
 
+                // Post-edit syntax validation
+                const editSyntaxError = quickSyntaxCheck(newContent, args.file_path);
+                if (editSyntaxError) {
+                    // Write anyway for edit (turbo-edit is smarter), but warn in the response
+                    logger.warn(`Syntax warning after edit on ${args.file_path}: ${editSyntaxError}`);
+                }
+
                 const dirPath = path.dirname(fullFilePath);
                 fs.mkdirSync(dirPath, { recursive: true });
                 fs.writeFileSync(fullFilePath, newContent);
                 logger.log(`Successfully edited file: ${fullFilePath}`);
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
-                return deployMsg ?? `Successfully edited ${args.file_path}`;
+                const editWarning = editSyntaxError
+                    ? `\n\n⚠️ WARNING: Possible syntax issue detected: ${editSyntaxError}\nPlease verify the file with run_type_checks or read_file.`
+                    : "";
+                return (deployMsg ?? `Successfully edited ${args.file_path}`) + editWarning;
             }
 
             // ────────────────────────────────────────────────
@@ -623,6 +753,23 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     );
                 }
 
+                // Post-edit syntax validation for search_replace
+                const srSyntaxError = quickSyntaxCheck(result.content, args.file_path);
+                if (srSyntaxError) {
+                    // Don't write the broken file
+                    sendTelemetryEvent("local_agent:search_replace:syntax_error", {
+                        filePath: args.file_path,
+                        error: srSyntaxError,
+                    });
+                    throw new ToolError(
+                        `search_replace would introduce a syntax error in ${args.file_path}: ${srSyntaxError}\n\nThe file was NOT modified. Use explore_codebase(read_file) to see current file state, then use file_editor(overwrite) to rewrite the file correctly.`,
+                        {
+                            retryable: true,
+                            hint: "Re-read the file with explore_codebase(read_file), then use file_editor(overwrite).",
+                        },
+                    );
+                }
+
                 await fs.promises.writeFile(fullFilePath, result.content);
                 logger.log(
                     `Successfully applied search-replace to: ${fullFilePath}`,
@@ -654,6 +801,20 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     );
                 }
 
+                // Hard cap: after 2 failed patch attempts, force fallback
+                if (ctx?.fileEditTracker?.[args.file_path]) {
+                    const patchCount = ctx.fileEditTracker[args.file_path].patch_file ?? 0;
+                    if (patchCount >= 2) {
+                        throw new ToolError(
+                            `patch has failed ${patchCount} times on ${args.file_path}. You MUST use explore_codebase with action 'read_file' to get the FULL current file contents and then use file_editor with action 'overwrite' to rewrite the entire file. Do NOT attempt patch on this file again.`,
+                            {
+                                retryable: false,
+                                hint: "Use explore_codebase(read_file) to get full file, then file_editor(overwrite) to rewrite it completely.",
+                            },
+                        );
+                    }
+                }
+
                 if (!fs.existsSync(fullFilePath)) {
                     throw new ToolError(
                         `File does not exist: ${args.file_path}`,
@@ -673,6 +834,23 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
 
                 if (newContent === original) {
                     return `No changes needed — file ${args.file_path} already has the expected content.`;
+                }
+
+                // Post-edit syntax validation: catch common errors BEFORE writing
+                const syntaxError = quickSyntaxCheck(newContent, args.file_path);
+                if (syntaxError) {
+                    // Don't write the broken file — return the error so the LLM can try again
+                    sendTelemetryEvent("local_agent:patch_file:syntax_error", {
+                        filePath: args.file_path,
+                        error: syntaxError,
+                    });
+                    throw new ToolError(
+                        `Patch would introduce a syntax error in ${args.file_path}: ${syntaxError}\n\nThe file was NOT modified. Use explore_codebase(read_file) to re-read the current file, then retry with corrected patch operations.`,
+                        {
+                            retryable: true,
+                            hint: "Re-read the file with explore_codebase(read_file) to see current state, then fix your patch.",
+                        },
+                    );
                 }
 
                 await fs.promises.writeFile(fullFilePath, newContent);

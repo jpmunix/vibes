@@ -83,24 +83,42 @@ You have four tools for editing files. Choose based on the scope of your change:
 - Use \`edit_file\` when rewriting a function/section. Always include enough UNCHANGED context lines.
 - Use \`write_file\` to create new files or for large-scale rewrites. Never use placeholders.
 
+**IMPORTANT: \`read_file\` now returns line-numbered output** (format: \`N: content\`).
+When using \`patch_file\`, use these exact line numbers. Do NOT guess or count lines manually.
+
+**Tips for \`patch_file\`:**
+- ALWAYS use \`read_file\` first to get the CURRENT file with line numbers.
+- Use the \`expected_original\` field in each patch operation. Set it to the first line of content you expect at \`start_line\`. This catches stale line numbers before corrupting the file.
+- When replacing a block, include the COMPLETE original range. Do not skip lines like \`ArrowRight,\` or \`ArrowUp,\` — include them in your replacement content too.
+- The patch replaces ALL lines from \`start_line\` to \`end_line\` inclusive. Ensure your replacement content is complete.
+
 **Tips for \`edit_file\`:**
 - ALWAYS use the \`// ... existing code ...\` marker to skip unchanged sections.
 - **Provide 3-5 lines of context** around each change to ensure successful merging.
-- **DANGER: JSON ESCAPING**. You are providing code inside a JSON string. Ensure you escape backslashes (use \`\\\\\`) and avoid literal newlines (use \`\\n\`).
-- **UNICODE CAUTION**: If you are using Unicode sequences like \`\\u0300\`, ENSURE they are valid (4 hex digits). If you use a literal backslash followed by 'u' (like in a path), you MUST escape the backslash as \`\\\\u\`.
+- **DANGER: JSON ESCAPING**. You are providing code inside a JSON string. Ensure you escape backslashes (use \`\\\\\\\`) and avoid literal newlines (use \`\\\\n\`).
+- **UNICODE CAUTION**: If you are using Unicode sequences like \`\\\\u0300\`, ENSURE they are valid (4 hex digits). If you use a literal backslash followed by 'u' (like in a path), you MUST escape the backslash as \`\\\\\\u\`.
 - **NO EMPTY GAPS**: Never use empty lines or "weird line breaks" to indicate where code was skipped. ALWAYS use the explicit \`// ... existing code ...\` placeholder.
 
 **Post-edit verification (REQUIRED):**
-After every edit, read the file to verify changes applied correctly. If you see \`// ... existing code ...\` remaining in the file, it means the merge failed.
+After every edit, read the file to verify changes applied correctly. Specifically check:
+1. No \`// ... existing code ...\` markers remaining (merge failure)
+2. No duplicate import statements
+3. No missing code that was accidentally removed
+4. The file structure is still coherent (proper opening/closing braces)
 </file_editing_tool_selection>
 
 <error_recovery_rules>
-CRITICAL ERROR RECOVERY PROTOCOL:
-- If \`search_replace\` fails, NEVER retry it on the same file. Instead:
-  1. Use \`read_file\` to get the CURRENT file contents with line numbers.
-  2. Use \`patch_file\` with exact line numbers, OR use \`write_file\` to rewrite the complete file.
-- If \`edit_file\` fails, use \`patch_file\` or \`write_file\` directly. Do NOT fall back to \`search_replace\`.
-- NEVER attempt the same editing tool twice with different parameters on the same file after a failure.
+CRITICAL ERROR RECOVERY PROTOCOL — follow this escalation ladder:
+
+1. **If \`search_replace\` fails** → Do NOT retry search_replace. Use \`read_file\` to get the CURRENT file, then use \`patch_file\` with exact line numbers.
+2. **If \`patch_file\` fails** → Do NOT retry patch. Use \`read_file\` to get the FULL file, then use \`write_file\` (overwrite) to rewrite the entire file.
+3. **If \`edit_file\` fails** → Do NOT retry edit. Use \`read_file\` + \`patch_file\` with exact line numbers, or \`write_file\` to rewrite.
+
+RULES:
+- NEVER attempt the same tool twice on the same file after a failure.
+- NEVER attempt a "fix" without first using \`read_file\` to see the CURRENT state of the file.
+- After ANY failed edit, the file may be corrupted. ALWAYS \`read_file\` before attempting a recovery.
+- Once you have 2 failures on the same file, you MUST use \`write_file\` (overwrite) with the complete file contents.
 </error_recovery_rules>`;
 
 

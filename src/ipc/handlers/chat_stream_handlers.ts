@@ -1422,23 +1422,21 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
 
                 // Persist simple token stats for charts/logs
-                if (settings.enableAllStatsAndLogs && settings.enableTokenStats !== false) {
-                  logTokenUsage({
-                    chatId: req.chatId,
-                    messageId: placeholderAssistantMessage.id,
-                    totalTokens,
-                    promptTokens,
-                    completionTokens,
-                    model:
-                      selectedModel?.name ??
-                      placeholderAssistantMessage.model ??
-                      null,
-                    timestamp: Date.now(),
-                    appId: updatedChat?.app?.id ?? null,
-                    filesSent: files?.map((f) => f.path) ?? [],
-                    toolsUsed: tools ? Object.keys(tools) : [],
-                  });
-                }
+                logTokenUsage({
+                  chatId: req.chatId,
+                  messageId: placeholderAssistantMessage.id,
+                  totalTokens,
+                  promptTokens,
+                  completionTokens,
+                  model:
+                    selectedModel?.name ??
+                    placeholderAssistantMessage.model ??
+                    null,
+                  timestamp: Date.now(),
+                  appId: updatedChat?.app?.id ?? null,
+                  filesSent: files?.map((f) => f.path) ?? [],
+                  toolsUsed: tools ? Object.keys(tools) : [],
+                });
               } else {
                 logger.log("Total tokens used: unknown");
               }

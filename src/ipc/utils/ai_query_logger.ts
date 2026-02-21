@@ -22,6 +22,9 @@ export interface LogAiQueryParams {
 export async function logAiQuery(params: LogAiQueryParams) {
     try {
         const settings = readSettings();
+        if (!settings.enableAllStatsAndLogs) {
+            return;
+        }
         const threshold = parseInt(settings.aiQueryLogRotationThreshold || "200", 10);
 
         // 1. Insert the new log

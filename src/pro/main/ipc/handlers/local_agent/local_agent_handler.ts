@@ -434,19 +434,17 @@ export async function handleLocalAgentStream(
             placeholderMessageId,
           );
 
-          if (settings.enableAllStatsAndLogs && settings.enableTokenStats !== false) {
-            logTokenUsage({
-              chatId: ctx.chatId,
-              messageId: placeholderMessageId,
-              totalTokens,
-              promptTokens: inputTokens,
-              completionTokens: effectiveOutputTokens,
-              model: selectedModel.name,
-              timestamp: Date.now(),
-              appId: chat.app.id,
-              toolsUsed: Object.keys(allTools),
-            });
-          }
+          logTokenUsage({
+            chatId: ctx.chatId,
+            messageId: placeholderMessageId,
+            totalTokens,
+            promptTokens: inputTokens,
+            completionTokens: effectiveOutputTokens,
+            model: selectedModel.name,
+            timestamp: Date.now(),
+            appId: chat.app.id,
+            toolsUsed: Object.keys(allTools),
+          });
         }
       },
       onError: (error: any) => {

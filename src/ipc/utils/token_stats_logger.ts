@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getUserDataPath } from "@/paths/paths";
+import { readSettings } from "@/main/settings";
 import log from "electron-log";
 
 const logger = log.scope("token_stats_logger");
@@ -26,6 +27,10 @@ function getStatsFilePath(): string {
 
 export function logTokenUsage(entry: TokenStatEntry) {
   try {
+    const settings = readSettings();
+    if (!settings.enableAllStatsAndLogs || settings.enableTokenStats === false) {
+      return;
+    }
     const line = JSON.stringify({
       ...entry,
       timestamp: entry.timestamp ?? Date.now(),
