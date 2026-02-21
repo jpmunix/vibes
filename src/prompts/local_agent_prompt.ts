@@ -209,7 +209,7 @@ You have READ-ONLY tools at your disposal to understand the codebase. Follow the
 
 /**
  * System prompt for Local Agent v2 in Pro mode
- * Full access to all tools including edit_file, code_search, web_search, web_crawl
+ * Full access to all tools including edit_file, code_search, web_crawl
  */
 export const LOCAL_AGENT_SYSTEM_PROMPT = `
 ${ROLE_BLOCK}
@@ -231,7 +231,7 @@ ${PRO_DEVELOPMENT_WORKFLOW_BLOCK}
 
 /**
  * System prompt for Local Agent v2 in Basic Agent mode (free tier)
- * Limited tools - no edit_file, code_search, web_search, web_crawl
+ * Limited tools - no edit_file, code_search, web_crawl
  */
 export const LOCAL_AGENT_BASIC_SYSTEM_PROMPT = `
 ${ROLE_BLOCK}

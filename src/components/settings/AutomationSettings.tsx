@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { TurboEditModelSelector } from "@/components/TurboEditModelSelector";
 import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
 import { showError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -14,20 +13,15 @@ export function AutomationSettings({
   isHighlighted?: boolean;
 }) {
   const { settings, updateSettings } = useSettings();
-  const [savingTurbo, setSavingTurbo] = useState(false);
 
   const handleToggle = async (
-    field: "enableTurboEditsV2" | "enableBackgroundProblemAutoFix",
+    field: "enableBackgroundProblemAutoFix",
     value: boolean,
-    setSaving?: (v: boolean) => void,
   ) => {
-    if (setSaving) setSaving((v) => true);
     try {
       await updateSettings({ [field]: value } as any, { showToast: true });
     } catch (error) {
       showError("No se pudo actualizar el ajuste");
-    } finally {
-      if (setSaving) setSaving((v) => false);
     }
   };
 
@@ -55,46 +49,12 @@ export function AutomationSettings({
       </h2>
       <p className="text-sm text-muted-foreground mb-8">
         Configura el comportamiento autónomo del asistente para corregir errores
-        y editar código rápidamente.
+        automáticamente.
       </p>
 
       <div className="space-y-12">
-        {/* Turbo Edits Section */}
-        <div className="space-y-6">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Turbo Edits
-                </h3>
-                {/*<span className="text-[10px] font-black uppercase tracking-widest rounded-lg bg-primary/10 text-primary px-3 py-1 border border-primary/20">*/}{" "}
-                {/*    Beta*/} {/*</span>*/}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Detección inteligente de bloques de código para ediciones ultra
-                rápidas sin reescribir todo el archivo.
-              </p>
-            </div>
-            <Switch
-              checked={settings?.enableTurboEditsV2 ?? true}
-              onCheckedChange={(checked) =>
-                handleToggle("enableTurboEditsV2", checked, setSavingTurbo)
-              }
-              disabled={savingTurbo}
-            />
-          </div>
-
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border space-y-4">
-            <TurboEditModelSelector />
-            <p className="text-xs text-muted-foreground">
-              Se recomienda un modelo rápido (ej. Qwen Coder o GPT-4o Mini) para
-              una mejor experiencia.
-            </p>
-          </div>
-        </div>
-
         {/* Auto-fix Section */}
-        <div className="space-y-6 pt-8 border-t border-border">
+        <div className="space-y-6">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

@@ -8,7 +8,7 @@ import {
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 import { AutomationSettings } from "@/components/settings/AutomationSettings";
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
-import { WebSearchSettings } from "@/components/settings/WebSearchSettings";
+
 import { EmbeddingsSettings } from "@/components/settings/EmbeddingsSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
@@ -35,7 +35,8 @@ import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
 import { SupabaseIntegration } from "@/components/SupabaseIntegration";
-import { FirebaseIntegration } from "@/components/FirebaseIntegration";
+// Firebase hidden - not mature yet
+// import { FirebaseIntegration } from "@/components/FirebaseIntegration";
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -47,7 +48,7 @@ import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
-import { SerperApiKeySettings } from "@/components/SerperApiKeySettings";
+
 import { Input } from "@/components/ui/input";
 import { ChatCompletionNotificationSwitch } from "@/components/ChatCompletionNotificationSwitch";
 import { tokenStatsClient } from "@/ipc/types";
@@ -228,21 +229,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
   {
-    id: "turbo-edits",
-    label: "Turbo Edits (v2)",
-    description: "Modo de búsqueda y reemplazo automático para ediciones",
-    keywords: [
-      "turbo",
-      "edits",
-      "ediciones",
-      "rapido",
-      "busqueda",
-      "reemplazo",
-    ],
-    section: "Automatización",
-    sectionId: "automation-settings",
-  },
-  {
     id: "max-chat-turns",
     label: "Turnos máximos de chat",
     description: "Número máximo de intercambios en una conversación",
@@ -258,14 +244,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Configuración Asistente",
     sectionId: "ai-behavior",
   },
-  {
-    id: "serper-api",
-    label: "Clave API de Serper",
-    description: "Configurar la clave API para búsquedas web con Serper",
-    keywords: ["serper", "api", "key", "clave", "busqueda", "web", "search"],
-    section: "Búsqueda Web e Información",
-    sectionId: "serper-settings",
-  },
+
   {
     id: "smart-context",
     label: "Smart Context local",
@@ -362,14 +341,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Integraciones",
     sectionId: "integrations",
   },
-  {
-    id: "firebase",
-    label: "Firebase",
-    description: "Integración con Firebase (Google)",
-    keywords: ["firebase", "google", "database", "db", "firestore", "integracion"],
-    section: "Integraciones",
-    sectionId: "integrations",
-  },
+  // Firebase hidden - not mature yet
+  // {
+  //   id: "firebase",
+  //   label: "Firebase",
+  //   description: "Integración con Firebase (Google)",
+  //   keywords: ["firebase", "google", "database", "db", "firestore", "integracion"],
+  //   section: "Integraciones",
+  //   sectionId: "integrations",
+  // },
   // Agent Permissions
   {
     id: "agent-permissions",
@@ -708,9 +688,7 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "models-connectivity"}
           />
 
-          <WebSearchSettings
-            isHighlighted={highlightedSection === "serper-settings"}
-          />
+
 
           <EmbeddingsSettings
             isHighlighted={highlightedSection === "embeddings-settings"}
@@ -748,7 +726,8 @@ export default function SettingsPage() {
               <VercelIntegration />
               <SupabaseIntegration />
               <NeonIntegration />
-              <FirebaseIntegration />
+              {/* Firebase hidden - not mature yet */}
+              {/* <FirebaseIntegration /> */}
             </div>
           </div>
 

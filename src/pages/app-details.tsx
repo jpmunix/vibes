@@ -45,7 +45,8 @@ import {
 } from "@/components/ui/dialog";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { SupabaseConnector } from "@/components/SupabaseConnector";
-import { FirebaseConnector } from "@/components/FirebaseConnector";
+// Firebase hidden - not mature yet
+// import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
@@ -636,13 +637,14 @@ export default function AppDetailsPage() {
                 )}
                 <div className="flex flex-col items-start">
                   <span className="font-medium text-sm">Repositorio e integraciones</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Supabase, Firebase y Capacitor</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Supabase y Capacitor</span>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
                 <Github className="h-3.5 w-3.5 text-gray-400" />
                 <Database className="h-3.5 w-3.5 text-gray-400" />
-                <Flame className="h-3.5 w-3.5 text-gray-400" />
+                {/* Firebase hidden - not mature yet */}
+                {/* <Flame className="h-3.5 w-3.5 text-gray-400" /> */}
                 <Smartphone className="h-3.5 w-3.5 text-gray-400" />
               </div>
             </button>
@@ -673,8 +675,8 @@ export default function AppDetailsPage() {
                 {/* Supabase */}
                 {appId && <SupabaseConnector appId={appId} />}
 
-                {/* Firebase */}
-                {appId && <FirebaseConnector appId={appId} />}
+                {/* Firebase hidden - not mature yet */}
+                {/* {appId && <FirebaseConnector appId={appId} />} */}
 
                 {/* Capacitor */}
                 {appId && <CapacitorControls appId={appId} />}
@@ -920,7 +922,7 @@ export default function AppDetailsPage() {
                 <DialogDescription className="text-sm">
                   <p>Crea una copia independiente de esta aplicación con un nuevo nombre.</p>
                   <p>
-                    Las integraciones (Supabase, GitHub, Firebase) no se clonan.
+                    Las integraciones (Supabase, GitHub) no se clonan.
                   </p>
                 </DialogDescription>
               </DialogHeader>

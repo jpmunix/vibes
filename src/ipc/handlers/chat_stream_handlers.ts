@@ -38,7 +38,6 @@ import {
   readFileWithCache,
 } from "../../utils/codebase";
 import {
-  dryRunSearchReplace,
   processFullResponseActions,
 } from "../processors/response_processor";
 import { streamTestResponse } from "./testing_chat_handlers";
@@ -105,7 +104,6 @@ import {
   isDyadProEnabled,
   isBasicAgentMode,
   isSupabaseConnected,
-  isTurboEditsV2Enabled,
 } from "@/lib/schemas";
 import {
   getFreeAgentQuotaStatus,
@@ -927,6 +925,7 @@ ${componentSnippet}
         );
         const willUseLocalAgentStream =
           (settings.selectedChatMode === "local-agent" ||
+            settings.selectedChatMode === "build" || // build is deprecated, route to agent
             (settings.selectedChatMode === "ask" &&
               isDyadProEnabled(settings))) &&
           !mentionedAppsCodebases.length;
@@ -1042,7 +1041,6 @@ ${componentSnippet}
             settings.selectedChatMode === "agent"
               ? "build"
               : settings.selectedChatMode,
-          enableTurboEditsV2: isTurboEditsV2Enabled(settings),
           themePrompt,
           basicAgentMode: isBasicAgentMode(settings),
           chatLanguage: settings.chatLanguage || "es",
@@ -1630,7 +1628,6 @@ This conversation includes one or more image attachments. When the user uploads 
           const readOnlySystemPrompt = constructSystemPrompt({
             aiRules,
             chatMode: "local-agent",
-            enableTurboEditsV2: false,
             themePrompt,
             readOnly: true,
             chatLanguage: settings.chatLanguage || "es",
@@ -1653,11 +1650,10 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // Handle local-agent mode (Agent v2)
-        // Mentioned apps can't be handled by the local agent (defer to balanced smart context
-        // in build mode)
+        // Handle local-agent mode (Agent v2) — also handles deprecated "build" mode
         if (
-          settings.selectedChatMode === "local-agent" &&
+          (settings.selectedChatMode === "local-agent" ||
+            settings.selectedChatMode === "build") &&
           !mentionedAppsCodebases.length
         ) {
           // Check quota for Basic Agent mode (non-Pro users)
@@ -1743,7 +1739,6 @@ This conversation includes one or more image attachments. When the user uploads 
             systemPromptOverride: constructSystemPrompt({
               aiRules: await readAiRules(getDyadAppPath(updatedChat.app.path)),
               chatMode: "agent",
-              enableTurboEditsV2: false,
               chatLanguage: settings.chatLanguage || "es",
               settings,
             }),
@@ -1788,156 +1783,7 @@ This conversation includes one or more image attachments. When the user uploads 
           });
           fullResponse = result.fullResponse;
 
-          if (
-            settings.selectedChatMode !== "ask" &&
-            settings.selectedChatMode !== "plan" &&
-            isTurboEditsV2Enabled(settings)
-          ) {
-            const maxIssues = settings.autoFixMaxIssues ?? 5;
-            const maxAttempts = settings.autoFixMaxAttempts ?? 1;
-            const maxDurationMs = settings.autoFixMaxDurationMs ?? 20_000;
-            const autoFixModelSettings =
-              settings.autoFixModel ?? settings.selectedModel;
-            const { modelClient: autoFixModelClient } = await getModelClient(
-              autoFixModelSettings,
-              settings,
-            );
-            let issues = await dryRunSearchReplace({
-              fullResponse,
-              appPath: getDyadAppPath(updatedChat.app.path),
-            });
-            sendTelemetryEvent("search_replace:fix", {
-              attemptNumber: 0,
-              success: issues.length === 0,
-              issueCount: issues.length,
-              errors: issues.map((i) => ({
-                filePath: i.filePath,
-                error: i.error,
-              })),
-            });
 
-            let searchReplaceFixAttempts = 0;
-            const originalFullResponse = fullResponse;
-            const previousAttempts: ModelMessage[] = [];
-            const turboEditStartTime = Date.now();
-            let timeoutExceeded = false;
-
-            while (
-              issues.length > 0 &&
-              issues.length <= maxIssues &&
-              searchReplaceFixAttempts < maxAttempts &&
-              !abortController.signal.aborted &&
-              !timeoutExceeded
-            ) {
-              // Verificar timeout
-              if (Date.now() - turboEditStartTime >= maxDurationMs) {
-                timeoutExceeded = true;
-                logger.error(
-                  `Turbo Edit timeout exceeded after ${maxDurationMs / 1000}s`,
-                );
-                fullResponse += `<dyad-output type="error" message="Turbo Edit timeout exceeded">Failed to apply search-replace changes after ${maxDurationMs / 1000} seconds. The changes were too complex to apply automatically. Please try breaking down your request into smaller changes, or use specific file paths to make the edits more targeted.</dyad-output>`;
-                await processResponseChunkUpdate({
-                  fullResponse,
-                });
-                break;
-              }
-
-              const elapsedTime = Math.round(
-                (Date.now() - turboEditStartTime) / 1000,
-              );
-              logger.warn(
-                `Detected search-replace issues (attempt #${searchReplaceFixAttempts + 1}/${maxAttempts}, elapsed: ${elapsedTime}s): ${issues.map((i) => i.error).join(", ")}`,
-              );
-              const formattedSearchReplaceIssues = issues
-                .map(({ filePath, error }) => {
-                  return `File path: ${filePath}\nError: ${error}`;
-                })
-                .join("\n\n");
-
-              // Feedback visual mejorado con contador de intentos
-              fullResponse += `<dyad-output type="warning" message="Auto-fixing Turbo Edits (attempt ${searchReplaceFixAttempts + 1}/${maxAttempts}, ${issues.length} issue${issues.length > 1 ? "s" : ""})...">${formattedSearchReplaceIssues}</dyad-output>`;
-              await processResponseChunkUpdate({
-                fullResponse,
-              });
-
-              logger.info(
-                `Attempting to fix search-replace issues, attempt #${searchReplaceFixAttempts + 1}, elapsed time: ${elapsedTime}s`,
-              );
-
-              // Fallback más agresivo: después del primer intento, usar dyad-write
-              const fixSearchReplacePrompt =
-                searchReplaceFixAttempts === 0
-                  ? `There was an issue with the following \`dyad-search-replace\` tags. Make sure you use \`dyad-read\` to read the latest version of the file and then trying to do search & replace again.`
-                  : `There was an issue with the following \`dyad-search-replace\` tags. Please fix the errors by generating the code changes using \`dyad-write\` tags instead to rewrite the affected files completely.`;
-              searchReplaceFixAttempts++;
-              const userPrompt = {
-                role: "user",
-                content: `${fixSearchReplacePrompt}
-
-${formattedSearchReplaceIssues}`,
-              } as const;
-
-              const { fullStream: fixSearchReplaceStream } =
-                await simpleStreamText({
-                  // Build messages: reuse chat history and original full response, then ask to fix search-replace issues.
-                  chatMessages: [
-                    ...chatMessages,
-                    { role: "assistant", content: originalFullResponse },
-                    ...previousAttempts,
-                    userPrompt,
-                  ],
-                  modelClient: autoFixModelClient,
-                  files: files,
-                  toolChoice: "required",
-                });
-              previousAttempts.push(userPrompt);
-              const result = await processStreamChunks({
-                fullStream: fixSearchReplaceStream,
-                fullResponse,
-                abortController,
-                chatId: req.chatId,
-                processResponseChunkUpdate,
-              });
-              fullResponse = result.fullResponse;
-              previousAttempts.push({
-                role: "assistant",
-                content: removeNonEssentialTags(result.incrementalResponse),
-              });
-
-              // Re-check for issues after the fix attempt
-              issues = await dryRunSearchReplace({
-                fullResponse: result.incrementalResponse,
-                appPath: getDyadAppPath(updatedChat.app.path),
-              });
-
-              const finalElapsedTime = Math.round(
-                (Date.now() - turboEditStartTime) / 1000,
-              );
-              sendTelemetryEvent("search_replace:fix", {
-                attemptNumber: searchReplaceFixAttempts,
-                success: issues.length === 0,
-                issueCount: issues.length,
-                elapsedTimeSeconds: finalElapsedTime,
-                timedOut: timeoutExceeded,
-                errors: issues.map((i) => ({
-                  filePath: i.filePath,
-                  error: i.error,
-                })),
-              });
-
-              logger.info(
-                `Search-replace fix attempt #${searchReplaceFixAttempts} completed. Issues remaining: ${issues.length}, elapsed: ${finalElapsedTime}s`,
-              );
-            }
-
-            // Log final stats
-            const totalElapsedTime = Math.round(
-              (Date.now() - turboEditStartTime) / 1000,
-            );
-            logger.info(
-              `Turbo Edit Stats: attempts=${searchReplaceFixAttempts}, remainingIssues=${issues.length}, totalTime=${totalElapsedTime}s, timedOut=${timeoutExceeded}`,
-            );
-          }
 
           if (
             !abortController.signal.aborted &&

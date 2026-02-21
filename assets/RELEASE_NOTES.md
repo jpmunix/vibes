@@ -11,6 +11,7 @@
 
 - Introduced `file_editor` tool, merging `write_file`, `edit_file`, `search_replace`, and `patch_file` with action-based functionality.
 - Added `explore_codebase` tool, consolidating `read_file`, `list_files`, `grep`, and `code_search` into a single unified interface.**
+- **feat: temporarily disable Firebase integration and auth features**
 
 - **feat: add process management tools for background tasks and new IPC handlers
 
@@ -21,6 +22,10 @@
 - Updated `TOOL_DEFINITIONS` and IPC handlers to integrate and support process management functions.
 - Included schemas and detailed logic for readiness detection via regex, HTTP, or port checks.
 - Added `wait_for_http` tool for handling HTTP-based wait conditions with configurable timeouts.**
+
+- **Simplified chat mode handling by deprecating "build" mode in favor of "Agente"**
+
+- **Remove code and components related to Dyad Web Search, Serper API key, and Turbo Edits v2. Hidden Firebase integration references that are not ready for deployment. Updated UI and settings to reflect these removals.**
 
 ----------------------------
 

@@ -43,7 +43,6 @@ or to provide a custom fetch implementation for e.g. testing.
   dyadOptions: {
     enableLazyEdits?: boolean;
     enableSmartFilesContext?: boolean;
-    enableWebSearch?: boolean;
   };
   settings: UserSettings;
 }
@@ -164,7 +163,6 @@ export function createDyadEngine(
             enable_smart_files_context:
               options.dyadOptions.enableSmartFilesContext,
             smart_context_mode: dyadSmartContextMode,
-            enable_web_search: options.dyadOptions.enableWebSearch,
             app_id: dyadAppId,
           };
           if (dyadMentionedApps?.length) {

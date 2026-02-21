@@ -364,7 +364,7 @@ export const UserSettingsSchema = z
     enableChatCompletionNotifications: z.boolean().optional(),
     // Control GitHub auto-commit behavior
     enableGithubAutoCommit: z.boolean().optional(),
-    enableProWebSearch: z.boolean().optional(),
+
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
     selectedThemeId: z.string().optional(),
@@ -404,7 +404,7 @@ export const UserSettingsSchema = z
       .optional(),
     hideLocalAgentNewChatToast: z.boolean().optional(),
     chatLanguage: ChatLanguageSchema.optional(),
-    serperApiKey: SecretSchema.optional(),
+
     themeIntensity: z.number().optional(),
     primaryColorLight: z.string().optional(),
     primaryColorDark: z.string().optional(),
@@ -443,43 +443,25 @@ export function hasDyadProKey(_settings: UserSettings): boolean {
 }
 
 /**
- * Gets the effective default chat mode based on settings, pro status, and free quota availability.
- * - If defaultChatMode is set and valid for the user's Pro status, use it
- * - If defaultChatMode is "local-agent" but user doesn't have Pro:
- *   - If free agent quota available AND OpenAI/Anthropic is set up, use "local-agent" (basic agent mode)
- *   - Otherwise, fall back to "build"
- * - If defaultChatMode is NOT set:
- *   - Default to "build" because local-agent is still unreliable
+ * Gets the effective default chat mode based on settings and pro status.
+ * - If defaultChatMode is set, use it (mapping "build" → "local-agent")
+ * - If defaultChatMode is NOT set, default to "local-agent"
  */
 export function getEffectiveDefaultChatMode(
   settings: UserSettings,
-  envVars: Record<string, string | undefined>,
-  freeAgentQuotaAvailable?: boolean,
+  _envVars: Record<string, string | undefined>,
+  _freeAgentQuotaAvailable?: boolean,
 ): ChatMode {
-  const isPro = isDyadProEnabled(settings);
-  // We are checking that OpenAI or Anthropic is setup, which are the first two
-  // choices for the Auto model selection.
-  //
-  // If user only has Gemini API key, we don't default to local-agent because
-  // most likely it's a free API key with stringent limits and they'll get
-  // a bad experience with local-agent.
-  const hasPaidProviderSetup = isOpenAIOrAnthropicSetup(settings, envVars);
-
   if (settings.defaultChatMode) {
-    // "local-agent" requires either Pro OR (available free quota AND provider setup)
-    if (settings.defaultChatMode === "local-agent") {
-      if (isPro) return "local-agent";
-      if (freeAgentQuotaAvailable && hasPaidProviderSetup) return "local-agent";
-      return "build";
-    }
+    // "build" is deprecated — map to "local-agent"
     if (settings.defaultChatMode === "build") {
-      return "build";
+      return "local-agent";
     }
     return settings.defaultChatMode;
   }
 
-  // No explicit default set - default to "build"
-  return "build";
+  // Default to "local-agent" (Agente)
+  return "local-agent";
 }
 
 /**
@@ -505,10 +487,8 @@ export function isSupabaseConnected(settings: UserSettings | null): boolean {
   );
 }
 
-export function isTurboEditsV2Enabled(settings: UserSettings): boolean {
-  // Enabled by default; can be explicitly disabled by the user
-  return settings.enableTurboEditsV2 ?? true;
-}
+
+
 
 // Define interfaces for the props
 export interface SecurityRisk {

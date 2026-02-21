@@ -17,8 +17,6 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-grep",
     "dyad-search-replace",
     "dyad-codebase-context",
-    "dyad-web-search-result",
-    "dyad-web-search",
     "dyad-web-crawl",
     "dyad-code-search-result",
     "dyad-code-search",

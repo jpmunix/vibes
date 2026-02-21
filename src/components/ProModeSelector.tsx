@@ -19,18 +19,7 @@ import { hasDyadProKey, type UserSettings } from "@/lib/schemas";
 export function ProModeSelector() {
   const { settings, updateSettings } = useSettings();
 
-  const toggleWebSearch = () => {
-    updateSettings({
-      enableProWebSearch: !settings?.enableProWebSearch,
-    });
-  };
 
-  const handleTurboEditsChange = (newValue: "off" | "v1" | "v2") => {
-    updateSettings({
-      enableProLazyEditsMode: newValue !== "off",
-      proLazyEditsMode: newValue,
-    });
-  };
 
   const handleSmartContextChange = (newValue: "off" | "deep" | "balanced") => {
     if (newValue === "off") {
@@ -100,20 +89,7 @@ export function ProModeSelector() {
               settingEnabled={Boolean(settings?.enableDyadPro)}
               toggle={toggleProEnabled}
             />
-            <SelectorRow
-              id="web-search"
-              label="Web Access"
-              tooltip="Allows Vibes to access the web (e.g. search for information)"
-              isTogglable={proModeTogglable}
-              settingEnabled={Boolean(settings?.enableProWebSearch)}
-              toggle={toggleWebSearch}
-            />
 
-            <TurboEditsSelector
-              isTogglable={proModeTogglable}
-              settings={settings}
-              onValueChange={handleTurboEditsChange}
-            />
             <SmartContextSelector
               isTogglable={proModeTogglable}
               settings={settings}
@@ -171,113 +147,6 @@ function SelectorRow({
   );
 }
 
-function TurboEditsSelector({
-  isTogglable,
-  settings,
-  onValueChange,
-}: {
-  isTogglable: boolean;
-  settings: UserSettings | null;
-  onValueChange: (value: "off" | "v1" | "v2") => void;
-}) {
-  // Determine current value based on settings
-  const getCurrentValue = (): "off" | "v1" | "v2" => {
-    if (!settings?.enableProLazyEditsMode) {
-      return "off";
-    }
-    if (settings?.proLazyEditsMode === "v1") {
-      return "v1";
-    }
-    if (settings?.proLazyEditsMode === "v2") {
-      return "v2";
-    }
-    // Keep in sync with getModelClient in get_model_client.ts
-    // If enabled but no option set (undefined/falsey), it's v1
-    return "v1";
-  };
-
-  const currentValue = getCurrentValue();
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1.5">
-        <Label className={!isTogglable ? "text-muted-foreground/50" : ""}>
-          Turbo Edits
-        </Label>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info
-              className={`h-4 w-4 cursor-help ${!isTogglable ? "text-muted-foreground/50" : "text-muted-foreground"}`}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-72">
-            Edits files efficiently without full rewrites.
-            <br />
-            <ul className="list-disc ml-4">
-              <li>
-                <b>Classic:</b> Uses a smaller model to complete edits.
-              </li>
-              <li>
-                <b>Search & replace:</b> Find and replaces specific text blocks.
-              </li>
-            </ul>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-      <div
-        className="inline-flex rounded-md border border-input"
-        data-testid="turbo-edits-selector"
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={currentValue === "off" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onValueChange("off")}
-              disabled={!isTogglable}
-              className="rounded-r-none border-r border-input h-8 px-3 text-xs flex-shrink-0"
-            >
-              Off
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Disable Turbo Edits</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={currentValue === "v1" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onValueChange("v1")}
-              disabled={!isTogglable}
-              className="rounded-none border-r border-input h-8 px-3 text-xs flex-shrink-0"
-            >
-              Classic
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Uses a smaller model to complete edits
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={currentValue === "v2" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onValueChange("v2")}
-              disabled={!isTogglable}
-              className="rounded-l-none h-8 px-3 text-xs flex-shrink-0"
-            >
-              Search & replace
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Find and replaces specific text blocks
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
-  );
-}
 
 function SmartContextSelector({
   isTogglable,

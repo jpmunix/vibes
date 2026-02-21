@@ -28,8 +28,7 @@ import { DyadOutput } from "./DyadOutput";
 import { DyadProblemSummary } from "./DyadProblemSummary";
 import { DyadMcpToolCall } from "./DyadMcpToolCall";
 import { DyadMcpToolResult } from "./DyadMcpToolResult";
-import { DyadWebSearchResult } from "./DyadWebSearchResult";
-import { DyadWebSearch } from "./DyadWebSearch";
+
 import { DyadWebCrawl } from "./DyadWebCrawl";
 import { DyadCodeSearchResult } from "./DyadCodeSearchResult";
 import { DyadCodeSearch } from "./DyadCodeSearch";
@@ -60,8 +59,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-grep",
   "dyad-search-replace",
   "dyad-codebase-context",
-  "dyad-web-search-result",
-  "dyad-web-search",
+
   "dyad-web-crawl",
   "dyad-code-search-result",
   "dyad-code-search",
@@ -472,19 +470,7 @@ function renderCustomTag(
           {content}
         </DyadRead>
       );
-    case "dyad-web-search":
-      return (
-        <DyadWebSearch
-          node={{
-            properties: {
-              query: attributes.query || "",
-              state: getState({ isStreaming, inProgress }),
-            },
-          }}
-        >
-          {content}
-        </DyadWebSearch>
-      );
+
     case "dyad-web-crawl":
       return (
         <DyadWebCrawl
@@ -518,18 +504,7 @@ function renderCustomTag(
           {content}
         </DyadCodeSearchResult>
       );
-    case "dyad-web-search-result":
-      return (
-        <DyadWebSearchResult
-          node={{
-            properties: {
-              state: getState({ isStreaming, inProgress }),
-            },
-          }}
-        >
-          {content}
-        </DyadWebSearchResult>
-      );
+
     case "think":
     case "thought":
     case "dyad-think":

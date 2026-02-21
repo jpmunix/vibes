@@ -59,8 +59,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-code-search": { icon: Code, label: "Búsqueda", pendingLabel: "Buscando código", color: "text-green-500" },
     "dyad-code-search-result": { icon: Code, label: "Resultado", color: "text-green-500" },
     "dyad-list-files": { icon: FolderOpen, label: "Listado", pendingLabel: "Listando", color: "text-slate-500" },
-    "dyad-web-search": { icon: Globe, label: "Web", pendingLabel: "Buscando en web", color: "text-blue-500" },
-    "dyad-web-search-result": { icon: Globe, label: "Web", color: "text-blue-500" },
+
     "dyad-web-crawl": { icon: Globe, label: "Crawl", pendingLabel: "Crawleando", color: "text-blue-500" },
     "dyad-add-dependency": { icon: Package, label: "Dependencia", pendingLabel: "Instalando", color: "text-purple-500" },
     "dyad-add-integration": { icon: Wrench, label: "Integración", pendingLabel: "Integrando", color: "text-purple-500" },
@@ -229,8 +228,7 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes.query ? `"${attributes.query}"` : undefined;
         case "dyad-code-search":
             return attributes.query ? `"${attributes.query}"` : undefined;
-        case "dyad-web-search":
-            return attributes.query || undefined;
+
         case "dyad-add-dependency":
             return attributes.packages || undefined;
         case "dyad-execute-sql":

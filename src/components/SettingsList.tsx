@@ -13,7 +13,6 @@ type SettingsSection = {
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "general-settings", label: "General" },
   { id: "models-connectivity", label: "Modelos e IA" },
-  { id: "serper-settings", label: "Búsqueda Web" },
   { id: "embeddings-settings", label: "Búsqueda Semántica" },
   { id: "ai-behavior", label: "Configuración Asistente" },
   { id: "automation-settings", label: "Automatización" },

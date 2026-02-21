@@ -13,7 +13,6 @@ import {
 import { useSettings } from "@/hooks/useSettings";
 import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 import type { ChatMode } from "@/lib/schemas";
-import { isDyadProEnabled } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { detectIsMac } from "@/hooks/useChatModeToggle";
 import { useRouterState } from "@tanstack/react-router";
@@ -32,8 +31,9 @@ export function ChatModeSelector() {
   const chatId = routerState.location.search.id as number | undefined;
   const currentChatMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
 
-  const selectedMode = settings?.selectedChatMode || "build";
-  const isProEnabled = settings ? isDyadProEnabled(settings) : false;
+  // Map "build" to "local-agent" for users who had build as their selected mode
+  const rawMode = settings?.selectedChatMode || "local-agent";
+  const selectedMode = rawMode === "build" ? "local-agent" : rawMode;
   const { } = useFreeAgentQuota();
 
   const handleModeChange = (value: string) => {
@@ -70,16 +70,14 @@ export function ChatModeSelector() {
 
   const getModeDisplayName = (mode: ChatMode) => {
     switch (mode) {
-      case "build":
-        return "Build";
       case "plan":
-        return "Planificación";
+        return "Planificar";
       case "ask":
         return "Preguntar";
+      case "build":
       case "local-agent":
-        return isProEnabled ? "Agente inteligente" : "Agente inteligente";
       default:
-        return "Build";
+        return "Agente";
     }
   };
   const isMac = detectIsMac();
@@ -92,7 +90,7 @@ export function ChatModeSelector() {
             data-testid="chat-mode-selector"
             className={cn(
               "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors",
-              selectedMode === "build" || selectedMode === "local-agent"
+              selectedMode === "local-agent"
                 ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
                 : selectedMode === "plan"
                   ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
@@ -113,51 +111,19 @@ export function ChatModeSelector() {
         </TooltipContent>
       </Tooltip>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-        {
-          <SelectItem value="plan">
-            <div className="flex flex-col items-start">
-              <span className="font-medium">Planificación</span>
-              <span className="text-xs text-muted-foreground">
-                Transforma tu idea en un plan de acción editable
-              </span>
-            </div>
-          </SelectItem>
-        }
-        {
-          <SelectItem value="local-agent">
-            <div className="flex flex-col items-start">
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium">Agente inteligente</span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                El mejor modo de trabajo para el día a día
-              </span>
-            </div>
-          </SelectItem>
-        }
-        {/*{!isProEnabled && (
-          <SelectItem value="local-agent" disabled={isQuotaExceeded}>
-            <div className="flex flex-col items-start">
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium">Basic Agent</span>
-                <span className="text-xs text-muted-foreground">
-                  ({isQuotaExceeded ? "0" : messagesRemaining}/5 remaining for
-                  today)
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {isQuotaExceeded
-                  ? "Daily limit reached"
-                  : "Try our AI agent for free"}
-              </span>
-            </div>
-          </SelectItem>
-        )}*/}
-        <SelectItem value="build">
+        <SelectItem value="local-agent">
           <div className="flex flex-col items-start">
-            <span className="font-medium">Build</span>
+            <span className="font-medium">Agente</span>
             <span className="text-xs text-muted-foreground">
-              Genera y edita con una gestion de contexto algo peor
+              Desarrolla, edita y depura con acceso a herramientas
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem value="plan">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Planificar</span>
+            <span className="text-xs text-muted-foreground">
+              Diseña un plan de acción antes de implementar
             </span>
           </div>
         </SelectItem>
@@ -165,20 +131,10 @@ export function ChatModeSelector() {
           <div className="flex flex-col items-start">
             <span className="font-medium">Preguntar</span>
             <span className="text-xs text-muted-foreground">
-              Pregunta sobre cosas de la app pero sin editar
+              Consulta sobre tu código sin realizar cambios
             </span>
           </div>
         </SelectItem>
-        {/*<SelectItem value="agent">*/}
-        {/*  <div className="flex flex-col items-start">*/}
-        {/*    <div className="flex items-center gap-1.5">*/}
-        {/*      <span className="font-medium">Build with MCP</span>*/}
-        {/*    </div>*/}
-        {/*    <span className="text-xs text-muted-foreground">*/}
-        {/*      Like Build, but can use tools (MCP) to generate code*/}
-        {/*    </span>*/}
-        {/*  </div>*/}
-        {/*</SelectItem>*/}
       </SelectContent>
     </Select>
   );

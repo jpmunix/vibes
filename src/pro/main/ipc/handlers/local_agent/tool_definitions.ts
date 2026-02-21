@@ -22,7 +22,7 @@ import { getFirebaseProjectInfoTool } from "./tools/get_firebase_project_info";
 import { setChatSummaryTool } from "./tools/set_chat_summary";
 import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
-import { webSearchTool } from "./tools/web_search";
+
 import { webCrawlTool } from "./tools/web_crawl";
 import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
@@ -62,7 +62,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   setChatSummaryTool,
   addIntegrationTool,
   readLogsTool,
-  webSearchTool,
+
   webCrawlTool,
   updateTodosTool,
   runTypeChecksTool,

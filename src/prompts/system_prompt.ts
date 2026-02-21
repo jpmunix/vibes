@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import log from "electron-log";
-import { TURBO_EDITS_V2_SYSTEM_PROMPT } from "../pro/main/prompts/turbo_edits_v2_prompt";
+
 import { constructLocalAgentPrompt } from "./local_agent_prompt";
 import { getEffectivePrompt } from "./index";
 import { UserSettings } from "../lib/schemas";
@@ -552,16 +552,16 @@ You must output your plan using the following Markdown structure exactly. Do not
 export const constructSystemPrompt = ({
   aiRules,
   chatMode = "build",
-  enableTurboEditsV2: _enableTurboEditsV2,
   themePrompt,
   readOnly,
   basicAgentMode,
   chatLanguage = "es",
   settings,
+  // Deprecated — kept for backward compat with existing callers
+  enableTurboEditsV2: _enableTurboEditsV2,
 }: {
   aiRules: string | undefined;
   chatMode?: "build" | "ask" | "agent" | "local-agent" | "plan";
-  enableTurboEditsV2: boolean;
   themePrompt?: string;
   /** If true, use read-only mode for local-agent (ask mode with tools) */
   readOnly?: boolean;
@@ -570,6 +570,8 @@ export const constructSystemPrompt = ({
   /** Language for chat responses */
   chatLanguage?: "es" | "en";
   settings?: UserSettings;
+  /** @deprecated No longer used */
+  enableTurboEditsV2?: boolean;
 }) => {
   if (chatMode === "local-agent") {
     return constructLocalAgentPrompt(aiRules, themePrompt, {
@@ -582,7 +584,6 @@ export const constructSystemPrompt = ({
 
   let systemPrompt = getSystemPromptForChatMode({
     chatMode,
-    enableTurboEditsV2: _enableTurboEditsV2,
     settings,
   });
 
@@ -611,21 +612,16 @@ export const constructSystemPrompt = ({
 
 export const getSystemPromptForChatMode = ({
   chatMode,
-  enableTurboEditsV2: _enableTurboEditsV2,
   settings,
 }: {
   chatMode: "build" | "ask" | "agent" | "plan";
-  enableTurboEditsV2: boolean;
   settings?: UserSettings;
 }) => {
   if (chatMode === "agent") {
-    return (
-      getEffectivePrompt("agent_mode_system", settings) +
-      TURBO_EDITS_V2_SYSTEM_PROMPT
-    );
+    return getEffectivePrompt("agent_mode_system", settings);
   }
   if (chatMode === "ask") {
-    return ASK_MODE_SYSTEM_PROMPT; // Potencialmente editable en el futuro
+    return ASK_MODE_SYSTEM_PROMPT;
   }
 
   if (chatMode === "plan") {
@@ -635,13 +631,11 @@ export const getSystemPromptForChatMode = ({
   const prefix = getEffectivePrompt("build_system_prefix", settings);
   const postfix = getEffectivePrompt("build_system_postfix", settings);
 
-  return (
-    `${prefix}
+  return `${prefix}
 
 [[AI_RULES]]
 
-${postfix}` + TURBO_EDITS_V2_SYSTEM_PROMPT
-  );
+${postfix}`;
 };
 
 export const readAiRules = async (dyadAppPath: string) => {

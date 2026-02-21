@@ -100,7 +100,6 @@ export async function getModelClient(
               : settings.enableProLazyEditsMode &&
               settings.proLazyEditsMode !== "v2",
           enableSmartFilesContext,
-          enableWebSearch: settings.enableProWebSearch,
         },
         settings,
       });
