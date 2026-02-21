@@ -7,6 +7,11 @@
 
 **feat: add `patch_file` tool with precise line-based editing and UI integration**
 
+**feat: unify file and codebase tools into `file_editor` and `explore_codebase`
+
+- Introduced `file_editor` tool, merging `write_file`, `edit_file`, `search_replace`, and `patch_file` with action-based functionality.
+- Added `explore_codebase` tool, consolidating `read_file`, `list_files`, `grep`, and `code_search` into a single unified interface.**
+
 ----------------------------
 
 

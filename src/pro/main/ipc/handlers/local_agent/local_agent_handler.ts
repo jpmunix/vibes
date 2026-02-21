@@ -540,6 +540,7 @@ export async function handleLocalAgentStream(
                       edit_file: 0,
                       search_replace: 0,
                       patch_file: 0,
+                      file_editor: 0,
                     };
                   }
                   ctx.fileEditTracker[path][entry.toolName as FileEditToolName]++;

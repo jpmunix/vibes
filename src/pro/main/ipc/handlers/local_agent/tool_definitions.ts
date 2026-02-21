@@ -6,7 +6,8 @@
 import { IpcMainInvokeEvent } from "electron";
 import crypto from "node:crypto";
 import { readSettings, writeSettings } from "@/main/settings";
-import { writeFileTool } from "./tools/write_file";
+import { fileEditorTool } from "./tools/file_editor";
+import { exploreCodebaseTool } from "./tools/explore_codebase";
 import { deleteFileTool } from "./tools/delete_file";
 import { renameFileTool } from "./tools/rename_file";
 import { addDependencyTool } from "./tools/add_dependency";
@@ -15,23 +16,16 @@ import { apps } from "@/db/schema";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 
-import { readFileTool } from "./tools/read_file";
-import { listFilesTool } from "./tools/list_files";
 import { getSupabaseProjectInfoTool } from "./tools/get_supabase_project_info";
 import { getSupabaseTableSchemaTool } from "./tools/get_supabase_table_schema";
 import { getFirebaseProjectInfoTool } from "./tools/get_firebase_project_info";
 import { setChatSummaryTool } from "./tools/set_chat_summary";
 import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
-import { editFileTool } from "./tools/edit_file";
-import { searchReplaceTool } from "./tools/search_replace";
-import { patchFileTool } from "./tools/patch_file";
 import { webSearchTool } from "./tools/web_search";
 import { webCrawlTool } from "./tools/web_crawl";
 import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
-import { grepTool } from "./tools/grep";
-import { codeSearchTool } from "./tools/code_search";
 import { gitOperationsTool } from "./tools/git_operations";
 import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
@@ -49,18 +43,12 @@ import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
 import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
 // Combined tool definitions array
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
-  writeFileTool,
-  editFileTool,
-  searchReplaceTool,
-  patchFileTool,
+  fileEditorTool,
   deleteFileTool,
   renameFileTool,
   addDependencyTool,
   executeSqlTool,
-  readFileTool,
-  listFilesTool,
-  grepTool,
-  codeSearchTool,
+  exploreCodebaseTool,
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
   getFirebaseProjectInfoTool,
@@ -341,6 +329,7 @@ function trackFileEditTool(
       edit_file: 0,
       search_replace: 0,
       patch_file: 0,
+      file_editor: 0,
     };
   }
   ctx.fileEditTracker[filePath][toolName as FileEditToolName]++;

@@ -190,8 +190,27 @@ export const ActionHeader = ({
 
     // Small delay to ensure DOM is updated
     const timeoutId = setTimeout(updateIndicator, 10);
-    return () => clearTimeout(timeoutId);
-  }, [activeGroup, displayCount, isPreviewOpen, isCompact]);
+
+    // Use ResizeObserver to catch any size changes of the buttons (e.g. text changing)
+    let resizeObserver: ResizeObserver | null = null;
+    const container = previewGroupRef.current?.parentElement;
+
+    if (container) {
+      resizeObserver = new ResizeObserver(() => {
+        // Use requestAnimationFrame to avoid ResizeObserver loop limit exceeded errors
+        requestAnimationFrame(updateIndicator);
+      });
+
+      if (previewGroupRef.current) resizeObserver.observe(previewGroupRef.current);
+      if (codeGroupRef.current) resizeObserver.observe(codeGroupRef.current);
+      if (configureRef.current) resizeObserver.observe(configureRef.current);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [activeGroup, displayCount, isPreviewOpen, isCompact, previewMode, versions?.length, versionsLoading]);
 
   const iconSize = 15;
 
