@@ -16,7 +16,11 @@ import {
     Code,
     FolderOpen,
     Eye,
-
+    Terminal,
+    Play,
+    Square,
+    List,
+    Wifi,
     CircleX,
     Wrench,
     BarChart3,
@@ -70,9 +74,15 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-mcp-tool-call": { icon: Wrench, label: "Herramienta", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
     "dyad-mcp-tool-result": { icon: Wrench, label: "Resultado", color: "text-purple-500" },
     "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
+    "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
     "dyad-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta", color: "text-violet-500" },
+    "dyad-run-command": { icon: Terminal, label: "Comando", pendingLabel: "Ejecutando", color: "text-lime-500" },
+    "dyad-start-process": { icon: Play, label: "Proceso", pendingLabel: "Iniciando proceso", color: "text-green-500" },
+    "dyad-stop-process": { icon: Square, label: "Detenido", pendingLabel: "Deteniendo proceso", color: "text-red-500" },
+    "dyad-list-processes": { icon: List, label: "Procesos", pendingLabel: "Listando procesos", color: "text-slate-500" },
+    "dyad-wait-http": { icon: Wifi, label: "HTTP Check", pendingLabel: "Esperando HTTP", color: "text-cyan-500" },
 };
 
 /** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
@@ -90,6 +100,7 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-emerald-500": "bg-emerald-500",
     "text-violet-500": "bg-violet-500",
     "text-teal-500": "bg-teal-500",
+    "text-lime-500": "bg-lime-500",
 };
 
 export function getBgColorClass(textColorClass: string): string | undefined {
@@ -232,6 +243,14 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return undefined;
         case "dyad-ask-user":
             return attributes.question || undefined;
+        case "dyad-run-command":
+            return attributes.cmd || undefined;
+        case "dyad-start-process":
+            return attributes.cmd || undefined;
+        case "dyad-stop-process":
+            return attributes["process-id"] || undefined;
+        case "dyad-wait-http":
+            return attributes.url || undefined;
         default:
             return undefined;
     }

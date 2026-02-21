@@ -24,6 +24,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-code-search",
     "dyad-read",
     "think",
+    "thought",
     "dyad-command",
     "dyad-mcp-tool-call",
     "dyad-mcp-tool-result",
@@ -36,6 +37,11 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-git",
     "dyad-ask-user",
     "dyad-patch",
+    "dyad-run-command",
+    "dyad-start-process",
+    "dyad-stop-process",
+    "dyad-list-processes",
+    "dyad-wait-http",
 ];
 
 /**

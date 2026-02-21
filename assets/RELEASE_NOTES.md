@@ -12,6 +12,16 @@
 - Introduced `file_editor` tool, merging `write_file`, `edit_file`, `search_replace`, and `patch_file` with action-based functionality.
 - Added `explore_codebase` tool, consolidating `read_file`, `list_files`, `grep`, and `code_search` into a single unified interface.**
 
+- **feat: add process management tools for background tasks and new IPC handlers
+
+- Introduced `start_process`, `stop_process`, and `list_processes` tools for managing background tasks.
+- Added `run_command` tool for executing safe foreground commands with enhanced security features.
+- Implemented `ProcessManager` singleton for controlling and monitoring long-running processes.
+- Enhanced `CompactToolBadge` with new labels, dynamic colors, and icons for the new tools.
+- Updated `TOOL_DEFINITIONS` and IPC handlers to integrate and support process management functions.
+- Included schemas and detailed logic for readiness detection via regex, HTTP, or port checks.
+- Added `wait_for_http` tool for handling HTTP-based wait conditions with configurable timeouts.**
+
 ----------------------------
 
 

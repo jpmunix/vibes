@@ -67,6 +67,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-code-search",
   "dyad-read",
   "think",
+  "thought",
   "dyad-command",
   "dyad-mcp-tool-call",
   "dyad-mcp-tool-result",
@@ -79,6 +80,11 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-git",
   "dyad-ask-user",
   "dyad-patch",
+  "dyad-run-command",
+  "dyad-start-process",
+  "dyad-stop-process",
+  "dyad-list-processes",
+  "dyad-wait-http",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -525,6 +531,7 @@ function renderCustomTag(
         </DyadWebSearchResult>
       );
     case "think":
+    case "thought":
     case "dyad-think":
       return (
         <DyadThink
@@ -879,6 +886,48 @@ function renderCustomTag(
         </DyadAskUser>
       );
 
+    // === Process/command tools (Phase 1) ===
+    case "dyad-run-command":
+    case "dyad-start-process":
+    case "dyad-stop-process":
+    case "dyad-list-processes":
+    case "dyad-wait-http": {
+      const cmd = attributes.cmd || "";
+      const url = attributes.url || "";
+      const processId = attributes["process-id"] || "";
+      const status = attributes.status || "";
+      const exitCode = attributes["exit-code"] || "";
+      const duration = attributes.duration || "";
+      const count = attributes.count || "";
+
+      const headerLabel = cmd || url || processId || tag;
+      const statusColor = status === "success" || status === "ok" || status === "ready"
+        ? "text-green-500"
+        : status === "error" || status === "crashed"
+          ? "text-red-500"
+          : status === "timeout"
+            ? "text-amber-500"
+            : "text-muted-foreground";
+
+      return (
+        <div className="my-2 rounded-lg border border-border bg-muted/30 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 text-xs font-mono border-b border-border">
+            <span className="text-muted-foreground">$</span>
+            <span className="font-medium">{headerLabel}</span>
+            {status && <span className={`ml-auto font-medium ${statusColor}`}>{status}</span>}
+            {exitCode && <span className="text-muted-foreground">exit: {exitCode}</span>}
+            {duration && <span className="text-muted-foreground">{duration}</span>}
+            {count && <span className="text-muted-foreground">{count} processes</span>}
+          </div>
+          {content && (
+            <div className="px-3 py-2 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     default:
       return null;
   }
@@ -899,6 +948,7 @@ function renderModalContent(
   switch (tag) {
     // === Think: already renders clean content, reuse existing ===
     case "think":
+    case "thought":
     case "dyad-think":
       return renderCustomTag(tagInfo, { isStreaming });
 
@@ -1332,6 +1382,88 @@ function renderModalContent(
               <CodeHighlight className="language-log">{content}</CodeHighlight>
             </div>
           )}
+        </div>
+      );
+    }
+
+    // === Process/command tools (Phase 1) ===
+    case "dyad-run-command": {
+      const cmd = attributes.cmd || "";
+      const status = attributes.status || "";
+      const exitCode = attributes["exit-code"] || "";
+      const duration = attributes.duration || "";
+      const statusEmoji = status === "success" ? "✅" : status === "timeout" ? "⏱" : status === "error" ? "❌" : "";
+
+      return (
+        <div className="space-y-2">
+          {cmd && (
+            <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
+              <span>$</span>
+              <span className="font-medium">{cmd}</span>
+              {statusEmoji && <span className="ml-auto">{statusEmoji}</span>}
+              {exitCode && <span className="text-muted-foreground">exit: {exitCode}</span>}
+              {duration && <span className="text-muted-foreground">{duration}</span>}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-log">{content}</CodeHighlight>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case "dyad-start-process":
+    case "dyad-stop-process": {
+      const cmd = attributes.cmd || "";
+      const processId = attributes["process-id"] || "";
+      const status = attributes.status || "";
+
+      return (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
+            {cmd && <><span>$</span><span className="font-medium">{cmd}</span></>}
+            {processId && <span className="font-medium">{processId}</span>}
+            {status && <span className="ml-auto font-medium">{status}</span>}
+          </div>
+          {content && <div className="text-sm text-muted-foreground whitespace-pre-wrap">{content}</div>}
+        </div>
+      );
+    }
+
+    case "dyad-list-processes": {
+      const count = attributes.count || "";
+      return (
+        <div className="space-y-2">
+          {count && <div className="text-sm text-muted-foreground">{count} proceso(s)</div>}
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case "dyad-wait-http": {
+      const url = attributes.url || "";
+      const status = attributes.status || "";
+      const httpStatus = attributes["http-status"] || "";
+      const attempts = attributes.attempts || "";
+      const responseTime = attributes["response-time"] || "";
+      const statusEmoji = status === "ok" ? "✅" : "⏱";
+
+      return (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground font-mono bg-muted/30 px-3 py-1.5 rounded flex items-center gap-2">
+            <span>{statusEmoji}</span>
+            <span className="font-medium">{url}</span>
+            {httpStatus && <span className="text-green-500">HTTP {httpStatus}</span>}
+            {attempts && <span>{attempts} intentos</span>}
+            {responseTime && <span>{responseTime}</span>}
+          </div>
+          {content && <div className="text-sm text-muted-foreground whitespace-pre-wrap">{content}</div>}
         </div>
       );
     }

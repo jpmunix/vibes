@@ -28,6 +28,9 @@ import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
 import { gitOperationsTool } from "./tools/git_operations";
 import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
+import { runCommandTool } from "./tools/run_command";
+import { startProcessTool, stopProcessTool, listProcessesTool } from "./tools/process_management";
+import { waitForHttpTool } from "./tools/wait_for_http";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
   type ToolDefinition,
@@ -41,7 +44,6 @@ import {
 import { AgentToolConsent } from "@/lib/schemas";
 import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
 import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
-// Combined tool definitions array
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   fileEditorTool,
   deleteFileTool,
@@ -49,6 +51,11 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   addDependencyTool,
   executeSqlTool,
   exploreCodebaseTool,
+  runCommandTool,
+  startProcessTool,
+  stopProcessTool,
+  listProcessesTool,
+  waitForHttpTool,
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
   getFirebaseProjectInfoTool,
