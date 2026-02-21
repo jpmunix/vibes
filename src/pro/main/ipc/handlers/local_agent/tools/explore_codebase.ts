@@ -390,7 +390,11 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                     start != null || end != null
                         ? ` | Showing: ${startIdx + 1}-${endIdx}`
                         : "";
-                const header = `[File: ${args.path} | Total lines: ${totalLines}${rangeInfo}]`;
+                const smallFileTip =
+                    totalLines <= 150 && start == null && end == null
+                        ? ` | Tip: This file is small enough to use overwrite instead of patch/search_replace for edits.`
+                        : "";
+                const header = `[File: ${args.path} | Total lines: ${totalLines}${rangeInfo}${smallFileTip}]`;
 
                 return `${header}\n${numberedLines.join("\n")}`;
             }

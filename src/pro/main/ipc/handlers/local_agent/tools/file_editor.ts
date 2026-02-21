@@ -32,6 +32,8 @@ import {
 import { escapeSearchReplaceMarkers } from "@/pro/shared/search_replace_markers";
 import { engineFetch } from "./engine_fetch";
 import { sendTelemetryEvent } from "@/ipc/utils/telemetry";
+import { generateProblemReport } from "@/ipc/processors/tsc";
+import { normalizePath } from "../../../../../../../shared/normalizePath";
 
 const readFile = fs.promises.readFile;
 const logger = log.scope("file_editor");
@@ -388,7 +390,56 @@ function quickSyntaxCheck(content: string, filePath: string): string | null {
         return `Unbalanced parentheses detected: ${parenDepth > 0 ? `${parenDepth} unclosed '('` : `${Math.abs(parenDepth)} extra ')'`}. The patch likely broke a function call or expression.`;
     }
 
+    // 3. Check for merge markers left by failed TurboEdit merges
+    if (/\/\/ ?\.\.\. ?existing ?code/i.test(content)) {
+        return `Merge marker '// ... existing code ...' detected in the file output. This means the edit/merge failed — the placeholder was NOT replaced with actual code. Use explore_codebase(read_file) to see the full file, then use file_editor(overwrite) to rewrite it correctly.`;
+    }
+
     return null;
+}
+
+/**
+ * Auto type-check a specific file after edit.
+ * Runs TSC in a worker, filters results to just the edited file,
+ * and returns a summary string (empty if no errors).
+ * Has a 5s timeout to avoid blocking the agent on large projects.
+ */
+async function autoTypeCheck(
+    filePath: string,
+    appPath: string,
+): Promise<string> {
+    try {
+        const report = await Promise.race([
+            generateProblemReport({ fullResponse: "", appPath }),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), 5000),
+            ),
+        ]);
+
+        // Filter to only problems in the edited file
+        const normalizedFilePath = normalizePath(filePath).replace(/^\.\//, "");
+        const fileProblems = report.problems.filter((p) => {
+            const normalizedProblem = normalizePath(p.file).replace(/^\.\//, "");
+            return normalizedProblem === normalizedFilePath ||
+                normalizedProblem.endsWith("/" + normalizedFilePath);
+        });
+
+        if (fileProblems.length === 0) return "";
+
+        const lines = fileProblems
+            .slice(0, 5) // Limit to 5 errors to keep response concise
+            .map((p) => `  ${p.file}:${p.line}:${p.column}: ${p.message}`);
+
+        const suffix = fileProblems.length > 5
+            ? `\n  ... and ${fileProblems.length - 5} more error(s)`
+            : "";
+
+        return `\n\n⚠️ Type errors found after edit (${fileProblems.length}):\n${lines.join("\n")}${suffix}\nFix these errors before proceeding.`;
+    } catch (err) {
+        // Timeout or TSC failure — don't block the agent
+        logger.warn(`autoTypeCheck skipped for ${filePath}: ${err}`);
+        return "";
+    }
 }
 
 /**
@@ -627,7 +678,8 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                 logger.log(`Successfully overwrote file: ${fullFilePath}`);
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
-                return deployMsg ?? `Successfully overwrote ${args.file_path}`;
+                const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                return (deployMsg ?? `Successfully overwrote ${args.file_path}`) + typeErrors;
             }
 
             // ────────────────────────────────────────────────
@@ -685,7 +737,8 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                 const editWarning = editSyntaxError
                     ? `\n\n⚠️ WARNING: Possible syntax issue detected: ${editSyntaxError}\nPlease verify the file with run_type_checks or read_file.`
                     : "";
-                return (deployMsg ?? `Successfully edited ${args.file_path}`) + editWarning;
+                const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                return (deployMsg ?? `Successfully edited ${args.file_path}`) + editWarning + typeErrors;
             }
 
             // ────────────────────────────────────────────────
@@ -781,9 +834,9 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                 });
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
+                const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
                 return (
-                    deployMsg ??
-                    `Successfully applied edits to ${args.file_path}`
+                    (deployMsg ?? `Successfully applied edits to ${args.file_path}`) + typeErrors
                 );
             }
 
@@ -872,9 +925,9 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                 });
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
+                const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
                 return (
-                    deployMsg ??
-                    `Successfully patched ${args.file_path} (${opsCount} operation${opsCount > 1 ? "s" : ""}, ${linesAffected} line${linesAffected > 1 ? "s" : ""} affected)`
+                    (deployMsg ?? `Successfully patched ${args.file_path} (${opsCount} operation${opsCount > 1 ? "s" : ""}, ${linesAffected} line${linesAffected > 1 ? "s" : ""} affected)`) + typeErrors
                 );
             }
 

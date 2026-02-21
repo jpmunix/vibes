@@ -1600,10 +1600,10 @@ This conversation includes one or more image attachments. When the user uploads 
           let localAgentSystemPrompt = systemPrompt;
 
           if (!isSummarizeIntent) {
-            // AGENT MODE: Start with no initial file context to save tokens.
-            // The agent uses tools (read_file, code_search, grep, list_files, etc.)
-            // to explore the codebase agentically.
-            localAgentSystemPrompt += "\n\n# Codebase Context\nYou are starting with no initial file context. Use \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find the files needed to solve the task.";
+            // AGENT MODE: Generate a compact micro-summary of the project structure
+            // to give the LLM spatial awareness without injecting full file content.
+            const projectSummary = generateProjectMicroSummary(appPath);
+            localAgentSystemPrompt += `\n\n# Project Context\n${projectSummary}\nUse \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find specific files.`;
           } else {
             logger.log(
               `[AGENT MODE] Skipping codebase context for summarize intent`,
@@ -2276,4 +2276,109 @@ async function getMcpTools(
     logger.warn("Failed building MCP toolset", e);
   }
   return mcpToolSet;
+}
+
+/**
+ * Generate a compact micro-summary of the project's src/ structure.
+ * Produces a one-line summary like:
+ *   [Project: 142 files in src/ | 8 pages, 34 components, 12 hooks, 6 lib]
+ * ~20-50 tokens, gives the LLM "spatial awareness" without noise.
+ */
+function generateProjectMicroSummary(appPath: string): string {
+  try {
+    const srcPath = path.join(appPath, "src");
+    if (!fs.existsSync(srcPath)) {
+      return "[Project: no src/ directory found]";
+    }
+
+    // Count files by well-known category folders
+    const categories: Record<string, number> = {};
+    let totalFiles = 0;
+
+    const countFiles = (dir: string, depth = 0) => {
+      if (depth > 4) return; // Cap recursion
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+        if (entry.isDirectory()) {
+          countFiles(path.join(dir, entry.name), depth + 1);
+        } else if (entry.isFile()) {
+          totalFiles++;
+        }
+      }
+    };
+
+    // Map well-known folder names to categories
+    const knownFolders: Record<string, string> = {
+      pages: "pages",
+      components: "components",
+      hooks: "hooks",
+      lib: "lib",
+      utils: "utils",
+      styles: "styles",
+      assets: "assets",
+      types: "types",
+      api: "api",
+      services: "services",
+    };
+
+    // Count files in each known folder
+    let categorizedFiles = 0;
+    let srcEntries: fs.Dirent[];
+    try {
+      srcEntries = fs.readdirSync(srcPath, { withFileTypes: true });
+    } catch {
+      return "[Project: could not read src/]";
+    }
+
+    for (const entry of srcEntries) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+      const categoryName = knownFolders[entry.name.toLowerCase()] || null;
+      if (categoryName) {
+        let count = 0;
+        const countDir = (dir: string, depth = 0) => {
+          if (depth > 3) return;
+          let items: fs.Dirent[];
+          try {
+            items = fs.readdirSync(dir, { withFileTypes: true });
+          } catch {
+            return;
+          }
+          for (const item of items) {
+            if (item.name.startsWith(".")) continue;
+            if (item.isFile()) count++;
+            else if (item.isDirectory()) countDir(path.join(dir, item.name), depth + 1);
+          }
+        };
+        countDir(path.join(srcPath, entry.name));
+        if (count > 0) {
+          categories[categoryName] = count;
+          categorizedFiles += count;
+        }
+      }
+    }
+
+    // Count total files in src/
+    countFiles(srcPath);
+
+    const uncategorized = totalFiles - categorizedFiles;
+    const parts: string[] = [];
+    for (const [name, count] of Object.entries(categories)) {
+      parts.push(`${count} ${name}`);
+    }
+    if (uncategorized > 0) {
+      parts.push(`${uncategorized} other`);
+    }
+
+    const breakdown = parts.length > 0 ? ` | ${parts.join(", ")}` : "";
+    return `[Project: ${totalFiles} files in src/${breakdown}]`;
+  } catch (err) {
+    logger.warn("Failed to generate project micro-summary:", err);
+    return "[Project: unknown structure]";
+  }
 }
