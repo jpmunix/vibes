@@ -22,7 +22,7 @@ const options: OptionInfo[] = [
     value: "es",
     label: "Español",
     description:
-      "El asistente responderá siempre en español en todas las conversaciones.",
+      "El agente priorizará este idioma en sus respuestas y explicaciones.",
   },
   {
     value: "en",

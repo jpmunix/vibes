@@ -2487,7 +2487,7 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
     logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
@@ -2540,7 +2540,7 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.appTitleGenerationModel || "openai/gpt-4.1-mini";
+        settings.standardModeModel || "openai/gpt-4.1-mini";
 
       logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 

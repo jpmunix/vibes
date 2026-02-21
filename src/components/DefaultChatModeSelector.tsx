@@ -39,46 +39,39 @@ export function DefaultChatModeSelector() {
   };
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center space-x-2">
-        <Select
-          value={effectiveDefault}
-          onValueChange={handleDefaultChatModeChange}
-        >
-          <SelectTrigger className="w-60" id="default-chat-mode">
-            <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="local-agent">
-              <div className="flex flex-col items-start">
-                <span className="font-medium">Agente</span>
-                <span className="text-xs text-muted-foreground">
-                  Desarrolla, edita y depura con acceso a herramientas
-                </span>
-              </div>
-            </SelectItem>
-            <SelectItem value="plan">
-              <div className="flex flex-col items-start">
-                <span className="font-medium">Planificar</span>
-                <span className="text-xs text-muted-foreground">
-                  Diseña un plan de acción antes de implementar
-                </span>
-              </div>
-            </SelectItem>
-            <SelectItem value="ask">
-              <div className="flex flex-col items-start">
-                <span className="font-medium">Preguntar</span>
-                <span className="text-xs text-muted-foreground">
-                  Consulta sobre tu código sin realizar cambios
-                </span>
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="text-sm text-gray-500 dark:text-gray-400">
-        El modo de chat usado para crear nuevos chats
-      </div>
-    </div>
+    <Select
+      value={effectiveDefault}
+      onValueChange={handleDefaultChatModeChange}
+    >
+      <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100" id="default-chat-mode">
+        <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
+      </SelectTrigger>
+      <SelectContent align="end">
+        <SelectItem value="local-agent">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Agente</span>
+            <span className="text-xs text-muted-foreground">
+              Desarrolla, edita y depura con acceso a herramientas
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem value="plan">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Planificar</span>
+            <span className="text-xs text-muted-foreground">
+              Diseña un plan de acción antes de implementar
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem value="ask">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Preguntar</span>
+            <span className="text-xs text-muted-foreground">
+              Consulta sobre tu código sin realizar cambios
+            </span>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
   );
 }

@@ -130,7 +130,7 @@ export function PromptsSettings() {
                 Configuración de Prompts
               </h1>
               <p className="text-sm text-muted-foreground">
-                Personaliza el comportamiento del asistente AI
+                Personaliza el comportamiento del agente AI
               </p>
             </div>
 

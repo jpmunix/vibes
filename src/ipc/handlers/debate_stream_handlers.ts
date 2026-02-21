@@ -96,7 +96,7 @@ export function registerDebateStreamHandlers() {
         try {
           const settings = readSettings();
           const titleModel =
-            settings.appTitleGenerationModel || "openai/gpt-4.1-nano"; // Fast model
+            settings.standardModeModel || "openai/gpt-4.1-mini"; // Fast model
           const { getLanguageModelProviders, getLanguageModels } =
             await import("../shared/language_model_helpers");
           const allModels = await getLanguageModels({
@@ -147,11 +147,11 @@ export function registerDebateStreamHandlers() {
       const settings = readSettings();
       let selectedModel = settings.selectedModel;
 
-      if (settings.debateModel && settings.debateModel !== "SAME_AS_CHAT") {
+      if (settings.proModeModel && settings.proModeModel !== "SAME_AS_CHAT") {
         const { getLanguageModelProviders, getLanguageModels } =
           await import("../shared/language_model_helpers");
         const allModels = await getLanguageModels({ providerId: "openrouter" });
-        const found = allModels.find((m) => m.apiName === settings.debateModel);
+        const found = allModels.find((m) => m.apiName === settings.proModeModel);
         if (found) {
           selectedModel = {
             name: found.apiName,

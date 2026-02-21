@@ -140,7 +140,7 @@ export async function prepareLocalBranch({
   }
   const appPath = getDyadAppPath(app.path);
   const targetBranch = branch || "main";
-  const autoCommitEnabled = readSettings().enableGithubAutoCommit !== false;
+  const autoCommitEnabled = true; // Always enabled
 
   try {
     // Set up remote URL if provided (should be set up before calling this)
@@ -856,7 +856,7 @@ async function handlePushToGithub(
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
-    const autoCommitEnabled = settings.enableGithubAutoCommit !== false;
+    const autoCommitEnabled = true; // Always enabled
     if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
@@ -1499,7 +1499,7 @@ async function handleGenerateCommitMessage(
     const settings = readSettings();
 
     const model =
-      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
     if (!app) {

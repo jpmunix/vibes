@@ -225,7 +225,7 @@ export function registerChatHandlers() {
       const settings = readSettings();
 
       const model =
-        settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+        settings.standardModeModel || "openai/gpt-4.1-mini";
 
       try {
         let messageContent = prompt;
@@ -351,7 +351,7 @@ export function registerChatHandlers() {
     const settings = readSettings();
 
     const model =
-      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     // Get today's start timestamp (midnight local time)
     const todayLocalMidnight = new Date();

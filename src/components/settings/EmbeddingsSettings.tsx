@@ -55,9 +55,6 @@ export function EmbeddingsSettings({ isHighlighted }: EmbeddingsSettingsProps) {
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Database className="w-6 h-6 text-primary" />
                         Búsqueda Semántica
-                        <span className="bg-primary/10 text-primary text-xs px-2.5 py-0.5 rounded-full font-semibold border border-primary/20">
-                            Beta
-                        </span>
                     </h2>
                     <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
                         Mejora drásticamente la capacidad térmica de Vibes de comprender el

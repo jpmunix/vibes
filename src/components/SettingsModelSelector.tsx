@@ -30,6 +30,8 @@ interface SettingsModelSelectorProps {
     className?: string;
     /** "sm" = compact (home), "md" = larger (settings) */
     size?: "sm" | "md";
+    /** "default" = outline button, "pill" = primary pill like other selectors */
+    variant?: "default" | "pill";
 }
 
 export function SettingsModelSelector({
@@ -41,6 +43,7 @@ export function SettingsModelSelector({
     specialOptions = [],
     className = "",
     size = "sm",
+    variant = "default",
 }: SettingsModelSelectorProps) {
     const [open, setOpen] = useState(false);
     const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
@@ -76,21 +79,26 @@ export function SettingsModelSelector({
 
     const modelDisplayName = getModelDisplayName();
 
+    const triggerClassName = variant === "pill"
+        ? `border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center ${className}`
+        : `flex items-center justify-between w-fit font-medium rounded-md shadow-none gap-0.5 border bg-background hover:bg-muted/50 focus:bg-muted/50 transition-colors ${size === "md"
+            ? "h-9 max-w-[300px] px-3 py-1 text-sm"
+            : "!h-6 max-w-[240px] px-1.5 py-0 text-xs-sm"
+        } ${className}`;
+
     return (
         <>
             <DropdownMenu open={open} onOpenChange={setOpen}>
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <DropdownMenuTrigger asChild>
-                            <button
-                                className={`flex items-center justify-between w-fit font-medium rounded-md shadow-none gap-0.5 border bg-background hover:bg-muted/50 focus:bg-muted/50 transition-colors ${size === "md"
-                                    ? "h-9 max-w-[300px] px-3 py-1 text-sm"
-                                    : "!h-6 max-w-[240px] px-1.5 py-0 text-xs-sm"
-                                    } ${className}`}
-                            >
+                            <button className={triggerClassName}>
                                 <span className="truncate flex-1 text-left">
                                     {modelDisplayName}
                                 </span>
+                                {variant === "pill" && (
+                                    <svg className="h-4 w-4 opacity-70 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                )}
                             </button>
                         </DropdownMenuTrigger>
                     </TooltipTrigger>
@@ -98,8 +106,7 @@ export function SettingsModelSelector({
                 </Tooltip>
                 <DropdownMenuContent
                     className="w-72 max-h-[280px] overflow-y-auto"
-                    align="start"
-                    side="top"
+                    align="end"
                     onCloseAutoFocus={(e) => e.preventDefault()}
                 >
                     {loading ? (

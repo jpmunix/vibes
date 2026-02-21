@@ -17,7 +17,9 @@ import {
     Video,
     FileText,
     ArrowRight,
+    ChevronDown,
 } from "lucide-react";
+import { useState } from "react";
 
 interface ModelInfoDialogProps {
     model: LanguageModel;
@@ -70,6 +72,32 @@ function ModalityBadges({ modalities, label }: { modalities?: string[]; label: s
     );
 }
 
+function ExpandableDescription({ text }: { text: string }) {
+    const [expanded, setExpanded] = useState(false);
+
+    return (
+        <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="w-full bg-muted p-3 rounded-md text-sm text-muted-foreground text-left group cursor-pointer"
+        >
+            <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                    {expanded ? (
+                        <p>{text}</p>
+                    ) : (
+                        <p className="line-clamp-3">{text}</p>
+                    )}
+                </div>
+                <ChevronDown
+                    className={`size-4 shrink-0 mt-0.5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""
+                        }`}
+                />
+            </div>
+        </button>
+    );
+}
+
 export function ModelInfoDialog({
     model,
     open,
@@ -101,9 +129,7 @@ export function ModelInfoDialog({
                 <div className="flex flex-col gap-4 py-2">
                     {/* Description */}
                     {model.description && (
-                        <div className="bg-muted p-3 rounded-md text-sm text-muted-foreground">
-                            {model.description}
-                        </div>
+                        <ExpandableDescription text={model.description} />
                     )}
 
                     {/* Pricing */}

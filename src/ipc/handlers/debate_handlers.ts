@@ -188,7 +188,7 @@ export function registerDebateHandlers() {
     }
 
     const settings = readSettings();
-    let model = settings.summaryModel || "openai/gpt-5-mini";
+    let model = settings.standardModeModel || "openai/gpt-4.1-mini";
     if (model === "SAME_AS_CHAT") {
       model = settings.selectedModel.name;
     }

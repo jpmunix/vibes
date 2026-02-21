@@ -279,7 +279,7 @@ export function registerDossierHandlers() {
                 const dossierPrompt = getEffectivePrompt("dossier_prompt", settings);
 
                 // Resolve the AI model through OpenRouter
-                const dossierModelName = settings.dossierModel || "google/gemini-3-flash-preview";
+                const dossierModelName = settings.proModeModel || "google/gemini-3-flash-preview";
                 let selectedModel = settings.selectedModel; // fallback to chat model
 
                 // Look up the configured dossier model in OpenRouter

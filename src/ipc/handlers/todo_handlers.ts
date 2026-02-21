@@ -248,7 +248,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     try {
       const todoTitle = todo.content;
@@ -305,12 +305,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.todoAnalysisModel &&
-        settings.todoAnalysisModel !== "SAME_AS_CHAT"
-        ? settings.todoAnalysisModel
-        : settings.todoAnalysisModel === "SAME_AS_CHAT"
-          ? settings.selectedModel.name
-          : "google/gemini-3-flash-preview";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     const { getEffectivePrompt } = await import("../../prompts");
     const systemPrompt = getEffectivePrompt("todo_analysis", settings);
@@ -470,7 +465,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
     const chatsContext = chat.messages
       .map((msg) => `${msg.role}: ${msg.content}`)

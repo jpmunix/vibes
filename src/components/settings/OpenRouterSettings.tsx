@@ -1,9 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import {
+  Trash2,
+  Plus,
+  ChevronRight,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,36 +33,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  KeyRound,
-  Trash2,
-  Check,
-  Plus,
-  ExternalLink,
-  MoreVertical,
-  Eye,
-  EyeOff,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { showError, showSuccess } from "@/lib/toast";
 import { ModelsSection } from "./ModelsSection";
 import { cn } from "@/lib/utils";
-import { AppTitleModelSelector } from "@/components/AppTitleModelSelector";
-import { TodoAnalysisModelSelector } from "@/components/TodoAnalysisModelSelector";
-import { DebateModelSelector } from "@/components/debate/DebateModelSelector";
-import { SummaryModelSelector } from "@/components/debate/SummaryModelSelector";
-import { KnowledgeModelSelector } from "@/components/KnowledgeModelSelector";
-import { DossierModelSelector } from "@/components/DossierModelSelector";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -68,7 +61,8 @@ export function OpenRouterSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
-  const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(new Set());
+  const [modelsExpanded, setModelsExpanded] = useState(false);
+  const openAddModelsRef = useRef<(() => void) | null>(null);
 
   // Cast to any to access new custom properties if TS doesn't pick them up immediately
   const openRouterSettings = settings?.providerSettings?.[providerId] as any;
@@ -201,6 +195,7 @@ export function OpenRouterSettings({
     );
   }
 
+
   return (
     <>
       <div
@@ -212,288 +207,187 @@ export function OpenRouterSettings({
             : "",
         )}
       >
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Modelos e IA
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Configura tu acceso a cientos de modelos de IA a través de OpenRouter
-            </p>
-          </div>
-          {providerData?.websiteUrl && (
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="text-primary hover:text-primary hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/20"
-            >
-              <a
-                href={providerData.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 font-bold uppercase tracking-widest text-[10px]"
-              >
-                Obtener API Key <ExternalLink className="h-3 w-3" />
-              </a>
-            </Button>
-          )}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            OpenRouter
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configura tu acceso a cientos de modelos de IA a través de OpenRouter
+          </p>
         </div>
 
-        <div className="space-y-8">
-          {/* API Keys List Section */}
-          <div className="space-y-4">
-            <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-              Mis Claves API
-            </Label>
-
-            {keys.length === 0 ? (
-              <Alert className="bg-amber-500/5 border-amber-500/20 rounded-2xl p-6">
-                <KeyRound className="h-5 w-5 text-amber-600" />
-                <div className="ml-3">
-                  <AlertTitle className="text-base font-bold text-amber-600">
-                    Sin claves configuradas
-                  </AlertTitle>
-                  <AlertDescription className="text-sm opacity-70 mt-1">
-                    Añade una clave API para comenzar a usar los servicios.
-                  </AlertDescription>
-                </div>
-              </Alert>
-            ) : (
-              <div className="space-y-3">
-                {keys.map((key) => {
-                  const isSelected = key.id === selectedKeyId;
-                  return (
-                    <div
-                      key={key.id}
-                      className={cn(
-                        "flex items-center justify-between p-4 rounded-xl border transition-colors",
-                        isSelected
-                          ? "bg-primary/5 border-primary/30 shadow-sm"
-                          : "bg-card border-border hover:border-border/80"
-                      )}
+        <div className="space-y-4">
+          {/* API Keys - Pill Select */}
+          <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Clave API activa</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Gestiona tus claves de acceso a OpenRouter
+              </p>
+            </div>
+            <div onClick={(e) => e.stopPropagation()}>
+              {keys.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(true)}
+                  className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
+                >
+                  Añadir clave
+                </button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center"
                     >
-                      <div className="flex items-center gap-4 overflow-hidden">
-                        <div className={cn(
-                          "flex items-center justify-center w-10 h-10 rounded-full shrink-0",
-                          isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                        )}>
-                          <KeyRound className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm truncate">
+                      {keys.find(k => k.id === selectedKeyId)?.alias || "Seleccionar"}
+                      <ChevronRight className="h-4 w-4 rotate-90 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[260px]">
+                    {keys.map((key) => {
+                      const isSelected = key.id === selectedKeyId;
+                      return (
+                        <DropdownMenuItem
+                          key={key.id}
+                          className={cn(
+                            "cursor-pointer flex items-center justify-between gap-4 py-2.5",
+                            isSelected && "bg-primary/10"
+                          )}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            handleSelectKey(key.id);
+                          }}
+                        >
+                          <div className="flex flex-col min-w-0">
+                            <span className={cn("font-semibold text-sm truncate", isSelected && "text-primary")}>
                               {key.alias || "Sin nombre"}
-                            </p>
+                            </span>
+                            <span className="text-xs font-mono text-muted-foreground truncate">
+                              {`${key.key.value.substring(0, 8)}...${key.key.value.substring(key.key.value.length - 4)}`}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-mono text-muted-foreground truncate">
-                              {visibleKeyIds.has(key.id)
-                                ? key.key.value
-                                : `${key.key.value.substring(0, 8)}...${key.key.value.substring(key.key.value.length - 4)}`}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVisibleKeyIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(key.id)) {
-                                    next.delete(key.id);
-                                  } else {
-                                    next.add(key.id);
-                                  }
-                                  return next;
-                                });
-                              }}
-                              className="shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                              title={visibleKeyIds.has(key.id) ? "Ocultar clave" : "Mostrar clave"}
-                            >
-                              {visibleKeyIds.has(key.id) ? (
-                                <EyeOff className="h-3.5 w-3.5" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!isSelected ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSelectKey(key.id)}
-                            disabled={isSaving}
-                            className="h-8 px-3 text-xs"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setKeyToDelete(key.id);
+                            }}
+                            className="shrink-0 p-1.5 rounded-md text-muted-foreground/40 hover:!text-red-600 hover:!bg-red-100 dark:hover:!bg-red-900/20 transition-colors cursor-pointer"
+                            title="Eliminar clave"
                           >
-                            Usar
-                          </Button>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
-                            Predeterminada
-                          </Badge>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive cursor-pointer"
-                              onClick={() => setKeyToDelete(key.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Eliminar</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Add New Key Section */}
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border space-y-4">
-
-            {!showAddForm ? (
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground hover:text-primary"
-                onClick={() => setShowAddForm(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" /> Añadir Nueva Clave
-              </Button>
-            ) : (
-              <>
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Añadir Nueva Clave
-                </h3>
-                <div className="grid gap-4 md:grid-cols-[1fr,2fr,auto]">
-                  <div className="space-y-2">
-                    <Label htmlFor="alias" className="text-xs">Alias (Opcional)</Label>
-                    <Input
-                      id="alias"
-                      placeholder="Ej: Clave Personal"
-                      value={newKeyAlias}
-                      onChange={(e) => setNewKeyAlias(e.target.value)}
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="apiKey" className="text-xs">API Key</Label>
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      placeholder="sk-or-v1-..."
-                      value={newKeyInput}
-                      onChange={(e) => setNewKeyInput(e.target.value)}
-                      className="h-10 bg-background"
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setShowAddForm(false)}
-                      className="h-10 px-4"
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    <DropdownMenuItem
+                      className="cursor-pointer text-primary font-bold py-2.5 border-t border-border mt-1"
+                      onSelect={() => setShowAddForm(true)}
                     >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleAddKey}
-                      disabled={isSaving || !newKeyInput}
-                      className="h-10 px-6 font-bold"
-                    >
-                      {isSaving ? "Guardando..." : "Añadir"}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Utility Models Section */}
-          <div className="pt-8 border-t border-border">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Títulos de Apps
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <AppTitleModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Genera el título de la aplicación a partir de tu prompt
-                    inicial.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Análisis de Tareas
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <TodoAnalysisModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Extrae tareas de archivos adjuntos (PDF, imágenes, etc.).
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Módulo de Debate
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <DebateModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Modelo principal para los hilos de debate.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Resúmenes de Debates
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <SummaryModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Modelo ligero para generar los puntos clave de un debate.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Base de Conocimientos
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <KnowledgeModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Modelo para analizar conversaciones y extraer reglas del
-                    proyecto automáticamente.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
-                  Dossier de la App
-                </Label>
-                <div className="p-5 rounded-2xl bg-muted/30 border border-border space-y-4">
-                  <DossierModelSelector />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-                    Modelo para generar el dossier técnico (tutorial + memoria).
-                  </p>
-                </div>
-              </div>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Añadir nueva...
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
 
-          {/* Custom Models Section */}
-          <div className="pt-6">
-            <ModelsSection providerId={providerId} />
+
+          {/* Add New Key Dialog */}
+          <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" /> Añadir Nueva Clave
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="alias" className="text-xs">Alias (Opcional)</Label>
+                  <Input
+                    id="alias"
+                    placeholder="Ej: Clave Personal"
+                    value={newKeyAlias}
+                    onChange={(e) => setNewKeyAlias(e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apiKey" className="text-xs">API Key</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder="sk-or-v1-..."
+                    value={newKeyInput}
+                    onChange={(e) => setNewKeyInput(e.target.value)}
+                    className="h-10 bg-background"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowAddForm(false)}
+                    className="h-10 px-4"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleAddKey}
+                    disabled={isSaving || !newKeyInput}
+                    className="h-10 px-6 font-bold"
+                  >
+                    {isSaving ? "Guardando..." : "Añadir"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+
+
+          {/* Custom Models Section - Collapsible */}
+          <div className="space-y-4">
+            <div
+              className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+              onClick={() => setModelsExpanded(e => !e)}
+            >
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Modelos</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Modelos habilitados en el selector del chat
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openAddModelsRef.current?.(); }}
+                  className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-2"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Añadir
+                </button>
+                <ChevronRight
+                  className={cn(
+                    "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+                    modelsExpanded && "rotate-90",
+                  )}
+                />
+              </div>
+            </div>
+            {modelsExpanded && (
+              <div className="pl-8">
+                <ModelsSection providerId={providerId} onAddRef={(fn) => { openAddModelsRef.current = fn; }} />
+              </div>
+            )}
+            {/* Hidden render when collapsed so ref is available */}
+            {!modelsExpanded && (
+              <div className="hidden">
+                <ModelsSection providerId={providerId} onAddRef={(fn) => { openAddModelsRef.current = fn; }} />
+              </div>
+            )}
           </div>
         </div>
       </div>

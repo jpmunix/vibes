@@ -9,7 +9,7 @@ import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
 
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 
-import { EmbeddingsSettings } from "@/components/settings/EmbeddingsSettings";
+
 import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { showSuccess, showError } from "@/lib/toast";
@@ -31,6 +31,7 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -43,7 +44,7 @@ import { Label } from "@/components/ui/label";
 import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
-import { ZoomSelector } from "@/components/ZoomSelector";
+
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
 import { activeSettingsSectionAtom } from "@/atoms/viewAtoms";
@@ -93,23 +94,16 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "apariencia",
       "color",
     ],
-    section: "Ajustes generales",
+    section: "Tema",
     sectionId: "general-settings",
   },
-  {
-    id: "zoom",
-    label: "Zoom",
-    description: "Ajustar el nivel de zoom de la aplicación",
-    keywords: ["zoom", "tamaño", "escala", "agrandar", "achicar"],
-    section: "Ajustes generales",
-    sectionId: "general-settings",
-  },
+
   {
     id: "primary-color",
     label: "Color primario",
     description: "Elige el color de acento principal para modo claro y oscuro",
     keywords: ["color", "primario", "acento", "tema", "personalizar", "primary"],
-    section: "Ajustes generales",
+    section: "Tema",
     sectionId: "general-settings",
   },
   // Workflow Settings
@@ -145,22 +139,22 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
-  // Embeddings Settings
+  // Embeddings Settings (now inside Agente)
   {
     id: "embeddings",
     label: "Búsqueda Semántica",
     description: "Mejorar la comprensión del código usando vectores semánticos",
     keywords: ["embeddings", "semantica", "busqueda", "vectores", "ia", "contexto"],
-    section: "Configuración Semántica",
-    sectionId: "embeddings-settings",
+    section: "Agente",
+    sectionId: "ai-behavior",
   },
   {
     id: "embeddings-model",
     label: "Modelo de Embeddings",
     description: "Configurar el modelo usado para la búsqueda semántica",
     keywords: ["modelo", "embeddings", "openrouter", "dimensiones", "coste"],
-    section: "Configuración Semántica",
-    sectionId: "embeddings-settings",
+    section: "Agente",
+    sectionId: "ai-behavior",
   },
   // AI Settings
   {
@@ -168,7 +162,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Modelos habilitados",
     description: "Gestiona qué modelos aparecen en el selector del chat",
     keywords: ["modelos", "models", "habilitados", "enabled", "activar", "desactivar", "openrouter", "añadir"],
-    section: "Modelos e IA",
+    section: "OpenRouter",
     sectionId: "models-connectivity",
   },
   {
@@ -176,7 +170,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Esfuerzo de razonamiento",
     description: "Controla cuánto razonamiento usa el modelo antes de responder",
     keywords: ["reasoning", "effort", "esfuerzo", "razonamiento", "thinking", "openrouter"],
-    section: "Configuración Asistente",
+    section: "Agente",
     sectionId: "ai-behavior",
   },
   {
@@ -184,15 +178,15 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Turnos máximos de chat",
     description: "Número máximo de intercambios en una conversación",
     keywords: ["turnos", "chat", "maximo", "conversacion", "limite"],
-    section: "Configuración Asistente",
+    section: "Agente",
     sectionId: "ai-behavior",
   },
   {
     id: "chat-language",
     label: "Idioma del chat",
-    description: "Seleccionar el idioma para las respuestas del asistente",
+    description: "Seleccionar el idioma para las respuestas del agente",
     keywords: ["idioma", "language", "lenguaje", "español", "ingles"],
-    section: "Configuración Asistente",
+    section: "Agente",
     sectionId: "ai-behavior",
   },
 
@@ -234,7 +228,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     label: "Configuración de OpenRouter",
     description: "Configurar clave API de OpenRouter y modelos",
     keywords: ["openrouter", "api", "key", "clave", "ia"],
-    section: "Modelos e IA",
+    section: "OpenRouter",
     sectionId: "models-connectivity",
   },
   // Integrations
@@ -302,22 +296,22 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Permisos del Agente",
     sectionId: "agent-permissions",
   },
-  // Danger Zone
+  // Reset
   {
     id: "reset-all",
-    label: "Resetear todo",
-    description: "Eliminar todas las aplicaciones, chats y configuraciones",
+    label: "Valores por defecto",
+    description: "Restaurar toda la configuración a valores por defecto",
     keywords: [
       "reset",
       "resetear",
       "eliminar",
       "borrar",
       "todo",
-      "danger",
-      "peligro",
+      "defecto",
+      "restaurar",
     ],
-    section: "Zona peligrosa",
-    sectionId: "danger-zone",
+    section: "Tema",
+    sectionId: "general-settings",
   },
   {
     id: "prompts",
@@ -331,7 +325,7 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
       "ia",
       "custom",
     ],
-    section: "Configuración Asistente",
+    section: "Agente",
     sectionId: "ai-behavior",
   },
 ];
@@ -343,7 +337,7 @@ function SettingItem({
   onClick,
 }: {
   label: string;
-  description: string;
+  description?: string;
   control: React.ReactNode;
   onClick?: () => void;
 }) {
@@ -351,7 +345,7 @@ function SettingItem({
     <div
       onClick={onClick}
       className={cn(
-        "flex items-start justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border",
+        "flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center",
         onClick ? "cursor-pointer" : "",
       )}
     >
@@ -359,11 +353,34 @@ function SettingItem({
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           {label}
         </h3>
-        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-          {description}
-        </p>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            {description}
+          </p>
+        )}
       </div>
       <div onClick={(e) => e.stopPropagation()}>{control}</div>
+    </div>
+  );
+}
+
+function TogglePill({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+  return (
+    <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+      {([false, true] as const).map((value) => (
+        <button
+          key={String(value)}
+          onClick={() => onCheckedChange(value)}
+          className={cn(
+            "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+            checked === value
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+          )}
+        >
+          {value ? "Activado" : "Desactivado"}
+        </button>
+      ))}
     </div>
   );
 }
@@ -377,6 +394,7 @@ export default function SettingsPage() {
     null,
   );
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
@@ -508,10 +526,10 @@ export default function SettingsPage() {
   return (
     <div
       id="settings-scroll-container"
-      className="flex flex-col h-full bg-muted/30 text-foreground overflow-y-auto"
+      className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto"
     >
       {/* Sticky header bar */}
-      <div className="sticky top-0 z-20 bg-muted/80 backdrop-blur-xl border-b border-border/50">
+      <div className="sticky top-0 z-20 bg-(--sidebar) border-b border-border">
         <div className="w-full mx-auto px-8 py-4">
           <div className="flex justify-between items-center gap-4">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
@@ -538,25 +556,40 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Export/Import Buttons */}
+            {/* Export/Import/Reset Buttons */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
                 onClick={handleExportSettings}
               >
-                <Download className="w-4 h-4" />
                 Exportar
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
                 onClick={handleImportSettings}
               >
-                <Upload className="w-4 h-4" />
                 Importar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                onClick={() => setReleaseNotesOpen(true)}
+              >
+                Novedades
+              </Button>
+              <Button
+                onClick={() => setIsResetDialogOpen(true)}
+                disabled={isResetting}
+                variant="outline"
+                size="sm"
+                className="cursor-pointer font-bold hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+              >
+                {isResetting ? "Reseteando..." : "Valores por defecto"}
               </Button>
             </div>
           </div>
@@ -612,7 +645,6 @@ export default function SettingsPage() {
           <GeneralSettings
             appVersion={appVersion}
             isHighlighted={highlightedSection === "general-settings"}
-            onShowReleaseNotes={() => setReleaseNotesOpen(true)}
           />
 
           <ReleaseNotesDialog
@@ -625,13 +657,8 @@ export default function SettingsPage() {
           />
 
 
-
-          <EmbeddingsSettings
-            isHighlighted={highlightedSection === "embeddings-settings"}
-          />
-
           <AIBehaviorSettings
-            isHighlighted={highlightedSection === "ai-behavior"}
+            isHighlighted={highlightedSection === "ai-behavior" || highlightedSection === "embeddings-settings"}
           />
 
 
@@ -665,72 +692,18 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Agent v2 Permissions */}
-          <div
-            id="agent-permissions"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "agent-permissions"
-              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
-          >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Seguridad y Permisos del Agente
-            </h2>
-            <p className="text-sm text-muted-foreground mb-8">
-              Controla los permisos de lectura y escritura para las herramientas
-              que usa el asistente.
-            </p>
-            <AgentToolsSettings />
-          </div>
 
           <StatsSettings
             isHighlighted={highlightedSection === "stats-settings"}
           />
-
-
-
-          {/* Danger Zone */}
-          <div
-            id="danger-zone"
-            className={`bg-card rounded-2xl shadow-sm p-8 border border-red-200 dark:border-red-900/50 transition-[border-color,box-shadow] duration-300 ${highlightedSection === "danger-zone"
-              ? "ring-2 ring-red-500 ring-offset-4 ring-offset-muted/30"
-              : ""
-              }`}
-          >
-            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-8">
-              Zona peligrosa
-            </h2>
-
-            <div className="space-y-6">
-              <div className="flex items-start justify-between flex-col sm:flex-row sm:items-center gap-6 p-6 rounded-2xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Revertir todo
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Esto eliminará todas tus aplicaciones, chats y
-                    configuraciones. Esta acción no se puede deshacer.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => setIsResetDialogOpen(true)}
-                  disabled={isResetting}
-                  variant="outline"
-                  className="rounded-xl h-11 px-8 text-sm font-bold border-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors active:scale-95 whitespace-nowrap"
-                >
-                  {isResetting ? "Reseteando..." : "Resetear todo"}
-                </Button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
       <ConfirmationDialog
         isOpen={isResetDialogOpen}
-        title="Resetear todo"
-        message="¿Estás seguro de que quieres resetear todo? Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer."
-        confirmText="Resetear todo"
+        title="Valores por defecto"
+        message="¿Estás seguro de que quieres restaurar los valores por defecto? Esto eliminará todas tus aplicaciones, chats y configuraciones. Esta acción no se puede deshacer."
+        confirmText="Restaurar valores por defecto"
         cancelText="Cancelar"
         onConfirm={handleResetEverything}
         onCancel={() => setIsResetDialogOpen(false)}
@@ -744,11 +717,9 @@ export default function SettingsPage() {
 export function GeneralSettings({
   appVersion,
   isHighlighted,
-  onShowReleaseNotes,
 }: {
   appVersion: string | null;
   isHighlighted?: boolean;
-  onShowReleaseNotes?: () => void;
 }) {
   const { theme, setTheme, intensity, setIntensity, applyPrimaryColors } = useTheme();
   const { settings, updateSettings } = useSettings();
@@ -781,130 +752,46 @@ export function GeneralSettings({
       )}
     >
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-        Ajustes generales
+        Tema
       </h2>
 
-      <div className="space-y-12">
-        <div className="space-y-4">
-          <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-            Tema
-          </Label>
-          <div className="relative bg-muted/50 rounded-2xl p-1 flex w-fit border border-border">
-            {(["system", "light", "dark"] as const).map((option) => (
-              <button
-                key={option}
-                onClick={() => setTheme(option)}
-                className={cn(
-                  "px-6 py-2.5 text-sm font-bold rounded-xl transition-colors duration-200",
-                  theme === option
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
-                )}
-              >
-                {option === "system"
-                  ? "Sistema"
-                  : option === "light"
-                    ? "Claro"
-                    : "Oscuro"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-6 pt-6 border-t border-border">
-          <SettingItem
-            label="Novedades"
-            description={`Estás en la versión v${appVersion}. Mira qué hay de nuevo en esta actualización.`}
-            control={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onShowReleaseNotes}
-                className="h-10 px-4 font-bold border-border hover:bg-muted rounded-xl"
-              >
-                Ver novedades
-              </Button>
-            }
-          />
-        </div>
-
-        <div className="space-y-6 pt-6 border-t border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-                Intensidad del tema
-              </Label>
-              <p className="text-base text-muted-foreground mt-1">
-                Ajusta la luminosidad de los colores base para cada tema
-              </p>
+      <div className="space-y-4">
+        <SettingItem
+          label="Modo"
+          description="Elige entre claro, oscuro o sincronizado con el sistema"
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              {(["system", "light", "dark"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setTheme(option)}
+                  className={cn(
+                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                    theme === option
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                  )}
+                >
+                  {option === "system"
+                    ? "Sistema"
+                    : option === "light"
+                      ? "Claro"
+                      : "Oscuro"}
+                </button>
+              ))}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setIntensity(0.58);
-                updateSettings({ themeIntensity: 0.58 });
-              }}
-              className="h-9 px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl border border-transparent hover:border-primary/20"
-            >
-              Restablecer
-            </Button>
-          </div>
-          <div className="flex items-center gap-6 p-6 rounded-2xl bg-muted/30 border border-border group">
-            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/40 w-14 text-center">
-              Claro
-            </span>
-            <div className="relative flex-1 flex items-center">
-              <input
-                type="range"
-                min="-1"
-                max="1"
-                step="0.01"
-                value={intensity}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setIntensity(val);
-                }}
-                onPointerUp={(e) => {
-                  const val = parseFloat((e.target as HTMLInputElement).value);
-                  updateSettings({ themeIntensity: val });
-                }}
-                onKeyUp={(e) => {
-                  if (e.key.startsWith("Arrow")) {
-                    const val = parseFloat(
-                      (e.target as HTMLInputElement).value,
-                    );
-                    updateSettings({ themeIntensity: val });
-                  }
-                }}
-                className="w-full h-2 bg-muted rounded-full appearance-none cursor-pointer accent-primary group-hover:accent-primary/80"
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 w-1 h-4 bg-foreground/10 pointer-events-none rounded-full"
-                style={{ opacity: intensity === 0 ? 0 : 1 }}
-              />
-            </div>
-            <span className="text-[10px] uppercase tracking-widest font-black text-muted-foreground/40 w-14 text-center">
-              Oscuro
-            </span>
-          </div>
-        </div>
+          }
+        />
 
         {/* Primary Color Picker */}
-        <div className="space-y-6 pt-6 border-t border-border">
-          <div className="flex-1">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Color primario
-            </Label>
-            <p className="text-base text-muted-foreground mt-1">
-              Elige el color de acento principal para cada modo de tema
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <div className="p-3 rounded-2xl bg-white dark:bg-white/5 border border-border">
+        <SettingItem
+          label="Color primario"
+          description="Elige el color de acento para cada modo de tema"
+          control={
+            <div className="flex w-fit">
               <PrimaryColorPicker
                 label="Claro"
+                pillPosition="first"
                 defaultColor={DEFAULT_LIGHT_COLOR}
                 selectedColor={settings?.primaryColorLight || DEFAULT_LIGHT_COLOR}
                 chroma={settings?.primaryChromaLight ?? 100}
@@ -917,11 +804,10 @@ export function GeneralSettings({
                   applyPrimaryColors(settings?.primaryColorLight, settings?.primaryColorDark, value, settings?.primaryChromaDark);
                 }}
               />
-            </div>
-            <div className="p-3 rounded-2xl bg-zinc-900 dark:bg-zinc-800/50 border border-zinc-700/50">
               <PrimaryColorPicker
                 label="Oscuro"
                 variant="dark"
+                pillPosition="last"
                 defaultColor={DEFAULT_DARK_COLOR}
                 selectedColor={settings?.primaryColorDark || DEFAULT_DARK_COLOR}
                 chroma={settings?.primaryChromaDark ?? 100}
@@ -935,12 +821,46 @@ export function GeneralSettings({
                 }}
               />
             </div>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="pt-8 border-t border-border">
-          <ZoomSelector />
-        </div>
+        <SettingItem
+          label="Intensidad"
+          description="Ajusta la luminosidad de los colores base"
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              <button
+                onClick={() => {
+                  setIntensity(0.58);
+                  updateSettings({ themeIntensity: 0.58 });
+                }}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                  intensity === 0.58
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                )}
+              >
+                Por defecto
+              </button>
+              <button
+                onClick={() => {
+                  setIntensity(0);
+                  updateSettings({ themeIntensity: 0 });
+                }}
+                className={cn(
+                  "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                  intensity === 0
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                )}
+              >
+                Más claro
+              </button>
+            </div>
+          }
+        />
+
       </div>
     </div>
   );
@@ -973,15 +893,12 @@ export function WorkflowSettings({
 
       <div className="space-y-12">
         <div className="space-y-4">
-          <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-            Modo de chat predeterminado
-          </Label>
-          <div className="p-5 rounded-2xl bg-muted/30 border border-border w-fit">
-            <DefaultChatModeSelector />
-          </div>
-        </div>
+          <SettingItem
+            label="Modo de chat predeterminado"
+            description="El modo de chat usado para crear nuevos chats"
+            control={<DefaultChatModeSelector />}
+          />
 
-        <div className="space-y-4 pt-8 border-t border-border">
           <SettingItem
             label="Git nativo"
             description="Usa una implementación de Git integrada para mayor velocidad y menos dependencias externas."
@@ -989,7 +906,7 @@ export function WorkflowSettings({
               updateSettings({ enableNativeGit: !settings?.enableNativeGit })
             }
             control={
-              <Switch
+              <TogglePill
                 checked={!!settings?.enableNativeGit}
                 onCheckedChange={(checked) =>
                   updateSettings({ enableNativeGit: checked })
@@ -1007,7 +924,7 @@ export function WorkflowSettings({
               })
             }
             control={
-              <Switch
+              <TogglePill
                 checked={!!settings?.autoApproveChanges}
                 onCheckedChange={(checked) =>
                   updateSettings({ autoApproveChanges: checked })
@@ -1019,42 +936,42 @@ export function WorkflowSettings({
           <SettingItem
             label="Expandir vista previa"
             description="Abre automáticamente el panel de vista previa lateral cuando el código cambia."
-            onClick={() =>
-              updateSettings({
-                autoExpandPreviewPanel: !settings?.autoExpandPreviewPanel,
-              })
-            }
-            control={
-              <Switch
-                checked={!!settings?.autoExpandPreviewPanel}
-                onCheckedChange={(checked) =>
-                  updateSettings({ autoExpandPreviewPanel: checked })
-                }
-              />
-            }
-          />
-
-          <SettingItem
-            label="Posición del preview"
-            description="Elige en qué lado se muestra el panel de vista previa."
             control={
               <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {(["left", "right"] as const).map((option) => (
-                  <button
-                    key={option}
-                    onClick={() =>
-                      updateSettings({ previewPosition: option })
-                    }
-                    className={cn(
-                      "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200",
-                      (settings?.previewPosition ?? "right") === option
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50",
-                    )}
-                  >
-                    {option === "left" ? "Izquierda" : "Derecha"}
-                  </button>
-                ))}
+                {(["off", "right", "left"] as const).map((option) => {
+                  const isActive =
+                    option === "off"
+                      ? !settings?.autoExpandPreviewPanel
+                      : !!settings?.autoExpandPreviewPanel &&
+                      (settings?.previewPosition ?? "right") === option;
+                  return (
+                    <button
+                      key={option}
+                      onClick={() => {
+                        if (option === "off") {
+                          updateSettings({ autoExpandPreviewPanel: false });
+                        } else {
+                          updateSettings({
+                            autoExpandPreviewPanel: true,
+                            previewPosition: option,
+                          });
+                        }
+                      }}
+                      className={cn(
+                        "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                      )}
+                    >
+                      {option === "off"
+                        ? "Desactivado"
+                        : option === "right"
+                          ? "Derecha"
+                          : "Izquierda"}
+                    </button>
+                  );
+                })}
               </div>
             }
           />
@@ -1069,7 +986,7 @@ export function WorkflowSettings({
               })
             }
             control={
-              <Switch
+              <TogglePill
                 checked={!!settings?.enableChatCompletionNotifications}
                 onCheckedChange={(checked) =>
                   updateSettings({ enableChatCompletionNotifications: checked })
@@ -1181,30 +1098,17 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           : "",
       )}
     >
-      {/* Header with master switch */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header with master switch on the right */}
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             Estadísticas y Logs
           </h2>
-          <p className="text-base text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Controla el registro de métricas, estadísticas y logs de la aplicación.
           </p>
         </div>
-      </div>
-
-      {/* Master Switch */}
-      <div className="p-6 rounded-2xl bg-muted/30 border border-border flex items-center justify-between gap-4">
-        <div>
-          <Label className="text-base font-bold text-gray-900 dark:text-white">
-            Activar todas las estadísticas y logs
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1">
-            Activa o desactiva todo el sistema de métricas, logs y estadísticas.
-            Desactivarlo mejora el rendimiento.
-          </p>
-        </div>
-        <Switch
+        <TogglePill
           checked={allStatsEnabled}
           onCheckedChange={handleToggleMaster}
         />
@@ -1224,7 +1128,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   Guarda el historial de consumo para las estadísticas.
                 </p>
               </div>
-              <Switch
+              <TogglePill
                 checked={settings?.enableTokenStats !== false}
                 onCheckedChange={(checked) =>
                   handleToggleSubSetting("enableTokenStats", checked)
@@ -1241,7 +1145,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   Información técnica detallada en el panel de chat.
                 </p>
               </div>
-              <Switch
+              <TogglePill
                 checked={!!settings?.enableVerboseChatLogs}
                 onCheckedChange={(checked) =>
                   handleToggleSubSetting("enableVerboseChatLogs", checked)
@@ -1255,7 +1159,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
+              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
               onClick={() => {
                 const header = [
                   "timestamp",
@@ -1294,12 +1198,11 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
               Exportar CSV
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="rounded-xl h-10 px-4 font-bold text-primary hover:text-primary hover:bg-primary/5 border border-primary/20"
+              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
               onClick={() => navigate({ to: "/settings/ai-query-logs" })}
             >
-              <Database className="mr-2 h-4 w-4" />
               Inspeccionar Logs de IA
             </Button>
             <Button
@@ -1307,7 +1210,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
               size="sm"
               onClick={load}
               disabled={loading}
-              className="rounded-xl h-10 px-4 font-bold border-border hover:bg-muted"
+              className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
             >
               {loading ? "Cargando..." : "Refrescar"}
             </Button>

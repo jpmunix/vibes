@@ -325,6 +325,9 @@ export const UserSettingsSchema = z
     summaryModel: z.string().optional(),
     knowledgeExtractionModel: z.string().optional(),
     dossierModel: z.string().optional(),
+    // Unified model keys (v2) — replace the 6 individual keys above
+    standardModeModel: z.string().optional(),
+    proModeModel: z.string().optional(),
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),

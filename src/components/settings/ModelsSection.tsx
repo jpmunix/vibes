@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AlertTriangle, PlusIcon, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -35,11 +35,17 @@ const formatTokens = (num: number | undefined) => {
 
 interface ModelsSectionProps {
   providerId: string;
+  onAddRef?: (openAdd: () => void) => void;
 }
 
-export function ModelsSection({ providerId }: ModelsSectionProps) {
+export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   const [isCustomModelDialogOpen, setIsCustomModelDialogOpen] = useState(false);
   const [isAddModelDialogOpen, setIsAddModelDialogOpen] = useState(false);
+
+  // Expose the add dialog opener to parent
+  useEffect(() => {
+    onAddRef?.(() => setIsAddModelDialogOpen(true));
+  }, [onAddRef]);
   const [isEditModelDialogOpen, setIsEditModelDialogOpen] = useState(false);
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] =
     useState(false);
@@ -114,12 +120,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
   };
 
   return (
-    <div className="mt-4">
-      <h2 className="text-xl font-semibold mb-2">Modelos</h2>
-      <p className="text-sm text-muted-foreground mb-4">
-        Modelos habilitados en el selector del chat. Haz click en una tarjeta
-        para ver más detalles.
-      </p>
+    <div>
 
       {modelsLoading && (
         <div className="space-y-3 mt-4">
@@ -139,7 +140,7 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           {enabledModels.map((model) => (
             <div
               key={model.apiName + model.displayName}
-              className="p-4 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:border-primary/30 transition-all flex flex-col h-[180px]"
+              className="p-3 bg-card border border-border rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:border-primary/30 transition-all flex flex-col"
               onClick={() => setInfoModel(model)}
             >
               <div className="flex justify-between items-start gap-2">
@@ -186,35 +187,20 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground italic truncate mt-1">
-                {model.apiName}
-              </p>
-              {model.description && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-1">
-                  {model.description}
-                </p>
-              )}
+
               <div className="flex items-center justify-between mt-auto pt-2">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex items-center gap-2">
                   {model.contextWindow && model.maxOutputTokens ? (
-                    <>
-                      <span className="inline-block bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                        Contexto: {formatTokens(model.contextWindow)}
-                      </span>
-                      <span className="inline-block bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                        Salida: {formatTokens(model.maxOutputTokens)}
-                      </span>
-                    </>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>Contexto: {formatTokens(model.contextWindow)}</span>
+                      <span>•</span>
+                      <span>Salida: {formatTokens(model.maxOutputTokens)}</span>
+                    </div>
                   ) : model.type === "custom" ? (
-                    <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    <span className="text-xs text-muted-foreground">
                       Personalizado
                     </span>
                   ) : null}
-                  {model.tag && (
-                    <span className="inline-block bg-primary/10 text-primary text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      {model.tag}
-                    </span>
-                  )}
                 </div>
                 {/* Disable switch */}
                 <Switch
@@ -229,41 +215,31 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
             </div>
           ))}
         </div>
-      )}
-      {!modelsLoading &&
+      )
+      }
+      {
+        !modelsLoading &&
         !modelsError &&
         enabledModels.length === 0 && (
           <p className="text-muted-foreground mt-4">
             No hay modelos habilitados. Usa "Añadir más modelos" para
             activar algunos.
           </p>
-        )}
+        )
+      }
 
-      {providerId !== "auto" && (
-        <div className="flex gap-3 mt-6">
-          <Button
-            onClick={() => setIsAddModelDialogOpen(true)}
-            variant="outline"
-          >
-            <PlusIcon className="mr-2 h-4 w-4" /> Añadir más modelos
-          </Button>
-          <Button
-            onClick={() => setIsCustomModelDialogOpen(true)}
-            variant="outline"
-          >
-            <PlusIcon className="mr-2 h-4 w-4" /> Modelo personalizado
-          </Button>
-        </div>
-      )}
+
 
       {/* Model Info Dialog */}
-      {infoModel && (
-        <ModelInfoDialog
-          open={!!infoModel}
-          onOpenChange={(open) => !open && setInfoModel(null)}
-          model={infoModel}
-        />
-      )}
+      {
+        infoModel && (
+          <ModelInfoDialog
+            open={!!infoModel}
+            onOpenChange={(open) => !open && setInfoModel(null)}
+            model={infoModel}
+          />
+        )
+      }
 
       {/* Add Model Dialog (search OpenRouter models) */}
       <AddModelDialog
@@ -324,6 +300,6 @@ export function ModelsSection({ providerId }: ModelsSectionProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </div >
   );
 }

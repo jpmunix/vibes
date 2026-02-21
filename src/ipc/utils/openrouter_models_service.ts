@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 4; // Bumped: curated model list reduced to 10
+const CACHE_VERSION = 5; // Bumped: full descriptions (no longer truncated)
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -96,7 +96,7 @@ export function clearOpenRouterModelsCache(): void {
 }
 
 // =============================================================================
-// Curated model IDs (shown first as "Recomendado")
+// Curated model IDs (shown first and always included)
 // =============================================================================
 
 const CURATED_MODEL_IDS = new Set([
@@ -133,11 +133,7 @@ function transformModel(model: OpenRouterModel): ModelOption {
     const isCurated = CURATED_MODEL_IDS.has(model.id);
     const supportsReasoning = model.supported_parameters?.includes("reasoning");
 
-    // Truncate description to 150 chars
-    let description = model.description || "";
-    if (description.length > 150) {
-        description = description.substring(0, 147) + "...";
-    }
+    const description = model.description || "";
 
     // Clean display name: remove provider prefix (e.g. "Anthropic: Claude Sonnet 4.5" → "Claude Sonnet 4.5")
     let displayName = model.name;
@@ -155,8 +151,8 @@ function transformModel(model: OpenRouterModel): ModelOption {
         temperature: 0,
         dollarSigns: priceToDollarSigns(model.pricing?.completion || "0"),
         brainSigns: undefined,
-        tag: isCurated ? "Recomendado" : supportsReasoning ? "Reasoning" : undefined,
-        tagColor: isCurated ? "blue" : supportsReasoning ? "purple" : undefined,
+        tag: supportsReasoning ? "Reasoning" : undefined,
+        tagColor: supportsReasoning ? "purple" : undefined,
         pricingInput: model.pricing?.prompt != null ? model.pricing.prompt : undefined,
         pricingOutput: model.pricing?.completion != null ? model.pricing.completion : undefined,
         inputModalities: model.architecture?.input_modalities || undefined,

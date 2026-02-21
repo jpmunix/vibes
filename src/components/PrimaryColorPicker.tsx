@@ -71,6 +71,8 @@ interface PrimaryColorPickerProps {
     /** Chroma factor 0–100 (default 100 = full saturation) */
     chroma?: number;
     onChromaChange?: (chroma: number) => void;
+    /** Position in a pill group: 'first' rounds left, 'last' rounds right, 'middle' no rounding */
+    pillPosition?: "first" | "last" | "middle";
 }
 
 export function PrimaryColorPicker({
@@ -81,11 +83,11 @@ export function PrimaryColorPicker({
     defaultColor,
     chroma = 100,
     onChromaChange,
+    pillPosition,
 }: PrimaryColorPickerProps) {
     const isDarkVariant = variant === "dark";
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const selectedEntry = getColorById(selectedColor) || COLOR_PALETTE[0];
 
@@ -100,63 +102,39 @@ export function PrimaryColorPicker({
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const handleMouseEnter = () => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setIsOpen(true);
-    };
-
-    const handleMouseLeave = () => {
-        timeoutRef.current = setTimeout(() => setIsOpen(false), 100);
-    };
-
     return (
         <div
             ref={containerRef}
             className="relative inline-block"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
         >
-            {/* Compact trigger — label + dot */}
+            {/* Compact pill trigger with color background */}
             <button
                 type="button"
                 onClick={() => setIsOpen(o => !o)}
                 className={cn(
-                    "flex flex-col items-center gap-2 px-5 py-3 rounded-xl transition-all duration-200 cursor-pointer select-none",
-                    "hover:bg-foreground/5",
-                    isOpen && "bg-foreground/5",
+                    "px-4 py-1.5 text-sm font-bold transition-all duration-200 cursor-pointer select-none",
+                    pillPosition === "first" && "rounded-l-lg",
+                    pillPosition === "last" && "rounded-r-lg",
+                    !pillPosition && "rounded-lg",
+                    isOpen
+                        ? "shadow-sm ring-1 ring-white/30"
+                        : "hover:brightness-110",
                 )}
+                style={{
+                    backgroundColor: selectedEntry.preview,
+                    color: "white",
+                    textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                }}
             >
-                {label && (
-                    <span className={cn(
-                        "text-xs font-bold uppercase tracking-widest",
-                        isDarkVariant ? "text-zinc-400" : "text-muted-foreground/60",
-                    )}>
-                        {label}
-                    </span>
-                )}
-                <div className="flex items-center gap-2.5">
-                    <div
-                        className="w-6 h-6 rounded-full ring-2 ring-offset-2 ring-offset-background shadow-md transition-transform duration-200"
-                        style={{
-                            backgroundColor: selectedEntry.preview,
-                            "--tw-ring-color": selectedEntry.preview,
-                        } as React.CSSProperties}
-                    />
-                    <span className={cn(
-                        "text-sm font-semibold",
-                        isDarkVariant ? "text-white" : "text-foreground",
-                    )}>
-                        {selectedEntry.name}
-                    </span>
-                </div>
+                {label || selectedEntry.name}
             </button>
 
             {/* Expandable palette popover */}
             <div
                 className={cn(
-                    "absolute z-50 left-0 top-full mt-2",
+                    "absolute z-50 right-0 top-full mt-2",
                     "bg-popover border border-border rounded-2xl shadow-2xl",
-                    "p-5 origin-top-left",
+                    "p-5 origin-top-right",
                     "transition-all duration-200 ease-out",
                     isOpen
                         ? "opacity-100 scale-100 pointer-events-auto translate-y-0"
