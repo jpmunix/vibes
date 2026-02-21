@@ -6,7 +6,7 @@ import {
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
-import { AutomationSettings } from "@/components/settings/AutomationSettings";
+
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 
 import { EmbeddingsSettings } from "@/components/settings/EmbeddingsSettings";
@@ -62,7 +62,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { AutoFixModelSelector } from "@/components/AutoFixModelSelector";
+
 import Fuse from "fuse.js";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
@@ -128,55 +128,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     keywords: ["aprobar", "automatico", "cambios", "codigo", "ejecutar"],
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
-  },
-  {
-    id: "background-autofix",
-    label: "Auto-fix de problemas en segundo plano",
-    description:
-      "Arreglar automáticamente problemas detectados mientras trabajas",
-    keywords: [
-      "autofix",
-      "auto",
-      "fix",
-      "arreglar",
-      "problemas",
-      "segundo plano",
-      "background",
-    ],
-    section: "Automatización",
-    sectionId: "automation-settings",
-  },
-  {
-    id: "autofix-model",
-    label: "Modelo para auto-fix",
-    description: "Seleccionar qué modelo usar para auto-fix en segundo plano",
-    keywords: ["modelo", "autofix", "ia", "ai"],
-    section: "Automatización",
-    sectionId: "automation-settings",
-  },
-  {
-    id: "autofix-duration",
-    label: "Tiempo máximo auto-fix",
-    description: "Tiempo máximo en milisegundos para auto-fix",
-    keywords: ["tiempo", "duracion", "limite", "ms", "milisegundos", "autofix"],
-    section: "Automatización",
-    sectionId: "automation-settings",
-  },
-  {
-    id: "autofix-attempts",
-    label: "Intentos máximos auto-fix",
-    description: "Número máximo de intentos para auto-fix",
-    keywords: ["intentos", "reintentos", "attempts", "autofix"],
-    section: "Automatización",
-    sectionId: "automation-settings",
-  },
-  {
-    id: "autofix-issues",
-    label: "Número máximo de issues para auto-fix",
-    description: "Cantidad máxima de problemas a arreglar automáticamente",
-    keywords: ["issues", "problemas", "cantidad", "maximo", "autofix"],
-    section: "Automatización",
-    sectionId: "automation-settings",
   },
   {
     id: "auto-expand-preview",
@@ -245,21 +196,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
 
-  {
-    id: "smart-context",
-    label: "Smart Context local",
-    description: "Ranking local de archivos sin backend",
-    keywords: [
-      "smart",
-      "context",
-      "local",
-      "ranking",
-      "archivos",
-      "relevantes",
-    ],
-    section: "Configuración Asistente",
-    sectionId: "ai-behavior",
-  },
   {
     id: "token-stats",
     label: "Guardar métricas de tokens",
@@ -698,9 +634,7 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "ai-behavior"}
           />
 
-          <AutomationSettings
-            isHighlighted={highlightedSection === "automation-settings"}
-          />
+
 
           <WorkflowSettings
             isHighlighted={highlightedSection === "workflow-settings"}

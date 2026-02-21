@@ -58,15 +58,8 @@ function updateMapAtom<K, V>(
 
 export function useStreamChat({
   hasChatId = true,
-  autoRepair,
 }: {
   hasChatId?: boolean;
-  autoRepair?: {
-    activateMonitoring: (chatId: number) => void;
-    onRepairStreamEnd: (updatedFiles: boolean) => void;
-    resetAutoRepair: () => void;
-    isRepairing: boolean;
-  };
 } = {}) {
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
@@ -147,10 +140,7 @@ export function useStreamChat({
         return;
       }
 
-      // Reset auto-repair state when user sends a new (non-system) message
-      if (!isSystemPrompt && autoRepair) {
-        autoRepair.resetAutoRepair();
-      }
+
 
       // Prevent duplicate streams - check module-level set to avoid race conditions
       if (pendingStreamChatIds.has(chatId)) {
@@ -345,18 +335,7 @@ export function useStreamChat({
                     setIsPreviewOpen(true);
                   }
                   refreshAppIframe();
-                  if (settings?.enableAutoFixProblems) {
-                    checkProblems();
-                  }
-
-                  // Auto-repair integration
-                  if (autoRepair?.isRepairing) {
-                    autoRepair.onRepairStreamEnd(true);
-                  } else {
-                    autoRepair?.activateMonitoring(chatId);
-                  }
-                } else if (autoRepair?.isRepairing) {
-                  autoRepair.onRepairStreamEnd(false);
+                  checkProblems();
                 }
                 if (response.extraFiles) {
                   showExtraFilesToast({
@@ -416,10 +395,6 @@ export function useStreamChat({
                 queryKey: queryKeys.freeAgentQuota.status,
               });
 
-              // Clean up auto-repair state if needed
-              if (autoRepair?.isRepairing) {
-                autoRepair.onRepairStreamEnd(false);
-              }
 
               // Keep the same as above
               updateMapAtom(setIsStreamingById, chatId, false);

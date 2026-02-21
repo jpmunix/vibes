@@ -4,7 +4,7 @@ import React from "react";
 import { CustomErrorToast } from "../components/CustomErrorToast";
 import { InputRequestToast } from "../components/InputRequestToast";
 import { McpConsentToast } from "../components/McpConsentToast";
-import { AutoRepairToast } from "../components/AutoRepairToast";
+
 
 /**
  * Toast utility functions for consistent notifications across the app
@@ -164,48 +164,7 @@ export const showExtraFilesToast = ({
   }
 };
 
-// Stable toast ID for auto-repair notifications
-const AUTO_REPAIR_TOAST_ID = "auto-repair-toast";
 
-/**
- * Show/update the auto-repair toast notification.
- * Uses a stable ID so calling it multiple times updates the same toast.
- */
-export const showAutoRepairToast = ({
-  status,
-  attempt,
-  maxAttempts,
-  errorMessage,
-}: {
-  status: "repairing" | "success" | "failed";
-  attempt?: number;
-  maxAttempts?: number;
-  errorMessage?: string;
-}) => {
-  // Use static import instead of require to avoid "Synchronous require" error
-
-  const duration =
-    status === "repairing" ? Infinity : status === "success" ? 10_000 : Infinity;
-
-  toast.custom(
-    (t) =>
-      React.createElement(AutoRepairToast, {
-        status,
-        attempt,
-        maxAttempts,
-        errorMessage,
-        onDismiss: () => toast.dismiss(t),
-      }),
-    { id: AUTO_REPAIR_TOAST_ID, duration },
-  );
-};
-
-/**
- * Dismiss the auto-repair toast if it's showing.
- */
-export const dismissAutoRepairToast = () => {
-  toast.dismiss(AUTO_REPAIR_TOAST_ID);
-};
 
 // Re-export for direct use
 export { toast };

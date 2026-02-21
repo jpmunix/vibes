@@ -77,9 +77,6 @@ import { cleanFullResponse } from "../utils/cleanFullResponse";
 import { generateProblemReport } from "../processors/tsc";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { AsyncVirtualFileSystem } from "../../../shared/VirtualFilesystem";
-import { analyzeContextInWorker } from "../processors/context_worker_client";
-import { semanticRerank } from "../utils/semantic_ranker";
-import { buildCodebaseXml } from "../utils/local_ranker";
 import { escapeXmlAttr, escapeXmlContent } from "../../../shared/xmlEscape";
 import {
   getDyadAddDependencyTags,
@@ -98,7 +95,6 @@ import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
 import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
-import { buildCodebaseXml } from "../utils/local_ranker";
 
 import {
   isDyadProEnabled,
@@ -789,108 +785,21 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        // Local smart context: if remote engine is disabled, trim files by prompt relevance
-        const useLocalContext =
-          (!isEngineEnabled || disableRemoteEngine) &&
-          settings.enableProSmartFilesContextMode &&
-          settings.enableLocalSmartContext !== false;
-
-        logger.log(
-          `[BUILD MODE] useLocalContext: ${useLocalContext}, isEngineEnabled: ${isEngineEnabled}, disableRemoteEngine: ${disableRemoteEngine}`,
-        );
 
         if (!isSummarizeIntent) {
-          // Use worker thread for context analysis to prevent UI freezing
-          // This is especially important for large codebases and semantic search
-          if (useLocalContext) {
-            const maxFiles = settings.maxContextFiles ?? 20;
-
-            logger.log(
-              `[BUILD MODE] Using context worker for analysis (maxFiles: ${maxFiles})`,
-            );
-
-            try {
-              // Run context analysis in worker thread (non-blocking)
-              const result = await analyzeContextInWorker({
-                appPath,
-                chatContext,
-                prompt: req.prompt,
-                useSemanticSearch: Boolean(settings.embeddingsEnabled),
-                maxFiles,
-              });
-
-              codebaseInfo = result.codebaseInfo;
-              files = result.files;
-
-              logger.log(
-                `[BUILD MODE] Context worker completed: ${files.length} files selected`,
-              );
-
-              // Step 2b: Apply semantic re-ranking if enabled
-              if (settings.embeddingsEnabled && files.length > 0) {
-                logger.log(
-                  `[BUILD MODE] Applying semantic re-ranking on ${files.length} files...`,
-                );
-                try {
-                  const rankedFilesWithScores = files.map((f: any) => ({
-                    ...f,
-                    score: f.score ?? 1,
-                  }));
-
-                  const semanticFiles = await semanticRerank(
-                    req.prompt,
-                    rankedFilesWithScores,
-                    updatedChat?.app?.id ?? chat.app.id,
-                    maxFiles,
-                  );
-
-                  files = semanticFiles;
-                  codebaseInfo = buildCodebaseXml(semanticFiles);
-
-                  logger.log(
-                    `[BUILD MODE] Semantic re-ranking: ${semanticFiles.length} files (top hybrid score: ${semanticFiles[0]?.hybridScore?.toFixed(3) ?? "N/A"})`,
-                  );
-                } catch (semanticError) {
-                  logger.error(
-                    "[BUILD MODE] Semantic re-ranking failed, keeping keyword ranking:",
-                    semanticError,
-                  );
-                }
-              }
-            } catch (error) {
-              // Fallback to synchronous extraction if worker fails
-              logger.error(
-                `[BUILD MODE] Context worker failed, falling back to sync extraction:`,
-                error,
-              );
-
-              const extracted = await extractCodebase({
-                appPath,
-                chatContext,
-              });
-              codebaseInfo = extracted.formattedOutput;
-              files = extracted.files;
-
-              logger.log(
-                `[BUILD MODE] Fallback extraction: ${files.length} files`,
-              );
-            }
-          } else {
-            // Simple case: no local context ranking needed, use direct extraction
-            logger.log(
-              `[BUILD MODE] Extracting codebase from ${appPath} with chatContext (no ranking):`,
-              chatContext,
-            );
-            const extracted = await extractCodebase({
-              appPath,
-              chatContext,
-            });
-            codebaseInfo = extracted.formattedOutput;
-            files = extracted.files;
-            logger.log(
-              `[BUILD MODE] Extracted ${files.length} files from codebase`,
-            );
-          }
+          logger.log(
+            `[BUILD MODE] Extracting codebase from ${appPath} with chatContext:`,
+            chatContext,
+          );
+          const extracted = await extractCodebase({
+            appPath,
+            chatContext,
+          });
+          codebaseInfo = extracted.formattedOutput;
+          files = extracted.files;
+          logger.log(
+            `[BUILD MODE] Extracted ${files.length} files from codebase`,
+          );
         } else {
           logger.log(
             `[BUILD MODE] Skipping codebase extraction for summarize intent`,
@@ -1826,139 +1735,7 @@ This conversation includes one or more image attachments. When the user uploads 
             }
           }
           const addDependencies = getDyadAddDependencyTags(fullResponse);
-          if (
-            !abortController.signal.aborted &&
-            // If there are dependencies, we don't want to auto-fix problems
-            // because there's going to be type errors since the packages aren't
-            // installed yet.
-            addDependencies.length === 0 &&
-            settings.enableAutoFixProblems &&
-            settings.enableBackgroundProblemAutoFix &&
-            settings.selectedChatMode !== "ask"
-          ) {
-            try {
-              // IF auto-fix is enabled
-              let problemReport = await generateProblemReport({
-                fullResponse,
-                appPath: getDyadAppPath(updatedChat.app.path),
-              });
 
-              let autoFixAttempts = 0;
-              const originalFullResponse = fullResponse;
-              const previousAttempts: ModelMessage[] = [];
-              const maxAttempts = settings.autoFixMaxAttempts ?? 1;
-              const maxDurationMs = settings.autoFixMaxDurationMs ?? 20_000;
-              const autoFixStartTime = Date.now();
-              const problemFixModelSettings =
-                settings.autoFixModel ?? settings.selectedModel;
-              const { modelClient: problemFixModelClient } =
-                await getModelClient(problemFixModelSettings, settings);
-              while (
-                problemReport.problems.length > 0 &&
-                autoFixAttempts < maxAttempts &&
-                !abortController.signal.aborted
-              ) {
-                if (Date.now() - autoFixStartTime >= maxDurationMs) {
-                  logger.warn(
-                    `Auto-fix problems timeout after ${maxDurationMs / 1000}s`,
-                  );
-                  break;
-                }
-                fullResponse += `<dyad-problem-report summary="${problemReport.problems.length} problems">
-${problemReport.problems
-                    .map(
-                      (problem) =>
-                        `<problem file="${escapeXmlAttr(problem.file)}" line="${problem.line}" column="${problem.column}" code="${problem.code}">${escapeXmlContent(problem.message)}</problem>`,
-                    )
-                    .join("\n")}
-</dyad-problem-report>`;
-
-                logger.info(
-                  `Attempting to auto-fix problems, attempt #${autoFixAttempts + 1}/${maxAttempts}`,
-                );
-                autoFixAttempts++;
-                const problemFixPrompt = createProblemFixPrompt(problemReport);
-
-                const virtualFileSystem = new AsyncVirtualFileSystem(
-                  getDyadAppPath(updatedChat.app.path),
-                  {
-                    fileExists: (fileName: string) => fileExists(fileName),
-                    readFile: (fileName: string) => readFileWithCache(fileName),
-                  },
-                );
-                const writeTags = getDyadWriteTags(fullResponse);
-                const renameTags = getDyadRenameTags(fullResponse);
-                const deletePaths = getDyadDeleteTags(fullResponse);
-                virtualFileSystem.applyResponseChanges({
-                  deletePaths,
-                  renameTags,
-                  writeTags,
-                });
-
-                const { formattedOutput: codebaseInfo, files } =
-                  await extractCodebase({
-                    appPath,
-                    chatContext,
-                    virtualFileSystem,
-                  });
-
-                const { fullStream } = await simpleStreamText({
-                  modelClient: problemFixModelClient,
-                  files: files,
-                  toolChoice: "required",
-                  chatMessages: [
-                    ...chatMessages.map((msg, index) => {
-                      if (
-                        index === 0 &&
-                        msg.role === "user" &&
-                        typeof msg.content === "string" &&
-                        msg.content.startsWith(CODEBASE_PROMPT_PREFIX)
-                      ) {
-                        return {
-                          role: "user",
-                          content: createCodebasePrompt(codebaseInfo),
-                        } as const;
-                      }
-                      return msg;
-                    }),
-                    {
-                      role: "assistant",
-                      content: removeNonEssentialTags(originalFullResponse),
-                    },
-                    ...previousAttempts,
-                    { role: "user", content: problemFixPrompt },
-                  ],
-                });
-                previousAttempts.push({
-                  role: "user",
-                  content: problemFixPrompt,
-                });
-                const result = await processStreamChunks({
-                  fullStream,
-                  fullResponse,
-                  abortController,
-                  chatId: req.chatId,
-                  processResponseChunkUpdate,
-                });
-                fullResponse = result.fullResponse;
-                previousAttempts.push({
-                  role: "assistant",
-                  content: removeNonEssentialTags(result.incrementalResponse),
-                });
-
-                problemReport = await generateProblemReport({
-                  fullResponse,
-                  appPath: getDyadAppPath(updatedChat.app.path),
-                });
-              }
-            } catch (error) {
-              logger.error(
-                "Error generating problem report or auto-fixing:",
-                settings.enableAutoFixProblems,
-                error,
-              );
-            }
-          }
         } catch (streamError) {
           // Check if this was an abort error
           if (abortController.signal.aborted) {

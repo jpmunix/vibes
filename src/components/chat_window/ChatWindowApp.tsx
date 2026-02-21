@@ -38,7 +38,7 @@ import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
-import { useSilentAppStart } from "@/hooks/useSilentAppStart";
+
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { showError } from "@/lib/toast";
@@ -208,7 +208,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     }, [chatId, chats, loading]);
 
     useAppOutputSubscription();
-    useSilentAppStart({ enabled: serverReady });
+
 
     // Set document.title so the native title bar shows app name
     useEffect(() => {

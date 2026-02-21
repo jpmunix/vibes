@@ -31,7 +31,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { useAutoRepair } from "@/hooks/useAutoRepair";
+
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
@@ -91,21 +91,8 @@ export function ChatInput({
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { refreshVersions } = useVersions(appId);
-  const autoRepairHook = useAutoRepair();
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
-    useStreamChat({
-      autoRepair: {
-        activateMonitoring: autoRepairHook.activateMonitoring,
-        onRepairStreamEnd: autoRepairHook.onRepairStreamEnd,
-        resetAutoRepair: autoRepairHook.resetAutoRepair,
-        isRepairing: autoRepairHook.isRepairing,
-      },
-    });
-
-  // Register streamMessage with auto-repair so it can trigger fixes
-  useEffect(() => {
-    autoRepairHook.setStreamMessage(streamMessage);
-  }, [streamMessage, autoRepairHook.setStreamMessage]);
+    useStreamChat();
 
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
@@ -334,9 +321,7 @@ export function ChatInput({
         setIsPreviewOpen(true);
       }
       refreshVersions();
-      if (settings?.enableAutoFixProblems) {
-        checkProblems();
-      }
+      checkProblems();
 
       // Keep same as handleReject
       refreshProposal();

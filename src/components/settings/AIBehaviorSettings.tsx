@@ -1,7 +1,6 @@
 import React from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { ReasoningEffortSelector } from "@/components/ReasoningEffortSelector";
 import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
 import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
@@ -15,15 +14,9 @@ export function AIBehaviorSettings({
 }: {
   isHighlighted?: boolean;
 }) {
-  const { settings, updateSettings } = useSettings();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
-  const handleToggle = async (
-    field: "enableLocalSmartContext",
-    value: boolean,
-  ) => {
-    await updateSettings({ [field]: value } as any, { showToast: true });
-  };
 
   return (
     <div
@@ -81,25 +74,6 @@ export function AIBehaviorSettings({
           </div>
         </div>
 
-        {/* Features Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8 border-t border-border">
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Smart Context local
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Ranking de archivos relevantes sin servidores externos.
-              </p>
-            </div>
-            <Switch
-              checked={settings?.enableLocalSmartContext !== false}
-              onCheckedChange={(checked) =>
-                handleToggle("enableLocalSmartContext", checked)
-              }
-            />
-          </div>
-        </div>
 
 
         {/* Prompts Navigation */}

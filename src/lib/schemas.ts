@@ -347,13 +347,6 @@ export const UserSettingsSchema = z
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),
     enableProSmartFilesContextMode: z.boolean().optional(),
-    // Local smart context ranking (no remote engine)
-    enableLocalSmartContext: z.boolean().optional(),
-    // Allow using MCP server for smart context/file ranking
-    enableMcpSmartContext: z.boolean().optional(),
-
-    // Maximum files to include in context (reduces tokens)
-    maxContextFiles: z.number().optional(),
     // Persist token stats for charts/logging
     enableTokenStats: z.boolean().optional(),
     // Enable verbose internal chat logs (debugging/diagnostics)
@@ -376,19 +369,12 @@ export const UserSettingsSchema = z
     zoomLevel: ZoomLevelSchema.optional(),
     previewDeviceMode: DeviceModeSchema.optional(),
 
-    enableAutoFixProblems: z.boolean().optional(),
-    enableBackgroundProblemAutoFix: z.boolean().optional(),
-    enableAutoRepairRuntimeErrors: z.boolean().optional(),
     autoExpandPreviewPanel: z.boolean().optional(),
     previewPosition: z.enum(["left", "right"]).optional(),
     showTokenBar: z.boolean().optional(),
     enableNativeGit: z.boolean().optional(),
     enableAutoUpdate: z.boolean().optional(),
     releaseChannel: ReleaseChannelSchema.optional(),
-    autoFixModel: LargeLanguageModelSchema.optional(),
-    autoFixMaxDurationMs: z.number().optional(),
-    autoFixMaxAttempts: z.number().optional(),
-    autoFixMaxIssues: z.number().optional(),
     runtimeMode2: RuntimeMode2Schema.optional(),
     customNodePath: z.string().optional().nullable(),
     isRunning: z.boolean().optional(),

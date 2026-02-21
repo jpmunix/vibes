@@ -26,6 +26,7 @@
 - **Simplified chat mode handling by deprecating "build" mode in favor of "Agente"**
 
 - **Remove code and components related to Dyad Web Search, Serper API key, and Turbo Edits v2. Hidden Firebase integration references that are not ready for deployment. Updated UI and settings to reflect these removals.**
+- **chore: remove AutoFix and AutoRepair features**
 
 ----------------------------
 
