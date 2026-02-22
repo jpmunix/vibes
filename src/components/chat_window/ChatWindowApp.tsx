@@ -5,6 +5,7 @@ import {
     PanelResizeHandle,
     type ImperativePanelHandle,
 } from "react-resizable-panels";
+import { GripVertical } from "lucide-react";
 import {
     QueryCache,
     QueryClient,
@@ -432,11 +433,15 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                     <PanelResizeHandle
                         onDragging={(e) => setIsResizing(e)}
                         className={cn(
-                            "w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize",
+                            "relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize",
                             isPreviewExpanded && "invisible",
                         )}
                         disabled={isPreviewExpanded}
-                    />
+                    >
+                        <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border dark:bg-zinc-800">
+                            <GripVertical className="h-2.5 w-2.5 text-zinc-500" />
+                        </div>
+                    </PanelResizeHandle>
                     {chatPosition === "left" ? previewPanelNode : chatPanelNode}
                 </PanelGroup>
             </div>

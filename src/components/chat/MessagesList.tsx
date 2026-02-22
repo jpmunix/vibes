@@ -38,6 +38,7 @@ interface MessagesListProps {
   onScrollerRef?: (ref: HTMLElement | Window | null) => void | (() => void);
   distanceFromBottomRef?: React.MutableRefObject<number>;
   isUserScrolling?: boolean;
+  onAtBottomStateChange?: (atBottom: boolean) => void;
 }
 
 // Memoize ChatMessage at module level to prevent recreation on every render
@@ -156,6 +157,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       onScrollerRef,
       distanceFromBottomRef,
       isUserScrolling,
+      onAtBottomStateChange,
     },
     ref,
   ) {
@@ -408,6 +410,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           components={{ Footer: FooterComponent }}
           context={footerContext}
           scrollerRef={onScrollerRef}
+          atBottomStateChange={onAtBottomStateChange}
+          atBottomThreshold={150}
           followOutput={(isAtBottom) => {
             // During streaming, auto-scroll aggressively
             if (isStreaming) {

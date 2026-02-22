@@ -107,6 +107,12 @@ export function ChatPanel({
   // RAF-based throttle for scroll events
   const scrollRafRef = useRef<number | null>(null);
 
+  // Keep track of test mode to conditionally use manual scroll math
+  const isTestModeRef = useRef(settings?.isTestMode);
+  useEffect(() => {
+    isTestModeRef.current = settings?.isTestMode;
+  }, [settings?.isTestMode]);
+
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     isProgrammaticScrollRef.current = true;
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -140,9 +146,15 @@ export function ChatPanel({
         container.scrollHeight - (container.scrollTop + container.clientHeight);
       distanceFromBottomRef.current = distanceFromBottom;
 
+      if (!isTestModeRef.current) return;
+
       const scrollAwayThreshold = 150;
 
-      if (distanceFromBottom > scrollAwayThreshold) {
+      // Prevent showing the button if there isn't actually enough content to scroll.
+      // E.g. when app regains focus or resizes and scrollHeight is very close to clientHeight
+      const isScrollable = container.scrollHeight - container.clientHeight > 10;
+
+      if (isScrollable && distanceFromBottom > scrollAwayThreshold) {
         setIsUserScrolling(true);
         setShowScrollButton(true);
 
@@ -348,6 +360,11 @@ export function ChatPanel({
                     onScrollerRef={handleScrollerRef}
                     distanceFromBottomRef={distanceFromBottomRef}
                     isUserScrolling={isUserScrolling}
+                    onAtBottomStateChange={(atBottom) => {
+                      if (!settings?.isTestMode) {
+                        setShowScrollButton(!atBottom);
+                      }
+                    }}
                   />
                 </div>
                 {/* Skeleton overlay — covers MessagesList while it renders */}

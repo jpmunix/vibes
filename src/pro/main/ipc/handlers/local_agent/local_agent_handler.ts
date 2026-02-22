@@ -554,7 +554,8 @@ export async function handleLocalAgentStream(
 
               // Track file edit per path to show retry count in UI
               if (FILE_EDIT_TOOL_NAMES.includes(entry.toolName as any)) {
-                const path = argsPartial.path || argsPartial.file_path;
+                const rawPath = argsPartial.path || argsPartial.file_path;
+                const path = typeof rawPath === "string" ? rawPath : undefined;
                 if (path && entry.pathTracked !== path) {
                   entry.pathTracked = path;
                   if (!ctx.fileEditTracker[path]) {
@@ -663,26 +664,28 @@ export async function handleLocalAgentStream(
 
     // Emit typecheck summary badge if any file edits were type-checked
     if (ctx.typecheckResults.length > 0) {
-      // Group consecutive entries by file+status
-      const groups: { file: string; status: "ok" | "error"; count: number; errors: string[] }[] = [];
+      // Track only the final status for each file, but count how many times it was checked
+      const fileToLastResult = new Map<string, { status: "ok" | "error"; errors: string[]; editCount: number }>();
+
       for (const entry of ctx.typecheckResults) {
-        const last = groups[groups.length - 1];
-        if (last && last.file === entry.file && last.status === entry.status) {
-          last.count++;
-          last.errors.push(...entry.errors);
+        if (!fileToLastResult.has(entry.file)) {
+          fileToLastResult.set(entry.file, { status: entry.status, errors: [...entry.errors], editCount: 1 });
         } else {
-          groups.push({ file: entry.file, status: entry.status, count: 1, errors: [...entry.errors] });
+          const current = fileToLastResult.get(entry.file)!;
+          current.status = entry.status;
+          current.errors = [...entry.errors];
+          current.editCount++;
         }
       }
 
-      const hasErrors = groups.some(g => g.status === "error");
-      const lines = groups.map(g => {
-        const countStr = g.count > 1 ? ` (${g.count} edits)` : "";
+      const hasErrors = Array.from(fileToLastResult.values()).some(g => g.status === "error");
+      const lines = Array.from(fileToLastResult.entries()).map(([file, g]) => {
+        const countStr = g.editCount > 1 ? ` (${g.editCount} pasadas)` : "";
         if (g.status === "ok") {
-          return `OK:${g.file}${countStr}`;
+          return `OK:${file}${countStr}`;
         }
         const errDetail = g.errors.join("\n").trim();
-        return `ERR:${g.file}${countStr}\n${errDetail}`;
+        return `ERR:${file}${countStr}\n${errDetail}`;
       });
 
       const summaryXml = `<dyad-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</dyad-typecheck-summary>`;

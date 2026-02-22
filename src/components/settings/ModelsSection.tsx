@@ -190,11 +190,11 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
 
               <div className="flex items-center justify-between mt-auto pt-2">
                 <div className="flex items-center gap-2">
-                  {model.contextWindow && model.maxOutputTokens ? (
+                  {model.contextWindow || model.maxOutputTokens ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Contexto: {formatTokens(model.contextWindow)}</span>
-                      <span>•</span>
-                      <span>Salida: {formatTokens(model.maxOutputTokens)}</span>
+                      {model.contextWindow ? <span>Contexto: {formatTokens(model.contextWindow)}</span> : null}
+                      {model.contextWindow && model.maxOutputTokens ? <span>•</span> : null}
+                      {model.maxOutputTokens ? <span>Salida: {formatTokens(model.maxOutputTokens)}</span> : null}
                     </div>
                   ) : model.type === "custom" ? (
                     <span className="text-xs text-muted-foreground">

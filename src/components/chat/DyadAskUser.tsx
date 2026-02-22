@@ -21,6 +21,7 @@ interface DyadAskUserProps {
             question?: string;
             options?: string; // pipe-separated options
             context?: string;
+            requestId?: string;
         };
     };
 }

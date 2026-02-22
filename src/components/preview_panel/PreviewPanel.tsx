@@ -18,7 +18,7 @@ const PreviewIframe = React.lazy(() =>
   import("./PreviewIframe").then((m) => ({ default: m.PreviewIframe }))
 );
 import { Problems } from "./Problems";
-import { ChevronDown, ChevronUp, Logs } from "lucide-react";
+import { ChevronDown, ChevronUp, Logs, GripHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Console } from "./Console";
@@ -288,7 +288,11 @@ export function PreviewPanel() {
           </Panel>
           {!isPreviewExpanded && isConsoleOpen && (
             <>
-              <PanelResizeHandle className="h-1 bg-border hover:bg-gray-400 transition-colors cursor-row-resize" />
+              <PanelResizeHandle className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-row-resize">
+                <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
+                  <GripHorizontal className="h-2.5 w-2.5" />
+                </div>
+              </PanelResizeHandle>
               <Panel id="console" minSize={10} defaultSize={30}>
                 <div className="flex flex-col h-full">
                   <ConsoleHeader

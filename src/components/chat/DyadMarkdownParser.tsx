@@ -1527,6 +1527,9 @@ function renderModalContent(
             <span>Total: <strong className="text-foreground">{total.toLocaleString()} tokens</strong></span>
             {hasPricing && <span>Coste: <strong className="text-yellow-400">{fmtCost(costTotal)}</strong></span>}
           </div>
+          <div className="text-sm text-foreground/80 font-medium text-center mt-3 bg-muted/50 p-2 rounded-md">
+            ⚠️ Los tokens y el coste mostrados son estimaciones basadas en la manera de informar de OpenRouter y pueden no ser exactos.
+          </div>
         </div>
       );
     }

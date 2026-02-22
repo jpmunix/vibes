@@ -162,37 +162,57 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   }, [copyMessageContent, message.content]);
   // Extract the real current action from the streaming content
   const streamingInfo = useMemo(() => {
-    const defaultInfo = { label: "Pensando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined };
+    const defaultInfo = { label: "Pensando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined, contentExcerpt: undefined as string | undefined };
     if (!isStreaming || !isLastMessage) return defaultInfo;
     if (!message.content || !message.content.trim()) return defaultInfo;
 
-    // Find the last unclosed (in-progress) custom tag
-    const tagPattern = /<(dyad-write|dyad-edit|dyad-search-replace|dyad-patch|dyad-read|dyad-delete|dyad-rename|dyad-grep|dyad-code-search|dyad-web-search|dyad-web-crawl|dyad-add-dependency|dyad-execute-sql|dyad-read-logs|dyad-list-files|dyad-mcp-tool-call|dyad-codebase-context|dyad-git|dyad-ask-user|think|dyad-think)\s*([^>]*)>/g;
-    const closePattern = (tag: string) => new RegExp(`</${tag}>`, "g");
+    const DYAD_CUSTOM_TAGS = [
+      "dyad-write", "dyad-rename", "dyad-delete", "dyad-add-dependency",
+      "dyad-execute-sql", "dyad-read-logs", "dyad-add-integration",
+      "dyad-edit", "dyad-grep", "dyad-search-replace", "dyad-codebase-context",
+      "dyad-web-crawl", "dyad-code-search", "dyad-read", "think", "thought",
+      "dyad-mcp-tool-call", "dyad-list-files", "dyad-database-schema",
+      "dyad-supabase-table-schema", "dyad-supabase-project-info", "dyad-status",
+      "dyad-think", "dyad-git", "dyad-ask-user", "dyad-patch", "dyad-run-command",
+      "dyad-start-process", "dyad-stop-process", "dyad-list-processes",
+      "dyad-wait-http", "dyad-typecheck-summary", "dyad-token-usage"
+    ];
 
     let lastOpenTag: string | null = null;
+    let lastOpenIndex: number = -1;
     let lastAttrs: string = "";
-    let match;
 
-    // Collect all opening tags
-    const openings: { tag: string; attrs: string; index: number }[] = [];
-    while ((match = tagPattern.exec(message.content)) !== null) {
-      openings.push({ tag: match[1], attrs: match[2], index: match.index });
-    }
+    // Iterate through all tags to find the one that was opened last and is still open
+    for (const tagName of DYAD_CUSTOM_TAGS) {
+      const openTagPattern = new RegExp(`<${tagName}\\b([^>]*)>`, "g");
+      const closeTagPattern = new RegExp(`</${tagName}>`, "g");
 
-    // Find the last tag that has no closing tag after it
-    for (let i = openings.length - 1; i >= 0; i--) {
-      const { tag, attrs } = openings[i];
-      const closes = (message.content.match(closePattern(tag)) || []).length;
-      const opens = openings.filter((o) => o.tag === tag).length;
-      if (opens > closes) {
-        lastOpenTag = tag;
-        lastAttrs = attrs;
-        break;
+      let match;
+      const openings: { index: number, attrs: string, fullMatchLength: number }[] = [];
+      while ((match = openTagPattern.exec(message.content)) !== null) {
+        openings.push({ index: match.index, attrs: match[1], fullMatchLength: match[0].length });
+      }
+
+      const openCount = openings.length;
+      const closeCount = (message.content.match(closeTagPattern) || []).length;
+
+      // If we have more opening tags than closing tags, this tag is in progress
+      if (openCount > closeCount) {
+        // Find the specific opening tag that is unclosed
+        // We assume the unclosed tags are the LAST ONES (e.g., if there are 3 open and 2 closed, the 3rd is unclosed)
+        const unclosedOpening = openings[openCount - 1]; // Simply pick the last opening of this type
+
+        if (unclosedOpening && unclosedOpening.index > lastOpenIndex) {
+          lastOpenIndex = unclosedOpening.index;
+          lastOpenTag = tagName;
+          lastAttrs = unclosedOpening.attrs;
+          // Offset the index to point to the inner content for thought extraction
+          lastOpenIndex += unclosedOpening.fullMatchLength;
+        }
       }
     }
 
-    if (lastOpenTag) {
+    if (lastOpenTag !== null && lastOpenTag !== undefined) {
       const meta = TOOL_META[lastOpenTag];
       if (meta) {
         // Parse attributes to get detail
@@ -204,10 +224,33 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
         }
         const detail = getToolDetail(lastOpenTag, attributes);
         const activeLabel = meta.pendingLabel ?? meta.label;
+
+        let contentExcerpt: string | undefined = undefined;
+        // If it's a thinking tag, extract a short, clean snippet of the ongoing thought
+        if (["think", "thought", "dyad-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
+          const ongoingContent = message.content.slice(lastOpenIndex);
+          // Strip basic markdown to get clean text for the excerpt
+          const cleanText = ongoingContent
+            .replace(/<[^>]+>/g, "") // remove inner tags if any
+            .replace(/[#*_`~>\-|]/g, "") // remove basic markdown chars
+            .replace(/\s+/g, " ") // normalize spacing
+            .trim();
+
+          if (cleanText) {
+            // Get roughly the last 5-8 words, or up to ~50 characters
+            const words = cleanText.split(" ");
+            const excerpt = words.slice(-8).join(" ");
+            contentExcerpt = words.length > 8 ? `...${excerpt}` : excerpt;
+          } else {
+            contentExcerpt = "...";
+          }
+        }
+
         return {
           label: detail ? `${activeLabel} ${detail}` : activeLabel,
           dotColorClass: getBgColorClass(meta.color),
           labelColorClass: meta.color,
+          contentExcerpt,
         };
       }
     }
@@ -215,7 +258,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     // Fallback: check if the last completed tool was git
     const lastGitTag = message.content.lastIndexOf("<dyad-git ");
     if (lastGitTag !== -1) {
-      return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500" };
+      return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500", contentExcerpt: undefined };
     }
 
     // Generic fallback
@@ -320,7 +363,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           <div className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             <div
               onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
-              className={`rounded-2xl ${isAssistant
+              className={`rounded-lg ${isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
                   : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
@@ -353,6 +396,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           label={streamingInfo.label}
                           dotColorClass={streamingInfo.dotColorClass}
                           labelColorClass={streamingInfo.labelColorClass}
+                          contentExcerpt={streamingInfo.contentExcerpt}
                         />
                       )}
                     </>
