@@ -41,6 +41,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-list-processes",
     "dyad-wait-http",
     "dyad-typecheck-summary",
+    "dyad-token-usage",
     "dyad-command",
 ];
 

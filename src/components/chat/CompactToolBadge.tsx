@@ -26,6 +26,7 @@ import {
     BarChart3,
     AlertTriangle,
     FileSearch,
+    Coins,
     type LucideIcon,
 } from "lucide-react";
 import {
@@ -84,6 +85,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-list-processes": { icon: List, label: "Procesos", pendingLabel: "Listando procesos", color: "text-slate-500" },
     "dyad-wait-http": { icon: Wifi, label: "HTTP Check", pendingLabel: "Esperando HTTP", color: "text-cyan-500" },
     "dyad-typecheck-summary": { icon: FileSearch, label: "TSC", color: "text-emerald-500" },
+    "dyad-token-usage": { icon: Coins, label: "Tokens", color: "text-yellow-500" },
 };
 
 /** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
@@ -102,10 +104,19 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-violet-500": "bg-violet-500",
     "text-teal-500": "bg-teal-500",
     "text-lime-500": "bg-lime-500",
+    "text-yellow-500": "bg-yellow-500",
 };
 
 export function getBgColorClass(textColorClass: string): string | undefined {
     return TEXT_TO_BG[textColorClass];
+}
+
+/** Format token count: 1234 → "1.2K", 12345 → "12.3K", 123456 → "123K" */
+export function formatTokenCount(count: number): string {
+    if (count < 1000) return String(count);
+    if (count < 10000) return `${(count / 1000).toFixed(1)}K`;
+    if (count < 1000000) return `${Math.round(count / 1000)}K`;
+    return `${(count / 1000000).toFixed(1)}M`;
 }
 
 export type ToolBadgeState = "pending" | "finished" | "aborted";
@@ -254,6 +265,11 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
         case "dyad-typecheck-summary": {
             const hasErr = attributes["has-errors"] === "true";
             return hasErr ? "con errores" : "sin errores";
+        }
+        case "dyad-token-usage": {
+            const inp = parseInt(attributes.input || "0", 10);
+            const out = parseInt(attributes.output || "0", 10);
+            return `${formatTokenCount(inp + out)}`;
         }
         default:
             return undefined;

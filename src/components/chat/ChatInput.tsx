@@ -16,11 +16,14 @@ import {
   ChevronsDownUp,
   SendHorizontalIcon,
   Lock,
+  Undo,
+  RefreshCw,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSettings } from "@/hooks/useSettings";
+import { showError, showWarning } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
 import {
   chatInputValueAtom,
@@ -90,7 +93,7 @@ export function ChatInput({
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
-  const { refreshVersions } = useVersions(appId);
+  const { versions, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
 
@@ -99,6 +102,9 @@ export function ChatInput({
   const hasAutoStartedRef = useRef(false);
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
+  const [isUndoLoading, setIsUndoLoading] = useState(false);
+  const [isRetryLoading, setIsRetryLoading] = useState(false);
+  const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [showTokenBar, setShowTokenBar] = useState(false);
   const queryClient = useQueryClient();
@@ -496,7 +502,127 @@ export function ChatInput({
                   <ChatInputControls showContextFilesPicker={false} />
                 </div>
 
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-1.5">
+                  {/* Undo button — circular, icon-only */}
+                  {!isStreaming &&
+                    !!currentMessages.length &&
+                    currentMessages[currentMessages.length - 1].role === "assistant" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              disabled={isUndoLoading}
+                              onClick={async () => {
+                                if (!chatId || !appId) return;
+                                setIsUndoLoading(true);
+                                try {
+                                  const currentMessage = currentMessages[currentMessages.length - 1];
+                                  const userMessage = currentMessages[currentMessages.length - 2];
+                                  if (userMessage) {
+                                    let prompt = userMessage.content;
+                                    const idx = prompt.indexOf("\n\nAttachments:\n");
+                                    if (idx !== -1) prompt = prompt.substring(0, idx);
+                                    const attachmentsToRestore: File[] = [];
+                                    const aiMessagesJson = userMessage.aiMessagesJson;
+                                    if (aiMessagesJson) {
+                                      const aiMessages = Array.isArray(aiMessagesJson) ? aiMessagesJson : aiMessagesJson.messages;
+                                      if (aiMessages && Array.isArray(aiMessages)) {
+                                        const userMsg = aiMessages.find((m: any) => m.role === "user");
+                                        if (userMsg && Array.isArray(userMsg.content)) {
+                                          userMsg.content.forEach((part: any, i: number) => {
+                                            if (part.type === "image" && part.image) {
+                                              const mimeType = part.mediaType || part.mimeType || "image/png";
+                                              const ext = mimeType.split("/")[1] || "png";
+                                              try {
+                                                const byteChars = atob(part.image);
+                                                const byteArr = new Uint8Array(byteChars.length);
+                                                for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                                attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                                              } catch { /* skip */ }
+                                            }
+                                          });
+                                        }
+                                      }
+                                    }
+                                    window.dispatchEvent(new CustomEvent("dyad:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
+                                  }
+                                  if (currentMessage?.sourceCommitHash) {
+                                    await revertVersion({
+                                      versionId: currentMessage.sourceCommitHash,
+                                      currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+                                    });
+                                    const chat = await ipc.chat.getChat(chatId);
+                                    setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
+                                  } else {
+                                    showWarning("No source commit hash found for message. Need to manually undo code changes");
+                                  }
+                                } catch (error) {
+                                  console.error("Error during undo:", error);
+                                  showError("Failed to undo changes");
+                                } finally {
+                                  setIsUndoLoading(false);
+                                }
+                              }}
+                              className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                              title="Deshacer"
+                            >
+                              {isUndoLoading ? <Loader2 size={16} className="animate-spin" /> : <Undo size={16} />}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Deshacer</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+
+                  {/* Retry button — circular, icon-only */}
+                  {!isStreaming && !!currentMessages.length && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            disabled={isRetryLoading}
+                            onClick={async () => {
+                              if (!chatId) return;
+                              setIsRetryLoading(true);
+                              try {
+                                const lastVersion = versions[0];
+                                const lastMsg = currentMessages[currentMessages.length - 1];
+                                let shouldRedo = true;
+                                if (lastVersion.oid === lastMsg.commitHash && lastMsg.role === "assistant") {
+                                  const prevAssistant = currentMessages[currentMessages.length - 3];
+                                  if (prevAssistant?.role === "assistant" && prevAssistant?.commitHash) {
+                                    await revertVersion({ versionId: prevAssistant.commitHash });
+                                    shouldRedo = false;
+                                  } else {
+                                    const chat = await ipc.chat.getChat(chatId);
+                                    if (chat.initialCommitHash) {
+                                      await revertVersion({ versionId: chat.initialCommitHash });
+                                    } else {
+                                      showWarning("No initial commit hash found for chat.");
+                                    }
+                                  }
+                                }
+                                const lastUserMsg = [...currentMessages].reverse().find(m => m.role === "user");
+                                if (!lastUserMsg) return;
+                                streamMessage({ prompt: lastUserMsg.content, chatId, redo: shouldRedo });
+                              } catch (error) {
+                                console.error("Error during retry:", error);
+                                showError("Failed to retry message");
+                              } finally {
+                                setIsRetryLoading(false);
+                              }
+                            }}
+                            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                            title="Reintentar"
+                          >
+                            {isRetryLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Reintentar</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+
                   {isStreaming ? (
                     <button
                       onClick={handleCancel}

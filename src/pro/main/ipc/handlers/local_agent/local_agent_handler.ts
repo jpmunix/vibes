@@ -197,6 +197,9 @@ export async function handleLocalAgentStream(
 
   let fullResponse = "";
   let streamingPreview = ""; // Temporary preview for current tool, not persisted
+  let finalInputTokens: number | undefined;
+  let finalOutputTokens: number | undefined;
+  let finalCachedTokens: number | undefined;
 
   // Track pending user messages to inject after tool results
   const pendingUserMessages: UserMessageContentPart[][] = [];
@@ -379,15 +382,21 @@ export async function handleLocalAgentStream(
           cachedInputTokens ? (cachedInputTokens ?? 0) / (inputTokens ?? 0) : 0,
         );
 
+        // Capture for UI badge (outer scope closure)
+        finalInputTokens = inputTokens;
+        finalCachedTokens = cachedInputTokens;
+
         // Log AI query using fullResponse from outer scope (closure)
         let effectiveOutputTokens = outputTokens
           || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
 
-        // If still 0 or undefined, estimate from fullResponse length
-        // Rule of thumb: ~4 characters per token
-        if (!effectiveOutputTokens || effectiveOutputTokens === 0) {
-          effectiveOutputTokens = Math.ceil(fullResponse.length / 4);
+        // Many providers only report output tokens for the final text step,
+        // ignoring tool call argument tokens. Use text-based estimate as a floor.
+        const estimatedFromText = Math.ceil(fullResponse.length / 4);
+        if (!effectiveOutputTokens || effectiveOutputTokens < estimatedFromText * 0.5) {
+          effectiveOutputTokens = estimatedFromText;
         }
+        finalOutputTokens = effectiveOutputTokens;
 
         logger.log(
           `[AGENT onFinish] Logging AI query with fullResponse length: ${fullResponse.length}, effectiveOutputTokens: ${effectiveOutputTokens}`,
@@ -660,6 +669,29 @@ export async function handleLocalAgentStream(
 
       const summaryXml = `<dyad-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</dyad-typecheck-summary>`;
       fullResponse += "\n" + summaryXml + "\n";
+      updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
+    }
+
+    // Emit token usage badge
+    if (finalInputTokens || finalOutputTokens) {
+      const outTk = finalOutputTokens || Math.ceil(fullResponse.length / 4);
+      const inTk = finalInputTokens || 0;
+      const cachedTk = finalCachedTokens || 0;
+
+      // Look up pricing from cached OpenRouter model data
+      let priceIn = "";
+      let priceOut = "";
+      try {
+        const { fetchOpenRouterModels } = await import("@/ipc/utils/openrouter_models_service");
+        const models = await fetchOpenRouterModels();
+        const modelData = models.find(m => m.name === selectedModel.name);
+        priceIn = modelData?.pricingInput || "";
+        priceOut = modelData?.pricingOutput || "";
+      } catch { /* pricing unavailable — non-OpenRouter or cache miss */ }
+
+      const tokenXml = `<dyad-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" price-input="${priceIn}" price-output="${priceOut}"></dyad-token-usage>`;
+      fullResponse += tokenXml + "\n";
       updateResponseInDb(placeholderMessageId, fullResponse);
       sendResponseChunk(event, req.chatId, chat, fullResponse);
     }

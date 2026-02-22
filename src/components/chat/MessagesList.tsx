@@ -17,14 +17,13 @@ import {
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
 import { userAtom } from "@/atoms/authAtoms";
-import { useAtomValue, useSetAtom } from "jotai";
-import { CheckCircle2, Loader2, RefreshCw, Undo, RotateCcw } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useVersions } from "@/hooks/useVersions";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { showError, showSuccess, showWarning } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
-import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
+
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
@@ -50,16 +49,7 @@ interface FooterContext {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isStreaming: boolean;
   tokenCountResult: ReturnType<typeof useCountTokens>["result"];
-  isUndoLoading: boolean;
-  isRetryLoading: boolean;
-  setIsUndoLoading: (loading: boolean) => void;
-  setIsRetryLoading: (loading: boolean) => void;
-  versions: ReturnType<typeof useVersions>["versions"];
-  revertVersion: ReturnType<typeof useVersions>["revertVersion"];
-  streamMessage: ReturnType<typeof useStreamChat>["streamMessage"];
-  selectedChatId: number | null;
   appId: number | null;
-  setMessagesById: ReturnType<typeof useSetAtom<typeof chatMessagesByIdAtom>>;
   settings: ReturnType<typeof useSettings>["settings"];
   userBudget: ReturnType<typeof useUserBudgetInfo>["userBudget"];
   renderSetupBanner: () => React.ReactNode;
@@ -70,21 +60,6 @@ interface FooterContext {
   todoId: number | null;
 }
 
-// Helper to convert base64 to File
-function base64ToFile(
-  base64: string,
-  filename: string,
-  mimeType: string,
-): File {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: mimeType });
-  return new File([blob], filename, { type: mimeType });
-}
 
 // Footer component for Virtuoso - receives context via props (memoized to skip unnecessary renders)
 const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
@@ -95,16 +70,7 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
     messagesEndRef,
     isStreaming,
     tokenCountResult,
-    isUndoLoading,
-    isRetryLoading,
-    setIsUndoLoading,
-    setIsRetryLoading,
-    versions,
-    revertVersion,
-    streamMessage,
-    selectedChatId,
     appId,
-    setMessagesById,
     settings,
     userBudget,
     renderSetupBanner,
@@ -142,223 +108,6 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {!isStreaming && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
-          {!!messages.length &&
-            messages[messages.length - 1].role === "assistant" && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isUndoLoading}
-                onClick={async () => {
-                  if (!selectedChatId || !appId) {
-                    console.error("No chat selected or app ID not available");
-                    return;
-                  }
-
-                  setIsUndoLoading(true);
-                  try {
-                    const currentMessage = messages[messages.length - 1];
-                    // The user message that triggered this assistant response
-                    const userMessage = messages[messages.length - 2];
-
-                    if (userMessage) {
-                      let prompt = userMessage.content;
-                      // Heuristic: check if there's an attachments section and strip it
-                      // This matches the format used in chat_stream_handlers.ts
-                      const attachmentMarkerIndex =
-                        prompt.indexOf("\n\nAttachments:\n");
-                      if (attachmentMarkerIndex !== -1) {
-                        prompt = prompt.substring(0, attachmentMarkerIndex);
-                      }
-
-                      const attachments: File[] = [];
-
-                      console.log("[UNDO] User message:", userMessage);
-                      console.log("[UNDO] aiMessagesJson:", userMessage.aiMessagesJson);
-
-                      // Try to recover image attachments from aiMessagesJson if available
-                      const aiMessagesJson = userMessage.aiMessagesJson;
-
-                      if (aiMessagesJson) {
-                        // Handle both new format {messages: [...]} and old format [...]
-                        const aiMessages = Array.isArray(aiMessagesJson)
-                          ? aiMessagesJson
-                          : aiMessagesJson.messages;
-
-                        console.log("[UNDO] Processed aiMessages:", aiMessages);
-
-                        if (aiMessages && Array.isArray(aiMessages)) {
-                          const userMsg = aiMessages.find(
-                            (m: any) => m.role === "user",
-                          );
-                          console.log("[UNDO] Found user message in aiMessages:", userMsg);
-
-                          if (userMsg && Array.isArray(userMsg.content)) {
-                            userMsg.content.forEach(
-                              (part: any, index: number) => {
-                                if (part.type === "image" && part.image) {
-                                  const mimeType =
-                                    part.mediaType || part.mimeType || "image/png";
-                                  const ext =
-                                    mimeType.split("/")[1] || "png";
-                                  const filename = `restored-image-${Date.now()}-${index}.${ext}`;
-                                  try {
-                                    const file = base64ToFile(
-                                      part.image,
-                                      filename,
-                                      mimeType,
-                                    );
-                                    attachments.push(file);
-                                    console.log("[UNDO] Successfully restored image:", filename);
-                                  } catch (e) {
-                                    console.error(
-                                      "Failed to restore image attachment",
-                                      e,
-                                    );
-                                  }
-                                }
-                              },
-                            );
-                          }
-                        }
-                      } else {
-                        console.warn("[UNDO] No aiMessagesJson found in user message");
-                      }
-
-                      console.log("[UNDO] Total attachments recovered:", attachments.length);
-
-                      // Dispatch event to restore input
-                      window.dispatchEvent(
-                        new CustomEvent("dyad:restore-chat-input", {
-                          detail: { prompt, attachments },
-                        }),
-                      );
-                    }
-
-                    if (currentMessage?.sourceCommitHash) {
-                      console.debug(
-                        "Reverting to source commit hash",
-                        currentMessage.sourceCommitHash,
-                      );
-                      await revertVersion({
-                        versionId: currentMessage.sourceCommitHash,
-                        currentChatMessageId: userMessage
-                          ? {
-                            chatId: selectedChatId,
-                            messageId: userMessage.id,
-                          }
-                          : undefined,
-                      });
-                      const chat = await ipc.chat.getChat(selectedChatId);
-                      setMessagesById((prev) => {
-                        const next = new Map(prev);
-                        next.set(selectedChatId, chat.messages);
-                        return next;
-                      });
-                    } else {
-                      showWarning(
-                        "No source commit hash found for message. Need to manually undo code changes",
-                      );
-                    }
-                  } catch (error) {
-                    console.error("Error during undo operation:", error);
-                    showError("Failed to undo changes");
-                  } finally {
-                    setIsUndoLoading(false);
-                  }
-                }}
-              >
-                {isUndoLoading ? (
-                  <Loader2 size={16} className="mr-1 animate-spin" />
-                ) : (
-                  <Undo size={16} />
-                )}
-                Deshacer
-              </Button>
-            )}
-          {!!messages.length && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isRetryLoading}
-              onClick={async () => {
-                if (!selectedChatId) {
-                  console.error("No chat selected");
-                  return;
-                }
-
-                setIsRetryLoading(true);
-                try {
-                  // The last message is usually an assistant, but it might not be.
-                  const lastVersion = versions[0];
-                  const lastMessage = messages[messages.length - 1];
-                  let shouldRedo = true;
-                  if (
-                    lastVersion.oid === lastMessage.commitHash &&
-                    lastMessage.role === "assistant"
-                  ) {
-                    const previousAssistantMessage =
-                      messages[messages.length - 3];
-                    if (
-                      previousAssistantMessage?.role === "assistant" &&
-                      previousAssistantMessage?.commitHash
-                    ) {
-                      console.debug("Reverting to previous assistant version");
-                      await revertVersion({
-                        versionId: previousAssistantMessage.commitHash,
-                      });
-                      shouldRedo = false;
-                    } else {
-                      const chat = await ipc.chat.getChat(selectedChatId);
-                      if (chat.initialCommitHash) {
-                        console.debug(
-                          "Reverting to initial commit hash",
-                          chat.initialCommitHash,
-                        );
-                        await revertVersion({
-                          versionId: chat.initialCommitHash,
-                        });
-                      } else {
-                        showWarning(
-                          "No initial commit hash found for chat. Need to manually undo code changes",
-                        );
-                      }
-                    }
-                  }
-
-                  // Find the last user message
-                  const lastUserMessage = [...messages]
-                    .reverse()
-                    .find((message) => message.role === "user");
-                  if (!lastUserMessage) {
-                    console.error("No user message found");
-                    return;
-                  }
-                  // Need to do a redo, if we didn't delete the message from a revert.
-                  const redo = shouldRedo;
-                  console.debug("Streaming message with redo", redo);
-
-                  streamMessage({
-                    prompt: lastUserMessage.content,
-                    chatId: selectedChatId,
-                    redo,
-                  });
-                } catch (error) {
-                  console.error("Error during retry operation:", error);
-                  showError("Failed to retry message");
-                } finally {
-                  setIsRetryLoading(false);
-                }
-              }}
-            >
-              {isRetryLoading ? (
-                <Loader2 size={16} className="mr-1 animate-spin" />
-              ) : (
-                <RefreshCw size={16} />
-              )}
-              Reintentar
-            </Button>
-          )}
-
           {!!messages.length && todoId && (
             <Button
               variant="outline"
@@ -411,13 +160,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
-    const { versions, revertVersion } = useVersions(appId);
-    const { streamMessage, isStreaming } = useStreamChat();
+    const { isStreaming } = useStreamChat();
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
     const { settings } = useSettings();
-    const setMessagesById = useSetAtom(chatMessagesByIdAtom);
-    const [isUndoLoading, setIsUndoLoading] = useState(false);
-    const [isRetryLoading, setIsRetryLoading] = useState(false);
     const [todoId, setTodoId] = useState<number | null>(null);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
     const { userBudget } = useUserBudgetInfo();
@@ -453,14 +198,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       "",
     );
 
-    // Wrap state setters in useCallback to stabilize references
-    const handleSetIsUndoLoading = useCallback((loading: boolean) => {
-      setIsUndoLoading(loading);
-    }, []);
 
-    const handleSetIsRetryLoading = useCallback((loading: boolean) => {
-      setIsRetryLoading(loading);
-    }, []);
 
     // Stabilize renderSetupBanner with proper dependencies
     const renderSetupBanner = useCallback(() => {
@@ -556,16 +294,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         messagesEndRef,
         isStreaming,
         tokenCountResult,
-        isUndoLoading,
-        isRetryLoading,
-        setIsUndoLoading: handleSetIsUndoLoading,
-        setIsRetryLoading: handleSetIsRetryLoading,
-        versions,
-        revertVersion,
-        streamMessage,
-        selectedChatId,
         appId,
-        setMessagesById,
         settings,
         userBudget,
         renderSetupBanner,
@@ -578,16 +307,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         messagesEndRef,
         isStreaming,
         tokenCountResult,
-        isUndoLoading,
-        isRetryLoading,
-        handleSetIsUndoLoading,
-        handleSetIsRetryLoading,
-        versions,
-        revertVersion,
-        streamMessage,
-        selectedChatId,
         appId,
-        setMessagesById,
         settings,
         userBudget,
         isSelectingModel,

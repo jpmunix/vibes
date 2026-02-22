@@ -85,6 +85,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-list-processes",
   "dyad-wait-http",
   "dyad-typecheck-summary",
+  "dyad-token-usage",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -918,6 +919,10 @@ function renderCustomTag(
         </DyadTypecheckSummary>
       );
 
+    case "dyad-token-usage":
+      // Rendered only as compact badge + modal
+      return null;
+
     default:
       return null;
   }
@@ -1470,6 +1475,59 @@ function renderModalContent(
         >
           {content}
         </DyadTypecheckSummary>
+      );
+    }
+
+    case "dyad-token-usage": {
+      const inp = parseInt(attributes.input || "0", 10);
+      const out = parseInt(attributes.output || "0", 10);
+      const cached = parseInt(attributes.cached || "0", 10);
+      const total = inp + out;
+      const priceIn = parseFloat(attributes["price-input"] || "0");
+      const priceOut = parseFloat(attributes["price-output"] || "0");
+      const hasPricing = priceIn > 0 || priceOut > 0;
+
+      // OpenRouter prices are $/token — cached input is typically 50% of input price
+      const costInput = (inp - cached) * priceIn;
+      const costCached = cached * priceIn * 0.5;
+      const costOutput = out * priceOut;
+      const costTotal = costInput + costCached + costOutput;
+
+      const fmtCost = (c: number) => {
+        if (c < 0.001) return `$${c.toFixed(6)}`;
+        if (c < 0.01) return `$${c.toFixed(4)}`;
+        return `$${c.toFixed(3)}`;
+      };
+
+      return (
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-blue-500/10 rounded-lg p-3">
+              <div className="text-xs text-blue-400 mb-1">Input</div>
+              <div className="text-lg font-bold text-blue-300">{inp.toLocaleString()}</div>
+              {hasPricing && <div className="text-xs text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
+            </div>
+            <div className="bg-amber-500/10 rounded-lg p-3">
+              <div className="text-xs text-amber-400 mb-1">Output</div>
+              <div className="text-lg font-bold text-amber-300">{out.toLocaleString()}</div>
+              {hasPricing && <div className="text-xs text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
+            </div>
+          </div>
+          {cached > 0 && (
+            <div className="bg-emerald-500/10 rounded-lg p-3">
+              <div className="text-xs text-emerald-400 mb-1">Cached Input</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg font-bold text-emerald-300">{cached.toLocaleString()}</span>
+                <span className="text-xs text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
+              </div>
+              {hasPricing && <div className="text-xs text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
+            </div>
+          )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
+            <span>Total: <strong className="text-foreground">{total.toLocaleString()} tokens</strong></span>
+            {hasPricing && <span>Coste: <strong className="text-yellow-400">{fmtCost(costTotal)}</strong></span>}
+          </div>
+        </div>
       );
     }
 
