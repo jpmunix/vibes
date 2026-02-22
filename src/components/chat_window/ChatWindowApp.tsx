@@ -464,7 +464,7 @@ function createChatWindowRouter(appId: number, chatId?: number, hasPendingPrompt
         path: "/chat",
         component: () => null,
         validateSearch: (search: Record<string, unknown>) => ({
-            id: (search.id as number) ?? chatId,
+            id: Number(search.id) || chatId,
             autoStart: (search.autoStart as boolean) ?? false,
         }),
     });

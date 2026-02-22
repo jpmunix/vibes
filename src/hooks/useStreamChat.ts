@@ -11,6 +11,7 @@ import {
   chatStreamCountByIdAtom,
   isStreamingByIdAtom,
   recentStreamChatIdsAtom,
+  selectedChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -87,6 +88,13 @@ export function useStreamChat({
     const { id } = useSearch({ from: "/chat" });
     chatId = id;
   }
+
+  // For atom lookups (isStreaming, error), prefer selectedChatIdAtom which is
+  // always a proper number. useSearch can return a string from URL params even
+  // with validateSearch, causing Map key mismatches with the atom's numeric keys.
+  const selectedChatId = useAtomValue(selectedChatIdAtom);
+  const lookupChatId = selectedChatId ?? chatId;
+
   const { invalidateTokenCount } = useCountTokens(chatId ?? null, "");
 
   const streamMessage = useCallback(
@@ -437,23 +445,23 @@ export function useStreamChat({
   return {
     streamMessage,
     isStreaming:
-      hasChatId && chatId !== undefined
-        ? (isStreamingById.get(chatId) ?? false)
+      hasChatId && lookupChatId !== undefined && lookupChatId !== null
+        ? (isStreamingById.get(lookupChatId) ?? false)
         : false,
     error:
-      hasChatId && chatId !== undefined
-        ? (errorById.get(chatId) ?? null)
+      hasChatId && lookupChatId !== undefined && lookupChatId !== null
+        ? (errorById.get(lookupChatId) ?? null)
         : null,
     setError: (value: string | null) =>
       setErrorById((prev) => {
         const next = new Map(prev);
-        if (chatId !== undefined) next.set(chatId, value);
+        if (lookupChatId !== undefined && lookupChatId !== null) next.set(lookupChatId, value);
         return next;
       }),
     setIsStreaming: (value: boolean) =>
       setIsStreamingById((prev) => {
         const next = new Map(prev);
-        if (chatId !== undefined) next.set(chatId, value);
+        if (lookupChatId !== undefined && lookupChatId !== null) next.set(lookupChatId, value);
         return next;
       }),
   };

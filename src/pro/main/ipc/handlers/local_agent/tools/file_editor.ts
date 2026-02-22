@@ -730,6 +730,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
                 const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                ctx.typecheckResults.push({ file: args.file_path, status: typeErrors ? "error" : "ok", errors: typeErrors ? [typeErrors] : [] });
                 return (deployMsg ?? `Successfully overwrote ${args.file_path}`) + typeErrors;
             }
 
@@ -789,6 +790,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     ? `\n\n⚠️ WARNING: Possible syntax issue detected: ${editSyntaxError}\nPlease verify the file with run_type_checks or read_file.`
                     : "";
                 const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                ctx.typecheckResults.push({ file: args.file_path, status: typeErrors ? "error" : "ok", errors: typeErrors ? [typeErrors] : [] });
                 return (deployMsg ?? `Successfully edited ${args.file_path}`) + editWarning + typeErrors;
             }
 
@@ -886,6 +888,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
                 const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                ctx.typecheckResults.push({ file: args.file_path, status: typeErrors ? "error" : "ok", errors: typeErrors ? [typeErrors] : [] });
                 return (
                     (deployMsg ?? `Successfully applied edits to ${args.file_path}`) + typeErrors
                 );
@@ -977,6 +980,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
 
                 const deployMsg = await maybeDeploySupabase(args.file_path, ctx);
                 const typeErrors = await autoTypeCheck(args.file_path, ctx.appPath);
+                ctx.typecheckResults.push({ file: args.file_path, status: typeErrors ? "error" : "ok", errors: typeErrors ? [typeErrors] : [] });
                 return (
                     (deployMsg ?? `Successfully patched ${args.file_path} (${opsCount} operation${opsCount > 1 ? "s" : ""}, ${linesAffected} line${linesAffected > 1 ? "s" : ""} affected)`) + typeErrors
                 );

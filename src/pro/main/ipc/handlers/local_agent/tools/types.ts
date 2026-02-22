@@ -45,6 +45,13 @@ export interface FileEditTracker {
   };
 }
 
+/** A single typecheck result for one file edit */
+export interface TypecheckEntry {
+  file: string;
+  status: "ok" | "error";
+  errors: string[];
+}
+
 export interface AgentContext {
   event: IpcMainInvokeEvent;
   appId: number;
@@ -62,6 +69,8 @@ export interface AgentContext {
   dyadRequestId: string;
   /** Tracks file edit tool usage per file for telemetry */
   fileEditTracker: FileEditTracker;
+  /** Accumulated typecheck results per file edit for summary badge */
+  typecheckResults: TypecheckEntry[];
   /**
    * If true, this is Basic Agent mode (free tier with quota).
    * Engine-dependent tools are disabled in this mode.

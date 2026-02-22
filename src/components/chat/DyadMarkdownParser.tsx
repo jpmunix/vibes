@@ -18,6 +18,7 @@ import { DyadAddIntegration } from "./DyadAddIntegration";
 import { DyadEdit } from "./DyadEdit";
 import { DyadSearchReplace } from "./DyadSearchReplace";
 import { DyadPatch } from "./DyadPatch";
+import { DyadTypecheckSummary } from "./DyadTypecheckSummary";
 import { DyadCodebaseContext } from "./DyadCodebaseContext";
 import { DyadThink } from "./DyadThink";
 import { CodeHighlight } from "./CodeHighlight";
@@ -83,6 +84,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-stop-process",
   "dyad-list-processes",
   "dyad-wait-http",
+  "dyad-typecheck-summary",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -903,6 +905,19 @@ function renderCustomTag(
       );
     }
 
+    case "dyad-typecheck-summary":
+      return (
+        <DyadTypecheckSummary
+          node={{
+            properties: {
+              "has-errors": attributes["has-errors"] || "false",
+            },
+          }}
+        >
+          {content}
+        </DyadTypecheckSummary>
+      );
+
     default:
       return null;
   }
@@ -1440,6 +1455,21 @@ function renderModalContent(
           </div>
           {content && <div className="text-sm text-muted-foreground whitespace-pre-wrap">{content}</div>}
         </div>
+      );
+    }
+
+    case "dyad-typecheck-summary": {
+      return (
+        <DyadTypecheckSummary
+          node={{
+            properties: {
+              "has-errors": attributes["has-errors"] || "false",
+              "force-open": "true",
+            },
+          }}
+        >
+          {content}
+        </DyadTypecheckSummary>
       );
     }
 

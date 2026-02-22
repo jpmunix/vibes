@@ -25,6 +25,7 @@ import {
     Wrench,
     BarChart3,
     AlertTriangle,
+    FileSearch,
     type LucideIcon,
 } from "lucide-react";
 import {
@@ -82,6 +83,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-stop-process": { icon: Square, label: "Detenido", pendingLabel: "Deteniendo proceso", color: "text-red-500" },
     "dyad-list-processes": { icon: List, label: "Procesos", pendingLabel: "Listando procesos", color: "text-slate-500" },
     "dyad-wait-http": { icon: Wifi, label: "HTTP Check", pendingLabel: "Esperando HTTP", color: "text-cyan-500" },
+    "dyad-typecheck-summary": { icon: FileSearch, label: "TSC", color: "text-emerald-500" },
 };
 
 /** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
@@ -249,6 +251,10 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes["process-id"] || undefined;
         case "dyad-wait-http":
             return attributes.url || undefined;
+        case "dyad-typecheck-summary": {
+            const hasErr = attributes["has-errors"] === "true";
+            return hasErr ? "con errores" : "sin errores";
+        }
         default:
             return undefined;
     }

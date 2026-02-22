@@ -224,6 +224,7 @@ export async function handleLocalAgentStream(
       todos: [],
       dyadRequestId,
       fileEditTracker,
+      typecheckResults: [],
       isBasicAgentMode: isBasicAgentMode(settings),
       onXmlStream: (accumulatedXml: string) => {
         // Stream accumulated XML to UI without persisting
@@ -631,6 +632,36 @@ export async function handleLocalAgentStream(
         error: zeroOutputError,
       });
       return false;
+    }
+
+    // Emit typecheck summary badge if any file edits were type-checked
+    if (ctx.typecheckResults.length > 0) {
+      // Group consecutive entries by file+status
+      const groups: { file: string; status: "ok" | "error"; count: number; errors: string[] }[] = [];
+      for (const entry of ctx.typecheckResults) {
+        const last = groups[groups.length - 1];
+        if (last && last.file === entry.file && last.status === entry.status) {
+          last.count++;
+          last.errors.push(...entry.errors);
+        } else {
+          groups.push({ file: entry.file, status: entry.status, count: 1, errors: [...entry.errors] });
+        }
+      }
+
+      const hasErrors = groups.some(g => g.status === "error");
+      const lines = groups.map(g => {
+        const countStr = g.count > 1 ? ` (${g.count} edits)` : "";
+        if (g.status === "ok") {
+          return `OK:${g.file}${countStr}`;
+        }
+        const errDetail = g.errors.join("\n").trim();
+        return `ERR:${g.file}${countStr}\n${errDetail}`;
+      });
+
+      const summaryXml = `<dyad-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</dyad-typecheck-summary>`;
+      fullResponse += "\n" + summaryXml + "\n";
+      updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
     }
 
     // In read-only mode, skip deploys and commits

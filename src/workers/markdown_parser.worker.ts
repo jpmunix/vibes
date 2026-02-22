@@ -40,6 +40,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-stop-process",
     "dyad-list-processes",
     "dyad-wait-http",
+    "dyad-typecheck-summary",
     "dyad-command",
 ];
 
