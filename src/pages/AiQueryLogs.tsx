@@ -17,7 +17,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database, Code, Cpu, Sparkles, Trash2, History, Download, Bug } from "lucide-react";
+import { ArrowLeft, Database, Code, Cpu, Sparkles, Trash2, History, Download, Bug, Copy, ClipboardList } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { AiQueryLogRotationSelector } from "@/components/AiQueryLogRotationSelector";
 import { toast } from "sonner";
@@ -337,12 +337,32 @@ export default function AiQueryLogsPage() {
                                     className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.payload, null, 2));
-                                        toast.success("Copiado al portapapeles");
+                                        toast.success("Payload copiado");
                                     }}
+                                    title="Copiar payload"
                                 >
-                                    <History className="h-4 w-4" />
+                                    <Copy className="h-4 w-4" />
                                 </Button>
                             </div>
+                        </div>
+
+                        {/* Copy All Button */}
+                        <div className="flex justify-center">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl font-bold h-9 px-5 text-xs border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors"
+                                onClick={() => {
+                                    const payloadJson = JSON.stringify(selectedLog?.payload, null, 2);
+                                    const responseJson = JSON.stringify(selectedLog?.response, null, 2);
+                                    const combined = `${'─'.repeat(60)}\nPAYLOAD DE ENTRADA\n${'─'.repeat(60)}\n${payloadJson}\n\n${'─'.repeat(60)}\nRESPUESTA DEL MODELO\n${'─'.repeat(60)}\n${responseJson}\n${'─'.repeat(60)}`;
+                                    navigator.clipboard.writeText(combined);
+                                    toast.success("Entrada + Salida copiadas");
+                                }}
+                            >
+                                <ClipboardList className="mr-2 h-4 w-4" />
+                                Copiar Entrada + Salida
+                            </Button>
                         </div>
 
                         <div className="space-y-3 pb-6">
@@ -359,10 +379,11 @@ export default function AiQueryLogsPage() {
                                     className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity h-9 w-9 shadow-lg"
                                     onClick={() => {
                                         navigator.clipboard.writeText(JSON.stringify(selectedLog?.response, null, 2));
-                                        toast.success("Copiado al portapapeles");
+                                        toast.success("Respuesta copiada");
                                     }}
+                                    title="Copiar respuesta"
                                 >
-                                    <History className="h-4 w-4" />
+                                    <Copy className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>

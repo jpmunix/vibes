@@ -313,6 +313,53 @@ export function readSettings(): UserSettings {
       return migratedSettings as UserSettings;
     }
 
+    // ── Migration: v4 qwen-plus → qwen-plus:thinking ──
+    // Replace the base qwen/qwen-plus-2025-07-28 with the :thinking variant
+    // in enabledOpenRouterModels and selectedModel. Runs once.
+    if (!(validatedSettings as any)._migrations?.v4_qwen_thinking_model) {
+      const OLD_QWEN = "qwen/qwen-plus-2025-07-28";
+      const NEW_QWEN = "qwen/qwen-plus-2025-07-28:thinking";
+      const migrated: Partial<UserSettings> = {};
+
+      // Migrate enabledOpenRouterModels
+      const enabledModels = (validatedSettings as any).enabledOpenRouterModels as string[] | undefined;
+      if (enabledModels && Array.isArray(enabledModels)) {
+        const idx = enabledModels.indexOf(OLD_QWEN);
+        if (idx !== -1) {
+          const updated = [...enabledModels];
+          if (!updated.includes(NEW_QWEN)) {
+            updated[idx] = NEW_QWEN;
+          } else {
+            updated.splice(idx, 1);
+          }
+          (migrated as any).enabledOpenRouterModels = updated;
+        }
+      }
+
+      // Migrate selectedModel if it points to the old model
+      if (validatedSettings.selectedModel?.name === OLD_QWEN) {
+        migrated.selectedModel = {
+          ...validatedSettings.selectedModel,
+          name: NEW_QWEN,
+        };
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v4_qwen_thinking_model: true },
+      };
+      logger.info("[Migration] Applied v4 qwen-plus:thinking swap:", Object.keys(migrated));
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v4 qwen-plus:thinking swap:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
     // Update cache
     cachedSettings = validatedSettings;
 

@@ -59,7 +59,11 @@ This structured thinking ensures you:
 3. Deliver more accurate and helpful responses
 4. Maintain a consistent approach to problem-solving
 `;
-
+/**
+ * @deprecated Build mode is no longer used by the application, which has fully migrated to Agent Mode.
+ * This prompt is kept for historical context and backward compatibility with old chats,
+ * but should not be used for new implementations. See \`local_agent_prompt.ts\` instead.
+ */
 export const BUILD_SYSTEM_PREFIX = `
 <role> You are minube vibes, an AI editor that creates and modifies web applications. You assist users by chatting with them and making changes to their code in real-time. You understand that users can see a live preview of their application in an iframe next to the chat while you make code changes.
 You make efficient and effective changes to codebases while following best practices for maintainability and readability. You take pride in keeping things simple and elegant. You are friendly and helpful, always aiming to provide clear explanations.
@@ -320,6 +324,9 @@ Coding guidelines
 DO NOT OVERENGINEER THE CODE. You take great pride in keeping things simple and elegant. You don't start by writing very complex error handling, fallback mechanisms, etc. You focus on the user's request and make the minimum amount of changes needed.
 DON'T DO MORE THAN WHAT THE USER ASKS FOR.`;
 
+/**
+ * @deprecated Build mode is no longer used by the application. See \`BUILD_SYSTEM_PREFIX\`.
+ */
 export const BUILD_SYSTEM_POSTFIX = `Directory names MUST be all lower-case (src/pages, src/components, etc.). File names may use mixed-case if you like.
 
 # REMEMBER
@@ -334,6 +341,9 @@ export const BUILD_SYSTEM_POSTFIX = `Directory names MUST be all lower-case (src
 > Do NOT use <dyad-file> tags in the output. ALWAYS use <dyad-write> to generate code.
 `;
 
+/**
+ * @deprecated Build mode is no longer used by the application. See `BUILD_SYSTEM_PREFIX`.
+ */
 export const BUILD_SYSTEM_PROMPT = `${BUILD_SYSTEM_PREFIX}
 
 [[AI_RULES]]
@@ -617,6 +627,7 @@ export const getSystemPromptForChatMode = ({
   chatMode: "build" | "ask" | "agent" | "plan";
   settings?: UserSettings;
 }) => {
+  // NOTE: 'build' mode is deprecated in favor of 'agent' mode.
   if (chatMode === "agent") {
     return getEffectivePrompt("agent_mode_system", settings);
   }

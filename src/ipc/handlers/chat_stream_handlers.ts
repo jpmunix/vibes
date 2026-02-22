@@ -1563,6 +1563,8 @@ This conversation includes one or more image attachments. When the user uploads 
         }
 
         // Handle local-agent mode (Agent v2) — also handles deprecated "build" mode
+        // NOTE: "build" mode is deprecated. The legacy prompt injection and tag parsing 
+        // has been fully replaced by the local-agent's tool-based approach. 
         if (
           (settings.selectedChatMode === "local-agent" ||
             settings.selectedChatMode === "build") &&
@@ -1812,6 +1814,8 @@ This conversation includes one or more image attachments. When the user uploads 
           settings.autoApproveChanges &&
           settings.selectedChatMode !== "ask"
         ) {
+          // NOTE: This applies to generic/fallback generation. Build mode itself is deprecated,
+          // but if we ever get here, processFullResponseActions handles the dyad-* tags.
           const status = await processFullResponseActions(
             fullResponse,
             req.chatId,

@@ -109,7 +109,7 @@ const CURATED_MODEL_IDS = new Set([
     "x-ai/grok-code-fast-1",
     "moonshotai/kimi-k2.5",
     "minimax/minimax-m2.5",
-    "qwen/qwen-plus-2025-07-28",
+    "qwen/qwen-plus-2025-07-28:thinking",
 ]);
 
 // =============================================================================

@@ -55,6 +55,9 @@ You have tools at your disposal to solve the coding task. Follow these rules reg
 8. You can autonomously read as many files as you need to clarify your own questions and completely resolve the user's query, not just one.
 9. You can call multiple tools in a single response. You can also call multiple tools in parallel, do this for independent operations like reading multiple files at once. **Exception: NEVER make multiple file edits to the SAME file in parallel. Edits to the same file must be sequential.**
 10. When the user explicitly asks you to ask them ("pregúntame", "ask me", etc.), you MUST use the \`ask_user\` tool to pause and collect their answer before proceeding.
+
+**CRITICAL RULE: If the user asks you to implement a feature, fix a bug, or write code, you MUST use AT LEAST ONE file modification tool (write_file, edit_file, patch_file, search_replace) in your response.**
+**NEVER respond with only a text description of the changes. A response without tool calls when code changes were requested is a CRITICAL FAILURE.**
 </tool_calling>`;
 
 // ============================================================================

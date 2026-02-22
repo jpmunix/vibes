@@ -84,3 +84,60 @@ export function parseAiMessagesJson(msg: DbMessageForParsing): ModelMessage[] {
     },
   ];
 }
+
+/**
+ * Strip image parts from all user messages except the last one.
+ * This prevents re-sending images from previous turns to models
+ * that may not support image input, avoiding 404 errors from OpenRouter.
+ *
+ * The last user message (current turn) keeps its images intact.
+ */
+export function stripImagePartsFromHistory(
+  messages: ModelMessage[],
+): ModelMessage[] {
+  if (messages.length === 0) return messages;
+
+  // Find the index of the last user message
+  let lastUserIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      lastUserIndex = i;
+      break;
+    }
+  }
+
+  return messages.map((msg, index) => {
+    // Keep last user message and all non-user messages as-is
+    if (index === lastUserIndex || msg.role !== "user") {
+      return msg;
+    }
+
+    // Only process user messages with array content (image parts)
+    if (!Array.isArray(msg.content)) {
+      return msg;
+    }
+
+    // Filter out image parts
+    const nonImageParts = (msg.content as any[]).filter(
+      (part: any) => part.type !== "image",
+    );
+
+    // If nothing was filtered, return as-is
+    if (nonImageParts.length === msg.content.length) {
+      return msg;
+    }
+
+    // If only text parts remain, simplify
+    if (nonImageParts.length === 1 && nonImageParts[0].type === "text") {
+      return { ...msg, content: nonImageParts[0].text };
+    }
+
+    // If all parts were images, replace with a placeholder
+    if (nonImageParts.length === 0) {
+      return { ...msg, content: "[image attachment]" };
+    }
+
+    // Return with remaining non-image parts
+    return { ...msg, content: nonImageParts };
+  });
+}

@@ -71,7 +71,7 @@ import {
   type InjectedMessage,
 } from "./prepare_step_utils";
 import { TOOL_DEFINITIONS } from "./tool_definitions";
-import { parseAiMessagesJson } from "@/ipc/utils/ai_messages_utils";
+import { parseAiMessagesJson, stripImagePartsFromHistory } from "@/ipc/utils/ai_messages_utils";
 import { addIntegrationTool } from "./tools/add_integration";
 import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
 
@@ -315,8 +315,13 @@ export async function handleLocalAgentStream(
           }
           return parsedMessages;
         });
+
+    // Strip image parts from historical user messages to prevent
+    // re-sending images from previous turns (causes 404 on non-vision models).
+    const cleanedHistory = stripImagePartsFromHistory(messageHistory);
+
     logger.log(
-      `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
+      `[AGENT] Message history: ${cleanedHistory.length} messages (override: ${!!messageOverride})`,
     );
 
     // Stream the response
@@ -328,7 +333,7 @@ export async function handleLocalAgentStream(
     );
     // Anti-continuation: wrap last user message to prevent the model from
     // continuing/completing the user's text instead of responding as assistant.
-    const framedMessageHistory = messageHistory.map((m, i, arr) => {
+    const framedMessageHistory = cleanedHistory.map((m, i, arr) => {
       if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
         return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
       }
@@ -409,7 +414,7 @@ export async function handleLocalAgentStream(
             promptSnippet: req.prompt.slice(0, 100),
             payload: {
               system: systemPrompt.slice(0, 500),
-              messages: messageHistory,
+              messages: cleanedHistory,
               tools: Object.keys(allTools),
             },
             response: {
@@ -480,6 +485,7 @@ export async function handleLocalAgentStream(
 
     // Process the stream
     let inThinkingBlock = false;
+    let hasStateModifyingToolCalls = false;
 
     for await (const part of streamResult.fullStream) {
       if (abortController.signal.aborted) {
@@ -595,6 +601,9 @@ export async function handleLocalAgentStream(
           logger.log(
             `[AGENT] Tool call: ${part.toolName} (id: ${part.toolCallId})`,
           );
+          if (FILE_EDIT_TOOL_NAMES.includes(part.toolName as any) || part.toolName === "execute_sql" || part.toolName === "add_dependency") {
+            hasStateModifyingToolCalls = true;
+          }
           break;
 
         case "tool-result":
@@ -641,6 +650,15 @@ export async function handleLocalAgentStream(
         error: zeroOutputError,
       });
       return false;
+    }
+
+    // Check if the model failed to use any state-modifying tools when we expected it to
+    if (!readOnly && !hasStateModifyingToolCalls) {
+      // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
+      const noOpWarning = `\n<dyad-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</dyad-output>\n`;
+      fullResponse += noOpWarning;
+      await updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
     }
 
     // Emit typecheck summary badge if any file edits were type-checked
@@ -696,8 +714,8 @@ export async function handleLocalAgentStream(
       sendResponseChunk(event, req.chatId, chat, fullResponse);
     }
 
-    // In read-only mode, skip deploys and commits
-    if (!readOnly) {
+    // In read-only mode, skip deploys and commits. Also skip if no state-modifying tools were called.
+    if (!readOnly && hasStateModifyingToolCalls) {
       // Deploy all Supabase functions if shared modules changed
       await deployAllFunctionsIfNeeded(ctx);
 
