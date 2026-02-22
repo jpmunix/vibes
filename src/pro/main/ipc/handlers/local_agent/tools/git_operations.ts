@@ -32,107 +32,67 @@ import {
 } from "@/ipc/utils/git_utils";
 
 // ============================================================================
-// Schema: Discriminated union on "operation"
+// Schema: Flat object with operation enum (OpenAI strict mode compatible)
+// z.discriminatedUnion produces `type: ["object"]` which OpenAI rejects.
 // ============================================================================
 
-const statusSchema = z.object({
-    operation: z.literal("status"),
-});
+const gitOperationsSchema = z.object({
+    operation: z.enum([
+        "status", "diff", "diff_file", "log", "show_commit",
+        "current_branch", "list_branches", "commit", "create_branch",
+        "checkout", "stash_save", "stash_pop", "stash_list", "revert_file",
+    ]).describe(`The git operation to perform:
+- "status": Show working tree status (modified, added, deleted files)
+- "diff": Show working directory or staged diff
+- "diff_file": Show diff for a specific file
+- "log": View commit history
+- "show_commit": Inspect a specific commit's details and diff
+- "current_branch": Show the current branch name
+- "list_branches": List all branches
+- "commit": Stage all changes and create a commit
+- "create_branch": Create a new branch
+- "checkout": Switch to a branch or commit
+- "stash_save": Stash current changes
+- "stash_pop": Pop a stash
+- "stash_list": List all stashes
+- "revert_file": Discard changes in a specific file`),
 
-const diffSchema = z.object({
-    operation: z.literal("diff"),
-    cached: z
-        .boolean()
-        .optional()
-        .describe("If true, show staged (cached) diff instead of working directory diff."),
-});
+    // diff
+    cached: z.boolean().optional()
+        .describe("For 'diff': if true, show staged diff instead of working directory diff."),
 
-const diffFileSchema = z.object({
-    operation: z.literal("diff_file"),
-    file_path: z.string().describe("Relative path to the file to diff."),
-});
+    // diff_file, revert_file
+    file_path: z.string().optional()
+        .describe("For 'diff_file' and 'revert_file': relative path to the file."),
 
-const logSchema = z.object({
-    operation: z.literal("log"),
-    limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(50)
-        .optional()
-        .describe("Maximum number of commits to return (default: 10, max: 50)."),
-    offset: z
-        .number()
-        .int()
-        .min(0)
-        .optional()
-        .describe("Number of commits to skip for pagination (default: 0)."),
-});
+    // log
+    limit: z.number().int().min(1).max(50).optional()
+        .describe("For 'log': maximum number of commits to return (default: 10, max: 50)."),
+    offset: z.number().int().min(0).optional()
+        .describe("For 'log': number of commits to skip for pagination (default: 0)."),
 
-const showCommitSchema = z.object({
-    operation: z.literal("show_commit"),
-    commit_hash: z.string().describe("The commit hash (short or full) to inspect."),
-});
+    // show_commit
+    commit_hash: z.string().optional()
+        .describe("For 'show_commit': the commit hash (short or full) to inspect."),
 
-const currentBranchSchema = z.object({
-    operation: z.literal("current_branch"),
-});
+    // commit
+    message: z.string().optional()
+        .describe("For 'commit' and 'stash_save': the commit/stash message."),
 
-const listBranchesSchema = z.object({
-    operation: z.literal("list_branches"),
-});
+    // create_branch
+    branch: z.string().optional()
+        .describe("For 'create_branch': name of the new branch."),
+    from: z.string().optional()
+        .describe("For 'create_branch': starting point for the branch (default: HEAD)."),
 
-const commitSchema = z.object({
-    operation: z.literal("commit"),
-    message: z.string().describe("The commit message. Should be descriptive and follow conventional commit format."),
-});
+    // checkout
+    ref: z.string().optional()
+        .describe("For 'checkout': branch name or commit hash to switch to."),
 
-const createBranchSchema = z.object({
-    operation: z.literal("create_branch"),
-    branch: z.string().describe("Name of the new branch to create."),
-    from: z.string().optional().describe("Starting point for the branch (default: HEAD)."),
+    // stash_pop
+    index: z.number().int().min(0).optional()
+        .describe("For 'stash_pop': index of the stash to pop (default: latest)."),
 });
-
-const checkoutSchema = z.object({
-    operation: z.literal("checkout"),
-    ref: z.string().describe("Branch name or commit hash to checkout."),
-});
-
-const stashSaveSchema = z.object({
-    operation: z.literal("stash_save"),
-    message: z.string().optional().describe("Optional message to describe the stash."),
-});
-
-const stashPopSchema = z.object({
-    operation: z.literal("stash_pop"),
-    index: z.number().int().min(0).optional().describe("Index of the stash to pop (default: latest)."),
-});
-
-const stashListSchema = z.object({
-    operation: z.literal("stash_list"),
-});
-
-const revertFileSchema = z.object({
-    operation: z.literal("revert_file"),
-    file_path: z.string().describe("Relative path to the file to discard changes for."),
-});
-
-const gitOperationsSchema = z.discriminatedUnion("operation", [
-    statusSchema,
-    diffSchema,
-    diffFileSchema,
-    logSchema,
-    showCommitSchema,
-    currentBranchSchema,
-    listBranchesSchema,
-    commitSchema,
-    createBranchSchema,
-    checkoutSchema,
-    stashSaveSchema,
-    stashPopSchema,
-    stashListSchema,
-    revertFileSchema,
-]);
 
 type GitOperationsInput = z.infer<typeof gitOperationsSchema>;
 
@@ -413,11 +373,11 @@ Use descriptive commit messages following conventional commit format (e.g. "feat
                 case "diff":
                     return await executeDiff(ctx, args.cached ?? false);
                 case "diff_file":
-                    return await executeDiffFile(ctx, args.file_path);
+                    return await executeDiffFile(ctx, args.file_path!);
                 case "log":
                     return await executeLog(ctx, args.limit ?? 10, args.offset ?? 0);
                 case "show_commit":
-                    return await executeShowCommit(ctx, args.commit_hash);
+                    return await executeShowCommit(ctx, args.commit_hash!);
                 case "current_branch":
                     const branch = await gitCurrentBranch({ path: ctx.appPath });
                     return `Current branch: ${branch ?? "(detached HEAD)"}`;
@@ -426,11 +386,11 @@ Use descriptive commit messages following conventional commit format (e.g. "feat
                     if (branches.length === 0) return "No branches found.";
                     return `Branches:\n${branches.map((b) => `  ${b}`).join("\n")}`;
                 case "commit":
-                    return await executeCommit(ctx, args.message);
+                    return await executeCommit(ctx, args.message!);
                 case "create_branch":
-                    return await executeCreateBranch(ctx, args.branch, args.from);
+                    return await executeCreateBranch(ctx, args.branch!, args.from);
                 case "checkout":
-                    return await executeCheckout(ctx, args.ref);
+                    return await executeCheckout(ctx, args.ref!);
                 case "stash_save":
                     return await executeStashSave(ctx, args.message);
                 case "stash_pop":
@@ -438,7 +398,7 @@ Use descriptive commit messages following conventional commit format (e.g. "feat
                 case "stash_list":
                     return await executeStashList(ctx);
                 case "revert_file":
-                    return await executeRevertFile(ctx, args.file_path);
+                    return await executeRevertFile(ctx, args.file_path!);
                 default:
                     throw new ToolError(`Unknown git operation: ${(args as any).operation}`, {
                         retryable: false,

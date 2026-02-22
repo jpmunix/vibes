@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 5; // Bumped: full descriptions (no longer truncated)
+const CACHE_VERSION = 6; // Bumped: cap maxOutputTokens to 85% of contextWindow
 
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -142,12 +142,26 @@ function transformModel(model: OpenRouterModel): ModelOption {
         displayName = displayName.substring(colonIndex + 2);
     }
 
+    const contextWindow = model.context_length || undefined;
+    let maxOutputTokens = model.top_provider?.max_completion_tokens || undefined;
+
+    // Cap maxOutputTokens to always leave room for input (system prompt + tools + messages).
+    // The system prompt + tool definitions alone consume ~20-30K tokens.
+    // Many providers (Kimi K2.5, o3-mini, etc.) report max_completion_tokens ≈ context_length,
+    // which makes input+output always exceed the window. Cap at 85% of context to be safe.
+    if (maxOutputTokens && contextWindow) {
+        const safeMax = Math.floor(contextWindow * 0.85);
+        if (maxOutputTokens > safeMax) {
+            maxOutputTokens = Math.max(4096, safeMax);
+        }
+    }
+
     return {
         name: model.id,
         displayName,
         description,
-        maxOutputTokens: model.top_provider?.max_completion_tokens || undefined,
-        contextWindow: model.context_length || undefined,
+        maxOutputTokens,
+        contextWindow,
         temperature: 0,
         dollarSigns: priceToDollarSigns(model.pricing?.completion || "0"),
         brainSigns: undefined,

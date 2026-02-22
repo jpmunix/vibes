@@ -306,9 +306,14 @@ function applyPatchOperations(
  * Quick syntax sanity check for common JS/TS/JSX/TSX issues.
  * Returns an error message if a problem is detected, or null if OK.
  * This is NOT a full parser — it catches the most common patch-induced errors:
- *   1. Unbalanced braces/brackets/parens
- *   2. Duplicate import blocks
- *   3. Orphaned closing tags in JSX
+ *   1. Duplicate import blocks (BLOCKER)
+ *   2. Merge markers from failed TurboEdit (BLOCKER)
+ *   3. Severely unbalanced braces/parens (WARNING only — logged but not blocking)
+ *
+ * Note: Brace/paren checking is intentionally non-blocking because TSX/JSX
+ * files have complex syntax (template literals with ${}, JSX expressions, etc.)
+ * that naive parsers cannot reliably handle. False positives would cause
+ * unnecessary fallbacks to overwrite, wasting agent steps.
  */
 function quickSyntaxCheck(content: string, filePath: string): string | null {
     const ext = path.extname(filePath).toLowerCase();
@@ -316,7 +321,12 @@ function quickSyntaxCheck(content: string, filePath: string): string | null {
         return null;
     }
 
-    // 1. Check for duplicate import ... from "same-module" statements
+    // 1. Check for merge markers left by failed TurboEdit merges (BLOCKER)
+    if (/\/\/ ?\.\.\. ?existing ?code/i.test(content)) {
+        return `Merge marker '// ... existing code ...' detected in the file output. This means the edit/merge failed — the placeholder was NOT replaced with actual code. Use explore_codebase(read_file) to see the full file, then use file_editor(overwrite) to rewrite it correctly.`;
+    }
+
+    // 2. Check for duplicate import ... from "same-module" statements (BLOCKER)
     const importRegex = /^\s*(?:}\s*from\s+|import\s+.+?from\s+)['"]([^'"]+)['"];?\s*$/gm;
     const importSources = new Map<string, number[]>();
     let match: RegExpExecArray | null;
@@ -334,7 +344,6 @@ function quickSyntaxCheck(content: string, filePath: string): string | null {
         }
     }
     for (const [source, lines] of importSources) {
-        // Count actual "from" occurrences for this source (not just closing braces)
         const fromRegex = new RegExp(`from\\s+['"]${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`, 'g');
         const fromMatches = content.match(fromRegex);
         if (fromMatches && fromMatches.length > 1) {
@@ -342,57 +351,99 @@ function quickSyntaxCheck(content: string, filePath: string): string | null {
         }
     }
 
-    // 2. Check for severely unbalanced braces (tolerance of 0 — must match exactly)
+    // 3. Brace/paren balance check — WARNING ONLY (logged, not blocking)
+    // This is intentionally non-blocking because TSX, template literals with
+    // interpolations, and regex patterns make naive char-level parsing unreliable.
+    // A false positive here would force unnecessary overwrite fallbacks.
     let braceDepth = 0;
     let parenDepth = 0;
-    let bracketDepth = 0;
     let inString: string | null = null;
-    let inTemplate = false;
+    let templateDepth = 0; // Depth of nested template literals
+    let interpDepth = 0;   // Depth of ${...} interpolation nesting
     let escaped = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+    let prevCh = '';
 
-    for (const ch of content) {
+    for (let i = 0; i < content.length; i++) {
+        const ch = content[i];
+
+        // Handle line comments
+        if (inLineComment) {
+            if (ch === '\n') inLineComment = false;
+            prevCh = ch;
+            continue;
+        }
+        // Handle block comments
+        if (inBlockComment) {
+            if (prevCh === '*' && ch === '/') inBlockComment = false;
+            prevCh = ch;
+            continue;
+        }
+
         if (escaped) {
             escaped = false;
+            prevCh = ch;
             continue;
         }
         if (ch === '\\') {
             escaped = true;
+            prevCh = ch;
             continue;
         }
+
+        // Inside a string literal
         if (inString) {
             if (ch === inString) inString = null;
+            prevCh = ch;
             continue;
         }
-        if (inTemplate) {
-            if (ch === '`') inTemplate = false;
+
+        // Inside a template literal
+        if (templateDepth > 0 && interpDepth === 0) {
+            if (ch === '`') {
+                templateDepth--;
+            } else if (ch === '$' && i + 1 < content.length && content[i + 1] === '{') {
+                interpDepth++;
+                i++; // Skip '{'
+            }
+            prevCh = ch;
             continue;
         }
+
+        // Start of comment
+        if (ch === '/' && i + 1 < content.length) {
+            if (content[i + 1] === '/') { inLineComment = true; prevCh = ch; continue; }
+            if (content[i + 1] === '*') { inBlockComment = true; prevCh = ch; continue; }
+        }
+
         if (ch === '"' || ch === "'") {
             inString = ch;
-            continue;
+        } else if (ch === '`') {
+            templateDepth++;
+        } else if (ch === '{') {
+            if (interpDepth > 0) interpDepth++;
+            braceDepth++;
+        } else if (ch === '}') {
+            if (interpDepth > 0) interpDepth--;
+            braceDepth--;
+        } else if (ch === '(') {
+            parenDepth++;
+        } else if (ch === ')') {
+            parenDepth--;
         }
-        if (ch === '`') {
-            inTemplate = true;
-            continue;
-        }
-        if (ch === '{') braceDepth++;
-        else if (ch === '}') braceDepth--;
-        else if (ch === '(') parenDepth++;
-        else if (ch === ')') parenDepth--;
-        else if (ch === '[') bracketDepth++;
-        else if (ch === ']') bracketDepth--;
+
+        prevCh = ch;
     }
 
-    if (braceDepth !== 0) {
-        return `Unbalanced braces detected: ${braceDepth > 0 ? `${braceDepth} unclosed '{'` : `${Math.abs(braceDepth)} extra '}'`}. The patch likely removed or duplicated a code block boundary.`;
+    // Only log warnings — do NOT return errors for brace/paren imbalance
+    // because TSX/JSX makes this inherently unreliable
+    if (Math.abs(braceDepth) >= 3) {
+        // Only warn on SEVERE imbalance (3+) — small differences are likely parser artifacts
+        logger.warn(`[quickSyntaxCheck] Severe brace imbalance (${braceDepth}) in ${filePath} — likely a real issue but not blocking the edit`);
     }
-    if (parenDepth !== 0) {
-        return `Unbalanced parentheses detected: ${parenDepth > 0 ? `${parenDepth} unclosed '('` : `${Math.abs(parenDepth)} extra ')'`}. The patch likely broke a function call or expression.`;
-    }
-
-    // 3. Check for merge markers left by failed TurboEdit merges
-    if (/\/\/ ?\.\.\. ?existing ?code/i.test(content)) {
-        return `Merge marker '// ... existing code ...' detected in the file output. This means the edit/merge failed — the placeholder was NOT replaced with actual code. Use explore_codebase(read_file) to see the full file, then use file_editor(overwrite) to rewrite it correctly.`;
+    if (Math.abs(parenDepth) >= 3) {
+        logger.warn(`[quickSyntaxCheck] Severe paren imbalance (${parenDepth}) in ${filePath}`);
     }
 
     return null;

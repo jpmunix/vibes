@@ -448,9 +448,17 @@ export async function handleLocalAgentStream(
         }
       },
       onError: (error: any) => {
-        const errorMessage = error?.error?.message || JSON.stringify(error);
-        const fullErrorText = `AI error: ${errorMessage}`;
-        logger.error("Local agent stream error:", errorMessage);
+        // Extract the most detailed error message available
+        const nestedError = error?.error;
+        const errorMessage =
+          nestedError?.responseBody ??
+          nestedError?.message ??
+          (typeof nestedError === "string" ? nestedError : null) ??
+          JSON.stringify(error);
+        const statusCode = nestedError?.statusCode ?? nestedError?.status ?? "";
+        const fullErrorText = `AI error${statusCode ? ` (${statusCode})` : ""}: ${errorMessage}`;
+        logger.error("Local agent stream error:", fullErrorText);
+        logger.error("Local agent stream error (raw):", JSON.stringify(error, null, 2));
         safeSend(event.sender, "chat:response:error", {
           chatId: req.chatId,
           error: fullErrorText,

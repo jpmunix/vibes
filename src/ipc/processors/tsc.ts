@@ -30,8 +30,14 @@ export async function generateProblemReport({
     // Create the worker
     const worker = new Worker(workerPath);
 
+    // Guard against double-settling: worker.terminate() causes exit code 1,
+    // which would trigger reject() after resolve() was already called.
+    let settled = false;
+
     // Handle worker messages
     worker.on("message", (output: WorkerOutput) => {
+      if (settled) return;
+      settled = true;
       worker.terminate();
 
       if (output.success && output.data) {
@@ -45,6 +51,8 @@ export async function generateProblemReport({
 
     // Handle worker errors
     worker.on("error", (error) => {
+      if (settled) return;
+      settled = true;
       logger.error(`TSC worker error for app ${appPath}:`, error);
       worker.terminate();
       reject(error);
@@ -52,7 +60,9 @@ export async function generateProblemReport({
 
     // Handle worker exit
     worker.on("exit", (code) => {
+      if (settled) return; // Already resolved/rejected via message or error handler
       if (code !== 0) {
+        settled = true;
         logger.error(`TSC worker exited with code ${code} for app ${appPath}`);
         reject(new Error(`Worker exited with code ${code}`));
       }
