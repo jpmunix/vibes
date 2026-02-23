@@ -22,6 +22,8 @@ import {
   isSelectingModelByIdAtom,
 } from "./atoms/chatAtoms";
 import { queryKeys } from "./lib/queryKeys";
+import { useUpdateChecker } from "./hooks/useUpdateChecker";
+import { UpdateAvailableDialog } from "./components/UpdateAvailableDialog";
 
 // @ts-ignore
 console.log("Running in mode:", import.meta.env.MODE);
@@ -306,7 +308,20 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  return <RouterProvider router={router} />;
+  // Update checker — shows a dialog when a new version is available
+  const { updateVersion, isOpen: isUpdateOpen, dismiss: dismissUpdate, download: downloadUpdate } = useUpdateChecker();
+
+  return (
+    <>
+      <RouterProvider router={router} />
+      <UpdateAvailableDialog
+        updateVersion={updateVersion}
+        isOpen={isUpdateOpen}
+        onDismiss={dismissUpdate}
+        onDownload={downloadUpdate}
+      />
+    </>
+  );
 }
 
 /**

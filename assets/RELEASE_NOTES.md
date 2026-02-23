@@ -1,20 +1,10 @@
-- Refinado el sistema de importación de apps
-- feat: improve file editing and recovery logic with new validation and patch tools
-    - Introduced `expected_original` validation for precise `patch_file` operations to prevent blind edits.
-    - Implemented syntax validation to catch common JS/TS errors (e.g., unbalanced braces, duplicate imports) during edits.
-    - Enhanced error recovery rules to enforce safer fallbacks (`read_file` + `overwrite`) after repeated failures.
-    - Updated `read_file` to return line-numbered output for accurate patching.
-    - Refactored `logTokenUsage` with stricter settings checks to respect user preferences.
-    - Improved telemetry tracking and introduced hard caps for repeated tool failures.
-
-
----------------------------
 ### 🧠 Agente & IA
 
 *   **Herramientas Unificadas**: `file_editor` fusiona `write_file`, `edit_file`, `search_replace` y `patch_file` en una sola herramienta basada en acciones. `explore_codebase` consolida `read_file`, `list_files`, `grep` y `code_search` en una única interfaz de exploración.
 *   **Edición por Parches**: Herramienta `patch_file` con edición precisa basada en líneas y componente visual integrado para revisar los cambios aplicados.
+*   **Edición y Recuperación Mejoradas**: Validación `expected_original` para operaciones `patch_file` que previene ediciones a ciegas, detección de errores comunes en JS/TS (llaves desbalanceadas, imports duplicados) y fallbacks de recuperación más seguros (`read_file` + `overwrite`) tras fallos repetidos.
 *   **Diálogo con el Usuario**: Herramienta `ask_user` que permite al agente solicitar información durante la ejecución, con persistencia de mensajes de error para depuración.
-*   **Resiliencia Mejorada**: Lógica de fallback y manejo de errores reforzado en la ejecución de herramientas para mayor robustez ante fallos inesperados.
+*   **Resiliencia Mejorada**: Lógica de fallback y manejo de errores reforzado en la ejecución de herramientas para mayor robustez ante fallos inesperados. Hard caps para fallos repetidos de herramientas.
 *   **Búsqueda Semántica Avanzada**: Contexto inteligente mediante embeddings vectoriales con re-ranking híbrido (keywords + similitud vectorial) para enviar al modelo solo lo más relevante.
 *   **Base de Conocimientos Inteligente**: Filtrado semántico, deduplicación y decaimiento de confianza para inyectar solo las reglas y convenciones más relevantes al prompt actual.
 *   **Caché de Embeddings SQLite**: Persistencia eficiente de vectores con invalidación inteligente mediante hashes SHA-256 de contenido.
@@ -41,6 +31,7 @@
 
 ### 🎨 Interfaz & UX
 
+*   **Comprobación Automática de Actualizaciones**: Al abrir la app se consulta un fichero remoto de versión y, si hay una nueva disponible, se muestra un diálogo con opción de descargar (abriendo el navegador según la plataforma) u omitir, con opción de silenciar hasta la siguiente versión.
 *   **Rediseño Completo de Ajustes**: Todas las secciones comparten el mismo patrón visual: filas con título, descripción y control (pills, toggles, selectores). Prompts, Modelos y Permisos se agrupan con cabeceras colapsables.
 *   **Permisos por Herramienta**: Cada herramienta del agente tiene un selector de tres niveles (Nunca / Preguntar / Siempre) con pills visuales.
 *   **Integraciones Normalizadas**: GitHub, Vercel, Supabase y Neon con diseño uniforme.
@@ -66,6 +57,7 @@
 *   **Visor de Supabase**: Visor de base de datos con visualización de tablas, valores y gestión de registros directamente desde la aplicación.
 *   **Terminal de Consola**: Terminal integrada para las aplicaciones, con exportación de logs.
 *   **Capturas de Pantalla Nativas**: Soporte nativo con logging de metadatos y herramientas de anotación mejoradas.
+*   **Importación de Apps Refinada**: Sistema de importación de aplicaciones mejorado con flujo más robusto y fiable.
 *   **Mejoras en Creación de Apps**: Fases de carga animadas, saneamiento de títulos y caché de `node_modules` reutilizable.
 *   **Plantillas Mejoradas**: Valores específicos por aplicación en el scaffolding, eliminando wildcards genéricos.
 *   **Exportación e Importación de Ajustes**: Funcionalidad completa en formato JSON.

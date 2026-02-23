@@ -340,6 +340,13 @@ export const systemContracts = {
       })).optional(),
     }).nullable(),
   }),
+
+  // Update checker — fetch remote version from CDN (avoids CORS in renderer)
+  checkRemoteVersion: defineContract({
+    channel: "system:check-remote-version",
+    input: z.void(),
+    output: z.string().nullable(),
+  }),
 } as const;
 
 // =============================================================================
