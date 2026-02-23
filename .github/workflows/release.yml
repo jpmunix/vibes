@@ -152,7 +152,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload ZIP to BunnyCDN FTP
+      - name: Upload ZIP to BunnyCDN Storage
         if: success() && startsWith(matrix.os.id, 'macos')
         run: |
           # Leer versión desde package.json
@@ -167,9 +167,12 @@ jobs:
           fi
           echo "📦 Archivo encontrado: $ZIP_FILE"
 
-          # Subir al FTP de BunnyCDN (modo pasivo, puerto 21)
-          curl --ftp-pasv -T "$ZIP_FILE" \
-               "ftp://storage.bunnycdn.com/minube-vibes/mac/${VERSION}.zip" \
-               --user "minube-vibes:d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647"
+          # Subir vía API HTTP de BunnyCDN Storage
+          curl --request PUT \
+               --url "https://storage.bunnycdn.com/minube-vibes/mac/${VERSION}.zip" \
+               --header "AccessKey: d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647" \
+               --header "Content-Type: application/octet-stream" \
+               --data-binary @"$ZIP_FILE" \
+               --fail --show-error
 
           echo "✅ Subido como ${VERSION}.zip a /minube-vibes/mac/"
