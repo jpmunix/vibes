@@ -36,6 +36,7 @@ export { vercelContracts } from "./vercel";
 export { supabaseContracts } from "./supabase";
 export { neonContracts } from "./neon";
 export { firebaseContracts } from "./firebase";
+export { bunnyContracts } from "./bunny";
 export { systemContracts, systemEvents } from "./system";
 export { versionContracts } from "./version";
 export { languageModelContracts } from "./language-model";
@@ -77,6 +78,7 @@ export { vercelClient } from "./vercel";
 export { supabaseClient } from "./supabase";
 export { neonClient } from "./neon";
 export { firebaseClient } from "./firebase";
+export { bunnyClient } from "./bunny";
 export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
@@ -234,6 +236,13 @@ export type {
   SetFirebaseAppProjectParams,
   CreateFirebaseProjectParams,
 } from "./firebase";
+
+// Bunny types
+export type {
+  BunnyConfig,
+  BunnyDatabaseEntry,
+  BunnyStorageZoneEntry,
+} from "./bunny";
 
 // System types
 export type {
@@ -432,6 +441,7 @@ import { visualEditingClient } from "./visual-editing";
 import { debateClient, debateStreamClient } from "./debate";
 import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
+import { bunnyClient } from "./bunny";
 import { aiQueryLogClient } from "./ai_query_logs";
 import { dossierClient, dossierStreamClient } from "./dossier";
 
@@ -478,6 +488,7 @@ export const ipc = {
   supabase: supabaseClient,
   neon: neonClient,
   firebase: firebaseClient,
+  bunny: bunnyClient,
 
   // Features
   system: systemClient,

@@ -386,6 +386,31 @@ function ensureEmbeddingsCacheTable(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure the bunny_config column exists in apps table.
+ * Migration 0044 adds this column but can fail on existing databases.
+ */
+function ensureBunnyConfigColumn(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='apps'`)
+      .get();
+    if (!tableExists) return;
+
+    const columns = sqlite
+      .prepare(`PRAGMA table_info(apps)`)
+      .all() as Array<{ name: string }>;
+    const columnNames = new Set(columns.map((c) => c.name));
+
+    if (!columnNames.has("bunny_config")) {
+      logger.log("Adding missing 'bunny_config' column to apps");
+      sqlite.exec(`ALTER TABLE \`apps\` ADD \`bunny_config\` text`);
+    }
+  } catch (error) {
+    logger.error("Error ensuring bunny_config column:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -471,6 +496,9 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
 
       // Ensure embeddings_cache table exists (semantic search, migration 0042 fallback)
       ensureEmbeddingsCacheTable(sqlite);
+
+      // Ensure apps has bunny_config column (Bunny.net integration, migration 0044 fallback)
+      ensureBunnyConfigColumn(sqlite);
 
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });

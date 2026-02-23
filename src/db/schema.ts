@@ -54,6 +54,21 @@ export const apps = sqliteTable("apps", {
   vercelDeploymentUrl: text("vercel_deployment_url"),
   firebaseProjectId: text("firebase_project_id"),
   firebaseConfig: text("firebase_config", { mode: "json" }),
+  bunnyConfig: text("bunny_config", { mode: "json" }).$type<{
+    databases: {
+      name: string;
+      databaseUrl: string;
+      fullAccessToken: string;
+      readOnlyToken: string;
+    }[];
+    storageZones: {
+      name: string;
+      hostname: string;
+      username: string;
+      password: string;
+      readonlyPassword: string;
+    }[];
+  } | null>(),
   installCommand: text("install_command"),
   startCommand: text("start_command"),
   chatContext: text("chat_context", { mode: "json" }),

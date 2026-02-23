@@ -1,3 +1,7 @@
+- Expanded repository and integrations section with Bunny.net alongside existing GitHub and Supabase options.
+
+--------------------------
+
 ### 🧠 Agente & IA
 
 *   **Herramientas Unificadas**: `file_editor` fusiona `write_file`, `edit_file`, `search_replace` y `patch_file` en una sola herramienta basada en acciones. `explore_codebase` consolida `read_file`, `list_files`, `grep` y `code_search` en una única interfaz de exploración.
