@@ -178,19 +178,27 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
           </div>
         </div>
 
-        {/* Botones de acción */}
+        {/* Botones de acción o mensaje tranquilizador */}
         {!isDockerError && error.source === "preview-app" && (
-          <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/50 rounded-b-lg">
-            <CopyErrorMessage errorMessage={error.message} />
-            <button
-              disabled={isStreaming}
-              onClick={onAIFix}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-red-600 disabled:hover:to-red-700"
-            >
-              <Sparkles size={16} />
-              <span>Arreglar con IA</span>
-            </button>
-          </div>
+          isStreaming ? (
+            <div className="flex items-center gap-3 p-4 border-t border-border bg-amber-50 dark:bg-amber-950/30 rounded-b-lg">
+              <Loader2 size={18} className="flex-shrink-0 text-amber-600 dark:text-amber-400 animate-spin" />
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                Es normal que mientras el agente modifica archivos existan fallos temporales. Espera a que termine de trabajar.
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/50 rounded-b-lg">
+              <CopyErrorMessage errorMessage={error.message} />
+              <button
+                onClick={onAIFix}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+              >
+                <Sparkles size={16} />
+                <span>Arreglar con IA</span>
+              </button>
+            </div>
+          )
         )}
       </div>
     </>
