@@ -151,3 +151,25 @@ jobs:
             out/make/**/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZIP to BunnyCDN FTP
+        if: success() && startsWith(matrix.os.id, 'macos')
+        run: |
+          # Leer versión desde package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "App version: $VERSION"
+
+          # Encontrar el zip generado
+          ZIP_FILE=$(find out/make -name "*.zip" | head -1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "❌ No se encontró ningún archivo .zip en out/make"
+            exit 1
+          fi
+          echo "📦 Archivo encontrado: $ZIP_FILE"
+
+          # Subir al FTP de BunnyCDN (modo pasivo, puerto 21)
+          curl --ftp-pasv -T "$ZIP_FILE" \
+               "ftp://storage.bunnycdn.com/minube-vibes/mac/${VERSION}.zip" \
+               --user "minube-vibes:d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647"
+
+          echo "✅ Subido como ${VERSION}.zip a /minube-vibes/mac/"
