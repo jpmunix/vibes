@@ -159,13 +159,6 @@ export function ModelPicker() {
                       .filter((model) => {
                         // Only show enabled models
                         if (!enabledModels.includes(model.apiName)) return false;
-                        // Don't show free models if Dyad Pro is enabled
-                        if (
-                          isDyadProEnabled(settings) &&
-                          model.apiName.endsWith(":free")
-                        ) {
-                          return false;
-                        }
                         return true;
                       })
                       .map((model) => (
