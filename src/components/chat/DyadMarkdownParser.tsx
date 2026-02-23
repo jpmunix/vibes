@@ -1528,7 +1528,7 @@ function renderModalContent(
             {hasPricing && <span>Coste: <strong className="text-yellow-400">{fmtCost(costTotal)}</strong></span>}
           </div>
           <div className="text-sm text-foreground/80 font-medium text-center mt-3 bg-muted/50 p-2 rounded-md">
-            ⚠️ Los tokens y el coste mostrados son estimaciones basadas en la manera de informar de OpenRouter y pueden no ser exactos.
+            ⚠️ Los tokens y el coste mostrados se basan en el uso acumulado reportado por OpenRouter. El coste real puede variar ligeramente.
           </div>
         </div>
       );

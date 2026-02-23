@@ -1350,13 +1350,17 @@ This conversation includes one or more image attachments. When the user uploads 
             tools,
             messages: framedMessages,
             onFinish: async (response: any) => {
-              const totalTokens = response.usage?.totalTokens;
+              // Use totalUsage (accumulated across ALL steps) rather than usage (last step only)
+              const accumulated = response.totalUsage;
+              const lastStep = response.usage;
+              const totalTokens = accumulated?.totalTokens ?? lastStep?.totalTokens;
               // AI SDK v4 uses inputTokens/outputTokens instead of promptTokens/completionTokens
               const promptTokens =
-                response.usage?.promptTokens ?? response.usage?.inputTokens;
+                accumulated?.inputTokens ?? lastStep?.promptTokens ?? lastStep?.inputTokens;
               const completionTokens =
-                response.usage?.completionTokens ??
-                response.usage?.outputTokens ??
+                accumulated?.outputTokens ??
+                lastStep?.completionTokens ??
+                lastStep?.outputTokens ??
                 (totalTokens && promptTokens ? totalTokens - promptTokens : undefined);
 
               // Log the query to the dedicated AI query log

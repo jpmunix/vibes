@@ -248,7 +248,7 @@ export function registerDebateStreamHandlers() {
         fullResponse = "*Acción completada*";
       }
 
-      const usage = await result.usage;
+      const usage = await result.totalUsage;
       if (usage) {
         const usageAny = usage as any;
         const promptTokens = usageAny.promptTokens ?? usageAny.inputTokens ?? 0;

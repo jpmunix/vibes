@@ -370,19 +370,22 @@ export async function handleLocalAgentStream(
       prepareStep: (options) =>
         prepareStepMessages(options, pendingUserMessages, allInjectedMessages),
       onFinish: async (response) => {
-        const totalTokens = response.usage?.totalTokens;
-        const inputTokens = response.usage?.inputTokens;
-        const outputTokens = response.usage?.outputTokens ?? (response.usage as any)?.completionTokens;
-        const cachedInputTokens = response.usage?.cachedInputTokens;
+        // IMPORTANT: response.totalUsage is the accumulated total across ALL steps
+        // (all API calls in a multi-step agent conversation). response.usage is
+        // only the last step's usage, which would massively undercount tokens.
+        const accumulated = response.totalUsage;
+        const lastStep = response.usage;
+        const totalTokens = accumulated?.totalTokens ?? lastStep?.totalTokens;
+        const inputTokens = accumulated?.inputTokens ?? lastStep?.inputTokens;
+        const outputTokens = accumulated?.outputTokens ?? lastStep?.outputTokens ?? (lastStep as any)?.completionTokens;
+        const cachedInputTokens = accumulated?.cachedInputTokens ?? lastStep?.cachedInputTokens;
+        const stepCount = response.steps?.length ?? 1;
         logger.log(
-          "Total tokens used:",
-          totalTokens,
-          "Input tokens:",
-          inputTokens,
-          "Output tokens:",
-          outputTokens,
-          "Cached input tokens:",
-          cachedInputTokens,
+          `Token usage (${stepCount} steps):`,
+          "Total:", totalTokens,
+          "Input:", inputTokens,
+          "Output:", outputTokens,
+          "Cached:", cachedInputTokens,
           "Cache hit ratio:",
           cachedInputTokens ? (cachedInputTokens ?? 0) / (inputTokens ?? 0) : 0,
         );
@@ -391,15 +394,13 @@ export async function handleLocalAgentStream(
         finalInputTokens = inputTokens;
         finalCachedTokens = cachedInputTokens;
 
-        // Log AI query using fullResponse from outer scope (closure)
+        // Derive effective output tokens
         let effectiveOutputTokens = outputTokens
           || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
 
-        // Many providers only report output tokens for the final text step,
-        // ignoring tool call argument tokens. Use text-based estimate as a floor.
-        const estimatedFromText = Math.ceil(fullResponse.length / 4);
-        if (!effectiveOutputTokens || effectiveOutputTokens < estimatedFromText * 0.5) {
-          effectiveOutputTokens = estimatedFromText;
+        // Only use text-based estimation as a last resort when we have NO data at all
+        if (!effectiveOutputTokens) {
+          effectiveOutputTokens = Math.ceil(fullResponse.length / 4);
         }
         finalOutputTokens = effectiveOutputTokens;
 
