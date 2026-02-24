@@ -15,6 +15,8 @@ import { BrowserWindow } from "electron";
 import { db } from "../db/index";
 import { getRemoteDb, getClient, initializeRemoteSchema } from "../db/remote";
 import * as remoteSchema from "../db/remote-schema";
+import { readSettings } from "../main/settings";
+import { readTokenStats } from "../ipc/utils/token_stats_logger";
 
 const logger = log.scope("data-migrator");
 
@@ -147,6 +149,87 @@ async function migrateTable(
 }
 
 /**
+ * Migrate local `user-settings.json` to remote `user_settings` table.
+ */
+async function migrateUserSettings(userId: string): Promise<boolean> {
+    try {
+        const settings = readSettings();
+        const remoteClient = getClient();
+
+        // Ensure we don't overwrite user settings if they already exist in remote
+        const existing = await remoteClient.execute({
+            sql: `SELECT id FROM user_settings WHERE user_id = ?`,
+            args: [userId],
+        });
+
+        if (existing.rows.length === 0) {
+            await remoteClient.execute({
+                sql: `INSERT INTO user_settings (user_id, settings_json, updated_at) VALUES (?, ?, ?)`,
+                // We use UTC string for mode: "timestamp" fallback, or milliseconds.
+                // Usually mode timestamp saves Date values. Here we pass Date.now() integer or ISO parsing.
+                args: [userId, JSON.stringify(settings), Date.now()],
+            });
+            logger.info("Local user-settings.json migrated successfully to user_settings table");
+        }
+        return true;
+    } catch (error) {
+        logger.error("Error migrating user-settings.json:", error);
+        return false;
+    }
+}
+
+/**
+ * Migrate local `token-stats.jsonl` to remote `ai_query_logs` table.
+ */
+async function migrateTokenStats(userId: string): Promise<boolean> {
+    try {
+        const stats = readTokenStats(100000); // Read all stats
+        if (stats.length === 0) return true;
+
+        const remoteClient = getClient();
+
+        // Check if there are already records migrated to avoid duplicating them
+        const existing = await remoteClient.execute({
+            sql: `SELECT id FROM ai_query_logs WHERE user_id = ? LIMIT 1`,
+            args: [userId],
+        });
+
+        if (existing.rows.length > 0) {
+            return true; // Likely already migrated
+        }
+
+        let count = 0;
+        for (const stat of stats) {
+            await remoteClient.execute({
+                sql: `
+                    INSERT INTO ai_query_logs 
+                    (user_id, app_id, model, input_tokens, output_tokens, total_execution_time_ms, operation_type, payload, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `,
+                args: [
+                    userId,
+                    stat.appId ?? null,
+                    stat.model ?? "unknown",
+                    stat.promptTokens ?? 0,
+                    stat.completionTokens ?? 0,
+                    0,
+                    stat.source || "chat",
+                    JSON.stringify(stat),
+                    stat.timestamp ?? Date.now(),
+                ],
+            });
+            count++;
+        }
+
+        logger.info(`Migrated ${count} token stats from jsonl successfully to ai_query_logs table`);
+        return true;
+    } catch (error) {
+        logger.error("Error migrating token-stats.jsonl:", error);
+        return false;
+    }
+}
+
+/**
  * Run the full migration from local SQLite to remote Bunny Edge SQL.
  */
 export async function runMigration(userId: string): Promise<{
@@ -191,6 +274,15 @@ export async function runMigration(userId: string): Promise<{
             // Continue with other tables
         }
     }
+
+    // After SQLite migration, migrate JSON file states 
+    broadcastProgress("Migrating", "Ajustes (user-settings)", totalEstimate, totalEstimate);
+    const settingsSuccess = await migrateUserSettings(userId);
+    if (!settingsSuccess) hasErrors = true;
+
+    broadcastProgress("Migrating", "Log de Tokens (jsonl)", totalEstimate, totalEstimate);
+    const tokensSuccess = await migrateTokenStats(userId);
+    if (!tokensSuccess) hasErrors = true;
 
     // Mark migration as completed in user record ONLY if no fatal errors
     if (!hasErrors) {
