@@ -30,6 +30,8 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-database-schema",
     "dyad-supabase-table-schema",
     "dyad-supabase-project-info",
+    "dyad-bunny-db-info",
+    "dyad-bunny-storage-info",
     "dyad-status",
     "dyad-think",
     "dyad-git",

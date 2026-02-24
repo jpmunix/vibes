@@ -19,6 +19,8 @@ import { eq } from "drizzle-orm";
 import { getSupabaseProjectInfoTool } from "./tools/get_supabase_project_info";
 import { getSupabaseTableSchemaTool } from "./tools/get_supabase_table_schema";
 import { getFirebaseProjectInfoTool } from "./tools/get_firebase_project_info";
+import { getBunnyDbInfoTool } from "./tools/get_bunny_db_info";
+import { getBunnyStorageInfoTool } from "./tools/get_bunny_storage_info";
 import { setChatSummaryTool } from "./tools/set_chat_summary";
 import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
@@ -59,6 +61,8 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
   getFirebaseProjectInfoTool,
+  getBunnyDbInfoTool,
+  getBunnyStorageInfoTool,
   setChatSummaryTool,
   addIntegrationTool,
   readLogsTool,

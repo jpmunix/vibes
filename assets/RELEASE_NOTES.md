@@ -1,4 +1,5 @@
 - Expanded repository and integrations section with Bunny.net alongside existing GitHub and Supabase options.
+- **feat:** extend Bunny.net integration with database and storage support
 
 --------------------------
 

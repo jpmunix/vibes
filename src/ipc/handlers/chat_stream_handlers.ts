@@ -29,6 +29,11 @@ import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/supabase_prompt";
+import {
+  getBunnyAvailableSystemPrompt,
+  BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT,
+} from "../../prompts/bunny_prompt";
+import type { BunnyConfig } from "@/ipc/types/bunny";
 import { getDyadAppPath } from "../../paths/paths";
 import { readSettings } from "../../main/settings";
 import type { ChatResponseEnd, ChatStreamParams } from "@/ipc/types";
@@ -1030,6 +1035,17 @@ ${componentSnippet}
           !isSecurityReviewIntent
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
+        }
+
+        // Bunny.net prompt injection
+        const bunnyConfig = updatedChat.app?.bunnyConfig as BunnyConfig | null;
+        if (bunnyConfig && (bunnyConfig.databases?.length > 0 || bunnyConfig.storageZones?.length > 0)) {
+          systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
+        } else if (
+          !isSecurityReviewIntent &&
+          settings.selectedChatMode !== "local-agent"
+        ) {
+          systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
         // Use the isSummarizeIntent variable declared earlier
         if (isSummarizeIntent) {

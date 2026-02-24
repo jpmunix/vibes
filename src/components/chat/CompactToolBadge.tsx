@@ -71,6 +71,8 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-database-schema": { icon: Database, label: "Esquema BD", pendingLabel: "Cargando esquema", color: "text-orange-500" },
     "dyad-supabase-table-schema": { icon: Database, label: "Tabla", pendingLabel: "Cargando tabla", color: "text-emerald-500" },
     "dyad-supabase-project-info": { icon: Database, label: "Supabase", pendingLabel: "Cargando Supabase", color: "text-emerald-500" },
+    "dyad-bunny-db-info": { icon: Database, label: "Bunny DB", pendingLabel: "Cargando Bunny DB", color: "text-orange-500" },
+    "dyad-bunny-storage-info": { icon: FolderOpen, label: "Bunny Storage", pendingLabel: "Cargando Storage", color: "text-orange-500" },
     "dyad-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
     "dyad-mcp-tool-call": { icon: Wrench, label: "Herramienta", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
     "dyad-mcp-tool-result": { icon: Wrench, label: "Resultado", color: "text-purple-500" },

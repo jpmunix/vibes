@@ -74,6 +74,8 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-database-schema",
   "dyad-supabase-table-schema",
   "dyad-supabase-project-info",
+  "dyad-bunny-db-info",
+  "dyad-bunny-storage-info",
   "dyad-status",
   "dyad-think",
   "dyad-git",
@@ -799,6 +801,32 @@ function renderCustomTag(
       );
 
     case "dyad-supabase-project-info":
+      return (
+        <DyadSupabaseProjectInfo
+          node={{
+            properties: {
+              state: getState({ isStreaming, inProgress }),
+            },
+          }}
+        >
+          {content}
+        </DyadSupabaseProjectInfo>
+      );
+
+    case "dyad-bunny-db-info":
+      return (
+        <DyadSupabaseProjectInfo
+          node={{
+            properties: {
+              state: getState({ isStreaming, inProgress }),
+            },
+          }}
+        >
+          {content}
+        </DyadSupabaseProjectInfo>
+      );
+
+    case "dyad-bunny-storage-info":
       return (
         <DyadSupabaseProjectInfo
           node={{

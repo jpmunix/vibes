@@ -7,6 +7,7 @@ import { showError } from "@/lib/toast";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { ipc } from "@/ipc/types";
+import type { BunnyConfig } from "@/ipc/types/bunny";
 
 interface DyadAddIntegrationProps {
   node: {
@@ -16,6 +17,32 @@ interface DyadAddIntegrationProps {
   };
   children: React.ReactNode;
 }
+
+// Shared SVG check icon for "completed" states
+const CheckIcon = () => (
+  <svg
+    className="w-5 h-5 text-green-600 dark:text-green-400"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    viewBox="0 0 24 24"
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      strokeWidth="2"
+      fill="currentColor"
+      className="opacity-20"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M9 12l2 2 4-4"
+    />
+  </svg>
+);
 
 export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
   node,
@@ -28,13 +55,13 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
   const chatId = useAtomValue(selectedChatIdAtom);
   const { app } = useLoadApp(appId);
 
-  const handleKeepGoingClick = () => {
+  const handleKeepGoingClick = (providerLabel: string) => {
     if (chatId === null) {
       showError("No se encontró el chat");
       return;
     }
     streamMessage({
-      prompt: "Continuar. He completado la integración con Supabase.",
+      prompt: `Continuar. He completado la integración con ${providerLabel}.`,
       chatId,
     });
   };
@@ -51,32 +78,13 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
     });
   };
 
-  if (app?.supabaseProjectName) {
+  // --- Provider-specific "already configured" states ---
+
+  if (provider === "supabase" && app?.supabaseProjectName) {
     return (
       <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
         <div className="flex items-center space-x-2">
-          <svg
-            className="w-5 h-5 text-green-600 dark:text-green-400"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="currentColor"
-              className="opacity-20"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12l2 2 4-4"
-            />
-          </svg>
+          <CheckIcon />
           <span className="font-semibold text-green-800 dark:text-green-300">
             Integración con Supabase completada
           </span>
@@ -90,7 +98,7 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
           </p>
         </div>
         <Button
-          onClick={handleKeepGoingClick}
+          onClick={() => handleKeepGoingClick("Supabase")}
           className="self-start mt-2"
           variant="default"
           disabled={isStreaming}
@@ -101,16 +109,63 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
     );
   }
 
+  if (provider === "bunny") {
+    const bunnyConfig = app?.bunnyConfig as BunnyConfig | null;
+    const hasBunnyData =
+      bunnyConfig &&
+      ((bunnyConfig.databases?.length ?? 0) > 0 ||
+        (bunnyConfig.storageZones?.length ?? 0) > 0);
+
+    if (hasBunnyData) {
+      const dbCount = bunnyConfig!.databases.length;
+      const szCount = bunnyConfig!.storageZones.length;
+      const parts: string[] = [];
+      if (dbCount > 0)
+        parts.push(`${dbCount} base${dbCount > 1 ? "s" : ""} de datos`);
+      if (szCount > 0)
+        parts.push(
+          `${szCount} zona${szCount > 1 ? "s" : ""} de almacenamiento`,
+        );
+
+      return (
+        <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
+          <div className="flex items-center space-x-2">
+            <CheckIcon />
+            <span className="font-semibold text-green-800 dark:text-green-300">
+              Integración con Bunny.net completada
+            </span>
+          </div>
+          <div className="text-sm text-green-900 dark:text-green-100">
+            <p>
+              Configurado: {parts.join(" y ")}
+            </p>
+          </div>
+          <Button
+            onClick={() => handleKeepGoingClick("Bunny.net")}
+            className="self-start mt-2"
+            variant="default"
+            disabled={isStreaming}
+          >
+            Continuar
+          </Button>
+        </div>
+      );
+    }
+  }
+
+  // --- Default: not configured, show setup button ---
+  const providerLabel = provider === "bunny" ? "Bunny.net" : provider;
+
   return (
     <div className="flex flex-col gap-2 my-2 p-3 border rounded-md bg-secondary/10 dark:bg-secondary/20">
       <div className="text-sm">
         <div className="font-medium text-foreground">
-          ¿Integrar con {provider}?
+          ¿Integrar con {providerLabel}?
         </div>
         <div className="text-muted-foreground text-xs">{children}</div>
       </div>
       <Button onClick={handleSetupClick} className="self-start w-full">
-        Configurar {provider}
+        Configurar {providerLabel}
       </Button>
     </div>
   );

@@ -60,6 +60,10 @@ export interface AgentContext {
   supabaseProjectId: string | null;
   supabaseOrganizationSlug: string | null;
   firebaseProjectId: string | null;
+  bunnyConfig: {
+    databases: { name: string; databaseUrl: string; fullAccessToken: string; readOnlyToken: string }[];
+    storageZones: { name: string; hostname: string; username: string; password: string; readonlyPassword: string }[];
+  } | null;
   messageId: number;
   isSharedModulesChanged: boolean;
   chatSummary?: string;
