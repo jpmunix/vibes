@@ -95,6 +95,8 @@ export const UserHeaderActions = ({
                                 <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-medium">Editar Perfil</span>
                             </DropdownMenuItem>
+                            {/* Hiding for now at user request */}
+                            {/* 
                             <DropdownMenuItem
                                 className="py-2 cursor-pointer focus:bg-accent"
                                 onClick={() => setIsBackupModalOpen?.(true)}
@@ -111,6 +113,7 @@ export const UserHeaderActions = ({
                                     <span className="text-sm font-medium">Logs de Consultas IA</span>
                                 </DropdownMenuItem>
                             )}
+                            */}
 
                             <DropdownMenuItem
                                 className="py-2 cursor-pointer focus:bg-accent text-foreground"

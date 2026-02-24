@@ -6,7 +6,6 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./remote-schema";
 import log from "electron-log";
-
 const logger = log.scope("remote-db");
 
 // Bunny Edge SQL credentials (hardcoded — private project)
@@ -24,9 +23,39 @@ let _remoteDb: LibSQLDatabase<typeof schema> | null = null;
 export function getClient(): Client {
   if (!_client) {
     logger.info("Creating libSQL client connection to Bunny Edge SQL...");
+    if (typeof fetch === 'undefined') {
+      logger.error("Global fetch is not available. Remote DB will fail.");
+    }
+
     _client = createClient({
       url: BUNNY_DB_URL,
       authToken: BUNNY_DB_TOKEN,
+      fetch: async (input: any, init: any) => {
+        try {
+          const url = typeof input === 'string' ? input : input.url;
+          const options = init || {};
+
+          // Merge from Request if input is an object
+          if (typeof input === 'object' && input !== null) {
+            if (!options.method && input.method) options.method = input.method;
+            if (!options.headers && input.headers) options.headers = input.headers;
+            if (!options.body && input.body) options.body = input.body;
+          }
+
+          const resp = await fetch(url, options);
+          if (resp.body && typeof (resp.body as any).cancel !== 'function') {
+            const body = resp.body as any;
+            body.cancel = async () => {
+              if (typeof body.destroy === 'function') body.destroy();
+              else if (typeof body.close === 'function') body.close();
+            };
+          }
+          return resp;
+        } catch (e) {
+          logger.error("Fetch error in libSQL client wrapper:", e);
+          throw e;
+        }
+      },
     });
     logger.info("libSQL client created successfully");
   }
@@ -53,11 +82,13 @@ export function getRemoteDb(): LibSQLDatabase<typeof schema> {
 export async function testRemoteConnection(): Promise<boolean> {
   try {
     const client = getClient();
-    const result = await client.execute("SELECT 1 as test");
-    logger.info("Remote DB connection test successful:", result.rows);
+    await client.execute("SELECT 1 as test");
     return true;
   } catch (error) {
-    logger.error("Remote DB connection test failed:", error);
+    logger.error("Remote DB connection test failed with error:", error);
+    if (error instanceof Error) {
+      logger.error("Error stack:", error.stack);
+    }
     return false;
   }
 }

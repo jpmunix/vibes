@@ -114,7 +114,7 @@ export function AppSidebar() {
       // Handle both VibesUser (.id) and legacy Firebase User (.uid)
       const userId = (user as any)?.id || (user as any)?.uid;
       if (userId) {
-        await ipc.auth.logout({ userId });
+        await (ipc as any).auth.logout({ userId });
       }
     } catch (error) {
       console.error("Logout error:", error);
@@ -231,7 +231,7 @@ export function AppSidebar() {
                       title={user.displayName || user.email || "Usuario"}
                     >
                       <SimpleAvatar
-                        src={user.photoUrl || undefined}
+                        src={(user as any).photoUrl || undefined}
                         className="h-7 w-7"
                         fallbackText={(
                           user.displayName?.[0] ||
@@ -248,7 +248,7 @@ export function AppSidebar() {
                     <div className="flex items-center gap-3 px-2 py-3">
                       <div className="h-10 w-10">
                         <SimpleAvatar
-                          src={user.photoUrl || undefined}
+                          src={(user as any).photoUrl || undefined}
                           fallbackText={(
                             user.displayName?.[0] ||
                             user.email?.[0] ||
@@ -272,6 +272,8 @@ export function AppSidebar() {
                       <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Editar Perfil</span>
                     </DropdownMenuItem>
+                    {/* Hiding for now at user request */}
+                    {/* 
                     <DropdownMenuItem
                       className="py-2 cursor-pointer focus:bg-accent"
                       onClick={() => setIsBackupModalOpen(true)}
@@ -288,6 +290,7 @@ export function AppSidebar() {
                         <span className="text-sm font-medium">Logs de Consultas IA</span>
                       </DropdownMenuItem>
                     )}
+                    */}
                     <DropdownMenuItem
                       className="py-2 cursor-pointer focus:bg-accent text-foreground"
                       onClick={handleLogout}
