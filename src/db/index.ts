@@ -486,27 +486,6 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
       // This handles the case where a table exists but the migration record is missing
       fixOrphanedMigrations(sqlite);
 
-      // Ensure knowledge_entries has all required columns (safety net for migration 0040)
-      ensureKnowledgeColumns(sqlite);
-
-      // Ensure chats has is_plan column (safety net for migration 0040_mixed_red_hulk)
-      ensureChatsIsPlanColumn(sqlite);
-
-      // Ensure chats has plan_data column (safety net for migration 0041)
-      ensureChatsPlanDataColumn(sqlite);
-
-      // Ensure messages has previous_response_id and status columns (agent recovery)
-      ensureMessagesAgentColumns(sqlite);
-
-      // Ensure messages has duration_ms column (response timer, migration 0043)
-      ensureMessagesDurationColumn(sqlite);
-
-      // Ensure embeddings_cache table exists (semantic search, migration 0042 fallback)
-      ensureEmbeddingsCacheTable(sqlite);
-
-      // Ensure apps has bunny_config column (Bunny.net integration, migration 0044 fallback)
-      ensureBunnyConfigColumn(sqlite);
-
       logger.log("Running migrations from:", migrationsFolder);
       migrate(_db, { migrationsFolder });
     }
