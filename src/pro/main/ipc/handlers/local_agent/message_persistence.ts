@@ -8,7 +8,7 @@ import log from "electron-log";
 import { eq } from "drizzle-orm";
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
-import type { AiMessagesJsonV6 } from "@/db/schema";
+import type { AiMessagesJsonV6 } from "@/db/remote-schema";
 
 const logger = log.scope("message_persistence");
 

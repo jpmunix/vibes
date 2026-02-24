@@ -13,7 +13,7 @@ import {
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
 import { handleDyadProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
-import { BackupManager } from "./backup_manager";
+
 import { getDatabasePath, initializeDatabase } from "./db";
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
@@ -150,19 +150,7 @@ export async function onReady() {
 
   // Then do heavy operations in background (non-blocking)
   setImmediate(async () => {
-    // Initialize backup manager early to capture state before DB migrations
-    // This is especially important during version upgrades
-    try {
-      const backupManager = new BackupManager({
-        settingsFile: getSettingsFilePath(),
-        dbFile: getDatabasePath(),
-      });
-      await backupManager.initialize();
-    } catch (e) {
-      logger.error("Error initializing backup manager", e);
-    }
-
-    // Initialize database (after backup, so we have a safety net)
+    // Initialize database
     initializeDatabase();
 
     // Cleanup old ai_messages_json entries to prevent database bloat

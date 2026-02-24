@@ -4,6 +4,14 @@
  */
 import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
+import type { ModelMessage } from "ai";
+
+export const AI_MESSAGES_SDK_VERSION = "ai@v6" as const;
+
+export type AiMessagesJsonV6 = {
+    messages: ModelMessage[];
+    sdkVersion: typeof AI_MESSAGES_SDK_VERSION;
+};
 
 // =============================================================================
 // USERS (auth propia)

@@ -23,10 +23,6 @@ import {
     Cloud,
 } from "lucide-react";
 import ConfirmationDialog from "./ConfirmationDialog";
-import { storage } from "@/lib/firebase";
-import { ref, uploadString } from "firebase/storage";
-import { useAtomValue } from "jotai";
-import { userAtom } from "@/atoms/authAtoms";
 import { toast } from "sonner";
 
 interface DossierModalProps {
@@ -87,7 +83,6 @@ export function DossierModal({
     isOpen,
     onClose,
 }: DossierModalProps) {
-    const user = useAtomValue(userAtom);
     const [modalState, setModalState] = useState<ModalState>("checking");
     const [hasExisting, setHasExisting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -175,24 +170,8 @@ export function DossierModal({
                         // Auto-download removed upon user request
                         // triggerDownload(data.zipBase64, data.fileName);
 
-                        // Auto-upload to Firebase if logged in
-                        if (user) {
-                            try {
-                                addMessage("Subiendo dossier a la nube...", "done");
-                                const sanitizedName = appName.replace(/[^a-zA-Z0-9]/g, "_");
-                                // Use 'backups' folder to reuse existing storage rules
-                                const storageRef = ref(storage, `backups/${user.uid}/dossier_${sanitizedName}.zip`);
-                                await uploadString(storageRef, data.zipBase64, "base64", {
-                                    contentType: "application/zip",
-                                });
-                                addMessage("✓ Dossier guardado en la nube", "done");
-                                toast.success("Dossier subido a la nube");
-                            } catch (err) {
-                                console.error("[DossierModal] Firebase upload error:", err);
-                                // Non-blocking: don't change modal state
-                                toast.error("No se pudo subir el dossier a la nube");
-                            }
-                        }
+                        // Note: Backend now handles uploading to Bunny Storage and DB insertion automatically
+                        // triggerDownload(data.zipBase64, data.fileName);
                     },
                     onError: (data) => {
                         setModalState("error");

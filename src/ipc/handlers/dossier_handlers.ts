@@ -639,4 +639,100 @@ export function registerDossierHandlers() {
             };
         },
     );
+
+    // =========================================================================
+    // List Dossiers
+    // =========================================================================
+    createTypedHandler(
+        dossierContracts.list,
+        async (_, __, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
+
+            try {
+                // Return all dossiers of the user, grouping by distinct appId.
+                // We show the latest dossier for each application.
+                const userDossiers = await db.query.apps.findMany({
+                    where: eq(remoteSchema.apps.userId, context.userId),
+                    with: {
+                        dossiers: {
+                            orderBy: [desc(remoteSchema.dossiers.createdAt)],
+                            limit: 1, // Get the latest one
+                        },
+                    },
+                });
+
+                const results = [];
+                for (const app of userDossiers) {
+                    if (app.dossiers && app.dossiers.length > 0) {
+                        const d = app.dossiers[0];
+                        results.push({
+                            id: d.id,
+                            appId: app.id,
+                            appName: app.name,
+                            storagePath: d.storagePath,
+                            createdAt: (d.createdAt as Date).toISOString(),
+                        });
+                    }
+                }
+
+                return results.sort((a, b) => a.appName.localeCompare(b.appName));
+            } catch (error) {
+                logger.error("Error listing dossiers:", error);
+                return [];
+            }
+        },
+    );
+
+    // =========================================================================
+    // Delete Dossier
+    // =========================================================================
+    createTypedHandler(
+        dossierContracts.delete,
+        async (_, { id }, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
+
+            try {
+                // Get dossier details
+                const dossierRecord = await db.query.dossiers.findFirst({
+                    where: and(eq(remoteSchema.dossiers.id, id), eq(remoteSchema.dossiers.userId, context.userId)),
+                });
+
+                if (!dossierRecord) {
+                    throw new Error("Dossier not found");
+                }
+
+                // Delete remote Bunny file if it starts with /
+                if (dossierRecord.storagePath.startsWith('/')) {
+                    const app = await db.query.apps.findFirst({
+                        where: eq(remoteSchema.apps.id, dossierRecord.appId),
+                    });
+
+                    if (app && app.bunnyConfig) {
+                        try {
+                            const bunnyConfig = JSON.parse(app.bunnyConfig as string);
+                            const sz = bunnyConfig.storageZones[0];
+                            const url = `https://${sz.hostname}/${sz.username}${dossierRecord.storagePath}`.replace(/\/+/g, "/").replace("https:/", "https://");
+                            await fetch(url, {
+                                method: 'DELETE',
+                                headers: { AccessKey: sz.password },
+                            });
+                        } catch (e) {
+                            logger.warn("Failed to delete dossier from Bunny Storage", e);
+                        }
+                    }
+                }
+
+                // Delete from remote DB
+                await db.delete(remoteSchema.dossiers)
+                    .where(eq(remoteSchema.dossiers.id, id));
+
+                return { ok: true as const };
+            } catch (error: any) {
+                logger.error("Error deleting dossier:", error);
+                throw error;
+            }
+        },
+    );
 }

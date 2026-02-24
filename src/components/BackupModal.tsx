@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -21,9 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Database, Settings, BarChart3, CloudUpload, List, Trash2, Clock, RotateCcw, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import { backupClient } from "@/ipc/types/backup";
-import { storage, auth } from "@/lib/firebase";
-import { ref, uploadString, listAll, deleteObject, getDownloadURL } from "firebase/storage";
-import { useEffect, useCallback } from "react";
+import { dossierClient } from "@/ipc/types/dossier";
 import { useAtomValue } from "jotai";
 import { userAtom } from "@/atoms/authAtoms";
 
@@ -35,32 +33,33 @@ interface BackupModalProps {
 export function BackupModal({ isOpen, onClose }: BackupModalProps) {
     const user = useAtomValue(userAtom);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Backups legacy (deprecated via Firebase, mostly empty now)
     const [backups, setBackups] = useState<{ id: string, name: string, date: string }[]>([]);
     const [isLoadingBackups, setIsLoadingBackups] = useState(false);
-    const [activeTab, setActiveTab] = useState("create");
+    const [activeTab, setActiveTab] = useState("dossiers");
     const [backupToDelete, setBackupToDelete] = useState<string | null>(null);
     const [backupToRestore, setBackupToRestore] = useState<string | null>(null);
     const [isRestoring, setIsRestoring] = useState(false);
 
     // Dossiers state
-    const [dossiers, setDossiers] = useState<{ id: string, name: string, appName: string }[]>([]);
+    const [dossiers, setDossiers] = useState<{ id: number, name: string, appName: string, appId: number }[]>([]);
     const [isLoadingDossiers, setIsLoadingDossiers] = useState(false);
-    const [dossierToDelete, setDossierToDelete] = useState<string | null>(null);
-    const [isDownloadingDossier, setIsDownloadingDossier] = useState<string | null>(null);
+    const [dossierToDelete, setDossierToDelete] = useState<number | null>(null);
+    const [isDownloadingDossier, setIsDownloadingDossier] = useState<number | null>(null);
 
     const handleBackup = async () => {
         if (!user) {
             toast.error("Debes iniciar sesión para realizar copias de seguridad");
-            console.warn("[BackupModal] Attempted backup without user session");
             return;
         }
 
         setIsLoading(true);
         try {
-            // 1. Obtener el ZIP de backup desde el proceso principal (IPC)
+            // Nota: En V3 (BD remota), esto solo generará ZIP de settings y stats locales.
             const result = await backupClient.performBackup({
                 includeSettings: true,
-                includeDatabase: true,
+                includeDatabase: false, // Local DB no longer backed up
                 includeStats: true,
             });
 
@@ -68,23 +67,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                 throw new Error(result.message);
             }
 
-            // 2. Subir el archivo ZIP a Firebase Storage
-            const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-            const zipFile = result.backupData[0]; // Solo hay un archivo ahora (backup.zip)
-
-            // Ruta: backups/{uid}/backup-{timestamp}.zip
-            const storageRef = ref(storage, `backups/${user.uid}/backup-${timestamp}.zip`);
-
-            // Subir el ZIP
-            await uploadString(storageRef, zipFile.content, "base64", {
-                contentType: zipFile.contentType,
-            });
-
-            // 3. Rotación de copias: mantener solo las 10 más recientes en la nube
-            await rotateBackups(user.uid);
-
-            toast.success("Copia de seguridad subida a la nube correctamente");
-            fetchBackups(); // Refresh list
+            toast.info("Copia local generada (Firebase disabled en V3).");
         } catch (error: any) {
             toast.error(error.message || "Error al realizar la copia de seguridad");
             console.error(error);
@@ -93,131 +76,46 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
         }
     };
 
-    const rotateBackups = async (uid: string) => {
-        try {
-            const backupsRootRef = ref(storage, `backups/${uid}`);
-            const res = await listAll(backupsRootRef);
+    const fetchBackupsAndDossiers = async () => {
+        if (!user) return;
 
-            // Ahora trabajamos con archivos individuales (items) en lugar de carpetas (prefixes)
-            // Filter ONLY backup files (ignore dossiers)
-            const backupFiles = res.items.filter(item => item.name.startsWith("backup-"));
-
-            if (backupFiles.length > 10) {
-                const sortedItems = [...backupFiles].sort((a, b) => a.name.localeCompare(b.name));
-                const toDelete = sortedItems.slice(0, sortedItems.length - 10);
-
-                for (const item of toDelete) {
-                    await deleteObject(item);
-                }
-            }
-        } catch (error) {
-            console.error("Error al rotar copias:", error);
-        }
-    };
-
-    const fetchBackups = async () => {
-        if (!user) {
-            console.log("[BackupModal] No user session found");
-            return;
-        }
-
-        console.log("[BackupModal] Fetching cloud data for user:", user.uid);
         setIsLoadingBackups(true);
         setIsLoadingDossiers(true);
 
         try {
-            // We store both backups and dossiers in the 'backups' folder to reuse security rules
-            const backupsRootRef = ref(storage, `backups/${user.uid}`);
-            const res = await listAll(backupsRootRef);
-            console.log("[BackupModal] Found", res.items.length, "total files");
+            // Load Dossiers using IPC from remote database
+            const dossierList = await dossierClient.list();
+            setDossiers(dossierList.map(d => ({
+                id: d.id,
+                name: d.storagePath,
+                appName: d.appName,
+                appId: d.appId
+            })));
 
-            const backupsList: typeof backups = [];
-            const dossiersList: typeof dossiers = [];
-
-            res.items.forEach(item => {
-                if (item.name.startsWith("backup-")) {
-                    // It's a backup file
-                    const match = item.name.match(/backup-(.+)\.zip$/);
-                    const timestamp = match ? match[1] : item.name;
-
-                    let formattedDate = timestamp;
-                    try {
-                        const parts = timestamp.split('T');
-                        if (parts.length === 2) {
-                            const timePart = parts[1].replace(/-/g, ':').replace(/:([^:]*)$/, '.$1');
-                            const isoStr = `${parts[0]}T${timePart}`;
-                            formattedDate = new Date(isoStr).toLocaleString();
-                        }
-                    } catch (e) {
-                        formattedDate = timestamp;
-                    }
-
-                    backupsList.push({
-                        id: item.name,
-                        name: `Backup ${timestamp}`,
-                        date: formattedDate
-                    });
-                } else if (item.name.startsWith("dossier_")) {
-                    // It's a dossier file
-                    const match = item.name.match(/^dossier_(.+)\.zip$/);
-                    const appName = match ? match[1].replace(/_/g, " ") : item.name;
-
-                    dossiersList.push({
-                        id: item.name,
-                        name: item.name,
-                        appName,
-                    });
-                }
-            });
-
-            setBackups(backupsList.sort((a, b) => b.id.localeCompare(a.id)));
-            setDossiers(dossiersList.sort((a, b) => a.appName.localeCompare(b.appName)));
+            // Fallback for backups list since Firebase is disabled in V3
+            setBackups([]);
         } catch (error: any) {
-            console.error("[BackupModal] Error fetching cloud data:", error);
-            if (error.code === 'storage/object-not-found') {
-                setBackups([]);
-                setDossiers([]);
-            } else {
-                // Determine if we should show error toast based on user action context
-                // For initial load, maybe silent is better if it's just empty
-                if (error.code !== "storage/object-not-found") {
-                    toast.error("Error al cargar datos de la nube");
-                }
-            }
+            console.error("[BackupModal] Error fetching data:", error);
+            toast.error("Error al cargar datos desde el backend remoto");
         } finally {
             setIsLoadingBackups(false);
             setIsLoadingDossiers(false);
         }
     };
 
-    // fetchDossiers removed, logic merged into fetchBackups
-
     const handleDeleteBackup = async () => {
-        if (!user || !backupToDelete) return;
-
-        try {
-            // backupToDelete es el nombre del archivo (backup-{timestamp}.zip)
-            const fileRef = ref(storage, `backups/${user.uid}/${backupToDelete}`);
-            await deleteObject(fileRef);
-            toast.success("Copia de seguridad eliminada");
-            fetchBackups();
-        } catch (error) {
-            console.error("[BackupModal] Error deleting backup:", error);
-            toast.error("Error al eliminar la copia");
-        } finally {
-            setBackupToDelete(null);
-        }
+        // Disabled in V3
+        toast.info("Funcionalidad deshabilitada. V3 no usa copias locales de BD.");
+        setBackupToDelete(null);
     };
 
     const handleDeleteDossier = async () => {
-        if (!user || !dossierToDelete) return;
+        if (!user || dossierToDelete === null) return;
 
         try {
-            // Note: now dossiers are also in backups/{uid}
-            const fileRef = ref(storage, `backups/${user.uid}/${dossierToDelete}`);
-            await deleteObject(fileRef);
-            toast.success("Dossier eliminado de la nube");
-            fetchBackups();
+            await dossierClient.delete({ id: dossierToDelete });
+            toast.success("Dossier eliminado correctamente");
+            fetchBackupsAndDossiers();
         } catch (error) {
             console.error("[BackupModal] Error deleting dossier:", error);
             toast.error("Error al eliminar el dossier");
@@ -226,23 +124,26 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
         }
     };
 
-    const handleDownloadDossier = async (dossierId: string) => {
+    const handleDownloadDossier = async (dossierId: number, appId: number, name: string) => {
         if (!user) return;
 
         setIsDownloadingDossier(dossierId);
         try {
-            // Note: now dossiers are also in backups/{uid}
-            const fileRef = ref(storage, `backups/${user.uid}/${dossierId}`);
-            const url = await getDownloadURL(fileRef);
+            const result = await dossierClient.download({ appId });
 
-            // Fetch and trigger download
-            const response = await fetch(url);
-            const blob = await response.blob();
+            // Decodificamos el base64 a un Blob para descargarlo
+            const byteCharacters = atob(result.zipBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: "application/zip" });
             const blobUrl = URL.createObjectURL(blob);
 
             const a = document.createElement("a");
             a.href = blobUrl;
-            a.download = dossierId;
+            a.download = result.fileName || name;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -251,44 +152,21 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             toast.success("Dossier descargado");
         } catch (error) {
             console.error("[BackupModal] Error downloading dossier:", error);
-            toast.error("Error al descargar el dossier");
+            toast.error("Error al descargar el dossier desde Bunny Storage");
         } finally {
             setIsDownloadingDossier(null);
         }
     };
 
     const handleRestoreBackup = async () => {
-        if (!user || !backupToRestore) return;
-
-        setIsRestoring(true);
-        try {
-            // 1. Get the signed download URL from Firebase
-            const fileRef = ref(storage, `backups/${user.uid}/${backupToRestore}`);
-            const downloadUrl = await getDownloadURL(fileRef);
-
-            // 2. Send the URL to the main process for restoration
-            const result = await backupClient.restoreBackup({
-                downloadUrl
-            });
-
-            if (!result.success) {
-                throw new Error(result.message);
-            }
-
-            toast.success(result.message);
-            // The app will restart automatically
-        } catch (error: any) {
-            console.error("[BackupModal] Error restoring backup:", error);
-            toast.error(error.message || "Error al restaurar la copia");
-        } finally {
-            setBackupToRestore(null);
-            setIsRestoring(false);
-        }
+        toast.info("Restauración de SQLite local deshabilitada. Usa directamente la Nube.");
+        setBackupToRestore(null);
     };
 
     useEffect(() => {
         if (isOpen) {
-            fetchBackups();
+            fetchBackupsAndDossiers();
+            setActiveTab("dossiers"); // Default to dossiers in V3
         }
     }, [isOpen]);
 
@@ -301,129 +179,29 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                     <div className="p-6 space-y-4">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                                <CloudUpload className="h-5 w-5" />
-                                Copia de Seguridad
+                                <FileText className="h-5 w-5" />
+                                Gestor de Dossiers y Copias (V3)
                             </DialogTitle>
                             <DialogDescription className="text-muted-foreground text-sm">
-                                Gestiona tus copias de seguridad y dossiers en la nube
+                                Gestiona tus dossiers remotos e historial del entorno.
                             </DialogDescription>
                         </DialogHeader>
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className={`grid w-full ${hasDossiers ? "grid-cols-3" : "grid-cols-2"} bg-muted/50 p-1 h-12`}>
-                                <TabsTrigger value="create" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
-                                    <CloudUpload className="h-4 w-4" />
-                                    Sacar Copia
+                            <TabsList className={`grid w-full grid-cols-3 bg-muted/50 p-1 h-12`}>
+                                <TabsTrigger value="dossiers" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
+                                    <FileText className="h-4 w-4" />
+                                    Dossiers
                                 </TabsTrigger>
-                                <TabsTrigger value="list" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
+                                <TabsTrigger value="list" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none opacity-50">
                                     <List className="h-4 w-4" />
-                                    Ver Existentes
+                                    Antiguas Copias
                                 </TabsTrigger>
-                                {hasDossiers && (
-                                    <TabsTrigger value="dossiers" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
-                                        <FileText className="h-4 w-4" />
-                                        Dossiers
-                                    </TabsTrigger>
-                                )}
+                                <TabsTrigger value="create" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none opacity-50">
+                                    <CloudUpload className="h-4 w-4" />
+                                    Copia Local
+                                </TabsTrigger>
                             </TabsList>
-
-                            <TabsContent value="create" className="space-y-6 pt-6">
-                                <div className="space-y-3">
-                                    <p className="text-sm text-muted-foreground mb-4">
-                                        Se creará una copia de seguridad completa con los siguientes datos:
-                                    </p>
-
-                                    <div className="flex items-center gap-3 p-3">
-                                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600">
-                                            <Settings className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Ajustes del usuario</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 p-3">
-                                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600">
-                                            <Database className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Base de Datos</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 p-3">
-                                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full text-amber-600">
-                                            <BarChart3 className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium">Estadísticas</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-2">
-                                    <Button variant="outline" onClick={onClose} disabled={isLoading}>Cancelar</Button>
-                                    <Button
-                                        onClick={handleBackup}
-                                        disabled={isLoading}
-                                        className="bg-[#1a1f2e] hover:bg-[#2a2f3e] text-white"
-                                    >
-                                        {isLoading ? "Subiendo..." : "Realizar Copia"}
-                                    </Button>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="list" className="space-y-4 pt-6">
-                                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                    {isLoadingBackups ? (
-                                        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                                            <p>Cargando copias...</p>
-                                        </div>
-                                    ) : backups.length === 0 ? (
-                                        <div className="text-center py-10 text-muted-foreground">
-                                            <Clock className="h-10 w-10 mx-auto mb-2 opacity-20" />
-                                            <p>No hay copias de seguridad disponibles</p>
-                                        </div>
-                                    ) : (
-                                        backups.map((backup) => (
-                                            <div key={backup.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors group">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-md">
-                                                        <Database className="h-4 w-4 text-zinc-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium">{backup.date}</p>
-                                                        <p className="text-[10px] text-muted-foreground uppercase">{backup.id}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="opacity-0 group-hover:opacity-100 text-primary hover:text-primary hover:bg-primary/10 transition-opacity"
-                                                        onClick={() => setBackupToRestore(backup.id)}
-                                                        disabled={isRestoring}
-                                                    >
-                                                        <RotateCcw className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
-                                                        onClick={() => setBackupToDelete(backup.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                                <div className="flex justify-end pt-2">
-                                    <Button variant="outline" onClick={onClose}>Cerrar</Button>
-                                </div>
-                            </TabsContent>
 
                             {/* Dossiers Tab */}
                             <TabsContent value="dossiers" className="space-y-4 pt-6">
@@ -431,13 +209,13 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                     {isLoadingDossiers ? (
                                         <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                                            <p>Cargando dossiers...</p>
+                                            <p>Cargando dossiers remotos...</p>
                                         </div>
                                     ) : dossiers.length === 0 ? (
                                         <div className="text-center py-10 text-muted-foreground">
                                             <FileText className="h-10 w-10 mx-auto mb-2 opacity-20" />
-                                            <p>No hay dossiers en la nube</p>
-                                            <p className="text-xs mt-1">Los dossiers se suben automáticamente al generarlos</p>
+                                            <p>No tienes dossiers almacenados</p>
+                                            <p className="text-xs mt-1">Los dossiers pueden generarse desde las aplicaciones</p>
                                         </div>
                                     ) : (
                                         dossiers.map((dossier) => (
@@ -448,7 +226,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-medium">{dossier.appName}</p>
-                                                        <p className="text-[10px] text-muted-foreground">{dossier.id}</p>
+                                                        <p className="text-[10px] text-muted-foreground truncate max-w-[150px]">{dossier.name}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1">
@@ -456,7 +234,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="opacity-0 group-hover:opacity-100 text-indigo-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-opacity"
-                                                        onClick={() => handleDownloadDossier(dossier.id)}
+                                                        onClick={() => handleDownloadDossier(dossier.id, dossier.appId, dossier.name)}
                                                         disabled={isDownloadingDossier === dossier.id}
                                                     >
                                                         {isDownloadingDossier === dossier.id ? (
@@ -482,6 +260,28 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                                     <Button variant="outline" onClick={onClose}>Cerrar</Button>
                                 </div>
                             </TabsContent>
+
+                            <TabsContent value="list" className="space-y-4 pt-6">
+                                <div className="text-center py-10 text-muted-foreground">
+                                    <Clock className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                    <p>Las copias en Firebase se han deshabilitado en esta versión.</p>
+                                    <p className="text-xs">Usa la nueva base de datos remota para tu persistencia.</p>
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <Button variant="outline" onClick={onClose}>Cerrar</Button>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="create" className="space-y-6 pt-6">
+                                <div className="text-center py-10 text-muted-foreground">
+                                    <Database className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                    <p>El backup de DB local (SQLite) ya no es necesario.</p>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
+                                </div>
+                            </TabsContent>
+
                         </Tabs>
                     </div>
                 </DialogContent>
@@ -490,19 +290,11 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
             <AlertDialog open={!!backupToDelete} onOpenChange={(open) => !open && setBackupToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar copia de seguridad?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción no se puede deshacer. La copia de seguridad será eliminada permanentemente de la nube.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>¿Eliminar copia local?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta funcionalidad ya no tiene efecto.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDeleteBackup}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Eliminar
-                        </AlertDialogAction>
+                        <AlertDialogCancel>Cerrar</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -512,7 +304,7 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar dossier?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción no se puede deshacer. El dossier será eliminado permanentemente de la nube.
+                            Esta acción no se puede deshacer. El dossier será eliminado permanentemente del almacenamiento remoto y Bunny.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -522,45 +314,6 @@ export function BackupModal({ isOpen, onClose }: BackupModalProps) {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Eliminar
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={!!backupToRestore} onOpenChange={(open) => !open && setBackupToRestore(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Restaurar copia de seguridad?</AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-sm text-muted-foreground">
-                                <p>
-                                    Esta acción reemplazará todos tus datos de usuario actuales con los datos de la copia de seguridad seleccionada.
-                                </p>
-                                <p className="font-medium text-foreground">
-                                    Se restaurarán:
-                                </p>
-                                <ul className="list-disc list-inside space-y-1">
-                                    <li>Ajustes del usuario</li>
-                                    <li>Base de datos (chats, tareas, etc.)</li>
-                                    <li>Estadísticas de uso</li>
-                                </ul>
-                                <p className="text-amber-600 dark:text-amber-500 font-medium">
-                                    ⚠️ Las aplicaciones no se restaurarán ya que están en el repositorio.
-                                </p>
-                                <p className="font-medium text-foreground mt-2">
-                                    La aplicación se reiniciará automáticamente después de la restauración.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isRestoring}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleRestoreBackup}
-                            disabled={isRestoring}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                            {isRestoring ? "Restaurando..." : "Restaurar"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

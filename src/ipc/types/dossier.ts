@@ -42,6 +42,16 @@ export const DossierDownloadResultSchema = z.object({
 
 export type DossierDownloadResult = z.infer<typeof DossierDownloadResultSchema>;
 
+export const DossierListResultSchema = z.array(z.object({
+    id: z.number(),
+    appId: z.number(),
+    appName: z.string(),
+    storagePath: z.string(),
+    createdAt: z.string(),
+}));
+
+export type DossierListResult = z.infer<typeof DossierListResultSchema>;
+
 // Stream event schemas
 export const DossierChunkSchema = z.object({
     sessionId: z.string(),
@@ -91,6 +101,18 @@ export const dossierContracts = {
         channel: "dossier:download",
         input: DossierDownloadParamsSchema,
         output: DossierDownloadResultSchema,
+    }),
+
+    list: defineContract({
+        channel: "dossier:list",
+        input: z.void(),
+        output: DossierListResultSchema,
+    }),
+
+    delete: defineContract({
+        channel: "dossier:delete",
+        input: z.object({ id: z.number() }),
+        output: z.object({ ok: z.literal(true) }),
     }),
 } as const;
 

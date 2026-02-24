@@ -6,7 +6,7 @@ import {
   MAX_AI_MESSAGES_SIZE,
   type DbMessageForParsing,
 } from "@/ipc/utils/ai_messages_utils";
-import { AI_MESSAGES_SDK_VERSION } from "@/db/schema";
+import { AI_MESSAGES_SDK_VERSION } from "@/db/remote-schema";
 import type { ModelMessage } from "ai";
 
 describe("parseAiMessagesJson", () => {

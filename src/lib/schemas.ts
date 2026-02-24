@@ -430,12 +430,12 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-export function isDyadProEnabled(_settings: UserSettings): boolean {
-  return true;
+export function isDyadProEnabled(settings: UserSettings): boolean {
+  return settings.enableDyadPro ?? false;
 }
 
-export function hasDyadProKey(_settings: UserSettings): boolean {
-  return true;
+export function hasDyadProKey(settings: UserSettings): boolean {
+  return settings.enableDyadPro ?? false;
 }
 
 /**

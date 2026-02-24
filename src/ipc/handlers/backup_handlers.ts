@@ -1,7 +1,6 @@
 import { createTypedHandler, HandlerContext } from "./base";
 import { backupContracts } from "../types/backup";
 import { getSettingsFilePath } from "../../main/settings";
-import { getDatabasePath, getDb } from "../../db";
 import { getUserDataPath } from "@/paths/paths";
 import path from "node:path";
 import fs from "node:fs";
@@ -9,25 +8,10 @@ import os from "node:os";
 import https from "node:https";
 import log from "electron-log";
 import AdmZip from "adm-zip";
-import Database from "better-sqlite3";
 
 const logger = log.scope("backup_handlers");
 
-/**
- * Create a safe backup of the SQLite database using the backup API
- * This prevents corruption issues that can occur with direct file copying
- */
-async function backupDatabase(sourcePath: string, destPath: string): Promise<void> {
-    const source = new Database(sourcePath, { readonly: true });
 
-    try {
-        // Use SQLite's backup API for safe database copying
-        // The backup() method accepts a destination path and returns a promise
-        await source.backup(destPath);
-    } finally {
-        source.close();
-    }
-}
 
 export function registerBackupHandlers() {
     createTypedHandler(backupContracts.performBackup, async (_, params, context) => {
@@ -48,14 +32,6 @@ export function registerBackupHandlers() {
                     logger.log("Adding settings to backup");
                     zip.addLocalFile(settingsPath, "", "user-settings.json");
                 }
-            }
-
-            // ----------------------------------------------------
-            // NOTE: Local database backup is disabled in V3
-            // because the data is now stored remotely (Bunny).
-            // ----------------------------------------------------
-            if (includeDatabase) {
-                logger.warn("El backup de la base de datos local está deshabilitado.");
             }
 
             // Add stats file
