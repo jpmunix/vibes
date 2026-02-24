@@ -14,6 +14,7 @@ import { extractFunctionName } from "../../supabase_admin/supabase_utils";
 import { createTypedHandler, HandlerContext } from "./base";
 import { createTestOnlyLoggedHandler } from "./safe_handle";
 import { safeSend } from "../utils/safe_sender";
+import log from "electron-log";
 import { readSettings, writeSettings } from "../../main/settings";
 import { supabaseContracts } from "../types/supabase";
 
@@ -188,7 +189,8 @@ export function registerSupabaseHandlers() {
 
   // Set app project - links a Dyad app to a Supabase project
   createTypedHandler(supabaseContracts.setAppProject, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
+    const userId = context.userId;
+    if (!userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
     const { projectId, appId, parentProjectId, organizationSlug } = params;
     await db
@@ -198,7 +200,7 @@ export function registerSupabaseHandlers() {
         supabaseParentProjectId: parentProjectId,
         supabaseOrganizationSlug: organizationSlug,
       })
-      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
 
     logger.info(
       `Associated app ${appId} with Supabase project ${projectId} (organization: ${organizationSlug})${parentProjectId ? ` and parent project ${parentProjectId}` : ""}`,
@@ -207,7 +209,8 @@ export function registerSupabaseHandlers() {
 
   // Unset app project - removes the link between a Dyad app and a Supabase project
   createTypedHandler(supabaseContracts.unsetAppProject, async (_, params, context) => {
-    if (!context.userId) throw new Error("Unauthorized");
+    const userId = context.userId;
+    if (!userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
     const { app } = params;
     await db
@@ -217,7 +220,7 @@ export function registerSupabaseHandlers() {
         supabaseParentProjectId: null,
         supabaseOrganizationSlug: null,
       })
-      .where(and(eq(remoteSchema.apps.id, app), eq(remoteSchema.apps.userId, context.userId)));
+      .where(and(eq(remoteSchema.apps.id, app), eq(remoteSchema.apps.userId, userId)));
     logger.info(`Removed Supabase project association for app ${app}`);
   });
 
@@ -491,7 +494,8 @@ export function registerSupabaseHandlers() {
       );
 
       // Set the supabase project for the currently selected app
-      if (!context.userId) throw new Error("Unauthorized");
+      const userId = readSettings().userId;
+      if (!userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       await db
         .update(remoteSchema.apps)
@@ -499,7 +503,7 @@ export function registerSupabaseHandlers() {
           supabaseProjectId: fakeProjectId,
           supabaseOrganizationSlug: fakeOrgId,
         })
-        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
       logger.info(
         `Set fake Supabase project ${fakeProjectId} for app ${appId} during testing.`,
       );

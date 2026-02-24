@@ -57,7 +57,7 @@ export function registerLanguageModelHandlers() {
       const existingProvider = await db
         .select()
         .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId)))
+        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
         .get();
 
       if (existingProvider) {
@@ -163,7 +163,7 @@ export function registerLanguageModelHandlers() {
       const existingProvider = await db
         .select()
         .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId)))
+        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
         .get();
 
       if (!existingProvider) {
@@ -183,7 +183,7 @@ export function registerLanguageModelHandlers() {
           })
           .where(and(
             eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id),
-            eq(remoteSchema.languageModelProviders.userId, context.userId),
+            eq(remoteSchema.languageModelProviders.userId, context.userId!),
           ));
 
         return {
@@ -222,7 +222,7 @@ export function registerLanguageModelHandlers() {
       const existingModel = await db
         .select()
         .from(remoteSchema.languageModels)
-        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId)))
+        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId!)))
         .get();
 
       if (!existingModel) {
@@ -233,7 +233,7 @@ export function registerLanguageModelHandlers() {
 
       await db
         .delete(remoteSchema.languageModels)
-        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId)));
+        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId!)));
     },
   );
 
@@ -273,7 +273,7 @@ export function registerLanguageModelHandlers() {
               ? eq(remoteSchema.languageModels.builtinProviderId, providerId)
               : eq(remoteSchema.languageModels.customProviderId, providerId),
             eq(remoteSchema.languageModels.apiName, modelApiName),
-            eq(remoteSchema.languageModels.userId, context.userId),
+            eq(remoteSchema.languageModels.userId, context.userId!),
           ),
         );
 
@@ -305,7 +305,7 @@ export function registerLanguageModelHandlers() {
       const existingProvider = await db
         .select({ id: remoteSchema.languageModelProviders.id })
         .from(remoteSchema.languageModelProviders)
-        .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId)))
+        .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId!)))
         .get();
 
       if (!existingProvider) {
@@ -320,12 +320,12 @@ export function registerLanguageModelHandlers() {
         // 1. Delete associated models
         await tx
           .delete(remoteSchema.languageModels)
-          .where(and(eq(remoteSchema.languageModels.customProviderId, providerId), eq(remoteSchema.languageModels.userId, context.userId)));
+          .where(and(eq(remoteSchema.languageModels.customProviderId, providerId), eq(remoteSchema.languageModels.userId, context.userId!)));
 
         // 2. Delete the provider
         await tx
           .delete(remoteSchema.languageModelProviders)
-          .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId)));
+          .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId!)));
       });
       logger.info(`Successfully deleted provider with ID "${providerId}".`);
     },

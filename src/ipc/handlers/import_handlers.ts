@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { ImportAppParams, ImportAppResult } from "@/ipc/types";
 import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitCommit, gitAdd, gitInit } from "../utils/git_utils";
+import { readSettings } from "../../main/settings";
 
 const logger = log.scope("import-handlers");
 const handle = createLoggedHandler(logger);
@@ -139,15 +140,20 @@ export function registerImportHandlers() {
         });
       }
 
+      const userId = readSettings().userId;
+      if (!userId) throw new Error("Unauthorized");
       // Create a new app
       // Store the full absolute path when skipCopy is true, otherwise store appName
       const [app] = await getRemoteDb()
         .insert(remoteSchema.apps)
         .values({
+          userId,
           name: appName,
           path: skipCopy ? sourcePath : appName,
           installCommand: installCommand ?? null,
           startCommand: startCommand ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
 
@@ -155,7 +161,9 @@ export function registerImportHandlers() {
       const [chat] = await getRemoteDb()
         .insert(remoteSchema.chats)
         .values({
+          userId,
           appId: app.id,
+          createdAt: new Date(),
         })
         .returning();
       return { appId: app.id, chatId: chat.id };

@@ -37,7 +37,7 @@ export function registerTokenStatsHandlers() {
         };
       });
     } catch (error) {
-      console.error(\"Error fetching token stats from remote DB:\", error);
+      console.error("Error fetching token stats from remote DB:", error);
       return [];
     }
   });

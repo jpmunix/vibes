@@ -1,0 +1,419 @@
+src/components/BugScreenshotDialog.tsx(29,26): error TS2554: Expected 1 arguments, but got 0.
+src/components/ChatList.tsx(193,16): error TS2488: Type 'NonNullable<NoInfer<TQueryFnData>>' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/components/ChatList.tsx(202,25): error TS2339: Property 'createdAt' does not exist on type 'never'.
+src/components/ChatList.tsx(202,59): error TS2339: Property 'createdAt' does not exist on type 'never'.
+src/components/ChatList.tsx(269,13): error TS2304: Cannot find name 'setPlanChatId'.
+src/components/ChatList.tsx(427,23): error TS2339: Property 'length' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'length' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/ChatList.tsx(435,31): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ChatList.tsx(437,57): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ChatList.tsx(438,59): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ChatList.tsx(475,9): error TS2322: Type 'never[] | NonNullable<NoInfer<TQueryFnData>>' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]'.
+  Type 'NonNullable<NoInfer<TQueryFnData>>' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]'.
+    Type '{}' is missing the following properties from type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]': length, pop, push, concat, and 29 more.
+src/components/ErrorBoundary.tsx(35,29): error TS2339: Property 'pnpmVersion' does not exist on type '{ nodeVersion: string | null; nodePath: string | null; telemetryId: string; telemetryConsent: string; telemetryUrl: string; dyadVersion: string; platform: string; architecture: string; logs: string; selectedLanguageModel: string; }'.
+src/components/FirebaseConnector.tsx(575,55): error TS2322: Type 'UseMutateAsyncFunction<void, Error, void, unknown>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'variables' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'void'.
+src/components/HelpDialog.tsx(93,29): error TS2339: Property 'pnpmVersion' does not exist on type '{ nodeVersion: string | null; nodePath: string | null; telemetryId: string; telemetryConsent: string; telemetryUrl: string; dyadVersion: string; platform: string; architecture: string; logs: string; selectedLanguageModel: string; }'.
+src/components/LoginScreen.tsx(12,21): error TS2307: Cannot find module '../../assets/icon/logo.png' or its corresponding type declarations.
+src/components/MigrationScreen.tsx(9,21): error TS2307: Cannot find module '../../assets/icon/logo.png' or its corresponding type declarations.
+src/components/ModelPicker.tsx(197,35): error TS2339: Property 'provider' does not exist on type '{ id?: number | undefined; apiName: string; displayName: string; description?: string | undefined; tag?: string | undefined; tagColor?: string | undefined; maxOutputTokens?: number | undefined; ... 8 more ...; type?: "cloud" | ... 2 more ... | undefined; }'.
+src/components/NotesList.tsx(62,37): error TS2554: Expected 1 arguments, but got 0.
+src/components/ProfileModal.tsx(55,25): error TS2345: Argument of type '{ emailVerified: boolean; isAnonymous: boolean; metadata: UserMetadata; providerData: UserInfo[]; refreshToken: string; tenantId: string | null; delete(): Promise<void>; ... 9 more ...; uid: string; }' is not assignable to parameter of type 'SetStateAction<VibesUser | null>'.
+  Type '{ emailVerified: boolean; isAnonymous: boolean; metadata: UserMetadata; providerData: UserInfo[]; refreshToken: string; tenantId: string | null; delete(): Promise<void>; ... 9 more ...; uid: string; }' is missing the following properties from type 'VibesUser': id, photoUrl, createdAt
+src/components/ProfileModal.tsx(81,25): error TS2345: Argument of type '{ emailVerified: boolean; isAnonymous: boolean; metadata: UserMetadata; providerData: UserInfo[]; refreshToken: string; tenantId: string | null; delete(): Promise<void>; ... 9 more ...; uid: string; }' is not assignable to parameter of type 'SetStateAction<VibesUser | null>'.
+  Type '{ emailVerified: boolean; isAnonymous: boolean; metadata: UserMetadata; providerData: UserInfo[]; refreshToken: string; tenantId: string | null; delete(): Promise<void>; ... 9 more ...; uid: string; }' is missing the following properties from type 'VibesUser': id, photoUrl, createdAt
+src/components/SetupBanner.tsx(159,9): error TS2322: Type '{ isVisible: boolean; setIsVisible: Dispatch<SetStateAction<boolean>>; }' is not assignable to type 'IntrinsicAttributes & { isVisible: boolean; }'.
+  Property 'setIsVisible' does not exist on type 'IntrinsicAttributes & { isVisible: boolean; }'. Did you mean 'isVisible'?
+src/components/chat/ChatActivity.tsx(72,29): error TS2339: Property 'find' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'find' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(181,33): error TS2339: Property 'find' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'find' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(181,39): error TS7006: Parameter 'chat' implicitly has an 'any' type.
+src/components/chat/ChatHeader.tsx(197,37): error TS2554: Expected 1 arguments, but got 0.
+src/components/chat/ChatHeader.tsx(415,26): error TS2339: Property 'find' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'find' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(415,32): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/chat/ChatHeader.tsx(426,32): error TS2339: Property 'find' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'find' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(426,38): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/chat/ChatHeader.tsx(435,22): error TS2339: Property 'length' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'length' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(440,21): error TS2488: Type 'NonNullable<NoInfer<TQueryFnData>>' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/components/chat/ChatHeader.tsx(442,27): error TS2339: Property 'isPlan' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(442,40): error TS2339: Property 'isPlan' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(443,28): error TS2339: Property 'isPlan' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(443,40): error TS2339: Property 'isPlan' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(448,33): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(450,48): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(453,46): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(456,77): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(458,29): error TS2339: Property 'isPlan' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(469,35): error TS2339: Property 'title' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(469,57): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(475,42): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(476,45): error TS2339: Property 'title' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(476,67): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(487,42): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(488,45): error TS2339: Property 'title' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(488,67): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/chat/ChatHeader.tsx(540,39): error TS2339: Property 'filter' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'filter' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat/ChatHeader.tsx(540,47): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/chat/ChatMessage.tsx(127,48): error TS2339: Property 'user' does not exist on type 'ChatMessageProps'.
+src/components/chat/DailySummaryDialog.tsx(59,37): error TS2554: Expected 1 arguments, but got 0.
+src/components/chat/DyadAddIntegration.tsx(113,30): error TS2339: Property 'bunnyConfig' does not exist on type '{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 17 more ...; resolvedPath?: string | undefined; }'.
+src/components/chat/MessagesList.tsx(270,17): error TS2322: Type '{ message: { id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | ... 1 more ... | undefined; ... 6 more ...; aiMessagesJson?: any; }; isLastMessage: boolean; user: VibesUser | null; }' is not assignable to type 'IntrinsicAttributes & ChatMessageProps'.
+  Property 'user' does not exist on type 'IntrinsicAttributes & ChatMessageProps'.
+src/components/chat/MessagesList.tsx(382,21): error TS2322: Type '{ message: { id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | ... 1 more ... | undefined; ... 6 more ...; aiMessagesJson?: any; }; isLastMessage: boolean; user: VibesUser | null; }' is not assignable to type 'IntrinsicAttributes & ChatMessageProps'.
+  Property 'user' does not exist on type 'IntrinsicAttributes & ChatMessageProps'.
+src/components/chat/PlanPanel.tsx(665,41): error TS2322: Type '"primary"' is not assignable to type '"default" | "destructive" | "ghost" | "link" | "outline" | "secondary" | null | undefined'.
+src/components/chat/TokenBar.tsx(151,11): error TS2322: Type '"xs"' is not assignable to type '"default" | "icon" | "lg" | "sidebar" | "sm" | null | undefined'.
+src/components/chat_window/ChatWindowApp.tsx(206,30): error TS2339: Property 'length' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property 'length' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat_window/ChatWindowApp.tsx(207,23): error TS7053: Element implicitly has an 'any' type because expression of type '0' can't be used to index type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+  Property '0' does not exist on type 'never[] | NonNullable<NoInfer<TQueryFnData>>'.
+src/components/chat_window/ChatWindowApp.tsx(390,21): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/components/chat_window/ChatWindowApp.tsx(505,30): error TS2322: Type 'null' is not assignable to type 'PostHog | undefined'.
+src/components/database/DatabaseWindowApp.tsx(16,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/debates/DebatePanel.tsx(130,11): error TS2322: Type '(prev: any) => any' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, readonly [Route<unknown, RootRoute<Register, ... 11 more ..., undefined>, ... 16 more ..., undefined>, ... 9 more ..., Route<...>], ... 4 more ..., undefined>, ... 4 more ......'.
+  Type '(prev: any) => any' is not assignable to type 'ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, readonly [Route<unknown, RootRoute<Register, ... 11 more ..., undefined>, ... 16 more ..., undefined>, ... 9 more ..., Route<...>], ... 4 more ..., undefined>, ... 4 more ..., Recor...'.
+    Type 'any' is not assignable to type 'never'.
+src/components/debates/DebatePanel.tsx(244,11): error TS2353: Object literal may only specify known properties, and 'signal' does not exist in type '{ onChunk: (data: { debateId: number; messages: { id: number; role: "assistant" | "system" | "user"; content: string; injectedItems?: { type: "chat" | "note" | "todo"; id: number; title: string; content: string; fragment?: string | undefined; }[] | null | undefined; isSummary?: boolean | undefined; createdAt?: strin...'.
+src/components/git_window/GitWindowApp.tsx(14,8): error TS2882: Cannot find module or type declarations for side-effect import of '@/styles/globals.css'.
+src/components/preview_panel/NaturalEditingPanel.tsx(40,8): error TS2882: Cannot find module or type declarations for side-effect import of './NaturalEditingPanel.css'.
+src/components/preview_panel/PreviewIframe.tsx(1532,21): error TS2322: Type '(e?: MouseEvent | undefined) => void' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'e' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is missing the following properties from type 'MouseEvent': layerX, layerY, offsetX, offsetY, and 16 more.
+src/hooks/useChats.ts(11,5): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Type '() => Promise<{ id: number; appId: number; title: string | null; createdAt: Date; }[]>' is not assignable to type 'unique symbol | QueryFunction<{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[], readonly unknown[], never> | undefined'.
+      Type '() => Promise<{ id: number; appId: number; title: string | null; createdAt: Date; }[]>' is not assignable to type 'QueryFunction<{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[], readonly unknown[], never>'.
+        Type 'Promise<{ id: number; appId: number; title: string | null; createdAt: Date; }[]>' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[] | Promise<{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]>'.
+          Type 'Promise<{ id: number; appId: number; title: string | null; createdAt: Date; }[]>' is not assignable to type 'Promise<{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]>'.
+            Type '{ id: number; appId: number; title: string | null; createdAt: Date; }[]' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]'.
+              Property 'isPlan' is missing in type '{ id: number; appId: number; title: string | null; createdAt: Date; }' but required in type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }'.
+src/hooks/useSearchChats.ts(14,7): error TS2322: Type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; }[]' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }[]'.
+  Property 'isPlan' is missing in type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; }' but required in type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }'.
+src/hooks/useStreamChat.ts(123,39): error TS2551: Property 'electron' does not exist on type 'Window & typeof globalThis'. Did you mean 'Electron'?
+src/hooks/useUserBudgetInfo.ts(15,25): error TS2339: Property 'getUserBudget' does not exist on type 'ClientFromContracts<{ readonly minimizeWindow: IpcContract<"window:minimize", ZodVoid, ZodVoid>; readonly maximizeWindow: IpcContract<"window:maximize", ZodVoid, ZodVoid>; ... 26 more ...; readonly navigateMainWindow: IpcContract<...>; }>'.
+src/ipc/handlers/app_handlers.ts(995,46): error TS2345: Argument of type '(_: IpcMainInvokeEvent, params: { name: string; useDefaultScaffold?: boolean | undefined; }, context: HandlerContext) => Promise<{ app: { resolvedPath: string; ... 26 more ...; vercelTeamId: string | null; }; chatId: number; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: { name: string; useDefaultScaffold?: boolean | undefined; }, context: HandlerContext) => Promise<{ app: { id: number; ... 22 more ...; resolvedPath: string; }; chatId: number; }>'.
+  Type 'Promise<{ app: { resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }; chatId: number; }>' is not assignable to type 'Promise<{ app: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath: string; }; chatId: number; }>'.
+    Type '{ app: { resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }; chatId: number; }' is not assignable to type '{ app: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath: string; }; chatId: number; }'.
+      The types of 'app.isFavorite' are incompatible between these types.
+        Type 'number' is not assignable to type 'boolean'.
+src/ipc/handlers/app_handlers.ts(1008,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ bunnyConfig?: unknown; chatContext?: unknown; createdAt: Date | Placeholder<string, any> | SQL<unknown>; firebaseConfig?: unknown; firebaseProjectId?: string | Placeholder<string, any> | SQL<...> | null | undefined; ... 21 more ...; vercelTeamId?: string | ... 3 more ... | undefined; }[]'.
+src/ipc/handlers/app_handlers.ts(1019,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ appId: number | Placeholder<string, any> | SQL<unknown>; createdAt: Date | Placeholder<string, any> | SQL<unknown>; id?: number | Placeholder<string, any> | SQL<...> | undefined; ... 5 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/app_handlers.ts(1055,44): error TS2345: Argument of type '(_: IpcMainInvokeEvent, params: { appId: number; newAppName: string; withHistory: boolean; }, context: HandlerContext) => Promise<{ app: { bunnyConfig: unknown; ... 25 more ...; vercelTeamId: string | null; }; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: { appId: number; newAppName: string; withHistory: boolean; }, context: HandlerContext) => Promise<{ app: { id: number; ... 22 more ...; resolvedPath?: string | undefined; }; }>'.
+  Type 'Promise<{ app: { bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; githubRepo: string | null; ... 18 more ...; vercelTeamId: string | null; }; }>' is not assignable to type 'Promise<{ app: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }; }>'.
+    Type '{ app: { bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; githubRepo: string | null; ... 18 more ...; vercelTeamId: string | null; }; }' is not assignable to type '{ app: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }; }'.
+      The types of 'app.isFavorite' are incompatible between these types.
+        Type 'number' is not assignable to type 'boolean'.
+src/ipc/handlers/app_handlers.ts(1117,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ bunnyConfig?: unknown; chatContext?: unknown; createdAt: Date | Placeholder<string, any> | SQL<unknown>; firebaseConfig?: unknown; firebaseProjectId?: string | Placeholder<string, any> | SQL<...> | null | undefined; ... 21 more ...; vercelTeamId?: string | ... 3 more ... | undefined; }[]'.
+src/ipc/handlers/app_handlers.ts(1134,43): error TS2345: Argument of type '(_: IpcMainInvokeEvent, appId: number, context: HandlerContext) => Promise<{ files: string[]; resolvedPath: string; supabaseProjectName: string | null; ... 27 more ...; vercelTeamId: string | null; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: number, context: HandlerContext) => Promise<{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; ... 21 more ...; resolvedPath?: string | undefined; }>'.
+  Type 'Promise<{ files: string[]; resolvedPath: string; supabaseProjectName: string | null; vercelTeamSlug: string | null; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; ... 21 more ...; vercelTeamId: string | null; }>' is not assignable to type 'Promise<{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 17 more ...; resolvedPath?: string | undefined; }>'.
+    Type '{ files: string[]; resolvedPath: string; supabaseProjectName: string | null; vercelTeamSlug: string | null; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; ... 21 more ...; vercelTeamId: string | null; }' is not assignable to type '{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 17 more ...; resolvedPath?: string | undefined; }'.
+      Types of property 'isFavorite' are incompatible.
+        Type 'number' is not assignable to type 'boolean'.
+src/ipc/handlers/app_handlers.ts(1189,45): error TS2345: Argument of type '(_: IpcMainInvokeEvent, _input: void, context: HandlerContext) => Promise<{ apps: { resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; ... 23 more ...; vercelTeamId: string | null; }[]; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: void, context: HandlerContext) => Promise<{ apps: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; ... 18 more ...; resolvedPath?: string | undefined; }[]; }>'.
+  Type 'Promise<{ apps: { resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }[]; }>' is not assignable to type 'Promise<{ apps: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }[]; }>'.
+    Type '{ apps: { resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }[]; }' is not assignable to type '{ apps: { id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }[]; }'.
+      Types of property 'apps' are incompatible.
+        Type '{ resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }[]' is not assignable to type '{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }[]'.
+          Type '{ resolvedPath: string; bunnyConfig: unknown; chatContext: unknown; createdAt: Date; firebaseConfig: unknown; firebaseProjectId: string | null; githubBranch: string | null; githubOrg: string | null; ... 19 more ...; vercelTeamId: string | null; }' is not assignable to type '{ id: number; name: string; path: string; createdAt: Date; updatedAt: Date; githubOrg: string | null; githubRepo: string | null; githubBranch: string | null; supabaseProjectId: string | null; ... 14 more ...; resolvedPath?: string | undefined; }'.
+            Types of property 'isFavorite' are incompatible.
+              Type 'number' is not assignable to type 'boolean'.
+src/ipc/handlers/app_handlers.ts(1275,56): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1389,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1574,56): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1599,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1631,50): error TS2345: Argument of type '(_: IpcMainInvokeEvent, params: { appId: number; }, context: HandlerContext) => Promise<{ isFavorite: number; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: { appId: number; }, context: HandlerContext) => Promise<{ isFavorite: boolean; }>'.
+  Type 'Promise<{ isFavorite: number; }>' is not assignable to type 'Promise<{ isFavorite: boolean; }>'.
+    Type '{ isFavorite: number; }' is not assignable to type '{ isFavorite: boolean; }'.
+      Types of property 'isFavorite' are incompatible.
+        Type 'number' is not assignable to type 'boolean'.
+src/ipc/handlers/app_handlers.ts(1642,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1654,18): error TS2322: Type 'boolean' is not assignable to type 'number | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | undefined'.
+src/ipc/handlers/app_handlers.ts(1655,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1689,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1712,56): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1745,60): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1762,21): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1853,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(1901,11): error TS2304: Cannot find name 'db'.
+src/ipc/handlers/app_handlers.ts(1902,9): error TS2304: Cannot find name 'db'.
+src/ipc/handlers/app_handlers.ts(2419,56): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(2439,60): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(2447,19): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(2476,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/app_handlers.ts(2504,58): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/auth_handlers.ts(204,40): error TS2304: Cannot find name 'sessionToken'.
+src/ipc/handlers/base.ts(173,36): error TS2345: Argument of type '(event: IpcMainInvokeEvent, input: output<T[keyof T]["input"]>, context: HandlerContext) => Promise<output<T[keyof T]["output"]>>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: unknown, context: HandlerContext) => Promise<unknown>'.
+  Types of parameters 'input' and 'input' are incompatible.
+    Type 'unknown' is not assignable to type 'output<T[keyof T]["input"]>'.
+src/ipc/handlers/chat_handlers.ts(48,9): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'appId' does not exist in type '{ appId: number | Placeholder<string, any> | SQL<unknown>; createdAt: Date | Placeholder<string, any> | SQL<unknown>; id?: number | Placeholder<string, any> | SQL<...> | undefined; ... 5 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/chat_handlers.ts(64,45): error TS2345: Argument of type '(_: IpcMainInvokeEvent, chatId: number, context: HandlerContext) => Promise<{ title: string; messages: { role: "assistant" | "user"; aiMessagesJson: string | null; ... 14 more ...; usingFreeAgentModeQuota: number | null; }[]; ... 7 more ...; userId: string; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: number, context: HandlerContext) => Promise<{ id: number; title: string; messages: { id: number; role: "assistant" | "user"; ... 10 more ...; aiMessagesJson?: any; }[]; ... 4 more ...; planData?: any; }>'.
+  Type 'Promise<{ title: string; messages: { role: "assistant" | "user"; aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; ... 9 more ...; usingFreeAgentModeQuota: number | null; }[]; ... 7 more ...; userId: string; }>' is not assignable to type 'Promise<{ id: number; title: string; messages: { id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; ... 7 more ...; aiMessagesJson?: any; }[]; ... 4 more ...; planData?: any; }>'.
+    Type '{ title: string; messages: { role: "assistant" | "user"; aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; ... 9 more ...; usingFreeAgentModeQuota: number | null; }[]; ... 7 more ...; userId: string; }' is not assignable to type '{ id: number; title: string; messages: { id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; ... 7 more ...; aiMessagesJson?: any; }[]; ... 4 more ...; planData?: any; }'.
+      Types of property 'messages' are incompatible.
+        Type '{ role: "assistant" | "user"; aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; ... 8 more ...; usingFreeAgentModeQuota: number | null; }[]' is not assignable to type '{ id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | null | undefined; ... 6 more ...; aiMessagesJson?: any; }[]'.
+          Type '{ role: "assistant" | "user"; aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; ... 8 more ...; usingFreeAgentModeQuota: number | null; }' is not assignable to type '{ id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | null | undefined; ... 6 more ...; aiMessagesJson?: any; }'.
+            Types of property 'approvalState' are incompatible.
+              Type 'string | null' is not assignable to type '"approved" | "rejected" | null | undefined'.
+                Type 'string' is not assignable to type '"approved" | "rejected" | null | undefined'.
+src/ipc/handlers/chat_handlers.ts(123,12): error TS2352: Conversion of type '{ appId: number; createdAt: Date; id: number; isPlan: number | null; title: string | null; }[]' to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ appId: number; createdAt: Date; id: number; isPlan: number | null; title: string | null; }' is not comparable to type '{ id: number; appId: number; title: string | null; createdAt: Date; isPlan: boolean; }'.
+    Types of property 'isPlan' are incompatible.
+      Type 'number | null' is not comparable to type 'boolean'.
+        Type 'number' is not comparable to type 'boolean'.
+src/ipc/handlers/chat_handlers.ts(151,7): error TS2322: Type 'true' is not assignable to type 'number | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/ipc/handlers/chat_handlers.ts(202,11): error TS2322: Type '{ id: number; appId: number; title: string; createdAt: string; matchedMessageContent: null; isPlan: number | false; }[]' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }[]'.
+  Type '{ id: number; appId: number; title: string; createdAt: string; matchedMessageContent: null; isPlan: number | false; }' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }'.
+    Types of property 'createdAt' are incompatible.
+      Type 'string' is not assignable to type 'Date'.
+src/ipc/handlers/chat_handlers.ts(232,11): error TS2322: Type '{ id: number; appId: number; title: string; createdAt: string; matchedMessageContent: string; isPlan: number | false; }[]' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }[]'.
+  Type '{ id: number; appId: number; title: string; createdAt: string; matchedMessageContent: string; isPlan: number | false; }' is not assignable to type '{ id: number; appId: number; title: string | null; createdAt: Date; matchedMessageContent: string | null; isPlan: boolean; }'.
+    Types of property 'createdAt' are incompatible.
+      Type 'string' is not assignable to type 'Date'.
+src/ipc/handlers/chat_handlers.ts(425,14): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "chats"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/chat_logs_handlers.ts(1,10): error TS2300: Duplicate identifier 'createTypedHandler'.
+src/ipc/handlers/chat_logs_handlers.ts(6,10): error TS2300: Duplicate identifier 'createTypedHandler'.
+src/ipc/handlers/chat_logs_handlers.ts(9,53): error TS2345: Argument of type '(_event: IpcMainInvokeEvent, params: { chatId: number; messageId?: number | undefined; limit?: number | undefined; }, context: HandlerContext) => Promise<...>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: { chatId: number; messageId?: number | undefined; limit?: number | undefined; }, context: HandlerContext) => Promise<...>'.
+  Type 'Promise<{ id: number; chatId: number; messageId: number | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata: string | undefined; timestamp: number; }[]>' is not assignable to type 'Promise<{ id?: number | undefined; chatId: number; messageId?: number | null | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata?: Record<string, any> | null | undefined; timestamp: number; }[]>'.
+    Type '{ id: number; chatId: number; messageId: number | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata: string | undefined; timestamp: number; }[]' is not assignable to type '{ id?: number | undefined; chatId: number; messageId?: number | null | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata?: Record<string, any> | null | undefined; timestamp: number; }[]'.
+      Type '{ id: number; chatId: number; messageId: number | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata: string | undefined; timestamp: number; }' is not assignable to type '{ id?: number | undefined; chatId: number; messageId?: number | null | undefined; level: "debug" | "error" | "info" | "warn"; category: string; message: string; metadata?: Record<string, any> | null | undefined; timestamp: number; }'.
+        Types of property 'metadata' are incompatible.
+          Type 'string | undefined' is not assignable to type 'Record<string, any> | null | undefined'.
+            Type 'string' is not assignable to type 'Record<string, any>'.
+src/ipc/handlers/chat_logs_handlers.ts(42,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ category: string | Placeholder<string, any> | SQL<unknown>; chatId: number | Placeholder<string, any> | SQL<unknown>; id?: number | Placeholder<string, any> | SQL<...> | undefined; ... 5 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/chat_stream_handlers.ts(1213,27): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1215,29): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1228,23): error TS2552: Cannot find name 'chats'. Did you mean 'chat'?
+src/ipc/handlers/chat_stream_handlers.ts(1400,22): error TS2554: Expected 2 arguments, but got 1.
+src/ipc/handlers/chat_stream_handlers.ts(1402,67): error TS2339: Property 'modelId' does not exist on type 'LanguageModel'.
+  Property 'modelId' does not exist on type '"alibaba/qwen-3-14b"'.
+src/ipc/handlers/chat_stream_handlers.ts(1428,27): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1430,29): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1516,25): error TS2552: Cannot find name 'messages'. Did you mean 'message'?
+src/ipc/handlers/chat_stream_handlers.ts(1518,27): error TS2552: Cannot find name 'messages'. Did you mean 'message'?
+src/ipc/handlers/chat_stream_handlers.ts(1544,23): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1546,25): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1790,27): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1796,29): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1915,19): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(1917,21): error TS2552: Cannot find name 'messages'. Did you mean 'onmessage'?
+src/ipc/handlers/chat_stream_handlers.ts(2210,27): error TS2304: Cannot find name 'db'.
+src/ipc/handlers/chat_stream_handlers.ts(2212,13): error TS2552: Cannot find name 'mcpServers'. Did you mean 'servers'?
+src/ipc/handlers/chat_stream_handlers.ts(2213,17): error TS2552: Cannot find name 'mcpServers'. Did you mean 'servers'?
+src/ipc/handlers/chat_stream_handlers.ts(2236,14): error TS2339: Property 'split' does not exist on type 'never'.
+src/ipc/handlers/chat_stream_handlers.ts(2242,12): error TS2339: Property 'split' does not exist on type 'never'.
+src/ipc/handlers/chat_stream_handlers.ts(2269,27): error TS2304: Cannot find name 'db'.
+src/ipc/handlers/chat_stream_handlers.ts(2271,13): error TS2552: Cannot find name 'mcpServers'. Did you mean 'servers'?
+src/ipc/handlers/chat_stream_handlers.ts(2272,17): error TS2552: Cannot find name 'mcpServers'. Did you mean 'servers'?
+src/ipc/handlers/debate_handlers.ts(31,20): error TS2339: Property 'map' does not exist on type 'never'.
+src/ipc/handlers/debate_handlers.ts(31,25): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(42,21): error TS7006: Parameter 'messages' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(42,33): error TS7031: Binding element 'asc' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(58,33): error TS2339: Property 'map' does not exist on type 'never'.
+src/ipc/handlers/debate_handlers.ts(58,38): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(64,25): error TS2339: Property 'map' does not exist on type 'never'.
+src/ipc/handlers/debate_handlers.ts(64,30): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(76,11): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ createdAt: Date | Placeholder<string, any> | SQL<unknown>; id?: number | Placeholder<string, any> | SQL<unknown> | undefined; summary?: string | ... 4 more ... | undefined; title: string | ... 1 more ... | SQL<...>; updatedAt: Date | ... 1 more ... | SQL<...>; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/debate_handlers.ts(142,14): error TS2345: Argument of type '{ content: string; injectedItems?: { type: "chat" | "note" | "todo"; id: number; title: string; content: string; fragment?: string | undefined; }[] | undefined; }' is not assignable to parameter of type '{ content?: string | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | undefined; createdAt?: Date | ... 2 more ... | undefined; ... 5 more ...; userId?: string | ... 2 more ... | undefined; }'.
+  Types of property 'injectedItems' are incompatible.
+    Type '{ type: "chat" | "note" | "todo"; id: number; title: string; content: string; fragment?: string | undefined; }[] | undefined' is not assignable to type 'string | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+      Type '{ type: "chat" | "note" | "todo"; id: number; title: string; content: string; fragment?: string | undefined; }[]' is not assignable to type 'string | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/ipc/handlers/debate_handlers.ts(211,21): error TS7006: Parameter 'messages' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(211,33): error TS7031: Binding element 'asc' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(216,36): error TS2339: Property 'length' does not exist on type 'never'.
+src/ipc/handlers/debate_handlers.ts(227,8): error TS2339: Property 'map' does not exist on type 'never'.
+src/ipc/handlers/debate_handlers.ts(227,13): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/ipc/handlers/debate_handlers.ts(250,11): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ content: string | Placeholder<string, any> | SQL<unknown>; createdAt: Date | Placeholder<string, any> | SQL<unknown>; debateId: number | Placeholder<string, any> | SQL<...>; ... 4 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/handlers/debate_stream_handlers.ts(46,23): error TS7006: Parameter 'messages' implicitly has an 'any' type.
+src/ipc/handlers/debate_stream_handlers.ts(46,35): error TS7031: Binding element 'asc' implicitly has an 'any' type.
+src/ipc/handlers/debate_stream_handlers.ts(54,47): error TS2339: Property 'map' does not exist on type 'never'.
+src/ipc/handlers/debate_stream_handlers.ts(54,52): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/ipc/handlers/debate_stream_handlers.ts(107,46): error TS2339: Property 'length' does not exist on type 'never'.
+src/ipc/handlers/dependency_handlers.ts(61,9): error TS2322: Type '{ aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; id: number; ... 8 more ...; usingFreeAgentModeQuota: number | null; }' is not assignable to type '{ id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | null | undefined; ... 6 more ...; aiMessagesJson?: any; }'.
+  Types of property 'role' are incompatible.
+    Type 'string' is not assignable to type '"assistant" | "user"'.
+src/ipc/handlers/dossier_handlers.ts(471,33): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Type 'Buffer<ArrayBufferLike>' is not assignable to type 'BodyInit | null | undefined'.
+      Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+src/ipc/handlers/free_agent_quota_handlers.ts(91,9): error TS2304: Cannot find name 'db'.
+src/ipc/handlers/free_agent_quota_handlers.ts(118,12): error TS2322: Type 'true' is not assignable to type 'number | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/ipc/handlers/free_agent_quota_handlers.ts(136,12): error TS2322: Type 'false' is not assignable to type 'number | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/ipc/handlers/free_agent_quota_handlers.ts(157,19): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "using_free_agent_mode_quota"; tableName: "messages"; dataType: "number"; columnType: "SQLiteInteger"; data: number; driverParam: number; notNull: false; hasDefault: false; isPrimaryKey: false; ... 5 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/free_agent_quota_handlers.ts(185,14): error TS2322: Type 'false' is not assignable to type 'number | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/ipc/handlers/free_agent_quota_handlers.ts(186,21): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'SQLiteColumn<{ name: "using_free_agent_mode_quota"; tableName: "messages"; dataType: "number"; columnType: "SQLiteInteger"; data: number; driverParam: number; notNull: false; hasDefault: false; isPrimaryKey: false; ... 5 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/git_branch_handlers.ts(65,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(87,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(124,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(142,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(159,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(222,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(264,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(328,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(344,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(359,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(373,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(430,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(443,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(456,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(469,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(482,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(503,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(547,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(566,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(582,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(607,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(621,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(635,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(649,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(663,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(677,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/git_branch_handlers.ts(691,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(141,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(863,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(986,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1000,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1021,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1080,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1270,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1307,11): error TS2304: Cannot find name 'CloneRepoParams'.
+src/ipc/handlers/github_handlers.ts(1309,12): error TS2304: Cannot find name 'CloneRepoResult'.
+src/ipc/handlers/github_handlers.ts(1350,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1446,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1556,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1637,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1638,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number | null; }'.
+src/ipc/handlers/github_handlers.ts(1641,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1645,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1646,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ owner: string; repo: string; }'.
+src/ipc/handlers/github_handlers.ts(1649,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1650,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ org: string; repo: string; }'.
+src/ipc/handlers/github_handlers.ts(1653,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1654,36): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ org: string; repo: string; appId: number; branch?: string | undefined; }'.
+src/ipc/handlers/github_handlers.ts(1658,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1660,49): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ owner: string; repo: string; branch: string; appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1664,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1665,38): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; force?: boolean | undefined; forceWithLease?: boolean | undefined; commitMessage?: string | undefined; }'.
+src/ipc/handlers/github_handlers.ts(1668,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1669,42): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1672,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1673,37): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1676,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1677,40): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1681,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1683,45): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1688,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1690,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; username: string; }'.
+src/ipc/handlers/github_handlers.ts(1695,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1697,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; username: string; }'.
+src/ipc/handlers/github_handlers.ts(1701,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1702,43): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1705,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1706,37): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1709,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1710,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1714,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1720,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1721,36): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1725,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1727,49): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/knowledge_handlers.ts(731,37): error TS2339: Property 'enabled' does not exist on type '{ appId: number; category: "component" | "convention" | "pattern" | "preference" | "rule"; content: string; source?: "auto-extracted" | "inferred" | "manual" | undefined; confidence?: number | undefined; }'.
+src/ipc/handlers/neon_handlers.ts(3,10): error TS2300: Duplicate identifier 'createTestOnlyLoggedHandler'.
+src/ipc/handlers/neon_handlers.ts(4,10): error TS2300: Duplicate identifier 'createTestOnlyLoggedHandler'.
+src/ipc/handlers/prompt_handlers.ts(11,44): error TS2345: Argument of type '(_: IpcMainInvokeEvent, __: void, context: HandlerContext) => Promise<{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }[]>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: void, context: HandlerContext) => Promise<{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }[]>'.
+  Type 'Promise<{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }[]>' is not assignable to type 'Promise<{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }[]>'.
+    Type '{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }[]' is not assignable to type '{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }[]'.
+      Type '{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }' is not assignable to type '{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }'.
+        Types of property 'description' are incompatible.
+          Type 'string | undefined' is not assignable to type 'string | null'.
+            Type 'undefined' is not assignable to type 'string | null'.
+src/ipc/handlers/prompt_handlers.ts(25,46): error TS2345: Argument of type '(_: IpcMainInvokeEvent, params: { title: string; description?: string | undefined; content: string; }, context: HandlerContext) => Promise<{ id: number; ... 4 more ...; updatedAt: string; }>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: { title: string; description?: string | undefined; content: string; }, context: HandlerContext) => Promise<{ id: number; ... 4 more ...; updatedAt: Date; }>'.
+  Type 'Promise<{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }>' is not assignable to type 'Promise<{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }>'.
+    Type '{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }' is not assignable to type '{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }'.
+      Types of property 'description' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string | null'.
+          Type 'undefined' is not assignable to type 'string | null'.
+src/ipc/handlers/proposal_handlers.ts(290,59): error TS2345: Argument of type '{ aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; id: number; ... 8 more ...; usingFreeAgentModeQuota: number | null; }[]' is not assignable to parameter of type '{ id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | null | undefined; ... 6 more ...; aiMessagesJson?: any; }[]'.
+  Type '{ aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; id: number; ... 8 more ...; usingFreeAgentModeQuota: number | null; }' is not assignable to type '{ id: number; role: "assistant" | "user"; content: string; approvalState?: "approved" | "rejected" | null | undefined; commitHash?: string | null | undefined; sourceCommitHash?: string | null | undefined; ... 6 more ...; aiMessagesJson?: any; }'.
+    Types of property 'role' are incompatible.
+      Type 'string' is not assignable to type '"assistant" | "user"'.
+src/ipc/shared/language_model_helpers.ts(125,7): error TS2322: Type '{ id: string; name: string; apiName: string; description: string; contextWindow: number | undefined; maxOutputTokens: number | undefined; isCustom: boolean; }[]' is not assignable to type '{ id?: number | undefined; apiName: string; displayName: string; description?: string | undefined; tag?: string | undefined; tagColor?: string | undefined; maxOutputTokens?: number | undefined; ... 8 more ...; type?: "cloud" | ... 2 more ... | undefined; }[]'.
+  Property 'displayName' is missing in type '{ id: string; name: string; apiName: string; description: string; contextWindow: number | undefined; maxOutputTokens: number | undefined; isCustom: boolean; }' but required in type '{ id?: number | undefined; apiName: string; displayName: string; description?: string | undefined; tag?: string | undefined; tagColor?: string | undefined; maxOutputTokens?: number | undefined; ... 8 more ...; type?: "cloud" | ... 2 more ... | undefined; }'.
+src/ipc/utils/chat_logger.ts(47,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'userId' does not exist in type '{ category: string | Placeholder<string, any> | SQL<unknown>; chatId: number | Placeholder<string, any> | SQL<unknown>; id?: number | Placeholder<string, any> | SQL<...> | undefined; ... 5 more ...; userId: string | ... 1 more ... | SQL<...>; }[]'.
+src/ipc/utils/mcp_consent.ts(77,60): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'serverId' does not exist in type '{ consent?: string | Placeholder<string, any> | SQL<unknown> | undefined; id?: number | Placeholder<string, any> | SQL<unknown> | undefined; serverId: number | Placeholder<...> | SQL<...>; toolName: string | ... 1 more ... | SQL<...>; updatedAt: Date | ... 1 more ... | SQL<...>; userId: string | ... 1 more ... | SQL...'.
+src/ipc/utils/openrouter.ts(150,10): error TS2554: Expected 2 arguments, but got 1.
+src/pages/home.tsx(182,15): error TS2304: Cannot find name 'neonTemplateHook'.
+src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts(295,54): error TS2345: Argument of type '{ aiMessagesJson: string | null; approvalState: string | null; chatId: number; commitHash: string | null; content: string; createdAt: Date; durationMs: number | null; id: number; ... 8 more ...; usingFreeAgentModeQuota: number | null; }' is not assignable to parameter of type 'DbMessageForParsing'.
+  Types of property 'aiMessagesJson' are incompatible.
+    Type 'string | null' is not assignable to type 'AiMessagesJsonV6 | ModelMessage[] | null'.
+      Type 'string' is not assignable to type 'AiMessagesJsonV6 | ModelMessage[] | null'.
+src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts(414,16): error TS2554: Expected 2 arguments, but got 1.
+src/pro/main/ipc/handlers/local_agent/local_agent_handler.ts(769,10): error TS2554: Expected 4 arguments, but got 3.
+src/pro/main/ipc/handlers/local_agent/message_persistence.ts(117,16): error TS2322: Type 'AiMessagesJsonV6' is not assignable to type 'string | SQL<unknown> | SQLiteColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | null | undefined'.
+src/pro/main/ipc/handlers/visual_editing_handlers.ts(303,16): error TS2554: Expected 2 arguments, but got 1.
+src/pro/main/utils/visual_editing_utils.ts(55,18): error TS7006: Parameter 'path' implicitly has an 'any' type.
+src/renderer.tsx(307,53): error TS2322: Type 'Record<string, any> | undefined' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, readonly [Route<unknown, RootRoute<Register, ... 11 more ..., undefined>, ... 16 more ..., undefined>, ... 9 more ..., Route<...>], ... 4 more ..., undefined>, ... 4 more ......'.
+  Type 'Record<string, any>' is not assignable to type 'true | ParamsReducerFn<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, readonly [Route<unknown, RootRoute<Register, ... 11 more ..., undefined>, ... 16 more ..., undefined>, ... 9 more ..., Route<...>], ... 4 more ..., undefined>, ... 4 more ......'.

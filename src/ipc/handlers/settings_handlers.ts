@@ -22,11 +22,11 @@ export function registerSettingsHandlers() {
             const remoteSettings = JSON.parse(remoteRecord.settingsJson);
             return { ...localSettings, ...remoteSettings };
           } catch (e) {
-            console.error(\"Failed to parse remote settings JSON\", e);
+            console.error("Failed to parse remote settings JSON", e);
           }
         }
       } catch (error) {
-        console.error(\"Error fetching remote user settings:\", error);
+        console.error("Error fetching remote user settings:", error);
       }
     }
     return localSettings;
@@ -61,7 +61,7 @@ export function registerSettingsHandlers() {
           });
         }
       } catch (error) {
-        console.error(\"Error syncing settings to remote DB:\", error);
+        console.error("Error syncing settings to remote DB:", error);
       }
     }
     return updated;

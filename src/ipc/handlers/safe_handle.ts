@@ -1,4 +1,3 @@
-```typescript
 import { ipcMain, IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { IS_TEST_BUILD } from "../utils/test_utils";
@@ -31,7 +30,7 @@ export function createLoggedHandler(_logger: log.LogFunctions) {
           //   `Error in ${ fn.name }: args: ${ JSON.stringify(args) } `,
           //   error,
           // );
-          throw new Error(`[${ channel }] ${ error } `);
+          throw new Error(`[${channel}] ${error} `);
         }
       },
     );
@@ -41,7 +40,7 @@ export function createLoggedHandler(_logger: log.LogFunctions) {
 export function createTestOnlyLoggedHandler(logger: log.LogFunctions) {
   if (!IS_TEST_BUILD) {
     // Returns a no-op function for non-e2e test builds.
-    return () => {};
+    return () => { };
   }
   return createLoggedHandler(logger);
 }

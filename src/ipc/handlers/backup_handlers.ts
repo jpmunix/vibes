@@ -15,7 +15,7 @@ const logger = log.scope("backup_handlers");
 
 export function registerBackupHandlers() {
     createTypedHandler(backupContracts.performBackup, async (_, params, context) => {
-        if (!context.userId) throw new Error(\"Unauthorized\");
+        if (!context.userId) throw new Error("Unauthorized");
         const { includeSettings, includeDatabase, includeStats } = params;
 
         // Create a temporary directory for the backup files
@@ -77,7 +77,7 @@ export function registerBackupHandlers() {
     });
 
     createTypedHandler(backupContracts.restoreBackup, async (_, params, context) => {
-        if (!context.userId) throw new Error(\"Unauthorized\");
+        if (!context.userId) throw new Error("Unauthorized");
         const { downloadUrl } = params;
 
         // Create a temporary directory for extraction

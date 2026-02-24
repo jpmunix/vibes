@@ -5,6 +5,10 @@ import log from "electron-log";
 import { createTypedHandler, HandlerContext } from "./base";
 import { knowledgeContracts } from "../types/knowledge";
 
+function mapKnowledgeEntry(entry: any) {
+    return { ...entry, enabled: !!entry.enabled };
+}
+
 const logger = log.scope("knowledge_handlers");
 
 // =============================================================================
@@ -160,7 +164,7 @@ async function buildKnowledgePrompt(appId: number, userId: string, userPrompt?: 
     const entries = await db.query.knowledgeEntries.findMany({
         where: and(
             eq(remoteSchema.knowledgeEntries.appId, appId),
-            eq(remoteSchema.knowledgeEntries.enabled, true),
+            eq(remoteSchema.knowledgeEntries.enabled, 1),
             eq(remoteSchema.knowledgeEntries.userId, userId),
         ),
         orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
@@ -345,7 +349,7 @@ async function extractKnowledgeWithAI(
         const existingEntries = await db.query.knowledgeEntries.findMany({
             where: and(
                 eq(remoteSchema.knowledgeEntries.appId, appId),
-                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.enabled, 1),
                 eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
             orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
@@ -526,7 +530,7 @@ async function decayUnconfirmedKnowledge(appId: number, userId: string): Promise
             where: and(
                 eq(remoteSchema.knowledgeEntries.appId, appId),
                 eq(remoteSchema.knowledgeEntries.source, "auto-extracted"),
-                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.enabled, 1),
                 eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
         });
@@ -578,7 +582,7 @@ async function enforceEntryCap(appId: number, userId: string): Promise<number> {
         const activeEntries = await db.query.knowledgeEntries.findMany({
             where: and(
                 eq(remoteSchema.knowledgeEntries.appId, appId),
-                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.enabled, 1),
                 eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
             orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
@@ -590,7 +594,7 @@ async function enforceEntryCap(appId: number, userId: string): Promise<number> {
         for (const entry of toDisable) {
             await db
                 .update(remoteSchema.knowledgeEntries)
-                .set({ enabled: false })
+                .set({ enabled: 0 })
                 .where(and(eq(remoteSchema.knowledgeEntries.id, entry.id), eq(remoteSchema.knowledgeEntries.userId, userId)));
         }
 
@@ -634,7 +638,7 @@ async function analyzeKnowledgeHealth(
         const entries = await db.query.knowledgeEntries.findMany({
             where: and(
                 eq(remoteSchema.knowledgeEntries.appId, appId),
-                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.enabled, 1),
                 eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
             orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
@@ -703,10 +707,10 @@ export function registerKnowledgeHandlers() {
             if (!context.userId) throw new Error("Unauthorized");
             const db = getRemoteDb();
             const entries = await db.query.knowledgeEntries.findMany({
-                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
+                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId!)),
                 orderBy: [desc(remoteSchema.knowledgeEntries.updatedAt)],
             });
-            return entries;
+            return entries.map(mapKnowledgeEntry) as any;
         },
     );
 
@@ -718,12 +722,15 @@ export function registerKnowledgeHandlers() {
             const [entry] = await db
                 .insert(remoteSchema.knowledgeEntries)
                 .values({
-                    userId: context.userId,
+                    userId: context.userId!,
                     appId: params.appId,
                     category: params.category,
                     content: params.content,
                     source: params.source || "manual",
                     confidence: params.confidence ?? 100,
+                    enabled: 1,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
                 })
                 .returning();
             logger.info(`Created knowledge entry: ${entry.id} for app ${params.appId}`);
@@ -749,7 +756,7 @@ export function registerKnowledgeHandlers() {
                 await db
                     .update(remoteSchema.knowledgeEntries)
                     .set(updateData)
-                    .where(and(eq(remoteSchema.knowledgeEntries.id, params.id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, params.id), eq(remoteSchema.knowledgeEntries.userId, context.userId!)));
                 logger.info(`Updated knowledge entry: ${params.id}`);
             }
         },
@@ -760,7 +767,7 @@ export function registerKnowledgeHandlers() {
         async (_, entryId, context) => {
             if (!context.userId) throw new Error("Unauthorized");
             const db = getRemoteDb();
-            await db.delete(remoteSchema.knowledgeEntries).where(and(eq(remoteSchema.knowledgeEntries.id, entryId), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
+            await db.delete(remoteSchema.knowledgeEntries).where(and(eq(remoteSchema.knowledgeEntries.id, entryId), eq(remoteSchema.knowledgeEntries.userId, context.userId!)));
             logger.info(`Deleted knowledge entry: ${entryId}`);
         },
     );
@@ -791,7 +798,7 @@ export function registerKnowledgeHandlers() {
             const db = getRemoteDb();
             // Get existing entries for semantic dedup
             const existing = await db.query.knowledgeEntries.findMany({
-                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
+                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId!)),
             });
 
             const newEntries: typeof candidates = [];
@@ -821,10 +828,10 @@ export function registerKnowledgeHandlers() {
                         await db
                             .update(remoteSchema.knowledgeEntries)
                             .set({
-                                enabled: false,
+                                enabled: 0,
                                 supersededBy: null, // Will be set after insert
                             })
-                            .where(and(eq(remoteSchema.knowledgeEntries.id, contradicted.id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
+                            .where(and(eq(remoteSchema.knowledgeEntries.id, contradicted.id), eq(remoteSchema.knowledgeEntries.userId, context.userId!)));
                     }
                 }
 
@@ -845,7 +852,7 @@ export function registerKnowledgeHandlers() {
                         source: "auto-extracted" as const,
                         confidence: entry.confidence,
                         // project-phase entries start disabled for review
-                        enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
+                        enabled: (entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD) ? 1 : 0,
                         durability: entry.durability,
                         createdAt: new Date(),
                         updatedAt: new Date(),
@@ -860,7 +867,7 @@ export function registerKnowledgeHandlers() {
                 `[KNOWLEDGE v2] ✅ Saved ${inserted.length} entries for app ${appId} (${inserted.filter((e) => e.enabled).length} active, ${inserted.filter((e) => !e.enabled).length} pending review)`,
             );
 
-            return inserted;
+            return inserted.map(mapKnowledgeEntry) as any;
         },
     );
 
@@ -894,8 +901,8 @@ export function registerKnowledgeHandlers() {
             for (const id of entryIds) {
                 await db
                     .update(remoteSchema.knowledgeEntries)
-                    .set({ enabled: false })
-                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
+                    .set({ enabled: 0 })
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId!)));
                 count++;
             }
             logger.info(`[KNOWLEDGE CLEANUP] Disabled ${count} entries`);
@@ -915,17 +922,17 @@ export function registerKnowledgeHandlers() {
                 await db
                     .update(remoteSchema.knowledgeEntries)
                     .set({
-                        enabled: true,
+                        enabled: 1,
                         confidence: 100,
                         source: "manual" as const,
                         lastConfirmedAt: sql`(unixepoch())`,
                     })
-                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId!)));
                 count++;
             }
             // Enforce cap after bulk approve
             const appIdResult = await db.query.knowledgeEntries.findFirst({
-                where: and(eq(remoteSchema.knowledgeEntries.id, entryIds[0]), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
+                where: and(eq(remoteSchema.knowledgeEntries.id, entryIds[0]), eq(remoteSchema.knowledgeEntries.userId, context.userId!)),
             });
             if (appIdResult) {
                 await enforceEntryCap(appIdResult.appId, context.userId);
@@ -997,7 +1004,7 @@ async function autoExtractKnowledge(
                     );
                     await db
                         .update(remoteSchema.knowledgeEntries)
-                        .set({ enabled: false })
+                        .set({ enabled: 0 })
                         .where(and(eq(remoteSchema.knowledgeEntries.id, contradicted.id), eq(remoteSchema.knowledgeEntries.userId, userId)));
                 }
             }
@@ -1018,7 +1025,7 @@ async function autoExtractKnowledge(
                 content: entry.content,
                 source: "auto-extracted" as const,
                 confidence: entry.confidence,
-                enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
+                enabled: (entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD) ? 1 : 0,
                 durability: entry.durability,
                 createdAt: new Date(),
                 updatedAt: new Date(),
