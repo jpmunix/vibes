@@ -299,7 +299,30 @@ export function BunnyConnector({ appId }: { appId: number }) {
         }
     }
 
+    function validateConfig(): string[] {
+        const errors: string[] = [];
+        databases.forEach((db, i) => {
+            const n = i + 1;
+            if (!db.name.trim()) errors.push(`BD #${n}: falta el nombre`);
+            if (!db.databaseUrl.trim()) errors.push(`BD #${n}: falta la Database URL`);
+            if (!db.fullAccessToken.trim()) errors.push(`BD #${n}: falta el Full-Access Token`);
+        });
+        storageZones.forEach((sz, i) => {
+            const n = i + 1;
+            if (!sz.name.trim()) errors.push(`Storage #${n}: falta el nombre`);
+            if (!sz.hostname.trim()) errors.push(`Storage #${n}: falta el hostname`);
+            if (!sz.username.trim()) errors.push(`Storage #${n}: falta el username`);
+            if (!sz.password.trim()) errors.push(`Storage #${n}: falta el password`);
+        });
+        return errors;
+    }
+
     async function handleSave() {
+        const validationErrors = validateConfig();
+        if (validationErrors.length > 0) {
+            showError(`Campos requeridos vacíos:\n${validationErrors.join("\n")}`);
+            return;
+        }
         try {
             setSaving(true);
             const config: BunnyConfig = {
@@ -399,8 +422,8 @@ export function BunnyConnector({ appId }: { appId: number }) {
                     </button>
                     <div
                         className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${dbSectionOpen
-                                ? "max-h-[2000px] opacity-100"
-                                : "max-h-0 opacity-0"
+                            ? "max-h-[2000px] opacity-100"
+                            : "max-h-0 opacity-0"
                             }`}
                     >
                         <div className="p-3 space-y-2 border-t border-black/8 dark:border-white/8">
@@ -413,15 +436,17 @@ export function BunnyConnector({ appId }: { appId: number }) {
                                     onRemove={handleDbRemove}
                                 />
                             ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full gap-1.5 text-xs h-8"
-                                onClick={() => setDatabases((prev) => [...prev, { ...EMPTY_DB }])}
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                Añadir base de datos
-                            </Button>
+                            {databases.length === 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full gap-1.5 text-xs h-8"
+                                    onClick={() => setDatabases((prev) => [...prev, { ...EMPTY_DB }])}
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Añadir base de datos
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -450,8 +475,8 @@ export function BunnyConnector({ appId }: { appId: number }) {
                     </button>
                     <div
                         className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${storageSectionOpen
-                                ? "max-h-[2000px] opacity-100"
-                                : "max-h-0 opacity-0"
+                            ? "max-h-[2000px] opacity-100"
+                            : "max-h-0 opacity-0"
                             }`}
                     >
                         <div className="p-3 space-y-2 border-t border-black/8 dark:border-white/8">
@@ -464,17 +489,19 @@ export function BunnyConnector({ appId }: { appId: number }) {
                                     onRemove={handleStorageRemove}
                                 />
                             ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full gap-1.5 text-xs h-8"
-                                onClick={() =>
-                                    setStorageZones((prev) => [...prev, { ...EMPTY_STORAGE }])
-                                }
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                Añadir storage zone
-                            </Button>
+                            {storageZones.length === 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full gap-1.5 text-xs h-8"
+                                    onClick={() =>
+                                        setStorageZones((prev) => [...prev, { ...EMPTY_STORAGE }])
+                                    }
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Añadir storage zone
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -31,7 +31,7 @@ export function createTypedHandler<
       // Runtime validation of input
       const parsed = contract.input.safeParse(rawInput);
       if (!parsed.success) {
-        const errorMessage = parsed.error.errors
+        const errorMessage = (parsed.error.issues ?? [])
           .map((e) => `${e.path.join(".")}: ${e.message}`)
           .join("; ");
         throw new Error(`[${contract.channel}] Invalid input: ${errorMessage}`);
@@ -88,7 +88,7 @@ export function createLoggedTypedHandler(logger: {
         // Runtime validation of input
         const parsed = contract.input.safeParse(rawInput);
         if (!parsed.success) {
-          const errorMessage = parsed.error.errors
+          const errorMessage = (parsed.error.issues ?? [])
             .map((e) => `${e.path.join(".")}: ${e.message}`)
             .join("; ");
           const error = new Error(
