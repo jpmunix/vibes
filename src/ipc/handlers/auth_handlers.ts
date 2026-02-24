@@ -14,6 +14,7 @@ import type { VibesUserDto } from "../types/auth";
 import fs from "node:fs";
 import path from "node:path";
 import { getUserDataPath } from "../../paths/paths";
+import { writeSettings } from "../../main/settings";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
@@ -92,6 +93,11 @@ export function registerAuthHandlers(): void {
 
         logger.info(`User registered successfully: ${userId}`);
 
+        writeSettings({
+            userId,
+            sessionToken: { value: sessionToken, encryptionType: "plaintext" },
+        });
+
         const user: VibesUserDto = {
             id: userId,
             email: input.email.toLowerCase().trim(),
@@ -153,6 +159,11 @@ export function registerAuthHandlers(): void {
 
         logger.info(`Login successful: ${user.id}`);
 
+        writeSettings({
+            userId: user.id,
+            sessionToken: { value: sessionToken, encryptionType: "plaintext" },
+        });
+
         return {
             user: toUserDto(user),
             sessionToken,
@@ -186,6 +197,12 @@ export function registerAuthHandlers(): void {
             const hasLocalDb = hasLocalDatabase();
             const needsMigration =
                 hasLocalDb && user.migrationStatus !== "completed";
+
+            // Ensure settings are synced
+            writeSettings({
+                userId: user.id,
+                sessionToken: { value: sessionToken, encryptionType: "plaintext" },
+            });
 
             return {
                 valid: true,
@@ -268,6 +285,12 @@ export function registerAuthHandlers(): void {
             .update(remoteSchema.users)
             .set({ sessionToken: null })
             .where(eq(remoteSchema.users.id, input.userId));
+
+        // Clear locally
+        writeSettings({
+            userId: undefined,
+            sessionToken: undefined,
+        });
 
         logger.info(`User logged out: ${input.userId}`);
     });

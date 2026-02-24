@@ -13,9 +13,9 @@ import {
 } from "ai";
 import log from "electron-log";
 
-import { db } from "@/db";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
-import { chats, messages } from "@/db/schema";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { eq } from "drizzle-orm";
 import {
@@ -162,8 +162,9 @@ export async function handleLocalAgentStream(
   }
 
   // Get the chat and app
+  const db = getRemoteDb();
   const chat = await db.query.chats.findFirst({
-    where: eq(chats.id, req.chatId),
+    where: eq(remoteSchema.chats.id, req.chatId),
     with: {
       messages: {
         orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -740,10 +741,10 @@ export async function handleLocalAgentStream(
 
     // Persist response duration and send final chunk with durationMs included
     const durationMs = Date.now() - streamStartedAt;
-    await db
-      .update(messages)
+    await getRemoteDb()
+      .update(remoteSchema.messages)
       .set({ durationMs })
-      .where(eq(messages.id, placeholderMessageId))
+      .where(eq(remoteSchema.messages.id, placeholderMessageId))
       .catch((err) => logger.error("Failed to save durationMs", err));
 
     // Include durationMs in the in-memory message so the final chunk carries it

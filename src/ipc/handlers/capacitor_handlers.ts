@@ -1,20 +1,21 @@
 import log from "electron-log";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 import { getDyadAppPath } from "../../paths/paths";
 import fs from "node:fs";
 import path from "node:path";
 import { simpleSpawn } from "../utils/simpleSpawn";
 import { IS_TEST_BUILD } from "../utils/test_utils";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { capacitorContracts } from "../types/capacitor";
 
 const logger = log.scope("capacitor_handlers");
 
-async function getApp(appId: number) {
+async function getApp(appId: number, userId: string) {
+  const db = getRemoteDb();
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
   });
   if (!app) {
     throw new Error(`App with id ${appId} not found`);
@@ -35,8 +36,9 @@ function isCapacitorInstalled(appPath: string): boolean {
 }
 
 export function registerCapacitorHandlers() {
-  createTypedHandler(capacitorContracts.isCapacitor, async (_, params) => {
-    const app = await getApp(params.appId);
+  createTypedHandler(capacitorContracts.isCapacitor, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const app = await getApp(params.appId, context.userId);
     const appPath = getDyadAppPath(app.path);
 
     // check for the required Node.js version before running any commands
@@ -55,8 +57,9 @@ export function registerCapacitorHandlers() {
     return isCapacitorInstalled(appPath);
   });
 
-  createTypedHandler(capacitorContracts.syncCapacitor, async (_, params) => {
-    const app = await getApp(params.appId);
+  createTypedHandler(capacitorContracts.syncCapacitor, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const app = await getApp(params.appId, context.userId);
     const appPath = getDyadAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {
@@ -82,8 +85,9 @@ export function registerCapacitorHandlers() {
     });
   });
 
-  createTypedHandler(capacitorContracts.openIos, async (_, params) => {
-    const app = await getApp(params.appId);
+  createTypedHandler(capacitorContracts.openIos, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const app = await getApp(params.appId, context.userId);
     const appPath = getDyadAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {
@@ -104,8 +108,9 @@ export function registerCapacitorHandlers() {
     });
   });
 
-  createTypedHandler(capacitorContracts.openAndroid, async (_, params) => {
-    const app = await getApp(params.appId);
+  createTypedHandler(capacitorContracts.openAndroid, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const app = await getApp(params.appId, context.userId);
     const appPath = getDyadAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {

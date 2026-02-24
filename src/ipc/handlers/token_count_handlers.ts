@@ -1,6 +1,6 @@
-import { db } from "../../db";
-import { chats } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import {
   constructSystemPrompt,
   readAiRules,
@@ -35,9 +35,11 @@ const handle = createLoggedHandler(logger);
 export function registerTokenCountHandlers() {
   handle(
     "chat:count-tokens",
-    async (event, req: TokenCountParams): Promise<TokenCountResult> => {
+    async (event, req: TokenCountParams, context): Promise<TokenCountResult> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, req.chatId),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],

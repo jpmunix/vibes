@@ -1,28 +1,37 @@
+```typescript
 import { ipcMain, IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 
+import { readSettings } from "../../main/settings";
+import { HandlerContext } from "./base";
+
 export function createLoggedHandler(_logger: log.LogFunctions) {
   return (
     channel: string,
-    fn: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any>,
+    fn: (event: IpcMainInvokeEvent, input: any, context: HandlerContext) => Promise<any>,
   ) => {
     ipcMain.handle(
       channel,
-      async (event: IpcMainInvokeEvent, ...args: any[]) => {
-        //logger.log(`IPC: ${channel} called with args: ${JSON.stringify(args)}`);
+      async (event: IpcMainInvokeEvent, rawInput: any) => {
+        //logger.log(`IPC: ${ channel } called with args: ${ JSON.stringify(args) } `);
         try {
-          const result = await fn(event, ...args);
+          const settings = readSettings();
+          const context: HandlerContext = {
+            userId: settings.userId,
+            sessionToken: settings.sessionToken?.value,
+          };
+          const result = await fn(event, rawInput, context);
           // logger.log(
-          //   `IPC: ${channel} returned: ${JSON.stringify(result)?.slice(0, 100)}...`,
+          //   `IPC: ${ channel } returned: ${ JSON.stringify(result)?.slice(0, 100) }...`,
           // );
           return result;
         } catch (error) {
           // logger.error(
-          //   `Error in ${fn.name}: args: ${JSON.stringify(args)}`,
+          //   `Error in ${ fn.name }: args: ${ JSON.stringify(args) } `,
           //   error,
           // );
-          throw new Error(`[${channel}] ${error}`);
+          throw new Error(`[${ channel }] ${ error } `);
         }
       },
     );

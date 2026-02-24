@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import log from "electron-log";
-import { getDb } from "../../db";
-import { embeddingsCache } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { embeddingsCache } from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 
 const logger = log.scope("embeddings_cache");
@@ -23,10 +23,11 @@ export async function getCachedEmbedding(
     contentKey: string,
     currentContentHash: string,
     model: string,
+    userId: string,
 ): Promise<number[] | null> {
     try {
-        const db = getDb();
-        const rows = db
+        const db = getRemoteDb();
+        const rows = await db
             .select()
             .from(embeddingsCache)
             .where(
@@ -35,9 +36,9 @@ export async function getCachedEmbedding(
                     eq(embeddingsCache.sourceId, sourceId),
                     eq(embeddingsCache.contentKey, contentKey),
                     eq(embeddingsCache.model, model),
+                    eq(embeddingsCache.userId, userId),
                 ),
-            )
-            .all();
+            );
 
         if (rows.length === 0) return null;
 
@@ -70,28 +71,33 @@ export async function setCachedEmbedding(
     embedding: number[],
     model: string,
     dimensions: number,
+    userId: string,
 ): Promise<void> {
     try {
-        const db = getDb();
-        const raw = db.$client as any;
+        const db = getRemoteDb();
 
-        // Use raw SQL for INSERT OR REPLACE since drizzle's onConflictDoUpdate
-        // can be verbose for multi-column unique constraints
-        raw
-            .prepare(
-                `INSERT OR REPLACE INTO embeddings_cache
-         (scope, source_id, content_key, content_hash, embedding, model, dimensions, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())`,
-            )
-            .run(
+        await db
+            .insert(embeddingsCache)
+            .values({
+                userId,
                 scope,
                 sourceId,
                 contentKey,
                 contentHash,
-                JSON.stringify(embedding),
+                embedding: JSON.stringify(embedding),
                 model,
                 dimensions,
-            );
+                createdAt: new Date(),
+            })
+            .onConflictDoUpdate({
+                target: [embeddingsCache.scope, embeddingsCache.sourceId, embeddingsCache.contentKey, embeddingsCache.model, embeddingsCache.userId],
+                set: {
+                    contentHash,
+                    embedding: JSON.stringify(embedding),
+                    dimensions,
+                    createdAt: new Date(),
+                }
+            });
     } catch (error) {
         logger.error("[CACHE] Error storing embedding:", error);
     }
@@ -104,17 +110,18 @@ export async function setCachedEmbedding(
 export async function clearScope(
     scope: string,
     sourceId: number,
+    userId: string,
 ): Promise<void> {
     try {
-        const db = getDb();
-        db.delete(embeddingsCache)
+        const db = getRemoteDb();
+        await db.delete(embeddingsCache)
             .where(
                 and(
                     eq(embeddingsCache.scope, scope),
                     eq(embeddingsCache.sourceId, sourceId),
+                    eq(embeddingsCache.userId, userId),
                 ),
-            )
-            .run();
+            );
         logger.log(`[CACHE] Cleared all ${scope} embeddings for source ${sourceId}`);
     } catch (error) {
         logger.error("[CACHE] Error clearing scope:", error);
@@ -130,12 +137,13 @@ export async function getAllCachedEmbeddings(
     scope: string,
     sourceId: number,
     model: string,
+    userId: string,
 ): Promise<
     { contentKey: string; embedding: number[]; contentHash: string }[]
 > {
     try {
-        const db = getDb();
-        const rows = db
+        const db = getRemoteDb();
+        const rows = await db
             .select({
                 contentKey: embeddingsCache.contentKey,
                 embedding: embeddingsCache.embedding,
@@ -147,9 +155,9 @@ export async function getAllCachedEmbeddings(
                     eq(embeddingsCache.scope, scope),
                     eq(embeddingsCache.sourceId, sourceId),
                     eq(embeddingsCache.model, model),
+                    eq(embeddingsCache.userId, userId),
                 ),
-            )
-            .all();
+            );
 
         return rows.map((row) => ({
             contentKey: row.contentKey,
@@ -169,10 +177,11 @@ export async function getCachedCount(
     scope: string,
     sourceId: number,
     model: string,
+    userId: string,
 ): Promise<number> {
     try {
-        const db = getDb();
-        const rows = db
+        const db = getRemoteDb();
+        const rows = await db
             .select({ contentKey: embeddingsCache.contentKey })
             .from(embeddingsCache)
             .where(
@@ -180,9 +189,9 @@ export async function getCachedCount(
                     eq(embeddingsCache.scope, scope),
                     eq(embeddingsCache.sourceId, sourceId),
                     eq(embeddingsCache.model, model),
+                    eq(embeddingsCache.userId, userId),
                 ),
-            )
-            .all();
+            );
         return rows.length;
     } catch (error) {
         logger.error("[CACHE] Error counting cached embeddings:", error);

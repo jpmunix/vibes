@@ -14,9 +14,9 @@ import {
   type ToolExecutionOptions,
 } from "ai";
 
-import { db } from "../../db";
-import { chats, messages } from "../../db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
 import {
   constructSystemPrompt,
@@ -69,7 +69,7 @@ import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
-import { mcpServers } from "../../db/schema";
+// Migrated to remoteSchema.mcpServers
 import { requireMcpToolConsent } from "../utils/mcp_consent";
 
 import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
@@ -93,8 +93,7 @@ import { fileExists } from "../utils/file_utils";
 import { FileUploadsState } from "../utils/file_uploads_state";
 import { extractMentionedAppsCodebases } from "../utils/mention_apps";
 import { parseAppMentions } from "@/shared/parse_mention_apps";
-import { prompts as promptsTable } from "../../db/schema";
-import { inArray } from "drizzle-orm";
+// Migrated to remoteSchema.prompts
 import { replacePromptReference } from "../utils/replacePromptReference";
 import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
@@ -254,6 +253,14 @@ function registerChatStreamHandlers() {
   ipcMain.handle("chat:stream", async (event, req: ChatStreamParams) => {
     let attachmentPaths: string[] = [];
     let outerPlaceholderMessageId: number | undefined;
+    const settings = readSettings();
+    const userId = settings.userId;
+    if (!userId) {
+      safeSend(event.sender, "chat:stream:error", { chatId: req.chatId, error: "Unauthorized" });
+      return;
+    }
+    const db = getRemoteDb();
+
     try {
       const fileUploadsState = FileUploadsState.getInstance();
       // Clear any stale state from previous requests for this chat
@@ -268,7 +275,7 @@ function registerChatStreamHandlers() {
 
       // Get the chat to check for existing messages
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, req.chatId),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -333,8 +340,8 @@ function registerChatStreamHandlers() {
 
           // Delete the user message
           await db
-            .delete(messages)
-            .where(eq(messages.id, chatMessages[lastUserMessageIndex].id));
+            .delete(remoteSchema.messages)
+            .where(and(eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex].id), eq(remoteSchema.messages.userId, userId)));
 
           // If there's an assistant message after the user message, delete it too
           if (
@@ -342,9 +349,12 @@ function registerChatStreamHandlers() {
             chatMessages[lastUserMessageIndex + 1].role === "assistant"
           ) {
             await db
-              .delete(messages)
+              .delete(remoteSchema.messages)
               .where(
-                eq(messages.id, chatMessages[lastUserMessageIndex + 1].id),
+                and(
+                  eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex + 1].id),
+                  eq(remoteSchema.messages.userId, userId)
+                ),
               );
           }
         }
@@ -422,8 +432,8 @@ function registerChatStreamHandlers() {
           const ids = Array.from(new Set(matches.map((m) => Number(m[1]))));
           const referenced = await db
             .select()
-            .from(promptsTable)
-            .where(inArray(promptsTable.id, ids));
+            .from(remoteSchema.prompts)
+            .where(and(inArray(remoteSchema.prompts.id, ids), eq(remoteSchema.prompts.userId, userId)));
           if (referenced.length > 0) {
             const promptsMap: Record<number, string> = {};
             for (const p of referenced) {
@@ -481,18 +491,20 @@ ${componentSnippet}
       }
 
       const [insertedUserMessage] = await db
-        .insert(messages)
+        .insert(remoteSchema.messages)
         .values({
+          userId,
           chatId: req.chatId,
           role: "user",
           content: userPrompt,
+          createdAt: new Date(),
         })
-        .returning({ id: messages.id });
+        .returning({ id: remoteSchema.messages.id });
       const userMessageId = insertedUserMessage.id;
 
       // Send the user message immediately to the frontend
       const chatWithUserMessage = await db.query.chats.findFirst({
-        where: eq(chats.id, req.chatId),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -537,8 +549,9 @@ ${componentSnippet}
         // For test prompts, we need to create the placeholder first
         // Create placeholder before streaming test response
         [placeholderAssistantMessage] = await db
-          .insert(messages)
+          .insert(remoteSchema.messages)
           .values({
+            userId,
             chatId: req.chatId,
             role: "assistant",
             content: "",
@@ -547,13 +560,14 @@ ${componentSnippet}
             sourceCommitHash: await getCurrentCommitHash({
               path: getDyadAppPath(chat.app.path),
             }),
+            createdAt: new Date(),
           })
           .returning();
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: eq(chats.id, req.chatId),
+          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
           with: {
             messages: {
               orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -720,8 +734,9 @@ ${componentSnippet}
 
         // Create placeholder assistant message after model selection is complete
         [placeholderAssistantMessage] = await db
-          .insert(messages)
+          .insert(remoteSchema.messages)
           .values({
+            userId,
             chatId: req.chatId,
             role: "assistant",
             content: "",
@@ -730,6 +745,7 @@ ${componentSnippet}
             sourceCommitHash: await getCurrentCommitHash({
               path: getDyadAppPath(chat.app.path),
             }),
+            createdAt: new Date(),
           })
           .returning();
         outerPlaceholderMessageId = placeholderAssistantMessage.id;
@@ -739,7 +755,7 @@ ${componentSnippet}
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: eq(chats.id, req.chatId),
+          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
           with: {
             messages: {
               orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -967,7 +983,7 @@ ${componentSnippet}
         });
 
         // Inject knowledge base prompt (auto-learned project rules)
-        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, req.prompt);
+        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, userId, req.prompt);
         if (knowledgePrompt) {
           systemPrompt += "\n\n" + knowledgePrompt;
           logger.log(
@@ -1593,7 +1609,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // Check quota for Basic Agent mode (non-Pro users)
           const isBasicAgentModeRequest = isBasicAgentMode(settings);
           if (isBasicAgentModeRequest) {
-            const quotaStatus = await getFreeAgentQuotaStatus();
+            const quotaStatus = await getFreeAgentQuotaStatus(userId);
             if (quotaStatus.isQuotaExceeded) {
               safeSend(event.sender, "chat:response:error", {
                 chatId: req.chatId,
@@ -1610,7 +1626,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // Mark the user message as using quota BEFORE starting the stream
           // to prevent race conditions with parallel requests
           if (isBasicAgentModeRequest && userMessageId) {
-            await markMessageAsUsingFreeAgentQuota(userMessageId);
+            await markMessageAsUsingFreeAgentQuota(userMessageId, userId);
           }
 
           // Add semantic context for Agente inteligente
@@ -1648,7 +1664,7 @@ This conversation includes one or more image attachments. When the user uploads 
           } finally {
             // If the stream failed, was aborted, or threw, refund the quota
             if (isBasicAgentModeRequest && userMessageId && !streamSuccess) {
-              await unmarkMessageAsUsingFreeAgentQuota(userMessageId);
+              await unmarkMessageAsUsingFreeAgentQuota(userMessageId, userId);
             }
           }
 
@@ -1804,15 +1820,15 @@ This conversation includes one or more image attachments. When the user uploads 
         );
         if (chatTitle) {
           await db
-            .update(chats)
+            .update(remoteSchema.chats)
             .set({ title: chatTitle[1] })
-            .where(and(eq(chats.id, req.chatId), isNull(chats.title)));
+            .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId), isNull(remoteSchema.chats.title)));
         }
         const chatSummary = chatTitle?.[1];
 
         // Update the placeholder assistant message with the full response
         await db
-          .update(messages)
+          .update(remoteSchema.messages)
           .set({
             content: fullResponse,
             model: selectedModel
@@ -1820,11 +1836,12 @@ This conversation includes one or more image attachments. When the user uploads 
               : placeholderAssistantMessage.model,
             durationMs: Date.now() - streamStartedAt,
           })
-          .where(eq(messages.id, placeholderAssistantMessage.id));
+          .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, userId)));
 
         // Fire-and-forget: auto-extract knowledge from this interaction
         void autoExtractKnowledge(
           updatedChat.app.id,
+          userId,
           userPrompt,
           fullResponse,
         );
@@ -1846,7 +1863,7 @@ This conversation includes one or more image attachments. When the user uploads 
           );
 
           const chat = await db.query.chats.findFirst({
-            where: eq(chats.id, req.chatId),
+            where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
             with: {
               messages: {
                 orderBy: (messages, { asc }) => [asc(messages.createdAt)],

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolDefinition, AgentContext } from "./types";
-import { db } from "@/db";
-import { chats } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { and, eq, isNull } from "drizzle-orm";
 
 const setChatSummarySchema = z.object({
@@ -27,10 +27,10 @@ export const setChatSummaryTool: ToolDefinition<
 
   execute: async (args, ctx: AgentContext) => {
     if (args.summary) {
-      await db
-        .update(chats)
+      await getRemoteDb()
+        .update(remoteSchema.chats)
         .set({ title: args.summary })
-        .where(and(eq(chats.id, ctx.chatId), isNull(chats.title)));
+        .where(and(eq(remoteSchema.chats.id, ctx.chatId), isNull(remoteSchema.chats.title)));
       ctx.chatSummary = args.summary;
     }
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolDefinition, AgentContext, escapeXmlContent } from "./types";
-import { db } from "@/db";
-import { chats } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 import { getLogs } from "@/lib/log_store";
 import type { ConsoleEntry } from "@/ipc/types";
@@ -119,8 +119,8 @@ ${summary}
 
   execute: async (args, ctx: AgentContext) => {
     // Get the chat to find the appId
-    const chat = await db.query.chats.findFirst({
-      where: eq(chats.id, ctx.chatId),
+    const chat = await getRemoteDb().query.chats.findFirst({
+      where: eq(remoteSchema.chats.id, ctx.chatId),
       with: { app: true },
     });
 

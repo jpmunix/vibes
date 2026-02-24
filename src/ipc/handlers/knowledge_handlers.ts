@@ -1,8 +1,8 @@
-import { db } from "../../db";
-import { knowledgeEntries } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, desc, lt, gt, sql } from "drizzle-orm";
 import log from "electron-log";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { knowledgeContracts } from "../types/knowledge";
 
 const logger = log.scope("knowledge_handlers");
@@ -155,13 +155,15 @@ function findSemanticDuplicate(
  * - Only top N most relevant non-rule entries are included
  * - Falls back to v2 behavior (include all) if embeddings unavailable
  */
-async function buildKnowledgePrompt(appId: number, userPrompt?: string): Promise<string> {
+async function buildKnowledgePrompt(appId: number, userId: string, userPrompt?: string): Promise<string> {
+    const db = getRemoteDb();
     const entries = await db.query.knowledgeEntries.findMany({
         where: and(
-            eq(knowledgeEntries.appId, appId),
-            eq(knowledgeEntries.enabled, true),
+            eq(remoteSchema.knowledgeEntries.appId, appId),
+            eq(remoteSchema.knowledgeEntries.enabled, true),
+            eq(remoteSchema.knowledgeEntries.userId, userId),
         ),
-        orderBy: [desc(knowledgeEntries.confidence)],
+        orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
         limit: MAX_KNOWLEDGE_ENTRIES,
     });
 
@@ -200,6 +202,7 @@ async function buildKnowledgePrompt(appId: number, userPrompt?: string): Promise
                         `knowledge-${entry.id}`,
                         contentHash,
                         model,
+                        userId,
                     );
 
                     if (cached) {
@@ -235,6 +238,7 @@ async function buildKnowledgePrompt(appId: number, userPrompt?: string): Promise
                             embedding,
                             model,
                             dims,
+                            userId,
                         );
                     }
                 }
@@ -312,6 +316,7 @@ async function buildKnowledgePrompt(appId: number, userPrompt?: string): Promise
  */
 async function extractKnowledgeWithAI(
     appId: number,
+    userId: string,
     userPrompt: string,
     assistantResponse: string,
 ): Promise<
@@ -335,13 +340,15 @@ async function extractKnowledgeWithAI(
         const extractionModel = settings.selectedModel;
         const { modelClient } = await getModelClient(extractionModel, settings);
 
+        const db = getRemoteDb();
         // Fetch existing knowledge to provide context
         const existingEntries = await db.query.knowledgeEntries.findMany({
             where: and(
-                eq(knowledgeEntries.appId, appId),
-                eq(knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.appId, appId),
+                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
-            orderBy: [desc(knowledgeEntries.confidence)],
+            orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
             limit: 40,
         });
 
@@ -508,17 +515,19 @@ Si detectas que una nueva regla CONTRADICE algo del conocimiento existente, incl
  * Decays confidence of auto-extracted entries that haven't been manually
  * confirmed within the decay interval. Called on app open or periodically.
  */
-async function decayUnconfirmedKnowledge(appId: number): Promise<number> {
+async function decayUnconfirmedKnowledge(appId: number, userId: string): Promise<number> {
     const cutoffMs = Date.now() - CONFIDENCE_DECAY_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
     const cutoffTimestamp = Math.floor(cutoffMs / 1000);
 
     try {
+        const db = getRemoteDb();
         // Find entries eligible for decay
         const eligibleEntries = await db.query.knowledgeEntries.findMany({
             where: and(
-                eq(knowledgeEntries.appId, appId),
-                eq(knowledgeEntries.source, "auto-extracted"),
-                eq(knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.appId, appId),
+                eq(remoteSchema.knowledgeEntries.source, "auto-extracted"),
+                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
         });
 
@@ -536,9 +545,9 @@ async function decayUnconfirmedKnowledge(appId: number): Promise<number> {
             if (lastTouchedTs < cutoffTimestamp && entry.confidence > CONFIDENCE_FLOOR) {
                 const newConfidence = Math.max(entry.confidence - CONFIDENCE_DECAY_AMOUNT, CONFIDENCE_FLOOR);
                 await db
-                    .update(knowledgeEntries)
+                    .update(remoteSchema.knowledgeEntries)
                     .set({ confidence: newConfidence })
-                    .where(eq(knowledgeEntries.id, entry.id));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, entry.id), eq(remoteSchema.knowledgeEntries.userId, userId)));
                 decayedCount++;
             }
         }
@@ -563,14 +572,16 @@ async function decayUnconfirmedKnowledge(appId: number): Promise<number> {
  * Ensures the number of active entries doesn't exceed MAX_KNOWLEDGE_ENTRIES.
  * Disables the lowest-confidence entries if the limit is exceeded.
  */
-async function enforceEntryCap(appId: number): Promise<number> {
+async function enforceEntryCap(appId: number, userId: string): Promise<number> {
     try {
+        const db = getRemoteDb();
         const activeEntries = await db.query.knowledgeEntries.findMany({
             where: and(
-                eq(knowledgeEntries.appId, appId),
-                eq(knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.appId, appId),
+                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
-            orderBy: [desc(knowledgeEntries.confidence)],
+            orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
         });
 
         if (activeEntries.length <= MAX_KNOWLEDGE_ENTRIES) return 0;
@@ -578,9 +589,9 @@ async function enforceEntryCap(appId: number): Promise<number> {
         const toDisable = activeEntries.slice(MAX_KNOWLEDGE_ENTRIES);
         for (const entry of toDisable) {
             await db
-                .update(knowledgeEntries)
+                .update(remoteSchema.knowledgeEntries)
                 .set({ enabled: false })
-                .where(eq(knowledgeEntries.id, entry.id));
+                .where(and(eq(remoteSchema.knowledgeEntries.id, entry.id), eq(remoteSchema.knowledgeEntries.userId, userId)));
         }
 
         logger.info(
@@ -603,6 +614,7 @@ async function enforceEntryCap(appId: number): Promise<number> {
  */
 async function analyzeKnowledgeHealth(
     appId: number,
+    userId: string,
 ): Promise<{
     noise: number[];
     redundant: Array<{ keep: number; remove: number[] }>;
@@ -618,12 +630,14 @@ async function analyzeKnowledgeHealth(
         const settings = readSettings();
         const { modelClient } = await getModelClient(settings.selectedModel, settings);
 
+        const db = getRemoteDb();
         const entries = await db.query.knowledgeEntries.findMany({
             where: and(
-                eq(knowledgeEntries.appId, appId),
-                eq(knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.appId, appId),
+                eq(remoteSchema.knowledgeEntries.enabled, true),
+                eq(remoteSchema.knowledgeEntries.userId, userId),
             ),
-            orderBy: [desc(knowledgeEntries.confidence)],
+            orderBy: [desc(remoteSchema.knowledgeEntries.confidence)],
         });
 
         if (entries.length < 3) return defaultResult;
@@ -685,10 +699,12 @@ Si todo parece limpio, devuelve: {"noise": [], "redundant": [], "contradictions"
 export function registerKnowledgeHandlers() {
     createTypedHandler(
         knowledgeContracts.getKnowledgeEntries,
-        async (_, appId) => {
+        async (_, appId, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const entries = await db.query.knowledgeEntries.findMany({
-                where: eq(knowledgeEntries.appId, appId),
-                orderBy: [desc(knowledgeEntries.updatedAt)],
+                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
+                orderBy: [desc(remoteSchema.knowledgeEntries.updatedAt)],
             });
             return entries;
         },
@@ -696,10 +712,13 @@ export function registerKnowledgeHandlers() {
 
     createTypedHandler(
         knowledgeContracts.createKnowledgeEntry,
-        async (_, params) => {
+        async (_, params, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const [entry] = await db
-                .insert(knowledgeEntries)
+                .insert(remoteSchema.knowledgeEntries)
                 .values({
+                    userId: context.userId,
                     appId: params.appId,
                     category: params.category,
                     content: params.content,
@@ -714,7 +733,9 @@ export function registerKnowledgeHandlers() {
 
     createTypedHandler(
         knowledgeContracts.updateKnowledgeEntry,
-        async (_, params) => {
+        async (_, params, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const updateData: Record<string, any> = {};
             if (params.category !== undefined) updateData.category = params.category;
             if (params.content !== undefined) updateData.content = params.content;
@@ -726,9 +747,9 @@ export function registerKnowledgeHandlers() {
                 // When user manually edits, update lastConfirmedAt
                 updateData.lastConfirmedAt = sql`(unixepoch())`;
                 await db
-                    .update(knowledgeEntries)
+                    .update(remoteSchema.knowledgeEntries)
                     .set(updateData)
-                    .where(eq(knowledgeEntries.id, params.id));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, params.id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
                 logger.info(`Updated knowledge entry: ${params.id}`);
             }
         },
@@ -736,35 +757,41 @@ export function registerKnowledgeHandlers() {
 
     createTypedHandler(
         knowledgeContracts.deleteKnowledgeEntry,
-        async (_, entryId) => {
-            await db.delete(knowledgeEntries).where(eq(knowledgeEntries.id, entryId));
+        async (_, entryId, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
+            await db.delete(remoteSchema.knowledgeEntries).where(and(eq(remoteSchema.knowledgeEntries.id, entryId), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
             logger.info(`Deleted knowledge entry: ${entryId}`);
         },
     );
 
     createTypedHandler(
         knowledgeContracts.getKnowledgePrompt,
-        async (_, appId) => {
-            return buildKnowledgePrompt(appId);
+        async (_, appId, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            return buildKnowledgePrompt(appId, context.userId);
         },
     );
 
     createTypedHandler(
         knowledgeContracts.extractKnowledge,
-        async (_, params) => {
+        async (_, params, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
             const { appId, assistantResponse, userPrompt } = params;
 
             const candidates = await extractKnowledgeWithAI(
                 appId,
+                context.userId,
                 userPrompt,
                 assistantResponse,
             );
 
             if (candidates.length === 0) return [];
 
+            const db = getRemoteDb();
             // Get existing entries for semantic dedup
             const existing = await db.query.knowledgeEntries.findMany({
-                where: eq(knowledgeEntries.appId, appId),
+                where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
             });
 
             const newEntries: typeof candidates = [];
@@ -792,12 +819,12 @@ export function registerKnowledgeHandlers() {
                             `[KNOWLEDGE v2] ⚡ Contradiction: "${candidate.content}" replaces "${contradicted.content}" (ID: ${contradicted.id})`,
                         );
                         await db
-                            .update(knowledgeEntries)
+                            .update(remoteSchema.knowledgeEntries)
                             .set({
                                 enabled: false,
                                 supersededBy: null, // Will be set after insert
                             })
-                            .where(eq(knowledgeEntries.id, contradicted.id));
+                            .where(and(eq(remoteSchema.knowledgeEntries.id, contradicted.id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
                     }
                 }
 
@@ -808,9 +835,10 @@ export function registerKnowledgeHandlers() {
 
             // Determine if entries go active or pending review
             const inserted = await db
-                .insert(knowledgeEntries)
+                .insert(remoteSchema.knowledgeEntries)
                 .values(
                     newEntries.map((entry) => ({
+                        userId: context.userId!,
                         appId,
                         category: entry.category,
                         content: entry.content,
@@ -819,12 +847,14 @@ export function registerKnowledgeHandlers() {
                         // project-phase entries start disabled for review
                         enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
                         durability: entry.durability,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
                     })),
                 )
                 .returning();
 
             // Enforce entry cap after insertion
-            await enforceEntryCap(appId);
+            await enforceEntryCap(appId, context.userId);
 
             logger.info(
                 `[KNOWLEDGE v2] ✅ Saved ${inserted.length} entries for app ${appId} (${inserted.filter((e) => e.enabled).length} active, ${inserted.filter((e) => !e.enabled).length} pending review)`,
@@ -837,8 +867,9 @@ export function registerKnowledgeHandlers() {
     // New handler: Decay unconfirmed knowledge
     createTypedHandler(
         knowledgeContracts.decayKnowledge,
-        async (_, appId) => {
-            const decayedCount = await decayUnconfirmedKnowledge(appId);
+        async (_, appId, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const decayedCount = await decayUnconfirmedKnowledge(appId, context.userId);
             return decayedCount;
         },
     );
@@ -846,22 +877,25 @@ export function registerKnowledgeHandlers() {
     // New handler: Analyze knowledge health
     createTypedHandler(
         knowledgeContracts.analyzeKnowledgeHealth,
-        async (_, appId) => {
-            return analyzeKnowledgeHealth(appId);
+        async (_, appId, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            return analyzeKnowledgeHealth(appId, context.userId);
         },
     );
 
     // New handler: Bulk cleanup (disable entries by IDs)
     createTypedHandler(
         knowledgeContracts.bulkDisableKnowledge,
-        async (_, params) => {
+        async (_, params, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const { entryIds } = params;
             let count = 0;
             for (const id of entryIds) {
                 await db
-                    .update(knowledgeEntries)
+                    .update(remoteSchema.knowledgeEntries)
                     .set({ enabled: false })
-                    .where(eq(knowledgeEntries.id, id));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
                 count++;
             }
             logger.info(`[KNOWLEDGE CLEANUP] Disabled ${count} entries`);
@@ -872,27 +906,29 @@ export function registerKnowledgeHandlers() {
     // New handler: Bulk approve pending entries
     createTypedHandler(
         knowledgeContracts.bulkApproveKnowledge,
-        async (_, params) => {
+        async (_, params, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const { entryIds } = params;
             let count = 0;
             for (const id of entryIds) {
                 await db
-                    .update(knowledgeEntries)
+                    .update(remoteSchema.knowledgeEntries)
                     .set({
                         enabled: true,
                         confidence: 100,
                         source: "manual" as const,
                         lastConfirmedAt: sql`(unixepoch())`,
                     })
-                    .where(eq(knowledgeEntries.id, id));
+                    .where(and(eq(remoteSchema.knowledgeEntries.id, id), eq(remoteSchema.knowledgeEntries.userId, context.userId)));
                 count++;
             }
             // Enforce cap after bulk approve
             const appIdResult = await db.query.knowledgeEntries.findFirst({
-                where: eq(knowledgeEntries.id, entryIds[0]),
+                where: and(eq(remoteSchema.knowledgeEntries.id, entryIds[0]), eq(remoteSchema.knowledgeEntries.userId, context.userId)),
             });
             if (appIdResult) {
-                await enforceEntryCap(appIdResult.appId);
+                await enforceEntryCap(appIdResult.appId, context.userId);
             }
             logger.info(`[KNOWLEDGE APPROVE] Approved ${count} entries`);
             return count;
@@ -912,6 +948,7 @@ export function registerKnowledgeHandlers() {
  */
 async function autoExtractKnowledge(
     appId: number,
+    userId: string,
     userPrompt: string,
     assistantResponse: string,
 ): Promise<void> {
@@ -919,6 +956,7 @@ async function autoExtractKnowledge(
     try {
         const candidates = await extractKnowledgeWithAI(
             appId,
+            userId,
             userPrompt,
             assistantResponse,
         );
@@ -928,9 +966,10 @@ async function autoExtractKnowledge(
             return;
         }
 
+        const db = getRemoteDb();
         // Get existing entries for semantic dedup
         const existing = await db.query.knowledgeEntries.findMany({
-            where: eq(knowledgeEntries.appId, appId),
+            where: and(eq(remoteSchema.knowledgeEntries.appId, appId), eq(remoteSchema.knowledgeEntries.userId, userId)),
         });
 
         const newEntries: typeof candidates = [];
@@ -957,9 +996,9 @@ async function autoExtractKnowledge(
                         `[AUTO-EXTRACT v2] ⚡ Superseding: "${contradicted.content}" → "${candidate.content}"`,
                     );
                     await db
-                        .update(knowledgeEntries)
+                        .update(remoteSchema.knowledgeEntries)
                         .set({ enabled: false })
-                        .where(eq(knowledgeEntries.id, contradicted.id));
+                        .where(and(eq(remoteSchema.knowledgeEntries.id, contradicted.id), eq(remoteSchema.knowledgeEntries.userId, userId)));
                 }
             }
 
@@ -971,8 +1010,9 @@ async function autoExtractKnowledge(
             return;
         }
 
-        await db.insert(knowledgeEntries).values(
+        await db.insert(remoteSchema.knowledgeEntries).values(
             newEntries.map((entry) => ({
+                userId,
                 appId,
                 category: entry.category,
                 content: entry.content,
@@ -980,14 +1020,16 @@ async function autoExtractKnowledge(
                 confidence: entry.confidence,
                 enabled: entry.durability === "permanent" && entry.confidence >= PENDING_REVIEW_CONFIDENCE_THRESHOLD,
                 durability: entry.durability,
+                createdAt: new Date(),
+                updatedAt: new Date(),
             })),
         );
 
         // Enforce entry cap
-        await enforceEntryCap(appId);
+        await enforceEntryCap(appId, userId);
 
         // Run decay while we're at it
-        await decayUnconfirmedKnowledge(appId);
+        await decayUnconfirmedKnowledge(appId, userId);
 
         logger.info(
             `[AUTO-EXTRACT v2] ✅ Saved ${newEntries.length} new entries`,

@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { apps, chats, messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and, like, ne, gte, sql } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
@@ -14,10 +14,13 @@ import { logChatInfo } from "../utils/chat_logger";
 const logger = log.scope("chat_handlers");
 
 export function registerChatHandlers() {
-  createTypedHandler(chatContracts.createChat, async (_, appId) => {
+  createTypedHandler(chatContracts.createChat, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     // Get the app's path first
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       columns: {
         path: true,
       },
@@ -40,9 +43,10 @@ export function registerChatHandlers() {
 
     // Create a new chat
     const [chat] = await db
-      .insert(chats)
+      .insert(remoteSchema.chats)
       .values({
         appId,
+        userId: context.userId,
         initialCommitHash,
       })
       .returning();
@@ -57,9 +61,12 @@ export function registerChatHandlers() {
     return chat.id;
   });
 
-  createTypedHandler(chatContracts.getChat, async (_, chatId) => {
+  createTypedHandler(chatContracts.getChat, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const chat = await db.query.chats.findFirst({
-      where: eq(chats.id, chatId),
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
       with: {
         messages: {
           orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -83,11 +90,14 @@ export function registerChatHandlers() {
     };
   });
 
-  createTypedHandler(chatContracts.getChats, async (_, appId) => {
+  createTypedHandler(chatContracts.getChats, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-        where: eq(chats.appId, appId),
+        where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)),
         columns: {
           id: true,
           title: true,
@@ -95,9 +105,10 @@ export function registerChatHandlers() {
           appId: true,
           isPlan: true,
         },
-        orderBy: [desc(chats.createdAt)],
+        orderBy: [desc(remoteSchema.chats.createdAt)],
       })
       : db.query.chats.findMany({
+        where: eq(remoteSchema.chats.userId, context.userId),
         columns: {
           id: true,
           title: true,
@@ -105,18 +116,22 @@ export function registerChatHandlers() {
           appId: true,
           isPlan: true,
         },
-        orderBy: [desc(chats.createdAt)],
+        orderBy: [desc(remoteSchema.chats.createdAt)],
       });
 
     const allChats = await query;
     return allChats as ChatSummary[];
   });
 
-  createTypedHandler(chatContracts.deleteChat, async (_, chatId) => {
-    await db.delete(chats).where(eq(chats.id, chatId));
+  createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
   });
 
-  createTypedHandler(chatContracts.updateChat, async (_, params) => {
+  createTypedHandler(chatContracts.updateChat, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { chatId, title, isPlan, planData } = params;
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
@@ -124,50 +139,71 @@ export function registerChatHandlers() {
     if (planData !== undefined) updateData.planData = planData;
 
     if (Object.keys(updateData).length > 0) {
-      await db.update(chats).set(updateData).where(eq(chats.id, chatId));
+      await db.update(remoteSchema.chats).set(updateData).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
     }
   });
 
-  createTypedHandler(chatContracts.savePlanData, async (_, { chatId, planData }) => {
-    await db.update(chats).set({
+  createTypedHandler(chatContracts.savePlanData, async (_, { chatId, planData }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.chats).set({
       planData,
       isPlan: true,
-    }).where(eq(chats.id, chatId));
+    }).where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
   });
 
-  createTypedHandler(chatContracts.getPlanData, async (_, chatId) => {
+  createTypedHandler(chatContracts.getPlanData, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const chat = await db.query.chats.findFirst({
-      where: eq(chats.id, chatId),
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
       columns: { planData: true },
     });
     return chat?.planData ?? null;
   });
 
-  createTypedHandler(chatContracts.deleteMessages, async (_, chatId) => {
-    await db.delete(messages).where(eq(messages.chatId, chatId));
+  createTypedHandler(chatContracts.deleteMessages, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    // Security: ensure the chat belongs to the user before deleting its messages
+    const chat = await db.query.chats.findFirst({
+      where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
+    });
+
+    if (!chat) throw new Error("Chat not found or unauthorized");
+
+    await db.delete(remoteSchema.messages).where(eq(remoteSchema.messages.chatId, chatId));
   });
 
-  createTypedHandler(chatContracts.searchChats, async (_, params) => {
+  createTypedHandler(chatContracts.searchChats, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, query } = params;
+
     // 1) Find chats by title and map to ChatSearchResult with no matched message
     const chatTitleMatches = await db
       .select({
-        id: chats.id,
-        appId: chats.appId,
-        title: chats.title,
-        createdAt: chats.createdAt,
-        isPlan: chats.isPlan,
+        id: remoteSchema.chats.id,
+        appId: remoteSchema.chats.appId,
+        title: remoteSchema.chats.title,
+        createdAt: remoteSchema.chats.createdAt,
+        isPlan: remoteSchema.chats.isPlan,
       })
-      .from(chats)
-      .where(and(eq(chats.appId, appId), like(chats.title, `%${query}%`)))
-      .orderBy(desc(chats.createdAt))
+      .from(remoteSchema.chats)
+      .where(and(
+        eq(remoteSchema.chats.appId, appId),
+        eq(remoteSchema.chats.userId, context.userId),
+        like(remoteSchema.chats.title, `%${query}%`)
+      ))
+      .orderBy(desc(remoteSchema.chats.createdAt))
       .limit(10);
 
     const titleResults: ChatSearchResult[] = chatTitleMatches.map((c) => ({
       id: c.id,
-      appId: c.appId,
-      title: c.title,
-      createdAt: c.createdAt,
+      appId: c.appId as number,
+      title: c.title || "",
+      createdAt: c.createdAt as unknown as string,
       matchedMessageContent: null,
       isPlan: c.isPlan ?? false,
     }));
@@ -175,26 +211,29 @@ export function registerChatHandlers() {
     // 2) Find messages that match and join to chats to build one result per message
     const messageResults = await db
       .select({
-        id: chats.id,
-        appId: chats.appId,
-        title: chats.title,
-        createdAt: chats.createdAt,
-        isPlan: chats.isPlan,
-        matchedMessageContent: messages.content,
+        id: remoteSchema.chats.id,
+        appId: remoteSchema.chats.appId,
+        title: remoteSchema.chats.title,
+        createdAt: remoteSchema.chats.createdAt,
+        isPlan: remoteSchema.chats.isPlan,
+        matchedMessageContent: remoteSchema.messages.content,
       })
-      .from(messages)
-      .innerJoin(chats, eq(messages.chatId, chats.id))
-      .where(and(eq(chats.appId, appId), like(messages.content, `%${query}%`)))
-      .orderBy(desc(chats.createdAt))
+      .from(remoteSchema.messages)
+      .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
+      .where(and(
+        eq(remoteSchema.chats.appId, appId),
+        eq(remoteSchema.chats.userId, context.userId),
+        like(remoteSchema.messages.content, `%${query}%`)
+      ))
+      .orderBy(desc(remoteSchema.chats.createdAt))
       .limit(10);
 
     // Combine: keep title matches and per-message matches
-    // Need to map messageResults to ChatSearchResult shape explicitly to ensure type compatibility
     const messageResultsMapped: ChatSearchResult[] = messageResults.map(c => ({
       id: c.id,
-      appId: c.appId,
-      title: c.title,
-      createdAt: c.createdAt,
+      appId: c.appId as number,
+      title: c.title || "",
+      createdAt: c.createdAt as unknown as string,
       matchedMessageContent: c.matchedMessageContent,
       isPlan: c.isPlan ?? false
     }));
@@ -215,7 +254,10 @@ export function registerChatHandlers() {
 
   createTypedHandler(
     chatContracts.generateChatTitle,
-    async (_, { chatId, prompt }) => {
+    async (_, { chatId, prompt }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
       logger.info(`generateChatTitle called for chatId=${chatId}`);
       if (!hasOpenRouterApiKey()) {
         logger.warn("OpenRouter API key not found, using default title");
@@ -238,11 +280,12 @@ export function registerChatHandlers() {
           // Fetch the first message from this chat
           const firstMessage = await db
             .select({
-              content: messages.content,
+              content: remoteSchema.messages.content,
             })
-            .from(messages)
-            .where(eq(messages.chatId, chatId))
-            .orderBy(messages.createdAt)
+            .from(remoteSchema.messages)
+            .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
+            .where(and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.chats.userId, context.userId)))
+            .orderBy(remoteSchema.messages.createdAt)
             .limit(1);
 
           if (!firstMessage.length) {
@@ -311,10 +354,10 @@ export function registerChatHandlers() {
 
         // Update the chat title in the database
         const updateResult = await db
-          .update(chats)
+          .update(remoteSchema.chats)
           .set({ title: sanitizedTitle })
-          .where(eq(chats.id, chatId))
-          .returning({ id: chats.id, title: chats.title });
+          .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)))
+          .returning({ id: remoteSchema.chats.id, title: remoteSchema.chats.title });
 
         logger.info(
           `Updated chat title in DB for chatId=${chatId}:`,
@@ -331,19 +374,29 @@ export function registerChatHandlers() {
 
   createTypedHandler(
     chatContracts.deleteAllChatsExceptCurrent,
-    async (_, { appId, currentChatId }) => {
+    async (_, { appId, currentChatId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
       if (currentChatId !== null) {
         await db
-          .delete(chats)
-          .where(and(eq(chats.appId, appId), ne(chats.id, currentChatId)));
+          .delete(remoteSchema.chats)
+          .where(and(
+            eq(remoteSchema.chats.appId, appId),
+            eq(remoteSchema.chats.userId, context.userId),
+            ne(remoteSchema.chats.id, currentChatId)
+          ));
       } else {
         // If no current chat, delete all chats for the app
-        await db.delete(chats).where(eq(chats.appId, appId));
+        await db.delete(remoteSchema.chats).where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)));
       }
     },
   );
 
-  createTypedHandler(chatContracts.summarizeTodaysChats, async (_, appId) => {
+  createTypedHandler(chatContracts.summarizeTodaysChats, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     if (!hasOpenRouterApiKey()) {
       throw new Error("OpenRouter API key not found");
     }
@@ -369,15 +422,16 @@ export function registerChatHandlers() {
       where: (chats, { exists, and, eq, gte }) =>
         and(
           eq(chats.appId, appId),
+          eq(chats.userId, context.userId),
           exists(
             db
               .select()
-              .from(messages)
+              .from(remoteSchema.messages)
               .where(
                 and(
-                  eq(messages.chatId, chats.id),
+                  eq(remoteSchema.messages.chatId, chats.id),
                   // Explicitly compare as seconds to match unixepoch() default
-                  sql`${messages.createdAt} >= ${todaySeconds}`,
+                  sql`${remoteSchema.messages.createdAt} >= ${todaySeconds}`,
                 ),
               ),
           ),
@@ -389,7 +443,7 @@ export function registerChatHandlers() {
       },
       with: {
         messages: {
-          where: sql`${messages.createdAt} >= ${todaySeconds}`,
+          where: sql`${remoteSchema.messages.createdAt} >= ${todaySeconds}`,
           columns: {
             role: true,
             content: true,
@@ -397,7 +451,7 @@ export function registerChatHandlers() {
           orderBy: (messages, { asc }) => [asc(messages.createdAt)],
         },
       },
-      orderBy: [desc(chats.createdAt)],
+      orderBy: [desc(remoteSchema.chats.createdAt)],
     });
 
     logger.info(`Found ${todaysChats.length} chats from today for appId=${appId}`);
@@ -408,7 +462,7 @@ export function registerChatHandlers() {
     if (todaysChats.length === 0) {
       // Diagnostic log: check if any chats exist for this app at all
       const totalChats = await db.query.chats.findMany({
-        where: eq(chats.appId, appId),
+        where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)),
         limit: 1,
       });
       logger.info(`Total chats for app ${appId}: ${totalChats.length}`);
@@ -505,11 +559,13 @@ export function registerChatHandlers() {
 
   createTypedHandler(
     chatContracts.getInitialPrompt,
-    async (_, appId) => {
+    async (_, appId, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       try {
         // Find the oldest chat for this app
         const oldestChat = await db.query.chats.findFirst({
-          where: eq(chats.appId, appId),
+          where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)),
           orderBy: (chats, { asc }) => [asc(chats.createdAt)],
           columns: { id: true },
         });
@@ -521,17 +577,19 @@ export function registerChatHandlers() {
         // Get the first user message in that chat
         const firstUserMessage = await db
           .select({
-            content: messages.content,
-            createdAt: messages.createdAt,
+            content: remoteSchema.messages.content,
+            createdAt: remoteSchema.messages.createdAt,
           })
-          .from(messages)
+          .from(remoteSchema.messages)
+          .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
           .where(
             and(
-              eq(messages.chatId, oldestChat.id),
-              eq(messages.role, "user"),
+              eq(remoteSchema.messages.chatId, oldestChat.id),
+              eq(remoteSchema.messages.role, "user"),
+              eq(remoteSchema.chats.userId, context.userId)
             ),
           )
-          .orderBy(messages.createdAt)
+          .orderBy(remoteSchema.messages.createdAt)
           .limit(1);
 
         if (!firstUserMessage.length) {

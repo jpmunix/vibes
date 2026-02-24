@@ -1,7 +1,7 @@
-import { db } from "../../db";
-import { aiQueryLogs } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { aiQueryLogs } from "../../db/remote-schema";
+import { desc, sql, lt, eq, and } from "drizzle-orm";
 import { readSettings } from "../../main/settings";
-import { desc, sql, lt } from "drizzle-orm";
 import log from "electron-log";
 
 const logger = log.scope("ai_query_logger");
@@ -19,9 +19,10 @@ export interface LogAiQueryParams {
 /**
  * Log an AI query with payload and response, and handle FIFO rotation.
  */
-export async function logAiQuery(params: LogAiQueryParams) {
+export async function logAiQuery(params: LogAiQueryParams, userId: string) {
     try {
         const settings = readSettings();
+        const db = getRemoteDb();
         if (!settings.enableAllStatsAndLogs) {
             return;
         }
@@ -29,6 +30,7 @@ export async function logAiQuery(params: LogAiQueryParams) {
 
         // 1. Insert the new log
         await db.insert(aiQueryLogs).values({
+            userId,
             queryType: params.queryType,
             model: params.model,
             promptSnippet: params.promptSnippet,
@@ -40,9 +42,9 @@ export async function logAiQuery(params: LogAiQueryParams) {
         });
 
         // 2. Handle rotation (FIFO)
-        // Find how many entries we have
-        const counts = await db.select({ count: sql<number>`count(*)` }).from(aiQueryLogs);
-        const total = counts[0]?.count || 0;
+        // Find how many entries we have for this user
+        const counts = await db.select({ count: sql<number>`count(*)` }).from(aiQueryLogs).where(eq(aiQueryLogs.userId, userId));
+        const total = Number(counts[0]?.count || 0);
 
         if (total > threshold) {
             // Find the threshold-th newest entry to determine the cutoff
@@ -50,13 +52,14 @@ export async function logAiQuery(params: LogAiQueryParams) {
             const entriesToKeep = await db
                 .select({ id: aiQueryLogs.id })
                 .from(aiQueryLogs)
+                .where(eq(aiQueryLogs.userId, userId))
                 .orderBy(desc(aiQueryLogs.id))
                 .limit(threshold);
 
             if (entriesToKeep.length > 0) {
                 const oldestKeepId = entriesToKeep[entriesToKeep.length - 1].id;
-                // Delete everything older than the oldest kept ID
-                await db.delete(aiQueryLogs).where(lt(aiQueryLogs.id, oldestKeepId));
+                // Delete everything older than the oldest kept ID for this user
+                await db.delete(aiQueryLogs).where(and(eq(aiQueryLogs.userId, userId), lt(aiQueryLogs.id, oldestKeepId)));
             }
         }
     } catch (error) {

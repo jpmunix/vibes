@@ -1,12 +1,14 @@
-import { db } from "../../db";
-import { aiQueryLogs } from "../../db/schema";
-import { desc, eq } from "drizzle-orm";
-import { createTypedHandler } from "./base";
+import { getRemoteDb } from "../../db/remote";
+import { aiQueryLogs } from "../../db/remote-schema";
+import { desc, eq, and } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { logAiQuery } from "../utils/ai_query_logger";
 
 export function registerAiQueryLogHandlers() {
-    createTypedHandler(aiQueryLogContracts.getAiQueryLogs, async () => {
+    createTypedHandler(aiQueryLogContracts.getAiQueryLogs, async (_, __, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         try {
             return await db
                 .select({
@@ -19,6 +21,7 @@ export function registerAiQueryLogHandlers() {
                     createdAt: aiQueryLogs.createdAt,
                 })
                 .from(aiQueryLogs)
+                .where(eq(aiQueryLogs.userId, context.userId))
                 .orderBy(desc(aiQueryLogs.id));
         } catch (error) {
             console.error("Error fetching AI query logs:", error);
@@ -26,12 +29,14 @@ export function registerAiQueryLogHandlers() {
         }
     });
 
-    createTypedHandler(aiQueryLogContracts.getAiQueryLogDetail, async (_, id) => {
+    createTypedHandler(aiQueryLogContracts.getAiQueryLogDetail, async (_, id, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         try {
             const results = await db
                 .select()
                 .from(aiQueryLogs)
-                .where(eq(aiQueryLogs.id, id))
+                .where(and(eq(aiQueryLogs.id, id), eq(aiQueryLogs.userId, context.userId)))
                 .limit(1);
             return results[0] || null;
         } catch (error) {
@@ -40,16 +45,19 @@ export function registerAiQueryLogHandlers() {
         }
     });
 
-    createTypedHandler(aiQueryLogContracts.getFullLogs, async () => {
+    createTypedHandler(aiQueryLogContracts.getFullLogs, async (_, __, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         try {
-            return await db.select().from(aiQueryLogs).orderBy(desc(aiQueryLogs.id));
+            return await db.select().from(aiQueryLogs).where(eq(aiQueryLogs.userId, context.userId)).orderBy(desc(aiQueryLogs.id));
         } catch (error) {
             console.error("Error fetching full logs:", error);
             return [];
         }
     });
 
-    createTypedHandler(aiQueryLogContracts.addTestLog, async () => {
+    createTypedHandler(aiQueryLogContracts.addTestLog, async (_, __, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
         // const { logAiQuery } = await import("../utils/ai_query_logger");
         await logAiQuery({
             queryType: "test-manual",
@@ -59,12 +67,14 @@ export function registerAiQueryLogHandlers() {
             response: { success: true, answer: "Logging is working!" },
             inputTokens: 10,
             outputTokens: 20,
-        });
+        }, context.userId);
     });
 
-    createTypedHandler(aiQueryLogContracts.clearLogs, async () => {
+    createTypedHandler(aiQueryLogContracts.clearLogs, async (_, __, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         try {
-            await db.delete(aiQueryLogs);
+            await db.delete(aiQueryLogs).where(eq(aiQueryLogs.userId, context.userId));
         } catch (error) {
             console.error("Error clearing logs:", error);
         }

@@ -1,13 +1,8 @@
-import { db } from "../../db";
-import {
-  debates,
-  debateMessages,
-  debateTags,
-  debateToTags,
-} from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and, gt } from "drizzle-orm";
 import log from "electron-log";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { debateContracts } from "../types/debate";
 import { openRouterCompletion } from "../utils/openrouter";
 import { readSettings } from "../../main/settings";
@@ -16,9 +11,12 @@ import { getEffectivePrompt } from "../../prompts";
 const logger = log.scope("debate_handlers");
 
 export function registerDebateHandlers() {
-  createTypedHandler(debateContracts.getDebates, async () => {
+  createTypedHandler(debateContracts.getDebates, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const allDebates = await db.query.debates.findMany({
-      orderBy: [desc(debates.updatedAt)],
+      where: eq(remoteSchema.debates.userId, context.userId),
+      orderBy: [desc(remoteSchema.debates.updatedAt)],
       with: {
         tags: {
           with: {
@@ -34,9 +32,11 @@ export function registerDebateHandlers() {
     }));
   });
 
-  createTypedHandler(debateContracts.getDebate, async (_, debateId) => {
+  createTypedHandler(debateContracts.getDebate, async (_, debateId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const debate = await db.query.debates.findFirst({
-      where: eq(debates.id, debateId),
+      where: and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, context.userId)),
       with: {
         messages: {
           orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -67,15 +67,21 @@ export function registerDebateHandlers() {
 
   createTypedHandler(
     debateContracts.createDebate,
-    async (_, { title, tagIds }) => {
+    async (_, { title, tagIds }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const [newDebate] = await db
-        .insert(debates)
-        .values({ title })
+        .insert(remoteSchema.debates)
+        .values({
+          userId: context.userId,
+          title
+        })
         .returning();
 
       if (tagIds && tagIds.length > 0) {
         for (const tagId of tagIds) {
-          await db.insert(debateToTags).values({
+          await db.insert(remoteSchema.debateToTags).values({
+            userId: context.userId,
             debateId: newDebate.id,
             tagId,
           });
@@ -88,94 +94,118 @@ export function registerDebateHandlers() {
 
   createTypedHandler(
     debateContracts.updateDebate,
-    async (_, { id, title, summary }) => {
+    async (_, { id, title, summary }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       await db
-        .update(debates)
+        .update(remoteSchema.debates)
         .set({
           ...(title && { title }),
           ...(summary && { summary }),
           updatedAt: new Date(),
         })
-        .where(eq(debates.id, id));
+        .where(and(eq(remoteSchema.debates.id, id), eq(remoteSchema.debates.userId, context.userId)));
     },
   );
 
-  createTypedHandler(debateContracts.deleteDebate, async (_, debateId) => {
-    await db.delete(debates).where(eq(debates.id, debateId));
+  createTypedHandler(debateContracts.deleteDebate, async (_, debateId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.debates).where(and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, context.userId)));
   });
 
-  createTypedHandler(debateContracts.deleteMessage, async (_, messageId) => {
-    await db.delete(debateMessages).where(eq(debateMessages.id, messageId));
+  createTypedHandler(debateContracts.deleteMessage, async (_, messageId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.debateMessages).where(and(eq(remoteSchema.debateMessages.id, messageId), eq(remoteSchema.debateMessages.userId, context.userId)));
   });
 
-  createTypedHandler(debateContracts.deleteMessagesAfter, async (_, { debateId, messageId }) => {
-    await db.delete(debateMessages).where(
+  createTypedHandler(debateContracts.deleteMessagesAfter, async (_, { debateId, messageId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.debateMessages).where(
       and(
-        eq(debateMessages.debateId, debateId),
-        gt(debateMessages.id, messageId)
+        eq(remoteSchema.debateMessages.debateId, debateId),
+        eq(remoteSchema.debateMessages.userId, context.userId),
+        gt(remoteSchema.debateMessages.id, messageId)
       )
     );
   });
 
   createTypedHandler(
     debateContracts.updateMessage,
-    async (_, { id, content, injectedItems }) => {
+    async (_, { id, content, injectedItems }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       await db
-        .update(debateMessages)
+        .update(remoteSchema.debateMessages)
         .set({
           content,
           ...(injectedItems && { injectedItems }),
         })
-        .where(eq(debateMessages.id, id));
+        .where(and(eq(remoteSchema.debateMessages.id, id), eq(remoteSchema.debateMessages.userId, context.userId)));
     },
   );
 
-  createTypedHandler(debateContracts.getTags, async () => {
-    return await db.select().from(debateTags);
+  createTypedHandler(debateContracts.getTags, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    return await db.select().from(remoteSchema.debateTags).where(eq(remoteSchema.debateTags.userId, context.userId));
   });
 
-  createTypedHandler(debateContracts.createTag, async (_, { name, color }) => {
+  createTypedHandler(debateContracts.createTag, async (_, { name, color }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const [tag] = await db
-      .insert(debateTags)
-      .values({ name, color })
+      .insert(remoteSchema.debateTags)
+      .values({ userId: context.userId, name, color })
       .returning();
     return tag;
   });
 
   createTypedHandler(
     debateContracts.addTagToDebate,
-    async (_, { debateId, tagId }) => {
+    async (_, { debateId, tagId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       await db
-        .insert(debateToTags)
-        .values({ debateId, tagId })
+        .insert(remoteSchema.debateToTags)
+        .values({ userId: context.userId, debateId, tagId })
         .onConflictDoNothing();
     },
   );
 
   createTypedHandler(
     debateContracts.removeTagFromDebate,
-    async (_, { debateId, tagId }) => {
+    async (_, { debateId, tagId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       await db
-        .delete(debateToTags)
+        .delete(remoteSchema.debateToTags)
         .where(
           and(
-            eq(debateToTags.debateId, debateId),
-            eq(debateToTags.tagId, tagId),
+            eq(remoteSchema.debateToTags.debateId, debateId),
+            eq(remoteSchema.debateToTags.tagId, tagId),
+            eq(remoteSchema.debateToTags.userId, context.userId),
           ),
         );
     },
   );
 
-  createTypedHandler(debateContracts.deleteTag, async (_, { tagId }) => {
+  createTypedHandler(debateContracts.deleteTag, async (_, { tagId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     // Delete the tag itself. Associations in debateToTags should be handled by 
     // ON DELETE CASCADE if defined, or we can delete them manually.
-    await db.delete(debateToTags).where(eq(debateToTags.tagId, tagId));
-    await db.delete(debateTags).where(eq(debateTags.id, tagId));
+    await db.delete(remoteSchema.debateToTags).where(and(eq(remoteSchema.debateToTags.tagId, tagId), eq(remoteSchema.debateToTags.userId, context.userId)));
+    await db.delete(remoteSchema.debateTags).where(and(eq(remoteSchema.debateTags.id, tagId), eq(remoteSchema.debateTags.userId, context.userId)));
   });
 
-  createTypedHandler(debateContracts.summarizeDebate, async (_, debateId) => {
+  createTypedHandler(debateContracts.summarizeDebate, async (_, debateId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const debate = await db.query.debates.findFirst({
-      where: eq(debates.id, debateId),
+      where: and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, context.userId)),
       with: {
         messages: {
           orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -215,8 +245,9 @@ export function registerDebateHandlers() {
 
       // Insert summary as a message
       const [message] = await db
-        .insert(debateMessages)
+        .insert(remoteSchema.debateMessages)
         .values({
+          userId: context.userId,
           debateId,
           role: "assistant",
           content: summary,

@@ -4,8 +4,8 @@ import type {
   ProposalResult,
   ActionProposal,
 } from "../../lib/schemas";
-import { db } from "../../db";
-import { messages, chats } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and } from "drizzle-orm";
 import path from "node:path"; // Import path for basename
 // Import tag parsers
@@ -124,15 +124,18 @@ async function getCodebaseTokenCount(
 const getProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId }: { chatId: number },
+  context: any,
 ): Promise<ProposalResult | null> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   return withLock("get-proposal:" + chatId, async () => {
     logger.log(`IPC: get-proposal called for chatId: ${chatId}`);
 
     try {
       // Find the latest ASSISTANT message for the chat
       const latestAssistantMessage = await db.query.messages.findFirst({
-        where: and(eq(messages.chatId, chatId), eq(messages.role, "assistant")),
-        orderBy: [desc(messages.createdAt)],
+        where: and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.role, "assistant"), eq(remoteSchema.messages.userId, context.userId)),
+        orderBy: [desc(remoteSchema.messages.createdAt)],
         columns: {
           id: true, // Fetch the ID
           content: true, // Fetch the content to parse
@@ -273,7 +276,7 @@ const getProposalHandler = async (
 
       // Get all chat messages to calculate token usage
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, chatId),
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           app: true,
           messages: {
@@ -336,7 +339,10 @@ const getProposalHandler = async (
 const approveProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId, messageId }: { chatId: number; messageId: number },
+  context: any,
 ): Promise<ApproveProposalResult> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   if (settings.selectedChatMode === "ask") {
     throw new Error(
@@ -346,9 +352,10 @@ const approveProposalHandler = async (
   // 1. Fetch the specific assistant message
   const messageToApprove = await db.query.messages.findFirst({
     where: and(
-      eq(messages.id, messageId),
-      eq(messages.chatId, chatId),
-      eq(messages.role, "assistant"),
+      eq(remoteSchema.messages.id, messageId),
+      eq(remoteSchema.messages.chatId, chatId),
+      eq(remoteSchema.messages.role, "assistant"),
+      eq(remoteSchema.messages.userId, context.userId),
     ),
     columns: {
       content: true,
@@ -389,7 +396,10 @@ const approveProposalHandler = async (
 const rejectProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId, messageId }: { chatId: number; messageId: number },
+  context: any,
 ): Promise<void> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   logger.log(
     `IPC: reject-proposal called for chatId: ${chatId}, messageId: ${messageId}`,
   );
@@ -397,9 +407,10 @@ const rejectProposalHandler = async (
   // 1. Verify the message exists and is an assistant message
   const messageToReject = await db.query.messages.findFirst({
     where: and(
-      eq(messages.id, messageId),
-      eq(messages.chatId, chatId),
-      eq(messages.role, "assistant"),
+      eq(remoteSchema.messages.id, messageId),
+      eq(remoteSchema.messages.chatId, chatId),
+      eq(remoteSchema.messages.role, "assistant"),
+      eq(remoteSchema.messages.userId, context.userId),
     ),
     columns: { id: true },
   });
@@ -412,9 +423,9 @@ const rejectProposalHandler = async (
 
   // 2. Update the message's approval state to 'rejected'
   await db
-    .update(messages)
+    .update(remoteSchema.messages)
     .set({ approvalState: "rejected" })
-    .where(eq(messages.id, messageId));
+    .where(and(eq(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, context.userId)));
 
   logger.log(`Message ${messageId} marked as rejected.`);
 };

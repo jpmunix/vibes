@@ -75,6 +75,6 @@ describe("engineFetch", () => {
     const requestBody = JSON.parse(
       (fetchMock.mock.calls[0]?.[1]?.body as string) ?? "{}",
     );
-    expect(requestBody.model).toBe("google/gemini-3-flash-preview");
+    expect(requestBody.model).toBe("openai/gpt-5.1-codex-mini");
   });
 });

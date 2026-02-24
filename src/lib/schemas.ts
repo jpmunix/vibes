@@ -406,6 +406,11 @@ export const UserSettingsSchema = z
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
+
+    // Auth (Vibes System)
+    sessionToken: SecretSchema.optional(),
+    userId: z.string().optional(),
+
     windowState: z
       .object({
         x: z.number().optional(),

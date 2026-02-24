@@ -1,8 +1,8 @@
 import log from "electron-log";
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
-import { apps } from "../../db/schema";
-import { createTypedHandler } from "./base";
+import { getRemoteDb } from "../../db/remote";
+import { and, eq } from "drizzle-orm";
+import * as remoteSchema from "../../db/remote-schema";
+import { createTypedHandler, HandlerContext } from "./base";
 import { firebaseContracts } from "../types/firebase";
 import {
     listFirebaseProjects,
@@ -89,32 +89,38 @@ export function registerFirebaseHandlers() {
     });
 
     // Set project for an app
-    createTypedHandler(firebaseContracts.setAppProject, async (_, params) => {
+    createTypedHandler(firebaseContracts.setAppProject, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
         const { appId, projectId, config } = params;
         logger.info(`[setAppProject] Received config keys: ${Object.keys(config).join(', ')}`);
         logger.info(`[setAppProject] webAppDisplayName: "${config.webAppDisplayName || '(not set)'}"`);
         logger.info(`[setAppProject] Full config: ${JSON.stringify(config)}`);
+
+        const db = getRemoteDb();
         await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({
                 firebaseProjectId: projectId,
                 firebaseConfig: config,
             })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         logger.info(`Associated app ${appId} with Firebase project ${projectId}`);
     });
 
     // Unset project for an app
-    createTypedHandler(firebaseContracts.unsetAppProject, async (_, params) => {
+    createTypedHandler(firebaseContracts.unsetAppProject, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
         const { appId } = params;
+
+        const db = getRemoteDb();
         await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({
                 firebaseProjectId: null,
                 firebaseConfig: null,
             })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         logger.info(`Removed Firebase project association for app ${appId}`);
     });
@@ -141,12 +147,14 @@ export function registerFirebaseHandlers() {
     });
 
     // Deploy to Firebase
-    createTypedHandler(firebaseContracts.deploy, async (_, params) => {
+    createTypedHandler(firebaseContracts.deploy, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
         const { appId } = params;
 
         try {
             // 1. Get app details
-            const [app] = await db.select().from(apps).where(eq(apps.id, appId));
+            const db = getRemoteDb();
+            const [app] = await db.select().from(remoteSchema.apps).where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
             if (!app || !app.firebaseProjectId || !app.path) {
                 throw new Error("La aplicación no tiene un proyecto de Firebase configurado o no se encuentra el path.");
             }

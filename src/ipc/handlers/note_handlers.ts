@@ -1,6 +1,6 @@
-import { db } from "../../db";
-import { notes } from "../../db/schema";
-import { desc, eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { desc, eq, and } from "drizzle-orm";
 import type { NoteSummary } from "../../lib/schemas";
 
 import log from "electron-log";
@@ -13,22 +13,29 @@ import { noteContracts } from "../types/note";
 const logger = log.scope("note_handlers");
 
 export function registerNoteHandlers() {
-  createTypedHandler(noteContracts.createNote, async (_, params) => {
+  createTypedHandler(noteContracts.createNote, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     // Create a new note with default values
     const [note] = await db
-      .insert(notes)
+      .insert(remoteSchema.notes)
       .values({
+        userId: context.userId,
         title: params?.title || "Nueva nota",
         content: params?.content || "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
     logger.info("Created note:", note.id);
     return note.id;
   });
 
-  createTypedHandler(noteContracts.getNote, async (_, noteId) => {
+  createTypedHandler(noteContracts.getNote, async (_, noteId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const note = await db.query.notes.findFirst({
-      where: eq(notes.id, noteId),
+      where: and(eq(remoteSchema.notes.id, noteId), eq(remoteSchema.notes.userId, context.userId)),
     });
 
     if (!note) {
@@ -38,8 +45,11 @@ export function registerNoteHandlers() {
     return note;
   });
 
-  createTypedHandler(noteContracts.getNotes, async () => {
+  createTypedHandler(noteContracts.getNotes, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const allNotes = await db.query.notes.findMany({
+      where: eq(remoteSchema.notes.userId, context.userId),
       columns: {
         id: true,
         title: true,
@@ -47,20 +57,26 @@ export function registerNoteHandlers() {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: [desc(notes.updatedAt)],
+      orderBy: [desc(remoteSchema.notes.updatedAt)],
     });
 
     return allNotes as NoteSummary[];
   });
 
-  createTypedHandler(noteContracts.deleteNote, async (_, noteId) => {
-    await db.delete(notes).where(eq(notes.id, noteId));
+  createTypedHandler(noteContracts.deleteNote, async (_, noteId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.notes).where(and(eq(remoteSchema.notes.id, noteId), eq(remoteSchema.notes.userId, context.userId)));
     logger.info("Deleted note:", noteId);
   });
 
-  createTypedHandler(noteContracts.updateNote, async (_, params) => {
+  createTypedHandler(noteContracts.updateNote, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { noteId, title, content } = params;
-    const updateData: Partial<{ title: string; content: string }> = {};
+    const updateData: Partial<{ title: string; content: string; updatedAt: Date }> = {
+      updatedAt: new Date(),
+    };
 
     if (title !== undefined) {
       updateData.title = title;
@@ -69,15 +85,17 @@ export function registerNoteHandlers() {
       updateData.content = content;
     }
 
-    if (Object.keys(updateData).length > 0) {
-      await db.update(notes).set(updateData).where(eq(notes.id, noteId));
+    if (Object.keys(updateData).length > 1) { // > 1 because updatedAt is always there
+      await db.update(remoteSchema.notes).set(updateData).where(and(eq(remoteSchema.notes.id, noteId), eq(remoteSchema.notes.userId, context.userId)));
       logger.info("Updated note:", noteId);
     }
   });
 
-  createTypedHandler(noteContracts.exportNote, async (_, { noteId }) => {
+  createTypedHandler(noteContracts.exportNote, async (_, { noteId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const note = await db.query.notes.findFirst({
-      where: eq(notes.id, noteId),
+      where: and(eq(remoteSchema.notes.id, noteId), eq(remoteSchema.notes.userId, context.userId)),
     });
 
     if (!note) {

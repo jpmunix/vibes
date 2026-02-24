@@ -69,7 +69,7 @@ export const apps = sqliteTable("apps", {
     bunnyConfig: text("bunny_config", { mode: "json" }),
     installCommand: text("install_command"),
     startCommand: text("start_command"),
-    chatContext: text("chat_context"),
+    chatContext: text("chat_context", { mode: "json" }),
     isFavorite: integer("is_favorite").notNull().default(0),
     themeId: text("theme_id"),
 });
@@ -90,7 +90,7 @@ export const chats = sqliteTable("chats", {
     title: text("title"),
     initialCommitHash: text("initial_commit_hash"),
     isPlan: integer("is_plan").default(0),
-    planData: text("plan_data"),
+    planData: text("plan_data", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
@@ -229,9 +229,9 @@ export const mcpServers = sqliteTable("mcp_servers", {
     name: text("name").notNull(),
     transport: text("transport").notNull(),
     command: text("command"),
-    args: text("args"),
-    envJson: text("env_json"),
-    headersJson: text("headers_json"),
+    args: text("args", { mode: "json" }),
+    envJson: text("env_json", { mode: "json" }),
+    headersJson: text("headers_json", { mode: "json" }),
     url: text("url"),
     enabled: integer("enabled").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

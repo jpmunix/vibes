@@ -19,6 +19,8 @@ const logMocks = vi.hoisted(() => {
   return {
     log: vi.fn(),
     warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
   };
 });
 
@@ -28,13 +30,13 @@ const drizzleMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/db", () => ({
-  db: {
+vi.mock("@/db/remote", () => ({
+  getRemoteDb: vi.fn(() => ({
     update: dbMocks.update,
-  },
+  })),
 }));
 
-vi.mock("@/db/schema", () => ({
+vi.mock("@/db/remote-schema", () => ({
   messages: schemaMocks.messages,
 }));
 

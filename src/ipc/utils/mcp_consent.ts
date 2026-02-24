@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { mcpToolConsents } from "../../db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { IpcMainInvokeEvent } from "electron";
 import crypto from "node:crypto";
@@ -35,13 +35,13 @@ export async function getStoredConsent(
   serverId: number,
   toolName: string,
 ): Promise<Consent> {
-  const rows = await db
+  const rows = await getRemoteDb()
     .select()
-    .from(mcpToolConsents)
+    .from(remoteSchema.mcpToolConsents)
     .where(
       and(
-        eq(mcpToolConsents.serverId, serverId),
-        eq(mcpToolConsents.toolName, toolName),
+        eq(remoteSchema.mcpToolConsents.serverId, serverId),
+        eq(remoteSchema.mcpToolConsents.toolName, toolName),
       ),
     );
   if (rows.length === 0) return "ask";
@@ -53,27 +53,28 @@ export async function setStoredConsent(
   toolName: string,
   consent: Consent,
 ): Promise<void> {
+  const db = getRemoteDb();
   const rows = await db
     .select()
-    .from(mcpToolConsents)
+    .from(remoteSchema.mcpToolConsents)
     .where(
       and(
-        eq(mcpToolConsents.serverId, serverId),
-        eq(mcpToolConsents.toolName, toolName),
+        eq(remoteSchema.mcpToolConsents.serverId, serverId),
+        eq(remoteSchema.mcpToolConsents.toolName, toolName),
       ),
     );
   if (rows.length > 0) {
     await db
-      .update(mcpToolConsents)
+      .update(remoteSchema.mcpToolConsents)
       .set({ consent })
       .where(
         and(
-          eq(mcpToolConsents.serverId, serverId),
-          eq(mcpToolConsents.toolName, toolName),
+          eq(remoteSchema.mcpToolConsents.serverId, serverId),
+          eq(remoteSchema.mcpToolConsents.toolName, toolName),
         ),
       );
   } else {
-    await db.insert(mcpToolConsents).values({ serverId, toolName, consent });
+    await db.insert(remoteSchema.mcpToolConsents).values({ serverId, toolName, consent });
   }
 }
 

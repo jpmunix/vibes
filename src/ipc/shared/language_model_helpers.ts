@@ -1,10 +1,7 @@
-import { db } from "@/db";
-import {
-  language_model_providers as languageModelProvidersSchema,
-  language_models as languageModelsSchema,
-} from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import type { LanguageModelProvider, LanguageModel } from "@/ipc/types";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   LOCAL_PROVIDERS,
   CLOUD_PROVIDERS,
@@ -17,25 +14,27 @@ import { fetchOpenRouterModels } from "../utils/openrouter_models_service";
  * merging them with custom providers taking precedence.
  * @returns A promise that resolves to an array of LanguageModelProvider objects.
  */
-export async function getLanguageModelProviders(): Promise<
+export async function getLanguageModelProviders(userId?: string): Promise<
   LanguageModelProvider[]
 > {
-  // Fetch custom providers from the database
-  const customProvidersDb = await db
-    .select()
-    .from(languageModelProvidersSchema);
-
   const customProvidersMap = new Map<string, LanguageModelProvider>();
-  for (const cp of customProvidersDb) {
-    customProvidersMap.set(cp.id, {
-      id: cp.id,
-      name: cp.name,
-      apiBaseUrl: cp.api_base_url,
-      envVarName: cp.env_var_name ?? undefined,
-      type: "custom",
-      // hasFreeTier, websiteUrl, gatewayPrefix are not in the custom DB schema
-      // They will be undefined unless overridden by hardcoded values if IDs match
-    });
+
+  if (userId) {
+    const db = getRemoteDb();
+    // Fetch custom providers from the database
+    const customProvidersDb = await db
+      .select()
+      .from(remoteSchema.languageModelProviders)
+      .where(eq(remoteSchema.languageModelProviders.userId, userId));
+    for (const cp of customProvidersDb) {
+      customProvidersMap.set(cp.id, {
+        id: cp.id,
+        name: cp.name,
+        apiBaseUrl: cp.apiBaseUrl,
+        envVarName: cp.envVarName ?? undefined,
+        type: "custom",
+      });
+    }
   }
 
   // Get hardcoded cloud providers
@@ -85,10 +84,12 @@ export async function getLanguageModelProviders(): Promise<
  */
 export async function getLanguageModels({
   providerId,
+  userId,
 }: {
   providerId: string;
+  userId?: string;
 }): Promise<LanguageModel[]> {
-  const allProviders = await getLanguageModelProviders();
+  const allProviders = await getLanguageModelProviders(userId);
   const provider = allProviders.find((p) => p.id === providerId);
 
   if (!provider) {
@@ -100,30 +101,37 @@ export async function getLanguageModels({
   let customModels: LanguageModel[] = [];
 
   try {
-    const customModelsDb = await db
-      .select({
-        id: languageModelsSchema.id,
-        displayName: languageModelsSchema.displayName,
-        apiName: languageModelsSchema.apiName,
-        description: languageModelsSchema.description,
-        maxOutputTokens: languageModelsSchema.max_output_tokens,
-        contextWindow: languageModelsSchema.context_window,
-      })
-      .from(languageModelsSchema)
-      .where(
-        isCustomProvider({ providerId })
-          ? eq(languageModelsSchema.customProviderId, providerId)
-          : eq(languageModelsSchema.builtinProviderId, providerId),
-      );
+    if (userId) {
+      const db = getRemoteDb();
+      const customModelsDb = await db
+        .select({
+          id: remoteSchema.languageModels.id,
+          displayName: remoteSchema.languageModels.displayName,
+          apiName: remoteSchema.languageModels.apiName,
+          description: remoteSchema.languageModels.description,
+          maxOutputTokens: remoteSchema.languageModels.maxOutputTokens,
+          contextWindow: remoteSchema.languageModels.contextWindow,
+        })
+        .from(remoteSchema.languageModels)
+        .where(
+          and(
+            isCustomProvider({ providerId })
+              ? eq(remoteSchema.languageModels.customProviderId, providerId)
+              : eq(remoteSchema.languageModels.builtinProviderId, providerId),
+            eq(remoteSchema.languageModels.userId, userId),
+          ),
+        );
 
-    customModels = customModelsDb.map((model) => ({
-      ...model,
-      description: model.description ?? "",
-      tag: undefined,
-      maxOutputTokens: model.maxOutputTokens ?? undefined,
-      contextWindow: model.contextWindow ?? undefined,
-      type: "custom",
-    }));
+      customModels = customModelsDb.map((model) => ({
+        id: "cm_" + model.id.toString(), // Add prefix to differentiate from hardcoded
+        name: model.displayName || model.apiName,
+        apiName: model.apiName,
+        description: model.description || "",
+        contextWindow: Number(model.contextWindow) || undefined,
+        maxOutputTokens: Number(model.maxOutputTokens) || undefined,
+        isCustom: true,
+      }));
+    }
   } catch (error) {
     console.error(
       `Error fetching custom models for provider "${providerId}" from DB:`,
@@ -173,16 +181,16 @@ export async function getLanguageModels({
  * Fetches all language models grouped by their provider IDs.
  * @returns A promise that resolves to a Record mapping provider IDs to arrays of LanguageModel objects.
  */
-export async function getLanguageModelsByProviders(): Promise<
+export async function getLanguageModelsByProviders(userId?: string): Promise<
   Record<string, LanguageModel[]>
 > {
-  const providers = await getLanguageModelProviders();
+  const providers = await getLanguageModelProviders(userId);
 
   // Fetch all models concurrently, including auto-router
   const modelPromises = providers
     .filter((p) => p.type !== "local")
     .map(async (provider) => {
-      const models = await getLanguageModels({ providerId: provider.id });
+      const models = await getLanguageModels({ providerId: provider.id, userId });
       return { providerId: provider.id, models };
     });
 

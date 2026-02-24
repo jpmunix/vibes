@@ -1,7 +1,6 @@
-import log from "electron-log";
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
-import { apps } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 import {
   getSupabaseClientForOrganization,
   listSupabaseBranches,
@@ -12,7 +11,7 @@ import {
   type SupabaseProjectLog,
 } from "../../supabase_admin/supabase_management_client";
 import { extractFunctionName } from "../../supabase_admin/supabase_utils";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { createTestOnlyLoggedHandler } from "./safe_handle";
 import { safeSend } from "../utils/safe_sender";
 import { readSettings, writeSettings } from "../../main/settings";
@@ -188,16 +187,18 @@ export function registerSupabaseHandlers() {
   });
 
   // Set app project - links a Dyad app to a Supabase project
-  createTypedHandler(supabaseContracts.setAppProject, async (_, params) => {
+  createTypedHandler(supabaseContracts.setAppProject, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { projectId, appId, parentProjectId, organizationSlug } = params;
     await db
-      .update(apps)
+      .update(remoteSchema.apps)
       .set({
         supabaseProjectId: projectId,
         supabaseParentProjectId: parentProjectId,
         supabaseOrganizationSlug: organizationSlug,
       })
-      .where(eq(apps.id, appId));
+      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
     logger.info(
       `Associated app ${appId} with Supabase project ${projectId} (organization: ${organizationSlug})${parentProjectId ? ` and parent project ${parentProjectId}` : ""}`,
@@ -205,25 +206,29 @@ export function registerSupabaseHandlers() {
   });
 
   // Unset app project - removes the link between a Dyad app and a Supabase project
-  createTypedHandler(supabaseContracts.unsetAppProject, async (_, params) => {
+  createTypedHandler(supabaseContracts.unsetAppProject, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { app } = params;
     await db
-      .update(apps)
+      .update(remoteSchema.apps)
       .set({
         supabaseProjectId: null,
         supabaseParentProjectId: null,
         supabaseOrganizationSlug: null,
       })
-      .where(eq(apps.id, app));
-
+      .where(and(eq(remoteSchema.apps.id, app), eq(remoteSchema.apps.userId, context.userId)));
     logger.info(`Removed Supabase project association for app ${app}`);
   });
 
   // ─── Database Viewer Handlers ───
 
   // Helper to get app's Supabase connection info
-  async function getAppSupabaseInfo(appId: number) {
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  async function getAppSupabaseInfo(appId: number, userId: string) {
+    const db = getRemoteDb();
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
+    });
     if (!app) throw new Error("App not found");
     if (!app.supabaseProjectId)
       throw new Error("This app is not connected to Supabase");
@@ -247,8 +252,9 @@ export function registerSupabaseHandlers() {
   }
 
   // List tables with schema
-  createTypedHandler(supabaseContracts.listTables, async (_, { appId }) => {
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+  createTypedHandler(supabaseContracts.listTables, async (_, { appId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     const query = `
       WITH table_counts AS (
@@ -313,9 +319,10 @@ export function registerSupabaseHandlers() {
   });
 
   // Query table with pagination
-  createTypedHandler(supabaseContracts.queryTable, async (_, params) => {
+  createTypedHandler(supabaseContracts.queryTable, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
     const { appId, table, page = 1, pageSize = 50, orderBy, orderDir = "asc", filters } = params;
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     let whereClause = "";
     if (filters && filters.length > 0) {
@@ -362,8 +369,9 @@ export function registerSupabaseHandlers() {
   });
 
   // Execute raw SQL
-  createTypedHandler(supabaseContracts.executeQuery, async (_, { appId, query }) => {
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+  createTypedHandler(supabaseContracts.executeQuery, async (_, { appId, query }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     try {
       const resultStr = await executeSupabaseSql({
@@ -381,8 +389,9 @@ export function registerSupabaseHandlers() {
   });
 
   // Insert row
-  createTypedHandler(supabaseContracts.insertRow, async (_, { appId, table, data }) => {
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+  createTypedHandler(supabaseContracts.insertRow, async (_, { appId, table, data }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     const columns = Object.keys(data);
     const colList = columns.map(quoteIdent).join(", ");
@@ -401,8 +410,9 @@ export function registerSupabaseHandlers() {
   });
 
   // Update row
-  createTypedHandler(supabaseContracts.updateRow, async (_, { appId, table, primaryKey, data }) => {
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+  createTypedHandler(supabaseContracts.updateRow, async (_, { appId, table, primaryKey, data }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     const setClause = Object.entries(data)
       .map(([col, val]) => `${quoteIdent(col)} = ${escapeValue(val)}`)
@@ -423,8 +433,9 @@ export function registerSupabaseHandlers() {
   });
 
   // Delete rows
-  createTypedHandler(supabaseContracts.deleteRows, async (_, { appId, table, primaryKeys }) => {
-    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId);
+  createTypedHandler(supabaseContracts.deleteRows, async (_, { appId, table, primaryKeys }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const { projectId, organizationSlug } = await getAppSupabaseInfo(appId, context.userId);
 
     let deletedCount = 0;
     for (const pk of primaryKeys) {
@@ -480,13 +491,15 @@ export function registerSupabaseHandlers() {
       );
 
       // Set the supabase project for the currently selected app
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       await db
-        .update(apps)
+        .update(remoteSchema.apps)
         .set({
           supabaseProjectId: fakeProjectId,
           supabaseOrganizationSlug: fakeOrgId,
         })
-        .where(eq(apps.id, appId));
+        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
       logger.info(
         `Set fake Supabase project ${fakeProjectId} for app ${appId} during testing.`,
       );

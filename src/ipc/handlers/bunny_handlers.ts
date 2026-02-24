@@ -1,19 +1,21 @@
 import log from "electron-log";
-import { db } from "../../db";
-import { eq } from "drizzle-orm";
-import { apps } from "../../db/schema";
-import { createTypedHandler } from "./base";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 import { bunnyContracts } from "../types/bunny";
 
 const logger = log.scope("bunny_handlers");
 
 export function registerBunnyHandlers() {
     // Get Bunny config for an app
-    createTypedHandler(bunnyContracts.getConfig, async (_, params) => {
+    createTypedHandler(bunnyContracts.getConfig, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         const [app] = await db
-            .select({ bunnyConfig: apps.bunnyConfig })
-            .from(apps)
-            .where(eq(apps.id, params.appId));
+            .select({ bunnyConfig: remoteSchema.apps.bunnyConfig })
+            .from(remoteSchema.apps)
+            .where(and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)));
 
         if (!app || !app.bunnyConfig) {
             return null;
@@ -37,13 +39,15 @@ export function registerBunnyHandlers() {
     });
 
     // Set Bunny config for an app
-    createTypedHandler(bunnyContracts.setConfig, async (_, params) => {
+    createTypedHandler(bunnyContracts.setConfig, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         const { appId, config } = params;
 
         await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({ bunnyConfig: config })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         logger.info(
             `Updated Bunny.net config for app ${appId}: ${config.databases.length} DBs, ${config.storageZones.length} storage zones`,
@@ -51,13 +55,15 @@ export function registerBunnyHandlers() {
     });
 
     // Clear Bunny config for an app
-    createTypedHandler(bunnyContracts.clearConfig, async (_, params) => {
+    createTypedHandler(bunnyContracts.clearConfig, async (_, params, context) => {
+        if (!context.userId) throw new Error("Unauthorized");
+        const db = getRemoteDb();
         const { appId } = params;
 
         await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({ bunnyConfig: null })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         logger.info(`Cleared Bunny.net config for app ${appId}`);
     });

@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { chatLogs } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { chatLogs } from "../../db/remote-schema";
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
 
@@ -34,6 +34,9 @@ export interface ChatLogOptions {
 export async function logChatInternal(options: ChatLogOptions): Promise<void> {
   try {
     const settings = readSettings();
+    const userId = settings.userId;
+    if (!userId) return;
+    const db = getRemoteDb();
 
     // Skip if master stats switch or verbose logging is disabled
     if (!settings.enableAllStatsAndLogs || !settings.enableVerboseChatLogs) {
@@ -41,6 +44,7 @@ export async function logChatInternal(options: ChatLogOptions): Promise<void> {
     }
 
     await db.insert(chatLogs).values({
+      userId,
       chatId: options.chatId,
       messageId: options.messageId ?? null,
       level: options.level,

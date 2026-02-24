@@ -1,7 +1,8 @@
 import log from "electron-log";
 
 import { createTestOnlyLoggedHandler } from "./safe_handle";
-import { createTypedHandler } from "./base";
+import { createTestOnlyLoggedHandler } from "./safe_handle";
+// Redundant import removed
 import { handleNeonOAuthReturn } from "../../neon_admin/neon_return_handler";
 import {
   getNeonClient,
@@ -9,9 +10,10 @@ import {
   getNeonOrganizationId,
 } from "../../neon_admin/neon_management_client";
 import { neonContracts, type NeonBranch } from "../types/neon";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 import { EndpointType } from "@neondatabase/api-client";
 import { retryOnLocked } from "../utils/retryOnLocked";
 
@@ -21,7 +23,9 @@ const testOnlyHandle = createTestOnlyLoggedHandler(logger);
 
 export function registerNeonHandlers() {
   // Do not use log handler because there's sensitive data in the response
-  createTypedHandler(neonContracts.createProject, async (_, params) => {
+  createTypedHandler(neonContracts.createProject, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { name, appId } = params;
     const neonClient = await getNeonClient();
 
@@ -75,13 +79,13 @@ export function registerNeonHandlers() {
 
       // Store project and branch info in the app's DB row
       await db
-        .update(apps)
+        .update(remoteSchema.apps)
         .set({
           neonProjectId: project.id,
           neonDevelopmentBranchId: developmentBranch.id,
           neonPreviewBranchId: previewBranch.id,
         })
-        .where(eq(apps.id, appId));
+        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
       logger.info(
         `Successfully created Neon project: ${project.id} and development branch: ${developmentBranch.id} for app ${appId}`,
@@ -100,7 +104,9 @@ export function registerNeonHandlers() {
     }
   });
 
-  createTypedHandler(neonContracts.getProject, async (_, params) => {
+  createTypedHandler(neonContracts.getProject, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId } = params;
     logger.info(`Getting Neon project info for app ${appId}`);
 
@@ -108,8 +114,8 @@ export function registerNeonHandlers() {
       // Get the app from the database to find the neonProjectId and neonBranchId
       const app = await db
         .select()
-        .from(apps)
-        .where(eq(apps.id, appId))
+        .from(remoteSchema.apps)
+        .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
         .limit(1);
 
       if (app.length === 0) {

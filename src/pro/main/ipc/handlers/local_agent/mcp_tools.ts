@@ -7,8 +7,8 @@ import { IpcMainInvokeEvent } from "electron";
 import { ToolSet, type ToolExecutionOptions } from "ai";
 import log from "electron-log";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { mcpServers } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { mcpManager } from "@/ipc/utils/mcp_manager";
 import { requireMcpToolConsent } from "@/ipc/utils/mcp_consent";
 import { parseMcpToolKey, sanitizeMcpName } from "@/ipc/utils/mcp_tool_utils";
@@ -31,10 +31,10 @@ export async function getMcpTools(
     const mcpToolSet: ToolSet = {};
 
     try {
-        const servers = await db
+        const servers = await getRemoteDb()
             .select()
-            .from(mcpServers)
-            .where(eq(mcpServers.enabled, true as any));
+            .from(remoteSchema.mcpServers)
+            .where(eq(remoteSchema.mcpServers.enabled, true as any));
 
         for (const s of servers) {
             const client = await mcpManager.getClient(s.id);

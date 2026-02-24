@@ -11,9 +11,9 @@ import path from "path";
 import fs from "fs";
 import { runShellCommand } from "../utils/runShellCommand";
 import { extractCodebase } from "../../utils/codebase";
-import { db } from "../../db";
-import { chats, apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import { getDyadAppPath } from "../../paths/paths";
 import { LargeLanguageModel } from "@/lib/schemas";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -119,8 +119,9 @@ export function registerDebugHandlers() {
     });
   });
 
-  createTypedHandler(miscContracts.getChatLogs, async (_, chatId) => {
+  createTypedHandler(miscContracts.getChatLogs, async (_, chatId, context) => {
     console.log(`IPC: get-chat-logs called for chat ${chatId}`);
+    if (!context.userId) throw new Error("Unauthorized");
 
     try {
       // We can retrieve a lot more lines here because we're not limited by the
@@ -130,9 +131,10 @@ export function registerDebugHandlers() {
         level: "info",
       });
 
-      // Get chat data from database
+      // Get chat data from remote database
+      const db = getRemoteDb();
       const chatRecord = await db.query.chats.findFirst({
-        where: eq(chats.id, chatId),
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -156,9 +158,9 @@ export function registerDebugHandlers() {
         })),
       };
 
-      // Get app data from database
+      // Get app data from remote database
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, chatRecord.appId),
+        where: and(eq(remoteSchema.apps.id, chatRecord.appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {

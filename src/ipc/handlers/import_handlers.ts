@@ -4,9 +4,8 @@ import path from "path";
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
 import { getDyadAppPath } from "../../paths/paths";
-import { apps } from "@/db/schema";
-import { db } from "@/db";
-import { chats } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 
 import { ImportAppParams, ImportAppResult } from "@/ipc/types";
@@ -57,8 +56,8 @@ export function registerImportHandlers() {
         try {
           await fs.access(appPath);
           // Folder exists in dyad-apps — check if it's already registered in the DB
-          const existingApp = await db.query.apps.findFirst({
-            where: eq(apps.name, appName),
+          const existingApp = await getRemoteDb().query.apps.findFirst({
+            where: eq(remoteSchema.apps.name, appName),
           });
           if (existingApp) {
             return { exists: true, existingAppId: existingApp.id };
@@ -70,8 +69,8 @@ export function registerImportHandlers() {
       }
 
       // Check database
-      const existingApp = await db.query.apps.findFirst({
-        where: eq(apps.name, appName),
+      const existingApp = await getRemoteDb().query.apps.findFirst({
+        where: eq(remoteSchema.apps.name, appName),
       });
 
       return {
@@ -142,8 +141,8 @@ export function registerImportHandlers() {
 
       // Create a new app
       // Store the full absolute path when skipCopy is true, otherwise store appName
-      const [app] = await db
-        .insert(apps)
+      const [app] = await getRemoteDb()
+        .insert(remoteSchema.apps)
         .values({
           name: appName,
           path: skipCopy ? sourcePath : appName,
@@ -153,8 +152,8 @@ export function registerImportHandlers() {
         .returning();
 
       // Create an initial chat for this app
-      const [chat] = await db
-        .insert(chats)
+      const [chat] = await getRemoteDb()
+        .insert(remoteSchema.chats)
         .values({
           appId: app.id,
         })

@@ -1,6 +1,12 @@
 import { ipcMain, IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import type { IpcContract } from "../contracts/core";
+import { readSettings } from "../../main/settings";
+
+export interface HandlerContext {
+  userId?: string;
+  sessionToken?: string;
+}
 
 /**
  * Creates a typed IPC handler from a contract.
@@ -23,6 +29,7 @@ export function createTypedHandler<
   handler: (
     event: IpcMainInvokeEvent,
     input: z.infer<TInput>,
+    context: HandlerContext,
   ) => Promise<z.infer<TOutput>>,
 ): void {
   ipcMain.handle(
@@ -37,7 +44,13 @@ export function createTypedHandler<
         throw new Error(`[${contract.channel}] Invalid input: ${errorMessage}`);
       }
 
-      const result = await handler(event, parsed.data);
+      const settings = readSettings();
+      const context: HandlerContext = {
+        userId: settings.userId,
+        sessionToken: settings.sessionToken?.value,
+      };
+
+      const result = await handler(event, parsed.data, context);
 
       // Validate output in development mode only (catches handler bugs without prod overhead)
       // if (process.env.NODE_ENV === "development") {
@@ -80,6 +93,7 @@ export function createLoggedTypedHandler(logger: {
     handler: (
       event: IpcMainInvokeEvent,
       input: z.infer<TInput>,
+      context: HandlerContext,
     ) => Promise<z.infer<TOutput>>,
   ): void {
     ipcMain.handle(
@@ -100,7 +114,14 @@ export function createLoggedTypedHandler(logger: {
 
         try {
           logger.info(`[${contract.channel}] Handling request`);
-          const result = await handler(event, parsed.data);
+
+          const settings = readSettings();
+          const context: HandlerContext = {
+            userId: settings.userId,
+            sessionToken: settings.sessionToken?.value,
+          };
+
+          const result = await handler(event, parsed.data, context);
 
           // Validate output in development mode only
           // if (process.env.NODE_ENV === "development") {
@@ -141,6 +162,7 @@ export function registerTypedHandlers<
     [K in keyof T]: (
       event: IpcMainInvokeEvent,
       input: z.infer<T[K]["input"]>,
+      context: HandlerContext,
     ) => Promise<z.infer<T[K]["output"]>>;
   },
   contracts: T,

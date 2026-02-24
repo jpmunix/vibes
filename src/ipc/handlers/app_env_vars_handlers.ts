@@ -4,24 +4,26 @@
  */
 import * as fs from "fs";
 import * as path from "path";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import { getDyadAppPath } from "../../paths/paths";
 import {
   ENV_FILE_NAME,
   parseEnvFile,
   serializeEnvFile,
 } from "../utils/app_env_var_utils";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { miscContracts } from "../types/misc";
 
 export function registerAppEnvVarsHandlers() {
   // Handler to get app environment variables
-  createTypedHandler(miscContracts.getAppEnvVars, async (_, { appId }) => {
+  createTypedHandler(miscContracts.getAppEnvVars, async (_, { appId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
     try {
+      const db = getRemoteDb();
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -53,10 +55,12 @@ export function registerAppEnvVarsHandlers() {
   // Handler to set app environment variables
   createTypedHandler(
     miscContracts.setAppEnvVars,
-    async (_, { appId, envVars }) => {
+    async (_, { appId, envVars }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
       try {
+        const db = getRemoteDb();
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
         });
 
         if (!app) {

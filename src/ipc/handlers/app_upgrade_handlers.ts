@@ -1,9 +1,9 @@
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
 import { AppUpgrade } from "@/ipc/types";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import { getDyadAppPath } from "../../paths/paths";
 import fs from "node:fs";
 import path from "node:path";
@@ -33,9 +33,10 @@ const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
   },
 ];
 
-async function getApp(appId: number) {
+async function getApp(appId: number, userId: string) {
+  const db = getRemoteDb();
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
   });
   if (!app) {
     throw new Error(`App with id ${appId} not found`);
@@ -253,8 +254,9 @@ async function applyCapacitor({
 export function registerAppUpgradeHandlers() {
   handle(
     "get-app-upgrades",
-    async (_, { appId }: { appId: number }): Promise<AppUpgrade[]> => {
-      const app = await getApp(appId);
+    async (_, { appId }: { appId: number }, context): Promise<AppUpgrade[]> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const app = await getApp(appId, context.userId);
       const appPath = getDyadAppPath(app.path);
 
       const upgradesWithStatus = availableUpgrades.map((upgrade) => {
@@ -273,12 +275,13 @@ export function registerAppUpgradeHandlers() {
 
   handle(
     "execute-app-upgrade",
-    async (_, { appId, upgradeId }: { appId: number; upgradeId: string }) => {
+    async (_, { appId, upgradeId }: { appId: number; upgradeId: string }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
       if (!upgradeId) {
         throw new Error("upgradeId is required");
       }
 
-      const app = await getApp(appId);
+      const app = await getApp(appId, context.userId);
       const appPath = getDyadAppPath(app.path);
 
       if (upgradeId === "component-tagger") {

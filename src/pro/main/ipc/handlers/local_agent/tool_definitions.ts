@@ -12,8 +12,8 @@ import { deleteFileTool } from "./tools/delete_file";
 import { renameFileTool } from "./tools/rename_file";
 import { addDependencyTool } from "./tools/add_dependency";
 import { executeSqlTool } from "./tools/execute_sql";
-import { apps } from "@/db/schema";
-import { db } from "@/db";
+import * as remoteSchema from "@/db/remote-schema";
+import { getRemoteDb } from "@/db/remote";
 import { eq } from "drizzle-orm";
 
 import { getSupabaseProjectInfoTool } from "./tools/get_supabase_project_info";
@@ -243,8 +243,8 @@ async function processArgPlaceholders<T extends Record<string, any>>(
 
   let firebaseClientCode = "";
   if (hasFirebase && ctx.firebaseProjectId) {
-    const app = await db.query.apps.findFirst({
-      where: eq(apps.id, ctx.appId),
+    const app = await getRemoteDb().query.apps.findFirst({
+      where: eq(remoteSchema.apps.id, ctx.appId),
     });
     if (app?.firebaseConfig) {
       firebaseClientCode = await getFirebaseConfigCode({

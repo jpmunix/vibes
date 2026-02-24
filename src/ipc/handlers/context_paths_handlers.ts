@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { apps } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -23,8 +23,8 @@ export function registerContextPathsHandlers() {
     async (_, { appId }: { appId: number }): Promise<ContextPathResults> => {
       z.object({ appId: z.number() }).parse({ appId });
 
-      const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+      const app = await getRemoteDb().query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
       });
 
       if (!app) {
@@ -109,7 +109,7 @@ export function registerContextPathsHandlers() {
       });
       schema.parse({ appId, chatContext });
 
-      await db.update(apps).set({ chatContext }).where(eq(apps.id, appId));
+      await getRemoteDb().update(remoteSchema.apps).set({ chatContext }).where(eq(remoteSchema.apps.id, appId));
     },
   );
 }

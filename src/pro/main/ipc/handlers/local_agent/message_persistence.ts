@@ -6,8 +6,9 @@
 
 import log from "electron-log";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { messages, type AiMessagesJsonV6 } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
+import type { AiMessagesJsonV6 } from "@/db/schema";
 
 const logger = log.scope("message_persistence");
 
@@ -19,10 +20,10 @@ export function initMessageStatus(
     messageId: number,
     previousResponseId: number | null,
 ): void {
-    void db
-        .update(messages)
+    void getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ previousResponseId, status: "incomplete" })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) =>
             logger.error("Failed to set initial message status/context", err),
         );
@@ -36,10 +37,10 @@ export async function updateMessageContent(
     messageId: number,
     content: string,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ content })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to update message content", err));
 }
 
@@ -51,10 +52,10 @@ export async function markCompleted(
     messageId: number,
     maxTokensUsed: number,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ maxTokensUsed, status: "completed" })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) =>
             logger.error("Failed to save token count/status", err),
         );
@@ -67,10 +68,10 @@ export async function markCompleted(
 export async function markApprovedAndCompleted(
     messageId: number,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ approvalState: "approved", status: "completed" })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) =>
             logger.error("Failed to mark approved/completed", err),
         );
@@ -83,13 +84,13 @@ export async function markCancelled(
     messageId: number,
     partialContent: string,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({
             content: `${partialContent}\n\n[Response cancelled by user]`,
             status: "incomplete",
         })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to mark cancelled", err));
 }
 
@@ -97,10 +98,10 @@ export async function markCancelled(
  * Mark message as failed.
  */
 export async function markFailed(messageId: number): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ status: "failed" } as any)
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to set failed status", err));
 }
 
@@ -111,10 +112,10 @@ export async function saveAiMessagesJson(
     messageId: number,
     aiMessagesJson: AiMessagesJsonV6,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ aiMessagesJson })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to save AI messages JSON", err));
 }
 
@@ -125,9 +126,9 @@ export async function saveCommitHash(
     messageId: number,
     commitHash: string,
 ): Promise<void> {
-    await db
-        .update(messages)
+    await getRemoteDb()
+        .update(remoteSchema.messages)
         .set({ commitHash })
-        .where(eq(messages.id, messageId))
+        .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to save commit hash", err));
 }

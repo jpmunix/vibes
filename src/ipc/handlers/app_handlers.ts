@@ -1,6 +1,7 @@
 import { ipcMain, app, dialog } from "electron";
-import { db, getDatabasePath } from "../../db";
-import { apps, chats, messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { getDatabasePath } from "../../db";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, like, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { appContracts } from "../types/app";
@@ -991,7 +992,10 @@ export function registerAppHandlers() {
     app.quit();
   });
 
-  createTypedHandler(appContracts.createApp, async (_, params) => {
+  createTypedHandler(appContracts.createApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const appPath = params.name;
     const fullAppPath = getDyadAppPath(appPath);
     if (fs.existsSync(fullAppPath)) {
@@ -999,8 +1003,9 @@ export function registerAppHandlers() {
     }
     // Create a new app
     const [app] = await db
-      .insert(apps)
+      .insert(remoteSchema.apps)
       .values({
+        userId: context.userId,
         name: params.name,
         // Use the name as the path for now
         path: appPath,
@@ -1009,8 +1014,9 @@ export function registerAppHandlers() {
 
     // Create an initial chat for this app
     const [chat] = await db
-      .insert(chats)
+      .insert(remoteSchema.chats)
       .values({
+        userId: context.userId,
         appId: app.id,
       })
       .returning();
@@ -1034,11 +1040,11 @@ export function registerAppHandlers() {
 
     // Update chat with initial commit hash
     await db
-      .update(chats)
+      .update(remoteSchema.chats)
       .set({
         initialCommitHash: commitHash,
       })
-      .where(eq(chats.id, chat.id));
+      .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId)));
 
     return {
       app: { ...app, resolvedPath: fullAppPath },
@@ -1046,12 +1052,15 @@ export function registerAppHandlers() {
     };
   });
 
-  createTypedHandler(appContracts.copyApp, async (_, params) => {
+  createTypedHandler(appContracts.copyApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, newAppName, withHistory } = params;
 
     // 1. Check if an app with the new name already exists
     const existingApp = await db.query.apps.findFirst({
-      where: eq(apps.name, newAppName),
+      where: and(eq(remoteSchema.apps.name, newAppName), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (existingApp) {
@@ -1060,7 +1069,7 @@ export function registerAppHandlers() {
 
     // 2. Find the original app
     const originalApp = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!originalApp) {
@@ -1103,8 +1112,9 @@ export function registerAppHandlers() {
 
     // 4. Create a new app entry in the database
     const [newDbApp] = await db
-      .insert(apps)
+      .insert(remoteSchema.apps)
       .values({
+        userId: context.userId,
         name: newAppName,
         path: newAppName, // Use the new name for the path
         // Explicitly set these to null because we don't want to copy them over.
@@ -1121,9 +1131,12 @@ export function registerAppHandlers() {
     return { app: newDbApp };
   });
 
-  createTypedHandler(appContracts.getApp, async (_, appId) => {
+  createTypedHandler(appContracts.getApp, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -1173,9 +1186,13 @@ export function registerAppHandlers() {
     };
   });
 
-  createTypedHandler(appContracts.listApps, async () => {
+  createTypedHandler(appContracts.listApps, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const allApps = await db.query.apps.findMany({
-      orderBy: [desc(apps.createdAt)],
+      where: eq(remoteSchema.apps.userId, context.userId),
+      orderBy: [desc(remoteSchema.apps.createdAt)],
     });
     const appsWithResolvedPath = allApps.map((app) => ({
       ...app,
@@ -1186,10 +1203,13 @@ export function registerAppHandlers() {
     };
   });
 
-  createTypedHandler(appContracts.readAppFile, async (_, params) => {
+  createTypedHandler(appContracts.readAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -1229,7 +1249,10 @@ export function registerAppHandlers() {
     return envVars;
   });
 
-  createTypedHandler(appContracts.runApp, async (event, params) => {
+  createTypedHandler(appContracts.runApp, async (event, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     return withLock(appId, async () => {
       // Check if app is already running
@@ -1249,7 +1272,7 @@ export function registerAppHandlers() {
       }
 
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1335,7 +1358,10 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.restartApp, async (event, params) => {
+  createTypedHandler(appContracts.restartApp, async (event, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, removeNodeModules } = params;
     logger.log(`Restarting app ${appId}`);
     // Clear auto-recovery flag so the next start cycle gets a fresh attempt
@@ -1360,7 +1386,7 @@ export function registerAppHandlers() {
 
         // Now start the app again
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
         });
 
         if (!app) {
@@ -1428,12 +1454,15 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.editAppFile, async (_, params) => {
+  createTypedHandler(appContracts.editAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     let { appId, filePath, content } = params;
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -1532,14 +1561,17 @@ export function registerAppHandlers() {
     return {};
   });
 
-  createTypedHandler(appContracts.deleteApp, async (_, params) => {
+  createTypedHandler(appContracts.deleteApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     // Static server worker is NOT terminated here anymore
 
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1563,7 +1595,8 @@ export function registerAppHandlers() {
 
       // Delete app from database
       try {
-        await db.delete(apps).where(eq(apps.id, appId));
+        await db.delete(remoteSchema.apps)
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         // Note: Associated chats will cascade delete
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
@@ -1595,15 +1628,18 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.addToFavorite, async (_, params) => {
+  createTypedHandler(appContracts.addToFavorite, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     return withLock(appId, async () => {
       try {
         // Fetch the current isFavorite value
         const result = await db
-          .select({ isFavorite: apps.isFavorite })
-          .from(apps)
-          .where(eq(apps.id, appId))
+          .select({ isFavorite: remoteSchema.apps.isFavorite })
+          .from(remoteSchema.apps)
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
           .limit(1);
 
         if (result.length === 0) {
@@ -1614,10 +1650,10 @@ export function registerAppHandlers() {
 
         // Toggle the isFavorite value
         const updated = await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ isFavorite: !currentIsFavorite })
-          .where(eq(apps.id, appId))
-          .returning({ isFavorite: apps.isFavorite });
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .returning({ isFavorite: remoteSchema.apps.isFavorite });
 
         if (updated.length === 0) {
           throw new Error(
@@ -1637,17 +1673,20 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.updateAppCommands, async (_, params) => {
+  createTypedHandler(appContracts.updateAppCommands, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, installCommand, startCommand } = params;
     return withLock(appId, async () => {
       try {
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({
             installCommand: installCommand?.trim() || null,
             startCommand: startCommand?.trim() || null,
           })
-          .where(eq(apps.id, appId));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         logger.info(
           `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
         );
@@ -1661,13 +1700,16 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.renameApp, async (_, params) => {
+  createTypedHandler(appContracts.renameApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, appName, appPath: newPath } = params;
     return withLock(appId, async () => {
       let appPath = newPath;
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1700,7 +1742,7 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: eq(apps.name, appName),
+        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1716,7 +1758,9 @@ export function registerAppHandlers() {
 
       let hasPathConflict = false;
       if (pathChanged) {
-        const allApps = await db.query.apps.findMany();
+        const allApps = await db.query.apps.findMany({
+          where: eq(remoteSchema.apps.userId, context.userId),
+        });
         hasPathConflict = allApps.some((existingApp) => {
           if (existingApp.id === appId) {
             return false;
@@ -1801,12 +1845,12 @@ export function registerAppHandlers() {
       const pathToStore = path.isAbsolute(app.path) ? newAppPath : appPath;
       try {
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({
             name: appName,
             path: pathToStore,
           })
-          .where(eq(apps.id, appId))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
           .returning();
 
         return;
@@ -1892,10 +1936,13 @@ export function registerAppHandlers() {
     return { version: packageJson.version };
   });
 
-  createTypedHandler(appContracts.renameBranch, async (_, params) => {
+  createTypedHandler(appContracts.renameBranch, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, oldBranchName, newBranchName } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -1971,12 +2018,15 @@ export function registerAppHandlers() {
   // Track current working directory per app for persistent cd
   const shellCwdMap = new Map<number, string>();
 
-  createTypedHandler(appContracts.executeShellCommand, async (_, params) => {
+  createTypedHandler(appContracts.executeShellCommand, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, command, timeoutMs } = params;
 
     // Get app path
     const appRecord = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!appRecord) {
@@ -2147,11 +2197,14 @@ export function registerAppHandlers() {
     runningShellCommands.delete(appId);
   });
 
-  createTypedHandler(appContracts.getShellCompletions, async (_, params) => {
+  createTypedHandler(appContracts.getShellCompletions, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, partial } = params;
 
     const appRecord = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!appRecord) {
@@ -2195,7 +2248,10 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.searchAppFiles, async (_, params) => {
+  createTypedHandler(appContracts.searchAppFiles, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, query } = params;
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
@@ -2203,7 +2259,7 @@ export function registerAppHandlers() {
     }
 
     const appRecord = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!appRecord) {
@@ -2225,25 +2281,29 @@ export function registerAppHandlers() {
   handle(
     "search-app",
     async (_, searchQuery: string): Promise<AppSearchResult[]> => {
+      const settings = readSettings();
+      if (!settings.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
       // Use parameterized query to prevent SQL injection
       const pattern = `%${searchQuery.replace(/[%_]/g, "\\$&")}%`;
 
       // 1) Apps whose name matches
       const appNameMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
         })
-        .from(apps)
-        .where(like(apps.name, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .where(and(like(remoteSchema.apps.name, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       const appNameMatchesResult: AppSearchResult[] = appNameMatches.map(
         (r) => ({
           id: r.id,
           name: r.name,
-          createdAt: r.createdAt,
+          createdAt: r.createdAt as unknown as Date,
           matchedChatTitle: null,
           matchedChatMessage: null,
         }),
@@ -2252,21 +2312,21 @@ export function registerAppHandlers() {
       // 2) Apps whose chat title matches
       const chatTitleMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
-          matchedChatTitle: chats.title,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
+          matchedChatTitle: remoteSchema.chats.title,
         })
-        .from(apps)
-        .innerJoin(chats, eq(apps.id, chats.appId))
-        .where(like(chats.title, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
+        .where(and(like(remoteSchema.chats.title, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       const chatTitleMatchesResult: AppSearchResult[] = chatTitleMatches.map(
         (r) => ({
           id: r.id,
           name: r.name,
-          createdAt: r.createdAt,
+          createdAt: r.createdAt as unknown as Date,
           matchedChatTitle: r.matchedChatTitle,
           matchedChatMessage: null,
         }),
@@ -2275,17 +2335,17 @@ export function registerAppHandlers() {
       // 3) Apps whose chat message content matches
       const chatMessageMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
-          matchedChatTitle: chats.title,
-          matchedChatMessage: messages.content,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
+          matchedChatTitle: remoteSchema.chats.title,
+          matchedChatMessage: remoteSchema.messages.content,
         })
-        .from(apps)
-        .innerJoin(chats, eq(apps.id, chats.appId))
-        .innerJoin(messages, eq(chats.id, messages.chatId))
-        .where(like(messages.content, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
+        .innerJoin(remoteSchema.messages, eq(remoteSchema.chats.id, remoteSchema.messages.chatId))
+        .where(and(like(remoteSchema.messages.content, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       // Flatten and dedupe by app id
       const allMatches: AppSearchResult[] = [
@@ -2338,7 +2398,10 @@ export function registerAppHandlers() {
     },
   );
 
-  createTypedHandler(appContracts.changeAppLocation, async (_, params) => {
+  createTypedHandler(appContracts.changeAppLocation, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, parentDirectory } = params;
 
     if (!parentDirectory) {
@@ -2353,7 +2416,7 @@ export function registerAppHandlers() {
 
     return withLock(appId, async () => {
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -2371,16 +2434,18 @@ export function registerAppHandlers() {
         // Path hasn't changed, but we should update to absolute path format if needed
         if (!path.isAbsolute(app.path)) {
           await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({ path: nextResolvedPath })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         }
         return {
           resolvedPath: nextResolvedPath,
         };
       }
 
-      const allApps = await db.query.apps.findMany();
+      const allApps = await db.query.apps.findMany({
+        where: eq(remoteSchema.apps.userId, context.userId),
+      });
       const conflict = allApps.some(
         (existingApp) =>
           existingApp.id !== appId &&
@@ -2406,9 +2471,9 @@ export function registerAppHandlers() {
           `Source path ${currentResolvedPath} does not exist. Updating database path only.`,
         );
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(eq(apps.id, appId));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         return {
           resolvedPath: nextResolvedPath,
         };
@@ -2434,9 +2499,9 @@ export function registerAppHandlers() {
 
         // Update path to absolute path
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(eq(apps.id, appId));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         try {
           await fsPromises.rm(currentResolvedPath, {
@@ -2530,8 +2595,11 @@ export function registerAppHandlers() {
 
   createTypedHandler(
     appContracts.generateAppTitleFromHistory,
-    async (_, { appId }) => {
+    async (_, { appId }, context) => {
       const settings = readSettings();
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
       if (!hasOpenRouterApiKey()) {
         logger.warn(
           "OpenRouter API key not found, using cute app name as fallback",
@@ -2548,12 +2616,12 @@ export function registerAppHandlers() {
         // Fetch the first user message where they define what they want
         const firstUserMessage = await db
           .select({
-            content: messages.content,
+            content: remoteSchema.messages.content,
           })
-          .from(messages)
-          .innerJoin(chats, eq(messages.chatId, chats.id))
-          .where(and(eq(chats.appId, appId), eq(messages.role, "user")))
-          .orderBy(messages.createdAt) // Get oldest first
+          .from(remoteSchema.messages)
+          .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
+          .where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.messages.role, "user"), eq(remoteSchema.chats.userId, context.userId)))
+          .orderBy(remoteSchema.messages.createdAt) // Get oldest first
           .limit(1);
 
         if (!firstUserMessage.length) {

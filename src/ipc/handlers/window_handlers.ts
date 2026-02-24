@@ -4,9 +4,9 @@ import log from "electron-log";
 import { platform } from "os";
 import { createTypedHandler } from "./base";
 import { systemContracts } from "../types/system";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import { readSettings, writeSettings } from "../../main/settings";
 
 // eslint-disable-next-line no-var
@@ -126,8 +126,12 @@ export function registerWindowHandlers() {
     // Fetch app name for the window title
     let appName = "Git";
     try {
-      const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
-      if (app?.name) appName = app.name;
+      const db = getRemoteDb();
+      const settings = readSettings();
+      if (settings.userId) {
+        const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, settings.userId)) });
+        if (app?.name) appName = app.name;
+      }
     } catch (e) {
       logger.warn(`Could not fetch app name for git window title: ${e}`);
     }
@@ -187,8 +191,12 @@ export function registerWindowHandlers() {
     // Fetch app name for the window title
     let appName = "Chat";
     try {
-      const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
-      if (app?.name) appName = app.name;
+      const db = getRemoteDb();
+      const settings = readSettings();
+      if (settings.userId) {
+        const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, settings.userId)) });
+        if (app?.name) appName = app.name;
+      }
     } catch (e) {
       logger.warn(`Could not fetch app name for window title: ${e}`);
     }

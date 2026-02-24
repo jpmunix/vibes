@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { apps, messages, versions } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and, gt, gte } from "drizzle-orm";
 import type { GitCommit } from "../git_types";
 import fs from "node:fs";
@@ -67,10 +67,12 @@ async function restoreBranchForPreview({
 }
 
 export function registerVersionHandlers() {
-  createTypedHandler(versionContracts.listVersions, async (_, params) => {
+  createTypedHandler(versionContracts.listVersions, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -92,7 +94,7 @@ export function registerVersionHandlers() {
 
     // Get all snapshots for this app to match with commits
     const appSnapshots = await db.query.versions.findMany({
-      where: eq(versions.appId, appId),
+      where: and(eq(remoteSchema.versions.appId, appId), eq(remoteSchema.versions.userId, context.userId)),
     });
 
     // Create a map of commitHash -> snapshot info for quick lookup
@@ -118,10 +120,12 @@ export function registerVersionHandlers() {
     });
   });
 
-  createTypedHandler(versionContracts.getCurrentBranch, async (_, params) => {
+  createTypedHandler(versionContracts.getCurrentBranch, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -147,13 +151,15 @@ export function registerVersionHandlers() {
     }
   });
 
-  createTypedHandler(versionContracts.revertVersion, async (_, params) => {
+  createTypedHandler(versionContracts.revertVersion, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, previousVersionId, currentChatMessageId } = params;
     return withLock(appId, async () => {
       let successMessage = "Restored version";
       let warningMessage = "";
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -202,8 +208,12 @@ export function registerVersionHandlers() {
         const { chatId, messageId } = currentChatMessageId;
 
         const messagesToDelete = await db.query.messages.findMany({
-          where: and(eq(messages.chatId, chatId), gte(messages.id, messageId)),
-          orderBy: desc(messages.id),
+          where: and(
+            eq(remoteSchema.messages.chatId, chatId),
+            gte(remoteSchema.messages.id, messageId),
+            eq(remoteSchema.messages.userId, context.userId)
+          ),
+          orderBy: desc(remoteSchema.messages.id),
         });
 
         logger.log(
@@ -212,15 +222,15 @@ export function registerVersionHandlers() {
 
         if (messagesToDelete.length > 0) {
           await db
-            .delete(messages)
+            .delete(remoteSchema.messages)
             .where(
-              and(eq(messages.chatId, chatId), gte(messages.id, messageId)),
+              and(eq(remoteSchema.messages.chatId, chatId), gte(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, context.userId)),
             );
         }
       } else {
         // Find the chat and message associated with the commit hash
         const messageWithCommit = await db.query.messages.findFirst({
-          where: eq(messages.commitHash, previousVersionId),
+          where: and(eq(remoteSchema.messages.commitHash, previousVersionId), eq(remoteSchema.messages.userId, context.userId)),
           with: {
             chat: true,
           },
@@ -233,10 +243,11 @@ export function registerVersionHandlers() {
           // Find all messages in this chat with IDs > the one with our commit hash
           const messagesToDelete = await db.query.messages.findMany({
             where: and(
-              eq(messages.chatId, chatId),
-              gt(messages.id, messageWithCommit.id),
+              eq(remoteSchema.messages.chatId, chatId),
+              gt(remoteSchema.messages.id, messageWithCommit.id),
+              eq(remoteSchema.messages.userId, context.userId)
             ),
-            orderBy: desc(messages.id),
+            orderBy: desc(remoteSchema.messages.id),
           });
 
           logger.log(
@@ -246,11 +257,12 @@ export function registerVersionHandlers() {
           // Delete the messages
           if (messagesToDelete.length > 0) {
             await db
-              .delete(messages)
+              .delete(remoteSchema.messages)
               .where(
                 and(
-                  eq(messages.chatId, chatId),
-                  gt(messages.id, messageWithCommit.id),
+                  eq(remoteSchema.messages.chatId, chatId),
+                  gt(remoteSchema.messages.id, messageWithCommit.id),
+                  eq(remoteSchema.messages.userId, context.userId)
                 ),
               );
           }
@@ -260,8 +272,9 @@ export function registerVersionHandlers() {
       if (app.neonProjectId && app.neonDevelopmentBranchId) {
         const version = await db.query.versions.findFirst({
           where: and(
-            eq(versions.appId, appId),
-            eq(versions.commitHash, previousVersionId),
+            eq(remoteSchema.versions.appId, appId),
+            eq(remoteSchema.versions.commitHash, previousVersionId),
+            eq(remoteSchema.versions.userId, context.userId)
           ),
         });
         if (version && version.neonDbTimestamp) {
@@ -284,12 +297,13 @@ export function registerVersionHandlers() {
             // Update all versions which have a newer DB timestamp than the version we're restoring to
             // and remove their DB timestamp.
             await db
-              .update(versions)
+              .update(remoteSchema.versions)
               .set({ neonDbTimestamp: null })
               .where(
                 and(
-                  eq(versions.appId, appId),
-                  gt(versions.neonDbTimestamp, version.neonDbTimestamp),
+                  eq(remoteSchema.versions.appId, appId),
+                  gt(remoteSchema.versions.neonDbTimestamp, version.neonDbTimestamp),
+                  eq(remoteSchema.versions.userId, context.userId)
                 ),
               );
 
@@ -370,11 +384,13 @@ export function registerVersionHandlers() {
     });
   });
 
-  createTypedHandler(versionContracts.checkoutVersion, async (_, params) => {
+  createTypedHandler(versionContracts.checkoutVersion, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, versionId: gitRef } = params;
     return withLock(appId, async () => {
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -407,8 +423,9 @@ export function registerVersionHandlers() {
 
           const version = await db.query.versions.findFirst({
             where: and(
-              eq(versions.appId, appId),
-              eq(versions.commitHash, gitRef),
+              eq(remoteSchema.versions.appId, appId),
+              eq(remoteSchema.versions.commitHash, gitRef),
+              eq(remoteSchema.versions.userId, context.userId)
             ),
           });
 

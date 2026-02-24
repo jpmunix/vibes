@@ -1,4 +1,4 @@
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { backupContracts } from "../types/backup";
 import { getSettingsFilePath } from "../../main/settings";
 import { getDatabasePath, getDb } from "../../db";
@@ -30,7 +30,8 @@ async function backupDatabase(sourcePath: string, destPath: string): Promise<voi
 }
 
 export function registerBackupHandlers() {
-    createTypedHandler(backupContracts.performBackup, async (_, params) => {
+    createTypedHandler(backupContracts.performBackup, async (_, params, context) => {
+        if (!context.userId) throw new Error(\"Unauthorized\");
         const { includeSettings, includeDatabase, includeStats } = params;
 
         // Create a temporary directory for the backup files
@@ -49,21 +50,12 @@ export function registerBackupHandlers() {
                 }
             }
 
-            // Add database using SQLite backup API
+            // ----------------------------------------------------
+            // NOTE: Local database backup is disabled in V3
+            // because the data is now stored remotely (Bunny).
+            // ----------------------------------------------------
             if (includeDatabase) {
-                const dbPath = getDatabasePath();
-                if (fs.existsSync(dbPath)) {
-                    logger.log("Creating database backup using SQLite API");
-                    const tempDbPath = path.join(tempDir, "sqlite.db");
-
-                    // Use SQLite backup API for safe copying (await the promise)
-                    await backupDatabase(dbPath, tempDbPath);
-
-                    zip.addLocalFile(tempDbPath, "", "sqlite.db");
-
-                    // Clean up temp db file
-                    fs.unlinkSync(tempDbPath);
-                }
+                logger.warn("El backup de la base de datos local está deshabilitado.");
             }
 
             // Add stats file
@@ -108,7 +100,8 @@ export function registerBackupHandlers() {
         }
     });
 
-    createTypedHandler(backupContracts.restoreBackup, async (_, params) => {
+    createTypedHandler(backupContracts.restoreBackup, async (_, params, context) => {
+        if (!context.userId) throw new Error(\"Unauthorized\");
         const { downloadUrl } = params;
 
         // Create a temporary directory for extraction
@@ -152,21 +145,9 @@ export function registerBackupHandlers() {
                 fs.copyFileSync(extractedSettings, settingsPath);
             }
 
-            // Restore database
-            const dbPath = getDatabasePath();
-            const extractedDb = path.join(tempDir, "sqlite.db");
-            if (fs.existsSync(extractedDb)) {
-                logger.log("Restoring database");
-                // Close any existing database connections
-                try {
-                    const db = getDb();
-                    if (db.$client) {
-                        db.$client.close();
-                    }
-                } catch (e) {
-                    logger.warn("Could not close database connection:", e);
-                }
-                fs.copyFileSync(extractedDb, dbPath);
+            // Restoring database is no longer supported locally
+            if (fs.existsSync(path.join(tempDir, "sqlite.db"))) {
+                logger.warn("Ignorando backup de base de datos local (V3 usa BD remota).");
             }
 
             // Restore stats

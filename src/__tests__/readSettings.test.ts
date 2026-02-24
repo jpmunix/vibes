@@ -13,6 +13,7 @@ vi.mock("electron", () => ({
   safeStorage: {
     isEncryptionAvailable: vi.fn(),
     decryptString: vi.fn(),
+    encryptString: vi.fn(() => Buffer.from("mock-encrypted")),
   },
 }));
 vi.mock("@/paths/paths", () => ({
@@ -142,7 +143,7 @@ describe("readSettings", () => {
       );
       expect(result.providerSettings.openai.apiKey).toEqual({
         value: "decrypted-api-key",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 
@@ -165,7 +166,7 @@ describe("readSettings", () => {
       );
       expect(result.githubAccessToken).toEqual({
         value: "decrypted-github-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 
@@ -194,11 +195,11 @@ describe("readSettings", () => {
       expect(mockSafeStorage.decryptString).toHaveBeenCalledTimes(2);
       expect(result.supabase?.refreshToken).toEqual({
         value: "decrypted-refresh-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
       expect(result.supabase?.accessToken).toEqual({
         value: "decrypted-access-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 

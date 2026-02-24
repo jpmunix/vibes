@@ -20,6 +20,8 @@ vi.mock("electron-log", () => ({
     scope: () => ({
       warn: vi.fn(),
       error: vi.fn(),
+      info: vi.fn(),
+      log: vi.fn(),
     }),
   },
 }));

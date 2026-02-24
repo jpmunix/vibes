@@ -11,7 +11,9 @@ import { dossierContracts, dossierStreamContract } from "../types/dossier";
 import { safeSend } from "../utils/safe_sender";
 import { readSettings } from "../../main/settings";
 import { getModelClient } from "../utils/get_model_client";
-import { db } from "../../db";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and, desc } from "drizzle-orm";
 import { getDyadAppPath } from "../../paths/paths";
 import { extractCodebase } from "../../utils/codebase";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -177,7 +179,9 @@ export function registerDossierHandlers() {
     // =========================================================================
     createTypedHandler(
         dossierContracts.generate,
-        async (event, { appId, sessionId, forceRegenerate }) => {
+        async (event, { appId, sessionId, forceRegenerate }, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const sender = event.sender;
 
             try {
@@ -195,7 +199,7 @@ export function registerDossierHandlers() {
                 sendChunk(sender, sessionId, "Buscando información de la aplicación...", "analyzing");
 
                 const app = await db.query.apps.findFirst({
-                    where: (apps, { eq }) => eq(apps.id, appId),
+                    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
                 });
 
                 if (!app) {
@@ -281,9 +285,10 @@ export function registerDossierHandlers() {
                 // Resolve the AI model through OpenRouter
                 const dossierModelName = settings.proModeModel || "google/gemini-3-flash-preview";
                 let selectedModel = settings.selectedModel; // fallback to chat model
+                const userId = context.userId;
 
                 // Look up the configured dossier model in OpenRouter
-                const allModels = await getLanguageModels({ providerId: "openrouter" });
+                const allModels = await getLanguageModels({ providerId: "openrouter", userId });
                 const found = allModels.find((m) => m.apiName === dossierModelName);
                 if (found) {
                     selectedModel = { name: found.apiName, provider: "openrouter" };
@@ -432,15 +437,65 @@ export function registerDossierHandlers() {
                 zip.addFile("tutorial_interactivo.docx", tutorialDocx);
                 zip.addFile("memoria_tecnica.docx", memoriaDocx);
 
-                // Save ZIP to disk for future re-download
+                // Save ZIP to disk for local caching
                 fs.mkdirSync(dossierDir, { recursive: true });
                 zip.writeZip(existingZipPath);
                 dossierCache.set(appId, existingZipPath);
 
-                logger.info(`Dossier ZIP saved: ${existingZipPath}`);
+                logger.info(`Dossier ZIP saved locally: ${existingZipPath}`);
 
-                // Send the ZIP as base64
                 const zipBuffer = zip.toBuffer();
+
+                // Bunny Storage Integration
+                let storagePath = existingZipPath;
+                if (app.bunnyConfig) {
+                    try {
+                        const bunnyConfig = JSON.parse(app.bunnyConfig as string);
+                        if (bunnyConfig?.storageZones?.length > 0) {
+                            sendChunk(
+                                sender,
+                                sessionId,
+                                "Subiendo a Bunny Storage...",
+                                "zip",
+                            );
+                            const sz = bunnyConfig.storageZones[0];
+                            const remotePath = `/dossiers/${path.basename(existingZipPath)}`;
+                            const url = `https://${sz.hostname}/${sz.username}${remotePath}`.replace(/\/+/g, "/").replace("https:/", "https://");
+
+                            const response = await fetch(url, {
+                                method: 'PUT',
+                                headers: {
+                                    AccessKey: sz.password,
+                                    'Content-Type': 'application/zip',
+                                },
+                                body: zipBuffer
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Status HTTP ${response.status}`);
+                            }
+                            storagePath = remotePath;
+                            logger.info(`Dossier uploaded to Bunny Storage: ${remotePath}`);
+                        }
+                    } catch (e: any) {
+                        logger.error("Failed to upload dossier to Bunny Storage:", e);
+                        sendChunk(
+                            sender,
+                            sessionId,
+                            "Fallo al subir a Bunny Storage, se usará caché local.",
+                            "zip",
+                        );
+                    }
+                }
+
+                // Insert into Remote DB dossiers table
+                await db.insert(remoteSchema.dossiers).values({
+                    userId: context.userId,
+                    appId: app.id,
+                    storagePath,
+                    createdAt: new Date(),
+                });
+
                 sendChunk(
                     sender,
                     sessionId,
@@ -476,7 +531,7 @@ export function registerDossierHandlers() {
     // =========================================================================
     // Cancel Dossier Generation
     // =========================================================================
-    createTypedHandler(dossierContracts.cancel, async (_, sessionId) => {
+    createTypedHandler(dossierContracts.cancel, async (_, sessionId, context) => {
         const controller = activeStreams.get(sessionId);
         if (controller) {
             controller.abort();
@@ -491,13 +546,24 @@ export function registerDossierHandlers() {
     // =========================================================================
     createTypedHandler(
         dossierContracts.checkExisting,
-        async (_, { appId }) => {
+        async (_, { appId }, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const app = await db.query.apps.findFirst({
-                where: (apps, { eq }) => eq(apps.id, appId),
+                where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
             });
 
             if (!app) {
                 return { exists: false };
+            }
+
+            const dossierRecord = await db.query.dossiers.findFirst({
+                where: and(eq(remoteSchema.dossiers.appId, appId), eq(remoteSchema.dossiers.userId, context.userId)),
+                orderBy: [desc(remoteSchema.dossiers.createdAt)],
+            });
+
+            if (dossierRecord) {
+                return { exists: true, zipPath: dossierRecord.storagePath };
             }
 
             const appPath = getDyadAppPath(app.path);
@@ -518,18 +584,48 @@ export function registerDossierHandlers() {
     // =========================================================================
     createTypedHandler(
         dossierContracts.download,
-        async (_, { appId }) => {
+        async (_, { appId }, context) => {
+            if (!context.userId) throw new Error("Unauthorized");
+            const db = getRemoteDb();
             const app = await db.query.apps.findFirst({
-                where: (apps, { eq }) => eq(apps.id, appId),
+                where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
             });
 
             if (!app) {
                 throw new Error("Aplicación no encontrada.");
             }
 
+            const zipName = `dossier_${app.name.replace(/[^a-zA-Z0-9]/g, "_")}.zip`;
+
+            // Try to download from Bunny Storage first
+            const dossierRecord = await db.query.dossiers.findFirst({
+                where: and(eq(remoteSchema.dossiers.appId, appId), eq(remoteSchema.dossiers.userId, context.userId)),
+                orderBy: [desc(remoteSchema.dossiers.createdAt)],
+            });
+
+            if (dossierRecord && dossierRecord.storagePath.startsWith('/')) {
+                // Must be a Bunny Storage remote path
+                try {
+                    const bunnyConfig = JSON.parse(app.bunnyConfig as string);
+                    const sz = bunnyConfig.storageZones[0];
+                    const url = `https://${sz.hostname}/${sz.username}${dossierRecord.storagePath}`.replace(/\/+/g, "/").replace("https:/", "https://");
+                    const response = await fetch(url, {
+                        headers: { AccessKey: sz.password },
+                    });
+                    if (response.ok) {
+                        const buffer = await response.arrayBuffer();
+                        return {
+                            zipBase64: Buffer.from(buffer).toString("base64"),
+                            fileName: zipName,
+                        };
+                    }
+                } catch (e) {
+                    logger.warn("Could not download from Bunny Storage, falling back to local...", e);
+                }
+            }
+
             const appPath = getDyadAppPath(app.path);
             const dossierDir = getDossierDir(appPath);
-            const zipName = `dossier_${app.name.replace(/[^a-zA-Z0-9]/g, "_")}.zip`;
             const zipPath = path.join(dossierDir, zipName);
 
             if (!fs.existsSync(zipPath)) {

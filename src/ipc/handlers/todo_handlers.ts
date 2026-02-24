@@ -3,8 +3,8 @@ import { dialog } from "electron";
 import path from "path";
 import log from "electron-log";
 import { logChatInfo } from "../utils/chat_logger";
-import { db } from "../../db";
-import { apps, chats, messages, todos, todoSections } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { getDyadAppPath } from "../../paths/paths";
 import { todoContracts } from "../types/todo";
 import { getCurrentCommitHash } from "../utils/git_utils";
@@ -15,76 +15,100 @@ import fs from "fs/promises";
 const logger = log.scope("todo_handlers");
 
 export function registerTodoHandlers() {
-  createTypedHandler(todoContracts.getTodosByApp, async (_, appId) => {
+  createTypedHandler(todoContracts.getTodosByApp, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     return await db.query.todos.findMany({
-      where: eq(todos.appId, appId),
-      orderBy: [asc(todos.order), asc(todos.createdAt)],
+      where: and(eq(remoteSchema.todos.appId, appId), eq(remoteSchema.todos.userId, context.userId)),
+      orderBy: [asc(remoteSchema.todos.order), asc(remoteSchema.todos.createdAt)],
     });
   });
 
-  createTypedHandler(todoContracts.getTodos, async () => {
+  createTypedHandler(todoContracts.getTodos, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     return await db.query.todos.findMany({
-      orderBy: [asc(todos.createdAt)],
+      where: eq(remoteSchema.todos.userId, context.userId),
+      orderBy: [asc(remoteSchema.todos.createdAt)],
     });
   });
 
-  createTypedHandler(todoContracts.getTodoSectionsByApp, async (_, appId) => {
+  createTypedHandler(todoContracts.getTodoSectionsByApp, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     return await db.query.todoSections.findMany({
-      where: eq(todoSections.appId, appId),
-      orderBy: [asc(todoSections.order)],
+      where: and(eq(remoteSchema.todoSections.appId, appId), eq(remoteSchema.todoSections.userId, context.userId)),
+      orderBy: [asc(remoteSchema.todoSections.order)],
     });
   });
 
-  createTypedHandler(todoContracts.createTodoSection, async (_, params) => {
+  createTypedHandler(todoContracts.createTodoSection, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, title } = params;
     const existing = await db.query.todoSections.findMany({
-      where: eq(todoSections.appId, appId),
+      where: and(eq(remoteSchema.todoSections.appId, appId), eq(remoteSchema.todoSections.userId, context.userId)),
     });
     const maxOrder =
       existing.length > 0 ? Math.max(...existing.map((s) => s.order)) : -1;
 
     const [section] = await db
-      .insert(todoSections)
+      .insert(remoteSchema.todoSections)
       .values({
         appId,
+        userId: context.userId,
         title,
         order: maxOrder + 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
     return section;
   });
 
-  createTypedHandler(todoContracts.updateTodoSection, async (_, params) => {
+  createTypedHandler(todoContracts.updateTodoSection, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { sectionId, title, order } = params;
     const [section] = await db
-      .update(todoSections)
+      .update(remoteSchema.todoSections)
       .set({
         ...(title !== undefined && { title }),
         ...(order !== undefined && { order }),
         updatedAt: new Date(),
       })
-      .where(eq(todoSections.id, sectionId))
+      .where(and(eq(remoteSchema.todoSections.id, sectionId), eq(remoteSchema.todoSections.userId, context.userId)))
       .returning();
 
     return section;
   });
 
-  createTypedHandler(todoContracts.deleteTodoSection, async (_, sectionId) => {
+  createTypedHandler(todoContracts.deleteTodoSection, async (_, sectionId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    // Security: ensure the section belongs to the user
+    const section = await db.query.todoSections.findFirst({
+      where: and(eq(remoteSchema.todoSections.id, sectionId), eq(remoteSchema.todoSections.userId, context.userId)),
+    });
+    if (!section) throw new Error("Section not found or unauthorized");
+
     // Delete all todos in this section first
-    await db.delete(todos).where(eq(todos.sectionId, sectionId));
+    await db.delete(remoteSchema.todos).where(and(eq(remoteSchema.todos.sectionId, sectionId), eq(remoteSchema.todos.userId, context.userId)));
     // Then delete the section
-    await db.delete(todoSections).where(eq(todoSections.id, sectionId));
+    await db.delete(remoteSchema.todoSections).where(and(eq(remoteSchema.todoSections.id, sectionId), eq(remoteSchema.todoSections.userId, context.userId)));
   });
 
-  createTypedHandler(todoContracts.createTodo, async (_, params) => {
+  createTypedHandler(todoContracts.createTodo, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, content, sectionId } = params;
 
     const existingTodos = await db.query.todos.findMany({
       where: sectionId
-        ? and(eq(todos.appId, appId), eq(todos.sectionId, sectionId))
-        : eq(todos.appId, appId),
-      orderBy: [asc(todos.order)],
+        ? and(eq(remoteSchema.todos.appId, appId), eq(remoteSchema.todos.sectionId, sectionId), eq(remoteSchema.todos.userId, context.userId))
+        : and(eq(remoteSchema.todos.appId, appId), eq(remoteSchema.todos.userId, context.userId)),
+      orderBy: [asc(remoteSchema.todos.order)],
     });
 
     const maxOrder =
@@ -93,16 +117,19 @@ export function registerTodoHandlers() {
         : -1;
 
     const [todo] = await db
-      .insert(todos)
+      .insert(remoteSchema.todos)
       .values({
         appId,
+        userId: context.userId,
         sectionId: sectionId ?? null,
         content,
         description: params.description,
         prompt: params.prompt,
-        completed: params.completed ?? false,
+        completed: params.completed ? 1 : 0, // Using integer 1/0 for completed, as seen in schema
         checklist: params.checklist ?? [],
         order: maxOrder + 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -110,7 +137,9 @@ export function registerTodoHandlers() {
     return todo;
   });
 
-  createTypedHandler(todoContracts.updateTodo, async (_, params) => {
+  createTypedHandler(todoContracts.updateTodo, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { todoId, sectionId, content, completed, order } = params;
     const updateData: any = {
       updatedAt: new Date(),
@@ -121,7 +150,7 @@ export function registerTodoHandlers() {
     if (params.description !== undefined)
       updateData.description = params.description;
     if (params.prompt !== undefined) updateData.prompt = params.prompt;
-    if (completed !== undefined) updateData.completed = completed;
+    if (completed !== undefined) updateData.completed = completed ? 1 : 0;
     if (order !== undefined) updateData.order = order;
     if (params.developmentSummary !== undefined)
       updateData.developmentSummary = params.developmentSummary;
@@ -129,9 +158,9 @@ export function registerTodoHandlers() {
       updateData.checklist = params.checklist;
 
     const [todo] = await db
-      .update(todos)
+      .update(remoteSchema.todos)
       .set(updateData)
-      .where(eq(todos.id, todoId))
+      .where(and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)))
       .returning();
 
     if (!todo) throw new Error("Todo not found");
@@ -140,35 +169,42 @@ export function registerTodoHandlers() {
     return todo;
   });
 
-  createTypedHandler(todoContracts.deleteTodo, async (_, todoId) => {
-    await db.delete(todos).where(eq(todos.id, todoId));
+  createTypedHandler(todoContracts.deleteTodo, async (_, todoId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.delete(remoteSchema.todos).where(and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)));
     logger.info("Deleted todo:", todoId);
   });
 
-  createTypedHandler(todoContracts.reorderTodos, async (_, params) => {
+  createTypedHandler(todoContracts.reorderTodos, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, sectionId, todoIds } = params;
 
     for (let i = 0; i < todoIds.length; i++) {
       await db
-        .update(todos)
+        .update(remoteSchema.todos)
         .set({ order: i, sectionId: sectionId ?? null })
-        .where(and(eq(todos.id, todoIds[i]), eq(todos.appId, appId)));
+        .where(and(eq(remoteSchema.todos.id, todoIds[i]), eq(remoteSchema.todos.appId, appId), eq(remoteSchema.todos.userId, context.userId)));
     }
 
     logger.info("Reordered todos for app/section:", appId, sectionId);
   });
 
-  createTypedHandler(todoContracts.reorderTodoSections, async (_, params) => {
+  createTypedHandler(todoContracts.reorderTodoSections, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { appId, sectionIds } = params;
 
     for (let i = 0; i < sectionIds.length; i++) {
       await db
-        .update(todoSections)
+        .update(remoteSchema.todoSections)
         .set({ order: i })
         .where(
           and(
-            eq(todoSections.id, sectionIds[i]),
-            eq(todoSections.appId, appId),
+            eq(remoteSchema.todoSections.id, sectionIds[i]),
+            eq(remoteSchema.todoSections.appId, appId),
+            eq(remoteSchema.todoSections.userId, context.userId),
           ),
         );
     }
@@ -177,17 +213,19 @@ export function registerTodoHandlers() {
   });
 
   // Keep existing developTodo and refineTodoPrompt handlers as they are
-  createTypedHandler(todoContracts.developTodo, async (_, params) => {
+  createTypedHandler(todoContracts.developTodo, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { todoId } = params;
 
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId),
+      where: and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)),
     });
 
     if (!todo) throw new Error("Todo not found");
 
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, todo.appId),
+      where: and(eq(remoteSchema.apps.id, todo.appId), eq(remoteSchema.apps.userId, context.userId)),
       columns: { id: true, path: true, name: true },
     });
 
@@ -203,21 +241,27 @@ export function registerTodoHandlers() {
     }
 
     const [chat] = await db
-      .insert(chats)
+      .insert(remoteSchema.chats)
       .values({
         appId: app.id,
+        userId: context.userId,
         todoId: todo.id,
         initialCommitHash,
         title: `Desarrollar: ${todo.content.slice(0, 50)}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
     const initialContent = params.prompt || todo.prompt || todo.content;
 
-    await db.insert(messages).values({
+    await db.insert(remoteSchema.messages).values({
       chatId: chat.id,
+      userId: context.userId,
       role: "user",
       content: initialContent,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     logger.info(
@@ -232,12 +276,14 @@ export function registerTodoHandlers() {
     return { chatId: chat.id };
   });
 
-  createTypedHandler(todoContracts.refineTodoPrompt, async (_, params) => {
+  createTypedHandler(todoContracts.refineTodoPrompt, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     logger.info("refineTodoPrompt called with params:", params);
     const { todoId } = params;
 
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId),
+      where: and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)),
     });
 
     if (!todo) {
@@ -440,20 +486,22 @@ export function registerTodoHandlers() {
     }
     return fileInfos;
   });
-  createTypedHandler(todoContracts.generateTodoSummary, async (_, todoId) => {
+  createTypedHandler(todoContracts.generateTodoSummary, async (_, todoId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     logger.info("generateTodoSummary called for todoId:", todoId);
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId),
+      where: and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)),
     });
     if (!todo) throw new Error("Todo not found");
 
     // Find the last chat associated with this todo
     const chat = await db.query.chats.findFirst({
-      where: eq(chats.todoId, todoId),
-      orderBy: [desc(chats.createdAt)],
+      where: and(eq(remoteSchema.chats.todoId, todoId), eq(remoteSchema.chats.userId, context.userId)),
+      orderBy: [desc(remoteSchema.chats.createdAt)],
       with: {
         messages: {
-          orderBy: [asc(messages.createdAt)],
+          orderBy: [asc(remoteSchema.messages.createdAt)],
         },
       },
     });
@@ -501,9 +549,9 @@ export function registerTodoHandlers() {
         : summary;
 
       await db
-        .update(todos)
+        .update(remoteSchema.todos)
         .set({ developmentSummary: newSummary, updatedAt: new Date() })
-        .where(eq(todos.id, todoId));
+        .where(and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId)));
 
       return newSummary;
     } catch (error) {

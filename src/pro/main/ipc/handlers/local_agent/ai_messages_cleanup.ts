@@ -1,7 +1,7 @@
 import log from "electron-log";
 import { lt } from "drizzle-orm";
-import { db } from "@/db";
-import { messages } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 
 const logger = log.scope("ai_messages_cleanup");
 
@@ -17,10 +17,10 @@ export async function cleanupOldAiMessagesJson() {
   const cutoffDate = new Date(cutoffSeconds * 1000);
 
   try {
-    await db
-      .update(messages)
+    await getRemoteDb()
+      .update(remoteSchema.messages)
       .set({ aiMessagesJson: null })
-      .where(lt(messages.createdAt, cutoffDate));
+      .where(lt(remoteSchema.messages.createdAt, cutoffDate));
 
     logger.log("Cleaned up old ai_messages_json entries");
   } catch (err) {

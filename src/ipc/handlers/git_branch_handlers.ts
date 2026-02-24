@@ -33,14 +33,13 @@ import {
   gitResolveFileTheirs,
   gitRemoveIndexLock,
 } from "../utils/git_utils";
-import { getDyadAppPath } from "../../paths/paths";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 import log from "electron-log";
 import { withLock } from "../utils/lock_utils";
 import { updateAppGithubRepo, ensureCleanWorkspace } from "./github_handlers";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { githubContracts, gitContracts } from "../types/github";
 import type {
   GitBranchAppIdParams,
@@ -57,8 +56,11 @@ const logger = log.scope("git_branch_handlers");
 async function handleAbortMerge(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -69,13 +71,16 @@ async function handleAbortMerge(
 async function handleFetchFromGithub(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
@@ -92,7 +97,10 @@ async function handleFetchFromGithub(
 async function handleCreateBranch(
   event: IpcMainInvokeEvent,
   { appId, branch, from }: CreateGitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   // Validate branch name
   if (!branch || branch.length === 0 || branch.length > 255) {
     throw new Error("Branch name must be between 1 and 255 characters");
@@ -111,7 +119,7 @@ async function handleCreateBranch(
   ) {
     throw new Error("Invalid branch name");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -125,8 +133,11 @@ async function handleCreateBranch(
 async function handleDeleteBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -139,8 +150,11 @@ async function handleDeleteBranch(
 async function handleSwitchBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -192,14 +206,18 @@ async function handleSwitchBranch(
     org: app.githubOrg || undefined,
     repo: app.githubRepo || "",
     branch,
+    userId: context.userId,
   });
 }
 
 async function handleRenameBranch(
   event: IpcMainInvokeEvent,
   { appId, oldBranch, newBranch }: RenameGitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -221,6 +239,7 @@ async function handleRenameBranch(
       org: app.githubOrg || undefined,
       repo: app.githubRepo || "",
       branch: newBranch,
+      userId: context.userId,
     });
   }
 }
@@ -236,8 +255,11 @@ class MergeConflictError extends Error {
 async function handleMergeBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -297,8 +319,11 @@ async function handleMergeBranch(
 async function handleListLocalBranches(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<{ branches: string[]; current: string | null }> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -310,8 +335,11 @@ async function handleListLocalBranches(
 async function handleListRemoteBranches(
   event: IpcMainInvokeEvent,
   { appId, remote = "origin" }: { appId: number; remote?: string },
+  context: HandlerContext,
 ): Promise<string[]> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -322,8 +350,11 @@ async function handleListRemoteBranches(
 async function handleGetUncommittedFiles(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<UncommittedFile[]> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -333,8 +364,11 @@ async function handleGetUncommittedFiles(
 async function handleCommitChanges(
   event: IpcMainInvokeEvent,
   { appId, message, filesToStage }: { appId: number; message: string; filesToStage?: string[] },
+  context: HandlerContext,
 ): Promise<string> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -387,8 +421,11 @@ async function handleCommitChanges(
 async function handleStageFile(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
   await gitAdd({ path: appPath, filepath });
@@ -397,8 +434,11 @@ async function handleStageFile(
 async function handleUnstageFile(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
   await gitResetFile({ path: appPath, filepath });
@@ -407,8 +447,11 @@ async function handleUnstageFile(
 async function handleStageAll(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
   await gitAddAll({ path: appPath });
@@ -417,8 +460,11 @@ async function handleStageAll(
 async function handleUnstageAll(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
   await gitReset({ path: appPath });
@@ -427,8 +473,11 @@ async function handleUnstageAll(
 async function handleGetFileDiff(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ): Promise<{ additions: number; deletions: number; diff: string }> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
   return gitDiffFile({ path: appPath, filepath });
@@ -438,13 +487,16 @@ async function handleGetFileDiff(
 async function handlePullFromGithub(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
@@ -486,8 +538,11 @@ async function handlePullFromGithub(
 async function handleGetCommitHistory(
   _event: IpcMainInvokeEvent,
   { appId, limit = 50, offset = 0, branch }: { appId: number; limit?: number; offset?: number; branch?: string },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -502,8 +557,11 @@ async function handleGetCommitHistory(
 async function handleGetCommitDetail(
   _event: IpcMainInvokeEvent,
   { appId, commitHash }: { appId: number; commitHash: string },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -515,8 +573,11 @@ async function handleGetCommitDetail(
 async function handleGetConflictFiles(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -537,8 +598,11 @@ async function handleGetConflictFiles(
 async function handleResolveMergeOurs(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -548,8 +612,11 @@ async function handleResolveMergeOurs(
 async function handleResolveMergeTheirs(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -559,8 +626,11 @@ async function handleResolveMergeTheirs(
 async function handleAbortMergeFromGit(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -570,8 +640,11 @@ async function handleAbortMergeFromGit(
 async function handleGetConflictFileDiff(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -581,8 +654,11 @@ async function handleGetConflictFileDiff(
 async function handleResolveFileOurs(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -592,8 +668,11 @@ async function handleResolveFileOurs(
 async function handleResolveFileTheirs(
   _event: IpcMainInvokeEvent,
   { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 
@@ -603,8 +682,11 @@ async function handleResolveFileTheirs(
 async function handleRemoveIndexLock(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
   const appPath = getDyadAppPath(app.path);
 

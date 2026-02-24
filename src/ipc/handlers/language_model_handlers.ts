@@ -12,14 +12,11 @@ import {
   getLanguageModels,
   getLanguageModelsByProviders,
 } from "../shared/language_model_helpers";
-import { db } from "@/db";
-import {
-  language_models,
-  language_model_providers as languageModelProvidersSchema,
-  language_models as languageModelsSchema,
-} from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { IpcMainInvokeEvent } from "electron";
+import { HandlerContext } from "./base";
 
 const logger = log.scope("language_model_handlers");
 const handle = createLoggedHandler(logger);
@@ -27,8 +24,8 @@ const handle = createLoggedHandler(logger);
 export function registerLanguageModelHandlers() {
   handle(
     "get-language-model-providers",
-    async (): Promise<LanguageModelProvider[]> => {
-      return getLanguageModelProviders();
+    async (_event, _input, context: HandlerContext): Promise<LanguageModelProvider[]> => {
+      return getLanguageModelProviders(context.userId);
     },
   );
 
@@ -37,7 +34,10 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: CreateCustomLanguageModelProviderParams,
+      context: HandlerContext,
     ): Promise<LanguageModelProvider> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { id, name, apiBaseUrl, envVarName } = params;
 
       // Validation
@@ -54,10 +54,10 @@ export function registerLanguageModelHandlers() {
       }
 
       // Check if a provider with this ID already exists
-      const existingProvider = db
+      const existingProvider = await db
         .select()
-        .from(languageModelProvidersSchema)
-        .where(eq(languageModelProvidersSchema.id, id))
+        .from(remoteSchema.languageModelProviders)
+        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId)))
         .get();
 
       if (existingProvider) {
@@ -65,12 +65,15 @@ export function registerLanguageModelHandlers() {
       }
 
       // Insert the new provider
-      await db.insert(languageModelProvidersSchema).values({
+      await db.insert(remoteSchema.languageModelProviders).values({
+        userId: context.userId,
         // Make sure we will never have accidental collisions with builtin providers
         id: CUSTOM_PROVIDER_PREFIX + id,
         name,
-        api_base_url: apiBaseUrl,
-        env_var_name: envVarName || null,
+        apiBaseUrl,
+        envVarName: envVarName || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       // Return the newly created provider
@@ -89,7 +92,10 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: CreateCustomLanguageModelParams,
+      context: HandlerContext,
     ): Promise<void> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const {
         apiName,
         displayName,
@@ -111,21 +117,24 @@ export function registerLanguageModelHandlers() {
       }
 
       // Check if provider exists
-      const providers = await getLanguageModelProviders();
+      const providers = await getLanguageModelProviders(context.userId);
       const provider = providers.find((p) => p.id === providerId);
       if (!provider) {
         throw new Error(`Provider with ID "${providerId}" not found`);
       }
 
       // Insert the new model
-      await db.insert(languageModelsSchema).values({
+      await db.insert(remoteSchema.languageModels).values({
+        userId: context.userId,
         displayName,
         apiName,
         builtinProviderId: provider.type === "cloud" ? providerId : undefined,
         customProviderId: provider.type === "custom" ? providerId : undefined,
         description: description || null,
-        max_output_tokens: maxOutputTokens || null,
-        context_window: contextWindow || null,
+        maxOutputTokens: maxOutputTokens || null,
+        contextWindow: contextWindow || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
     },
   );
@@ -134,7 +143,10 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: CreateCustomLanguageModelProviderParams,
+      context: HandlerContext,
     ): Promise<LanguageModelProvider> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { id, name, apiBaseUrl, envVarName } = params;
 
       if (!id) {
@@ -148,35 +160,31 @@ export function registerLanguageModelHandlers() {
       }
 
       // Check if the provider being edited exists
-      const existingProvider = db
+      const existingProvider = await db
         .select()
-        .from(languageModelProvidersSchema)
-        .where(eq(languageModelProvidersSchema.id, CUSTOM_PROVIDER_PREFIX + id))
+        .from(remoteSchema.languageModelProviders)
+        .where(and(eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id), eq(remoteSchema.languageModelProviders.userId, context.userId)))
         .get();
 
       if (!existingProvider) {
         throw new Error(`Provider with ID "${id}" not found`);
       }
 
-      // Use transaction to ensure atomicity when updating provider and potentially its models
-      const result = db.transaction((tx) => {
+      // Use transaction to ensure atomicity
+      const result = await db.transaction(async (tx) => {
         // Update the provider
-        const updateResult = tx
-          .update(languageModelProvidersSchema)
+        const updateResult = await tx
+          .update(remoteSchema.languageModelProviders)
           .set({
-            id: CUSTOM_PROVIDER_PREFIX + id,
             name,
-            api_base_url: apiBaseUrl,
-            env_var_name: envVarName || null,
+            apiBaseUrl,
+            envVarName: envVarName || null,
+            updatedAt: new Date(),
           })
-          .where(
-            eq(languageModelProvidersSchema.id, CUSTOM_PROVIDER_PREFIX + id),
-          )
-          .run();
-
-        if (updateResult.changes === 0) {
-          throw new Error(`Failed to update provider with ID "${id}"`);
-        }
+          .where(and(
+            eq(remoteSchema.languageModelProviders.id, CUSTOM_PROVIDER_PREFIX + id),
+            eq(remoteSchema.languageModelProviders.userId, context.userId),
+          ));
 
         return {
           id,
@@ -196,7 +204,10 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: { modelId: string },
+      context: HandlerContext,
     ): Promise<void> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { modelId: apiName } = params;
 
       // Validation
@@ -210,8 +221,8 @@ export function registerLanguageModelHandlers() {
 
       const existingModel = await db
         .select()
-        .from(languageModelsSchema)
-        .where(eq(languageModelsSchema.apiName, apiName))
+        .from(remoteSchema.languageModels)
+        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId)))
         .get();
 
       if (!existingModel) {
@@ -221,8 +232,8 @@ export function registerLanguageModelHandlers() {
       }
 
       await db
-        .delete(languageModelsSchema)
-        .where(eq(languageModelsSchema.apiName, apiName));
+        .delete(remoteSchema.languageModels)
+        .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId)));
     },
   );
 
@@ -231,7 +242,10 @@ export function registerLanguageModelHandlers() {
     async (
       _event: IpcMainInvokeEvent,
       params: { providerId: string; modelApiName: string },
+      context: HandlerContext,
     ): Promise<void> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { providerId, modelApiName } = params;
       logger.info(
         `Handling delete-custom-model for ${providerId} / ${modelApiName}`,
@@ -243,7 +257,7 @@ export function registerLanguageModelHandlers() {
         `Attempting to delete custom model ${modelApiName} for provider ${providerId}`,
       );
 
-      const providers = await getLanguageModelProviders();
+      const providers = await getLanguageModelProviders(context.userId);
       const provider = providers.find((p) => p.id === providerId);
       if (!provider) {
         throw new Error(`Provider with ID "${providerId}" not found`);
@@ -251,28 +265,19 @@ export function registerLanguageModelHandlers() {
       if (provider.type === "local") {
         throw new Error("Local models cannot be deleted");
       }
-      const result = db
-        .delete(language_models)
+      const result = await db
+        .delete(remoteSchema.languageModels)
         .where(
           and(
             provider.type === "cloud"
-              ? eq(language_models.builtinProviderId, providerId)
-              : eq(language_models.customProviderId, providerId),
-
-            eq(language_models.apiName, modelApiName),
+              ? eq(remoteSchema.languageModels.builtinProviderId, providerId)
+              : eq(remoteSchema.languageModels.customProviderId, providerId),
+            eq(remoteSchema.languageModels.apiName, modelApiName),
+            eq(remoteSchema.languageModels.userId, context.userId),
           ),
-        )
-        .run();
+        );
 
-      if (result.changes === 0) {
-        logger.warn(
-          `No custom model found matching providerId=${providerId} and apiName=${modelApiName} for deletion.`,
-        );
-      } else {
-        logger.info(
-          `Successfully deleted ${result.changes} custom model(s) with apiName=${modelApiName} for provider=${providerId}`,
-        );
-      }
+      logger.info(`Successfully deleted custom model(s) with apiName=${modelApiName} for provider=${providerId}`);
     },
   );
 
@@ -281,7 +286,10 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: { providerId: string },
+      context: HandlerContext,
     ): Promise<void> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { providerId } = params;
 
       // Validation
@@ -295,50 +303,31 @@ export function registerLanguageModelHandlers() {
 
       // Check if the provider exists before attempting deletion
       const existingProvider = await db
-        .select({ id: languageModelProvidersSchema.id })
-        .from(languageModelProvidersSchema)
-        .where(eq(languageModelProvidersSchema.id, providerId))
+        .select({ id: remoteSchema.languageModelProviders.id })
+        .from(remoteSchema.languageModelProviders)
+        .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId)))
         .get();
 
       if (!existingProvider) {
-        // If the provider doesn't exist, maybe it was already deleted. Log and return.
         logger.warn(
           `Provider with ID "${providerId}" not found. It might have been deleted already.`,
         );
-        // Optionally, throw new Error(`Provider with ID "${providerId}" not found`);
-        // Deciding to return gracefully instead of throwing an error if not found.
         return;
       }
 
-      // Use a transaction to ensure atomicity
-      db.transaction((tx) => {
+      // Use a transaction
+      await db.transaction(async (tx) => {
         // 1. Delete associated models
-        const deleteModelsResult = tx
-          .delete(languageModelsSchema)
-          .where(eq(languageModelsSchema.customProviderId, providerId))
-          .run();
-        logger.info(
-          `Deleted ${deleteModelsResult.changes} model(s) associated with provider ${providerId}`,
-        );
+        await tx
+          .delete(remoteSchema.languageModels)
+          .where(and(eq(remoteSchema.languageModels.customProviderId, providerId), eq(remoteSchema.languageModels.userId, context.userId)));
 
         // 2. Delete the provider
-        const deleteProviderResult = tx
-          .delete(languageModelProvidersSchema)
-          .where(eq(languageModelProvidersSchema.id, providerId))
-          .run();
-
-        if (deleteProviderResult.changes === 0) {
-          // This case should ideally not happen if existingProvider check passed,
-          // but adding safety check within transaction.
-          logger.error(
-            `Failed to delete provider with ID "${providerId}" during transaction, although it was found initially. Rolling back.`,
-          );
-          throw new Error(
-            `Failed to delete provider with ID "${providerId}" which should have existed.`,
-          );
-        }
-        logger.info(`Successfully deleted provider with ID "${providerId}".`);
+        await tx
+          .delete(remoteSchema.languageModelProviders)
+          .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId)));
       });
+      logger.info(`Successfully deleted provider with ID "${providerId}".`);
     },
   );
 
@@ -347,11 +336,12 @@ export function registerLanguageModelHandlers() {
     async (
       event: IpcMainInvokeEvent,
       params: { providerId: string },
+      context: HandlerContext,
     ): Promise<LanguageModel[]> => {
       if (!params || typeof params.providerId !== "string") {
         throw new Error("Invalid parameters: providerId (string) is required.");
       }
-      const providers = await getLanguageModelProviders();
+      const providers = await getLanguageModelProviders(context.userId);
       const provider = providers.find((p) => p.id === params.providerId);
       if (!provider) {
         throw new Error(`Provider with ID "${params.providerId}" not found`);
@@ -359,14 +349,14 @@ export function registerLanguageModelHandlers() {
       if (provider.type === "local") {
         throw new Error("Local models cannot be fetched");
       }
-      return getLanguageModels({ providerId: params.providerId });
+      return getLanguageModels({ providerId: params.providerId, userId: context.userId });
     },
   );
 
   handle(
     "get-language-models-by-providers",
-    async (): Promise<Record<string, LanguageModel[]>> => {
-      return getLanguageModelsByProviders();
+    async (_event, _input, context: HandlerContext): Promise<Record<string, LanguageModel[]>> => {
+      return getLanguageModelsByProviders(context.userId);
     },
   );
 }
