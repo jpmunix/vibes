@@ -1,4 +1,4 @@
-import { useTheme } from "@/contexts/ThemeContext";
+
 import { ipc } from "@/ipc/types";
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,6 @@ interface WindowsControlsProps {
 }
 
 export function WindowsControls({ className = "", buttonClassName = "h-11" }: WindowsControlsProps) {
-    const { isDarkMode } = useTheme();
 
     const [showWindowControls, setShowWindowControls] = useState(false);
 
@@ -47,7 +46,7 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
                 aria-label="Minimize"
             >
                 <svg width="12" height="1" viewBox="0 0 12 1" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="12" height="1" fill={isDarkMode ? "#ffffff" : "#000000"} />
+                    <rect width="12" height="1" className="fill-black dark:fill-white" />
                 </svg>
             </button>
             <button
@@ -56,7 +55,7 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
                 aria-label="Maximize"
             >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" y="0.5" width="11" height="11" stroke={isDarkMode ? "#ffffff" : "#000000"} />
+                    <rect x="0.5" y="0.5" width="11" height="11" className="stroke-black dark:stroke-white" />
                 </svg>
             </button>
             <button
@@ -65,7 +64,7 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
                 aria-label="Close"
             >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L11 11M1 11L11 1" stroke={isDarkMode ? "#ffffff" : "#000000"} strokeWidth="1.5" className="group-hover:stroke-white" />
+                    <path d="M1 1L11 11M1 11L11 1" strokeWidth="1.5" className="stroke-black dark:stroke-white group-hover:stroke-white group-hover:dark:stroke-white" />
                 </svg>
             </button>
         </div>
