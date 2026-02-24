@@ -13,6 +13,14 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
     });
     if (remoteRecord) {
       const remoteSettings = JSON.parse(remoteRecord.settingsJson);
+
+      // --- SESSION DATA EXCLUSION ---
+      // We must NEVER overwrite local session data with remote settings data.
+      // Remote settings are for user preferences, not for session management.
+      // If we overwrite these, the user will be logged out on the next launch.
+      delete remoteSettings.userId;
+      delete remoteSettings.sessionToken;
+
       // We must explicitly save these to disk so they immediately become the local truth
       // without needing an initial save from the React frontend.
       writeSettings(remoteSettings);
@@ -58,7 +66,13 @@ export function registerSettingsHandlers() {
     if (context.userId) {
       const db = getRemoteDb();
       try {
-        const settingsJson = JSON.stringify(updated);
+        // --- SESSION DATA EXCLUSION ---
+        // We strip session data before saving to the remote DB to keep it clean.
+        // This prevents stale/old session data from being synced to other devices
+        // and causing unexpected logouts.
+        const { userId: _u, sessionToken: _s, ...syncableSettings } = updated;
+        const settingsJson = JSON.stringify(syncableSettings);
+
         // Find existing record to update or insert new one
         const existing = await db.query.userSettings.findFirst({
           where: eq(remoteSchema.userSettings.userId, context.userId),

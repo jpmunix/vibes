@@ -31,8 +31,13 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { createTypedHandler, HandlerContext } from "./base";
 import { GithubUser } from "../../lib/schemas";
-import { githubContracts } from "../types/github";
+import {
+  githubContracts,
+  CloneRepoParams,
+  CloneRepoResult,
+} from "../types/github";
 import log from "electron-log";
+import { getDyadAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";

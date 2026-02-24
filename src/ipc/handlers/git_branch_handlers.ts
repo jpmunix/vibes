@@ -41,6 +41,7 @@ import { withLock } from "../utils/lock_utils";
 import { updateAppGithubRepo, ensureCleanWorkspace } from "./github_handlers";
 import { createTypedHandler, HandlerContext } from "./base";
 import { githubContracts, gitContracts } from "../types/github";
+import { getDyadAppPath } from "../../paths/paths";
 import type {
   GitBranchAppIdParams,
   CreateGitBranchParams,
