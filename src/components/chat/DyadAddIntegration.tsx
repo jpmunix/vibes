@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
@@ -7,6 +6,7 @@ import { useAtomValue } from "jotai";
 import { showError } from "@/lib/toast";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useStreamChat } from "@/hooks/useStreamChat";
+import { ipc } from "@/ipc/types";
 
 interface DyadAddIntegrationProps {
   node: {
@@ -21,7 +21,6 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
   node,
   children,
 }) => {
-  const navigate = useNavigate();
   const { streamMessage, isStreaming } = useStreamChat();
 
   const { provider } = node.properties;
@@ -31,21 +30,25 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
 
   const handleKeepGoingClick = () => {
     if (chatId === null) {
-      showError("No chat found");
+      showError("No se encontró el chat");
       return;
     }
     streamMessage({
-      prompt: "Continue. I have completed the Supabase integration.",
+      prompt: "Continuar. He completado la integración con Supabase.",
       chatId,
     });
   };
 
   const handleSetupClick = () => {
     if (!appId) {
-      showError("No app ID found");
+      showError("No se encontró el ID de la aplicación");
       return;
     }
-    navigate({ to: "/app-details", search: { appId } });
+    // Use IPC to navigate the main window — works from both main and chat windows
+    ipc.system.navigateMainWindow({
+      route: "/app-details",
+      search: { appId },
+    });
   };
 
   if (app?.supabaseProjectName) {
@@ -75,12 +78,12 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
             />
           </svg>
           <span className="font-semibold text-green-800 dark:text-green-300">
-            Supabase integration complete
+            Integración con Supabase completada
           </span>
         </div>
         <div className="text-sm text-green-900 dark:text-green-100">
           <p>
-            This app is connected to Supabase project:{" "}
+            Esta app está conectada al proyecto Supabase:{" "}
             <span className="font-mono font-medium bg-green-100 dark:bg-green-900/40 px-1 py-0.5 rounded">
               {app.supabaseProjectName}
             </span>
@@ -92,7 +95,7 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
           variant="default"
           disabled={isStreaming}
         >
-          Continue
+          Continuar
         </Button>
       </div>
     );
@@ -102,12 +105,12 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
     <div className="flex flex-col gap-2 my-2 p-3 border rounded-md bg-secondary/10 dark:bg-secondary/20">
       <div className="text-sm">
         <div className="font-medium text-foreground">
-          Integrate with {provider}?
+          ¿Integrar con {provider}?
         </div>
         <div className="text-muted-foreground text-xs">{children}</div>
       </div>
       <Button onClick={handleSetupClick} className="self-start w-full">
-        Set up {provider}
+        Configurar {provider}
       </Button>
     </div>
   );

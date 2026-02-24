@@ -297,6 +297,19 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Cross-window navigation: when a secondary window (chat, etc.) requests
+  // navigation, the main process sends us this event so we navigate the router.
+  useEffect(() => {
+    // @ts-ignore — using raw preload API for custom event
+    const unsubscribe = window.electron?.ipcRenderer?.on?.(
+      "navigate-to-route",
+      (payload: { route: string; search?: Record<string, any> }) => {
+        router.navigate({ to: payload.route as any, search: payload.search });
+      },
+    );
+    return () => unsubscribe?.();
+  }, []);
+
   // Agent problems updates - update the TanStack Query cache when the agent runs type checks
   useEffect(() => {
     const unsubscribe = ipc.events.agent.onProblemsUpdate((payload) => {

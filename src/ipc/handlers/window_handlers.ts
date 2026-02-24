@@ -312,4 +312,30 @@ export function registerWindowHandlers() {
     }
     return null;
   });
+
+  // Cross-window navigation: focus the main window and tell it to navigate
+  createTypedHandler(systemContracts.navigateMainWindow, async (_event, { route, search }) => {
+    // Find the main window — it's the one NOT tracked as chat/db/git
+    const trackedWindows = new Set<number>();
+    for (const w of chatWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of databaseWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of gitWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+
+    const mainWindow = BrowserWindow.getAllWindows().find(
+      (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
+    );
+
+    if (!mainWindow) {
+      logger.warn("navigateMainWindow: could not find main window");
+      return;
+    }
+
+    // Focus
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+
+    // Tell renderer to navigate
+    mainWindow.webContents.send("navigate-to-route", { route, search });
+    logger.info(`navigateMainWindow: sent navigation to ${route}`);
+  });
 }

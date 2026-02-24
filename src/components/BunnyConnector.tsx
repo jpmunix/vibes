@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -278,6 +278,16 @@ export function BunnyConnector({ appId }: { appId: number }) {
     const [dbSectionOpen, setDbSectionOpen] = useState(false);
     const [storageSectionOpen, setStorageSectionOpen] = useState(false);
 
+    // Snapshot of the last saved config to detect unsaved changes
+    const savedSnapshot = useRef<string>("");
+
+    const currentSnapshot = useMemo(
+        () => JSON.stringify({ databases, storageZones }),
+        [databases, storageZones],
+    );
+
+    const hasUnsavedChanges = currentSnapshot !== savedSnapshot.current;
+
     useEffect(() => {
         loadConfig();
     }, [appId]);
@@ -289,8 +299,12 @@ export function BunnyConnector({ appId }: { appId: number }) {
             if (config) {
                 setDatabases(config.databases);
                 setStorageZones(config.storageZones);
-                if (config.databases.length > 0) setDbSectionOpen(true);
-                if (config.storageZones.length > 0) setStorageSectionOpen(true);
+                savedSnapshot.current = JSON.stringify({
+                    databases: config.databases,
+                    storageZones: config.storageZones,
+                });
+            } else {
+                savedSnapshot.current = JSON.stringify({ databases: [], storageZones: [] });
             }
         } catch (err) {
             console.error("Error loading Bunny config:", err);
@@ -330,6 +344,10 @@ export function BunnyConnector({ appId }: { appId: number }) {
                 storageZones,
             };
             await ipc.bunny.setConfig({ appId, config });
+            // Update saved snapshot and collapse sections
+            savedSnapshot.current = JSON.stringify({ databases, storageZones });
+            setDbSectionOpen(false);
+            setStorageSectionOpen(false);
             showSuccess("Configuración de Bunny.net guardada");
         } catch (err) {
             showError(err);
@@ -355,6 +373,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
     }
 
     const hasData = databases.length > 0 || storageZones.length > 0;
+    const showSaveButton = hasData && hasUnsavedChanges;
 
     if (loading) {
         return (
@@ -506,8 +525,8 @@ export function BunnyConnector({ appId }: { appId: number }) {
                     </div>
                 </div>
 
-                {/* Save Button */}
-                {hasData && (
+                {/* Save Button – only visible when there are unsaved changes */}
+                {showSaveButton && (
                     <Button
                         onClick={handleSave}
                         disabled={saving}

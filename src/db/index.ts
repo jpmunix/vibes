@@ -286,7 +286,7 @@ function ensureMessagesDurationColumn(sqlite: Database.Database): void {
     }
 
     // Ensure migration 0043 is recorded so migrate() skips it
-    const MIGRATION_0043_HASH_PLACEHOLDER = "duration_ms_migration_0043";
+    const MIGRATION_0043_HASH = "b0331b6f47a2036b87703655eae519dd3f03d290321214f9c5d2a5df1b5abab8";
     const MIGRATION_0043_CREATED_AT = 1771700000000;
 
     try {
@@ -295,19 +295,19 @@ function ensureMessagesDurationColumn(sqlite: Database.Database): void {
         .get();
 
       if (migrationsTableExists) {
-        // Check if the column already exists and migration is not recorded
-        // We check by content since we don't know the real hash until drizzle-kit generates it
-        const existingMigration = sqlite
-          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE created_at = ?`)
-          .get(MIGRATION_0043_CREATED_AT);
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_0043_HASH);
 
-        if (!existingMigration && columnNames.has("duration_ms")) {
-          // Column exists but migration not recorded — will be handled by migrate()
-          logger.log("duration_ms column exists, migration record will be handled by migrate()");
+        if (!migrationExists) {
+          logger.log("Marking migration 0043 (duration_ms) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_0043_HASH, MIGRATION_0043_CREATED_AT);
         }
       }
     } catch (migError) {
-      logger.log("Could not check migration 0043 status");
+      logger.log("Could not mark migration 0043 as applied");
     }
   } catch (error) {
     logger.error("Error ensuring messages duration_ms column:", error);
@@ -405,6 +405,31 @@ function ensureBunnyConfigColumn(sqlite: Database.Database): void {
     if (!columnNames.has("bunny_config")) {
       logger.log("Adding missing 'bunny_config' column to apps");
       sqlite.exec(`ALTER TABLE \`apps\` ADD \`bunny_config\` text`);
+    }
+
+    // Ensure migration 0044 is recorded so migrate() skips it
+    const MIGRATION_0044_HASH = "e9fbe59261d977b03f9840368604920e35781fb47fcf71ef55f75cc04d62c91a";
+    const MIGRATION_0044_CREATED_AT = 1771800000000;
+
+    try {
+      const migrationsTableExists = sqlite
+        .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations'`)
+        .get();
+
+      if (migrationsTableExists) {
+        const migrationExists = sqlite
+          .prepare(`SELECT 1 FROM __drizzle_migrations WHERE hash = ?`)
+          .get(MIGRATION_0044_HASH);
+
+        if (!migrationExists) {
+          logger.log("Marking migration 0044 (bunny_config) as applied");
+          sqlite
+            .prepare(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)`)
+            .run(MIGRATION_0044_HASH, MIGRATION_0044_CREATED_AT);
+        }
+      }
+    } catch (migError) {
+      logger.log("Could not mark migration 0044 as applied");
     }
   } catch (error) {
     logger.error("Error ensuring bunny_config column:", error);

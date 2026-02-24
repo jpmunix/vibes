@@ -347,6 +347,16 @@ export const systemContracts = {
     input: z.void(),
     output: z.string().nullable(),
   }),
+
+  // Cross-window navigation: tells the main window to navigate to a route
+  navigateMainWindow: defineContract({
+    channel: "window:navigate-main",
+    input: z.object({
+      route: z.string(),
+      search: z.record(z.string(), z.any()).optional(),
+    }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================

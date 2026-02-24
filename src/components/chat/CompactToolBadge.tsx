@@ -208,6 +208,8 @@ const NON_COMPACTABLE_TAGS = new Set([
     "dyad-problem-report",
     "dyad-chat-summary",
     "dyad-command",
+    "dyad-add-integration",  // Interactive: contains setup buttons (e.g. Supabase)
+    "dyad-ask-user",          // Interactive: contains question + response options
 ]);
 
 export function shouldCompact(tag: string): boolean {

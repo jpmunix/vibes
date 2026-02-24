@@ -94,7 +94,7 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
     );
   }
 
-  const currentUpgrades = upgrades?.filter((u) => u.isNeeded) ?? [];
+  const currentUpgrades = upgrades?.filter((u) => u.isNeeded && u.id !== "capacitor") ?? [];
 
   if (currentUpgrades.length === 0) {
     return null;

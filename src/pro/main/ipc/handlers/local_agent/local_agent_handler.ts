@@ -655,7 +655,10 @@ export async function handleLocalAgentStream(
     }
 
     // Check if the model failed to use any state-modifying tools when we expected it to
-    if (!readOnly && !hasStateModifyingToolCalls) {
+    // But skip the warning if the response contains interactive content (e.g. integration prompts, user questions)
+    const INTERACTIVE_TAGS = ["dyad-add-integration", "dyad-ask-user"];
+    const hasInteractiveContent = INTERACTIVE_TAGS.some(tag => fullResponse.includes(`<${tag}`));
+    if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent) {
       // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
       const noOpWarning = `\n<dyad-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</dyad-output>\n`;
       fullResponse += noOpWarning;
