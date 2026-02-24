@@ -318,6 +318,8 @@ export const UserSettingsSchema = z
     ////////////////////////////////
     selectedModel: LargeLanguageModelSchema,
     providerSettings: z.record(z.string(), ProviderSettingSchema),
+    // DEPRECATED — legacy individual model fields. Use standardModeModel / proModeModel instead.
+    // Kept in schema for backwards-compat (.passthrough() preserves them in settings files).
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
@@ -325,9 +327,9 @@ export const UserSettingsSchema = z
     summaryModel: z.string().optional(),
     knowledgeExtractionModel: z.string().optional(),
     dossierModel: z.string().optional(),
-    // Unified model keys (v2) — replace the 6 individual keys above
-    standardModeModel: z.string().optional(),
-    proModeModel: z.string().optional(),
+    // Unified model keys — two tiers that replace all 7 individual fields above
+    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates, dossiers)
+    proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),

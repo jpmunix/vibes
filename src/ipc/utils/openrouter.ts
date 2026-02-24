@@ -105,7 +105,7 @@ export async function openRouterCompletion(
   const settings = readSettings();
 
   const {
-    model, // optional, will default to settings.appTitleGenerationModel or a fallback
+    model, // optional, will default to settings.standardModeModel or a fallback
     messages,
     temperature = 0.3,
     max_tokens,
@@ -115,7 +115,7 @@ export async function openRouterCompletion(
   } = options;
 
   const defaultModel =
-    settings.appTitleGenerationModel || "openai/gpt-4.1-nano";
+    settings.standardModeModel || "openai/gpt-4.1-nano";
   const finalModel = model || defaultModel;
 
   const body: any = {

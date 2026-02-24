@@ -52,9 +52,13 @@ import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
 import { registerDossierHandlers } from "./handlers/dossier_handlers";
 import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
+import { registerAuthHandlers } from "./handlers/auth_handlers";
+import { registerMigrationHandlers } from "./handlers/migration_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
+  registerAuthHandlers();
+  registerMigrationHandlers();
   registerAppHandlers();
   registerChatHandlers();
   registerNoteHandlers();

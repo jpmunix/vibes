@@ -131,7 +131,7 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.turboEditModel || "openai/gpt-4.1-mini";
+  const model = settings.proModeModel || "openai/gpt-5.1-codex-mini";
   const body = parseTurboFileEditBody(options.body);
 
   let data: any;

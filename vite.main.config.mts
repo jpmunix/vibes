@@ -28,6 +28,13 @@ export default defineConfig({
         "@babel/parser",
         "@babel/traverse",
         "@babel/types",
+        // Externalize libSQL native bindings (Bunny Edge SQL)
+        "@libsql/client",
+        "@libsql/linux-x64-gnu",
+        "@libsql/linux-x64-musl",
+        "@libsql/darwin-arm64",
+        "@libsql/darwin-x64",
+        "@libsql/win32-x64-msvc",
       ],
     },
   },

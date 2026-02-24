@@ -2,7 +2,7 @@ import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
 import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   CheckSquare,
@@ -29,9 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { userAtom } from "@/atoms/authAtoms";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { AuthModal } from "@/components/AuthModal";
+import { ipc } from "@/ipc/types";
 import { ProfileModal } from "@/components/ProfileModal";
 import { BackupModal } from "@/components/BackupModal";
 import { useRouter } from "@tanstack/react-router";
@@ -107,15 +105,22 @@ export function AppSidebar() {
   const user = useAtomValue(userAtom);
   const { navigate } = useRouter();
   const { settings } = useSettings();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const setUser = useSetAtom(userAtom);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      // Handle both VibesUser (.id) and legacy Firebase User (.uid)
+      const userId = (user as any)?.id || (user as any)?.uid;
+      if (userId) {
+        await ipc.auth.logout({ userId });
+      }
     } catch (error) {
       console.error("Logout error:", error);
+    } finally {
+      // Always clear client state, even if server call fails
+      setUser(null);
     }
   };
 
@@ -218,7 +223,7 @@ export function AppSidebar() {
               </button>
 
               {/* User Avatar */}
-              {user ? (
+              {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -226,7 +231,7 @@ export function AppSidebar() {
                       title={user.displayName || user.email || "Usuario"}
                     >
                       <SimpleAvatar
-                        src={user.photoURL || undefined}
+                        src={user.photoUrl || undefined}
                         className="h-7 w-7"
                         fallbackText={(
                           user.displayName?.[0] ||
@@ -243,7 +248,7 @@ export function AppSidebar() {
                     <div className="flex items-center gap-3 px-2 py-3">
                       <div className="h-10 w-10">
                         <SimpleAvatar
-                          src={user.photoURL || undefined}
+                          src={user.photoUrl || undefined}
                           fallbackText={(
                             user.displayName?.[0] ||
                             user.email?.[0] ||
@@ -292,14 +297,6 @@ export function AppSidebar() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              ) : (
-                <button
-                  className="no-app-region-drag cursor-pointer relative flex items-center justify-center px-2 py-2 rounded-2xl hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
-                  title="Iniciar sesión"
-                  onClick={() => setIsAuthModalOpen(true)}
-                >
-                  <SimpleAvatar className="h-7 w-7" fallbackText={<UserIcon className="h-4 w-4" />} />
-                </button>
               )}
             </div>
           </div>
@@ -319,10 +316,6 @@ export function AppSidebar() {
       <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
 
       {/* User modals */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
       {user && (
         <>
           <ProfileModal

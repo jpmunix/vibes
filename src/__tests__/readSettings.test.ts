@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { safeStorage } from "electron";
-import { readSettings, getSettingsFilePath } from "@/main/settings";
+import { readSettings, getSettingsFilePath, resetSettingsCache } from "@/main/settings";
 import { getUserDataPath } from "@/paths/paths";
 import { UserSettings } from "@/lib/schemas";
 
@@ -30,6 +30,7 @@ describe("readSettings", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSettingsCache();
     mockGetUserDataPath.mockReturnValue(mockUserDataPath);
     mockPath.join.mockReturnValue(mockSettingsPath);
     mockSafeStorage.isEncryptionAvailable.mockReturnValue(true);
@@ -54,10 +55,8 @@ describe("readSettings", () => {
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
           "aiQueryLogRotationThreshold": "200",
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
           "chatLanguage": "es",
-          "debateModel": "openai/gpt-5-mini",
           "embeddingsEnabled": true,
           "embeddingsModel": "openai/text-embedding-3-small",
           "enableChatCompletionNotifications": true,
@@ -70,6 +69,7 @@ describe("readSettings", () => {
           "isRunning": false,
           "lastKnownPerformance": undefined,
           "previewPosition": "right",
+          "proModeModel": "openai/gpt-5.1-codex-mini",
           "providerSettings": {},
           "selectedChatMode": "local-agent",
           "selectedModel": {
@@ -79,10 +79,9 @@ describe("readSettings", () => {
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "showTokenBar": false,
-          "summaryModel": "google/gemini-3-flash-preview",
+          "standardModeModel": "openai/gpt-4.1-nano",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
-          "turboEditModel": "openai/gpt-4.1",
           "windowState": undefined,
         }
       `);
@@ -320,10 +319,8 @@ describe("readSettings", () => {
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
           "aiQueryLogRotationThreshold": "200",
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
           "autoExpandPreviewPanel": false,
           "chatLanguage": "es",
-          "debateModel": "openai/gpt-5-mini",
           "embeddingsEnabled": true,
           "embeddingsModel": "openai/text-embedding-3-small",
           "enableChatCompletionNotifications": true,
@@ -336,6 +333,7 @@ describe("readSettings", () => {
           "isRunning": false,
           "lastKnownPerformance": undefined,
           "previewPosition": "right",
+          "proModeModel": "openai/gpt-5.1-codex-mini",
           "providerSettings": {},
           "selectedChatMode": "local-agent",
           "selectedModel": {
@@ -345,10 +343,9 @@ describe("readSettings", () => {
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
           "showTokenBar": false,
-          "summaryModel": "google/gemini-3-flash-preview",
+          "standardModeModel": "openai/gpt-4.1-nano",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
-          "turboEditModel": "openai/gpt-4.1",
           "windowState": undefined,
         }
       `);

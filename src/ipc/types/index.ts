@@ -61,6 +61,7 @@ export { debateContracts, debateStreamContract } from "./debate";
 export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
 export { dossierContracts, dossierStreamContract } from "./dossier";
+export { authContracts } from "./auth";
 
 // =============================================================================
 // Client Exports
@@ -101,6 +102,7 @@ export { freeAgentQuotaClient } from "./free_agent_quota";
 export { knowledgeClient } from "./knowledge";
 export { aiQueryLogClient } from "./ai_query_logs";
 export { dossierClient, dossierStreamClient } from "./dossier";
+export { authClient } from "./auth";
 
 // =============================================================================
 // Type Exports
@@ -444,6 +446,7 @@ import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
 import { aiQueryLogClient } from "./ai_query_logs";
 import { dossierClient, dossierStreamClient } from "./dossier";
+import { authClient } from "./auth";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -512,6 +515,9 @@ export const ipc = {
   knowledge: knowledgeClient,
   aiQueryLogs: aiQueryLogClient,
   dossier: dossierClient,
+
+  // Auth
+  auth: authClient,
 
   // Event clients for main->renderer pub/sub
   events: {

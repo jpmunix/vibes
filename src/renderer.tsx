@@ -580,13 +580,24 @@ if (windowType === "database" && appIdStr) {
     );
   });
 } else {
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <PostHogProvider client={posthogClient}>
+  // Lazy-import AuthGate to avoid loading auth deps in sub-windows
+  import("./components/AuthGate").then(({ AuthGate }) => {
+    function AuthGateApp() {
+      return (
+        <AuthGate>
           <App />
-        </PostHogProvider>
-      </QueryClientProvider>
-    </StrictMode>,
-  );
+        </AuthGate>
+      );
+    }
+
+    createRoot(document.getElementById("root")!).render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <PostHogProvider client={posthogClient}>
+            <AuthGateApp />
+          </PostHogProvider>
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  });
 }

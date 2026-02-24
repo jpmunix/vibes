@@ -50,6 +50,8 @@ import { visualEditingContracts } from "../types/visual-editing";
 import { knowledgeContracts } from "../types/knowledge";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { dossierContracts, dossierStreamContract } from "../types/dossier";
+import { authContracts } from "../types/auth";
+import { migrationContracts, migrationEvents } from "../types/migration";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -119,6 +121,8 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(knowledgeContracts),
   ...getInvokeChannels(aiQueryLogContracts),
   ...getInvokeChannels(dossierContracts),
+  ...getInvokeChannels(authContracts),
+  ...getInvokeChannels(migrationContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,
@@ -145,6 +149,7 @@ export const VALID_RECEIVE_CHANNELS = [
   ...getReceiveChannels(mcpEvents),
   ...getReceiveChannels(systemEvents),
   ...getReceiveChannels(miscEvents),
+  ...getReceiveChannels(migrationEvents),
 
   // Additional chat events
   "chat:model:selected",

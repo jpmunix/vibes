@@ -23,10 +23,9 @@ const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
-  turboEditModel: "openai/gpt-4.1",
-  appTitleGenerationModel: "openai/gpt-4.1-nano",
-  debateModel: "openai/gpt-5-mini",
-  summaryModel: "google/gemini-3-flash-preview",
+  // Unified model keys (v2) — two tiers replace the old 7 individual fields
+  standardModeModel: "openai/gpt-4.1-nano",
+  proModeModel: "openai/gpt-5.1-codex-mini",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
@@ -58,6 +57,11 @@ const SETTINGS_FILE = "user-settings.json";
 
 // In-memory cache for settings to avoid blocking I/O
 let cachedSettings: UserSettings | null = null;
+
+/** @internal — only for testing. Clears the in-memory cache so the next readSettings() re-reads from disk. */
+export function resetSettingsCache() {
+  cachedSettings = null;
+}
 
 export function getSettingsFilePath(): string {
   return path.join(getUserDataPath(), SETTINGS_FILE);
@@ -356,6 +360,45 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v4 qwen-plus:thinking swap:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v5 unified model keys ──
+    // Replace the 7 individual model fields with 2 unified keys:
+    //   standardModeModel  (cheap/fast)  ← appTitleGenerationModel, todoAnalysisModel, summaryModel, debateModel, dossierModel
+    //   proModeModel        (thinking)   ← turboEditModel, knowledgeExtractionModel
+    if (!(validatedSettings as any)._migrations?.v5_unified_model_keys) {
+      const migrated: Partial<UserSettings> = {};
+      const vs = validatedSettings as any;
+
+      // Pick the best value for standardModeModel from old fields (first non-empty wins)
+      const standardCandidate = vs.standardModeModel || vs.appTitleGenerationModel || vs.summaryModel || vs.todoAnalysisModel || vs.debateModel || vs.dossierModel;
+      if (standardCandidate) {
+        (migrated as any).standardModeModel = standardCandidate;
+      } else {
+        (migrated as any).standardModeModel = "openai/gpt-4.1-nano";
+      }
+
+      // Pick the best value for proModeModel from old fields
+      const proCandidate = vs.proModeModel || vs.turboEditModel || vs.knowledgeExtractionModel;
+      if (proCandidate && proCandidate !== "SAME_AS_CHAT") {
+        (migrated as any).proModeModel = proCandidate;
+      } else {
+        (migrated as any).proModeModel = "openai/gpt-5.1-codex-mini";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v5_unified_model_keys: true },
+      };
+      logger.info("[Migration] Applied v5 unified model keys:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v5 unified model keys:", e);
       }
       return migratedSettings as UserSettings;
     }

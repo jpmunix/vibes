@@ -13,9 +13,6 @@ import {
   previewModeAtom,
   selectedAppIdAtom,
 } from "@/atoms/appAtoms";
-import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 import { useSettings } from "@/hooks/useSettings";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
@@ -37,17 +34,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const setChatInput = useSetAtom(chatInputValueAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
-  const setUser = useSetAtom(userAtom);
-  const setAuthLoading = useSetAtom(authLoadingAtom);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setAuthLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const zoomLevel = settings?.zoomLevel ?? DEFAULT_ZOOM_LEVEL;
