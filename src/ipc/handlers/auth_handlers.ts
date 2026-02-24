@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getUserDataPath } from "../../paths/paths";
 import { writeSettings } from "../../main/settings";
+import { forceSyncRemoteSettingsToLocal } from "./settings_handlers";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
@@ -164,6 +165,9 @@ export function registerAuthHandlers(): void {
             sessionToken: { value: sessionToken, encryptionType: "plaintext" },
         });
 
+        // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
+        await forceSyncRemoteSettingsToLocal(user.id);
+
         return {
             user: toUserDto(user),
             sessionToken,
@@ -201,8 +205,11 @@ export function registerAuthHandlers(): void {
             // Ensure settings are synced
             writeSettings({
                 userId: user.id,
-                sessionToken: { value: sessionToken, encryptionType: "plaintext" },
+                sessionToken: { value: input.sessionToken, encryptionType: "plaintext" },
             });
+
+            // Crucial: fetch user settings from remote and hard-overwrite the local disk to prevent defaults slipping
+            await forceSyncRemoteSettingsToLocal(user.id);
 
             return {
                 valid: true,

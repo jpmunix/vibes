@@ -5,6 +5,25 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 
+export async function forceSyncRemoteSettingsToLocal(userId: string) {
+  const db = getRemoteDb();
+  try {
+    const remoteRecord = await db.query.userSettings.findFirst({
+      where: eq(remoteSchema.userSettings.userId, userId),
+    });
+    if (remoteRecord) {
+      const remoteSettings = JSON.parse(remoteRecord.settingsJson);
+      // We must explicitly save these to disk so they immediately become the local truth
+      // without needing an initial save from the React frontend.
+      writeSettings(remoteSettings);
+      return true;
+    }
+  } catch (error) {
+    console.error("Error force syncing remote user settings to local:", error);
+  }
+  return false;
+}
+
 export function registerSettingsHandlers() {
   // Note: Settings handlers intentionally use createTypedHandler without logging
   // to avoid logging sensitive data (API keys, tokens, etc.) from args/return values.

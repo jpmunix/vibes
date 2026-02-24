@@ -187,6 +187,7 @@ src/ipc/handlers/app_handlers.ts(2476,58): error TS2769: No overload matches thi
 src/ipc/handlers/app_handlers.ts(2504,58): error TS2769: No overload matches this call.
   The last overload gave the following error.
     Argument of type 'SQLiteColumn<{ name: "user_id"; tableName: "apps"; dataType: "string"; columnType: "SQLiteText"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: false; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, { ...; }>' is not assignable to parameter of type 'never'.
+src/ipc/handlers/auth_handlers.ts(204,40): error TS2304: Cannot find name 'sessionToken'.
 src/ipc/handlers/base.ts(173,36): error TS2345: Argument of type '(event: IpcMainInvokeEvent, input: output<T[keyof T]["input"]>, context: HandlerContext) => Promise<output<T[keyof T]["output"]>>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: unknown, context: HandlerContext) => Promise<unknown>'.
   Types of parameters 'input' and 'input' are incompatible.
     Type 'unknown' is not assignable to type 'output<T[keyof T]["input"]>'.
@@ -327,18 +328,54 @@ src/ipc/handlers/git_branch_handlers.ts(649,19): error TS2304: Cannot find name 
 src/ipc/handlers/git_branch_handlers.ts(663,19): error TS2304: Cannot find name 'getDyadAppPath'.
 src/ipc/handlers/git_branch_handlers.ts(677,19): error TS2304: Cannot find name 'getDyadAppPath'.
 src/ipc/handlers/git_branch_handlers.ts(691,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(142,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(864,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(987,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1001,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1022,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1081,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1271,19): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1308,11): error TS2304: Cannot find name 'CloneRepoParams'.
-src/ipc/handlers/github_handlers.ts(1310,12): error TS2304: Cannot find name 'CloneRepoResult'.
-src/ipc/handlers/github_handlers.ts(1351,21): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1447,21): error TS2304: Cannot find name 'getDyadAppPath'.
-src/ipc/handlers/github_handlers.ts(1557,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(141,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(863,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(986,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1000,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1021,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1080,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1270,19): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1307,11): error TS2304: Cannot find name 'CloneRepoParams'.
+src/ipc/handlers/github_handlers.ts(1309,12): error TS2304: Cannot find name 'CloneRepoResult'.
+src/ipc/handlers/github_handlers.ts(1350,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1446,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1556,21): error TS2304: Cannot find name 'getDyadAppPath'.
+src/ipc/handlers/github_handlers.ts(1637,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1638,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number | null; }'.
+src/ipc/handlers/github_handlers.ts(1641,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1645,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1646,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ owner: string; repo: string; }'.
+src/ipc/handlers/github_handlers.ts(1649,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1650,41): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ org: string; repo: string; }'.
+src/ipc/handlers/github_handlers.ts(1653,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1654,36): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ org: string; repo: string; appId: number; branch?: string | undefined; }'.
+src/ipc/handlers/github_handlers.ts(1658,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1660,49): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ owner: string; repo: string; branch: string; appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1664,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1665,38): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; force?: boolean | undefined; forceWithLease?: boolean | undefined; commitMessage?: string | undefined; }'.
+src/ipc/handlers/github_handlers.ts(1668,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1669,42): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1672,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1673,37): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1676,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1677,40): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1681,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1683,45): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1688,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1690,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; username: string; }'.
+src/ipc/handlers/github_handlers.ts(1695,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1697,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; username: string; }'.
+src/ipc/handlers/github_handlers.ts(1701,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1702,43): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1705,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1706,37): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1709,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1710,46): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1714,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1720,22): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1721,36): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
+src/ipc/handlers/github_handlers.ts(1725,5): error TS2304: Cannot find name 'githubContracts'.
+src/ipc/handlers/github_handlers.ts(1727,49): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '{ appId: number; }'.
 src/ipc/handlers/neon_handlers.ts(3,10): error TS2300: Duplicate identifier 'createTestOnlyLoggedHandler'.
 src/ipc/handlers/neon_handlers.ts(4,10): error TS2300: Duplicate identifier 'createTestOnlyLoggedHandler'.
 src/ipc/handlers/prompt_handlers.ts(11,44): error TS2345: Argument of type '(_: IpcMainInvokeEvent, __: void, context: HandlerContext) => Promise<{ id: number; title: string; description: string | undefined; content: string; createdAt: string; updatedAt: string; }[]>' is not assignable to parameter of type '(event: IpcMainInvokeEvent, input: void, context: HandlerContext) => Promise<{ id: number; title: string; description: string | null; content: string; createdAt: Date; updatedAt: Date; }[]>'.

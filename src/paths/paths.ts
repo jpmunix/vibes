@@ -37,11 +37,11 @@ export function getUserDataPath(): string {
   const electron = getElectron();
 
   // When running in Electron and app is ready
-  if (process.env.NODE_ENV !== "development" && electron) {
+  if (electron) {
     return electron!.app.getPath("userData");
   }
 
-  // For development or when the Electron app object isn't available
+  // For when the Electron app object isn't available
   return path.resolve("./userData");
 }
 
