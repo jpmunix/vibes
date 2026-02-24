@@ -325,26 +325,8 @@ function ensureEmbeddingsCacheTable(sqlite: Database.Database): void {
       .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='embeddings_cache'`)
       .get();
 
-    if (!tableExists) {
-      logger.log("Creating missing 'embeddings_cache' table (migration fallback)");
-      sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS \`embeddings_cache\` (
-          \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-          \`scope\` text NOT NULL,
-          \`source_id\` integer NOT NULL,
-          \`content_key\` text NOT NULL,
-          \`content_hash\` text NOT NULL,
-          \`embedding\` text NOT NULL,
-          \`model\` text NOT NULL,
-          \`dimensions\` integer NOT NULL,
-          \`created_at\` integer DEFAULT (unixepoch()) NOT NULL
-        )
-      `);
-      sqlite.exec(`
-        CREATE UNIQUE INDEX IF NOT EXISTS \`embeddings_scope_source_key_model\`
-          ON \`embeddings_cache\` (\`scope\`, \`source_id\`, \`content_key\`, \`model\`)
-      `);
-    }
+    // If it doesn't exist, let Drizzle migrate() create it normally
+    if (!tableExists) return;
 
     // Ensure the index exists even if table was partially created
     const indexExists = sqlite
