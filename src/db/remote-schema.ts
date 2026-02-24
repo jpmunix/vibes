@@ -518,3 +518,25 @@ export const dossiersRelations = relations(dossiers, ({ one }) => ({
     user: one(users, { fields: [dossiers.userId], references: [users.id] }),
     app: one(apps, { fields: [dossiers.appId], references: [apps.id] }),
 }));
+
+export const debatesRelations = relations(debates, ({ many, one }) => ({
+    user: one(users, { fields: [debates.userId], references: [users.id] }),
+    messages: many(debateMessages),
+    tags: many(debateToTags),
+}));
+
+export const debateMessagesRelations = relations(debateMessages, ({ one }) => ({
+    debate: one(debates, { fields: [debateMessages.debateId], references: [debates.id] }),
+    user: one(users, { fields: [debateMessages.userId], references: [users.id] }),
+}));
+
+export const debateTagsRelations = relations(debateTags, ({ many, one }) => ({
+    user: one(users, { fields: [debateTags.userId], references: [users.id] }),
+    debates: many(debateToTags),
+}));
+
+export const debateToTagsRelations = relations(debateToTags, ({ one }) => ({
+    debate: one(debates, { fields: [debateToTags.debateId], references: [debates.id] }),
+    tag: one(debateTags, { fields: [debateToTags.tagId], references: [debateTags.id] }),
+    user: one(users, { fields: [debateToTags.userId], references: [users.id] }),
+}));

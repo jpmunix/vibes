@@ -55,12 +55,20 @@ export function registerDebateHandlers() {
 
     return {
       ...debate,
-      messages: debate.messages.map((m) => ({
-        ...m,
-        role: m.role as "user" | "assistant" | "system",
-        injectedItems: m.injectedItems as any,
-        isSummary: m.isSummary ?? undefined,
-      })),
+      messages: debate.messages.map((m) => {
+        let injectedItems = [];
+        try {
+          injectedItems = m.injectedItems ? JSON.parse(m.injectedItems) : [];
+        } catch (e) {
+          logger.error("Error parsing injected items", e);
+        }
+        return {
+          ...m,
+          role: m.role as "user" | "assistant" | "system",
+          injectedItems: Array.isArray(injectedItems) ? injectedItems : [],
+          isSummary: !!m.isSummary,
+        };
+      }),
       tags: debate.tags.map((t) => t.tag),
     };
   });
@@ -74,7 +82,9 @@ export function registerDebateHandlers() {
         .insert(remoteSchema.debates)
         .values({
           userId: context.userId,
-          title
+          title,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
 
@@ -251,7 +261,7 @@ export function registerDebateHandlers() {
           debateId,
           role: "assistant",
           content: summary,
-          isSummary: true,
+          isSummary: 1,
           createdAt: new Date(),
         })
         .returning();
