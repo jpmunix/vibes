@@ -35,8 +35,9 @@
 - [x] Ajustar estados de carga en frontend al comunicarse con DB en la nube.
 - [x] Probar bidireccionalidad de `settings`.
 
-### Fase 5: Limpieza Estructural ("Sunset" Local)
+### Fase 5: Limpieza Estructural ("Sunset" Local - PARA FUTURA VERSIÓN)
+*Nota: Esta fase se pospone a una versión futura (ej. V4) para permitir que los usuarios actuales descarguen esta versión y el `DataMigrator` pueda leer su base de datos local antigua y migrarla a la nube.*
 - [ ] Revisión final y eliminación de `@/db/schema.ts` (esquema SQLite local).
-- [x] Retirar dependencias y código de `better-sqlite3` relacionadas con los handlers V2.
-- [ ] Eliminar librerías y componentes viejos de Firebase (si no se usan para nada más).
+- [ ] Retirar dependencias y código de `better-sqlite3`.
+- [ ] Eliminar librerías y componentes viejos de Firebase (una vez finalizada toda la migración).
 - [ ] Tests End-to-End con el modelo remoto (ajuste de mocks final).
