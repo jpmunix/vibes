@@ -16,6 +16,7 @@ import type { VibesUser } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
 import { LoginScreen } from "./LoginScreen";
 import { MigrationScreen } from "./MigrationScreen";
+import { WindowsControls } from "./WindowsControls";
 
 // Apply the user's saved theme immediately (before ThemeProvider loads inside the app)
 function applyEarlyTheme() {
@@ -80,27 +81,38 @@ export function AuthGate({ children }: AuthGateProps) {
 
     // Loading state — show splash
     if (isLoading) {
-        return <AuthSplash />;
+        return (
+            <>
+                <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
+                <AuthSplash />
+            </>
+        );
     }
 
     // Not authenticated — show login screen
     if (!user) {
         return (
-            <LoginScreen
-                onAuthSuccess={(migration) => {
-                    setNeedsMigration(migration);
-                }}
-            />
+            <>
+                <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
+                <LoginScreen
+                    onAuthSuccess={(migration) => {
+                        setNeedsMigration(migration);
+                    }}
+                />
+            </>
         );
     }
 
     // Migration needed — show blocking migration screen
     if (needsMigration) {
         return (
-            <MigrationScreen
-                userId={user.id}
-                onComplete={() => setNeedsMigration(false)}
-            />
+            <>
+                <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
+                <MigrationScreen
+                    userId={user.id}
+                    onComplete={() => setNeedsMigration(false)}
+                />
+            </>
         );
     }
 
