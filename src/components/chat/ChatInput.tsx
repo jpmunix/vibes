@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
   StopCircleIcon,
   X,
@@ -98,6 +99,8 @@ export function ChatInput({
     useStreamChat();
 
   const [isApproving, setIsApproving] = useState(false); // State for approving
+  const navigate = useNavigate();
+  const setChatIdAtom = useSetAtom(selectedChatIdAtom);
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
   const hasAutoStartedRef = useRef(false);
   const messagesById = useAtomValue(chatMessagesByIdAtom);
@@ -262,6 +265,30 @@ export function ChatInput({
     const currentInput = inputValue;
     setInputValue("");
 
+    let currentChatId = chatId;
+
+    // P18: When in plan mode, we start a fresh chat for new user requests.
+    // This keeps the planning chat focused on the plan itself, while the
+    // actual implementation or follow-up starts in a new thread.
+    if (isPlanMode && appId) {
+      try {
+        currentChatId = await ipc.chat.createChat(appId);
+        setChatIdAtom(currentChatId);
+        // Navigate the router so useSearch hook picks up the new ID
+        navigate({ to: "/chat", search: { id: currentChatId }, replace: true });
+
+        // Also switch out of plan mode so the new chat's implementation is visible
+        const defaultMode = settings.defaultChatMode || "build";
+        const resetTo = defaultMode === "plan" ? "build" : defaultMode;
+        updateSettings({ selectedChatMode: resetTo });
+      } catch (err) {
+        console.error("Failed to create new chat for plan implementation:", err);
+        showError("No se pudo crear el nuevo chat");
+        // Fallback to current chat if creation fails
+        currentChatId = chatId;
+      }
+    }
+
     // Use all selected components for multi-component editing
     const componentsToSend =
       selectedComponents && selectedComponents.length > 0
@@ -280,7 +307,7 @@ export function ChatInput({
     // Send message with attachments and clear them after sending
     await streamMessage({
       prompt: currentInput,
-      chatId,
+      chatId: currentChatId!,
       attachments,
       redo: false,
       selectedComponents: componentsToSend,
