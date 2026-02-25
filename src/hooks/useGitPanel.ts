@@ -132,9 +132,41 @@ export function useGitPanel(appId: number | null) {
         },
         onSuccess: () => {
             refreshFiles();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
             toast.success("Push realizado correctamente");
         },
         onError: (err: Error) => toast.error(`Error en push: ${err.message}`),
+    });
+
+    // Pull mutation
+    const pullMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.github.pull({ appId });
+        },
+        onSuccess: () => {
+            refreshFiles();
+            refreshBranch();
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.versions.list({ appId }),
+            });
+            toast.success("Pull realizado correctamente");
+        },
+        onError: (err: Error) => toast.error(`Error en pull: ${err.message}`),
+    });
+
+    // Fetch mutation
+    const fetchMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.github.fetch({ appId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["git-state", appId] });
+            toast.success("Fetch realizado correctamente");
+        },
+        onError: (err: Error) => toast.error(`Error en fetch: ${err.message}`),
     });
 
     // Generate commit message with AI
@@ -289,6 +321,8 @@ export function useGitPanel(appId: number | null) {
         unstageAll: unstageAllMutation.mutateAsync,
         commit: commitMutation.mutateAsync,
         push: pushMutation.mutateAsync,
+        pull: pullMutation.mutateAsync,
+        fetch: fetchMutation.mutateAsync,
         generateCommitMessage,
         getFileDiff,
         refreshFiles,
@@ -306,6 +340,8 @@ export function useGitPanel(appId: number | null) {
         isUnstaging: unstageFileMutation.isPending || unstageAllMutation.isPending,
         isCommitting: commitMutation.isPending,
         isPushing: pushMutation.isPending,
+        isPulling: pullMutation.isPending,
+        isFetching: fetchMutation.isPending,
         isGeneratingMessage,
         isResolvingMerge: resolveMergeOursMutation.isPending || resolveMergeTheirsMutation.isPending,
         isAbortingMerge: abortMergeMutation.isPending,

@@ -570,11 +570,16 @@ function ConnectedGitHubConnector({
           onClick={handleOpenPreview}
           variant="outline"
           disabled={
+            isLoadingPreview ||
             isRebaseActionPending ||
             (hasUncommittedFiles && !commitMessage.trim())
           }
         >
-          <Upload className="h-4 w-4 mr-1.5" />
+          {isLoadingPreview ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 mr-1.5" />
+          )}
           Subir al repositorio
         </Button>
         <Button
@@ -594,7 +599,7 @@ function ConnectedGitHubConnector({
           disabled={isPulling || isRebaseActionPending}
         >
           {isPulling ? (
-            <Download className="h-4 w-4 mr-1.5 animate-spin" />
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
           ) : (
             <Download className="h-4 w-4 mr-1.5" />
           )}
