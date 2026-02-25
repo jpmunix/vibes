@@ -96,6 +96,7 @@ import {
   gitInit,
   gitListBranches,
   gitRenameBranch,
+  gitClone,
 } from "../utils/git_utils";
 import { safeSend } from "../utils/safe_sender";
 import { normalizePath } from "../../../shared/normalizePath";
@@ -1199,10 +1200,15 @@ export function registerAppHandlers() {
       where: eq(remoteSchema.apps.userId, context.userId),
       orderBy: [desc(remoteSchema.apps.createdAt)],
     });
-    const appsWithResolvedPath = allApps.map((app) => ({
-      ...app,
-      resolvedPath: getDyadAppPath(app.path),
-    }));
+    const appsWithResolvedPath = allApps.map((app) => {
+      const resolvedPath = getDyadAppPath(app.path);
+      return {
+        ...app,
+        resolvedPath,
+        localPathExists: fs.existsSync(resolvedPath),
+        canClone: !!(app.githubOrg && app.githubRepo),
+      };
+    });
     return {
       apps: appsWithResolvedPath,
     };
@@ -2674,6 +2680,49 @@ export function registerAppHandlers() {
       }
     },
   );
+
+  createTypedHandler(appContracts.downloadApp, async (_, { appId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const appInfo = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
+
+    if (!appInfo) throw new Error("App not found");
+    if (!appInfo.githubOrg || !appInfo.githubRepo) {
+      throw new Error(
+        "Esta aplicación no tiene un repositorio de GitHub asociado.",
+      );
+    }
+
+    const settings = readSettings();
+    const githubSettings = settings.providerSettings?.github as any;
+    const accessToken = githubSettings?.accessToken?.value;
+
+    const resolvedPath = getDyadAppPath(appInfo.path);
+    const parentDir = path.dirname(resolvedPath);
+
+    if (!fs.existsSync(parentDir)) {
+      await fsPromises.mkdir(parentDir, { recursive: true });
+    }
+
+    const url = `https://github.com/${appInfo.githubOrg}/${appInfo.githubRepo}.git`;
+
+    try {
+      await gitClone({
+        path: resolvedPath,
+        url,
+        accessToken,
+      });
+      return { success: true };
+    } catch (error: any) {
+      logger.error(`Failed to clone app ${appId}:`, error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
 function getCommand({

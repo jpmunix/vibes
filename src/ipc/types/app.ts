@@ -143,6 +143,21 @@ export const EditAppFileResultSchema = z.object({
 });
 
 /**
+ * Schema for download app parameters.
+ */
+export const DownloadAppParamsSchema = z.object({
+  appId: z.number(),
+});
+
+/**
+ * Schema for download app result.
+ */
+export const DownloadAppResultSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+
+/**
  * Schema for read app file params.
  */
 export const ReadAppFileParamsSchema = z.object({
@@ -246,6 +261,8 @@ export const ChangeAppLocationResultSchema = z.object({
  */
 export const ListedAppSchema = AppBaseSchema.extend({
   resolvedPath: z.string().optional(),
+  localPathExists: z.boolean().optional(),
+  canClone: z.boolean().optional(),
 });
 
 export type ListedApp = z.infer<typeof ListedAppSchema>;
@@ -351,6 +368,12 @@ export const appContracts = {
     channel: "stop-app",
     input: AppIdParamsSchema,
     output: z.void(),
+  }),
+
+  downloadApp: defineContract({
+    channel: "download-app",
+    input: DownloadAppParamsSchema,
+    output: DownloadAppResultSchema,
   }),
 
   restartApp: defineContract({

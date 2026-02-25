@@ -226,6 +226,7 @@ export function AppList({ show }: { show?: boolean }) {
                     handleToggleFavorite={handleToggleFavorite}
                     isFavoriteLoading={isFavoriteLoading}
                     handleDeleteApp={handleDeleteAppClick}
+                    onRefresh={refreshApps}
                   />
                 ))}
                 <SidebarGroupLabel>Otras aplicaciones</SidebarGroupLabel>
@@ -238,6 +239,7 @@ export function AppList({ show }: { show?: boolean }) {
                     handleToggleFavorite={handleToggleFavorite}
                     isFavoriteLoading={isFavoriteLoading}
                     handleDeleteApp={handleDeleteAppClick}
+                    onRefresh={refreshApps}
                   />
                 ))}
               </SidebarMenu>
