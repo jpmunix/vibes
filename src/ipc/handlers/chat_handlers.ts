@@ -48,6 +48,7 @@ export function registerChatHandlers() {
         appId,
         userId: context.userId,
         initialCommitHash,
+        createdAt: new Date(),
       })
       .returning();
     logger.info(
