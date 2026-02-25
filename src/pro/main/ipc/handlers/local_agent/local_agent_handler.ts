@@ -428,7 +428,7 @@ export async function handleLocalAgentStream(
             },
             inputTokens: inputTokens,
             outputTokens: effectiveOutputTokens,
-          });
+          }, settings.userId as string);
         } catch (e) {
           logger.error("Failed to log local agent AI query in onFinish", e);
         }
@@ -768,6 +768,7 @@ export async function handleLocalAgentStream(
     // Fire-and-forget: auto-extract knowledge from this interaction
     void autoExtractKnowledge(
       chat.app.id,
+      settings.userId as string,
       req.prompt,
       fullResponse,
     );

@@ -1,6 +1,6 @@
 import { ipcMain, app, dialog } from "electron";
 import { getRemoteDb } from "../../db/remote";
-import { getDatabasePath } from "../../db";
+import { getDatabasePath, db } from "../../db";
 import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, like, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
@@ -1009,6 +1009,8 @@ export function registerAppHandlers() {
         name: params.name,
         // Use the name as the path for now
         path: appPath,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -1018,6 +1020,7 @@ export function registerAppHandlers() {
       .values({
         userId: context.userId,
         appId: app.id,
+        createdAt: new Date(),
       })
       .returning();
 
@@ -1125,6 +1128,8 @@ export function registerAppHandlers() {
         githubRepo: null,
         installCommand: originalApp.installCommand,
         startCommand: originalApp.startCommand,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -1651,7 +1656,7 @@ export function registerAppHandlers() {
         // Toggle the isFavorite value
         const updated = await db
           .update(remoteSchema.apps)
-          .set({ isFavorite: !currentIsFavorite })
+          .set({ isFavorite: currentIsFavorite ? 0 : 1 })
           .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
           .returning({ isFavorite: remoteSchema.apps.isFavorite });
 
@@ -1898,8 +1903,8 @@ export function registerAppHandlers() {
     const dbPath = getDatabasePath();
     if (fs.existsSync(dbPath)) {
       // Close database connections first
-      if (db.$client) {
-        db.$client.close();
+      if (db && (db as any).$client) {
+        (db as any).$client.close();
       }
       await fsPromises.unlink(dbPath);
       logger.log(`Database file deleted: ${dbPath}`);

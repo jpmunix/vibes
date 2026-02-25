@@ -317,7 +317,7 @@ Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
             },
             inputTokens: result.usage?.inputTokens,
             outputTokens: result.usage?.outputTokens,
-          });
+          }, settings.userId as string);
         } catch (logError) {
           console.error("Failed to log AI query:", logError);
         }

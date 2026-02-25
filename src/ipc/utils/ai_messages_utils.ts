@@ -39,7 +39,7 @@ export type DbMessageForParsing = {
   id: number;
   role: string;
   content: string;
-  aiMessagesJson: AiMessagesJsonV6 | ModelMessage[] | null;
+  aiMessagesJson: AiMessagesJsonV6 | ModelMessage[] | string | null;
 };
 
 /**
@@ -51,7 +51,15 @@ export type DbMessageForParsing = {
  */
 export function parseAiMessagesJson(msg: DbMessageForParsing): ModelMessage[] {
   if (msg.aiMessagesJson) {
-    const parsed = msg.aiMessagesJson;
+    let parsed: any = msg.aiMessagesJson;
+
+    if (typeof parsed === "string") {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {
+        parsed = null;
+      }
+    }
 
     // Legacy shape: stored directly as a ModelMessage[]
     if (

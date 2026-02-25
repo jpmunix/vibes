@@ -16,6 +16,7 @@ const BUNNY_DB_TOKEN =
 
 let _client: Client | null = null;
 let _remoteDb: LibSQLDatabase<typeof schema> | null = null;
+let _remoteSchemaInitialized = false;
 
 /**
  * Get or create the libSQL client connection to Bunny Edge SQL
@@ -97,8 +98,9 @@ export async function testRemoteConnection(): Promise<boolean> {
  * Initialize the remote database schema (create tables if not exist)
  */
 export async function initializeRemoteSchema(): Promise<void> {
-  const client = getClient();
+  if (_remoteSchemaInitialized) return;
 
+  const client = getClient();
   logger.info("Initializing remote database schema...");
 
   // Create tables in dependency order
@@ -422,14 +424,12 @@ export async function initializeRemoteSchema(): Promise<void> {
     )`,
   ];
 
-  for (const sql of statements) {
-    try {
-      await client.execute(sql);
-    } catch (error) {
-      logger.error("Failed to execute schema statement:", error);
-      throw error;
-    }
+  try {
+    await client.batch(statements, "write");
+    _remoteSchemaInitialized = true;
+    logger.info("Remote database schema initialized successfully (batched)");
+  } catch (error) {
+    logger.error("Failed to initialize remote schema:", error);
+    throw error;
   }
-
-  logger.info("Remote database schema initialized successfully");
 }

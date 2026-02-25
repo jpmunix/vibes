@@ -155,7 +155,7 @@ export async function openRouterCompletion(
       response: data,
       inputTokens: data?.usage?.prompt_tokens,
       outputTokens: data?.usage?.completion_tokens,
-    });
+    }, settings.userId as string);
   } catch (err) {
     logger.error("Failed to initiate AI query logging", err);
   }

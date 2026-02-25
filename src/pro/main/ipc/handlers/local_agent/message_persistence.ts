@@ -114,7 +114,7 @@ export async function saveAiMessagesJson(
 ): Promise<void> {
     await getRemoteDb()
         .update(remoteSchema.messages)
-        .set({ aiMessagesJson })
+        .set({ aiMessagesJson: JSON.stringify(aiMessagesJson) })
         .where(eq(remoteSchema.messages.id, messageId))
         .catch((err) => logger.error("Failed to save AI messages JSON", err));
 }

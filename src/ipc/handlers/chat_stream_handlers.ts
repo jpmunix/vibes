@@ -254,8 +254,8 @@ function registerChatStreamHandlers() {
     let attachmentPaths: string[] = [];
     let outerPlaceholderMessageId: number | undefined;
     const settings = readSettings();
-    const userId = settings.userId;
-    if (!userId) {
+    const currentUserId = settings.userId;
+    if (!currentUserId) {
       safeSend(event.sender, "chat:stream:error", { chatId: req.chatId, error: "Unauthorized" });
       return;
     }
@@ -275,7 +275,7 @@ function registerChatStreamHandlers() {
 
       // Get the chat to check for existing messages
       const chat = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -341,7 +341,7 @@ function registerChatStreamHandlers() {
           // Delete the user message
           await db
             .delete(remoteSchema.messages)
-            .where(and(eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex].id), eq(remoteSchema.messages.userId, userId)));
+            .where(and(eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex].id), eq(remoteSchema.messages.userId, currentUserId as string)));
 
           // If there's an assistant message after the user message, delete it too
           if (
@@ -353,7 +353,7 @@ function registerChatStreamHandlers() {
               .where(
                 and(
                   eq(remoteSchema.messages.id, chatMessages[lastUserMessageIndex + 1].id),
-                  eq(remoteSchema.messages.userId, userId)
+                  eq(remoteSchema.messages.userId, currentUserId as string)
                 ),
               );
           }
@@ -433,7 +433,7 @@ function registerChatStreamHandlers() {
           const referenced = await db
             .select()
             .from(remoteSchema.prompts)
-            .where(and(inArray(remoteSchema.prompts.id, ids), eq(remoteSchema.prompts.userId, userId)));
+            .where(and(inArray(remoteSchema.prompts.id, ids), eq(remoteSchema.prompts.userId, currentUserId as string)));
           if (referenced.length > 0) {
             const promptsMap: Record<number, string> = {};
             for (const p of referenced) {
@@ -493,7 +493,7 @@ ${componentSnippet}
       const [insertedUserMessage] = await db
         .insert(remoteSchema.messages)
         .values({
-          userId,
+          userId: currentUserId,
           chatId: req.chatId,
           role: "user",
           content: userPrompt,
@@ -504,7 +504,7 @@ ${componentSnippet}
 
       // Send the user message immediately to the frontend
       const chatWithUserMessage = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -551,7 +551,7 @@ ${componentSnippet}
         [placeholderAssistantMessage] = await db
           .insert(remoteSchema.messages)
           .values({
-            userId,
+            userId: currentUserId,
             chatId: req.chatId,
             role: "assistant",
             content: "",
@@ -567,7 +567,7 @@ ${componentSnippet}
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
+          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
               orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -736,7 +736,7 @@ ${componentSnippet}
         [placeholderAssistantMessage] = await db
           .insert(remoteSchema.messages)
           .values({
-            userId,
+            userId: currentUserId,
             chatId: req.chatId,
             role: "assistant",
             content: "",
@@ -755,7 +755,7 @@ ${componentSnippet}
 
         // Fetch updated chat data
         updatedChat = await db.query.chats.findFirst({
-          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
+          where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
           with: {
             messages: {
               orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -983,7 +983,7 @@ ${componentSnippet}
         });
 
         // Inject knowledge base prompt (auto-learned project rules)
-        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, userId, req.prompt);
+        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, currentUserId as string, req.prompt);
         if (knowledgePrompt) {
           systemPrompt += "\n\n" + knowledgePrompt;
           logger.log(
@@ -1210,9 +1210,9 @@ This conversation includes one or more image attachments. When the user uploads 
               ]);
               if (userAiMessagesJson) {
                 await db
-                  .update(messages)
-                  .set({ aiMessagesJson: userAiMessagesJson })
-                  .where(eq(messages.id, userMessageId));
+                  .update(remoteSchema.messages)
+                  .set({ aiMessagesJson: JSON.stringify(userAiMessagesJson) })
+                  .where(eq(remoteSchema.messages.id, userMessageId));
               }
             }
           }
@@ -1225,7 +1225,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
         if (isSummarizeIntent) {
           const previousChat = await db.query.chats.findFirst({
-            where: eq(chats.id, parseInt(req.prompt.split("=")[1])),
+            where: eq(remoteSchema.chats.id, parseInt(req.prompt.split("=")[1])),
             with: {
               messages: {
                 orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -1399,7 +1399,7 @@ This conversation includes one or more image attachments. When the user uploads 
               try {
                 void logAiQuery({
                   queryType: "chat-stream",
-                  model: selectedModel.name || modelClient.model?.modelId || "unknown",
+                  model: selectedModel.name || modelClient.builtinProviderId || "unknown",
                   promptSnippet: chatMessages[chatMessages.length - 1]?.content?.slice(0, 100) || "",
                   payload: {
                     system: systemPromptOverride,
@@ -1413,7 +1413,7 @@ This conversation includes one or more image attachments. When the user uploads 
                   },
                   inputTokens: promptTokens,
                   outputTokens: completionTokens,
-                });
+                }, currentUserId as string);
               } catch (e) {
                 logger.error("Failed to log streaming AI query", e);
               }
@@ -1425,9 +1425,9 @@ This conversation includes one or more image attachments. When the user uploads 
 
                 // Persist the aggregated token usage on the placeholder assistant message
                 void db
-                  .update(messages)
+                  .update(remoteSchema.messages)
                   .set({ maxTokensUsed: maxTokensUsed })
-                  .where(eq(messages.id, placeholderAssistantMessage.id))
+                  .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id))
                   .catch((error) => {
                     logger.error(
                       "Failed to save total tokens for assistant message",
@@ -1513,9 +1513,9 @@ This conversation includes one or more image attachments. When the user uploads 
               });
               // Persist error text in DB so it survives reload
               void db
-                .update(messages)
+                .update(remoteSchema.messages)
                 .set({ content: `${PERSISTED_ERROR_PREFIX}${fullErrorText}`, status: "failed" as any })
-                .where(eq(messages.id, placeholderAssistantMessage.id))
+                .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id))
                 .catch((err) => logger.error("Failed to persist error in message content", err));
               // Clean up the abort controller
               activeStreams.delete(req.chatId);
@@ -1541,9 +1541,9 @@ This conversation includes one or more image attachments. When the user uploads 
           const now = Date.now();
           if (now - lastDbSaveAt >= 150) {
             await db
-              .update(messages)
+              .update(remoteSchema.messages)
               .set({ content: fullResponse })
-              .where(eq(messages.id, placeholderAssistantMessage.id));
+              .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id));
 
             lastDbSaveAt = now;
           }
@@ -1609,7 +1609,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // Check quota for Basic Agent mode (non-Pro users)
           const isBasicAgentModeRequest = isBasicAgentMode(settings);
           if (isBasicAgentModeRequest) {
-            const quotaStatus = await getFreeAgentQuotaStatus(userId);
+            const quotaStatus = await getFreeAgentQuotaStatus(currentUserId);
             if (quotaStatus.isQuotaExceeded) {
               safeSend(event.sender, "chat:response:error", {
                 chatId: req.chatId,
@@ -1626,7 +1626,7 @@ This conversation includes one or more image attachments. When the user uploads 
           // Mark the user message as using quota BEFORE starting the stream
           // to prevent race conditions with parallel requests
           if (isBasicAgentModeRequest && userMessageId) {
-            await markMessageAsUsingFreeAgentQuota(userMessageId, userId);
+            await markMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
           }
 
           // Add semantic context for Agente inteligente
@@ -1664,7 +1664,7 @@ This conversation includes one or more image attachments. When the user uploads 
           } finally {
             // If the stream failed, was aborted, or threw, refund the quota
             if (isBasicAgentModeRequest && userMessageId && !streamSuccess) {
-              await unmarkMessageAsUsingFreeAgentQuota(userMessageId, userId);
+              await unmarkMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
             }
           }
 
@@ -1672,7 +1672,7 @@ This conversation includes one or more image attachments. When the user uploads 
         }
 
         if (settings.selectedChatMode === "agent") {
-          const tools = await getMcpTools(event, req);
+          const tools = await getMcpTools(event, req, currentUserId as string);
 
           const { fullStream } = await simpleStreamText({
             chatMessages: limitedHistoryChatMessages,
@@ -1787,13 +1787,13 @@ This conversation includes one or more image attachments. When the user uploads 
               try {
                 // Update the placeholder assistant message with the partial content and cancellation note
                 await db
-                  .update(messages)
+                  .update(remoteSchema.messages)
                   .set({
                     content: `${partialResponse}
 
 [Response cancelled by user]`,
                   })
-                  .where(eq(messages.id, placeholderAssistantMessage.id));
+                  .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id));
 
                 logger.log(
                   `Updated cancelled response for placeholder message ${placeholderAssistantMessage.id} in chat ${chatId}`,
@@ -1822,7 +1822,7 @@ This conversation includes one or more image attachments. When the user uploads 
           await db
             .update(remoteSchema.chats)
             .set({ title: chatTitle[1] })
-            .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId), isNull(remoteSchema.chats.title)));
+            .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string), isNull(remoteSchema.chats.title)));
         }
         const chatSummary = chatTitle?.[1];
 
@@ -1836,12 +1836,12 @@ This conversation includes one or more image attachments. When the user uploads 
               : placeholderAssistantMessage.model,
             durationMs: Date.now() - streamStartedAt,
           })
-          .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, userId)));
+          .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, currentUserId as string)));
 
         // Fire-and-forget: auto-extract knowledge from this interaction
         void autoExtractKnowledge(
-          updatedChat.app.id,
-          userId,
+          updatedChat!.app.id,
+          currentUserId as string,
           userPrompt,
           fullResponse,
         );
@@ -1863,7 +1863,7 @@ This conversation includes one or more image attachments. When the user uploads 
           );
 
           const chat = await db.query.chats.findFirst({
-            where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, userId)),
+            where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
             with: {
               messages: {
                 orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -1912,9 +1912,9 @@ This conversation includes one or more image attachments. When the user uploads 
       // Persist error text in DB so it survives reload
       if (outerPlaceholderMessageId) {
         void db
-          .update(messages)
+          .update(remoteSchema.messages)
           .set({ content: `${PERSISTED_ERROR_PREFIX}${catchErrorText}`, status: "failed" as any })
-          .where(eq(messages.id, outerPlaceholderMessageId))
+          .where(eq(remoteSchema.messages.id, outerPlaceholderMessageId))
           .catch((err) => logger.error("Failed to persist error in message content", err));
       }
 
@@ -2201,16 +2201,19 @@ async function tryMcpRankFiles({
   prompt,
   files,
   maxResults,
+  userId,
 }: {
   prompt: string;
   files: CodebaseFile[];
   maxResults: number;
+  userId: string;
 }): Promise<CodebaseFile[] | null> {
   try {
+    const db = getRemoteDb();
     const servers = await db
       .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.enabled, true as any));
+      .from(remoteSchema.mcpServers)
+      .where(and(eq(remoteSchema.mcpServers.enabled, true as any), eq(remoteSchema.mcpServers.userId, userId)));
     if (!servers.length) return null;
     const server = servers[0];
     const client = await mcpManager.getClient(server.id);
@@ -2263,13 +2266,15 @@ async function tryMcpRankFiles({
 async function getMcpTools(
   event: IpcMainInvokeEvent,
   req: ChatStreamParams,
+  userId: string,
 ): Promise<ToolSet> {
   const mcpToolSet: ToolSet = {};
   try {
+    const db = getRemoteDb();
     const servers = await db
       .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.enabled, true as any));
+      .from(remoteSchema.mcpServers)
+      .where(and(eq(remoteSchema.mcpServers.enabled, true as any), eq(remoteSchema.mcpServers.userId, userId)));
     for (const s of servers) {
       const client = await mcpManager.getClient(s.id);
       const toolSet = await client.tools();
