@@ -28,10 +28,12 @@ import {
   DyadMarkdownParser,
   VanillaMarkdownParser,
 } from "@/components/chat/DyadMarkdownParser";
-import { auth } from "@/lib/firebase";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import logoSrc from "../../../assets/icon/logo.png";
 
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { userAtom } from "@/atoms/authAtoms";
 
 interface DebatePanelProps {
   debateId?: number;
@@ -39,6 +41,7 @@ interface DebatePanelProps {
 
 export function DebatePanel({ debateId }: DebatePanelProps) {
   const navigate = useNavigate();
+  const user = useAtomValue(userAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [debate, setDebate] = useState<Debate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -422,24 +425,23 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
               className={`flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative ${m.role === "user" ? "flex-row-reverse" : ""
                 }`}
             >
-              <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-                  }`}
-              >
+              <div className="flex-shrink-0">
                 {m.role === "user" ? (
-                  auth.currentUser?.photoURL ? (
-                    <img
-                      src={auth.currentUser.photoURL}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={18} />
-                  )
+                  <SimpleAvatar
+                    src={user?.photoUrl || undefined}
+                    className="h-8 w-8"
+                    fallbackText={(
+                      user?.displayName?.[0] ||
+                      user?.email?.[0] ||
+                      "U"
+                    ).toUpperCase()}
+                  />
                 ) : (
-                  <Bot size={18} />
+                  <img
+                    src={logoSrc}
+                    alt="Vibes"
+                    className="h-8 w-8 rounded-full object-cover shadow-sm"
+                  />
                 )}
               </div>
 
@@ -614,8 +616,12 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
 
           {isStreaming && (
             <div className="flex gap-4 md:gap-6 animate-in fade-in">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800 shadow-sm">
-                <Bot size={18} />
+              <div className="flex-shrink-0">
+                <img
+                  src={logoSrc}
+                  alt="Vibes"
+                  className="h-8 w-8 rounded-full object-cover shadow-sm"
+                />
               </div>
               <div className="flex-1 pt-2">
                 <div className="flex gap-1.5 items-center h-6">

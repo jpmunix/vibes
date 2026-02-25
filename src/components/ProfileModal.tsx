@@ -10,29 +10,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { auth, storage } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import {
-    updateProfile,
-    updatePassword,
     reauthenticateWithCredential,
     EmailAuthProvider,
 } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "sonner";
 import { User, Lock, Upload, X, Palette } from "lucide-react";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { useSetAtom } from "jotai";
-import { userAtom } from "@/atoms/authAtoms";
+import { userAtom, VibesUser } from "@/atoms/authAtoms";
+import { ipc } from "@/ipc/types";
 
 interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
-    user: any;
+    user: VibesUser;
 }
 
 export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
     const [name, setName] = useState(user?.displayName || "");
-    const [photoURL, setPhotoURL] = useState(user?.photoURL || "");
+    const [photoURL, setPhotoURL] = useState(user?.photoUrl || "");
     const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const setUser = useSetAtom(userAtom);
@@ -46,14 +44,13 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
         if (!user) return;
         setIsLoading(true);
         try {
-            await updateProfile(user, {
+            const updatedUser = await (ipc as any).auth.updateProfile({
+                userId: user.id,
                 displayName: name,
-                photoURL: photoURL,
+                photoUrl: photoURL,
             });
-            // Forzar actualización del estado global clonando el objeto actual
-            if (auth.currentUser) {
-                setUser({ ...auth.currentUser });
-            }
+
+            setUser(updatedUser);
             toast.success("Perfil actualizado correctamente");
             onClose();
         } catch (error: any) {
@@ -69,18 +66,26 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
         setIsLoading(true);
         try {
-            const storageRef = ref(storage, `avatars/${user.uid}`);
-            await uploadBytes(storageRef, file);
-            const url = await getDownloadURL(storageRef);
+            const extension = file.name.split('.').pop();
+            const fileName = `avatar-${user.id}-${Date.now()}.${extension}`;
 
-            // Actualizar el perfil de Firebase para que el cambio sea global
-            await updateProfile(user, { photoURL: url });
+            // Read file as ArrayBuffer
+            const fileData = await file.arrayBuffer();
 
-            // Forzar actualización del estado global clonando el objeto actual
-            if (auth.currentUser) {
-                setUser({ ...auth.currentUser });
-            }
+            // Upload via IPC to Bunny Storage
+            const url = await (ipc as any).bunny.uploadAvatar({
+                fileName,
+                data: fileData,
+                contentType: file.type
+            });
 
+            // Update profile via IPC
+            const updatedUser = await (ipc as any).auth.updateProfile({
+                userId: user.id,
+                photoUrl: url
+            });
+
+            setUser(updatedUser);
             setPhotoURL(url);
             toast.success("Imagen subida correctamente");
         } catch (error: any) {

@@ -56,6 +56,16 @@ export const bunnyContracts = {
         input: z.object({ appId: z.number() }),
         output: z.void(),
     }),
+
+    uploadAvatar: defineContract({
+        channel: "bunny:upload-avatar",
+        input: z.object({
+            fileName: z.string(),
+            data: z.any(),
+            contentType: z.string().optional(),
+        }),
+        output: z.string(),
+    }),
 } as const;
 
 // =============================================================================

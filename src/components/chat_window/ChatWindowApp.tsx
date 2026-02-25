@@ -24,6 +24,7 @@ import { ThemeProvider } from "../../contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { ChatPanel } from "../ChatPanel";
 import { PreviewPanel } from "../preview_panel/PreviewPanel";
+import { AuthGate } from "../AuthGate";
 import { useSetAtom, useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { isPreviewOpenAtom, isPreviewExpandedAtom } from "@/atoms/viewAtoms";
@@ -504,8 +505,10 @@ export function ChatWindowApp({ appId, chatId, hasPendingPrompt, initialChatMode
         <QueryClientProvider client={queryClient}>
             <PostHogProvider client={noopPosthogClient}>
                 <ThemeProvider>
-                    {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
-                    <RouterProvider router={chatRouter} />
+                    <AuthGate>
+                        {/* @ts-ignore — minimal router type doesn't match full app router, but it's safe */}
+                        <RouterProvider router={chatRouter} />
+                    </AuthGate>
                 </ThemeProvider>
             </PostHogProvider>
         </QueryClientProvider>

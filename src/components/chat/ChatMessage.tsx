@@ -47,11 +47,12 @@ import {
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
-import { auth } from "@/lib/firebase";
+import logoSrc from "../../../assets/icon/logo.png";
 
 interface ChatMessageProps {
   message: Message;
   isLastMessage: boolean;
+  user?: VibesUser | null;
 }
 // Hoisted to module level — pure function, no component state needed
 
@@ -139,8 +140,9 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   // Error state for this chat
   const errorById = useAtomValue(chatErrorByIdAtom);
   const chatError = selectedChatId ? (errorById.get(selectedChatId) ?? null) : null;
+  const userAtomValue = useAtomValue(userAtom);
 
-  const activeUser = user || auth.currentUser;
+  const activeUser = user || userAtomValue;
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -342,17 +344,17 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           <div className="flex-shrink-0 mt-1">
             {isUser ? (
               <SimpleAvatar
-                src={activeUser?.photoURL || undefined}
+                src={activeUser?.photoUrl || (activeUser as any)?.photoURL || undefined}
                 className="h-7 w-7"
-                fallbackText={
-                  activeUser
-                    ? (activeUser.displayName?.[0] || activeUser.email?.[0] || "U").toUpperCase()
-                    : <UserIcon className="h-4 w-4" />
-                }
+                fallbackText={(
+                  activeUser?.displayName?.[0] ||
+                  activeUser?.email?.[0] ||
+                  "U"
+                ).toUpperCase()}
               />
             ) : (
               <img
-                src="../../assets/icon/logo.png"
+                src={logoSrc}
                 alt="AI"
                 className="h-7 w-7 rounded-full object-cover"
               />
