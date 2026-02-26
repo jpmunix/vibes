@@ -40,7 +40,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GithubBranchManager } from "@/components/GithubBranchManager";
-import { GitPreviewModal } from "@/components/GitPreviewModal";
 
 type SyncResult =
   | { error: Error; handled?: boolean }
@@ -107,9 +106,6 @@ function ConnectedGitHubConnector({
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
   const [, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [gitPreview, setGitPreview] = useState<GitPreview | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
   const [isFixingError, setIsFixingError] = useState(false);
 
@@ -255,26 +251,6 @@ function ConnectedGitHubConnector({
     } finally {
       setIsDisconnecting(false);
     }
-  };
-
-  const handleOpenPreview = async () => {
-    setIsLoadingPreview(true);
-    setShowPreviewModal(true);
-    try {
-      const preview = await ipc.github.getPreview({ appId });
-      setGitPreview(preview);
-    } catch (err: any) {
-      console.error("Failed to load preview:", err);
-      setSyncError(err.message || "Error al cargar la vista previa.");
-      setShowPreviewModal(false);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  };
-
-  const handleConfirmSync = async () => {
-    setShowPreviewModal(false);
-    await handleSyncToGithub();
   };
 
   const handleGenerateCommitMessage = async () => {
@@ -567,15 +543,15 @@ function ConnectedGitHubConnector({
       )}
       <div className="flex gap-2">
         <Button
-          onClick={handleOpenPreview}
+          onClick={() => handleSyncToGithub()}
           variant="outline"
           disabled={
-            isLoadingPreview ||
+            isSyncing ||
             isRebaseActionPending ||
             (hasUncommittedFiles && !commitMessage.trim())
           }
         >
-          {isLoadingPreview ? (
+          {isSyncing ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
           ) : (
             <Upload className="h-4 w-4 mr-1.5" />
@@ -619,19 +595,6 @@ function ConnectedGitHubConnector({
         </Button>
       </div>
 
-      {/* Git Preview Modal */}
-      <GitPreviewModal
-        open={showPreviewModal}
-        onOpenChange={setShowPreviewModal}
-        preview={gitPreview}
-        isLoading={isLoadingPreview}
-        onConfirm={handleConfirmSync}
-        isConfirming={isSyncing}
-        commitMessage={commitMessage}
-        onCommitMessageChange={setCommitMessage}
-        onGenerateCommitMessage={handleGenerateCommitMessage}
-        isGeneratingMessage={isGeneratingMessage}
-      />
       {syncError && (
         <div className="mt-2 space-y-2">
           {/* Smart error recovery UI */}
