@@ -76,7 +76,8 @@ export function ChatPanel({
     // Don't reset plan mode if explicitly preserved (new app window in plan mode)
     if (preservePlanModeRef.current) return;
 
-    if (settings.selectedChatMode === "plan") {
+    const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
+    if (settings.selectedChatMode === "plan" && currentMessages.length > 0) {
       const isStreaming = isStreamingById.get(chatId) ?? false;
       if (!isStreaming) {
         hasResetModeRef.current = chatId;
@@ -85,7 +86,7 @@ export function ChatPanel({
         updateSettings({ selectedChatMode: resetTo });
       }
     }
-  }, [chatId, settings, isStreamingById, updateSettings]);
+  }, [chatId, settings, isStreamingById, updateSettings, messagesById]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);

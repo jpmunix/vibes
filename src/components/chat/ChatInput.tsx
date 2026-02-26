@@ -271,7 +271,7 @@ export function ChatInput({
     // P18: When in plan mode, we start a fresh chat for new user requests.
     // This keeps the planning chat focused on the plan itself, while the
     // actual implementation or follow-up starts in a new thread.
-    if (isPlanMode && appId) {
+    if (isPlanMode && appId && currentMessages.length > 0) {
       try {
         currentChatId = await ipc.chat.createChat(appId);
         setChatIdAtom(currentChatId);
