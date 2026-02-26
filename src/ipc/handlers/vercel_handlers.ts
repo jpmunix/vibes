@@ -343,7 +343,10 @@ async function handleCreateProject(
     const projectDomains = await vercel.projects.getProjectDomains({
       idOrName: projectData.id,
     });
-    const projectUrl = "https://" + projectDomains.domains[0].name;
+    const primaryDomain =
+      projectDomains.domains.find((d: any) => !d.redirect) ||
+      projectDomains.domains[0];
+    const projectUrl = "https://" + primaryDomain.name;
 
     // Store project info in the app's DB row
     await updateAppVercelProject({
@@ -423,15 +426,31 @@ async function handleConnectToExistingProject(
     // Get the default team ID
     const teamId = await getDefaultTeamId(accessToken);
 
+    // Get the primary domain
+    const vercel = createVercelClient(accessToken);
+    const domainsResponse = await vercel.projects.getProjectDomains({
+      idOrName: projectData.id,
+    });
+
+    let deploymentUrl = projectData.targets?.production?.url
+      ? `https://${projectData.targets.production.url}`
+      : null;
+
+    if (domainsResponse.domains && domainsResponse.domains.length > 0) {
+      // Prefer custom domains or the primary one (non-redirect)
+      const primaryDomain =
+        domainsResponse.domains.find((d: any) => !d.redirect) ||
+        domainsResponse.domains[0];
+      deploymentUrl = `https://${primaryDomain.name}`;
+    }
+
     // Store project info in the app's DB row
     await updateAppVercelProject({
       appId,
       projectId: projectData.id,
       projectName: projectData.name,
       teamId: teamId,
-      deploymentUrl: projectData.targets?.production?.url
-        ? `https://${projectData.targets.production.url}`
-        : null,
+      deploymentUrl,
       userId: context.userId,
     });
 
@@ -481,13 +500,30 @@ async function handleGetVercelDeployments(
       throw new Error("Failed to retrieve deployments from Vercel.");
     }
 
-    // Find the most recent READY production deployment and update the stored URL
-    const readyProductionDeployment = deploymentsResponse.deployments.find(
-      (d) => d.readyState === "READY" && d.target === "production",
-    );
+    // Try to get the primary domain first (custom or project default)
+    const domainsResponse = await vercel.projects.getProjectDomains({
+      idOrName: app.vercelProjectId,
+    });
 
-    if (readyProductionDeployment?.url) {
-      const newDeploymentUrl = `https://${readyProductionDeployment.url}`;
+    let newDeploymentUrl = null;
+    if (domainsResponse.domains && domainsResponse.domains.length > 0) {
+      // Vercel returns domains in order. The first one is usually the primary.
+      const primaryDomain =
+        domainsResponse.domains.find((d: any) => !d.redirect) ||
+        domainsResponse.domains[0];
+      newDeploymentUrl = `https://${primaryDomain.name}`;
+    } else {
+      // Fallback to the latest production deployment URL if no domains found
+      const readyProductionDeployment = deploymentsResponse.deployments.find(
+        (d) => d.readyState === "READY" && d.target === "production",
+      );
+
+      if (readyProductionDeployment?.url) {
+        newDeploymentUrl = `https://${readyProductionDeployment.url}`;
+      }
+    }
+
+    if (newDeploymentUrl) {
       // Only update if the URL has changed
       if (newDeploymentUrl !== app.vercelDeploymentUrl) {
         logger.info(
@@ -496,7 +532,12 @@ async function handleGetVercelDeployments(
         await db
           .update(remoteSchema.apps)
           .set({ vercelDeploymentUrl: newDeploymentUrl })
-          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId),
+            ),
+          );
       }
     }
 
