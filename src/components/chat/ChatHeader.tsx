@@ -415,14 +415,14 @@ export function ChatHeader({
                   {chats.find((c) => c.id === selectedChatId)?.isPlan ? (
                     <>
                       <Brain size={14} className="text-primary" />
-                      <span className="truncate max-w-[200px] font-semibold text-primary">
+                      <span className="font-semibold text-primary">
                         Planificación
                       </span>
                     </>
                   ) : (
                     <>
                       <MessageSquare size={14} className="shrink-0" />
-                      <span className="truncate max-w-[200px]">
+                      <span>
                         {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
                       </span>
                     </>
@@ -458,14 +458,14 @@ export function ChatHeader({
                       {chat.isPlan ? (
                         <>
                           <Brain size={14} className="mr-2 shrink-0 text-primary" />
-                          <span className="truncate flex-1 font-semibold text-primary">
+                          <span className="flex-1 font-semibold text-primary">
                             Planificación
                           </span>
                         </>
                       ) : (
                         <>
                           <MessageSquare size={14} className="mr-2 shrink-0" />
-                          <span className="truncate flex-1">
+                          <span className="flex-1">
                             {chat.title || `Chat ${chat.id}`}
                           </span>
                           <button
