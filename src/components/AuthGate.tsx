@@ -45,6 +45,12 @@ export function AuthGate({ children }: AuthGateProps) {
             const userId = localStorage.getItem("vibes_user_id");
             const sessionToken = localStorage.getItem("vibes_session_token");
 
+            // If we already have a user from atomWithStorage, we can stop loading early
+            // but we still want to verify against the server in the background/sync settings.
+            if (user) {
+                setIsLoading(false);
+            }
+
             if (!userId || !sessionToken) {
                 setIsLoading(false);
                 return;
@@ -55,25 +61,29 @@ export function AuthGate({ children }: AuthGateProps) {
                 if (result.valid && result.user) {
                     setUser(result.user as VibesUser);
                     setNeedsMigration(result.needsMigration);
+                } else if (user) {
+                    // If we have a local user but the token is invalid (e.g. logged in on another computer)
+                    // we keep the local session as per user request for "trusted environment".
+                    console.warn("Session token invalid/expired, but keeping local session for trusted environment.");
                 } else {
+                    // Only wipe if we don't even have a local user atom
                     localStorage.removeItem("vibes_user_id");
                     localStorage.removeItem("vibes_session_token");
                 }
             } catch (error) {
                 console.error("Session verification failed:", error);
-                localStorage.removeItem("vibes_user_id");
-                localStorage.removeItem("vibes_session_token");
             } finally {
                 setIsLoading(false);
             }
         };
 
         checkSession();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [setUser, setIsLoading]);
 
-    // Watch for logout
+    // Watch for logout - only wipe if user explicitly sets it to null
     useEffect(() => {
-        if (!isLoading && !user) {
+        if (!isLoading && user === null) {
             localStorage.removeItem("vibes_user_id");
             localStorage.removeItem("vibes_session_token");
         }

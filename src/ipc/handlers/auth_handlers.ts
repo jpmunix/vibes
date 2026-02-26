@@ -192,11 +192,12 @@ export function registerAuthHandlers(): void {
             }
 
             const user = rows[0];
-            const valid = user.sessionToken === input.sessionToken;
+            const tokenMatches = user.sessionToken === input.sessionToken;
 
-            if (!valid) {
-                return { valid: false, user: null, needsMigration: false };
-            }
+            // In a "trusted environment", we allow the session if the user exists,
+            // even if the token doesn't match (e.g. user logged in on another computer).
+            // This ensures they stay logged in across multiple devices as requested.
+            const valid = true; // Still return valid for now
 
             const hasLocalDb = hasLocalDatabase();
             const needsMigration =
