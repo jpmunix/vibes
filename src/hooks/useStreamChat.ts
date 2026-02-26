@@ -122,16 +122,30 @@ export function useStreamChat({
       if (undoRedo) {
         const removeListener = window.electron.on(
           "chat:undo-redo:content",
-          (_: any, data: { chatId: number; prompt: string }) => {
+          (_: any, data: { chatId: number; prompt: string; attachments?: any[] }) => {
             if (data.chatId === chatId) {
-              // We need to import chatInputValueAtom but we can't do it inside the function
-              // We should pass a callback or handle it via atomSetter
-              // But here we are inside a hook, so we can use an atom setter if available
-              // Ideally we would set the input value atom here.
-              // Since we don't have access to setInputValue directly here (it's in the component),
-              // we will emit a custom window event that the ChatInput component can listen to
+              const attachmentsToRestore: File[] = [];
+              if (data.attachments && data.attachments.length > 0) {
+                data.attachments.forEach((part: any, i: number) => {
+                  try {
+                    const mimeType = part.mediaType || part.mimeType || "image/png";
+                    const ext = mimeType.split("/")[1] || "png";
+                    let base64 = part.image;
+                    if (base64.startsWith("data:")) {
+                      base64 = base64.split(",")[1] || "";
+                    }
+                    const byteChars = atob(base64);
+                    const byteArr = new Uint8Array(byteChars.length);
+                    for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                    attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                  } catch (e) {
+                    console.error("Failed to restore attachment", e);
+                  }
+                });
+              }
+
               window.dispatchEvent(new CustomEvent('dyad:restore-chat-input', {
-                detail: { prompt: data.prompt }
+                detail: { prompt: data.prompt, attachments: attachmentsToRestore }
               }));
             }
           }
@@ -265,6 +279,7 @@ export function useStreamChat({
             redo,
             attachments: convertedAttachments,
             selectedComponents: selectedComponents ?? [],
+            undoRedo,
           },
           {
             onChunk: ({ messages: updatedMessages }) => {

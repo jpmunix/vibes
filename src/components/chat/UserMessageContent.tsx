@@ -22,23 +22,27 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
     mimeType: string;
 }> {
     if (!aiMessagesJson) {
-        console.log("[UserMessageContent] No aiMessagesJson provided");
         return [];
     }
 
-    console.log("[UserMessageContent] aiMessagesJson:", aiMessagesJson);
+    let parsed = aiMessagesJson;
+    if (typeof parsed === "string") {
+        try {
+            parsed = JSON.parse(parsed);
+        } catch (e) {
+            console.warn("[UserMessageContent] Failed to parse aiMessagesJson string", e);
+            return [];
+        }
+    }
 
     // Handle both new format {messages: [...]} and old format [...]
-    const messages = Array.isArray(aiMessagesJson)
-        ? aiMessagesJson
-        : aiMessagesJson?.messages;
+    const messages = Array.isArray(parsed)
+        ? parsed
+        : parsed?.messages;
 
     if (!messages || !Array.isArray(messages)) {
-        console.warn("[UserMessageContent] No valid messages array found");
         return [];
     }
-
-    console.log("[UserMessageContent] Processing messages array:", messages);
 
     const images: Array<{ base64: string; mimeType: string }> = [];
 
@@ -52,15 +56,10 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
                     base64: part.image,
                     mimeType: part.mediaType || part.mimeType || "image/png",
                 });
-                console.log("[UserMessageContent] Found image attachment:", {
-                    mimeType: part.mediaType || part.mimeType || "image/png",
-                    base64Length: part.image.length
-                });
             }
         }
     }
 
-    console.log("[UserMessageContent] Total images extracted:", images.length);
     return images;
 }
 

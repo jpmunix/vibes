@@ -325,16 +325,37 @@ function registerChatStreamHandlers() {
               cleanPrompt = cleanPrompt.substring(0, componentMarkerIndex);
             }
 
-            // We also need to recover attachments if possible
-            // Since we can't easily reconstruct the File objects from the text description,
-            // we will send the raw content back and let the frontend handle it or just the text for now.
-            // For a full implementation, we'd need to parse the attachments from the message content
-            // or store them separately. For now, we'll restore the text prompt.
+            // Also check for "File to upload to codebase:" and remove it
+            const uploadToCodebaseMarkerIndex = cleanPrompt.indexOf("\n\nFile to upload to codebase:");
+            if (uploadToCodebaseMarkerIndex !== -1) {
+              cleanPrompt = cleanPrompt.substring(0, uploadToCodebaseMarkerIndex);
+            }
+
+            // Recover attachments from aiMessagesJson if present
+            const attachmentsToRestore: any[] = [];
+            const aiMessagesJson = lastUserMessage.aiMessagesJson as any;
+            if (aiMessagesJson) {
+              const aiMessages = Array.isArray(aiMessagesJson) ? aiMessagesJson : aiMessagesJson.messages;
+              if (aiMessages && Array.isArray(aiMessages)) {
+                const userMsg = aiMessages.find((m: any) => m.role === "user");
+                if (userMsg && Array.isArray(userMsg.content)) {
+                  userMsg.content.forEach((part: any, i: number) => {
+                    if (part.type === "image" && part.image) {
+                      attachmentsToRestore.push({
+                        type: part.type,
+                        image: part.image,
+                        mediaType: part.mediaType || part.mimeType || "image/png"
+                      });
+                    }
+                  });
+                }
+              }
+            }
 
             safeSend(event.sender, "chat:undo-redo:content", {
               chatId: req.chatId,
               prompt: cleanPrompt,
-              // Future: parse and return attachments
+              attachments: attachmentsToRestore.length > 0 ? attachmentsToRestore : undefined
             });
           }
 
@@ -372,52 +393,25 @@ function registerChatStreamHandlers() {
 
       // Process attachments if any
       let attachmentInfo = "";
-
       if (req.attachments && req.attachments.length > 0) {
         attachmentInfo = "\n\nAttachments:\n";
-
         for (const [index, attachment] of req.attachments.entries()) {
-          // Generate a unique filename
-          const hash = crypto
-            .createHash("md5")
-            .update(attachment.name + Date.now())
-            .digest("hex");
+          const hash = crypto.createHash("md5").update(attachment.name + Date.now()).digest("hex");
           const fileExtension = path.extname(attachment.name);
           const filename = `${hash}${fileExtension}`;
           const filePath = path.join(TEMP_DIR, filename);
-
-          // Extract the base64 data (remove the data:mime/type;base64, prefix)
           const base64Data = attachment.data.split(";base64,").pop() || "";
-
           await writeFile(filePath, Buffer.from(base64Data, "base64"));
           attachmentPaths.push(filePath);
 
           if (attachment.attachmentType === "upload-to-codebase") {
-            // For upload-to-codebase, create a unique file ID and store the mapping
             const fileId = `DYAD_ATTACHMENT_${index}`;
-
-            fileUploadsState.addFileUpload(
-              { chatId: req.chatId, fileId },
-              {
-                filePath,
-                originalName: attachment.name,
-              },
-            );
-
-            // Add instruction for AI to use dyad-write tag
+            fileUploadsState.addFileUpload({ chatId: req.chatId, fileId }, { filePath, originalName: attachment.name });
             attachmentInfo += `\n\nFile to upload to codebase: ${attachment.name} (file id: ${fileId})\n`;
           } else {
-            // For chat-context, use the existing logic
             attachmentInfo += `- ${attachment.name} (${attachment.type})\n`;
-            // If it's a text-based file, try to include the content
             if (await isTextFile(filePath)) {
-              try {
-                attachmentInfo += `<dyad-text-attachment filename="${attachment.name}" type="${attachment.type}" path="${filePath}">
-                </dyad-text-attachment>
-                \n\n`;
-              } catch (err) {
-                logger.error(`Error reading file content: ${err}`);
-              }
+              attachmentInfo += `<dyad-text-attachment filename="${attachment.name}" type="${attachment.type}" path="${filePath}">\n                </dyad-text-attachment>\n\n`;
             }
           }
         }
@@ -490,6 +484,14 @@ ${componentSnippet}
         }
       }
 
+      // Generate aiMessagesJson early if we have attachments
+      let userAiMessagesJson: any = null;
+      if (attachmentPaths.length > 0) {
+        const prepared = await prepareMessageWithAttachments({ role: "user", content: userPrompt } as any, attachmentPaths);
+        const json = getAiMessagesJsonIfWithinLimit([prepared]);
+        if (json) userAiMessagesJson = JSON.stringify(json);
+      }
+
       const [insertedUserMessage] = await db
         .insert(remoteSchema.messages)
         .values({
@@ -497,6 +499,7 @@ ${componentSnippet}
           chatId: req.chatId,
           role: "user",
           content: userPrompt,
+          aiMessagesJson: userAiMessagesJson,
           createdAt: new Date(),
         })
         .returning({ id: remoteSchema.messages.id });
@@ -1188,33 +1191,11 @@ This conversation includes one or more image attachments. When the user uploads 
         if (chatMessages.length >= 2) {
           const lastUserIndex = chatMessages.length - 2;
           const lastUserMessage = chatMessages[lastUserIndex];
-          if (lastUserMessage.role === "user") {
-            if (attachmentPaths.length > 0) {
-              // Replace the last message with one that includes attachments
-              chatMessages[lastUserIndex] = await prepareMessageWithAttachments(
-                lastUserMessage,
-                attachmentPaths,
-              );
-            }
-            // Save aiMessagesJson when there are image attachments or when using local agent stream.
-            // This is needed for:
-            // 1. Local agent stream (reads from DB and needs structured image content)
-            // 2. Undo functionality (needs to recover image attachments from aiMessagesJson)
-            const hasImageAttachmentsForSave = attachmentPaths.length > 0 &&
-              req.attachments?.some(a => a.type.startsWith("image/"));
-
-            if (willUseLocalAgentStream || hasImageAttachmentsForSave) {
-              // Insert into DB (with size guard)
-              const userAiMessagesJson = getAiMessagesJsonIfWithinLimit([
-                chatMessages[lastUserIndex],
-              ]);
-              if (userAiMessagesJson) {
-                await db
-                  .update(remoteSchema.messages)
-                  .set({ aiMessagesJson: JSON.stringify(userAiMessagesJson) })
-                  .where(eq(remoteSchema.messages.id, userMessageId));
-              }
-            }
+          if (lastUserMessage.role === "user" && attachmentPaths.length > 0) {
+            chatMessages[lastUserIndex] = await prepareMessageWithAttachments(
+              lastUserMessage,
+              attachmentPaths,
+            );
           }
         } else {
           logger.warn(
@@ -1400,7 +1381,17 @@ This conversation includes one or more image attachments. When the user uploads 
                 void logAiQuery({
                   queryType: "chat-stream",
                   model: selectedModel.name || modelClient.builtinProviderId || "unknown",
-                  promptSnippet: chatMessages[chatMessages.length - 1]?.content?.slice(0, 100) || "",
+                  promptSnippet: (() => {
+                    const content = chatMessages[chatMessages.length - 1]?.content;
+                    if (typeof content === "string") return content.slice(0, 100);
+                    if (Array.isArray(content)) {
+                      const firstPart = content[0];
+                      if (firstPart && firstPart.type === "text") {
+                        return firstPart.text.slice(0, 100);
+                      }
+                    }
+                    return "";
+                  })(),
                   payload: {
                     system: systemPromptOverride,
                     messages: chatMessages,

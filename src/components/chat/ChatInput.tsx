@@ -170,6 +170,7 @@ export function ChatInput({
       e: CustomEvent<{ prompt: string; attachments?: File[] }>,
     ) => {
       setInputValue(e.detail.prompt);
+      clearAttachments();
       if (e.detail.attachments && e.detail.attachments.length > 0) {
         addAttachments(e.detail.attachments, "chat-context");
       }
@@ -185,7 +186,7 @@ export function ChatInput({
         handleRestoreInput,
       );
     };
-  }, [setInputValue, addAttachments]);
+  }, [setInputValue, addAttachments, clearAttachments]);
 
   // Use the hook to fetch the proposal
   const {
@@ -550,9 +551,17 @@ export function ChatInput({
                                     const idx = prompt.indexOf("\n\nAttachments:\n");
                                     if (idx !== -1) prompt = prompt.substring(0, idx);
                                     const attachmentsToRestore: File[] = [];
-                                    const aiMessagesJson = userMessage.aiMessagesJson;
+                                    let aiMessagesJson = userMessage.aiMessagesJson;
                                     if (aiMessagesJson) {
-                                      const aiMessages = Array.isArray(aiMessagesJson) ? aiMessagesJson : aiMessagesJson.messages;
+                                      let parsed = aiMessagesJson;
+                                      if (typeof parsed === "string") {
+                                        try {
+                                          parsed = JSON.parse(parsed);
+                                        } catch {
+                                          parsed = null;
+                                        }
+                                      }
+                                      const aiMessages = Array.isArray(parsed) ? parsed : parsed?.messages;
                                       if (aiMessages && Array.isArray(aiMessages)) {
                                         const userMsg = aiMessages.find((m: any) => m.role === "user");
                                         if (userMsg && Array.isArray(userMsg.content)) {
@@ -561,7 +570,11 @@ export function ChatInput({
                                               const mimeType = part.mediaType || part.mimeType || "image/png";
                                               const ext = mimeType.split("/")[1] || "png";
                                               try {
-                                                const byteChars = atob(part.image);
+                                                let base64 = part.image;
+                                                if (base64.startsWith("data:")) {
+                                                  base64 = base64.split(",")[1] || "";
+                                                }
+                                                const byteChars = atob(base64);
                                                 const byteArr = new Uint8Array(byteChars.length);
                                                 for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
                                                 attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
