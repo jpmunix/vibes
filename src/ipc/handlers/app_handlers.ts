@@ -2735,14 +2735,9 @@ function getCommand({
   startCommand?: string | null;
 }) {
   const port = getAppPort(appId);
-  const hasCustomCommands = !!installCommand?.trim() && !!startCommand?.trim();
-  if (hasCustomCommands) {
-    // Replace {port} placeholder with the actual assigned port
-    const install = installCommand!.trim().replace(/\{port\}/g, String(port));
-    const start = startCommand!.trim().replace(/\{port\}/g, String(port));
-    return `${install} && ${start}`;
-  }
-  return getDefaultCommand(appId);
+  const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
+  const start = (startCommand?.trim() || `npm run dev -- --port ${port}`).replace(/\{port\}/g, String(port));
+  return `${install} && ${start}`;
 }
 
 async function cleanUpPort(port: number) {

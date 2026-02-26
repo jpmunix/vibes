@@ -505,23 +505,9 @@ ${componentSnippet}
         .returning({ id: remoteSchema.messages.id });
       const userMessageId = insertedUserMessage.id;
 
-      // Send the user message immediately to the frontend
-      const chatWithUserMessage = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
-        with: {
-          messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-          },
-          app: true,
-        },
-      });
-
-      if (chatWithUserMessage) {
-        safeSend(event.sender, "chat:response:chunk", {
-          chatId: req.chatId,
-          messages: chatWithUserMessage.messages,
-        });
-      }
+      // Frontend uses an optimistic UI to instantly show the user message and assistant placeholder.
+      // We wait to send the first response chunk until we've also created the assistant message
+      // placeholder in the database, avoiding a UI flicker where the assistant bubble disappears.
 
       const settings = readSettings();
       // Only Dyad Pro requests have request ids.
