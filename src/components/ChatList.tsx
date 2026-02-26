@@ -265,8 +265,7 @@ export function ChatList({ show }: { show?: boolean }) {
           updateSettings({ selectedChatMode: effectiveDefaultMode });
 
           if (effectiveDefaultMode === "plan") {
-            localStorage.setItem(`plan_chat_${selectedAppId}`, chatId.toString());
-            setPlanChatId(chatId);
+            await ipc.chat.updateChat({ chatId, isPlan: true });
           }
         }
 

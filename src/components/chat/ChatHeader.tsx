@@ -412,21 +412,27 @@ export function ChatHeader({
                 className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
               >
                 <span className="flex items-center gap-2">
-                  {chats.find((c) => c.id === selectedChatId)?.isPlan ? (
-                    <>
-                      <Brain size={14} className="text-primary" />
-                      <span className="font-semibold text-primary">
-                        Planificación
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare size={14} className="shrink-0" />
-                      <span>
-                        {chats.find((c) => c.id === selectedChatId)?.title || "Chat"}
-                      </span>
-                    </>
-                  )}
+                  {(() => {
+                    const currentChat = chats.find((c) => c.id === selectedChatId);
+                    if (currentChat?.isPlan) {
+                      return (
+                        <>
+                          <Brain size={14} className="text-primary" />
+                          <span className="font-semibold text-primary">
+                            {currentChat.title || "Planificación"}
+                          </span>
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        <MessageSquare size={14} className="shrink-0" />
+                        <span>
+                          {currentChat?.title || "Chat"}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </span>
                 <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
               </Button>
@@ -459,7 +465,7 @@ export function ChatHeader({
                         <>
                           <Brain size={14} className="mr-2 shrink-0 text-primary" />
                           <span className="flex-1 font-semibold text-primary">
-                            Planificación
+                            {chat.title || "Planificación"}
                           </span>
                         </>
                       ) : (
