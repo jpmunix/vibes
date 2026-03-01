@@ -40,6 +40,7 @@ export function useDatabase() {
         if (!currentApp) return null;
         if (currentApp.bunnyConfig) return "bunny";
         if (currentApp.supabaseProjectId) return "supabase";
+        if (currentApp.pocketbaseConfig) return "pocketbase";
         return null;
     }, [currentApp]);
 
@@ -47,8 +48,16 @@ export function useDatabase() {
 
     // Fetch tables
     const tablesQuery = useQuery({
-        queryKey: dbType === "bunny" ? queryKeys.bunny.dbTables(appId) : queryKeys.supabase.dbTables(appId),
-        queryFn: () => dbType === "bunny" ? ipc.bunny.listTables({ appId }) : ipc.supabase.listTables({ appId }),
+        queryKey: dbType === "bunny"
+            ? queryKeys.bunny.dbTables(appId)
+            : dbType === "pocketbase"
+                ? queryKeys.pocketbase.dbTables(appId)
+                : queryKeys.supabase.dbTables(appId),
+        queryFn: () => {
+            if (dbType === "bunny") return ipc.bunny.listTables({ appId });
+            if (dbType === "pocketbase") return ipc.pocketbase.listTables({ appId });
+            return ipc.supabase.listTables({ appId });
+        },
         enabled: isConnected && appId > 0,
         staleTime: 30_000,
     });
@@ -57,7 +66,9 @@ export function useDatabase() {
     const tableDataQuery = useQuery({
         queryKey: dbType === "bunny"
             ? queryKeys.bunny.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir)
-            : queryKeys.supabase.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir),
+            : dbType === "pocketbase"
+                ? queryKeys.pocketbase.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir)
+                : queryKeys.supabase.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir),
         queryFn: () => {
             const params = {
                 appId,
@@ -68,7 +79,9 @@ export function useDatabase() {
                 orderDir,
                 filters: filters.length > 0 ? filters : undefined,
             };
-            return dbType === "bunny" ? ipc.bunny.queryTable(params) : ipc.supabase.queryTable(params);
+            if (dbType === "bunny") return ipc.bunny.queryTable(params);
+            if (dbType === "pocketbase") return ipc.pocketbase.queryTable(params);
+            return ipc.supabase.queryTable(params);
         },
         enabled: isConnected && appId > 0 && !!selectedTable,
         staleTime: 10_000,
@@ -77,23 +90,24 @@ export function useDatabase() {
     // Selected table info
     const selectedTableInfo = useMemo(() => {
         if (!selectedTable || !tablesQuery.data) return null;
-        return tablesQuery.data.tables.find((t) => t.name === selectedTable) ?? null;
+        return (tablesQuery.data.tables as any[]).find((t: any) => t.name === selectedTable) ?? null;
     }, [selectedTable, tablesQuery.data]);
 
     // Primary key columns for the selected table
     const primaryKeyColumns = useMemo(() => {
         if (!selectedTableInfo) return [];
-        return selectedTableInfo.columns
-            .filter((c) => c.isPrimaryKey)
-            .map((c) => c.name);
+        return (selectedTableInfo.columns as any[])
+            .filter((c: any) => c.isPrimaryKey)
+            .map((c: any) => c.name);
     }, [selectedTableInfo]);
 
     // Execute raw SQL
     const executeQueryMutation = useMutation({
-        mutationFn: (query: string) =>
-            dbType === "bunny"
-                ? ipc.bunny.executeQuery({ appId, query })
-                : ipc.supabase.executeQuery({ appId, query }),
+        mutationFn: (query: string) => {
+            if (dbType === "bunny") return ipc.bunny.executeQuery({ appId, query });
+            if (dbType === "pocketbase") return ipc.pocketbase.executeQuery({ appId, query });
+            return ipc.supabase.executeQuery({ appId, query });
+        },
         onError: (error) => {
             showError(`Error SQL: ${error.message}`);
         },
@@ -103,7 +117,9 @@ export function useDatabase() {
     const insertRowMutation = useMutation({
         mutationFn: (data: Record<string, unknown>) => {
             const params = { appId, table: selectedTable!, data };
-            return dbType === "bunny" ? ipc.bunny.insertRow(params) : ipc.supabase.insertRow(params);
+            if (dbType === "bunny") return ipc.bunny.insertRow(params);
+            if (dbType === "pocketbase") return ipc.pocketbase.insertRow(params);
+            return ipc.supabase.insertRow(params);
         },
         onSuccess: () => {
             showSuccess("Fila insertada");
@@ -124,7 +140,9 @@ export function useDatabase() {
             data: Record<string, unknown>;
         }) => {
             const params = { appId, table: selectedTable!, primaryKey, data };
-            return dbType === "bunny" ? ipc.bunny.updateRow(params) : ipc.supabase.updateRow(params);
+            if (dbType === "bunny") return ipc.bunny.updateRow(params);
+            if (dbType === "pocketbase") return ipc.pocketbase.updateRow(params);
+            return ipc.supabase.updateRow(params);
         },
         onSuccess: () => {
             showSuccess("Fila actualizada");
@@ -139,7 +157,9 @@ export function useDatabase() {
     const deleteRowsMutation = useMutation({
         mutationFn: (primaryKeys: Record<string, unknown>[]) => {
             const params = { appId, table: selectedTable!, primaryKeys };
-            return dbType === "bunny" ? ipc.bunny.deleteRows(params) : ipc.supabase.deleteRows(params);
+            if (dbType === "bunny") return ipc.bunny.deleteRows(params);
+            if (dbType === "pocketbase") return ipc.pocketbase.deleteRows(params);
+            return ipc.supabase.deleteRows(params);
         },
         onSuccess: (result) => {
             showSuccess(`${result.deletedCount} fila(s) eliminada(s)`);
@@ -178,14 +198,18 @@ export function useDatabase() {
         if (selectedTable) {
             const queryKey = dbType === "bunny"
                 ? queryKeys.bunny.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir)
-                : queryKeys.supabase.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir);
+                : dbType === "pocketbase"
+                    ? queryKeys.pocketbase.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir)
+                    : queryKeys.supabase.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir);
 
             queryClient.invalidateQueries({ queryKey });
         }
 
         const tablesKey = dbType === "bunny"
             ? queryKeys.bunny.dbTables(appId)
-            : queryKeys.supabase.dbTables(appId);
+            : dbType === "pocketbase"
+                ? queryKeys.pocketbase.dbTables(appId)
+                : queryKeys.supabase.dbTables(appId);
 
         queryClient.invalidateQueries({ queryKey: tablesKey });
     }, [selectedTable, appId, page, pageSize, orderBy, orderDir, queryClient, dbType]);

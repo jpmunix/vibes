@@ -24,6 +24,7 @@ import {
     Loader2,
     ExternalLink,
 } from "lucide-react";
+import pocketbaseLogo from "../../../assets/logo-pocketbase-icon.svg";
 import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -239,7 +240,7 @@ export function DatabasePanel() {
                     No hay conexión a la base de datos
                 </h3>
                 <p className="text-xs text-muted-foreground/70 max-w-[300px]">
-                    Conecta este proyecto a Supabase o Bunny.net desde la configuración para ver y
+                    Conecta este proyecto a Supabase, Bunny.net o PocketBase desde la configuración para ver y
                     gestionar las tablas de la base de datos.
                 </p>
             </div>
@@ -252,12 +253,14 @@ export function DatabasePanel() {
                 {/* ── Header ── */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                     <div className="flex items-center gap-2">
-                        {db.dbType === "bunny" ? (
+                        {db.dbType === "pocketbase" ? (
+                            <img src={pocketbaseLogo} alt="PocketBase" className="h-[14px] w-[14px] object-contain" />
+                        ) : db.dbType === "bunny" ? (
                             <Database size={14} className="text-pink-500" />
                         ) : (
                             <img src={supabaseLogo} alt="Supabase" className="h-[14px] w-[14px] brightness-0 dark:invert" />
                         )}
-                        <span className="text-xs font-medium">Base de datos <span className="text-[10px] opacity-70">({db.dbType === "bunny" ? "Bunny.net" : "Supabase"})</span></span>
+                        <span className="text-xs font-medium">Base de datos <span className="text-[10px] opacity-70">({db.dbType === "bunny" ? "Bunny.net" : db.dbType === "pocketbase" ? "PocketBase" : "Supabase"})</span></span>
                         {db.selectedTable && (
                             <span className="text-[10px] text-muted-foreground">
                                 / {db.selectedTable}

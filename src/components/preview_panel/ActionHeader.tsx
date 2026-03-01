@@ -77,7 +77,7 @@ export const ActionHeader = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const currentApp = useAtomValue(currentAppAtom);
-  const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig);
+  const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);

@@ -332,6 +332,32 @@ export const queryKeys = {
         orderDir,
       ] as const,
   },
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PocketBase
+  // ─────────────────────────────────────────────────────────────────────────────
+  pocketbase: {
+    all: ["pocketbase"] as const,
+    config: ({ appId }: { appId: number }) => ["pocketbase", "config", appId] as const,
+    dbTables: (appId: number) => ["pocketbase", "db-tables", appId] as const,
+    dbTableData: (
+      appId: number,
+      table: string,
+      page: number,
+      pageSize: number,
+      orderBy?: string,
+      orderDir?: string,
+    ) =>
+      [
+        "pocketbase",
+        "db-table-data",
+        appId,
+        table,
+        page,
+        pageSize,
+        orderBy,
+        orderDir,
+      ] as const,
+  },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────

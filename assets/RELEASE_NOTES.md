@@ -2,7 +2,7 @@
 - **feat:** extend Bunny.net integration with database and storage support
 - Migrados todos los datos a la nube. Ahora el usuario deberá registrarse o iniciar sesión. En el momento se migran todos sus datos y la app ya no tendrá que sacar más copias de seguridad
 
-**feat(db, visual-editing): add Bunny.net database support and improve visual editing handlers**
+**feat(db, visual-editing): add Bunny.net & pocketbase database support and improve visual editing handlers**
 
 **feat(app, db): add PocketBase integration with UI support and system prompts**
 
