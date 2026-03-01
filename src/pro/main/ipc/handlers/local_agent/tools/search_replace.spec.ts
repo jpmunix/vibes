@@ -46,6 +46,7 @@ describe("searchReplaceTool", () => {
     supabaseOrganizationSlug: null,
     firebaseProjectId: "test-project",
     bunnyConfig: null,
+    pocketbaseConfig: null,
     messageId: 1,
     isSharedModulesChanged: false,
     isBasicAgentMode: false,

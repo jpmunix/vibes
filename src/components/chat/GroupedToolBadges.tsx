@@ -145,7 +145,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, is
                             return (
                                 <button
                                     key={i}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 transition-colors cursor-pointer text-left"
+                                    className="w-full flex items-center gap-2 px-3 h-7 hover:bg-muted/40 transition-colors cursor-pointer text-left overflow-hidden"
                                     onClick={() => setModalItem(b)}
                                 >
                                     <Icon size={13} className={`${meta.color} flex-shrink-0`} />

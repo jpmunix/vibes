@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "fe797eb6-b6d9-44af-a66c-27d94e63182f",
-  "prevId": "800da9bd-4540-44fb-9b7b-caedd3c23a3e",
+  "id": "752d9414-a218-4cf1-bc9e-8830f72f1cfb",
+  "prevId": "fe797eb6-b6d9-44af-a66c-27d94e63182f",
   "tables": {
     "ai_query_logs": {
       "name": "ai_query_logs",
@@ -225,6 +225,13 @@
         },
         "bunny_config": {
           "name": "bunny_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pocketbase_config": {
+          "name": "pocketbase_config",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

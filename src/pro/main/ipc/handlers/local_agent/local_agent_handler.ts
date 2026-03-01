@@ -225,6 +225,7 @@ export async function handleLocalAgentStream(
       supabaseOrganizationSlug: chat.app.supabaseOrganizationSlug,
       firebaseProjectId: chat.app.firebaseProjectId,
       bunnyConfig: (chat.app.bunnyConfig as AgentContext["bunnyConfig"]) ?? null,
+      pocketbaseConfig: (chat.app.pocketbaseConfig as AgentContext["pocketbaseConfig"]) ?? null,
       messageId: placeholderMessageId,
       isSharedModulesChanged: false,
       todos: [],

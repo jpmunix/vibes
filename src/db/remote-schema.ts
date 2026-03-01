@@ -75,6 +75,7 @@ export const apps = sqliteTable("apps", {
     firebaseProjectId: text("firebase_project_id"),
     firebaseConfig: text("firebase_config", { mode: "json" }),
     bunnyConfig: text("bunny_config", { mode: "json" }),
+    pocketbaseConfig: text("pocketbase_config", { mode: "json" }),
     installCommand: text("install_command"),
     startCommand: text("start_command"),
     chatContext: text("chat_context", { mode: "json" }),

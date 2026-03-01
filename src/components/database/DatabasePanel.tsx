@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
     Table,
     Database,
+    DatabaseZap,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
@@ -23,6 +24,7 @@ import {
     Loader2,
     ExternalLink,
 } from "lucide-react";
+import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -231,6 +233,7 @@ export function DatabasePanel() {
     if (!db.isConnected) {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
+                {/* We use Database here as a generic icon when disconnected */}
                 <Database size={48} className="text-muted-foreground/30" />
                 <h3 className="text-sm font-medium text-muted-foreground">
                     No hay conexión a la base de datos
@@ -249,7 +252,11 @@ export function DatabasePanel() {
                 {/* ── Header ── */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                     <div className="flex items-center gap-2">
-                        <Database size={14} className={cn(db.dbType === "bunny" ? "text-pink-500" : "text-blue-500")} />
+                        {db.dbType === "bunny" ? (
+                            <Database size={14} className="text-pink-500" />
+                        ) : (
+                            <img src={supabaseLogo} alt="Supabase" className="h-[14px] w-[14px] brightness-0 dark:invert" />
+                        )}
                         <span className="text-xs font-medium">Base de datos <span className="text-[10px] opacity-70">({db.dbType === "bunny" ? "Bunny.net" : "Supabase"})</span></span>
                         {db.selectedTable && (
                             <span className="text-[10px] text-muted-foreground">

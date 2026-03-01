@@ -150,6 +150,7 @@ export async function initializeRemoteSchema(): Promise<void> {
       firebase_project_id TEXT,
       firebase_config TEXT,
       bunny_config TEXT,
+      pocketbase_config TEXT,
       install_command TEXT,
       start_command TEXT,
       chat_context TEXT,

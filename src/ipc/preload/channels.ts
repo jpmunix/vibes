@@ -16,6 +16,7 @@ import {
 import { agentContracts, agentEvents } from "../types/agent";
 import { appContracts } from "../types/app";
 import { bunnyContracts } from "../types/bunny";
+import { pocketbaseContracts } from "../types/pocketbase";
 import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
@@ -118,6 +119,7 @@ export const VALID_INVOKE_CHANNELS = [
 
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(bunnyContracts),
+  ...getInvokeChannels(pocketbaseContracts),
   ...getInvokeChannels(knowledgeContracts),
   ...getInvokeChannels(aiQueryLogContracts),
   ...getInvokeChannels(dossierContracts),

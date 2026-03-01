@@ -40,6 +40,28 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
+import pocketbaseLogo from "../../../assets/logo-pocketbase-icon.svg";
+import { cn } from "@/lib/utils";
+
+const SupabaseIcon = ({ size, className }: { size?: number; className?: string }) => (
+    <img
+        src={supabaseLogo}
+        alt="Supabase"
+        className={cn("brightness-0 dark:invert opacity-80", className)}
+        style={{ width: size || 14, height: size || 14 }}
+    />
+);
+
+const PocketBaseIcon = ({ size, className }: { size?: number; className?: string }) => (
+    <span className={cn("inline-flex items-center justify-center", className)} style={{ width: size || 14, height: size || 14 }}>
+        <img
+            src={pocketbaseLogo}
+            alt="PocketBase"
+            className="brightness-0 dark:invert opacity-80 object-contain w-full h-full"
+        />
+    </span>
+);
 
 export interface ToolMetaEntry {
     icon: LucideIcon;
@@ -69,8 +91,10 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "dyad-read-logs": { icon: ScrollText, label: "Logs", pendingLabel: "Leyendo logs", color: "text-gray-500" },
     "dyad-codebase-context": { icon: FileText, label: "Contexto", pendingLabel: "Cargando contexto", color: "text-cyan-500" },
     "dyad-database-schema": { icon: Database, label: "Esquema BD", pendingLabel: "Cargando esquema", color: "text-orange-500" },
-    "dyad-supabase-table-schema": { icon: Database, label: "Tabla", pendingLabel: "Cargando tabla", color: "text-emerald-500" },
-    "dyad-supabase-project-info": { icon: Database, label: "Supabase", pendingLabel: "Cargando Supabase", color: "text-emerald-500" },
+    "dyad-supabase-table-schema": { icon: SupabaseIcon as any, label: "Tabla", pendingLabel: "Cargando tabla", color: "" },
+    "dyad-supabase-project-info": { icon: SupabaseIcon as any, label: "Supabase", pendingLabel: "Cargando Supabase", color: "" },
+    "dyad-pocketbase-info": { icon: PocketBaseIcon as any, label: "PocketBase", pendingLabel: "Cargando PocketBase", color: "" },
+    "dyad-pocketbase-storage-info": { icon: PocketBaseIcon as any, label: "PocketBase Storage", pendingLabel: "Cargando Storage", color: "" },
     "dyad-bunny-db-info": { icon: Database, label: "Bunny DB", pendingLabel: "Cargando Bunny DB", color: "text-orange-500" },
     "dyad-bunny-storage-info": { icon: FolderOpen, label: "Bunny Storage", pendingLabel: "Cargando Storage", color: "text-orange-500" },
     "dyad-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
@@ -80,7 +104,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "dyad-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
-    "dyad-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta", color: "text-violet-500" },
+    "dyad-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta del usuario", color: "text-violet-500" },
     "dyad-run-command": { icon: Terminal, label: "Comando", pendingLabel: "Ejecutando", color: "text-lime-500" },
     "dyad-start-process": { icon: Play, label: "Proceso", pendingLabel: "Iniciando proceso", color: "text-green-500" },
     "dyad-stop-process": { icon: Square, label: "Detenido", pendingLabel: "Deteniendo proceso", color: "text-red-500" },
@@ -267,6 +291,10 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes["process-id"] || undefined;
         case "dyad-wait-http":
             return attributes.url || undefined;
+        case "dyad-pocketbase-info":
+            return attributes.collection || "Info";
+        case "dyad-pocketbase-storage-info":
+            return attributes.collection || "Storage";
         case "dyad-typecheck-summary": {
             const hasErr = attributes["has-errors"] === "true";
             return hasErr ? "con errores" : "sin errores";

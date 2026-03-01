@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, ChevronRight, DatabaseZap } from "lucide-react";
+import { Trash2, ChevronRight } from "lucide-react";
+import supabaseLogo from "../../assets/logo-supabase-icon.svg";
 import { useSettings } from "@/hooks/useSettings";
 import { useSupabase } from "@/hooks/useSupabase";
 import { showSuccess, showError } from "@/lib/toast";
@@ -107,7 +108,7 @@ export function SupabaseIntegration() {
       >
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <DatabaseZap className="h-4 w-4 text-muted-foreground shrink-0" />
+            <img src={supabaseLogo} alt="Supabase" className="h-4 w-4 brightness-0 dark:invert opacity-70 shrink-0" />
             Supabase
           </h3>
           <p className="text-sm text-muted-foreground mt-1">

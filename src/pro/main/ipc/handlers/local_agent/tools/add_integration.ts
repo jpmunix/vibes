@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolDefinition, escapeXmlAttr } from "./types";
 
-const SUPPORTED_PROVIDERS = ["supabase", "bunny"] as const;
+const SUPPORTED_PROVIDERS = ["supabase", "bunny", "pocketbase"] as const;
 
 const addIntegrationSchema = z.object({
   provider: z
@@ -18,7 +18,7 @@ export const addIntegrationTool: ToolDefinition<
   inputSchema: addIntegrationSchema,
   defaultConsent: "always",
   modifiesState: true,
-  isEnabled: (ctx) => !ctx.supabaseProjectId || !ctx.bunnyConfig,
+  isEnabled: (ctx) => !ctx.supabaseProjectId || !ctx.bunnyConfig || !ctx.pocketbaseConfig,
 
   getConsentPreview: (args) => `Add ${args.provider} integration`,
 

@@ -1,0 +1,1 @@
+ALTER TABLE `apps` ADD `pocketbase_config` text;

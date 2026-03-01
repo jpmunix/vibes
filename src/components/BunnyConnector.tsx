@@ -12,6 +12,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
     ChevronDown,
     ChevronRight,
@@ -377,46 +378,26 @@ export function BunnyConnector({ appId }: { appId: number }) {
 
     if (loading) {
         return (
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <img
-                            src={bunnyLogo}
-                            alt="Bunny.net"
-                            className="h-5 w-5 brightness-0 dark:invert"
-                        />
-                        Bunny.net
-                    </CardTitle>
-                    <CardDescription>
-                        Bases de datos en la nube y almacenamiento de archivos
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Cargando configuración...
-                    </div>
-                </CardContent>
-            </Card>
+            <CollapsibleCard
+                title="Bunny.net"
+                icon={<img src={bunnyLogo} alt="Bunny.net" className="h-5 w-5 brightness-0 dark:invert" />}
+                description="Bases de datos en la nube y almacenamiento de archivos"
+            >
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Cargando configuración...
+                </div>
+            </CollapsibleCard>
         );
     }
 
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <img
-                        src={bunnyLogo}
-                        alt="Bunny.net"
-                        className="h-5 w-5 brightness-0 dark:invert"
-                    />
-                    Bunny.net
-                </CardTitle>
-                <CardDescription>
-                    Bases de datos en la nube y almacenamiento de archivos
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        <CollapsibleCard
+            title="Bunny.net"
+            icon={<img src={bunnyLogo} alt="Bunny.net" className="h-5 w-5 brightness-0 dark:invert" />}
+            description="Bases de datos en la nube y almacenamiento de archivos"
+        >
+            <div className="space-y-3">
                 {/* Databases Section */}
                 <div className="border border-black/8 dark:border-white/8 rounded-lg overflow-hidden">
                     <button
@@ -541,7 +522,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
                         Guardar configuración
                     </Button>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </CollapsibleCard>
     );
 }

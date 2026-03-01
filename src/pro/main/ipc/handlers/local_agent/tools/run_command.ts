@@ -365,6 +365,20 @@ export const runCommandTool: ToolDefinition<RunCommandArgs> = {
         // Layer 3: Build safe env
         const env = buildSafeEnv(args.env as Record<string, string> | undefined);
 
+        // Layer 4: Inject integration credentials so user scripts can authenticate
+        if (ctx.pocketbaseConfig) {
+            env.POCKETBASE_URL = ctx.pocketbaseConfig.url;
+            env.POCKETBASE_ADMIN_EMAIL = ctx.pocketbaseConfig.adminEmail;
+            env.POCKETBASE_ADMIN_PASSWORD = ctx.pocketbaseConfig.adminPassword;
+        }
+        if (ctx.bunnyConfig) {
+            const db0 = ctx.bunnyConfig.databases[0];
+            if (db0) {
+                env.BUNNY_DB_URL = db0.databaseUrl;
+                env.BUNNY_DB_TOKEN = db0.fullAccessToken;
+            }
+        }
+
         const cmdStr = [args.cmd, ...args.args].join(" ");
         logger.log(`Executing: ${cmdStr} (cwd: ${cwd}, timeout: ${args.timeout_ms}ms)`);
 

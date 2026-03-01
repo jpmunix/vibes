@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { CustomTagState } from "./stateTypes";
 import {
-  Database,
+  DatabaseZap,
   Loader2,
   CircleX,
   ChevronsDownUp,
   ChevronsUpDown,
 } from "lucide-react";
+import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
 
 interface DyadSupabaseProjectInfoProps {
   node: {
@@ -29,13 +30,12 @@ export function DyadSupabaseProjectInfo({
 
   return (
     <div
-      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${
-        isLoading
-          ? "border-amber-500"
-          : isAborted
-            ? "border-red-500"
-            : "border-border"
-      }`}
+      className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${isLoading
+        ? "border-amber-500"
+        : isAborted
+          ? "border-red-500"
+          : "border-border"
+        }`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >
       <div className="flex items-center justify-between">
@@ -45,7 +45,7 @@ export function DyadSupabaseProjectInfo({
           ) : isAborted ? (
             <CircleX className="size-4 text-red-500" />
           ) : (
-            <Database className="size-4 text-muted-foreground" />
+            <img src={supabaseLogo} alt="Supabase" className="size-4 brightness-0 dark:invert opacity-70" />
           )}
           <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
             Supabase Project Info

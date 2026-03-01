@@ -248,8 +248,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           }
         }
 
+        // For ask-user, don't append the (potentially very long) question as detail
+        const skipDetail = lastOpenTag === "dyad-ask-user";
+
         return {
-          label: detail ? `${activeLabel} ${detail}` : activeLabel,
+          label: (!skipDetail && detail) ? `${activeLabel} ${detail}` : activeLabel,
           dotColorClass: getBgColorClass(meta.color),
           labelColorClass: meta.color,
           contentExcerpt,

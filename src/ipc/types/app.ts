@@ -34,6 +34,7 @@ export const AppBaseSchema = z.object({
   firebaseProjectId: z.string().nullable().optional(),
   firebaseConfig: z.any().nullable().optional(),
   bunnyConfig: z.any().nullable().optional(),
+  pocketbaseConfig: z.any().nullable().optional(),
 });
 
 /**

@@ -69,6 +69,11 @@ export const apps = sqliteTable("apps", {
       readonlyPassword: string;
     }[];
   } | null>(),
+  pocketbaseConfig: text("pocketbase_config", { mode: "json" }).$type<{
+    url: string;
+    adminEmail: string;
+    adminPassword: string;
+  } | null>(),
   installCommand: text("install_command"),
   startCommand: text("start_command"),
   chatContext: text("chat_context", { mode: "json" }),

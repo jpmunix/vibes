@@ -37,6 +37,7 @@ export { supabaseContracts } from "./supabase";
 export { neonContracts } from "./neon";
 export { firebaseContracts } from "./firebase";
 export { bunnyContracts } from "./bunny";
+export { pocketbaseContracts } from "./pocketbase";
 export { systemContracts, systemEvents } from "./system";
 export { versionContracts } from "./version";
 export { languageModelContracts } from "./language-model";
@@ -80,6 +81,7 @@ export { supabaseClient } from "./supabase";
 export { neonClient } from "./neon";
 export { firebaseClient } from "./firebase";
 export { bunnyClient } from "./bunny";
+export { pocketbaseClient } from "./pocketbase";
 export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
@@ -245,6 +247,9 @@ export type {
   BunnyDatabaseEntry,
   BunnyStorageZoneEntry,
 } from "./bunny";
+
+// PocketBase types
+export type { PocketBaseConfig } from "./pocketbase";
 
 // System types
 export type {
@@ -444,6 +449,7 @@ import { debateClient, debateStreamClient } from "./debate";
 import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
+import { pocketbaseClient } from "./pocketbase";
 import { aiQueryLogClient } from "./ai_query_logs";
 import { dossierClient, dossierStreamClient } from "./dossier";
 import { authClient } from "./auth";
@@ -492,6 +498,7 @@ export const ipc = {
   neon: neonClient,
   firebase: firebaseClient,
   bunny: bunnyClient,
+  pocketbase: pocketbaseClient,
 
   // Features
   system: systemClient,

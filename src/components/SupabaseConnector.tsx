@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
@@ -36,8 +37,10 @@ import supabaseLogoDark from "../../assets/supabase/supabase-logo-wordmark--dark
 import connectSupabaseDark from "../../assets/supabase/connect-supabase-dark.svg";
 // @ts-ignore
 import connectSupabaseLight from "../../assets/supabase/connect-supabase-light.svg";
+// @ts-ignore
+import supabaseLogo from "../../assets/logo-supabase-icon.svg";
 
-import { Database, ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isSupabaseConnected } from "@/lib/schemas";
 
@@ -162,31 +165,20 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   // Connected and has project set
   if (isConnected && app?.supabaseProjectName) {
     return (
-      <Card className="mt-1">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Database className="h-5 w-5" />
-            Supabase
-          </CardTitle>
-          <CardDescription className="flex flex-col gap-1.5 text-sm">
-            Esta app está conectada al proyecto:{" "}
-            <Badge
-              variant="secondary"
-              className="ml-2 text-base font-bold px-3 py-1"
-            >
-              {app.supabaseProjectName}
-            </Badge>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="pt-2 border-t flex justify-end">
-            <Button variant="ghost" size="sm" onClick={handleUnsetProject} className="text-muted-foreground hover:text-destructive">
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              Desconectar proyecto
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <CollapsibleCard
+        title="Supabase"
+        icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+        description={
+          <>Esta app está conectada al proyecto:{" "}<Badge variant="secondary" className="ml-2 text-base font-bold px-3 py-1">{app.supabaseProjectName}</Badge></>
+        }
+      >
+        <div className="pt-2 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleUnsetProject} className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Desconectar proyecto
+          </Button>
+        </div>
+      </CollapsibleCard>
     );
   }
 
@@ -199,157 +191,143 @@ export function SupabaseConnector({ appId }: { appId: number }) {
         : "";
 
     return (
-      <Card className="mt-1">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-base">
-            <div className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Supabase
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => refetchProjects()}
-                disabled={isFetchingProjects}
-                title="Refrescar proyectos"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isFetchingProjects ? "animate-spin" : ""}`}
-                />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddAccount}
-                className="gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                Añadir organización
-              </Button>
-            </div>
-          </CardTitle>
-          <CardDescription>
-            Selecciona un proyecto de Supabase para conectar a esta app
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-2">
-          {isLoadingProjects || isFetchingProjects ? (
+      <CollapsibleCard
+        title="Supabase"
+        icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+        description="Selecciona un proyecto de Supabase para conectar a esta app"
+      >
+        <div className="flex items-center justify-end gap-2 mb-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetchProjects()}
+            disabled={isFetchingProjects}
+            title="Refrescar proyectos"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isFetchingProjects ? "animate-spin" : ""}`}
+            />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddAccount}
+            className="gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            Añadir organización
+          </Button>
+        </div>
+        {isLoadingProjects || isFetchingProjects ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : projectsError ? (
+          <div className="text-red-500">
+            Error al cargar los proyectos: {projectsError.message}
+            <Button
+              variant="outline"
+              className="mt-2"
+              onClick={() => refetchProjects()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Connected organizations list */}
             <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : projectsError ? (
-            <div className="text-red-500">
-              Error al cargar los proyectos: {projectsError.message}
-              <Button
-                variant="outline"
-                className="mt-2"
-                onClick={() => refetchProjects()}
-              >
-                Reintentar
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Connected organizations list */}
-              <div className="space-y-2">
-                <Label>Organizaciones conectadas</Label>
-                <div className="space-y-1">
-                  {organizations.map((org) => (
-                    <div
-                      key={org.organizationSlug}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm gap-2"
-                    >
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="font-medium truncate">
-                          {org.name ||
-                            `Organization ${org.organizationSlug.slice(0, 8)}`}
-                        </span>
-                        {org.ownerEmail && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {org.ownerEmail}
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() =>
-                          handleDeleteOrganization(org.organizationSlug)
-                        }
-                        title="Desconectar organización"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        <span className="text-xs">Desconectar</span>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {projects.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  No se han encontrado proyectos en tus organizaciones de
-                  Supabase conectadas.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="project-select">Proyecto</Label>
-                  <Select
-                    value={currentProjectValue}
-                    onValueChange={handleProjectSelect}
+              <Label>Organizaciones conectadas</Label>
+              <div className="space-y-1">
+                {organizations.map((org) => (
+                  <div
+                    key={org.organizationSlug}
+                    className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm gap-2"
                   >
-                    <SelectTrigger id="project-select">
-                      <SelectValue placeholder="Selecciona un proyecto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(groupedProjects).map(
-                        ([orgKey, { orgLabel, projects: orgProjects }]) => (
-                          <SelectGroup key={orgKey}>
-                            <SelectLabel>{orgLabel}</SelectLabel>
-                            {orgProjects.map((project) => (
-                              <SelectItem
-                                key={`${project.organizationSlug}:${project.id}`}
-                                value={`${project.organizationSlug}:${project.id}`}
-                              >
-                                {project.name || project.id}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ),
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-medium truncate">
+                        {org.name ||
+                          `Organization ${org.organizationSlug.slice(0, 8)}`}
+                      </span>
+                      {org.ownerEmail && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {org.ownerEmail}
+                        </span>
                       )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() =>
+                        handleDeleteOrganization(org.organizationSlug)
+                      }
+                      title="Desconectar organización"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      <span className="text-xs">Desconectar</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {projects.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No se han encontrado proyectos en tus organizaciones de
+                Supabase conectadas.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="project-select">Proyecto</Label>
+                <Select
+                  value={currentProjectValue}
+                  onValueChange={handleProjectSelect}
+                >
+                  <SelectTrigger id="project-select">
+                    <SelectValue placeholder="Selecciona un proyecto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(groupedProjects).map(
+                      ([orgKey, { orgLabel, projects: orgProjects }]) => (
+                        <SelectGroup key={orgKey}>
+                          <SelectLabel>{orgLabel}</SelectLabel>
+                          {orgProjects.map((project) => (
+                            <SelectItem
+                              key={`${project.organizationSlug}:${project.id}`}
+                              value={`${project.organizationSlug}:${project.id}`}
+                            >
+                              {project.name || project.id}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
+      </CollapsibleCard>
     );
   }
 
   // No accounts connected, show connect button
   return (
-    <Card className="mt-1 border-dashed">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Database className="h-5 w-5" />
-          Supabase
-        </CardTitle>
-        <CardDescription>Conecta tu cuenta de Supabase para gestionar tu base de datos</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <img
-          onClick={handleAddAccount}
-          src={isDarkMode ? connectSupabaseDark : connectSupabaseLight}
-          alt="Connect to Supabase"
-          className="w-full h-10 min-h-8 min-w-20 cursor-pointer"
-          data-testid="connect-supabase-button"
-        />
-      </CardContent>
-    </Card>
+    <CollapsibleCard
+      title="Supabase"
+      icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+      description="Conecta tu cuenta de Supabase para gestionar tu base de datos"
+    >
+      <img
+        onClick={handleAddAccount}
+        src={isDarkMode ? connectSupabaseDark : connectSupabaseLight}
+        alt="Connect to Supabase"
+        className="w-full h-10 min-h-8 min-w-20 cursor-pointer"
+        data-testid="connect-supabase-button"
+      />
+    </CollapsibleCard>
   );
 }

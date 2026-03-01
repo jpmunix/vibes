@@ -4,6 +4,8 @@
 
 **feat(db, visual-editing): add Bunny.net database support and improve visual editing handlers**
 
+**feat(app, db): add PocketBase integration with UI support and system prompts**
+
 --------------------------
 
 ### 🧠 Agente & IA

@@ -34,6 +34,7 @@ import {
   BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/bunny_prompt";
 import type { BunnyConfig } from "@/ipc/types/bunny";
+import { getPocketBaseAvailableSystemPrompt, POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT } from "../../prompts/pocketbase_prompt";
 import { getDyadAppPath } from "../../paths/paths";
 import { readSettings } from "../../main/settings";
 import type { ChatResponseEnd, ChatStreamParams } from "@/ipc/types";
@@ -1051,6 +1052,17 @@ ${componentSnippet}
           settings.selectedChatMode !== "local-agent"
         ) {
           systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
+        }
+
+        // PocketBase prompt injection
+        const pocketbaseConfig = updatedChat.app?.pocketbaseConfig as any;
+        if (pocketbaseConfig && pocketbaseConfig.url && pocketbaseConfig.adminEmail) {
+          systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
+        } else if (
+          !isSecurityReviewIntent &&
+          settings.selectedChatMode !== "local-agent"
+        ) {
+          systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
         // Use the isSummarizeIntent variable declared earlier
         if (isSummarizeIntent) {
@@ -2208,17 +2220,17 @@ async function tryMcpRankFiles({
       paths = result as string[];
     } else if (typeof result === "string") {
       try {
-        const parsed = JSON.parse(result);
+        const parsed = JSON.parse(result as string);
         if (Array.isArray(parsed)) {
           paths = parsed;
         } else {
-          paths = result
+          paths = String(result)
             .split("\n")
             .map((p: string) => p.trim())
             .filter(Boolean);
         }
       } catch {
-        paths = result
+        paths = String(result)
           .split("\n")
           .map((p: string) => p.trim())
           .filter(Boolean);

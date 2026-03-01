@@ -109,6 +109,35 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
     );
   }
 
+  if (provider === "pocketbase") {
+    const pbConfig = app?.pocketbaseConfig as any;
+    if (pbConfig && pbConfig.url && pbConfig.adminEmail) {
+      return (
+        <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
+          <div className="flex items-center space-x-2">
+            <CheckIcon />
+            <span className="font-semibold text-green-800 dark:text-green-300">
+              Integración con PocketBase completada
+            </span>
+          </div>
+          <div className="text-sm text-green-900 dark:text-green-100">
+            <p>
+              Instancia: <span className="font-mono">{pbConfig.url}</span>
+            </p>
+          </div>
+          <Button
+            onClick={() => handleKeepGoingClick("PocketBase")}
+            className="self-start mt-2"
+            variant="default"
+            disabled={isStreaming}
+          >
+            Continuar
+          </Button>
+        </div>
+      );
+    }
+  }
+
   if (provider === "bunny") {
     const bunnyConfig = app?.bunnyConfig as BunnyConfig | null;
     const hasBunnyData =
@@ -154,7 +183,7 @@ export const DyadAddIntegration: React.FC<DyadAddIntegrationProps> = ({
   }
 
   // --- Default: not configured, show setup button ---
-  const providerLabel = provider === "bunny" ? "Bunny.net" : provider;
+  const providerLabel = provider === "bunny" ? "Bunny.net" : provider === "pocketbase" ? "PocketBase" : provider;
 
   return (
     <div className="flex flex-col gap-2 my-2 p-3 border rounded-md bg-secondary/10 dark:bg-secondary/20">

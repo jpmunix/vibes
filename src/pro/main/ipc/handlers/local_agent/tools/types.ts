@@ -64,6 +64,11 @@ export interface AgentContext {
     databases: { name: string; databaseUrl: string; fullAccessToken: string; readOnlyToken: string }[];
     storageZones: { name: string; hostname: string; username: string; password: string; readonlyPassword: string }[];
   } | null;
+  pocketbaseConfig: {
+    url: string;
+    adminEmail: string;
+    adminPassword: string;
+  } | null;
   messageId: number;
   isSharedModulesChanged: boolean;
   chatSummary?: string;

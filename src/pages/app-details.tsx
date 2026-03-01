@@ -21,6 +21,7 @@ import {
   Smartphone,
   Flame,
   Database,
+  DatabaseZap,
   Copy,
   Trash2,
   Star,
@@ -45,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { GitHubConnector } from "@/components/GitHubConnector";
 import { SupabaseConnector } from "@/components/SupabaseConnector";
+import { PocketBaseConnector } from "@/components/PocketBaseConnector";
 // Firebase hidden - not mature yet
 // import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
@@ -56,11 +58,15 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckName } from "@/hooks/useCheckName";
 import { AppUpgrades } from "@/components/AppUpgrades";
 import { CapacitorControls } from "@/components/CapacitorControls";
+import bunnyLogo from "../../assets/logo-bunnynet-icon.svg";
+import supabaseLogo from "../../assets/logo-supabase-icon.svg";
+import pocketbaseLogo from "../../assets/logo-pocketbase-icon.svg";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
 import { DossierModal } from "@/components/DossierModal";
 import { Brain, FileText as FileTextIcon } from "lucide-react";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
   Card,
   CardContent,
@@ -70,7 +76,6 @@ import {
 } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BunnyConnector } from "@/components/BunnyConnector";
-import bunnyLogo from "../../assets/logo-bunnynet-icon.svg";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -641,13 +646,14 @@ export default function AppDetailsPage() {
                     )}
                     <div className="flex flex-col items-start">
                       <span className="font-medium text-sm">Repositorio e integraciones</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Bunny.net y Supabase</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Bunny.net, PocketBase y Supabase</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Github className="h-3.5 w-3.5 text-gray-400" />
                     <img src={bunnyLogo} alt="Bunny.net" className="h-3.5 w-3.5 brightness-0 opacity-40 dark:invert dark:opacity-60" />
-                    <Database className="h-3.5 w-3.5 text-gray-400" />
+                    <img src={pocketbaseLogo} alt="PocketBase" className="h-3.5 w-3.5 brightness-0 opacity-40 dark:invert dark:opacity-60" />
+                    <img src={supabaseLogo} alt="Supabase" className="h-3.5 w-3.5 brightness-0 opacity-40 dark:invert dark:opacity-60" />
                     {/* Firebase hidden - not mature yet */}
                     {/* <Flame className="h-3.5 w-3.5 text-gray-400" /> */}
                     {/* <Smartphone className="h-3.5 w-3.5 text-gray-400" /> */}
@@ -659,29 +665,27 @@ export default function AppDetailsPage() {
                 >
                   <div className="p-4 space-y-3 border-t border-black/10 dark:border-white/08 bg-black/3 dark:bg-black/15">
                     {/* GitHub */}
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Github className="h-5 w-5" />
-                          GitHub
-                        </CardTitle>
-                        <CardDescription>Conecta y gestiona tu repositorio de GitHub</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <GitHubConnector appId={appId} folderName={selectedApp.path} />
-                        {selectedApp.githubOrg && selectedApp.githubRepo && appId && (
-                          <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
-                            <GithubCollaboratorManager appId={appId} />
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <CollapsibleCard
+                      title="GitHub"
+                      icon={<Github className="h-5 w-5" />}
+                      description="Conecta y gestiona tu repositorio de GitHub"
+                    >
+                      <GitHubConnector appId={appId} folderName={selectedApp.path} />
+                      {selectedApp.githubOrg && selectedApp.githubRepo && appId && (
+                        <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
+                          <GithubCollaboratorManager appId={appId} />
+                        </div>
+                      )}
+                    </CollapsibleCard>
 
                     {/* Bunny.net */}
                     {appId && <BunnyConnector appId={appId} />}
 
                     {/* Supabase */}
                     {appId && <SupabaseConnector appId={appId} />}
+
+                    {/* PocketBase */}
+                    {appId && <PocketBaseConnector appId={appId} />}
 
                     {/* Firebase hidden - not mature yet */}
                     {/* {appId && <FirebaseConnector appId={appId} />} */}

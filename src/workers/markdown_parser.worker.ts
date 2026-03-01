@@ -31,6 +31,8 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-database-schema",
     "dyad-supabase-table-schema",
     "dyad-supabase-project-info",
+    "dyad-pocketbase-info",
+    "dyad-pocketbase-storage-info",
     "dyad-bunny-db-info",
     "dyad-bunny-storage-info",
     "dyad-status",

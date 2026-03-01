@@ -75,6 +75,8 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-database-schema",
   "dyad-supabase-table-schema",
   "dyad-supabase-project-info",
+  "dyad-pocketbase-info",
+  "dyad-pocketbase-storage-info",
   "dyad-bunny-db-info",
   "dyad-bunny-storage-info",
   "dyad-status",
@@ -950,7 +952,9 @@ function renderCustomTag(
       );
 
     case "dyad-token-usage":
-      // Rendered only as compact badge + modal
+    case "dyad-pocketbase-info":
+    case "dyad-pocketbase-storage-info":
+      // Rendered primarily as compact badge + modal
       return null;
 
     default:
@@ -1104,6 +1108,20 @@ function renderModalContent(
           {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap break-all">{content}</div>
+          )}
+        </div>
+      );
+    }
+
+    // === PocketBase ===
+    case "dyad-pocketbase-info":
+    case "dyad-pocketbase-storage-info": {
+      return (
+        <div className="space-y-2">
+          {content && (
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className="language-markdown">{content}</CodeHighlight>
+            </div>
           )}
         </div>
       );
@@ -1369,8 +1387,10 @@ function renderModalContent(
       );
     }
 
-    // === Supabase project info ===
+    // === Provider Project/Storage Info ===
     case "dyad-supabase-project-info":
+    case "dyad-bunny-db-info":
+    case "dyad-bunny-storage-info":
       return (
         <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
           {content || ""}
