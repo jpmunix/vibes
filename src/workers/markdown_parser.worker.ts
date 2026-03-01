@@ -13,6 +13,7 @@ const DYAD_CUSTOM_TAGS = [
     "dyad-output",
     "dyad-problem-report",
     "dyad-chat-summary",
+    "set_chat_summary",
     "dyad-edit",
     "dyad-grep",
     "dyad-search-replace",

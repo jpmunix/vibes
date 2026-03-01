@@ -48,6 +48,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   showTokenBar: false,
   aiQueryLogRotationThreshold: "200",
   windowState: undefined,
+  reasoningEffort: "high",
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
@@ -399,6 +400,32 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v5 unified model keys:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v6 reasoning effort high ──
+    // Set reasoningEffort to "high" for everyone who hasn't explicitly set it to something else,
+    // or who was using the old default (medium).
+    if (!(validatedSettings as any)._migrations?.v6_reasoning_effort_high) {
+      const migrated: Partial<UserSettings> = {};
+      const currentEffort = (validatedSettings as any).reasoningEffort;
+
+      if (!currentEffort || currentEffort === "medium") {
+        (migrated as any).reasoningEffort = "high";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v6_reasoning_effort_high: true },
+      };
+      logger.info("[Migration] Applied v6 reasoning effort high:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v6 reasoning effort high:", e);
       }
       return migratedSettings as UserSettings;
     }

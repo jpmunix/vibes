@@ -90,12 +90,21 @@ export function getDyadAddDependencyTags(fullResponse: string): string[] {
 }
 
 export function getDyadChatSummaryTag(fullResponse: string): string | null {
+  // Try <dyad-chat-summary>content</dyad-chat-summary>
   const dyadChatSummaryRegex =
     /<dyad-chat-summary>([\s\S]*?)<\/dyad-chat-summary>/g;
-  const match = dyadChatSummaryRegex.exec(fullResponse);
+  let match = dyadChatSummaryRegex.exec(fullResponse);
   if (match && match[1]) {
     return unescapeXmlContent(match[1].trim());
   }
+
+  // Try <set_chat_summary summary="...">...</set_chat_summary>
+  const setChatSummaryRegex = /<set_chat_summary\s+summary="([^"]+)"[^>]*>[\s\S]*?<\/set_chat_summary>/g;
+  match = setChatSummaryRegex.exec(fullResponse);
+  if (match && match[1]) {
+    return unescapeXmlAttr(match[1]);
+  }
+
   return null;
 }
 

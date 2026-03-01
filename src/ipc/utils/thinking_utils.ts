@@ -7,7 +7,7 @@ export function getExtraProviderOptions(
   if (!providerId) {
     return {};
   }
-  const effort = settings.reasoningEffort ?? "medium";
+  const effort = settings.reasoningEffort ?? "high";
   if (providerId === "openai") {
     if (settings.selectedChatMode === "local-agent") {
       return {

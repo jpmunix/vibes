@@ -56,6 +56,7 @@ const DYAD_CUSTOM_TAGS = [
   "dyad-output",
   "dyad-problem-report",
   "dyad-chat-summary",
+  "set_chat_summary",
   "dyad-edit",
   "dyad-grep",
   "dyad-search-replace",
@@ -751,7 +752,8 @@ function renderCustomTag(
       );
 
     case "dyad-chat-summary":
-      // Don't render anything for dyad-chat-summary
+    case "set_chat_summary":
+      // Don't render anything for chat summary tags
       return null;
 
     case "dyad-command":

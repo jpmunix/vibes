@@ -14,7 +14,7 @@ interface OptionInfo {
     description: string;
 }
 
-const defaultValue = "medium";
+const defaultValue = "high";
 
 const options: OptionInfo[] = [
     {
@@ -36,14 +36,14 @@ const options: OptionInfo[] = [
             "Razonamiento ligero (~20% de tokens). Para tareas rutinarias con poco análisis.",
     },
     {
-        value: defaultValue,
-        label: "Medio (por defecto)",
+        value: "medium",
+        label: "Medio",
         description:
             "Razonamiento equilibrado (~50% de tokens). Buen balance para la mayoría de tareas.",
     },
     {
-        value: "high",
-        label: "Alto",
+        value: defaultValue,
+        label: "Alto (por defecto)",
         description:
             "Razonamiento extenso (~80% de tokens). Para problemas complejos que requieren análisis profundo.",
     },

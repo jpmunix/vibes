@@ -26,7 +26,7 @@ const reasoningOptions = [
   { value: "minimal", label: "Mínimo" },
   { value: "low", label: "Bajo" },
   { value: "medium", label: "Medio" },
-  { value: "high", label: "Alto" },
+  { value: "high", label: "Alto (por defecto)" },
   { value: "xhigh", label: "Muy alto" },
 ];
 
@@ -87,8 +87,8 @@ export function AIBehaviorSettings({
   const [permissionsExpanded, setPermissionsExpanded] = useState(false);
 
   // ─── Current values ───
-  const currentEffort = settings?.reasoningEffort || "medium";
-  const currentEffortLabel = reasoningOptions.find(o => o.value === currentEffort)?.label || "Medio";
+  const currentEffort = settings?.reasoningEffort || "high";
+  const currentEffortLabel = reasoningOptions.find(o => o.value === currentEffort)?.label || "Alto (por defecto)";
 
   const currentTurnsRaw = settings?.maxChatTurnsInContext?.toString() || "default";
   const currentTurnsLabel = turnsOptions.find(o => o.value === currentTurnsRaw)?.label || `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})`;

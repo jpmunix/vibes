@@ -19,10 +19,11 @@ export const setChatSummaryTool: ToolDefinition<
 
   getConsentPreview: (args) => args.summary,
 
-  buildXml: (args, _isComplete) => {
+  buildXml: (args, isComplete) => {
     if (args.summary == undefined) return undefined;
-    // No XML needed for this tool
-    return ``;
+    let xml = `<set_chat_summary summary="${args.summary}">`;
+    if (isComplete) xml += `</set_chat_summary>`;
+    return xml;
   },
 
   execute: async (args, ctx: AgentContext) => {

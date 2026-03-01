@@ -209,6 +209,7 @@ const NON_COMPACTABLE_TAGS = new Set([
     "dyad-output",
     "dyad-problem-report",
     "dyad-chat-summary",
+    "set_chat_summary",
     "dyad-command",
     "dyad-add-integration",  // Interactive: contains setup buttons (e.g. Supabase)
     "dyad-ask-user",          // Interactive: contains question + response options
