@@ -4,11 +4,9 @@ import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
-import { useVersions } from "@/hooks/useVersions";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { useEffect, useState } from "react";
 import { DyadProSuccessDialog } from "@/components/DyadProSuccessDialog";
-import { useTheme } from "@/contexts/ThemeContext";
 import { ipc } from "@/ipc/types";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { WindowsControls } from "@/components/WindowsControls";
@@ -21,7 +19,6 @@ export const TitleBar = () => {
   const { settings, refreshSettings } = useSettings();
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
-  const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
 
@@ -79,10 +76,7 @@ export const TitleBar = () => {
           <div className="flex-1 flex justify-end items-center mr-2">
             {
               location.pathname === "/chat" && !isPreviewExpanded && (
-                <ActionHeader
-                  versions={versions}
-                  versionsLoading={versionsLoading}
-                />
+                <ActionHeader />
               )
             }
           </div>

@@ -2,9 +2,11 @@ import { ipcMain } from "electron";
 import fs from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import path from "path";
-import { db } from "../../../../db";
-import { apps } from "../../../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../../../db/remote";
+import * as remoteSchema from "../../../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
+import { createTypedHandler } from "../../../../ipc/handlers/base";
+import { visualEditingContracts } from "../../../../ipc/types/visual-editing";
 import { getDyadAppPath } from "../../../../paths/paths";
 import {
   stylesToTailwind,
@@ -30,16 +32,21 @@ import { logAiQuery } from "../../../../ipc/utils/ai_query_logger";
 import { getEffectivePrompt } from "../../../../prompts";
 
 export function registerVisualEditingHandlers() {
-  ipcMain.handle(
-    "apply-visual-editing-changes",
-    async (_event, params: ApplyVisualEditingChangesParams) => {
+  createTypedHandler(
+    visualEditingContracts.applyChanges,
+    async (_event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { appId, changes } = params;
       try {
         if (changes.length === 0) return;
 
         // Get the app to find its path
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
         });
 
         if (!app) {
@@ -119,21 +126,30 @@ export function registerVisualEditingHandlers() {
     },
   );
 
-  ipcMain.handle(
-    "analyze-component",
-    async (_event, analyseComponentParams: AnalyseComponentParams) => {
-      const { appId, componentId } = analyseComponentParams;
+  createTypedHandler(
+    visualEditingContracts.analyzeComponent,
+    async (_event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const { appId, componentId } = params;
       try {
         const [filePath, lineStr] = componentId.split(":");
         const line = parseInt(lineStr, 10);
 
         if (!filePath || isNaN(line)) {
-          return { isDynamic: false, hasStaticText: false };
+          return {
+            isDynamic: false,
+            hasStaticText: false,
+            elementType: "unknown" as const,
+          };
         }
 
         // Get the app to find its path
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
         });
 
         if (!app) {
@@ -146,14 +162,20 @@ export function registerVisualEditingHandlers() {
         return analyzeComponent(content, line);
       } catch (error) {
         console.error("Failed to analyze component:", error);
-        return { isDynamic: false, hasStaticText: false };
+        return {
+          isDynamic: false,
+          hasStaticText: false,
+          elementType: "unknown" as const,
+        };
       }
     },
   );
 
-  ipcMain.handle(
-    "replace-component-icon",
-    async (_event, params: ReplaceIconParams) => {
+  createTypedHandler(
+    visualEditingContracts.replaceIcon,
+    async (_event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const { appId, componentId, newIconName } = params;
       try {
         const [filePath, lineStr] = componentId.split(":");
@@ -165,7 +187,10 @@ export function registerVisualEditingHandlers() {
 
         // Get the app to find its path
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(
+            eq(remoteSchema.apps.id, appId),
+            eq(remoteSchema.apps.userId, context.userId),
+          ),
         });
 
         if (!app) {
@@ -194,9 +219,9 @@ export function registerVisualEditingHandlers() {
     },
   );
 
-  ipcMain.handle(
-    "visual-editing:quick-edit",
-    async (_event, params) => {
+  createTypedHandler(
+    visualEditingContracts.quickEdit,
+    async (_event, params, context) => {
       const {
         appId,
         componentId,

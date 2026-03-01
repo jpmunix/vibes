@@ -35,28 +35,31 @@ export function useDatabase() {
     const [filters, setFilters] = useState<TableFilter[]>([]);
 
     const appId = selectedAppId ?? 0;
-    const isConnected = Boolean(currentApp?.supabaseProjectId);
+
+    const dbType = useMemo(() => {
+        if (!currentApp) return null;
+        if (currentApp.bunnyConfig) return "bunny";
+        if (currentApp.supabaseProjectId) return "supabase";
+        return null;
+    }, [currentApp]);
+
+    const isConnected = Boolean(dbType);
 
     // Fetch tables
     const tablesQuery = useQuery({
-        queryKey: queryKeys.supabase.dbTables(appId),
-        queryFn: () => ipc.supabase.listTables({ appId }),
+        queryKey: dbType === "bunny" ? queryKeys.bunny.dbTables(appId) : queryKeys.supabase.dbTables(appId),
+        queryFn: () => dbType === "bunny" ? ipc.bunny.listTables({ appId }) : ipc.supabase.listTables({ appId }),
         enabled: isConnected && appId > 0,
         staleTime: 30_000,
     });
 
     // Fetch table data
     const tableDataQuery = useQuery({
-        queryKey: queryKeys.supabase.dbTableData(
-            appId,
-            selectedTable ?? "",
-            page,
-            pageSize,
-            orderBy,
-            orderDir,
-        ),
-        queryFn: () =>
-            ipc.supabase.queryTable({
+        queryKey: dbType === "bunny"
+            ? queryKeys.bunny.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir)
+            : queryKeys.supabase.dbTableData(appId, selectedTable ?? "", page, pageSize, orderBy, orderDir),
+        queryFn: () => {
+            const params = {
                 appId,
                 table: selectedTable!,
                 page,
@@ -64,7 +67,9 @@ export function useDatabase() {
                 orderBy,
                 orderDir,
                 filters: filters.length > 0 ? filters : undefined,
-            }),
+            };
+            return dbType === "bunny" ? ipc.bunny.queryTable(params) : ipc.supabase.queryTable(params);
+        },
         enabled: isConnected && appId > 0 && !!selectedTable,
         staleTime: 10_000,
     });
@@ -86,7 +91,9 @@ export function useDatabase() {
     // Execute raw SQL
     const executeQueryMutation = useMutation({
         mutationFn: (query: string) =>
-            ipc.supabase.executeQuery({ appId, query }),
+            dbType === "bunny"
+                ? ipc.bunny.executeQuery({ appId, query })
+                : ipc.supabase.executeQuery({ appId, query }),
         onError: (error) => {
             showError(`Error SQL: ${error.message}`);
         },
@@ -94,8 +101,10 @@ export function useDatabase() {
 
     // Insert row
     const insertRowMutation = useMutation({
-        mutationFn: (data: Record<string, unknown>) =>
-            ipc.supabase.insertRow({ appId, table: selectedTable!, data }),
+        mutationFn: (data: Record<string, unknown>) => {
+            const params = { appId, table: selectedTable!, data };
+            return dbType === "bunny" ? ipc.bunny.insertRow(params) : ipc.supabase.insertRow(params);
+        },
         onSuccess: () => {
             showSuccess("Fila insertada");
             refreshTableData();
@@ -113,13 +122,10 @@ export function useDatabase() {
         }: {
             primaryKey: Record<string, unknown>;
             data: Record<string, unknown>;
-        }) =>
-            ipc.supabase.updateRow({
-                appId,
-                table: selectedTable!,
-                primaryKey,
-                data,
-            }),
+        }) => {
+            const params = { appId, table: selectedTable!, primaryKey, data };
+            return dbType === "bunny" ? ipc.bunny.updateRow(params) : ipc.supabase.updateRow(params);
+        },
         onSuccess: () => {
             showSuccess("Fila actualizada");
             refreshTableData();
@@ -131,12 +137,10 @@ export function useDatabase() {
 
     // Delete rows
     const deleteRowsMutation = useMutation({
-        mutationFn: (primaryKeys: Record<string, unknown>[]) =>
-            ipc.supabase.deleteRows({
-                appId,
-                table: selectedTable!,
-                primaryKeys,
-            }),
+        mutationFn: (primaryKeys: Record<string, unknown>[]) => {
+            const params = { appId, table: selectedTable!, primaryKeys };
+            return dbType === "bunny" ? ipc.bunny.deleteRows(params) : ipc.supabase.deleteRows(params);
+        },
         onSuccess: (result) => {
             showSuccess(`${result.deletedCount} fila(s) eliminada(s)`);
             refreshTableData();
@@ -172,21 +176,19 @@ export function useDatabase() {
 
     const refreshTableData = useCallback(() => {
         if (selectedTable) {
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.supabase.dbTableData(
-                    appId,
-                    selectedTable,
-                    page,
-                    pageSize,
-                    orderBy,
-                    orderDir,
-                ),
-            });
+            const queryKey = dbType === "bunny"
+                ? queryKeys.bunny.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir)
+                : queryKeys.supabase.dbTableData(appId, selectedTable, page, pageSize, orderBy, orderDir);
+
+            queryClient.invalidateQueries({ queryKey });
         }
-        queryClient.invalidateQueries({
-            queryKey: queryKeys.supabase.dbTables(appId),
-        });
-    }, [selectedTable, appId, page, pageSize, orderBy, orderDir, queryClient]);
+
+        const tablesKey = dbType === "bunny"
+            ? queryKeys.bunny.dbTables(appId)
+            : queryKeys.supabase.dbTables(appId);
+
+        queryClient.invalidateQueries({ queryKey: tablesKey });
+    }, [selectedTable, appId, page, pageSize, orderBy, orderDir, queryClient, dbType]);
 
     const totalPages = useMemo(() => {
         if (!tableDataQuery.data) return 0;
@@ -208,6 +210,7 @@ export function useDatabase() {
     return {
         // State
         isConnected,
+        dbType,
         selectedTable,
         page,
         pageSize,

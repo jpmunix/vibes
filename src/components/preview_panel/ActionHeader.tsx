@@ -42,6 +42,8 @@ import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { cn } from "@/lib/utils";
 
+import { useVersions } from "@/hooks/useVersions";
+
 export type PreviewMode =
   | "preview"
   | "code"
@@ -68,21 +70,14 @@ const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
   configure: "configure",
 };
 
-interface ActionHeaderProps {
-  versions?: any[];
-  versionsLoading?: boolean;
-}
-
 // Preview Header component with preview mode toggle
-export const ActionHeader = ({
-  versions = [],
-  versionsLoading = false,
-}: ActionHeaderProps) => {
+export const ActionHeader = () => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const currentApp = useAtomValue(currentAppAtom);
-  const hasSupabase = Boolean(currentApp?.supabaseProjectId);
+  const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig);
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);
@@ -404,7 +399,7 @@ export const ActionHeader = ({
                 <GitBranch size={14} />
                 <span>Git</span>
               </DropdownMenuItem>
-              {hasSupabase && (
+              {hasDatabase && (
                 <DropdownMenuItem
                   onClick={() => selectPanel("database")}
                   className={cn(previewMode === "database" && "bg-accent")}

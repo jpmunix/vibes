@@ -33,6 +33,7 @@ export const AppBaseSchema = z.object({
   isFavorite: z.boolean(),
   firebaseProjectId: z.string().nullable().optional(),
   firebaseConfig: z.any().nullable().optional(),
+  bunnyConfig: z.any().nullable().optional(),
 });
 
 /**

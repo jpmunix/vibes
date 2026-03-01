@@ -2,11 +2,6 @@ import { isDyadProEnabled, type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

@@ -86,9 +86,10 @@ export const ReasoningEffortSelector: React.FC<ReasoningEffortSelectorProps> = (
                     className="flex items-center justify-between !h-6 w-fit min-w-[120px] px-2 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors cursor-pointer"
                     id="reasoning-effort-compact"
                 >
-                    <div className="flex items-center gap-1">
-                        <span className="opacity-70">Razonamiento</span>
-                        <SelectValue placeholder="Razonamiento" />
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                        <span className="text-muted-foreground font-normal">Razonamiento</span>
+                        <span className="font-medium">{currentOption.label.toLowerCase()}</span>
+                        <div className="hidden"><SelectValue /></div>
                     </div>
                 </SelectTrigger>
                 <SelectContent

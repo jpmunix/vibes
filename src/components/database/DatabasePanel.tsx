@@ -233,10 +233,10 @@ export function DatabasePanel() {
             <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
                 <Database size={48} className="text-muted-foreground/30" />
                 <h3 className="text-sm font-medium text-muted-foreground">
-                    No hay conexión a Supabase
+                    No hay conexión a la base de datos
                 </h3>
                 <p className="text-xs text-muted-foreground/70 max-w-[300px]">
-                    Conecta este proyecto a Supabase desde la configuración para ver y
+                    Conecta este proyecto a Supabase o Bunny.net desde la configuración para ver y
                     gestionar las tablas de la base de datos.
                 </p>
             </div>
@@ -249,8 +249,8 @@ export function DatabasePanel() {
                 {/* ── Header ── */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                     <div className="flex items-center gap-2">
-                        <Database size={14} className="text-blue-500" />
-                        <span className="text-xs font-medium">Base de datos</span>
+                        <Database size={14} className={cn(db.dbType === "bunny" ? "text-pink-500" : "text-blue-500")} />
+                        <span className="text-xs font-medium">Base de datos <span className="text-[10px] opacity-70">({db.dbType === "bunny" ? "Bunny.net" : "Supabase"})</span></span>
                         {db.selectedTable && (
                             <span className="text-[10px] text-muted-foreground">
                                 / {db.selectedTable}

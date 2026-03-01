@@ -306,6 +306,32 @@ export const queryKeys = {
     all: ["firebase"] as const,
     projects: ["firebase", "projects"] as const,
   },
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bunny.net
+  // ─────────────────────────────────────────────────────────────────────────────
+  bunny: {
+    all: ["bunny"] as const,
+    config: ({ appId }: { appId: number }) => ["bunny", "config", appId] as const,
+    dbTables: (appId: number) => ["bunny", "db-tables", appId] as const,
+    dbTableData: (
+      appId: number,
+      table: string,
+      page: number,
+      pageSize: number,
+      orderBy?: string,
+      orderDir?: string,
+    ) =>
+      [
+        "bunny",
+        "db-table-data",
+        appId,
+        table,
+        page,
+        pageSize,
+        orderBy,
+        orderDir,
+      ] as const,
+  },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
