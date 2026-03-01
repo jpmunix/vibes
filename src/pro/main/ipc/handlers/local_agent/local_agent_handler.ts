@@ -74,6 +74,7 @@ import { TOOL_DEFINITIONS } from "./tool_definitions";
 import { parseAiMessagesJson, stripImagePartsFromHistory } from "@/ipc/utils/ai_messages_utils";
 import { addIntegrationTool } from "./tools/add_integration";
 import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
+import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
 
 const logger = log.scope("local_agent_handler");
 
@@ -660,7 +661,9 @@ export async function handleLocalAgentStream(
     // But skip the warning if the response contains interactive content (e.g. integration prompts, user questions)
     const INTERACTIVE_TAGS = ["dyad-add-integration", "dyad-ask-user"];
     const hasInteractiveContent = INTERACTIVE_TAGS.some(tag => fullResponse.includes(`<${tag}`));
-    if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent) {
+    const isSummarize = req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) || req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+
+    if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent && !isSummarize) {
       // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
       const noOpWarning = `\n<dyad-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</dyad-output>\n`;
       fullResponse += noOpWarning;
