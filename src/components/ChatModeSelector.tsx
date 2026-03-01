@@ -84,32 +84,20 @@ export function ChatModeSelector() {
 
   return (
     <Select value={selectedMode} onValueChange={handleModeChange}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <MiniSelectTrigger
-            data-testid="chat-mode-selector"
-            className={cn(
-              "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors",
-              selectedMode === "local-agent"
-                ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
-                : selectedMode === "plan"
-                  ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
-                  : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
-            )}
-            size="sm"
-          >
-            <SelectValue>{getModeDisplayName(selectedMode)}</SelectValue>
-          </MiniSelectTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="flex flex-col">
-            <span>Abrir el menú de modos</span>
-            <span className="text-xs text-gray-200 dark:text-gray-500">
-              {isMac ? "⌘ + ." : "Ctrl + ."} para cambiar
-            </span>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      <MiniSelectTrigger
+        data-testid="chat-mode-selector"
+        className={cn(
+          "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors cursor-pointer",
+          selectedMode === "local-agent"
+            ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
+            : selectedMode === "plan"
+              ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
+              : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
+        )}
+        size="sm"
+      >
+        <SelectValue>{getModeDisplayName(selectedMode)}</SelectValue>
+      </MiniSelectTrigger>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
         <SelectItem value="local-agent">
           <div className="flex flex-col items-start">

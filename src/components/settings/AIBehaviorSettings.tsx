@@ -18,17 +18,7 @@ import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
 import type { ChatLanguage } from "@/lib/schemas";
 import { useState } from "react";
-
-
-// ─── Reasoning effort options ───
-const reasoningOptions = [
-  { value: "none", label: "Ninguno" },
-  { value: "minimal", label: "Mínimo" },
-  { value: "low", label: "Bajo" },
-  { value: "medium", label: "Medio" },
-  { value: "high", label: "Alto (por defecto)" },
-  { value: "xhigh", label: "Muy alto" },
-];
+import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
 
 // ─── Chat turns options ───
 const turnsOptions = [
@@ -87,8 +77,6 @@ export function AIBehaviorSettings({
   const [permissionsExpanded, setPermissionsExpanded] = useState(false);
 
   // ─── Current values ───
-  const currentEffort = settings?.reasoningEffort || "high";
-  const currentEffortLabel = reasoningOptions.find(o => o.value === currentEffort)?.label || "Alto (por defecto)";
 
   const currentTurnsRaw = settings?.maxChatTurnsInContext?.toString() || "default";
   const currentTurnsLabel = turnsOptions.find(o => o.value === currentTurnsRaw)?.label || `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})`;
@@ -158,31 +146,10 @@ export function AIBehaviorSettings({
           }
         />
 
-        {/* Esfuerzo — pill that opens selector */}
         <SettingRow
           label="Esfuerzo de razonamiento"
           description="Controla cuánto análisis previo realiza el agente"
-          control={
-            <Select
-              value={currentEffort}
-              onValueChange={(value) =>
-                updateSettings({
-                  reasoningEffort: value as "none" | "minimal" | "low" | "medium" | "high" | "xhigh",
-                })
-              }
-            >
-              <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100">
-                <SelectValue>{currentEffortLabel}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {reasoningOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
+          control={<ReasoningEffortSelector variant="settings" />}
         />
 
         {/* Turnos — pill that opens selector */}

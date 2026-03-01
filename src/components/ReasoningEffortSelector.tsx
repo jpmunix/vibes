@@ -8,13 +8,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+interface ReasoningEffortSelectorProps {
+    variant?: "settings" | "compact" | "default";
+}
+
+const defaultValue = "high";
+
 interface OptionInfo {
     value: string;
     label: string;
     description: string;
 }
-
-const defaultValue = "high";
 
 const options: OptionInfo[] = [
     {
@@ -43,7 +47,7 @@ const options: OptionInfo[] = [
     },
     {
         value: defaultValue,
-        label: "Alto (por defecto)",
+        label: "Alto",
         description:
             "Razonamiento extenso (~80% de tokens). Para problemas complejos que requieren análisis profundo.",
     },
@@ -55,7 +59,7 @@ const options: OptionInfo[] = [
     },
 ];
 
-export const ReasoningEffortSelector: React.FC = () => {
+export const ReasoningEffortSelector: React.FC<ReasoningEffortSelectorProps> = ({ variant = "default" }) => {
     const { settings, updateSettings } = useSettings();
 
     const handleValueChange = (value: string) => {
@@ -74,6 +78,55 @@ export const ReasoningEffortSelector: React.FC = () => {
 
     const currentOption =
         options.find((opt) => opt.value === currentValue) || options[3];
+
+    if (variant === "compact") {
+        return (
+            <Select value={currentValue} onValueChange={handleValueChange}>
+                <SelectTrigger
+                    className="flex items-center justify-between !h-6 w-fit min-w-[120px] px-2 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors cursor-pointer"
+                    id="reasoning-effort-compact"
+                >
+                    <div className="flex items-center gap-1">
+                        <span className="opacity-70">Razonamiento</span>
+                        <SelectValue placeholder="Razonamiento" />
+                    </div>
+                </SelectTrigger>
+                <SelectContent
+                    className="w-48 overflow-y-auto"
+                    align="start"
+                    side="top"
+                >
+                    {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            <span className="text-sm font-medium">{option.label}</span>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    }
+
+    if (variant === "settings") {
+        return (
+            <Select value={currentValue} onValueChange={handleValueChange}>
+                <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100">
+                    <SelectValue>{currentOption.label}</SelectValue>
+                </SelectTrigger>
+                <SelectContent className="w-64 max-h-[300px] overflow-y-auto">
+                    {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-medium">{option.label}</span>
+                                <span className="text-[10px] text-muted-foreground whitespace-normal leading-tight">
+                                    {option.description}
+                                </span>
+                            </div>
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    }
 
     return (
         <div className="space-y-1">

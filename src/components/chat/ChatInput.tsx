@@ -603,7 +603,7 @@ export function ChatInput({
                                   setIsUndoLoading(false);
                                 }
                               }}
-                              className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                              className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
                               title="Deshacer"
                             >
                               {isUndoLoading ? <Loader2 size={16} className="animate-spin" /> : <Undo size={16} />}
@@ -652,7 +652,7 @@ export function ChatInput({
                                 setIsRetryLoading(false);
                               }
                             }}
-                            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
+                            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
                             title="Reintentar"
                           >
                             {isRetryLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
@@ -666,7 +666,7 @@ export function ChatInput({
                   {isStreaming ? (
                     <button
                       onClick={handleCancel}
-                      className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors"
+                      className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors cursor-pointer"
                       title="Cancelar generación"
                     >
                       <StopCircleIcon size={18} />
@@ -678,7 +678,7 @@ export function ChatInput({
                         (!inputValue.trim() && attachments.length === 0) ||
                         disableSendButton
                       }
-                      className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm"
+                      className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
                       title="Enviar mensaje"
                     >
                       <SendHorizontalIcon size={18} />
