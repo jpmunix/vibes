@@ -1,13 +1,3 @@
-- Expanded repository and integrations section with Bunny.net alongside existing GitHub and Supabase options.
-- **feat:** extend Bunny.net integration with database and storage support
-- Migrados todos los datos a la nube. Ahora el usuario deberá registrarse o iniciar sesión. En el momento se migran todos sus datos y la app ya no tendrá que sacar más copias de seguridad
-
-**feat(db, visual-editing): add Bunny.net & pocketbase database support and improve visual editing handlers**
-
-**feat(app, db): add PocketBase integration with UI support and system prompts**
-
---------------------------
-
 ### 🧠 Agente & IA
 
 *   **Herramientas Unificadas**: `file_editor` fusiona `write_file`, `edit_file`, `search_replace` y `patch_file` en una sola herramienta basada en acciones. `explore_codebase` consolida `read_file`, `list_files`, `grep` y `code_search` en una única interfaz de exploración.
@@ -64,7 +54,8 @@
 
 ### 🛠 Herramientas & Productividad
 
-*   **Visor de Supabase**: Visor de base de datos con visualización de tablas, valores y gestión de registros directamente desde la aplicación.
+*   **Integraciones Expandidas**: El panel de la aplicación ahora cuenta con conexión rápida no solo para GitHub y Supabase, sino también para las bases de datos y el almacenamiento en **Bunny.net** y **PocketBase**.
+*   **Visores de Bases de Datos**: Interfaz unificada de base de datos que soporta nativamente Supabase, Bunny y PocketBase, visualización integrada de tablas/registros y *handlers* optimizados para la edición visual de datos.
 *   **Terminal de Consola**: Terminal integrada para las aplicaciones, con exportación de logs.
 *   **Capturas de Pantalla Nativas**: Soporte nativo con logging de metadatos y herramientas de anotación mejoradas.
 *   **Importación de Apps Refinada**: Sistema de importación de aplicaciones mejorado con flujo más robusto y fiable.
@@ -80,8 +71,7 @@
 
 ### 👤 Cuenta & Autenticación
 
-*   **Login y Registro**: Autenticación con Firebase incluyendo login, registro, logout y gestión de perfil.
-*   **Firebase bajo Control**: La integración se reserva exclusivamente para autenticación y backups, las funciones de proyecto se incorporarán próximamente.
+*   **Migración Total a la Nube**: Todos los datos están ahora alojados en la nube remotamente. Al iniciar sesión o registrarse por primera vez, todos los datos locales se migran automáticamente, eliminando definitivamente la necesidad de realizar copias de seguridad manuales de la aplicación.
 *   **Gestión Multi-API-Key**: Soporte para múltiples API keys de OpenRouter con seguimiento detallado de créditos y uso.
 
 ### 💬 Chat & Conversación
