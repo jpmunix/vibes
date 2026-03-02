@@ -70,6 +70,43 @@ export function ModelPicker() {
   const selectedModel = settings?.selectedModel;
   const modelDisplayName = getModelDisplayName();
 
+  const allAvailableModels: Array<{ provider: string; model: LanguageModel }> = [];
+
+  if (modelsByProviders?.["auto-router"]) {
+    modelsByProviders["auto-router"].forEach((model) => {
+      allAvailableModels.push({ provider: "auto-router", model });
+    });
+  }
+
+  if (modelsByProviders?.["openrouter"]) {
+    const enabledModels =
+      settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
+    modelsByProviders["openrouter"].forEach((model) => {
+      if (enabledModels.includes(model.apiName)) {
+        allAvailableModels.push({ provider: "openrouter", model });
+      }
+    });
+  }
+
+  // Sort: selected first
+  const sortedModels = [...allAvailableModels].sort((a, b) => {
+    const isASelected =
+      a.provider === selectedModel.provider &&
+      a.model.apiName === selectedModel.name;
+    const isBSelected =
+      b.provider === selectedModel.provider &&
+      b.model.apiName === selectedModel.name;
+
+    if (isASelected) return -1;
+    if (isBSelected) return 1;
+
+    // Fallback: auto-router first, then openrouter
+    if (a.provider === "auto-router" && b.provider !== "auto-router") return -1;
+    if (a.provider !== "auto-router" && b.provider === "auto-router") return 1;
+
+    return 0; // maintain relative order for others
+  });
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -104,76 +141,36 @@ export function ModelPicker() {
             ) : (
               /* Models loaded */
               <>
-                {/* Auto-Router section */}
-                {modelsByProviders["auto-router"] &&
-                  modelsByProviders["auto-router"].length > 0 &&
-                  modelsByProviders["auto-router"].map((model) => (
+                {sortedModels.map(({ provider, model }) => {
+                  const isSelected =
+                    selectedModel.provider === provider &&
+                    selectedModel.name === model.apiName;
+                  const customModelId =
+                    model.type === "custom" ? model.id : undefined;
+
+                  return (
                     <DropdownMenuItem
-                      key={`auto-router-${model.apiName}`}
-                      className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "auto-router" &&
-                        selectedModel.name === model.apiName
-                        ? "bg-secondary"
-                        : ""
+                      key={`${provider}-${model.apiName}`}
+                      className={`py-1.5 px-3 cursor-pointer ${isSelected ? "bg-secondary" : ""
                         }`}
                       onClick={() => {
                         onModelSelect({
                           name: model.apiName,
-                          provider: "auto-router",
+                          provider: provider as any,
+                          customModelId,
                         });
                         setOpen(false);
                       }}
                     >
                       <ModelItemContent
                         model={model}
-                        showAutoRouterBadge
-                        isAutoRouter
+                        showAutoRouterBadge={provider === "auto-router"}
+                        isAutoRouter={provider === "auto-router"}
                         onInfoClick={setInfoModel}
                       />
                     </DropdownMenuItem>
-                  ))}
-
-                {/* Divider if both exist */}
-                {modelsByProviders["auto-router"] &&
-                  modelsByProviders["auto-router"].length > 0 &&
-                  modelsByProviders["openrouter"] &&
-                  modelsByProviders["openrouter"].length > 0 && (
-                    <div className="h-px bg-border my-1 mx-1" />
-                  )}
-
-                {/* OpenRouter section */}
-                {modelsByProviders["openrouter"] &&
-                  modelsByProviders["openrouter"].length > 0 &&
-                  (() => {
-                    const enabledModels = settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
-                    return modelsByProviders["openrouter"]
-                      .filter((model) => {
-                        // Only show enabled models
-                        if (!enabledModels.includes(model.apiName)) return false;
-                        return true;
-                      })
-                      .map((model) => (
-                        <DropdownMenuItem
-                          key={`openrouter-${model.apiName}`}
-                          className={`py-1.5 px-3 cursor-pointer ${selectedModel.provider === "openrouter" &&
-                            selectedModel.name === model.apiName
-                            ? "bg-secondary"
-                            : ""
-                            }`}
-                          onClick={() => {
-                            const customModelId =
-                              model.type === "custom" ? model.id : undefined;
-                            onModelSelect({
-                              name: model.apiName,
-                              provider: "openrouter",
-                              customModelId,
-                            });
-                            setOpen(false);
-                          }}
-                        >
-                          <ModelItemContent model={model} onInfoClick={setInfoModel} />
-                        </DropdownMenuItem>
-                      ))
-                  })()}
+                  );
+                })}
               </>
             ))}
         </DropdownMenuContent>
@@ -184,7 +181,7 @@ export function ModelPicker() {
           open={!!infoModel}
           onOpenChange={(open) => !open && setInfoModel(null)}
           model={infoModel}
-          isAutoRouter={infoModel.provider === "auto-router"}
+          isAutoRouter={(infoModel as any).provider === "auto-router"}
         />
       )}
     </>
