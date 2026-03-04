@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import { spawn } from "node:child_process";
 import log from "electron-log";
 import { getUserDataPath } from "../../paths/paths";
+import { SCAFFOLD_TEMPLATE_IDS } from "../../shared/templates";
 
 const logger = log.scope("scaffold-cache");
 
@@ -12,13 +13,14 @@ const SENTINEL_FILE = ".scaffold-cache-hash";
 
 /**
  * Returns the path to the scaffold cache directory inside userData.
+ * Each scaffold variant gets its own cache subdirectory.
  * Layout:
- *   <userData>/scaffold-cache/
+ *   <userData>/scaffold-cache/<scaffoldDirName>/
  *     node_modules/        ← pre-installed deps
  *     .scaffold-cache-hash ← hash of the package-lock.json used
  */
-export function getScaffoldCachePath(): string {
-    return path.join(getUserDataPath(), "scaffold-cache");
+export function getScaffoldCachePath(scaffoldDirName = "scaffold"): string {
+    return path.join(getUserDataPath(), "scaffold-cache", scaffoldDirName);
 }
 
 /**
@@ -33,13 +35,13 @@ async function hashFile(filePath: string): Promise<string> {
 }
 
 /**
- * Returns the path to the scaffold source directory (the template bundled
+ * Returns the path to a scaffold source directory (the template bundled
  * with the app).
  */
-function getScaffoldSourcePath(): string {
+function getScaffoldSourcePath(scaffoldDirName = "scaffold"): string {
     // In both dev and packaged builds, __dirname points to the compiled output.
-    // The scaffold sits at ../../scaffold relative to the compiled handler files.
-    return path.join(__dirname, "..", "..", "scaffold");
+    // The scaffold sits at ../../<scaffoldDirName> relative to the compiled handler files.
+    return path.join(__dirname, "..", "..", scaffoldDirName);
 }
 
 /**
@@ -84,107 +86,157 @@ function runCommand(command: string, cwd: string): Promise<{ stdout: string; std
 }
 
 /**
- * Warm up the scaffold cache in background.
- * This should be called once at app startup (non-blocking).
- *
- * Steps:
- * 1. Check if the scaffold source has a package-lock.json
- * 2. Compare its hash with the cached sentinel
- * 3. If different (or no cache), run `npm ci --legacy-peer-deps` in the cache dir
- * 4. Write the sentinel with the new hash
+ * Ensure node_modules are cached for a given scaffold variant.
+ * On first call (or when package.json changes), runs `npm install`.
+ * On subsequent calls, returns immediately if cache is valid.
  */
-export async function warmUpScaffoldCache(): Promise<void> {
-    const scaffoldSource = getScaffoldSourcePath();
+export async function ensureScaffoldCached(scaffoldDirName: string): Promise<void> {
+    const scaffoldSource = getScaffoldSourcePath(scaffoldDirName);
     const lockfilePath = path.join(scaffoldSource, "package-lock.json");
-    logger.info(`Scaffold source path: ${scaffoldSource}`);
-    logger.info(`Looking for lockfile at: ${lockfilePath}`);
+    logger.info(`[${scaffoldDirName}] Scaffold source path: ${scaffoldSource}`);
 
     if (!await fs.pathExists(lockfilePath)) {
-        logger.warn("No package-lock.json found in scaffold source, skipping cache warmup");
-        return;
+        // New scaffolds won't have a lockfile until npm install is run.
+        // Fall back to package.json hash if no lockfile.
+        const pkgJsonPath = path.join(scaffoldSource, "package.json");
+        if (!await fs.pathExists(pkgJsonPath)) {
+            logger.warn(`[${scaffoldDirName}] No package.json found, skipping cache warmup`);
+            return;
+        }
     }
 
-    const cachePath = getScaffoldCachePath();
-    const sentinelPath = path.join(cachePath, SENTINEL_FILE);
-    logger.info(`Scaffold cache path: ${cachePath}`);
+    const hashSourcePath = await fs.pathExists(lockfilePath)
+        ? lockfilePath
+        : path.join(scaffoldSource, "package.json");
 
-    // Compute hash of current scaffold lockfile
-    const currentHash = await hashFile(lockfilePath);
+    const cachePath = getScaffoldCachePath(scaffoldDirName);
+    const sentinelPath = path.join(cachePath, SENTINEL_FILE);
+    logger.info(`[${scaffoldDirName}] Scaffold cache path: ${cachePath}`);
+
+    // Compute hash of current scaffold lockfile/package.json
+    const currentHash = await hashFile(hashSourcePath);
 
     // Check if cache is already up-to-date
     if (await fs.pathExists(sentinelPath)) {
         const cachedHash = (await fs.readFile(sentinelPath, "utf-8")).trim();
         if (cachedHash === currentHash) {
-            logger.info("Scaffold cache is up-to-date (hash match), skipping install");
+            logger.info(`[${scaffoldDirName}] Scaffold cache is up-to-date (hash match), skipping install`);
             return;
         }
-        logger.info(`Scaffold cache outdated (cached=${cachedHash}, current=${currentHash}), re-installing`);
+        logger.info(`[${scaffoldDirName}] Scaffold cache outdated (cached=${cachedHash}, current=${currentHash}), re-installing`);
     } else {
-        logger.info("No scaffold cache found, performing initial install");
+        logger.info(`[${scaffoldDirName}] No scaffold cache found, performing initial install`);
     }
 
     // Ensure the cache directory exists
     await fs.ensureDir(cachePath);
 
-    // Copy package.json and package-lock.json to the cache directory
-    // (npm ci needs both to install deterministically)
+    // Copy package.json to the cache directory
     await fs.copyFile(
         path.join(scaffoldSource, "package.json"),
         path.join(cachePath, "package.json"),
     );
-    await fs.copyFile(
-        lockfilePath,
-        path.join(cachePath, "package-lock.json"),
-    );
+    // Copy package-lock.json if it exists
+    if (await fs.pathExists(lockfilePath)) {
+        await fs.copyFile(
+            lockfilePath,
+            path.join(cachePath, "package-lock.json"),
+        );
+    }
 
-    // Remove stale node_modules if present (npm ci does this anyway, but let's be safe)
+    // Remove stale node_modules if present
     const nodeModulesPath = path.join(cachePath, "node_modules");
     if (await fs.pathExists(nodeModulesPath)) {
-        logger.info("Removing stale cached node_modules");
+        logger.info(`[${scaffoldDirName}] Removing stale cached node_modules`);
         await fs.remove(nodeModulesPath);
     }
 
-    // Run npm install for a reproducible install
-    // Uses shell: true to support nvm-managed npm installations
-    // We use `npm install` instead of `npm ci` because the scaffold's
-    // package-lock.json may drift from package.json (e.g. version bumps).
-    // npm install handles this gracefully and updates the lockfile.
-    logger.info(`Running npm install --legacy-peer-deps in: ${cachePath}`);
+    logger.info(`[${scaffoldDirName}] Running npm install --legacy-peer-deps in: ${cachePath}`);
     const startTime = Date.now();
 
     try {
         const result = await runCommand("npm install --legacy-peer-deps", cachePath);
         if (result.stderr) {
-            logger.debug(`npm install stderr (may include warnings): ${result.stderr.slice(0, 500)}`);
+            logger.debug(`[${scaffoldDirName}] npm install stderr (may include warnings): ${result.stderr.slice(0, 500)}`);
         }
 
         const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
-        logger.info(`Scaffold cache install completed in ${elapsedSec}s`);
+        logger.info(`[${scaffoldDirName}] Scaffold cache install completed in ${elapsedSec}s`);
 
         // Write sentinel hash
         await fs.writeFile(sentinelPath, currentHash, "utf-8");
-        logger.info("Scaffold cache sentinel written successfully");
+        logger.info(`[${scaffoldDirName}] Scaffold cache sentinel written successfully`);
     } catch (error) {
-        logger.error("Failed to install scaffold cache:", error);
+        logger.error(`[${scaffoldDirName}] Failed to install scaffold cache:`, error);
         // Clean up on failure so we retry next time
         await fs.remove(cachePath).catch(() => { });
     }
 }
 
 /**
+ * Warm up the scaffold cache in background.
+ * This should be called once at app startup (non-blocking).
+ * Iterates over all scaffolds defined in SCAFFOLD_TEMPLATE_IDS.
+ *
+ * Steps per scaffold:
+ * 1. Check if the scaffold source has a package-lock.json (or package.json)
+ * 2. Compare its hash with the cached sentinel
+ * 3. If different (or no cache), run `npm install --legacy-peer-deps` in the cache dir
+ * 4. Write the sentinel with the new hash
+ */
+export async function warmUpScaffoldCache(): Promise<void> {
+    // Get unique scaffold directory names
+    const scaffoldDirNames = [...new Set(Object.values(SCAFFOLD_TEMPLATE_IDS))];
+    logger.info(`Warming up scaffold caches for: ${scaffoldDirNames.join(", ")}`);
+
+    // Warm up sequentially to avoid overwhelming the system
+    for (const dirName of scaffoldDirNames) {
+        try {
+            await ensureScaffoldCached(dirName);
+        } catch (error) {
+            logger.error(`Failed to warm up cache for ${dirName}:`, error);
+        }
+    }
+}
+
+/**
+ * Resolves which scaffold cache to use for a given target app directory.
+ * Reads the target's package.json name to determine the matching scaffold.
+ * Falls back to the default "scaffold" cache if no match is found.
+ */
+async function resolveScaffoldDirForApp(targetAppPath: string): Promise<string> {
+    try {
+        const pkgJsonPath = path.join(targetAppPath, "package.json");
+        if (await fs.pathExists(pkgJsonPath)) {
+            const pkgJson = await fs.readJson(pkgJsonPath);
+            // Match by package name pattern to scaffold dir
+            const name: string = pkgJson.name || "";
+            if (name.includes("vue")) return "scaffold-vue";
+            if (name.includes("astro")) return "scaffold-astro";
+            if (name.includes("svelte") || name.includes("sveltekit")) return "scaffold-svelte";
+        }
+    } catch {
+        // Fall through to default
+    }
+    return "scaffold";
+}
+
+/**
  * Copies the cached node_modules to a target app directory.
  * Returns true if the copy was successful, false if no cache is available.
  *
- * Uses fs-extra's copy which is optimized for large directory trees.
+ * Automatically resolves the correct scaffold cache based on the target app's
+ * package.json. Uses fs-extra's copy which is optimized for large directory trees.
  */
 export async function copyScaffoldNodeModules(targetAppPath: string): Promise<boolean> {
-    const cachePath = getScaffoldCachePath();
+    const scaffoldDirName = await resolveScaffoldDirForApp(targetAppPath);
+    const cachePath = getScaffoldCachePath(scaffoldDirName);
     const cachedNodeModules = path.join(cachePath, "node_modules");
     const sentinelPath = path.join(cachePath, SENTINEL_FILE);
 
     // Only copy if cache exists AND has a valid sentinel (completed install)
     if (!await fs.pathExists(cachedNodeModules) || !await fs.pathExists(sentinelPath)) {
-        logger.info("No valid scaffold cache available, skipping node_modules copy");
+        logger.info(`[${scaffoldDirName}] No valid scaffold cache available, skipping node_modules copy`);
         return false;
     }
 
@@ -192,11 +244,11 @@ export async function copyScaffoldNodeModules(targetAppPath: string): Promise<bo
 
     // Don't overwrite if target already has node_modules
     if (await fs.pathExists(targetNodeModules)) {
-        logger.info("Target already has node_modules, skipping cache copy");
+        logger.info(`[${scaffoldDirName}] Target already has node_modules, skipping cache copy`);
         return true;
     }
 
-    logger.info(`Copying cached node_modules to ${targetAppPath}`);
+    logger.info(`[${scaffoldDirName}] Copying cached node_modules to ${targetAppPath}`);
     const startTime = Date.now();
 
     try {
@@ -209,10 +261,10 @@ export async function copyScaffoldNodeModules(targetAppPath: string): Promise<bo
         });
 
         const elapsedMs = Date.now() - startTime;
-        logger.info(`Cached node_modules copied in ${elapsedMs}ms`);
+        logger.info(`[${scaffoldDirName}] Cached node_modules copied in ${elapsedMs}ms`);
         return true;
     } catch (error) {
-        logger.error("Failed to copy cached node_modules:", error);
+        logger.error(`[${scaffoldDirName}] Failed to copy cached node_modules:`, error);
         // Clean up partial copy
         await fs.remove(targetNodeModules).catch(() => { });
         return false;

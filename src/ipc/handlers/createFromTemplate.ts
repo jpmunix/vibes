@@ -5,8 +5,9 @@ import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
+import { SCAFFOLD_TEMPLATE_IDS } from "../../shared/templates";
 import log from "electron-log";
-import { copyScaffoldNodeModules } from "../utils/scaffold_cache";
+import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold_cache";
 
 const logger = log.scope("createFromTemplate");
 
@@ -22,9 +23,14 @@ export async function createFromTemplate({
   const settings = readSettings();
   const templateId = forceDefaultScaffold ? "react" : settings.selectedTemplateId;
 
-  if (templateId === "react") {
+  // Check if this template has a local scaffold directory
+  const scaffoldDirName = SCAFFOLD_TEMPLATE_IDS[templateId];
+  if (scaffoldDirName) {
+    logger.info(`Using local scaffold "${scaffoldDirName}" for template "${templateId}"`);
+    // Ensure node_modules are cached for this scaffold (on-demand, first time runs npm install)
+    await ensureScaffoldCached(scaffoldDirName);
     await copyDirectoryRecursive(
-      path.join(__dirname, "..", "..", "scaffold"),
+      path.join(__dirname, "..", "..", scaffoldDirName),
       fullAppPath,
     );
     // Sustituir wildcards en la plantilla

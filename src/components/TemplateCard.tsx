@@ -96,8 +96,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           <div className="flex justify-between items-center mb-1.5">
             <h2
               className={`text-lg font-semibold ${isSelected
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-900 dark:text-white"
+                ? "text-blue-600 dark:text-blue-400"
+                : "text-gray-900 dark:text-white"
                 }`}
             >
               {template.title}
@@ -105,8 +105,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             {template.isOfficial && !template.isExperimental && (
               <span
                 className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isSelected
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-600 dark:text-blue-100"
-                    : "bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-600 dark:text-blue-100"
+                  : "bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200"
                   }`}
               >
                 Oficial
@@ -121,11 +121,23 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 h-10 overflow-y-auto">
             {template.description}
           </p>
+          {template.tags && template.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {template.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           {template.githubUrl && (
             <a
               className={`inline-flex items-center text-sm font-medium transition-colors duration-200 ${isSelected
-                  ? "text-blue-500 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
-                  : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                ? "text-blue-500 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+                : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                 }`}
               onClick={handleGithubClick}
             >

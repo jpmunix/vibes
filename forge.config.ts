@@ -11,11 +11,16 @@ const ignore = (file: string): boolean => {
   if (!file || file === "/") return false;
 
   // ─── SCAFFOLD: BLINDADO ───────────────────────────────────────────────
-  // El scaffold es la plantilla que se copia a cada app nueva.
+  // Los scaffolds son las plantillas que se copian a cada app nueva.
   // Se incluye TODO excepto node_modules y .git (regenerables).
   // IMPORTANTE: este bloque va ANTES de cualquier regla de extensión
   // para que nunca se filtren archivos críticos (.ts, .mts, etc.).
-  if (file.startsWith("/scaffold")) {
+  if (
+    file.startsWith("/scaffold") ||
+    file.startsWith("/scaffold-vue") ||
+    file.startsWith("/scaffold-astro") ||
+    file.startsWith("/scaffold-svelte")
+  ) {
     if (
       file.includes("/node_modules") ||
       file.includes("/.git")
