@@ -1596,6 +1596,59 @@ This conversation includes one or more image attachments. When the user uploads 
         ) {
           logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
 
+          // Build context instructions for the OpenCode session
+          // These get injected as noReply on first interaction
+          const contextInstructions: string[] = [];
+
+          // 1. Knowledge Base rules (filtered by relevance to user prompt)
+          try {
+            const knowledgePrompt = await buildKnowledgePrompt(
+              updatedChat.app.id,
+              currentUserId as string,
+              req.prompt,
+            );
+            if (knowledgePrompt) {
+              contextInstructions.push(knowledgePrompt);
+              logger.log(`[OPENCODE MODE] KB context: ${knowledgePrompt.length} chars`);
+            }
+          } catch (e) {
+            logger.warn("[OPENCODE MODE] KB prompt build failed:", e);
+          }
+
+          // 2. Language instruction
+          const chatLang = settings.chatLanguage || "es";
+          const langMap: Record<string, string> = { es: "español", en: "English" };
+          contextInstructions.push(`Responde siempre en ${langMap[chatLang] || chatLang}.`);
+
+          // 3. Integration prompts — inject credentials and instructions
+          // Supabase
+          if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
+            try {
+              const supabaseClientCode = await getSupabaseClientCode({
+                projectId: updatedChat.app.supabaseProjectId,
+                organizationSlug: updatedChat.app.supabaseOrganizationSlug ?? null,
+              });
+              contextInstructions.push(getSupabaseAvailableSystemPrompt(supabaseClientCode));
+              logger.log("[OPENCODE MODE] Supabase context injected");
+            } catch (e) {
+              logger.warn("[OPENCODE MODE] Supabase prompt failed:", e);
+            }
+          }
+
+          // Bunny.net
+          const ocBunnyConfig = updatedChat.app?.bunnyConfig as BunnyConfig | null;
+          if (ocBunnyConfig && (ocBunnyConfig.databases?.length > 0 || ocBunnyConfig.storageZones?.length > 0)) {
+            contextInstructions.push(getBunnyAvailableSystemPrompt(ocBunnyConfig));
+            logger.log("[OPENCODE MODE] Bunny context injected");
+          }
+
+          // PocketBase
+          const ocPocketbaseConfig = updatedChat.app?.pocketbaseConfig as any;
+          if (ocPocketbaseConfig?.url && ocPocketbaseConfig.adminEmail) {
+            contextInstructions.push(getPocketBaseAvailableSystemPrompt(ocPocketbaseConfig));
+            logger.log("[OPENCODE MODE] PocketBase context injected");
+          }
+
           const { fullResponse: openCodeResponse, success } = await handleOpenCodeStream(
             event,
             req,
@@ -1604,6 +1657,7 @@ This conversation includes one or more image attachments. When the user uploads 
               placeholderMessageId: placeholderAssistantMessage.id,
               appPath: updatedChat.app.path,
               chatMessages: updatedChat.messages,
+              contextInstructions,
             },
           );
 

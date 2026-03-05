@@ -112,6 +112,12 @@ async function getOpenCodeClient(appPath: string) {
                 formatter: false,
                 lsp: false,
                 share: "disabled",
+                // Enable automatic context compaction — OpenCode will summarize
+                // old messages when context fills up (no manual history management needed)
+                compaction: {
+                    auto: true,
+                    prune: true,
+                },
             },
         });
 
@@ -212,6 +218,8 @@ export async function handleOpenCodeStream(
         placeholderMessageId: number;
         appPath: string;
         chatMessages: any[];
+        /** Context instructions to inject via noReply on first interaction */
+        contextInstructions?: string[];
     },
 ): Promise<{ fullResponse: string; success: boolean }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
@@ -244,6 +252,27 @@ export async function handleOpenCodeStream(
             sessionId = session.data!.id;
             chatSessionMap.set(req.chatId, sessionId);
             logger.info(`[OpenCode] Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`);
+
+            // Inject context instructions as noReply on first interaction
+            // This gives OpenCode knowledge about KB rules, integrations, and language
+            if (options.contextInstructions && options.contextInstructions.length > 0) {
+                const contextText = options.contextInstructions.join("\n\n---\n\n");
+                logger.info(`[OpenCode] Injecting ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
+                try {
+                    await client.session.prompt({
+                        path: { id: sessionId },
+                        query: { directory: projectDir },
+                        body: {
+                            noReply: true,
+                            parts: [{ type: "text", text: contextText }],
+                        },
+                    });
+                    logger.info(`[OpenCode] Context instructions injected successfully`);
+                } catch (ctxError: any) {
+                    logger.warn(`[OpenCode] Failed to inject context: ${ctxError.message}`);
+                    // Non-fatal — continue without context
+                }
+            }
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
             logger.error(errorMsg);
