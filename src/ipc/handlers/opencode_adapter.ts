@@ -15,7 +15,7 @@
  *               → message.part.updated (text deltas, tool states)
  *               → file.edited
  *               → session.status (busy/idle)
- *     └─ chat_stream_handlers.ts — routes "crush-agent" mode here
+ *     └─ chat_stream_handlers.ts — routes "local-agent" mode here (Agente)
  */
 
 import log from "electron-log";

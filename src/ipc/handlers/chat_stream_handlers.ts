@@ -1588,8 +1588,12 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // Handle crush-agent mode — delegates to OpenCode AI SDK
-        if (settings.selectedChatMode === "crush-agent") {
+        // Handle local-agent mode (Agente) — delegates to OpenCode AI SDK
+        // Also handles deprecated "crush-agent" mode for backwards compatibility
+        if (
+          settings.selectedChatMode === "local-agent" ||
+          (settings.selectedChatMode as string) === "crush-agent"
+        ) {
           logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
 
           const { fullResponse: openCodeResponse, success } = await handleOpenCodeStream(
@@ -1626,8 +1630,8 @@ This conversation includes one or more image attachments. When the user uploads 
             ],
           });
 
-          // Process any file changes from Crush's response
-          // (Crush writes files directly, so we just need to notify the frontend)
+          // Process any file changes from OpenCode's response
+          // (OpenCode writes files directly, so we just need to notify the frontend)
           const responseEnd: ChatResponseEnd = {
             chatId: req.chatId,
             updatedFiles: success,
@@ -1645,122 +1649,81 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // Handle local-agent mode (Agent v2) — also handles deprecated "build" mode
-        // NOTE: "build" mode is deprecated. The legacy prompt injection and tag parsing 
-        // has been fully replaced by the local-agent's tool-based approach. 
+        // Handle legacy-agent mode — uses the old local agent handler
+        // Also handles deprecated "build" and "agent" modes for backwards compatibility
         if (
-          (settings.selectedChatMode === "local-agent" ||
-            settings.selectedChatMode === "build") &&
-          !mentionedAppsCodebases.length
+          settings.selectedChatMode === "legacy-agent" ||
+          (settings.selectedChatMode as string) === "build" ||
+          (settings.selectedChatMode as string) === "agent"
         ) {
-          // Check quota for Basic Agent mode (non-Pro users)
-          const isBasicAgentModeRequest = isBasicAgentMode(settings);
-          if (isBasicAgentModeRequest) {
-            const quotaStatus = await getFreeAgentQuotaStatus(currentUserId);
-            if (quotaStatus.isQuotaExceeded) {
-              safeSend(event.sender, "chat:response:error", {
-                chatId: req.chatId,
-                error: JSON.stringify({
-                  type: "FREE_AGENT_QUOTA_EXCEEDED",
-                  hoursUntilReset: quotaStatus.hoursUntilReset,
-                  resetTime: quotaStatus.resetTime,
-                }),
-              });
-              return;
+          if (!mentionedAppsCodebases.length) {
+            // Check quota for Basic Agent mode (non-Pro users)
+            const isBasicAgentModeRequest = isBasicAgentMode(settings);
+            if (isBasicAgentModeRequest) {
+              const quotaStatus = await getFreeAgentQuotaStatus(currentUserId);
+              if (quotaStatus.isQuotaExceeded) {
+                safeSend(event.sender, "chat:response:error", {
+                  chatId: req.chatId,
+                  error: JSON.stringify({
+                    type: "FREE_AGENT_QUOTA_EXCEEDED",
+                    hoursUntilReset: quotaStatus.hoursUntilReset,
+                    resetTime: quotaStatus.resetTime,
+                  }),
+                });
+                return;
+              }
             }
-          }
 
-          // Mark the user message as using quota BEFORE starting the stream
-          // to prevent race conditions with parallel requests
-          if (isBasicAgentModeRequest && userMessageId) {
-            await markMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
-          }
+            // Mark the user message as using quota BEFORE starting the stream
+            // to prevent race conditions with parallel requests
+            if (isBasicAgentModeRequest && userMessageId) {
+              await markMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
+            }
 
-          // Add semantic context for Agente inteligente
-          // Extract codebase and use semantic search to provide initial context
-          // Skip for summarize intent to save tokens
-          logger.log(
-            `[AGENT MODE] Starting Agente inteligente${isSummarizeIntent ? " (summarize mode - no codebase)" : " with semantic context"}`,
-          );
-          let localAgentSystemPrompt = systemPrompt;
-
-          if (!isSummarizeIntent) {
-            // AGENT MODE: Generate a compact micro-summary of the project structure
-            // to give the LLM spatial awareness without injecting full file content.
-            const projectSummary = generateProjectMicroSummary(appPath);
-            localAgentSystemPrompt += `\n\n# Project Context\n${projectSummary}\nUse \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find specific files.`;
-          } else {
+            // Add semantic context for Agente inteligente
+            // Extract codebase and use semantic search to provide initial context
+            // Skip for summarize intent to save tokens
             logger.log(
-              `[AGENT MODE] Skipping codebase context for summarize intent`,
+              `[AGENT MODE] Starting Agente inteligente${isSummarizeIntent ? " (summarize mode - no codebase)" : " with semantic context"}`,
             );
-          }
+            let localAgentSystemPrompt = systemPrompt;
 
-          let streamSuccess = false;
-          try {
-            streamSuccess = await handleLocalAgentStream(
-              event,
-              req,
-              abortController,
-              {
-                placeholderMessageId: placeholderAssistantMessage.id,
-                systemPrompt: localAgentSystemPrompt,
-                dyadRequestId: dyadRequestId ?? "[no-request-id]",
-                messageOverride: isSummarizeIntent ? chatMessages : undefined,
-              },
-            );
-          } finally {
-            // If the stream failed, was aborted, or threw, refund the quota
-            if (isBasicAgentModeRequest && userMessageId && !streamSuccess) {
-              await unmarkMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
+            if (!isSummarizeIntent) {
+              // AGENT MODE: Generate a compact micro-summary of the project structure
+              // to give the LLM spatial awareness without injecting full file content.
+              const projectSummary = generateProjectMicroSummary(appPath);
+              localAgentSystemPrompt += `\n\n# Project Context\n${projectSummary}\nUse \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find specific files.`;
+            } else {
+              logger.log(
+                `[AGENT MODE] Skipping codebase context for summarize intent`,
+              );
             }
-          }
 
-          return;
-        }
+            let streamSuccess = false;
+            try {
+              streamSuccess = await handleLocalAgentStream(
+                event,
+                req,
+                abortController,
+                {
+                  placeholderMessageId: placeholderAssistantMessage.id,
+                  systemPrompt: localAgentSystemPrompt,
+                  dyadRequestId: dyadRequestId ?? "[no-request-id]",
+                  messageOverride: isSummarizeIntent ? chatMessages : undefined,
+                },
+              );
+            } finally {
+              // If the stream failed, was aborted, or threw, refund the quota
+              if (isBasicAgentModeRequest && userMessageId && !streamSuccess) {
+                await unmarkMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
+              }
+            }
 
-        if (settings.selectedChatMode === "agent") {
-          const tools = await getMcpTools(event, req, currentUserId as string);
+            return;
+          } // end !mentionedAppsCodebases.length
+        } // end legacy-agent
 
-          const { fullStream } = await simpleStreamText({
-            chatMessages: limitedHistoryChatMessages,
-            modelClient,
-            tools: {
-              ...tools,
-              "generate-code": {
-                description:
-                  "ALWAYS use this tool whenever generating or editing code for the codebase.",
-                inputSchema: z.object({}),
-                execute: async () => "",
-              },
-            },
-            systemPromptOverride: constructSystemPrompt({
-              aiRules: await readAiRules(getDyadAppPath(updatedChat.app.path)),
-              chatMode: "agent",
-              chatLanguage: settings.chatLanguage || "es",
-              settings,
-            }),
-
-            files: files,
-            dyadDisableFiles: true,
-          });
-
-          const result = await processStreamChunks({
-            fullStream,
-            fullResponse,
-            abortController,
-            chatId: req.chatId,
-            processResponseChunkUpdate,
-          });
-          fullResponse = result.fullResponse;
-          chatMessages.push({
-            role: "assistant",
-            content: fullResponse,
-          });
-          chatMessages.push({
-            role: "user",
-            content: "OK.",
-          });
-        }
+        // NOTE: Old "agent" mode (MCP) code was here but is now handled by legacy-agent above.
 
         // When calling streamText, the messages need to be properly formatted for mixed content
         const { fullStream } = await simpleStreamText({

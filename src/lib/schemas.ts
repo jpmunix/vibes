@@ -179,7 +179,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["build", "ask", "agent", "local-agent", "crush-agent", "plan"]);
+export const ChatModeSchema = z.enum(["local-agent", "legacy-agent", "plan", "ask"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -368,8 +368,21 @@ export const UserSettingsSchema = z
     selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
-    selectedChatMode: ChatModeSchema.optional(),
-    defaultChatMode: ChatModeSchema.optional(),
+    selectedChatMode: z.preprocess(
+      (val) => {
+        // Migrate deprecated mode values before validation
+        if (val === "crush-agent" || val === "build" || val === "agent") return "local-agent";
+        return val;
+      },
+      ChatModeSchema.optional(),
+    ),
+    defaultChatMode: z.preprocess(
+      (val) => {
+        if (val === "crush-agent" || val === "build" || val === "agent") return "local-agent";
+        return val;
+      },
+      ChatModeSchema.optional(),
+    ),
     acceptedCommunityCode: z.boolean().optional(),
     zoomLevel: ZoomLevelSchema.optional(),
     previewDeviceMode: DeviceModeSchema.optional(),
@@ -440,8 +453,9 @@ export function hasDyadProKey(settings: UserSettings): boolean {
 
 /**
  * Gets the effective default chat mode based on settings and pro status.
- * - If defaultChatMode is set, use it (mapping "build" → "local-agent")
- * - If defaultChatMode is NOT set, default to "local-agent"
+ * Migration: deprecated modes map to their replacements.
+ * - "build" / "agent" / "crush-agent" → "local-agent" (OpenCode)
+ * - Default: "local-agent" (OpenCode)
  */
 export function getEffectiveDefaultChatMode(
   settings: UserSettings,
@@ -449,14 +463,15 @@ export function getEffectiveDefaultChatMode(
   _freeAgentQuotaAvailable?: boolean,
 ): ChatMode {
   if (settings.defaultChatMode) {
-    // "build" is deprecated — map to "local-agent"
-    if (settings.defaultChatMode === "build") {
+    const mode = settings.defaultChatMode as string;
+    // Deprecated modes → "local-agent" (OpenCode)
+    if (mode === "build" || mode === "agent" || mode === "crush-agent") {
       return "local-agent";
     }
     return settings.defaultChatMode;
   }
 
-  // Default to "local-agent" (Agente)
+  // Default to "local-agent" (Agente — OpenCode)
   return "local-agent";
 }
 
@@ -464,11 +479,12 @@ export function getEffectiveDefaultChatMode(
  * Determines if the current session is using Basic Agent mode (free tier with quota).
  * Basic Agent mode is when:
  * - User is NOT a Pro subscriber
- * - User is using local-agent chat mode
+ * - User is using legacy-agent chat mode
+ * Note: OpenCode (local-agent) does NOT use the free quota system.
  */
 export function isBasicAgentMode(settings: UserSettings): boolean {
   return (
-    !isDyadProEnabled(settings) && settings.selectedChatMode === "local-agent"
+    !isDyadProEnabled(settings) && settings.selectedChatMode === "legacy-agent"
   );
 }
 

@@ -201,7 +201,7 @@ export function ChatInput({
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
   const disableSendButton =
     settings?.selectedChatMode !== "local-agent" &&
-    settings?.selectedChatMode !== "crush-agent" &&
+    settings?.selectedChatMode !== "legacy-agent" &&
     lastMessage?.role === "assistant" &&
     !lastMessage.approvalState &&
     !!proposal &&
@@ -399,7 +399,7 @@ export function ChatInput({
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&
         settings.selectedChatMode !== "local-agent" &&
-        settings.selectedChatMode !== "crush-agent" &&
+        settings.selectedChatMode !== "legacy-agent" &&
         !isPlanMode && (
           <div className="p-4 text-sm text-muted-foreground">
             Cargando propuesta...
@@ -463,7 +463,7 @@ export function ChatInput({
                 settings.selectedChatMode !== "ask" &&
                 !isPlanMode &&
                 settings.selectedChatMode !== "local-agent" &&
-                settings.selectedChatMode !== "crush-agent" && (
+                settings.selectedChatMode !== "legacy-agent" && (
                   <ChatInputActions
                     proposal={proposal}
                     onApprove={handleApprove}
