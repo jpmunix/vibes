@@ -1649,6 +1649,30 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.log("[OPENCODE MODE] PocketBase context injected");
           }
 
+          // 4. Build integration env vars — accessible via bash in OpenCode
+          const integrationEnvVars: Record<string, string> = {};
+
+          // Bunny DB
+          if (ocBunnyConfig?.databases?.length > 0) {
+            const db0 = ocBunnyConfig.databases[0];
+            integrationEnvVars.BUNNY_DB_URL = db0.databaseUrl;
+            integrationEnvVars.BUNNY_DB_TOKEN = db0.fullAccessToken;
+            if (db0.readOnlyToken) integrationEnvVars.BUNNY_DB_READONLY_TOKEN = db0.readOnlyToken;
+          }
+          // Bunny Storage
+          if (ocBunnyConfig?.storageZones?.length > 0) {
+            const sz0 = ocBunnyConfig.storageZones[0];
+            integrationEnvVars.BUNNY_STORAGE_HOSTNAME = sz0.hostname;
+            integrationEnvVars.BUNNY_STORAGE_USERNAME = sz0.username;
+            integrationEnvVars.BUNNY_STORAGE_PASSWORD = sz0.password;
+          }
+          // PocketBase
+          if (ocPocketbaseConfig?.url) {
+            integrationEnvVars.POCKETBASE_URL = ocPocketbaseConfig.url;
+            if (ocPocketbaseConfig.adminEmail) integrationEnvVars.POCKETBASE_ADMIN_EMAIL = ocPocketbaseConfig.adminEmail;
+            if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
+          }
+
           const { fullResponse: openCodeResponse, success } = await handleOpenCodeStream(
             event,
             req,
@@ -1658,6 +1682,9 @@ This conversation includes one or more image attachments. When the user uploads 
               appPath: updatedChat.app.path,
               chatMessages: updatedChat.messages,
               contextInstructions,
+              attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
+              attachments: req.attachments as any,
+              integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
             },
           );
 

@@ -368,6 +368,12 @@ export const UserSettingsSchema = z
     selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
+    openCodePermissions: z.object({
+      edit: z.enum(["ask", "allow", "deny"]).optional(),
+      bash: z.enum(["ask", "allow", "deny"]).optional(),
+      webfetch: z.enum(["ask", "allow", "deny"]).optional(),
+      external_directory: z.enum(["ask", "allow", "deny"]).optional(),
+    }).optional(),
     selectedChatMode: z.preprocess(
       (val) => {
         // Migrate deprecated mode values before validation

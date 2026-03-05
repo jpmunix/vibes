@@ -5,16 +5,16 @@
 import type { BunnyConfig } from "@/ipc/types/bunny";
 
 export function getBunnyAvailableSystemPrompt(config: BunnyConfig): string {
-    const dbSection =
-        config.databases.length > 0
-            ? buildDatabasePrompt(config.databases)
-            : "";
-    const storageSection =
-        config.storageZones.length > 0
-            ? buildStoragePrompt(config.storageZones)
-            : "";
+  const dbSection =
+    config.databases.length > 0
+      ? buildDatabasePrompt(config.databases)
+      : "";
+  const storageSection =
+    config.storageZones.length > 0
+      ? buildStoragePrompt(config.storageZones)
+      : "";
 
-    return `
+  return `
 # Bunny.net Instructions
 
 The user has Bunny.net available for their app. Use it for database and/or storage needs as configured below.
@@ -29,18 +29,18 @@ ${storageSection}
 // ---------------------------------------------------------------------------
 
 function buildDatabasePrompt(
-    databases: BunnyConfig["databases"],
+  databases: BunnyConfig["databases"],
 ): string {
-    const dbEntries = databases
-        .map(
-            (db) => `
+  const dbEntries = databases
+    .map(
+      (db) => `
 - **${db.name}**
   - URL: \`${db.databaseUrl}\`
   - Full-access token: \`${db.fullAccessToken}\`${db.readOnlyToken ? `\n  - Read-only token: \`${db.readOnlyToken}\`` : ""}`,
-        )
-        .join("\n");
+    )
+    .join("\n");
 
-    return `
+  return `
 ## Bunny Database (libSQL)
 
 ### Available databases
@@ -108,6 +108,21 @@ await client.execute(\`
 - The \`execute()\` method returns \`{ rows, columns, rowsAffected, lastInsertRowid }\`.
 - For frontend apps, always import from \`@libsql/client/web\` (not \`@libsql/client\`).
 - Always use parameterized queries (\`?\` or \`:name\`) to prevent SQL injection.
+
+### Quick access via bash (for inspecting schema & debugging)
+Environment variables are available: \`BUNNY_DB_URL\`, \`BUNNY_DB_TOKEN\`.
+Use these in bash to inspect the database before writing code:
+\`\`\`bash
+# List all tables
+curl -s -X POST "$BUNNY_DB_URL" -H "Authorization: Bearer $BUNNY_DB_TOKEN" -H "Content-Type: application/json" -d '{"statements":["SELECT name FROM sqlite_master WHERE type=\\"table\\""]}' | jq .
+
+# Describe a table
+curl -s -X POST "$BUNNY_DB_URL" -H "Authorization: Bearer $BUNNY_DB_TOKEN" -H "Content-Type: application/json" -d '{"statements":["PRAGMA table_info(TABLE_NAME)"]}' | jq .
+
+# Quick query
+curl -s -X POST "$BUNNY_DB_URL" -H "Authorization: Bearer $BUNNY_DB_TOKEN" -H "Content-Type: application/json" -d '{"statements":["SELECT * FROM TABLE_NAME LIMIT 5"]}' | jq .
+\`\`\`
+**Always inspect the schema before writing integration code.**
 `;
 }
 
@@ -116,19 +131,19 @@ await client.execute(\`
 // ---------------------------------------------------------------------------
 
 function buildStoragePrompt(
-    storageZones: BunnyConfig["storageZones"],
+  storageZones: BunnyConfig["storageZones"],
 ): string {
-    const szEntries = storageZones
-        .map(
-            (sz) => `
+  const szEntries = storageZones
+    .map(
+      (sz) => `
 - **${sz.name}**
   - Hostname: \`${sz.hostname}\`
   - Username: \`${sz.username}\`
   - Password: \`${sz.password}\`${sz.readonlyPassword ? `\n  - Read-only password: \`${sz.readonlyPassword}\`` : ""}`,
-        )
-        .join("\n");
+    )
+    .join("\n");
 
-    return `
+  return `
 ## Bunny Storage
 
 ### Available storage zones
@@ -198,6 +213,16 @@ await BunnyStorageSDK.file.removeDirectory(storageZone, "/path/to/dir/");
 - The Storage SDK is a **server-side** library (Node.js). For browser apps, create an API route or edge function that proxies storage operations.
 - File paths are relative to the storage zone root.
 - The \`file.list()\` response includes metadata: \`Guid\`, \`ObjectName\`, \`Path\`, \`Length\`, \`ContentType\`, \`DateCreated\`, \`LastChanged\`, \`Checksum\`, \`IsDirectory\`, \`ReplicationRegions\`.
+
+### Quick access via bash (for listing files & debugging)
+Environment variables are available: \`BUNNY_STORAGE_HOSTNAME\`, \`BUNNY_STORAGE_USERNAME\`, \`BUNNY_STORAGE_PASSWORD\`.
+\`\`\`bash
+# List files in root
+curl -s "https://$BUNNY_STORAGE_HOSTNAME/$BUNNY_STORAGE_USERNAME/" -H "AccessKey: $BUNNY_STORAGE_PASSWORD" | jq .
+
+# List files in a subdirectory
+curl -s "https://$BUNNY_STORAGE_HOSTNAME/$BUNNY_STORAGE_USERNAME/images/" -H "AccessKey: $BUNNY_STORAGE_PASSWORD" | jq .
+\`\`\`
 `;
 }
 

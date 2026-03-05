@@ -100,12 +100,12 @@ async function getOpenCodeClient(appPath: string) {
                     },
                 },
                 model: `${providerID}/${modelID}`,
-                // CRITICAL: Allow all operations without asking — we're running headless
+                // Permissions: read from settings, default to allow-all (headless mode)
                 permission: {
-                    edit: "allow",
-                    bash: "allow",
-                    webfetch: "allow",
-                    external_directory: "allow",
+                    edit: settings.openCodePermissions?.edit || "allow",
+                    bash: settings.openCodePermissions?.bash || "allow",
+                    webfetch: settings.openCodePermissions?.webfetch || "allow",
+                    external_directory: settings.openCodePermissions?.external_directory || "allow",
                 },
                 // Disable features we don't need (reduces overhead)
                 autoupdate: false,
@@ -220,9 +220,23 @@ export async function handleOpenCodeStream(
         chatMessages: any[];
         /** Context instructions to inject via noReply on first interaction */
         contextInstructions?: string[];
+        /** Processed attachment file paths (images/text saved to temp dir) */
+        attachmentPaths?: string[];
+        /** Original attachment metadata */
+        attachments?: { name: string; type: string; data: string; attachmentType: string }[];
+        /** Integration env vars — set in process.env so bash tool can use them */
+        integrationEnvVars?: Record<string, string>;
     },
 ): Promise<{ fullResponse: string; success: boolean }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
+
+    // Inject integration env vars into the process so OpenCode's bash can use them
+    if (options.integrationEnvVars) {
+        for (const [key, value] of Object.entries(options.integrationEnvVars)) {
+            process.env[key] = value;
+        }
+        logger.info(`[OpenCode] Injected ${Object.keys(options.integrationEnvVars).length} integration env vars: ${Object.keys(options.integrationEnvVars).join(', ')}`);
+    }
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
     const projectDir = getDyadAppPath(appPath);
@@ -280,13 +294,13 @@ export async function handleOpenCodeStream(
         }
     }
 
-    sendProgressUpdate(event, req.chatId, chatMessages, "⏳ **OpenCode está trabajando...**\n\nAnalizando proyecto y generando respuesta...");
+    sendProgressUpdate(event, req.chatId, chatMessages, "<think>OpenCode está iniciando...</think>");
 
     // Subscribe to events for real-time streaming
     let fullResponse = "";
-    const toolsActive = new Map<string, { tool: string; status: string }>();
-    // Accumulated log of all operations — this is what we show in the chat
-    const operationLog: { icon: string; text: string }[] = [];
+    const toolsActive = new Map<string, { tool: string; status: string; detail?: string }>();
+    // Accumulated log of all operations — rendered as dyad tags in the chat
+    const operationLog: { tool: string; detail: string; content: string }[] = [];
     const filesEdited: string[] = [];
     let stepCount = 0;
     let eventSubscription: any = null;
@@ -309,17 +323,25 @@ export async function handleOpenCodeStream(
                 onTextDelta: (delta: string) => {
                     fullResponse += delta;
                 },
-                onToolUpdate: (toolId: string, tool: string, status: string) => {
-                    toolsActive.set(toolId, { tool, status });
+                onToolUpdate: (toolId: string, tool: string, status: string, detail?: string) => {
+                    toolsActive.set(toolId, { tool, status, detail });
 
                     // Add to accumulated log when a tool completes or errors
                     if (status === "completed") {
-                        operationLog.push({ icon: "✅", text: mapToolName(tool) });
+                        operationLog.push({
+                            tool,
+                            detail: detail || "",
+                            content: status === "error" ? "[error]" : "[completado]",
+                        });
                     } else if (status === "error") {
-                        operationLog.push({ icon: "❌", text: `${mapToolName(tool)} (error)` });
+                        operationLog.push({
+                            tool,
+                            detail: detail || "",
+                            content: "[error]",
+                        });
                     }
 
-                    logger.info(`[OpenCode] Tool ${tool}: ${status}`);
+                    logger.info(`[OpenCode] Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}`);
                 },
                 onStepStart: () => {
                     stepCount++;
@@ -330,7 +352,6 @@ export async function handleOpenCodeStream(
                     const alreadyTracked = filesEdited.some(f => path.basename(f) === basename);
                     if (!alreadyTracked) {
                         filesEdited.push(file);
-                        operationLog.push({ icon: "📂", text: `Archivo editado: ${basename}` });
                         logger.info(`[OpenCode] 📂 File edited: ${file}`);
                     }
                 },
@@ -352,6 +373,52 @@ export async function handleOpenCodeStream(
         logger.info(`[OpenCode] Project directory: ${projectDir}`);
         logger.info(`[OpenCode] Prompt: "${req.prompt.substring(0, 100)}..."`);
 
+        // Build prompt parts: text + optional file attachments
+        const promptParts: any[] = [{ type: "text", text: req.prompt }];
+
+        // Add image attachments as file parts (OpenCode supports multimodal input)
+        if (options.attachments && options.attachmentPaths) {
+            for (let i = 0; i < options.attachments.length; i++) {
+                const att = options.attachments[i];
+                const attPath = options.attachmentPaths[i];
+                if (!attPath) continue;
+
+                // Images → send as data URL file parts for vision models
+                if (att.type.startsWith("image/")) {
+                    promptParts.push({
+                        type: "file",
+                        mime: att.type,
+                        filename: att.name,
+                        url: att.data, // already a data URL
+                    });
+                    logger.info(`[OpenCode] Attached image: ${att.name}`);
+                }
+                // upload-to-codebase → copy to project and mention in prompt
+                else if (att.attachmentType === "upload-to-codebase") {
+                    const fs = require("fs");
+                    const destPath = path.join(projectDir, att.name);
+                    try {
+                        fs.copyFileSync(attPath, destPath);
+                        promptParts[0].text += `\n\n[Archivo subido al proyecto: ${att.name}]`;
+                        logger.info(`[OpenCode] Uploaded to codebase: ${att.name}`);
+                    } catch (e: any) {
+                        logger.warn(`[OpenCode] Failed to copy attachment: ${e.message}`);
+                    }
+                }
+                // Text files → inline content in prompt
+                else {
+                    try {
+                        const fs = require("fs");
+                        const content = fs.readFileSync(attPath, "utf-8");
+                        promptParts[0].text += `\n\nAdjunto (${att.name}):\n\`\`\`\n${content}\n\`\`\``;
+                        logger.info(`[OpenCode] Inlined text attachment: ${att.name}`);
+                    } catch {
+                        promptParts[0].text += `\n\nAdjunto: ${att.name} (${att.type})`;
+                    }
+                }
+            }
+        }
+
         // Fire the prompt (non-blocking)
         await client.session.promptAsync({
             path: { id: sessionId },
@@ -361,7 +428,7 @@ export async function handleOpenCodeStream(
                     providerID,
                     modelID: model.name,
                 },
-                parts: [{ type: "text", text: req.prompt }],
+                parts: promptParts,
             },
         });
 
@@ -416,13 +483,13 @@ async function processEvents(
     chatMessages: any[],
     callbacks: {
         onTextDelta: (delta: string) => void;
-        onToolUpdate: (toolId: string, tool: string, status: string) => void;
+        onToolUpdate: (toolId: string, tool: string, status: string, detail?: string) => void;
         onStepStart: () => void;
         onFileEdited: (file: string) => void;
         getFullResponse: () => string;
-        getToolsActive: () => Map<string, { tool: string; status: string }>;
+        getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
         getFilesEdited: () => string[];
-        getOperationLog: () => { icon: string; text: string }[];
+        getOperationLog: () => { tool: string; detail: string; content: string }[];
         getStepCount: () => number;
     },
     abortController: AbortController,
@@ -478,7 +545,14 @@ async function processEvents(
                             const toolState = part.state;
                             const toolName = part.tool || "unknown";
                             const status = toolState?.status || "unknown";
-                            callbacks.onToolUpdate(part.callID || part.id, toolName, status);
+                            // Extract detail from tool input (file path, query, command, etc.)
+                            const input = toolState?.input || part.input || {};
+                            const detail = input.file_path || input.path || input.filePath
+                                || input.query || input.pattern
+                                || input.command || input.cmd
+                                || input.directory || input.url
+                                || "";
+                            callbacks.onToolUpdate(part.callID || part.id, toolName, status, detail);
                             sendUpdate();
                             break;
                         }
@@ -562,78 +636,148 @@ async function processEvents(
     }
 }
 
-// ============================================================================
-// Content builders — produce markdown with accumulated operation log
-// ============================================================================
+/**
+ * Map OpenCode tool names → dyad tag names for consistent UI rendering.
+ * The DyadMarkdownParser will intercept these tags and render the
+ * collapsible icon badges that the user expects.
+ */
+function mapToolToDyadTag(tool: string): string {
+    const map: Record<string, string> = {
+        write: "dyad-write",
+        read: "dyad-read",
+        edit: "dyad-search-replace",
+        bash: "dyad-run-command",
+        glob: "dyad-list-files",
+        grep: "dyad-grep",
+        fetch: "dyad-web-crawl",
+        patch: "dyad-patch",
+        todowrite: "dyad-write",
+        todorewrite: "dyad-write",
+        codesearch: "dyad-code-search",
+        webfetch: "dyad-web-crawl",
+        websearch: "dyad-web-crawl",
+        lsp: "dyad-status",
+    };
+    return map[tool] || "dyad-status";
+}
 
 /**
- * Build live content showing accumulated operation log + current activity + response text.
+ * Build a dyad tag string for a completed tool operation.
+ * These tags are parsed by DyadMarkdownParser and rendered as
+ * compact icon badges with collapsible details.
+ */
+function buildDyadTag(tool: string, detail: string, content: string): string {
+    const dyadTag = mapToolToDyadTag(tool);
+
+    switch (dyadTag) {
+        case "dyad-write":
+            return `<dyad-write path="${escapeAttr(detail)}" description="Escrito por OpenCode">${content}</dyad-write>`;
+        case "dyad-search-replace":
+            return `<dyad-search-replace path="${escapeAttr(detail)}" description="">${content}</dyad-search-replace>`;
+        case "dyad-read":
+            return `<dyad-read path="${escapeAttr(detail)}">${content}</dyad-read>`;
+        case "dyad-grep":
+            return `<dyad-grep query="${escapeAttr(detail)}">${content}</dyad-grep>`;
+        case "dyad-code-search":
+            return `<dyad-code-search query="${escapeAttr(detail)}">${content}</dyad-code-search>`;
+        case "dyad-run-command":
+            return `<dyad-run-command cmd="${escapeAttr(detail)}">${content}</dyad-run-command>`;
+        case "dyad-list-files":
+            return `<dyad-list-files directory="${escapeAttr(detail)}">${content}</dyad-list-files>`;
+        case "dyad-web-crawl":
+            return `<dyad-web-crawl url="${escapeAttr(detail)}">${content}</dyad-web-crawl>`;
+        case "dyad-patch":
+            return `<dyad-patch path="${escapeAttr(detail)}">${content}</dyad-patch>`;
+        case "dyad-status":
+        default:
+            return `<dyad-status title="${escapeAttr(detail)}">${content}</dyad-status>`;
+    }
+}
+
+/** Escape XML/HTML attribute values */
+function escapeAttr(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Build live content showing accumulated dyad tags + current activity + response text.
  * This is what the user sees in the chat bubble while OpenCode works.
  */
 function buildLiveContent(
     fullResponse: string,
-    toolsActive: Map<string, { tool: string; status: string }>,
-    operationLog: { icon: string; text: string }[],
+    toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
+    operationLog: { tool: string; detail: string; content: string }[],
     stepCount: number,
 ): string {
     let content = "";
 
-    // Header with step counter
-    content += `⚡ **OpenCode** — Paso ${stepCount || 1}\n\n`;
-
-    // Show accumulated operation log (completed items)
-    if (operationLog.length > 0) {
-        for (const op of operationLog) {
-            content += `${op.icon} ${op.text}\n`;
-        }
+    // Emit completed operations as dyad tags — the parser will render them as icon badges
+    for (const op of operationLog) {
+        content += buildDyadTag(op.tool, op.detail, op.content) + "\n";
     }
 
-    // Show currently active tools (running/pending)
-    const activeTools = Array.from(toolsActive.values()).filter(
-        t => t.status === "running" || t.status === "pending"
+    // Show reasoning/thinking as <think> tags (rendered as collapsible purple brain icon)
+    const thinkingTools = Array.from(toolsActive.values()).filter(
+        t => (t.status === "running" || t.status === "pending") && t.tool !== "edit" && t.tool !== "write"
     );
-    if (activeTools.length > 0) {
-        for (const t of activeTools) {
-            content += `⏳ ${mapToolName(t.tool)}...\n`;
-        }
+    if (thinkingTools.length > 0 && !fullResponse) {
+        content += `<think>Analizando...${thinkingTools.map(t => ` ${mapToolName(t.tool)}`).join(",")}</think>\n`;
+    }
+
+    // Active tool indicator (pending tools shown as dyad tags with pending state)
+    const activeEdits = Array.from(toolsActive.values()).filter(
+        t => (t.status === "running" || t.status === "pending") &&
+            (t.tool === "edit" || t.tool === "write" || t.tool === "read")
+    );
+    for (const t of activeEdits) {
+        const tag = mapToolToDyadTag(t.tool);
+        content += `<${tag} path="${escapeAttr(t.detail || "...")}">`; // unclosed = pending
     }
 
     // Separator before response text
     if (fullResponse) {
-        content += "\n---\n\n" + cleanResponseText(fullResponse);
-    } else if (operationLog.length === 0 && activeTools.length === 0) {
-        content += "⏳ Iniciando...\n";
+        content += "\n" + cleanResponseText(fullResponse);
+    } else if (operationLog.length === 0 && toolsActive.size === 0) {
+        content += "<think>Iniciando...</think>\n";
     }
 
     return content;
 }
 
 /**
- * Build the final response combining operation log + text + file edits
+ * Build the final response combining dyad tags + text + file edits.
+ * All tool operations become proper dyad tags that the parser renders
+ * with the same collapsible UI as the legacy agent.
  */
 function buildFinalResponse(
     fullResponse: string,
     filesEdited: string[],
-    toolsActive: Map<string, { tool: string; status: string }>,
-    operationLog?: { icon: string; text: string }[],
+    toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
+    operationLog?: { tool: string; detail: string; content: string }[],
 ): string {
     let content = "";
 
-    // Show completed operation log as a compact summary
+    // Emit completed operations as dyad tags
     if (operationLog && operationLog.length > 0) {
-        content += "**Operaciones realizadas:**\n\n";
         for (const op of operationLog) {
-            content += `${op.icon} ${op.text}  \n`;
+            content += buildDyadTag(op.tool, op.detail, op.content) + "\n";
         }
-        content += "\n";
     }
 
-    // Add edited files as dyad-write tags (just the relative path)
+    // Add file edits as dyad-write tags (for files tracked via file.edited events
+    // but not already covered by tool operations)
     if (filesEdited.length > 0) {
-        const uniqueFiles = [...new Set(filesEdited.map(f => path.basename(f)))];
-        for (const file of uniqueFiles) {
-            const fullPath = filesEdited.find(f => path.basename(f) === file) || file;
-            content += `<dyad-write path="${fullPath}" description="Modificado por OpenCode">[contenido actualizado]</dyad-write>\n`;
+        const loggedPaths = new Set(
+            (operationLog || [])
+                .filter(op => op.tool === "write" || op.tool === "edit")
+                .map(op => path.basename(op.detail)),
+        );
+
+        for (const file of filesEdited) {
+            const basename = path.basename(file);
+            if (!loggedPaths.has(basename)) {
+                content += `<dyad-write path="${escapeAttr(file)}" description="Modificado por OpenCode">[contenido actualizado]</dyad-write>\n`;
+            }
         }
     }
 
@@ -643,6 +787,23 @@ function buildFinalResponse(
     }
 
     return content;
+}
+
+/** Human-readable tool name (for pending indicators) */
+function mapToolName(tool: string): string {
+    const map: Record<string, string> = {
+        write: "Escribir archivo",
+        read: "Leer archivo",
+        edit: "Editar archivo",
+        bash: "Ejecutar comando",
+        glob: "Buscar archivos",
+        grep: "Buscar en código",
+        fetch: "Obtener URL",
+        patch: "Aplicar parche",
+        todowrite: "Actualizar tareas",
+        todorewrite: "Reescribir tareas",
+    };
+    return map[tool] || tool;
 }
 
 /**
@@ -658,25 +819,6 @@ function cleanResponseText(text: string): string {
     // Clean up excessive blank lines
     cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
     return cleaned.trim();
-}
-
-/**
- * Map OpenCode tool names to human-readable Spanish names
- */
-function mapToolName(tool: string): string {
-    const map: Record<string, string> = {
-        write: "Escribir archivo",
-        read: "Leer archivo",
-        edit: "Editar archivo",
-        bash: "Ejecutar comando",
-        glob: "Buscar archivos",
-        grep: "Buscar en código",
-        fetch: "Obtener URL",
-        patch: "Aplicar parche",
-        todowrite: "Actualizar tareas",
-        todorewrite: "Reescribir tareas",
-    };
-    return map[tool] || tool;
 }
 
 // ============================================================================

@@ -125,8 +125,26 @@ PocketBase handles files as fields within a collection record.
 ## 6. Best Practices
 - Avoid raw SQL queries when interacting with PocketBase. Always use the SDK's Collection API.
 - For files and storage, use the \`File\` or \`Blob\` objects within the standard record update/create calls.
-- To discover collections, schema and existing files, use the \`get_pocketbase_info\` and \`get_pocketbase_storage_info\` tools!
+- To discover collections, schema and existing files, use bash (see below).
 - PocketBase storage defaults to local \`pb_data/storage\`, but supports S3-compatible backends via settings.
+
+## 7. Quick access via bash (for inspecting schema & debugging)
+Environment variables are available: \`POCKETBASE_URL\`, \`POCKETBASE_ADMIN_EMAIL\`, \`POCKETBASE_ADMIN_PASSWORD\`.
+Use bash to inspect PocketBase before writing code:
+\\\`\\\`\\\`bash
+# Authenticate and get admin token
+PB_TOKEN=$(curl -s "$POCKETBASE_URL/api/collections/_superusers/auth-with-password" -H "Content-Type: application/json" -d "{\\"identity\\":\\"$POCKETBASE_ADMIN_EMAIL\\",\\"password\\":\\"$POCKETBASE_ADMIN_PASSWORD\\"}" | jq -r '.token')
+
+# List all collections (schema)
+curl -s "$POCKETBASE_URL/api/collections" -H "Authorization: $PB_TOKEN" | jq '.[].name'
+
+# Get collection schema
+curl -s "$POCKETBASE_URL/api/collections/COLLECTION_NAME" -H "Authorization: $PB_TOKEN" | jq '.fields'
+
+# List records
+curl -s "$POCKETBASE_URL/api/collections/COLLECTION_NAME/records?perPage=5" -H "Authorization: $PB_TOKEN" | jq .
+\\\`\\\`\\\`
+**Always inspect collections and schema before writing integration code.**
 `.trim();
 }
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu } from "electron";
+import { app, BrowserWindow, dialog, Menu, screen } from "electron";
 import * as path from "node:path";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
@@ -209,13 +209,53 @@ declare global {
 let mainWindow: BrowserWindow | null = null;
 let pendingForceCloseData: any = null;
 
+/**
+ * Validates that the saved window position is on a visible display.
+ * If the target display is no longer available, returns undefined so
+ * Electron places the window on the primary display.
+ */
+function getValidatedWindowPosition(windowState?: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  isMaximized?: boolean;
+}): { x?: number; y?: number } {
+  if (windowState?.x == null || windowState?.y == null) {
+    return {};
+  }
+
+  const displays = screen.getAllDisplays();
+  // Check if the saved position falls within any available display
+  const targetDisplay = displays.find((display) => {
+    const { x, y, width, height } = display.bounds;
+    return (
+      windowState.x! >= x &&
+      windowState.x! < x + width &&
+      windowState.y! >= y &&
+      windowState.y! < y + height
+    );
+  });
+
+  if (targetDisplay) {
+    return { x: windowState.x, y: windowState.y };
+  }
+
+  // Target monitor is gone — let Electron center the window on primary display
+  logger.warn(
+    `Saved window position (${windowState.x}, ${windowState.y}) is off-screen. Resetting to primary display.`,
+  );
+  return {};
+}
+
 const createWindow = () => {
   const settings = readSettings();
   const windowState = settings.windowState;
+  const validatedPosition = getValidatedWindowPosition(windowState);
 
   mainWindow = new BrowserWindow({
-    x: windowState?.x,
-    y: windowState?.y,
+    x: validatedPosition.x,
+    y: validatedPosition.y,
     width:
       windowState?.width || (process.env.NODE_ENV === "development" ? 1280 : 960),
     minWidth: 800,
@@ -355,6 +395,13 @@ const createWindow = () => {
   mainWindow.on("move", debouncedSave);
   mainWindow.on("maximize", saveWindowState);
   mainWindow.on("unmaximize", saveWindowState);
+
+  // Save state synchronously on close so hot-reload / forced restarts
+  // don't lose the window position (the debounce may not have fired yet).
+  mainWindow.on("close", () => {
+    clearTimeout(saveTimeout);
+    saveWindowState();
+  });
 };
 
 const createApplicationMenu = () => {
