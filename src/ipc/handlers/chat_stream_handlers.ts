@@ -74,6 +74,7 @@ import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 import { requireMcpToolConsent } from "../utils/mcp_consent";
 
 import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
+import { handleOpenCodeStream } from "./opencode_adapter";
 // DESHABILITADO TEMPORALMENTE - Auto-router imports
 // import { analyzeAndRouteModel } from "../utils/model_router";
 // import { getLanguageModelsByProviders } from "../shared/language_model_helpers";
@@ -1584,6 +1585,63 @@ This conversation includes one or more image attachments. When the user uploads 
             readOnly: true,
             messageOverride: isSummarizeIntent ? chatMessages : undefined,
           });
+          return;
+        }
+
+        // Handle crush-agent mode — delegates to OpenCode AI SDK
+        if (settings.selectedChatMode === "crush-agent") {
+          logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
+
+          const { fullResponse: openCodeResponse, success } = await handleOpenCodeStream(
+            event,
+            req,
+            abortController,
+            {
+              placeholderMessageId: placeholderAssistantMessage.id,
+              appPath: updatedChat.app.path,
+              chatMessages: updatedChat.messages,
+            },
+          );
+
+          // Persist the response to the database
+          fullResponse = openCodeResponse;
+          await db
+            .update(remoteSchema.messages)
+            .set({
+              content: fullResponse,
+            })
+            .where(
+              and(
+                eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+                eq(remoteSchema.messages.userId, currentUserId as string),
+              ),
+            );
+
+          // Send the final response to the frontend
+          safeSend(event.sender, "chat:response:chunk", {
+            chatId: req.chatId,
+            messages: [
+              ...updatedChat.messages.slice(0, -1),
+              { ...placeholderAssistantMessage, content: fullResponse },
+            ],
+          });
+
+          // Process any file changes from Crush's response
+          // (Crush writes files directly, so we just need to notify the frontend)
+          const responseEnd: ChatResponseEnd = {
+            chatId: req.chatId,
+            updatedFiles: success,
+          };
+          safeSend(event.sender, "chat:response:end", responseEnd);
+
+          // Log telemetry
+          sendTelemetryEvent("chat:stream:end", {
+            chatMode: "opencode-agent",
+            model: settings.selectedModel.name,
+            responseLength: fullResponse.length,
+            success,
+          });
+
           return;
         }
 

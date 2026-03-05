@@ -71,12 +71,17 @@ export function AppList({ show }: { show?: boolean }) {
   );
 
   const favoriteApps = useMemo(
-    () => apps.filter((app) => app.isFavorite),
+    () => apps.filter((app) => app.isFavorite && app.localPathExists !== false),
     [apps],
   );
 
   const nonFavoriteApps = useMemo(
-    () => apps.filter((app) => !app.isFavorite),
+    () => apps.filter((app) => !app.isFavorite && app.localPathExists !== false),
+    [apps],
+  );
+
+  const noLocalFilesApps = useMemo(
+    () => apps.filter((app) => app.localPathExists === false),
     [apps],
   );
 
@@ -216,32 +221,57 @@ export function AppList({ show }: { show?: boolean }) {
               </div>
             ) : (
               <SidebarMenu className="space-y-1" data-testid="app-list">
-                <SidebarGroupLabel>Aplicaciones favoritas</SidebarGroupLabel>
-                {favoriteApps.map((app) => (
-                  <AppItem
-                    key={app.id}
-                    app={app}
-                    handleAppClick={handleAppClick}
-                    selectedAppId={selectedAppId}
-                    handleToggleFavorite={handleToggleFavorite}
-                    isFavoriteLoading={isFavoriteLoading}
-                    handleDeleteApp={handleDeleteAppClick}
-                    onRefresh={refreshApps}
-                  />
-                ))}
-                <SidebarGroupLabel>Otras aplicaciones</SidebarGroupLabel>
-                {nonFavoriteApps.map((app) => (
-                  <AppItem
-                    key={app.id}
-                    app={app}
-                    handleAppClick={handleAppClick}
-                    selectedAppId={selectedAppId}
-                    handleToggleFavorite={handleToggleFavorite}
-                    isFavoriteLoading={isFavoriteLoading}
-                    handleDeleteApp={handleDeleteAppClick}
-                    onRefresh={refreshApps}
-                  />
-                ))}
+                {favoriteApps.length > 0 && (
+                  <>
+                    <SidebarGroupLabel>Aplicaciones favoritas</SidebarGroupLabel>
+                    {favoriteApps.map((app) => (
+                      <AppItem
+                        key={app.id}
+                        app={app}
+                        handleAppClick={handleAppClick}
+                        selectedAppId={selectedAppId}
+                        handleToggleFavorite={handleToggleFavorite}
+                        isFavoriteLoading={isFavoriteLoading}
+                        handleDeleteApp={handleDeleteAppClick}
+                        onRefresh={refreshApps}
+                      />
+                    ))}
+                  </>
+                )}
+                {nonFavoriteApps.length > 0 && (
+                  <>
+                    <SidebarGroupLabel>Otras aplicaciones</SidebarGroupLabel>
+                    {nonFavoriteApps.map((app) => (
+                      <AppItem
+                        key={app.id}
+                        app={app}
+                        handleAppClick={handleAppClick}
+                        selectedAppId={selectedAppId}
+                        handleToggleFavorite={handleToggleFavorite}
+                        isFavoriteLoading={isFavoriteLoading}
+                        handleDeleteApp={handleDeleteAppClick}
+                        onRefresh={refreshApps}
+                      />
+                    ))}
+                  </>
+                )}
+                {noLocalFilesApps.length > 0 && (
+                  <>
+                    <SidebarGroupLabel className="text-muted-foreground/60">Sin archivos locales</SidebarGroupLabel>
+                    {noLocalFilesApps.map((app) => (
+                      <AppItem
+                        key={app.id}
+                        app={app}
+                        handleAppClick={handleAppClick}
+                        selectedAppId={selectedAppId}
+                        handleToggleFavorite={handleToggleFavorite}
+                        isFavoriteLoading={isFavoriteLoading}
+                        handleDeleteApp={handleDeleteAppClick}
+                        onRefresh={refreshApps}
+                      />
+                    ))}
+                  </>
+                )}
               </SidebarMenu>
             )}
           </div>

@@ -69,6 +69,13 @@ const TEST_INVOKE_CHANNELS = [
   "test:set-node-mock",
 ] as const;
 
+// OpenCode AI integration — diagnostic channels
+const OPENCODE_INVOKE_CHANNELS = [
+  "opencode:health-check",
+  "opencode:test-run",
+  "opencode:extract-env",
+] as const;
+
 /**
  * All valid invoke channels derived from contracts.
  * Used by preload.ts to whitelist IPC channels.
@@ -128,6 +135,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,
+
+  // Crush (ex-OpenCode) diagnostic channels
+  ...OPENCODE_INVOKE_CHANNELS,
 ] as const;
 
 // =============================================================================

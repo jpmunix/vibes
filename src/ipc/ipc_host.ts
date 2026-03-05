@@ -55,6 +55,7 @@ import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
 import { registerAuthHandlers } from "./handlers/auth_handlers";
 import { registerMigrationHandlers } from "./handlers/migration_handlers";
+import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -115,4 +116,7 @@ export function registerIpcHandlers() {
   registerDossierHandlers();
   registerConsoleHandlers();
   registerUpdateCheckerHandlers();
+
+  // OpenCode AI integration — diagnostic & test handlers
+  registerOpenCodeDiagnosticHandlers();
 }

@@ -69,6 +69,8 @@ export function ChatModeSelector() {
         return "Planificar";
       case "ask":
         return "Preguntar";
+      case "crush-agent":
+        return "Crush";
       case "build":
       case "local-agent":
       default:
@@ -85,9 +87,11 @@ export function ChatModeSelector() {
           "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors cursor-pointer",
           selectedMode === "local-agent"
             ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
-            : selectedMode === "plan"
-              ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
-              : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
+            : selectedMode === "crush-agent"
+              ? "bg-teal-500/10 hover:bg-teal-500/20 focus:bg-teal-500/20 text-teal-600 border-teal-500/20 dark:bg-teal-500/20 dark:hover:bg-teal-500/30 dark:text-teal-400"
+              : selectedMode === "plan"
+                ? "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20"
+                : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20 dark:bg-primary/20 dark:hover:bg-primary/30 dark:focus:bg-primary/30",
         )}
         size="sm"
       >
@@ -107,6 +111,14 @@ export function ChatModeSelector() {
             <span className="font-medium">Planificar</span>
             <span className="text-xs text-muted-foreground">
               Diseña un plan de acción antes de implementar
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem value="crush-agent">
+          <div className="flex flex-col items-start">
+            <span className="font-medium text-teal-600 dark:text-teal-400">Crush Agent</span>
+            <span className="text-xs text-muted-foreground">
+              Motor IA externo con herramientas avanzadas (Crush)
             </span>
           </div>
         </SelectItem>
