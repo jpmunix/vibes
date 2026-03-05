@@ -1620,6 +1620,7 @@ This conversation includes one or more image attachments. When the user uploads 
           const langMap: Record<string, string> = { es: "español", en: "English" };
           contextInstructions.push(`Responde siempre en ${langMap[chatLang] || chatLang}.`);
 
+
           // 3. Integration prompts — inject credentials and instructions
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {

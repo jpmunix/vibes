@@ -46,7 +46,7 @@ import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
 import { usePostHog } from "posthog-js/react";
 import { CodeHighlight } from "./CodeHighlight";
-import { TokenBar } from "./TokenBar";
+
 import {
   Tooltip,
   TooltipContent,
@@ -109,16 +109,7 @@ export function ChatInput({
   const [isRetryLoading, setIsRetryLoading] = useState(false);
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
-  const [showTokenBar, setShowTokenBar] = useState(false);
-  const queryClient = useQueryClient();
-  const toggleShowTokenBar = useCallback(() => {
-    setShowTokenBar((prev) => {
-      const next = !prev;
-      void updateSettings({ showTokenBar: next });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
-      return next;
-    });
-  }, [updateSettings, queryClient]);
+
   const [selectedComponents, setSelectedComponents] = useAtom(
     selectedComponentsPreviewAtom,
   );
@@ -139,11 +130,7 @@ export function ChatInput({
   );
   const pendingAgentConsent = consentsForThisChat[0] ?? null;
 
-  useEffect(() => {
-    if (settings?.showTokenBar !== undefined) {
-      setShowTokenBar(settings.showTokenBar);
-    }
-  }, [settings?.showTokenBar]);
+
 
   // Get todos for this chat
   const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
@@ -525,8 +512,6 @@ export function ChatInput({
               <div className="px-3 py-5 flex items-center border-t border-border/50">
                 <AuxiliaryActionsMenu
                   onFileSelect={handleFileSelect}
-                  showTokenBar={showTokenBar}
-                  toggleShowTokenBar={toggleShowTokenBar}
                   appId={appId ?? undefined}
                 />
                 <div className="flex items-center ml-2.5">
@@ -691,8 +676,7 @@ export function ChatInput({
               </div>
             </div>
           </div>
-          {/* TokenBar is only displayed when showTokenBar is true */}
-          {showTokenBar && <TokenBar chatId={chatId} />}
+
         </div>
       </div>
     </>

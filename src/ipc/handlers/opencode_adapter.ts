@@ -100,6 +100,16 @@ async function getOpenCodeClient(appPath: string) {
                     },
                 },
                 model: `${providerID}/${modelID}`,
+                // Agent-level config: reasoning effort + text verbosity
+                // These extra fields are passed directly to the provider as model options
+                agent: {
+                    build: {
+                        ...(settings.reasoningEffort && settings.reasoningEffort !== "none" ? {
+                            reasoningEffort: settings.reasoningEffort === "xhigh" ? "high" : settings.reasoningEffort,
+                        } : {}),
+                        textVerbosity: "low",
+                    },
+                },
                 // Permissions: read from settings, default to allow-all (headless mode)
                 permission: {
                     edit: settings.openCodePermissions?.edit || "allow",
@@ -242,8 +252,7 @@ export async function handleOpenCodeStream(
     const projectDir = getDyadAppPath(appPath);
     logger.info(`[OpenCode] Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
-    // Send initial "thinking" indicator
-    sendProgressUpdate(event, req.chatId, chatMessages, "⏳ **OpenCode está iniciando...**");
+
 
     let client: ReturnType<typeof createOpencodeClient>;
     try {
@@ -263,7 +272,11 @@ export async function handleOpenCodeStream(
                 body: { title: `Chat ${req.chatId}` },
                 query: { directory: projectDir },
             });
-            sessionId = session.data!.id;
+            logger.info(`[OpenCode] Session create response: ${JSON.stringify(session)}`);
+            if (!session.data?.id) {
+                throw new Error(`Session creation returned no data: ${JSON.stringify(session)}`);
+            }
+            sessionId = session.data.id;
             chatSessionMap.set(req.chatId, sessionId);
             logger.info(`[OpenCode] Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`);
 
@@ -294,7 +307,7 @@ export async function handleOpenCodeStream(
         }
     }
 
-    sendProgressUpdate(event, req.chatId, chatMessages, "<think>OpenCode está iniciando...</think>");
+
 
     // Subscribe to events for real-time streaming
     let fullResponse = "";
@@ -738,7 +751,7 @@ function buildLiveContent(
     if (fullResponse) {
         content += "\n" + cleanResponseText(fullResponse);
     } else if (operationLog.length === 0 && toolsActive.size === 0) {
-        content += "<think>Iniciando...</think>\n";
+        content += "";
     }
 
     return content;

@@ -143,6 +143,9 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
 
       {renderSetupBanner()}
 
+      {/* Spacer to push content above the floating ChatInput */}
+      <div className="h-32 w-full" />
+
       {/* Scroll anchor at the very end to ensure all content above is visible */}
       <div ref={messagesEndRef} />
     </>
@@ -411,16 +414,13 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           context={footerContext}
           scrollerRef={onScrollerRef}
           atBottomStateChange={onAtBottomStateChange}
-          atBottomThreshold={150}
+          atBottomThreshold={300}
           followOutput={(isAtBottom) => {
-            // During streaming, auto-scroll aggressively
+            // During streaming, auto-scroll smoothly but keep up
             if (isStreaming) {
-              // If user hasn't manually scrolled far away, keep auto-scrolling
               const distanceFromBottom = distanceFromBottomRef?.current ?? 0;
-              const userScrolledFarAway = distanceFromBottom > 800;
-
-              // Auto-scroll unless user has explicitly scrolled far away
-              if (!userScrolledFarAway) {
+              // If we are within 1500px, auto-scroll
+              if (distanceFromBottom <= 1500) {
                 return "smooth";
               }
             }

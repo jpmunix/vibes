@@ -41,14 +41,7 @@ interface GroupedToolBadgesProps {
  * If fewer than GROUP_THRESHOLD badges, renders them individually (ungrouped).
  */
 export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, isStreaming, isFirstGroup }) => {
-    const [isExpanded, setIsExpanded] = useState(!!(isStreaming && isFirstGroup));
-
-    // Auto-collapse when streaming ends
-    useEffect(() => {
-        if (!isStreaming && isFirstGroup) {
-            setIsExpanded(false);
-        }
-    }, [isStreaming, isFirstGroup]);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [modalItem, setModalItem] = useState<BadgeItem | null>(null);
 
     // Group badges by icon (not tag), so tools sharing an icon merge in the summary
