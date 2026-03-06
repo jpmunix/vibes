@@ -148,6 +148,11 @@ export function AppList({ show }: { show?: boolean }) {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleOpenChat = (appId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
+  };
+
   const handleConfirmDelete = async () => {
     if (deleteAppId === null) return;
 
@@ -232,7 +237,7 @@ export function AppList({ show }: { show?: boolean }) {
                         selectedAppId={selectedAppId}
                         handleToggleFavorite={handleToggleFavorite}
                         isFavoriteLoading={isFavoriteLoading}
-                        handleDeleteApp={handleDeleteAppClick}
+                        handleOpenChat={handleOpenChat}
                         onRefresh={refreshApps}
                       />
                     ))}
@@ -249,7 +254,7 @@ export function AppList({ show }: { show?: boolean }) {
                         selectedAppId={selectedAppId}
                         handleToggleFavorite={handleToggleFavorite}
                         isFavoriteLoading={isFavoriteLoading}
-                        handleDeleteApp={handleDeleteAppClick}
+                        handleOpenChat={handleOpenChat}
                         onRefresh={refreshApps}
                       />
                     ))}
@@ -266,7 +271,7 @@ export function AppList({ show }: { show?: boolean }) {
                         selectedAppId={selectedAppId}
                         handleToggleFavorite={handleToggleFavorite}
                         isFavoriteLoading={isFavoriteLoading}
-                        handleDeleteApp={handleDeleteAppClick}
+                        handleOpenChat={handleOpenChat}
                         onRefresh={refreshApps}
                       />
                     ))}

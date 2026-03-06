@@ -11,25 +11,18 @@ import type { ChatMode } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { detectIsMac } from "@/hooks/useChatModeToggle";
 import { useRouterState } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { LocalAgentNewChatToast } from "./LocalAgentNewChatToast";
-import { useAtomValue } from "jotai";
-import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
+
 
 
 
 export function ChatModeSelector() {
   const { settings, updateSettings } = useSettings();
   const routerState = useRouterState();
-  const isChatRoute = routerState.location.pathname === "/chat";
-  const messagesById = useAtomValue(chatMessagesByIdAtom);
-  const chatId = routerState.location.search.id as number | undefined;
-  const currentChatMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
 
   // Migrate deprecated modes to their replacements
   const rawMode = settings?.selectedChatMode || "local-agent";
   const selectedMode: ChatMode =
-    rawMode === "build" || rawMode === "agent" || rawMode === "crush-agent"
+    rawMode === "build" || rawMode === "agent" || rawMode === "crush-agent" || rawMode === "legacy-agent"
       ? "local-agent"
       : (rawMode as ChatMode);
   const { } = useFreeAgentQuota();
@@ -37,27 +30,6 @@ export function ChatModeSelector() {
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;
     updateSettings({ selectedChatMode: newMode });
-
-    // Show a toast when switching to legacy agent in an existing chat
-    if (
-      newMode === "legacy-agent" &&
-      isChatRoute &&
-      currentChatMessages.length > 0 &&
-      !settings?.hideLocalAgentNewChatToast
-    ) {
-      toast.custom(
-        (t) => (
-          <LocalAgentNewChatToast
-            toastId={t}
-            onNeverShowAgain={() => {
-              updateSettings({ hideLocalAgentNewChatToast: true });
-            }}
-          />
-        ),
-        // Make the toast shorter in test mode for faster tests.
-        { duration: settings?.isTestMode ? 50 : 8000 },
-      );
-    }
   };
 
   const getModeDisplayName = (mode: ChatMode | string) => {
@@ -66,8 +38,6 @@ export function ChatModeSelector() {
         return "Planificar";
       case "ask":
         return "Preguntar";
-      case "legacy-agent":
-        return "Agente legacy";
       case "local-agent":
       default:
         return "Agente";
@@ -83,9 +53,7 @@ export function ChatModeSelector() {
           "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors cursor-pointer",
           selectedMode === "local-agent"
             ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
-            : selectedMode === "legacy-agent"
-              ? "bg-muted hover:bg-muted/80 focus:bg-muted/80 text-muted-foreground"
-              : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20",
+            : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20",
         )}
         size="sm"
       >
@@ -97,14 +65,6 @@ export function ChatModeSelector() {
             <span className="font-medium">Agente</span>
             <span className="text-xs text-muted-foreground">
               Desarrolla, edita y depura con herramientas avanzadas
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="legacy-agent">
-          <div className="flex flex-col items-start">
-            <span className="font-medium text-muted-foreground">Agente legacy</span>
-            <span className="text-xs text-muted-foreground">
-              Motor anterior con herramientas internas
             </span>
           </div>
         </SelectItem>

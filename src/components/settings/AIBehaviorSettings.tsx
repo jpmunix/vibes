@@ -272,31 +272,7 @@ export function AIBehaviorSettings({
           )}
         </div>
 
-        {/* Legacy Agent Permissions Section — collapsible */}
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
-            onClick={() => setPermissionsExpanded(e => !e)}
-          >
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Permisos del agente legacy</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Elige si cada herramienta se ejecuta siempre, te pregunta antes, o se bloquea
-              </p>
-            </div>
-            <ChevronRight
-              className={cn(
-                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
-                permissionsExpanded && "rotate-90",
-              )}
-            />
-          </div>
-          {permissionsExpanded && (
-            <div className="pl-8">
-              <AgentToolsSettings />
-            </div>
-          )}
-        </div>
+
       </div>
     </div>
   );

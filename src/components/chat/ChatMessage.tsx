@@ -13,7 +13,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Timer,
+
   GitCommit,
   Copy,
   Check,
@@ -449,12 +449,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         )}
                       </>
                     )}
-                    {message.durationMs != null && message.durationMs > 0 && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Timer className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                        <span>{formatDurationMs(message.durationMs)}</span>
-                      </div>
-                    )}
+
                   </div>
                 </div>
               ) : null}
@@ -481,11 +476,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                       })}
                     </div>
                   )}
-                  {message.durationMs != null && message.durationMs > 0 && (
-                    <div className="inline-flex items-center gap-0.5 text-xs">
-                      <Timer size={12} className="text-muted-foreground" />
-                    </div>
-                  )}
+
                 </div>
               )}
             </div>
@@ -496,7 +487,12 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
           <div className="mt-3 flex flex-wrap items-center justify-start space-x-2 text-xs text-muted-foreground ">
             <div className="flex items-center space-x-1 ml-10">
               <Clock className="h-3 w-3" />
-              <span>{formatTimestamp(message.createdAt)}</span>
+              <span>
+                {message.durationMs != null && message.durationMs > 0
+                  ? `Ha demorado ${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
+                  : formatTimestamp(message.createdAt)
+                }
+              </span>
             </div>
             {messageVersion && messageVersion.message && (
               <div className="flex items-center space-x-1">

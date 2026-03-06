@@ -53,11 +53,19 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   dossier_prompt: <FileText className="w-4 h-4" />,
 };
 
+/** Legacy-agent-only prompts — hidden from UI but kept for backwards compat */
+const HIDDEN_PROMPTS = new Set<PromptId>([
+  "thinking_prompt",
+  "build_system_prefix",
+  "build_system_postfix",
+  "agent_mode_system",
+]);
+
 export function PromptsSettings() {
   const { settings, updateSettings, loading } = useSettings();
   const [localPrompts, setLocalPrompts] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<PromptId>("thinking_prompt");
+  const [activeTab, setActiveTab] = useState<PromptId>("summarize_chat_system");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -110,8 +118,9 @@ export function PromptsSettings() {
 
   const filteredPrompts = (Object.keys(DEFAULT_PROMPTS) as PromptId[]).filter(
     (id) =>
-      PROMPT_LABELS[id].toLowerCase().includes(searchQuery.toLowerCase()) ||
-      PROMPT_DESCRIPTIONS[id].toLowerCase().includes(searchQuery.toLowerCase()),
+      !HIDDEN_PROMPTS.has(id) &&
+      (PROMPT_LABELS[id].toLowerCase().includes(searchQuery.toLowerCase()) ||
+        PROMPT_DESCRIPTIONS[id].toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   return (

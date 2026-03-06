@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Star, Trash2, AlertTriangle, CloudDownload, Loader2 } from "lucide-react";
+import { Star, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "lucide-react";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
@@ -14,7 +14,7 @@ type AppItemProps = {
   selectedAppId: number | null;
   handleToggleFavorite: (appId: number, e: React.MouseEvent) => void;
   isFavoriteLoading: boolean;
-  handleDeleteApp: (appId: number, appName: string, e: React.MouseEvent) => void;
+  handleOpenChat: (appId: number, e: React.MouseEvent) => void;
   onRefresh?: () => Promise<void>;
 };
 
@@ -24,7 +24,7 @@ export function AppItem({
   selectedAppId,
   handleToggleFavorite,
   isFavoriteLoading,
-  handleDeleteApp,
+  handleOpenChat,
   onRefresh,
 }: AppItemProps) {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -54,7 +54,7 @@ export function AppItem({
         <Button
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
-          className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${selectedAppId === app.id
+          className={`justify-start h-11 w-full text-left pr-1 cursor-pointer hover:bg-sidebar-accent/80 ${selectedAppId === app.id
             ? "bg-primary/10 text-primary"
             : ""
             }`}
@@ -120,7 +120,7 @@ export function AppItem({
             showOnHover
             onClick={(e) => handleToggleFavorite(app.id, e)}
             disabled={isFavoriteLoading}
-            className={`transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 ${app.isFavorite ? "opacity-100" : ""}`}
+            className={`transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 cursor-pointer ${app.isFavorite ? "opacity-100" : ""}`}
             data-testid="favorite-button"
           >
             <Star
@@ -134,11 +134,12 @@ export function AppItem({
           </SidebarMenuAction>
           <SidebarMenuAction
             showOnHover
-            onClick={(e) => handleDeleteApp(app.id, app.name, e)}
-            className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-            data-testid="delete-app-button"
+            onClick={(e) => handleOpenChat(app.id, e)}
+            className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-primary cursor-pointer"
+            data-testid="open-chat-button"
+            title="Abrir en Chat"
           >
-            <Trash2 size={14} />
+            <ExternalLink size={14} />
           </SidebarMenuAction>
         </div>
       </div>

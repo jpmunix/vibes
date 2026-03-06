@@ -41,6 +41,54 @@ let serverUrl: string | null = null;
 const chatSessionMap = new Map<number, string>();
 
 /**
+ * Revert the last message in the OpenCode session for a chat (undo/retry).
+ * Uses session.revert() to tell OpenCode the last work was rolled back,
+ * while preserving prior conversation context.
+ */
+export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
+    const sessionId = chatSessionMap.get(chatId);
+    if (!sessionId || !clientInstance) return;
+
+    try {
+        // Get the last message ID from the session
+        const msgsResult = await clientInstance.session.messages({
+            path: { id: sessionId },
+            query: { limit: 4 },
+        });
+        const messages = msgsResult.data || [];
+        // Find the last assistant message to revert
+        const lastAssistant = [...messages].reverse().find(
+            (m: any) => m.info?.role === "assistant"
+        );
+        if (lastAssistant?.info?.id) {
+            await clientInstance.session.revert({
+                path: { id: sessionId },
+                body: { messageID: lastAssistant.info.id },
+            });
+            logger.info(`[OpenCode] Reverted message ${lastAssistant.info.id} in session ${sessionId} for chat ${chatId}`);
+        } else {
+            logger.warn(`[OpenCode] No assistant message found to revert in session ${sessionId}`);
+        }
+    } catch (error: any) {
+        logger.warn(`[OpenCode] session.revert failed for ${sessionId}: ${error.message} — dropping session`);
+        chatSessionMap.delete(chatId);
+    }
+}
+
+/**
+ * Destroy the OpenCode session for a chat entirely (version history restore).
+ * Used when jumping to an arbitrary past version where partial revert
+ * would be too complex.
+ */
+export function destroyOpenCodeSession(chatId: number): void {
+    const sessionId = chatSessionMap.get(chatId);
+    if (sessionId) {
+        chatSessionMap.delete(chatId);
+        logger.info(`[OpenCode] Destroyed session ${sessionId} for chat ${chatId} (version restore)`);
+    }
+}
+
+/**
  * Get or create the OpenCode server + client singleton.
  * The server runs on localhost and the client communicates via HTTP.
  */
@@ -62,11 +110,24 @@ async function getOpenCodeClient(appPath: string) {
     try {
         if (fs.existsSync(nvmDir)) {
             const versions = fs.readdirSync(nvmDir);
+
+            // Sort versions descending (e.g., v20 > v18 > v16) so the newest Node is prioritized in PATH
+            versions.sort((a: string, b: string) => {
+                const numA = a.replace('v', '').split('.').map(Number);
+                const numB = b.replace('v', '').split('.').map(Number);
+                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+                    const partA = numA[i] || 0;
+                    const partB = numB[i] || 0;
+                    if (partA !== partB) return partB - partA; // Descending
+                }
+                return 0;
+            });
+
             const nvmBins = versions.map((v: string) => path.join(nvmDir, v, "bin"));
             const currentPath = process.env.PATH || "";
             // Prepend NVM bins so they take priority
             process.env.PATH = [...nvmBins, currentPath].join(":");
-            logger.info(`[OpenCode] Injected ${nvmBins.length} NVM bin dirs into PATH`);
+            logger.info(`[OpenCode] Injected ${nvmBins.length} NVM bin dirs into PATH (latest: ${versions[0]})`);
         }
     } catch (e) {
         logger.warn("[OpenCode] Could not scan NVM dirs:", e);
@@ -122,12 +183,6 @@ async function getOpenCodeClient(appPath: string) {
                 formatter: false,
                 lsp: false,
                 share: "disabled",
-                // Enable automatic context compaction — OpenCode will summarize
-                // old messages when context fills up (no manual history management needed)
-                compaction: {
-                    auto: true,
-                    prune: true,
-                },
             },
         });
 
@@ -310,10 +365,9 @@ export async function handleOpenCodeStream(
 
 
     // Subscribe to events for real-time streaming
-    let fullResponse = "";
+    // Chronological timeline: each entry is either a tool tag or a text chunk, in arrival order
+    const timeline: TimelineEntry[] = [];
     const toolsActive = new Map<string, { tool: string; status: string; detail?: string }>();
-    // Accumulated log of all operations — rendered as dyad tags in the chat
-    const operationLog: { tool: string; detail: string; content: string }[] = [];
     const filesEdited: string[] = [];
     let stepCount = 0;
     let eventSubscription: any = null;
@@ -334,27 +388,29 @@ export async function handleOpenCodeStream(
             chatMessages,
             {
                 onTextDelta: (delta: string) => {
-                    fullResponse += delta;
+                    // Append text to the last text entry if it exists, or create a new one
+                    const last = timeline[timeline.length - 1];
+                    if (last && last.type === "text") {
+                        last.text += delta;
+                    } else {
+                        timeline.push({ type: "text", text: delta });
+                    }
                 },
-                onToolUpdate: (toolId: string, tool: string, status: string, detail?: string) => {
+                onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => {
                     toolsActive.set(toolId, { tool, status, detail });
 
-                    // Add to accumulated log when a tool completes or errors
-                    if (status === "completed") {
-                        operationLog.push({
+                    // Add to chronological timeline when a tool completes or errors
+                    if (status === "completed" || status === "error") {
+                        timeline.push({
+                            type: "tool",
                             tool,
                             detail: detail || "",
-                            content: status === "error" ? "[error]" : "[completado]",
-                        });
-                    } else if (status === "error") {
-                        operationLog.push({
-                            tool,
-                            detail: detail || "",
-                            content: "[error]",
+                            error: status === "error",
+                            output: output || "",
                         });
                     }
 
-                    logger.info(`[OpenCode] Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}`);
+                    logger.info(`[OpenCode] Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}${output ? ` [${output.length}ch output]` : ""}`);
                 },
                 onStepStart: () => {
                     stepCount++;
@@ -368,10 +424,9 @@ export async function handleOpenCodeStream(
                         logger.info(`[OpenCode] 📂 File edited: ${file}`);
                     }
                 },
-                getFullResponse: () => fullResponse,
+                getTimeline: () => timeline,
                 getToolsActive: () => toolsActive,
                 getFilesEdited: () => filesEdited,
-                getOperationLog: () => operationLog,
                 getStepCount: () => stepCount,
             },
             abortController,
@@ -387,7 +442,18 @@ export async function handleOpenCodeStream(
         logger.info(`[OpenCode] Prompt: "${req.prompt.substring(0, 100)}..."`);
 
         // Build prompt parts: text + optional file attachments
-        const promptParts: any[] = [{ type: "text", text: req.prompt }];
+        // On the very first message of a brand new app (no prior assistant messages),
+        // inject a build-mode instruction so the agent directly implements instead of
+        // proposing a plan. This is NOT tied to session creation — sessions get recreated
+        // after undo/revert, but chatMessages persists in the database.
+        let promptText = req.prompt;
+        // Ignore the placeholder message ID which is already pushed to chatMessages for this very request
+        const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
+        if (!hasAssistantMessages) {
+            promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
+            logger.info(`[OpenCode] 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
+        }
+        const promptParts: any[] = [{ type: "text", text: promptText }];
 
         // Add image attachments as file parts (OpenCode supports multimodal input)
         if (options.attachments && options.attachmentPaths) {
@@ -447,22 +513,26 @@ export async function handleOpenCodeStream(
 
         logger.info(`[OpenCode] Prompt sent (async). Waiting for events...`);
 
-        // Now wait for the event stream to signal completion.
-        // processEvents will return when session goes idle or the stream ends.
-        // We add a 180s safety timeout.
-        const completionTimeout = new Promise<void>((resolve) =>
-            setTimeout(() => {
-                logger.warn("[OpenCode] Safety timeout reached (180s). Finalizing.");
-                resolve();
-            }, 180000)
-        );
+        // Wait for the event stream to signal completion.
+        // processEvents returns when session goes idle or the stream ends.
+        await eventProcessingDone;
 
-        await Promise.race([eventProcessingDone, completionTimeout]);
+        // If the stream was aborted (stop button), tell OpenCode to stop generating
+        if (abortController.signal.aborted) {
+            logger.info(`[OpenCode] Aborted for chat ${req.chatId} — sending abort to server`);
+            try {
+                await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
+            } catch { /* ignore */ }
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            return { fullResponse: partialText || "Operación cancelada", success: false };
+        }
 
-        logger.info(`[OpenCode] Response complete. Length: ${fullResponse.length}, files edited: ${filesEdited.length}, tools: ${operationLog.length}`);
+        const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+        const totalTools = timeline.filter(e => e.type === "tool").length;
+        logger.info(`[OpenCode] Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
 
         // Send final response with all content
-        const finalContent = buildFinalResponse(fullResponse, filesEdited, toolsActive, operationLog);
+        const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
         return { fullResponse: finalContent, success: true };
@@ -473,12 +543,14 @@ export async function handleOpenCodeStream(
             try {
                 await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
             } catch { /* ignore */ }
-            return { fullResponse: fullResponse || "Operación cancelada", success: false };
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            return { fullResponse: partialText || "Operación cancelada", success: false };
         }
 
         logger.error("[OpenCode] Stream error:", error.message);
+        const errText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         return {
-            fullResponse: fullResponse || `❌ Error: ${error.message}`,
+            fullResponse: errText || `❌ Error: ${error.message}`,
             success: false,
         };
     }
@@ -488,6 +560,8 @@ export async function handleOpenCodeStream(
 // SSE Event Processing
 // ============================================================================
 
+type TimelineEntry = { type: "tool"; tool: string; detail: string; error: boolean; output: string } | { type: "text"; text: string };
+
 async function processEvents(
     stream: AsyncIterable<any>,
     sessionId: string,
@@ -496,76 +570,135 @@ async function processEvents(
     chatMessages: any[],
     callbacks: {
         onTextDelta: (delta: string) => void;
-        onToolUpdate: (toolId: string, tool: string, status: string, detail?: string) => void;
+        onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => void;
         onStepStart: () => void;
         onFileEdited: (file: string) => void;
-        getFullResponse: () => string;
+        getTimeline: () => TimelineEntry[];
         getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
         getFilesEdited: () => string[];
-        getOperationLog: () => { tool: string; detail: string; content: string }[];
         getStepCount: () => number;
     },
     abortController: AbortController,
 ) {
     const sendUpdate = () => {
         const content = buildLiveContent(
-            callbacks.getFullResponse(),
+            callbacks.getTimeline(),
             callbacks.getToolsActive(),
-            callbacks.getOperationLog(),
             callbacks.getStepCount(),
         );
         sendChunk(event, chatId, chatMessages, content);
     };
 
     let eventCount = 0;
+    let isCurrentlyReasoning = false;
+    let thinkNeedsReopen = false; // True when </think> was emitted for a tool but reasoning continues
+    let activePartType: string | null = null;
+    let assistantMessageId: string | null = null;
+    let reasoningCharCount = 0;
+    let reasoningBuffer = ""; // Buffer early reasoning chars
+
     try {
         for await (const rawEvt of stream) {
             if (abortController.signal.aborted) break;
             eventCount++;
 
-            // Global events come wrapped: { directory, payload: { type, properties } }
-            // Unwrap the payload to get the actual event
             const evt = rawEvt.payload || rawEvt;
-
-            if (eventCount <= 5) {
-                logger.info(`[OpenCode] EVENT #${eventCount}: type=${evt.type}`);
-            }
-
-            // Only process events for our session
             const props = evt.properties || {};
-            const partProps = props.part || {};
 
+            // Log EVERY event
+            logger.info(`[OpenCode] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
+
+            // Session filtering
+            const partProps = props.part || {};
             if (partProps.sessionID && partProps.sessionID !== sessionId) continue;
             if (props.sessionID && props.sessionID !== sessionId) continue;
 
             switch (evt.type) {
+                // Track which message is the assistant's response
+                case "message.updated": {
+                    const info = props.info;
+                    if (info && info.role === "assistant") {
+                        assistantMessageId = info.id;
+                        logger.info(`[OpenCode] 📬 Assistant message ID: ${assistantMessageId}`);
+                    }
+                    break;
+                }
+
                 case "message.part.updated": {
                     const part = props.part;
                     if (!part) break;
 
+                    // Skip parts not belonging to the assistant message
+                    if (part.messageID && assistantMessageId && part.messageID !== assistantMessageId) {
+                        logger.info(`[OpenCode] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
+                        break;
+                    }
+                    if (!assistantMessageId && (part.type === "text" || part.type === "reasoning")) {
+                        logger.info(`[OpenCode] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
+                        break;
+                    }
+
+                    logger.info(`[OpenCode] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
+
                     switch (part.type) {
+                        case "reasoning": {
+                            // Mark active part type — subsequent deltas belong to reasoning
+                            // DON'T emit <think> yet — wait for the first delta to avoid empty blocks
+                            activePartType = "reasoning";
+                            break;
+                        }
+
                         case "text": {
-                            // Full text snapshot — use if we missed deltas
-                            const content = part.content || "";
-                            if (content && !callbacks.getFullResponse()) {
-                                callbacks.onTextDelta(content);
+                            // A text part started — close reasoning if open
+                            activePartType = "text";
+                            thinkNeedsReopen = false; // Cancel any pending reopen
+
+                            if (isCurrentlyReasoning) {
+                                isCurrentlyReasoning = false;
+                                reasoningCharCount = 0;
+                                reasoningBuffer = "";
+                                callbacks.onTextDelta(`\n</think>\n\n`);
+                                logger.info(`[OpenCode] 🧠 CLOSED </think> — text part started`);
                                 sendUpdate();
+                            } else if (reasoningBuffer.length > 0) {
+                                // If we were accumulating reasoning but never hit the threshold, discard buffer
+                                logger.info(`[OpenCode] ⏭️ Discarded tiny reasoning buffer (${reasoningBuffer.length}ch)`);
+                                reasoningBuffer = "";
+                                reasoningCharCount = 0;
                             }
                             break;
                         }
 
                         case "tool": {
+                            // If reasoning is open, close the think block before the tool
+                            // entry enters the timeline (otherwise the dyad tag would appear
+                            // inside the <think> block in the rendered output)
+                            if (isCurrentlyReasoning) {
+                                callbacks.onTextDelta(`\n</think>\n`);
+                                // Keep isCurrentlyReasoning = true so the NEXT reasoning
+                                // delta will seamlessly reopen <think> without creating a
+                                // new Pensamiento badge — we just need a fresh text entry.
+                                isCurrentlyReasoning = false;
+                                thinkNeedsReopen = true;
+                                logger.info(`[OpenCode] 🧠 PAUSED </think> — tool event`);
+                            }
+
                             const toolState = part.state;
                             const toolName = part.tool || "unknown";
                             const status = toolState?.status || "unknown";
-                            // Extract detail from tool input (file path, query, command, etc.)
                             const input = toolState?.input || part.input || {};
                             const detail = input.file_path || input.path || input.filePath
                                 || input.query || input.pattern
                                 || input.command || input.cmd
                                 || input.directory || input.url
                                 || "";
-                            callbacks.onToolUpdate(part.callID || part.id, toolName, status, detail);
+
+                            // Extract tool output/result for the expanded modal
+                            const rawOutput = toolState?.output || part.output || "";
+                            const rawStr = typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput);
+                            const output = extractToolContent(rawStr);
+
+                            callbacks.onToolUpdate(part.callID || part.id, toolName, status, detail, output);
                             sendUpdate();
                             break;
                         }
@@ -577,19 +710,63 @@ async function processEvents(
                             break;
 
                         case "step-finish":
-                            logger.info(`[OpenCode] Step finished (tokens: in=${part.tokens?.input}, out=${part.tokens?.output})`);
+                            // DON'T close </think> here — keep it open so consecutive
+                            // reasoning blocks merge into a single Pensamiento.
+                            // Think only closes when a "text" part starts (above).
+                            if (!isCurrentlyReasoning && reasoningBuffer.length > 0) {
+                                // Discard tiny reasoning if never opened
+                                logger.info(`[OpenCode] ⏭️ Discarded tiny reasoning buffer on step finish (${reasoningBuffer.length}ch)`);
+                                reasoningBuffer = "";
+                                reasoningCharCount = 0;
+                            }
+                            activePartType = null;
+                            logger.info(`[OpenCode] Step finished (tokens: in=${part.tokens?.input}, out=${part.tokens?.output}, reasoning=${part.tokens?.reasoning})`);
                             break;
                     }
                     break;
                 }
 
-                // Text streaming deltas — this is where the AI's response text comes through
+                // Streaming text deltas — route based on activePartType
                 case "message.part.delta": {
                     const delta = props.delta || "";
-                    if (delta) {
+                    if (!delta) break;
+
+                    const isReasoning = activePartType === "reasoning";
+
+                    if (isReasoning) {
+                        // Strip ALL HTML/XML-like tags from reasoning content.
+                        // The LLM generates <dyad-read>, <dyad-write>, etc. in its
+                        // thinking because it learned the format from context history.
+                        // Tags arrive split across deltas so we can't rely on matching
+                        // complete tag names — just strip everything between < >.
+                        const cleanDelta = delta.replace(/<[^>]*>/g, "");
+                        if (!cleanDelta) break; // delta was only tags, skip
+                        reasoningCharCount += cleanDelta.length;
+
+                        // If think was paused for a tool event, reopen it seamlessly
+                        if (thinkNeedsReopen) {
+                            thinkNeedsReopen = false;
+                            isCurrentlyReasoning = true;
+                            callbacks.onTextDelta(`\n<think>\n${cleanDelta}`);
+                            logger.info(`[OpenCode] 🧠 REOPENED <think> after tool`);
+                        } else if (!isCurrentlyReasoning) {
+                            // Buffer the reasoning until it's comfortably over 20 chars
+                            // This prevents emitting empty `<think>` tags for short 10-char blobs or "[REDACTED]"
+                            reasoningBuffer += cleanDelta;
+                            if (reasoningBuffer.length > 20) {
+                                isCurrentlyReasoning = true;
+                                callbacks.onTextDelta(`\n<think>\n${reasoningBuffer}`);
+                                logger.info(`[OpenCode] 🧠 OPENED <think> (buffered ${reasoningBuffer.length}ch)`);
+                                reasoningBuffer = "";
+                            }
+                        } else {
+                            callbacks.onTextDelta(cleanDelta);
+                        }
+                    } else {
+                        // Normal text delta
                         callbacks.onTextDelta(delta);
-                        sendUpdate();
                     }
+                    sendUpdate();
                     break;
                 }
 
@@ -624,13 +801,18 @@ async function processEvents(
                 }
 
                 case "session.idle": {
+                    // Close any lingering open think block before exiting
+                    if (isCurrentlyReasoning) {
+                        isCurrentlyReasoning = false;
+                        callbacks.onTextDelta(`\n</think>\n\n`);
+                        logger.info(`[OpenCode] 🧠 CLOSED </think> — session idle`);
+                    }
                     logger.info(`[OpenCode] Session idle event received. Total events: ${eventCount}`);
                     return;
                 }
 
                 // Known events we can safely ignore
                 case "server.connected":
-                case "message.updated":
                 case "session.updated":
                 case "file.watcher.updated":
                     break;
@@ -646,6 +828,13 @@ async function processEvents(
         if (!abortController.signal.aborted) {
             logger.error("[OpenCode] Event stream error:", error.message);
         }
+    }
+
+    // Safety: close any lingering open think block if stream ended unexpectedly
+    if (isCurrentlyReasoning) {
+        isCurrentlyReasoning = false;
+        callbacks.onTextDelta(`\n</think>\n\n`);
+        logger.info(`[OpenCode] 🧠 CLOSED </think> — stream ended`);
     }
 }
 
@@ -674,17 +863,12 @@ function mapToolToDyadTag(tool: string): string {
     return map[tool] || "dyad-status";
 }
 
-/**
- * Build a dyad tag string for a completed tool operation.
- * These tags are parsed by DyadMarkdownParser and rendered as
- * compact icon badges with collapsible details.
- */
 function buildDyadTag(tool: string, detail: string, content: string): string {
     const dyadTag = mapToolToDyadTag(tool);
 
     switch (dyadTag) {
         case "dyad-write":
-            return `<dyad-write path="${escapeAttr(detail)}" description="Escrito por OpenCode">${content}</dyad-write>`;
+            return `<dyad-write path="${escapeAttr(detail)}" description="">${content}</dyad-write>`;
         case "dyad-search-replace":
             return `<dyad-search-replace path="${escapeAttr(detail)}" description="">${content}</dyad-search-replace>`;
         case "dyad-read":
@@ -707,6 +891,27 @@ function buildDyadTag(tool: string, detail: string, content: string): string {
     }
 }
 
+/**
+ * Extract the actual content from OpenCode's XML-wrapped tool output.
+ * OpenCode wraps results like: <path>...</path><type>file</type><content>1: code...</content>
+ * We extract just the <content> body and strip line number prefixes.
+ */
+function extractToolContent(raw: string): string {
+    if (!raw) return "";
+
+    // Try to extract <content>...</content> block
+    const contentMatch = raw.match(/<content>([\s\S]*)<\/content>/i);
+    if (contentMatch) {
+        // Strip OpenCode's line number prefixes: "1: ", "23: ", "100: ", etc.
+        return contentMatch[1]
+            .replace(/^\d+: /gm, "")
+            .trim();
+    }
+
+    // No XML wrapper — return as-is
+    return raw.trim();
+}
+
 /** Escape XML/HTML attribute values */
 function escapeAttr(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -716,25 +921,25 @@ function escapeAttr(s: string): string {
  * Build live content showing accumulated dyad tags + current activity + response text.
  * This is what the user sees in the chat bubble while OpenCode works.
  */
+/**
+ * Build live content from the chronological timeline.
+ * Tools and text/thinking appear in the exact order they occurred.
+ */
 function buildLiveContent(
-    fullResponse: string,
+    timeline: TimelineEntry[],
     toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
-    operationLog: { tool: string; detail: string; content: string }[],
     stepCount: number,
 ): string {
     let content = "";
 
-    // Emit completed operations as dyad tags — the parser will render them as icon badges
-    for (const op of operationLog) {
-        content += buildDyadTag(op.tool, op.detail, op.content) + "\n";
-    }
-
-    // Show reasoning/thinking as <think> tags (rendered as collapsible purple brain icon)
-    const thinkingTools = Array.from(toolsActive.values()).filter(
-        t => (t.status === "running" || t.status === "pending") && t.tool !== "edit" && t.tool !== "write"
-    );
-    if (thinkingTools.length > 0 && !fullResponse) {
-        content += `<think>Analizando...${thinkingTools.map(t => ` ${mapToolName(t.tool)}`).join(",")}</think>\n`;
+    // Render timeline entries in chronological order
+    for (const entry of timeline) {
+        if (entry.type === "tool") {
+            const tagContent = entry.error ? "[error]" : entry.output;
+            content += buildDyadTag(entry.tool, entry.detail, tagContent) + "\n";
+        } else {
+            content += cleanResponseText(entry.text);
+        }
     }
 
     // Active tool indicator (pending tools shown as dyad tags with pending state)
@@ -744,36 +949,30 @@ function buildLiveContent(
     );
     for (const t of activeEdits) {
         const tag = mapToolToDyadTag(t.tool);
-        content += `<${tag} path="${escapeAttr(t.detail || "...")}">`; // unclosed = pending
-    }
-
-    // Separator before response text
-    if (fullResponse) {
-        content += "\n" + cleanResponseText(fullResponse);
-    } else if (operationLog.length === 0 && toolsActive.size === 0) {
-        content += "";
+        content += `<${tag} path="${escapeAttr(t.detail || "...")}">`;  // unclosed = pending
     }
 
     return content;
 }
 
 /**
- * Build the final response combining dyad tags + text + file edits.
- * All tool operations become proper dyad tags that the parser renders
- * with the same collapsible UI as the legacy agent.
+ * Build the final response from the chronological timeline + file edits.
+ * Timeline preserves the exact order: tools and text/thinking are interleaved.
  */
 function buildFinalResponse(
-    fullResponse: string,
+    timeline: TimelineEntry[],
     filesEdited: string[],
     toolsActive: Map<string, { tool: string; status: string; detail?: string }>,
-    operationLog?: { tool: string; detail: string; content: string }[],
 ): string {
     let content = "";
 
-    // Emit completed operations as dyad tags
-    if (operationLog && operationLog.length > 0) {
-        for (const op of operationLog) {
-            content += buildDyadTag(op.tool, op.detail, op.content) + "\n";
+    // Render timeline in chronological order
+    for (const entry of timeline) {
+        if (entry.type === "tool") {
+            const tagContent = entry.error ? "[error]" : entry.output;
+            content += buildDyadTag(entry.tool, entry.detail, tagContent) + "\n";
+        } else {
+            content += cleanResponseText(entry.text);
         }
     }
 
@@ -781,22 +980,18 @@ function buildFinalResponse(
     // but not already covered by tool operations)
     if (filesEdited.length > 0) {
         const loggedPaths = new Set(
-            (operationLog || [])
-                .filter(op => op.tool === "write" || op.tool === "edit")
-                .map(op => path.basename(op.detail)),
+            timeline
+                .filter((e): e is Extract<TimelineEntry, { type: "tool" }> => e.type === "tool")
+                .filter(e => e.tool === "write" || e.tool === "edit")
+                .map(e => path.basename(e.detail)),
         );
 
         for (const file of filesEdited) {
             const basename = path.basename(file);
             if (!loggedPaths.has(basename)) {
-                content += `<dyad-write path="${escapeAttr(file)}" description="Modificado por OpenCode">[contenido actualizado]</dyad-write>\n`;
+                content += `<dyad-write path="${escapeAttr(file)}" description=""></dyad-write>\n`;
             }
         }
-    }
-
-    // Add the text response (cleaned of internal tags)
-    if (fullResponse) {
-        content += "\n" + cleanResponseText(fullResponse);
     }
 
     return content;
@@ -829,6 +1024,16 @@ function cleanResponseText(text: string): string {
     cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
     // Remove <redacted>...</redacted> blocks
     cleaned = cleaned.replace(/<redacted>[\s\S]*?<\/redacted>/gi, "");
+
+    // Strip ALL HTML/XML tags from inside <think> blocks and remove empty ones
+    cleaned = cleaned.replace(/<think>([\s\S]*?)<\/think>/gi, (_match, inner: string) => {
+        // Remove all XML/HTML tags from reasoning content
+        const stripped = inner.replace(/<[^>]*>/g, "").trim();
+        // If nothing meaningful remains, drop the entire think block
+        if (!stripped) return "";
+        return `<think>${stripped}</think>`;
+    });
+
     // Clean up excessive blank lines
     cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
     return cleaned.trim();
@@ -909,6 +1114,16 @@ export async function openCodeHealthCheck(): Promise<{
     try {
         if (fs.existsSync(nvmDir)) {
             const versions = fs.readdirSync(nvmDir);
+            versions.sort((a: string, b: string) => {
+                const numA = a.replace('v', '').split('.').map(Number);
+                const numB = b.replace('v', '').split('.').map(Number);
+                for (let i = 0; i < Math.max(numA.length, numB.length); i++) {
+                    const partA = numA[i] || 0;
+                    const partB = numB[i] || 0;
+                    if (partA !== partB) return partB - partA; // Descending
+                }
+                return 0;
+            });
             for (const v of versions) {
                 candidates.push(path.join(nvmDir, v, "bin/opencode"));
             }

@@ -74,7 +74,7 @@ import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 import { requireMcpToolConsent } from "../utils/mcp_consent";
 
 import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
-import { handleOpenCodeStream } from "./opencode_adapter";
+import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
 // DESHABILITADO TEMPORALMENTE - Auto-router imports
 // import { analyzeAndRouteModel } from "../utils/model_router";
 // import { getLanguageModelsByProviders } from "../shared/language_model_helpers";
@@ -292,6 +292,8 @@ function registerChatStreamHandlers() {
 
       // Handle redo option: remove the most recent messages if needed
       if (req.redo || req.undoRedo) {
+        // Clear the OpenCode session — git was reverted, agent must forget old work
+        revertLastOpenCodeMessage(req.chatId);
         // Get the most recent messages
         const chatMessages = [...chat.messages];
 
@@ -384,6 +386,9 @@ function registerChatStreamHandlers() {
 
         // If it was just an undoRedo (without a new prompt), we stop here
         if (req.undoRedo && !req.prompt) {
+          // Kill the OpenCode session so the agent forgets the reverted work
+          revertLastOpenCodeMessage(req.chatId);
+
           // Notify that the stream/operation ended (since we just undid)
           safeSend(event.sender, "chat:response:end", {
             chatId: req.chatId,
@@ -1615,10 +1620,13 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.warn("[OPENCODE MODE] KB prompt build failed:", e);
           }
 
-          // 2. Language instruction
+          // 2. Language & Behavior instructions
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
-          contextInstructions.push(`Responde siempre en ${langMap[chatLang] || chatLang}.`);
+          contextInstructions.push(
+            `Responde siempre en ${langMap[chatLang] || chatLang}.\n` +
+            `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
+          );
 
 
           // 3. Integration prompts — inject credentials and instructions
@@ -1691,10 +1699,12 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Persist the response to the database
           fullResponse = openCodeResponse;
+          const openCodeDurationMs = Date.now() - streamStartedAt;
           await db
             .update(remoteSchema.messages)
             .set({
               content: fullResponse,
+              durationMs: openCodeDurationMs,
             })
             .where(
               and(
@@ -1708,7 +1718,7 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             messages: [
               ...updatedChat.messages.slice(0, -1),
-              { ...placeholderAssistantMessage, content: fullResponse },
+              { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs },
             ],
           });
 
