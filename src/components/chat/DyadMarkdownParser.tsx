@@ -1577,9 +1577,11 @@ function renderModalContent(
             <span>Total: <strong className="text-foreground">{total.toLocaleString()} tokens</strong></span>
             {hasPricing && <span>Coste: <strong className="text-yellow-400">{fmtCost(costTotal)}</strong></span>}
           </div>
-          <div className="text-sm text-foreground/80 font-medium text-center mt-3 bg-muted/50 p-2 rounded-md">
-            ⚠️ Los tokens y el coste mostrados se basan en el uso acumulado reportado por OpenRouter. El coste real puede variar ligeramente.
-          </div>
+          {hasPricing && (
+            <div className="text-xs text-muted-foreground/60 text-center mt-3">
+              Coste calculado con las tarifas publicadas por OpenRouter para este modelo.
+            </div>
+          )}
         </div>
       );
     }

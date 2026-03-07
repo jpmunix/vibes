@@ -104,7 +104,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
   const versions = cachedVersions.length > 0 ? cachedVersions : liveVersions;
 
   return (
-    <div className="h-full border-t border-2 border-border w-full">
+    <div className="h-full border-border w-full">
       <div className="p-2 border-b border-border flex items-center justify-between">
         <h2 className="text-base font-medium pl-2">Historial de versiones</h2>
         <div className="flex items-center gap-2">

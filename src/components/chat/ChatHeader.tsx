@@ -5,7 +5,7 @@ import {
   GitBranch,
   Eraser,
   Sparkles,
-  Info,
+  Eye,
   Save,
   FileText,
   MoreHorizontal,
@@ -21,12 +21,11 @@ import {
 } from "lucide-react";
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom, previewModeAtom } from "@/atoms/appAtoms";
 import { Button } from "../ui/button";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
@@ -80,6 +79,7 @@ export function ChatHeader({
   onToggleLogs,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
+  const previewMode = useAtomValue(previewModeAtom);
   const { navigate } = useRouter();
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const { chats, invalidateChats } = useChats(appId);
@@ -211,9 +211,16 @@ export function ChatHeader({
     }
   };
 
-  // Only show branch warning for dangerous cases: detached HEAD or master (to rename)
-  // Normal feature branches (feat/*, fix/*, etc.) should NOT show any warning
-  const isNotMainBranch = branchInfo && (branchInfo.branch === "<no-branch>" || branchInfo.branch === "master");
+  // Detect if we're browsing versions (detached HEAD is expected in that case)
+  const isBrowsingVersions = previewMode === "versions";
+  const isDetachedHead = branchInfo?.branch === "<no-branch>";
+
+  // Friendly banner for version browsing (detached HEAD while in versions mode)
+  const showVersionBrowsingBanner = isDetachedHead && !isAnyCheckoutVersionInProgress;
+
+  // Only show the real branch warning for genuine issues: master branch (needs rename)
+  // Detached HEAD is handled separately above. Normal feature branches should NOT warn.
+  const showBranchWarning = !isBrowsingVersions && branchInfo && branchInfo.branch === "master";
 
   const currentBranchName = branchInfo?.branch;
 
@@ -225,74 +232,45 @@ export function ChatHeader({
   return (
     <div className="flex flex-col w-full @container">
       <LoadingBar isVisible={showLoadingBar} message={loadingMessage} />
-      {/* Show branch warning when not on main branch */}
-      {isNotMainBranch && (
+
+      {/* Friendly banner when viewing a previous version */}
+      {showVersionBrowsingBanner && (
+        <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-b border-sky-200 dark:border-sky-800/50">
+          <div className="flex items-center gap-2 text-sm">
+            <Eye size={16} className="shrink-0" />
+            <span>Estás viendo una versión anterior. Los cambios no se guardarán hasta que restaures o vuelvas al estado actual.</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCheckoutMainBranch}
+            disabled={isCheckingOutVersion || branchInfoLoading}
+            className="mt-1 @sm:mt-0 shrink-0 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/40"
+          >
+            {isCheckingOutVersion
+              ? "Volviendo..."
+              : "Volver al estado actual"}
+          </Button>
+        </div>
+      )}
+
+      {/* Show branch warning only for master branch (needs rename) */}
+      {showBranchWarning && (
         <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
           <div className="flex items-center gap-2 text-sm">
             <GitBranch size={16} />
             <span>
-              {currentBranchName === "<no-branch>" && (
-                <>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex items-center  gap-1">
-                          {isAnyCheckoutVersionInProgress ? (
-                            <>
-                              <span>
-                                Por favor, espera, volviendo a la última
-                                versión...
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <strong>Advertencia:</strong>
-                              <span>No estás en ninguna rama</span>
-                              <Info size={14} />
-                            </>
-                          )}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {isAnyCheckoutVersionInProgress
-                            ? "La recuperación de la versión está en curso"
-                            : "Recupera la rama main, de lo contrario los cambios no se guardarán correctamente"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </>
-              )}
-              {currentBranchName && currentBranchName !== "<no-branch>" && (
-                <span>
-                  Estás en la rama: <strong>{currentBranchName}</strong>.
-                </span>
-              )}
-              {branchInfoLoading && <span>Comprobando rama...</span>}
+              Estás en la rama: <strong>{currentBranchName}</strong>.
             </span>
           </div>
-          {currentBranchName === "master" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRenameMasterToMain}
-              disabled={isRenamingBranch || branchInfoLoading}
-            >
-              {isRenamingBranch ? "Renombrando..." : "Renombrar master a main"}
-            </Button>
-          ) : isAnyCheckoutVersionInProgress && !isCheckingOutVersion ? null : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCheckoutMainBranch}
-              disabled={isCheckingOutVersion || branchInfoLoading}
-            >
-              {isCheckingOutVersion
-                ? "Recuperando..."
-                : "Cambiar a la rama main"}
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRenameMasterToMain}
+            disabled={isRenamingBranch || branchInfoLoading}
+          >
+            {isRenamingBranch ? "Renombrando..." : "Renombrar master a main"}
+          </Button>
         </div>
       )}
 

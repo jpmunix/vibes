@@ -578,6 +578,7 @@ export function ChatInput({
                                     await revertVersion({
                                       versionId: currentMessage.sourceCommitHash,
                                       currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+                                      silent: true,
                                     });
                                     const chat = await ipc.chat.getChat(chatId);
                                     setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });

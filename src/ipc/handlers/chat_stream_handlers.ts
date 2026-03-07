@@ -593,39 +593,57 @@ ${componentSnippet}
       } else {
         // Normal AI processing for non-test prompts
 
-        // If it's a summarize intent and auto-router is selected, use the title generation model
-        if (
-          isSummarizeIntent &&
-          settings.selectedModel.provider === "auto-router" &&
-          settings.selectedModel.name === "auto"
-        ) {
-          // Use the appTitleGenerationModel from settings
-          const titleModel =
+        // Summarize is a lightweight task — always use the cheap/fast model
+        // regardless of what the user has selected for chat.
+        if (isSummarizeIntent) {
+          const summaryModelStr =
             settings.standardModeModel || "openai/gpt-4.1-mini";
 
-          // Parse the model string (format: "provider/model")
-          const [provider, ...modelParts] = titleModel.split("/");
-          const modelName = modelParts.join("/"); // Handle models with / in name
-
+          // standardModeModel is an OpenRouter model identifier (e.g. "openai/gpt-4.1-nano")
+          // The provider is always "openrouter", the full string is the model name.
           selectedModel = {
-            provider,
-            name: modelName,
+            provider: "openrouter",
+            name: summaryModelStr,
           };
 
           logger.info(
-            `Using title generation model for summarize task: ${provider}/${modelName}`,
+            `Using standard model for summarize task: ${summaryModelStr}`,
           );
 
           await logChatInfo(
             req.chatId,
             "model-selection",
-            `Using title generation model for summarize task: ${provider}/${modelName}`,
+            `Using standard model for summarize task: ${summaryModelStr}`,
             {
-              provider,
-              model: modelName,
+              provider: "openrouter",
+              model: summaryModelStr,
               reason: "summarize-intent",
             },
           );
+
+          // Set the title of this summarize chat directly — don't rely on the model
+          // to generate a <dyad-chat-summary> tag (cheap models often skip it).
+          try {
+            // Extract the original chat ID from the prompt (e.g. "Resumir el chat chat-id=276")
+            const originalChatIdMatch = req.prompt.match(/chat-id=(\d+)/);
+            let summarizeTitle = "Resumen del chat";
+            if (originalChatIdMatch) {
+              const originalChatId = parseInt(originalChatIdMatch[1], 10);
+              const originalChat = await db.query.chats.findFirst({
+                where: and(eq(remoteSchema.chats.id, originalChatId), eq(remoteSchema.chats.userId, currentUserId as string)),
+                columns: { title: true },
+              });
+              if (originalChat?.title) {
+                summarizeTitle = `Resumen: ${originalChat.title}`.slice(0, 50);
+              }
+            }
+            await db
+              .update(remoteSchema.chats)
+              .set({ title: summarizeTitle })
+              .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)));
+          } catch (e) {
+            logger.warn("Failed to set summarize chat title:", e);
+          }
         }
         // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
         // Use auto-router only if it's not a summarize chat
@@ -1562,7 +1580,9 @@ This conversation includes one or more image attachments. When the user uploads 
 
         // Handle pro ask mode: use local-agent in read-only mode
         // This gives pro users access to code reading tools while in ask mode
+        // Skip for summarize intent — summaries don't need tools, just simpleStreamText.
         if (
+          !isSummarizeIntent &&
           settings.selectedChatMode === "ask" &&
           isDyadProEnabled(settings) &&
           !mentionedAppsCodebases.length
@@ -1595,9 +1615,13 @@ This conversation includes one or more image attachments. When the user uploads 
 
         // Handle local-agent mode (Agente) — delegates to OpenCode AI SDK
         // Also handles deprecated "crush-agent" mode for backwards compatibility
+        // Skip OpenCode for summarize intent: OpenCode doesn't understand chat-id
+        // references, so we let it fall through to simpleStreamText which uses
+        // the user's configured model directly (no agent needed for summaries).
         if (
-          settings.selectedChatMode === "local-agent" ||
-          (settings.selectedChatMode as string) === "crush-agent"
+          !isSummarizeIntent &&
+          (settings.selectedChatMode === "local-agent" ||
+            (settings.selectedChatMode as string) === "crush-agent")
         ) {
           logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
 
@@ -1682,7 +1706,7 @@ This conversation includes one or more image attachments. When the user uploads 
             if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
           }
 
-          const { fullResponse: openCodeResponse, success } = await handleOpenCodeStream(
+          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, cachedTokens: ocCachedTokens } = await handleOpenCodeStream(
             event,
             req,
             abortController,
@@ -1700,11 +1724,58 @@ This conversation includes one or more image attachments. When the user uploads 
           // Persist the response to the database
           fullResponse = openCodeResponse;
           const openCodeDurationMs = Date.now() - streamStartedAt;
+          const ocTotalTokens = ocInputTokens + ocOutputTokens;
+
+          // Append token usage badge to the response (like legacy agent does)
+          if (ocTotalTokens > 0) {
+            // Look up pricing from OpenRouter model data
+            let priceIn = "";
+            let priceOut = "";
+            try {
+              const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+              const models = await fetchOpenRouterModels();
+              const modelData = models.find(m => m.name === settings.selectedModel.name);
+              priceIn = modelData?.pricingInput || "";
+              priceOut = modelData?.pricingOutput || "";
+            } catch { /* pricing unavailable */ }
+
+            const tokenXml = `<dyad-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" price-input="${priceIn}" price-output="${priceOut}"></dyad-token-usage>`;
+            fullResponse += tokenXml + "\n";
+
+            // Log token usage for verbose chat logs and ChatLogsPanel
+            void logChatInfo(
+              req.chatId,
+              "token-usage",
+              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens})`,
+              {
+                totalTokens: ocTotalTokens,
+                inputTokens: ocInputTokens,
+                outputTokens: ocOutputTokens,
+                model: settings.selectedModel.name,
+                type: "opencode-agent",
+              },
+              placeholderAssistantMessage.id,
+            );
+
+            // Log to token stats file
+            logTokenUsage({
+              chatId: req.chatId,
+              messageId: placeholderAssistantMessage.id,
+              totalTokens: ocTotalTokens,
+              promptTokens: ocInputTokens,
+              completionTokens: ocOutputTokens,
+              model: settings.selectedModel.name,
+              timestamp: Date.now(),
+              appId: updatedChat.app.id,
+            });
+          }
+
           await db
             .update(remoteSchema.messages)
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
+              totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
             })
             .where(
               and(
@@ -1718,7 +1789,7 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             messages: [
               ...updatedChat.messages.slice(0, -1),
-              { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs },
+              { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
             ],
           });
 
@@ -1727,6 +1798,7 @@ This conversation includes one or more image attachments. When the user uploads 
           const responseEnd: ChatResponseEnd = {
             chatId: req.chatId,
             updatedFiles: success,
+            totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 
@@ -1736,6 +1808,7 @@ This conversation includes one or more image attachments. When the user uploads 
             model: settings.selectedModel.name,
             responseLength: fullResponse.length,
             success,
+            totalTokens: ocTotalTokens,
           });
 
           return;
@@ -1743,10 +1816,12 @@ This conversation includes one or more image attachments. When the user uploads 
 
         // Handle legacy-agent mode — uses the old local agent handler
         // Also handles deprecated "build" and "agent" modes for backwards compatibility
+        // Skip for summarize intent — summaries don't need agent tools.
         if (
-          settings.selectedChatMode === "legacy-agent" ||
-          (settings.selectedChatMode as string) === "build" ||
-          (settings.selectedChatMode as string) === "agent"
+          !isSummarizeIntent &&
+          (settings.selectedChatMode === "legacy-agent" ||
+            (settings.selectedChatMode as string) === "build" ||
+            (settings.selectedChatMode as string) === "agent")
         ) {
           if (!mentionedAppsCodebases.length) {
             // Check quota for Basic Agent mode (non-Pro users)
@@ -1923,7 +1998,7 @@ This conversation includes one or more image attachments. When the user uploads 
         if (chatTitle) {
           await db
             .update(remoteSchema.chats)
-            .set({ title: chatTitle[1] })
+            .set({ title: chatTitle[1].trim() })
             .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string), isNull(remoteSchema.chats.title)));
         }
         const chatSummary = chatTitle?.[1];
@@ -1933,9 +2008,7 @@ This conversation includes one or more image attachments. When the user uploads 
           .update(remoteSchema.messages)
           .set({
             content: fullResponse,
-            model: selectedModel
-              ? `${selectedModel.provider}/${selectedModel.name}`
-              : placeholderAssistantMessage.model,
+            model: selectedModel?.name ?? placeholderAssistantMessage.model,
             durationMs: Date.now() - streamStartedAt,
           })
           .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, currentUserId as string)));

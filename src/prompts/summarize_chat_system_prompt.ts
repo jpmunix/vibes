@@ -33,7 +33,7 @@ Your task is to analyze the conversation and provide:
 - \`file2.py\` - Description of changes
 
 <dyad-chat-summary>
-[Your concise summary here - less than a sentence, more than a few words]
+[Short title, max 30 characters. No quotes, no full sentences. Example: "Cierre modal overlay"]
 </dyad-chat-summary>
 
 **Reminder:**
@@ -46,6 +46,6 @@ Responde este resumen en español incluyendo las cabeceras de "Important Context
 `;
 
 export const SUMMARY_SYSTEM_PROMPT_LANGS = {
-  en: "Summarize from chat-id",
-  es: "Resumir el chat chat-id=",
+   en: "Summarize from chat-id",
+   es: "Resumir el chat chat-id=",
 };

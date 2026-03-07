@@ -359,4 +359,14 @@ export function registerLanguageModelHandlers() {
       return getLanguageModelsByProviders(context.userId);
     },
   );
+
+  handle(
+    "refresh-openrouter-models",
+    async (_event, _input, _context: HandlerContext): Promise<void> => {
+      logger.info("Manual refresh of OpenRouter models requested");
+      const { clearOpenRouterModelsCache, fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+      clearOpenRouterModelsCache();
+      await fetchOpenRouterModels();
+    },
+  );
 }

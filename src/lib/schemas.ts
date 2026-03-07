@@ -368,12 +368,10 @@ export const UserSettingsSchema = z
     selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
-    openCodePermissions: z.object({
-      edit: z.enum(["ask", "allow", "deny"]).optional(),
-      bash: z.enum(["ask", "allow", "deny"]).optional(),
-      webfetch: z.enum(["ask", "allow", "deny"]).optional(),
-      external_directory: z.enum(["ask", "allow", "deny"]).optional(),
-    }).optional(),
+
+    // Ripgrep ignore patterns — written as .ignore in project dirs before each session.
+    // Synced via Bunny DB so the user gets the same config on all devices.
+    openCodeIgnorePatterns: z.array(z.string()).optional(),
     selectedChatMode: z.preprocess(
       (val) => {
         // Migrate deprecated mode values before validation

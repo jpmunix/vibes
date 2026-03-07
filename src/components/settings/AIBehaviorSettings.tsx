@@ -7,7 +7,7 @@ import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ProModeModelSelector } from "./ProModeModelSelector";
 import { ChevronRight } from "lucide-react";
 import { AgentToolsSettings } from "./AgentToolsSettings";
-import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
+
 import {
   Select,
   SelectContent,
@@ -75,8 +75,7 @@ export function AIBehaviorSettings({
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
   const [modelsExpanded, setModelsExpanded] = useState(false);
-  const [permissionsExpanded, setPermissionsExpanded] = useState(false);
-  const [ocPermissionsExpanded, setOcPermissionsExpanded] = useState(false);
+
 
   // ─── Current values ───
 
@@ -154,34 +153,8 @@ export function AIBehaviorSettings({
           control={<ReasoningEffortSelector variant="settings" />}
         />
 
-        {/* Turnos — pill that opens selector */}
-        <SettingRow
-          label="Turnos de contexto"
-          description="Cuántos turnos previos del chat incluir como contexto"
-          control={
-            <Select
-              value={currentTurnsRaw}
-              onValueChange={(value) => {
-                if (value === "default") {
-                  updateSettings({ maxChatTurnsInContext: undefined });
-                } else {
-                  updateSettings({ maxChatTurnsInContext: parseInt(value, 10) });
-                }
-              }}
-            >
-              <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100">
-                <SelectValue>{currentTurnsLabel}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {turnsOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
-        />
+
+        {/* Turnos de contexto — hidden: OpenCode manages context internally */}
 
         {/* Búsqueda Semántica — pill showing model, click to select */}
         <SettingRow
@@ -245,33 +218,6 @@ export function AIBehaviorSettings({
             </div>
           )}
         </div>
-
-        {/* OpenCode Permissions Section — collapsible */}
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
-            onClick={() => setOcPermissionsExpanded(e => !e)}
-          >
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Permisos del agente</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Controla qué operaciones puede ejecutar el agente
-              </p>
-            </div>
-            <ChevronRight
-              className={cn(
-                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
-                ocPermissionsExpanded && "rotate-90",
-              )}
-            />
-          </div>
-          {ocPermissionsExpanded && (
-            <div className="pl-8">
-              <OpenCodePermissionsSettings />
-            </div>
-          )}
-        </div>
-
 
       </div>
     </div>

@@ -53,7 +53,7 @@ interface CachedModelsFile {
 
 const CACHE_VERSION = 6; // Bumped: cap maxOutputTokens to 85% of contextWindow
 
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 const CACHE_FILENAME = "openrouter-models-cache.json";
 
 // In-memory cache to avoid re-reading from disk every time

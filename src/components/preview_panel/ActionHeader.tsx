@@ -56,17 +56,17 @@ export type PreviewMode =
   | "database";
 
 // Which top-level group a mode belongs to
-type MenuGroup = "preview" | "code" | "configure";
+type MenuGroup = "preview" | "code" | "versions" | "configure";
 
 const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
   preview: "preview",
   code: "code",
   problems: "code",
-  publish: "code",
-  security: "code",
-  versions: "code",
-  git: "code",
   database: "code",
+  versions: "versions",
+  git: "versions",
+  publish: "versions",
+  security: "versions",
   configure: "configure",
 };
 
@@ -80,6 +80,7 @@ export const ActionHeader = () => {
   const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
+  const versionsGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -162,6 +163,9 @@ export const ActionHeader = () => {
         case "code":
           targetRef = codeGroupRef;
           break;
+        case "versions":
+          targetRef = versionsGroupRef;
+          break;
         case "configure":
           targetRef = configureRef;
           break;
@@ -198,6 +202,7 @@ export const ActionHeader = () => {
 
       if (previewGroupRef.current) resizeObserver.observe(previewGroupRef.current);
       if (codeGroupRef.current) resizeObserver.observe(codeGroupRef.current);
+      if (versionsGroupRef.current) resizeObserver.observe(versionsGroupRef.current);
       if (configureRef.current) resizeObserver.observe(configureRef.current);
     }
 
@@ -212,26 +217,13 @@ export const ActionHeader = () => {
   // Dynamic label/icon for the "Código" group based on active mode
   const getCodeGroupInfo = () => {
     switch (previewMode) {
-      case "versions":
-        return {
-          icon: <History size={iconSize} />,
-          label: versionsLoading
-            ? "..."
-            : `Versión ${versions.length}`,
-        };
       case "code":
         return { icon: <Code size={iconSize} />, label: "Código" };
-      case "publish":
-        return { icon: <Globe size={iconSize} />, label: "Publicar" };
       case "problems":
         return {
           icon: <AlertTriangle size={iconSize} />,
           label: "Problemas",
         };
-      case "security":
-        return { icon: <Shield size={iconSize} />, label: "Seguridad" };
-      case "git":
-        return { icon: <GitBranch size={iconSize} />, label: "Git" };
       case "database":
         return { icon: <Database size={iconSize} />, label: "Base de datos" };
       default:
@@ -239,7 +231,34 @@ export const ActionHeader = () => {
     }
   };
 
+  // Dynamic label/icon for the "Versión" group based on active mode
+  const getVersionGroupInfo = () => {
+    switch (previewMode) {
+      case "versions":
+        return {
+          icon: <History size={iconSize} />,
+          label: versionsLoading
+            ? "..."
+            : `Versión ${versions.length}`,
+        };
+      case "git":
+        return { icon: <GitBranch size={iconSize} />, label: "Git" };
+      case "publish":
+        return { icon: <Globe size={iconSize} />, label: "Publicar" };
+      case "security":
+        return { icon: <Shield size={iconSize} />, label: "Seguridad" };
+      default:
+        return {
+          icon: <History size={iconSize} />,
+          label: versionsLoading
+            ? "..."
+            : `Versión ${versions.length}`,
+        };
+    }
+  };
+
   const codeGroupInfo = getCodeGroupInfo();
+  const versionGroupInfo = getVersionGroupInfo();
 
   // Button style for the 3 main groups
   const groupButtonClass =
@@ -338,33 +357,11 @@ export const ActionHeader = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem
-                onClick={() => selectPanel("versions")}
-                className={cn(
-                  previewMode === "versions" && "bg-accent",
-                )}
-              >
-                <History size={14} />
-                <span>
-                  {versionsLoading
-                    ? "Versiones..."
-                    : `Versión ${versions.length}`}
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 onClick={() => selectPanel("code")}
                 className={cn(previewMode === "code" && "bg-accent")}
               >
                 <Code size={14} />
                 <span>Código</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => selectPanel("publish")}
-                className={cn(
-                  previewMode === "publish" && "bg-accent",
-                )}
-              >
-                <Globe size={14} />
-                <span>Publicar</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}
@@ -382,14 +379,47 @@ export const ActionHeader = () => {
                   )}
                 </div>
               </DropdownMenuItem>
+              {hasDatabase && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => selectPanel("database")}
+                    className={cn(previewMode === "database" && "bg-accent")}
+                  >
+                    <Database size={14} />
+                    <span>Base de datos</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* ─── Versión group ─── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                ref={versionsGroupRef}
+                data-testid="versions-group-button"
+                className={groupButtonClass}
+              >
+                {versionGroupInfo.icon}
+                {!isCompact && <span>{versionGroupInfo.label}</span>}
+                <ChevronDown size={10} className="text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuItem
-                onClick={() => selectPanel("security")}
+                onClick={() => selectPanel("versions")}
                 className={cn(
-                  previewMode === "security" && "bg-accent",
+                  previewMode === "versions" && "bg-accent",
                 )}
               >
-                <Shield size={14} />
-                <span>Seguridad</span>
+                <History size={14} />
+                <span>
+                  {versionsLoading
+                    ? "Versiones..."
+                    : `Versión ${versions.length}`}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -399,15 +429,25 @@ export const ActionHeader = () => {
                 <GitBranch size={14} />
                 <span>Git</span>
               </DropdownMenuItem>
-              {hasDatabase && (
-                <DropdownMenuItem
-                  onClick={() => selectPanel("database")}
-                  className={cn(previewMode === "database" && "bg-accent")}
-                >
-                  <Database size={14} />
-                  <span>Base de datos</span>
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => selectPanel("publish")}
+                className={cn(
+                  previewMode === "publish" && "bg-accent",
+                )}
+              >
+                <Globe size={14} />
+                <span>Publicar</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("security")}
+                className={cn(
+                  previewMode === "security" && "bg-accent",
+                )}
+              >
+                <Shield size={14} />
+                <span>Seguridad</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 

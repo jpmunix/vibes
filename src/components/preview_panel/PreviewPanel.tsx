@@ -232,12 +232,22 @@ export function PreviewPanel() {
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="vertical">
           <Panel id="content" minSize={30}>
-            <div className="h-full overflow-y-auto">
+            <div className={cn("h-full", previewMode === "versions" ? "overflow-hidden" : "overflow-y-auto")}>
               {previewMode === "versions" ? (
-                <VersionPane
-                  isVisible={true}
-                  onClose={() => setPreviewMode("preview")}
-                />
+                <PanelGroup direction="horizontal">
+                  <Panel id="version-list" defaultSize={35} minSize={20} maxSize={50}>
+                    <VersionPane
+                      isVisible={true}
+                      onClose={() => setPreviewMode("preview")}
+                    />
+                  </Panel>
+                  <PanelResizeHandle className="relative flex w-px h-full items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize" />
+                  <Panel id="version-preview" minSize={30}>
+                    <Suspense fallback={<LazyFallback />}>
+                      <PreviewIframe key={key} loading={loading} />
+                    </Suspense>
+                  </Panel>
+                </PanelGroup>
               ) : previewMode === "git" ? (
                 <Suspense fallback={<LazyFallback />}>
                   <GitPanel

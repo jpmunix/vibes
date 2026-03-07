@@ -348,7 +348,20 @@ export function ChatPanel({
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 relative overflow-hidden">
+          <div
+            className="flex-1 relative overflow-hidden"
+            onClick={(e) => {
+              // Focus chat input when clicking empty space in the chat panel
+              const target = e.target as HTMLElement;
+              // Don't steal focus from interactive elements or text selections
+              const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"], pre, code, [data-testid="favorite-button"]');
+              const hasSelection = window.getSelection()?.toString();
+              if (!isInteractive && !hasSelection) {
+                const editable = document.querySelector('[data-testid="chat-input-container"] [contenteditable="true"]') as HTMLElement;
+                editable?.focus();
+              }
+            }}
+          >
             {!isPlanMode ? (
               <>
                 {/* Always mount MessagesList so Virtuoso can measure items

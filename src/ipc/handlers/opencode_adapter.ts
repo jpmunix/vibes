@@ -21,7 +21,7 @@
 import log from "electron-log";
 import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk";
 import type { IpcMainInvokeEvent } from "electron";
-import { readSettings, decrypt } from "../../main/settings";
+import { readSettings, writeSettings, decrypt } from "../../main/settings";
 import { getDyadAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
 import type { ChatStreamParams } from "@/ipc/types";
@@ -161,6 +161,10 @@ async function getOpenCodeClient(appPath: string) {
                     },
                 },
                 model: `${providerID}/${modelID}`,
+                // Use the cheap/fast standard model for lightweight tasks (titles, summaries)
+                ...(settings.standardModeModel ? {
+                    small_model: `${providerID}/${settings.standardModeModel}`,
+                } : {}),
                 // Agent-level config: reasoning effort + text verbosity
                 // These extra fields are passed directly to the provider as model options
                 agent: {
@@ -170,19 +174,48 @@ async function getOpenCodeClient(appPath: string) {
                         } : {}),
                         textVerbosity: "low",
                     },
+                    // Use the cheap/fast model for context compaction summaries
+                    // so we don't burn expensive tokens on housekeeping
+                    ...(settings.standardModeModel ? {
+                        compaction: {
+                            model: `${providerID}/${settings.standardModeModel}`,
+                        },
+                    } : {}),
                 },
-                // Permissions: read from settings, default to allow-all (headless mode)
+                // Permissions: always allow everything to prioritize autonomy
                 permission: {
-                    edit: settings.openCodePermissions?.edit || "allow",
-                    bash: settings.openCodePermissions?.bash || "allow",
-                    webfetch: settings.openCodePermissions?.webfetch || "allow",
-                    external_directory: settings.openCodePermissions?.external_directory || "allow",
+                    edit: "allow",
+                    bash: "allow",
+                    webfetch: "allow",
+                    external_directory: "allow",
                 },
+                // Always-on context compaction (documented at opencode.ai/docs/configuration)
+                // SDK 1.2.17 types don't declare this field yet, but the binary accepts it.
+                ...({ compaction: { auto: true, prune: true } } as any),
                 // Disable features we don't need (reduces overhead)
                 autoupdate: false,
                 formatter: false,
                 lsp: false,
                 share: "disabled",
+                // Ignore heavy directories to prevent token drain
+                // (OpenCode's grep/glob use ripgrep which respects .gitignore,
+                //  but watcher.ignore provides an extra safety net for projects
+                //  without a proper .gitignore or not initialized as git repos)
+                watcher: {
+                    ignore: [
+                        "node_modules/**",
+                        ".vite/**",
+                        "dist/**",
+                        "build/**",
+                        ".next/**",
+                        ".nuxt/**",
+                        ".output/**",
+                        ".git/**",
+                        ".git",
+                        "*.lock",
+                        "*.log",
+                    ],
+                },
             },
         });
 
@@ -292,7 +325,7 @@ export async function handleOpenCodeStream(
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
     },
-): Promise<{ fullResponse: string; success: boolean }> {
+): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
 
     // Inject integration env vars into the process so OpenCode's bash can use them
@@ -307,6 +340,23 @@ export async function handleOpenCodeStream(
     const projectDir = getDyadAppPath(appPath);
     logger.info(`[OpenCode] Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
+    // Write a .ignore file to the project dir so ripgrep skips heavy directories.
+    // .ignore is a ripgrep standard file — works in ANY directory (no git required).
+    // Patterns come from settings (synced via Bunny DB across devices).
+    try {
+        const fs = await import("fs");
+        const patterns = readSettings().openCodeIgnorePatterns ?? [
+            "node_modules/", ".vite/", "dist/", "build/",
+            ".next/", ".nuxt/", ".output/", ".git/", ".git",
+            "*.lock", "*.log",
+        ];
+        const ignorePath = path.join(projectDir, ".ignore");
+        const header = "# Auto-generated by Vibes — ripgrep ignore patterns for OpenCode\n";
+        fs.writeFileSync(ignorePath, header + patterns.join("\n") + "\n");
+        logger.info(`[OpenCode] Wrote .ignore with ${patterns.length} patterns to ${projectDir}`);
+    } catch (e: any) {
+        logger.warn(`[OpenCode] Failed to write .ignore: ${e.message}`);
+    }
 
 
     let client: ReturnType<typeof createOpencodeClient>;
@@ -316,7 +366,7 @@ export async function handleOpenCodeStream(
     } catch (error: any) {
         const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
         logger.error(errorMsg);
-        return { fullResponse: errorMsg, success: false };
+        return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
     }
 
     // Get or create session for this chat
@@ -358,7 +408,7 @@ export async function handleOpenCodeStream(
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
             logger.error(errorMsg);
-            return { fullResponse: errorMsg, success: false };
+            return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
         }
     }
 
@@ -370,6 +420,11 @@ export async function handleOpenCodeStream(
     const toolsActive = new Map<string, { tool: string; status: string; detail?: string }>();
     const filesEdited: string[] = [];
     let stepCount = 0;
+    // Accumulated token usage across all steps
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalReasoningTokens = 0;
+    let totalCachedTokens = 0;
     let eventSubscription: any = null;
 
     try {
@@ -414,6 +469,12 @@ export async function handleOpenCodeStream(
                 },
                 onStepStart: () => {
                     stepCount++;
+                },
+                onStepTokens: (input: number, output: number, reasoning: number, cached: number) => {
+                    totalInputTokens += input;
+                    totalOutputTokens += output;
+                    totalReasoningTokens += reasoning;
+                    totalCachedTokens += cached;
                 },
                 onFileEdited: (file: string) => {
                     // Normalize to basename to avoid duplicate entries for absolute vs relative paths
@@ -524,7 +585,7 @@ export async function handleOpenCodeStream(
                 await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
             } catch { /* ignore */ }
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-            return { fullResponse: partialText || "Operación cancelada", success: false };
+            return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
 
         const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
@@ -535,7 +596,8 @@ export async function handleOpenCodeStream(
         const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        return { fullResponse: finalContent, success: true };
+        logger.info(`[OpenCode] Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}`);
+        return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
@@ -544,7 +606,7 @@ export async function handleOpenCodeStream(
                 await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
             } catch { /* ignore */ }
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-            return { fullResponse: partialText || "Operación cancelada", success: false };
+            return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
 
         logger.error("[OpenCode] Stream error:", error.message);
@@ -552,6 +614,10 @@ export async function handleOpenCodeStream(
         return {
             fullResponse: errText || `❌ Error: ${error.message}`,
             success: false,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            reasoningTokens: totalReasoningTokens,
+            cachedTokens: totalCachedTokens,
         };
     }
 }
@@ -572,6 +638,7 @@ async function processEvents(
         onTextDelta: (delta: string) => void;
         onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => void;
         onStepStart: () => void;
+        onStepTokens: (input: number, output: number, reasoning: number, cached: number) => void;
         onFileEdited: (file: string) => void;
         getTimeline: () => TimelineEntry[];
         getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
@@ -720,7 +787,15 @@ async function processEvents(
                                 reasoningCharCount = 0;
                             }
                             activePartType = null;
-                            logger.info(`[OpenCode] Step finished (tokens: in=${part.tokens?.input}, out=${part.tokens?.output}, reasoning=${part.tokens?.reasoning})`);
+                            {
+                                const stepIn = part.tokens?.input || 0;
+                                const stepOut = part.tokens?.output || 0;
+                                const stepReasoning = part.tokens?.reasoning || 0;
+                                const stepCacheRead = part.tokens?.cacheRead || part.tokens?.cache_read || 0;
+                                const stepCacheCreation = part.tokens?.cacheCreation || part.tokens?.cache_creation || 0;
+                                callbacks.onStepTokens(stepIn, stepOut, stepReasoning, stepCacheRead + stepCacheCreation);
+                                logger.info(`[OpenCode] Step finished (tokens: in=${stepIn}, out=${stepOut}, reasoning=${stepReasoning}, cacheRead=${stepCacheRead}, cacheCreation=${stepCacheCreation}, raw=${JSON.stringify(part.tokens)})`);
+                            }
                             break;
                     }
                     break;
@@ -816,6 +891,27 @@ async function processEvents(
                 case "session.updated":
                 case "file.watcher.updated":
                     break;
+
+                case "permission.asked": {
+                    const reqId = props.id || props.requestID;
+                    if (!reqId) break;
+
+                    const permName = props.type || "unknown";
+
+                    // Auto-approve all permissions since user trusts the agent
+                    try {
+                        if (clientInstance) {
+                            await clientInstance.postSessionIdPermissionsPermissionId({
+                                path: { id: sessionId, permissionID: reqId },
+                                body: { response: "always" }
+                            });
+                            logger.info(`[OpenCode] Auto-approved permission: always for ${permName}`);
+                        }
+                    } catch (e: any) {
+                        logger.error(`[OpenCode] Error al auto-responder permiso: ${e.message}`);
+                    }
+                    break;
+                }
 
                 default:
                     if (eventCount <= 20) {

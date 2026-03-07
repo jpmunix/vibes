@@ -48,10 +48,24 @@ const DEFAULT_SETTINGS: UserSettings = {
   showTokenBar: false,
   aiQueryLogRotationThreshold: "200",
   windowState: undefined,
-  reasoningEffort: "high",
+  reasoningEffort: "medium",
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
+  // OpenCode ignore patterns — written as .ignore to project dirs (ripgrep standard)
+  openCodeIgnorePatterns: [
+    "node_modules/",
+    ".vite/",
+    "dist/",
+    "build/",
+    ".next/",
+    ".nuxt/",
+    ".output/",
+    ".git/",
+    ".git",
+    "*.lock",
+    "*.log",
+  ],
 };
 
 const SETTINGS_FILE = "user-settings.json";
@@ -426,6 +440,32 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v6 reasoning effort high:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v7 reasoning effort medium ──
+    // Revert reasoning effort from "high" (set by v6) back to "medium".
+    // "medium" provides a better balance of speed and quality for most use cases.
+    if (!(validatedSettings as any)._migrations?.v7_reasoning_effort_medium) {
+      const migrated: Partial<UserSettings> = {};
+      const currentEffort = (validatedSettings as any).reasoningEffort;
+
+      if (!currentEffort || currentEffort === "high") {
+        (migrated as any).reasoningEffort = "medium";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v7_reasoning_effort_medium: true },
+      };
+      logger.info("[Migration] Applied v7 reasoning effort medium:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v7 reasoning effort medium:", e);
       }
       return migratedSettings as UserSettings;
     }

@@ -149,7 +149,7 @@ export const chatLogs = sqliteTable("chat_logs", {
     level: text("level").notNull(),
     category: text("category").notNull(),
     message: text("message").notNull(),
-    metadata: text("metadata"),
+    metadata: text("metadata", { mode: "json" }),
     timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
 });
 

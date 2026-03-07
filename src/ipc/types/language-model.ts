@@ -137,6 +137,12 @@ export const languageModelContracts = {
     output: z.void(),
   }),
 
+  refreshOpenRouterModels: defineContract({
+    channel: "refresh-openrouter-models",
+    input: z.void(),
+    output: z.void(),
+  }),
+
   listOllamaModels: defineContract({
     channel: "local-models:list-ollama",
     input: z.void(),

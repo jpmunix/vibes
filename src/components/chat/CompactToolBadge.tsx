@@ -145,6 +145,18 @@ export function formatTokenCount(count: number): string {
     return `${(count / 1000000).toFixed(1)}M`;
 }
 
+/** Format price cost: $0.12345 → "$0.1234" */
+export function formatPriceCost(costUsd: number): string {
+    if (costUsd === 0) return "$0";
+    if (costUsd < 0.0001) return "<$0.0001";
+    // For larger values like 1.25, toFixed(2) works best. But for 0.00361, we need more.
+    // Strip trailing zeros after decimal if any.
+    return "$" + costUsd.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+    });
+}
+
 export type ToolBadgeState = "pending" | "finished" | "aborted";
 
 interface CompactToolBadgeProps {
@@ -302,6 +314,20 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
         case "dyad-token-usage": {
             const inp = parseInt(attributes.input || "0", 10);
             const out = parseInt(attributes.output || "0", 10);
+            const cached = parseInt(attributes.cached || "0", 10);
+
+            const priceIn = parseFloat(attributes["price-input"] || "0");
+            const priceOut = parseFloat(attributes["price-output"] || "0");
+
+            if (priceIn > 0 || priceOut > 0) {
+                const costInput = (inp - cached) * priceIn;
+                const costCached = cached * priceIn * 0.5;
+                const costOutput = out * priceOut;
+                const costTotal = costInput + costCached + costOutput;
+                return formatPriceCost(costTotal);
+            }
+
+            // Fallback si no hay tarifa registrada
             return `${formatTokenCount(inp + out)}`;
         }
         default:
