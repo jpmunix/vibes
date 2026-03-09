@@ -189,6 +189,7 @@ export function ChatInput({
   const disableSendButton =
     settings?.selectedChatMode !== "local-agent" &&
     settings?.selectedChatMode !== "legacy-agent" &&
+    settings?.selectedChatMode !== "ask" &&
     lastMessage?.role === "assistant" &&
     !lastMessage.approvalState &&
     !!proposal &&

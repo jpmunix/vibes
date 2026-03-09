@@ -42,7 +42,7 @@ import { DyadStatus } from "./DyadStatus";
 import { SuggestedAction } from "@/lib/schemas";
 import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
-import { CompactToolBadge, shouldCompact, getToolDetail, type ToolBadgeState } from "./CompactToolBadge";
+import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 
 const DYAD_CUSTOM_TAGS = [
@@ -212,18 +212,40 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
 
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0) {
-        const capturedBadges = [...badgeGroup];
+        // Separate token-usage badges so they are always visible (never grouped/collapsed)
+        const alwaysVisibleBadges = badgeGroup.filter(b => b.tag === "dyad-token-usage");
+        const groupableBadges = badgeGroup.filter(b => b.tag !== "dyad-token-usage");
+
         const currentGroupIndex = groupIndex;
         groupIndex++;
-        elements.push(
-          <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
-            <GroupedToolBadges
-              badges={capturedBadges}
-              isStreaming={isStreaming}
-              isFirstGroup={currentGroupIndex === 0}
-            />
-          </div>
-        );
+
+        if (groupableBadges.length > 0) {
+          const capturedBadges = [...groupableBadges];
+          elements.push(
+            <div key={`badge-group-${elements.length}`} className="mt-1.5 mb-4">
+              <GroupedToolBadges
+                badges={capturedBadges}
+                isStreaming={isStreaming}
+                isFirstGroup={currentGroupIndex === 0}
+              />
+            </div>
+          );
+        }
+
+        // Render token-usage badges independently so the cost is always visible
+        for (const tokenBadge of alwaysVisibleBadges) {
+          const meta = resolveToolMeta(tokenBadge.tag, tokenBadge.attributes);
+          const Icon = meta.icon;
+          elements.push(
+            <div key={`token-usage-${elements.length}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs mb-4">
+              <Icon size={12} className={meta.color} />
+              {tokenBadge.detail && (
+                <span className="text-muted-foreground">{tokenBadge.detail}</span>
+              )}
+            </div>
+          );
+        }
+
         badgeGroup = [];
       }
     };
