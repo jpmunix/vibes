@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useDeferredValue, Suspense, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, Suspense, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
@@ -243,10 +243,7 @@ export function ChatPanel({
     }
   }, [chatId]);
 
-  const rawMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
-  // useDeferredValue lets React render a "stale" version of messages while computing the new one,
-  // keeping the chat input and scroll responsive during streaming
-  const messages = useDeferredValue(rawMessages);
+  const messages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,

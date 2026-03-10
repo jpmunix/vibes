@@ -22,7 +22,7 @@ import { useLoadApp } from "./useLoadApp";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useVersions } from "./useVersions";
 import { showExtraFilesToast } from "@/lib/toast";
-import { useSearch } from "@tanstack/react-router";
+import { useMatch } from "@tanstack/react-router";
 import { useRunApp } from "./useRunApp";
 import { useCountTokens } from "./useCountTokens";
 import { useUserBudgetInfo } from "./useUserBudgetInfo";
@@ -82,12 +82,8 @@ export function useStreamChat({
 
   const posthog = usePostHog();
   const queryClient = useQueryClient();
-  let chatId: number | undefined;
-
-  if (hasChatId) {
-    const { id } = useSearch({ from: "/chat" });
-    chatId = id;
-  }
+  const chatRouteMatch = useMatch({ from: "/chat", strict: false, shouldThrow: false });
+  let chatId: number | undefined = hasChatId && chatRouteMatch ? (chatRouteMatch as any).search?.id : undefined;
 
   // For atom lookups (isStreaming, error), prefer selectedChatIdAtom which is
   // always a proper number. useSearch can return a string from URL params even
@@ -297,10 +293,7 @@ export function useStreamChat({
               if (!chunkRafId) {
                 chunkRafId = requestAnimationFrame(() => {
                   if (pendingChunkMessages) {
-                    // Mark streaming updates as non-urgent so input/scroll stay responsive
-                    startTransition(() => {
-                      updateMapAtom(setMessagesById, chatId, pendingChunkMessages!);
-                    });
+                    updateMapAtom(setMessagesById, chatId, pendingChunkMessages!);
                     pendingChunkMessages = undefined;
                   }
                   chunkRafId = null;

@@ -1,5 +1,7 @@
 import { app, BrowserWindow, dialog, Menu, screen } from "electron";
 import * as path from "node:path";
+import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
+import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
 // @ts-ignore
@@ -139,22 +141,49 @@ export async function onReady() {
   // Set isRunning to true at startup
   writeSettings({ isRunning: true });
 
-  // Create window FIRST to show UI quickly.
-  // IMPORTANT: Do NOT await any heavy I/O (like BackupManager or DB init)
-  // before this point. Blocking the event loop here starves Chromium's GPU
-  // process of IPC messages, causing kTransientFailure on CreateCommandBuffer.
   await onFirstRunMaybe(settings);
+
+  // ─── Splash Screen Startup Flow ──────────────────────────────────────
+  // Show a splash screen with progress bar while running initialization tasks.
+  // This replaces the "white screen" that appeared during startup.
+  const TOTAL_STEPS = 4;
+  const splash = createSplashWindow();
+  // Give the splash window time to render
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // Step 1: Initialize database
+  updateSplash(splash, 1, TOTAL_STEPS, "Inicializando base de datos...");
+  initializeDatabase();
+
+  // Step 2: Ensure OpenCode CLI is installed
+  updateSplash(splash, 2, TOTAL_STEPS, "Verificando OpenCode...");
+  const openCodeOk = await ensureOpenCodeInstalled();
+  if (!openCodeOk) {
+    logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
+  }
+
+  // Step 3: Cleanup old data
+  updateSplash(splash, 3, TOTAL_STEPS, "Limpieza de datos...");
+  await cleanupOldAiMessagesJson();
+
+  // Step 4: Create main window
+  updateSplash(splash, 4, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
-  // Then do heavy operations in background (non-blocking)
+  // Wait for main window content to fully load, then swap splash → main
+  if (mainWindow) {
+    await new Promise<void>(resolve => {
+      mainWindow!.webContents.once("did-finish-load", resolve);
+      // Safety timeout in case did-finish-load already fired
+      setTimeout(resolve, 5000);
+    });
+    await closeSplash(splash);
+    mainWindow.show();
+  }
+
+  // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
-    // Initialize database
-    initializeDatabase();
-
-    // Cleanup old ai_messages_json entries to prevent database bloat
-    await cleanupOldAiMessagesJson();
-
     // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
       await gitAddSafeDirectory(`${getVibesAppsBaseDirectory()}/*`);
@@ -263,6 +292,7 @@ const createWindow = () => {
     minHeight: 500,
     // Show window only after content is rendered to prevent white flash (VS Code pattern)
     show: false,
+    backgroundColor: "#1e1e24", // Match dark theme to prevent white flash
     titleBarStyle: "hidden",
     titleBarOverlay: false,
     trafficLightPosition: {
@@ -291,10 +321,8 @@ const createWindow = () => {
     );
   }
 
-  // Show window once content is rendered (prevents white flash on startup)
-  mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
-  });
+  // Show window is handled by the splash manager in onReady().
+  // The splash closes first, then mainWindow.show() is called.
 
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {

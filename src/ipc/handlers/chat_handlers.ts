@@ -10,7 +10,7 @@ import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { logChatInfo } from "../utils/chat_logger";
-import { normalizeLegacyTags } from "../../shared/normalizeLegacyTags";
+import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
 

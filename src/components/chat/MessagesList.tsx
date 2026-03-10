@@ -62,10 +62,14 @@ interface FooterContext {
     typeof useAtomValue<typeof autoRouterModelInfoByChatIdAtom>
   >;
   todoId: number | null;
+  isTodoCompleted: boolean;
+  onMarkTodoCompleted: () => void;
 }
 
 
 // Footer component for Virtuoso - receives context via props (memoized to skip unnecessary renders)
+// IMPORTANT: This component must NOT use any hooks (useState, useEffect, etc.)
+// because Virtuoso may render it with context=undefined, causing conditional hook calls.
 const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
   if (!context) return null;
 
@@ -74,31 +78,11 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
     messagesEndRef,
     isStreaming,
     tokenCountResult,
-    appId,
-    settings,
-    userBudget,
     renderSetupBanner,
     todoId,
+    isTodoCompleted,
+    onMarkTodoCompleted,
   } = context;
-
-  const [isTodoCompleted, setIsTodoCompleted] = useState(false);
-
-  // Fetch todo completion status
-  React.useEffect(() => {
-    if (todoId) {
-      ipc.todo
-        .getTodosByApp(appId ?? 0)
-        .then((todos) => {
-          const todo = todos.find((t) => t.id === todoId);
-          if (todo) {
-            setIsTodoCompleted(todo.completed);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching todo:", error);
-        });
-    }
-  }, [todoId, appId]);
 
   return (
     <>
@@ -122,20 +106,7 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
                   ? "bg-green-500/20 border-green-500/30 text-white hover:bg-green-500/20"
                   : ""
               }
-              onClick={async () => {
-                if (!todoId) return;
-                try {
-                  await ipc.todo.updateTodo({ todoId, completed: true });
-                  setIsTodoCompleted(true);
-                  // Generate development summary
-                  await ipc.todo.generateTodoSummary(todoId);
-                  showSuccess("Tarea marcada como completada y resumen generado");
-                } catch (error) {
-                  showError(
-                    `Error al marcar tarea: ${(error as Error).message}`,
-                  );
-                }
-              }}
+              onClick={onMarkTodoCompleted}
             >
               <CheckCircle2 size={16} className="mr-1" />
               {isTodoCompleted ? "Completada" : "Marcar como completada"}
@@ -175,6 +146,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
     const { settings } = useSettings();
     const [todoId, setTodoId] = useState<number | null>(null);
+    const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
     const { userBudget } = useUserBudgetInfo();
     const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
@@ -197,6 +169,25 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           });
       }
     }, [selectedChatId]);
+
+    // Fetch todo completion status (moved from FooterComponent to avoid hooks-in-conditional)
+    React.useEffect(() => {
+      if (todoId && appId) {
+        ipc.todo
+          .getTodosByApp(appId)
+          .then((todos) => {
+            const todo = todos.find((t) => t.id === todoId);
+            if (todo) {
+              setIsTodoCompleted(todo.completed);
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching todo:", error);
+          });
+      } else {
+        setIsTodoCompleted(false);
+      }
+    }, [todoId, appId]);
 
     // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
     // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
@@ -298,6 +289,19 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       ],
     );
 
+    // Stable callback for marking todo as completed
+    const handleMarkTodoCompleted = useCallback(async () => {
+      if (!todoId) return;
+      try {
+        await ipc.todo.updateTodo({ todoId, completed: true });
+        setIsTodoCompleted(true);
+        await ipc.todo.generateTodoSummary(todoId);
+        showSuccess("Tarea marcada como completada y resumen generado");
+      } catch (error) {
+        showError(`Error al marcar tarea: ${(error as Error).message}`);
+      }
+    }, [todoId]);
+
     // Create context object for Footer component with stable references
     const footerContext = useMemo<FooterContext>(
       () => ({
@@ -312,6 +316,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         isSelectingModel,
         autoRouterModelInfo,
         todoId,
+        isTodoCompleted,
+        onMarkTodoCompleted: handleMarkTodoCompleted,
       }),
       [
         messages,
@@ -325,37 +331,25 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         autoRouterModelInfo,
         renderSetupBanner,
         todoId,
+        isTodoCompleted,
+        handleMarkTodoCompleted,
       ],
     );
 
-    // Render empty state or setup banner
-    if (messages.length === 0) {
-      const setupBanner = renderSetupBanner();
+    // Render empty state or setup banner as Virtuoso component
+    const EmptyPlaceholder = useCallback(() => {
+      const setupBanner = renderSetupBanner ? renderSetupBanner() : null;
       if (setupBanner) {
-        return (
-          <div
-            className="absolute inset-0 overflow-y-auto p-4"
-            ref={ref}
-            data-testid="messages-list"
-          >
-            {setupBanner}
-          </div>
-        );
+        return <div className="h-full py-4">{setupBanner}</div>;
       }
       return (
-        <div
-          className="absolute inset-0 overflow-y-auto p-4"
-          ref={ref}
-          data-testid="messages-list"
-        >
-          <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
-            <div className="flex flex-1 items-center justify-center text-gray-500">
-              Aún no hay mensajes
-            </div>
+        <div className="flex flex-col items-center justify-center h-full min-h-[50vh] max-w-2xl mx-auto">
+          <div className="flex flex-1 items-center justify-center text-gray-500">
+            Aún no hay mensajes
           </div>
         </div>
       );
-    }
+    }, [renderSetupBanner]);
 
     // In test mode, render all messages without virtualization
     // so E2E tests can query all messages in the DOM
@@ -415,9 +409,10 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
           data={messages}
           firstItemIndex={firstItemIndex}
           increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll
-          initialTopMostItemIndex={messages.length - 1} // Virtuoso only respecting this on first mount
+          initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0} // Virtuoso only respecting this on first mount
           itemContent={itemContent}
           components={{
+            EmptyPlaceholder,
             Footer: FooterComponent,
             ...(hasMoreMessages ? {
               Header: () => (
