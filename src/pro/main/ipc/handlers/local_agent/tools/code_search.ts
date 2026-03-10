@@ -47,7 +47,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
   buildXml: (args, isComplete) => {
     if (!args.query) return undefined;
     if (isComplete) return undefined;
-    return `<dyad-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
+    return `<vibes-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
   },
 
   execute: async (args, ctx: AgentContext) => {
@@ -109,7 +109,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
           : files.map((f) => ` - ${f}`).join("\n");
 
       ctx.onXmlComplete(
-        `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</dyad-code-search>`,
+        `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</vibes-code-search>`,
       );
 
       logger.log(
@@ -126,7 +126,7 @@ export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
       if (error.code === 1) {
         const noResult = "No relevant files found for the given query.";
         ctx.onXmlComplete(
-          `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(noResult)}</dyad-code-search>`,
+          `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(noResult)}</vibes-code-search>`,
         );
         return noResult;
       }

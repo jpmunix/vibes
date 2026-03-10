@@ -88,9 +88,9 @@ export const webCrawlTool: ToolDefinition<z.infer<typeof webCrawlSchema>> = {
   buildXml: (args, isComplete) => {
     if (!args.url) return undefined;
 
-    let xml = `<dyad-web-crawl>${escapeXmlContent(args.url)}`;
+    let xml = `<vibes-web-crawl>${escapeXmlContent(args.url)}`;
     if (isComplete) {
-      xml += "</dyad-web-crawl>";
+      xml += "</vibes-web-crawl>";
     }
     return xml;
   },

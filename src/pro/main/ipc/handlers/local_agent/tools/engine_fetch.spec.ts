@@ -15,7 +15,7 @@ vi.mock("@/main/settings", () => ({
       },
       auto: {
         apiKey: {
-          value: "dyad-api-key",
+          value: "vibes-api-key",
         },
       },
     },

@@ -152,7 +152,7 @@ The process runs in background until stopped with stop_process. Use list_process
         if (!args.cmd) return undefined;
         const cmdStr = [args.cmd, ...(args.args ?? [])].join(" ");
         if (isComplete) return undefined;
-        return `<dyad-start-process cmd="${escapeXmlAttr(cmdStr)}">Iniciando...</dyad-start-process>`;
+        return `<vibes-start-process cmd="${escapeXmlAttr(cmdStr)}">Iniciando...</vibes-start-process>`;
     },
 
     execute: async (args, ctx: AgentContext) => {
@@ -211,7 +211,7 @@ The process runs in background until stopped with stop_process. Use list_process
             : "";
 
         ctx.onXmlComplete(
-            `<dyad-start-process cmd="${escapeXmlAttr(cmdStr)}" process-id="${proc.id}" status="${readyStatus}">\n${escapeXmlContent(result + (logsText ? `\n\n${logsText}` : ""))}\n</dyad-start-process>`,
+            `<vibes-start-process cmd="${escapeXmlAttr(cmdStr)}" process-id="${proc.id}" status="${readyStatus}">\n${escapeXmlContent(result + (logsText ? `\n\n${logsText}` : ""))}\n</vibes-start-process>`,
         );
 
         return result + (logsText ? `\n\nInitial logs:\n${logsText}` : "");
@@ -250,7 +250,7 @@ export const stopProcessTool: ToolDefinition<
     buildXml: (args, isComplete) => {
         if (!args.process_id) return undefined;
         if (isComplete) return undefined;
-        return `<dyad-stop-process process-id="${escapeXmlAttr(args.process_id)}">Deteniendo...</dyad-stop-process>`;
+        return `<vibes-stop-process process-id="${escapeXmlAttr(args.process_id)}">Deteniendo...</vibes-stop-process>`;
     },
 
     execute: async (args, ctx: AgentContext) => {
@@ -270,7 +270,7 @@ export const stopProcessTool: ToolDefinition<
             : `Process ${args.process_id} was already stopped.`;
 
         ctx.onXmlComplete(
-            `<dyad-stop-process process-id="${escapeXmlAttr(args.process_id)}" status="stopped">${escapeXmlContent(result)}</dyad-stop-process>`,
+            `<vibes-stop-process process-id="${escapeXmlAttr(args.process_id)}" status="stopped">${escapeXmlContent(result)}</vibes-stop-process>`,
         );
 
         return result;
@@ -298,7 +298,7 @@ export const listProcessesTool: ToolDefinition<
 
     buildXml: (_args, isComplete) => {
         if (isComplete) return undefined;
-        return `<dyad-list-processes>Listando...</dyad-list-processes>`;
+        return `<vibes-list-processes>Listando...</vibes-list-processes>`;
     },
 
     execute: async (_args, ctx: AgentContext) => {
@@ -308,7 +308,7 @@ export const listProcessesTool: ToolDefinition<
         if (processes.length === 0) {
             const result = "No background processes running.";
             ctx.onXmlComplete(
-                `<dyad-list-processes count="0">${escapeXmlContent(result)}</dyad-list-processes>`,
+                `<vibes-list-processes count="0">${escapeXmlContent(result)}</vibes-list-processes>`,
             );
             return result;
         }
@@ -321,7 +321,7 @@ export const listProcessesTool: ToolDefinition<
 
         const result = lines.join("\n");
         ctx.onXmlComplete(
-            `<dyad-list-processes count="${processes.length}">\n${escapeXmlContent(result)}\n</dyad-list-processes>`,
+            `<vibes-list-processes count="${processes.length}">\n${escapeXmlContent(result)}\n</vibes-list-processes>`,
         );
 
         return result;

@@ -29,7 +29,7 @@ export const getSupabaseProjectInfoTool: ToolDefinition<
     }
 
     ctx.onXmlStream(
-      "<dyad-supabase-project-info></dyad-supabase-project-info>",
+      "<vibes-supabase-project-info></vibes-supabase-project-info>",
     );
 
     const info = await getSupabaseProjectInfo({
@@ -39,7 +39,7 @@ export const getSupabaseProjectInfoTool: ToolDefinition<
     });
 
     ctx.onXmlComplete(
-      `<dyad-supabase-project-info>\n${escapeXmlContent(info)}\n</dyad-supabase-project-info>`,
+      `<vibes-supabase-project-info>\n${escapeXmlContent(info)}\n</vibes-supabase-project-info>`,
     );
 
     return info;

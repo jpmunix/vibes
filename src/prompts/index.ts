@@ -227,7 +227,7 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   build_system_prefix:
     "Define la personalidad y el rol básico de Vibes en modo construcción.",
   build_system_postfix:
-    "Reglas críticas sobre el formato de salida y etiquetas <dyad-write>.",
+    "Reglas críticas sobre el formato de salida y etiquetas <vibes-write>.",
   summarize_chat_system:
     "Instrucciones para generar el resumen técnico de la conversación.",
   agent_mode_system:

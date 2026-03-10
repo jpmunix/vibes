@@ -68,7 +68,7 @@ export const DyadPatch: React.FC<DyadPatchProps> = ({
 
     return (
         <div
-            data-testid="dyad-patch"
+            data-testid="vibes-patch"
             className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${inProgress
                 ? "border-teal-500"
                 : aborted

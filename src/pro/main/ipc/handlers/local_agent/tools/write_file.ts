@@ -43,9 +43,9 @@ export const writeFileTool: ToolDefinition<z.infer<typeof writeFileSchema>> = {
       }
     }
 
-    let xml = `<dyad-write path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
+    let xml = `<vibes-write path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
-      xml += "\n</dyad-write>";
+      xml += "\n</vibes-write>";
     }
     return xml;
   },

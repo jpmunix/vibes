@@ -345,9 +345,9 @@ Use descriptive commit messages following conventional commit format (e.g. "feat
         // When streaming (not complete), emit an unclosed tag so the frontend
         // detects it as "in-progress" and shows the animated streaming label.
         if (!isComplete) {
-            return `<dyad-git ${attrs.join(" ")}>`;
+            return `<vibes-git ${attrs.join(" ")}>`;
         }
-        return `<dyad-git ${attrs.join(" ")}></dyad-git>`;
+        return `<vibes-git ${attrs.join(" ")}></vibes-git>`;
     },
 
     execute: async (args, ctx: AgentContext): Promise<ToolResult> => {

@@ -71,7 +71,7 @@ export const DyadGrep: React.FC<DyadGrepProps> = ({ children, node }) => {
 
   return (
     <div
-      data-testid="dyad-grep"
+      data-testid="vibes-grep"
       className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${borderClass}`}
       onClick={() => setIsContentVisible(!isContentVisible)}
     >

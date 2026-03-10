@@ -218,7 +218,7 @@ export function NaturalEditingPanel({
             if (iframeRefObj.current?.contentWindow) {
                 iframeRefObj.current.contentWindow.postMessage(
                     {
-                        type: "remove-dyad-component-overlay",
+                        type: "remove-vibes-component-overlay",
                         componentId: selectedComponent.id,
                     },
                     "*",
@@ -237,7 +237,7 @@ export function NaturalEditingPanel({
 
             iframeRefObj.current.contentWindow.postMessage(
                 {
-                    type: "modify-dyad-component-styles",
+                    type: "modify-vibes-component-styles",
                     data: {
                         elementId: selectedComponent.id,
                         runtimeId: selectedComponent.runtimeId,
@@ -248,7 +248,7 @@ export function NaturalEditingPanel({
             );
 
             iframeRefObj.current.contentWindow.postMessage(
-                { type: "update-dyad-overlay-positions" },
+                { type: "update-vibes-overlay-positions" },
                 "*",
             );
 
@@ -307,7 +307,7 @@ export function NaturalEditingPanel({
 
         iframeRefObj.current.contentWindow.postMessage(
             {
-                type: "get-dyad-component-styles",
+                type: "get-vibes-component-styles",
                 data: {
                     elementId: selectedComponent.id,
                     runtimeId: selectedComponent.runtimeId,
@@ -325,7 +325,7 @@ export function NaturalEditingPanel({
 
         iframeRefObj.current.contentWindow.postMessage(
             {
-                type: "get-dyad-text-content",
+                type: "get-vibes-text-content",
                 data: {
                     componentId: selectedComponent.id,
                     runtimeId: selectedComponent.runtimeId,
@@ -338,7 +338,7 @@ export function NaturalEditingPanel({
     // Listen for style responses from iframe
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            if (event.data?.type === "dyad-component-styles") {
+            if (event.data?.type === "vibes-component-styles") {
                 const {
                     margin,
                     padding,
@@ -389,7 +389,7 @@ export function NaturalEditingPanel({
     // Listen for text content response from iframe (for dynamic text elements)
     useEffect(() => {
         const handleTextResponse = (event: MessageEvent) => {
-            if (event.data?.type === "dyad-text-content-response") {
+            if (event.data?.type === "vibes-text-content-response") {
                 const { text } = event.data;
                 if (text && !componentTextContent) {
                     setCurrentTextContent(text.trim());
@@ -516,7 +516,7 @@ export function NaturalEditingPanel({
         if (!selectedComponent || !iframeRefObj.current?.contentWindow) return;
         iframeRefObj.current.contentWindow.postMessage(
             {
-                type: "preview-dyad-text-content",
+                type: "preview-vibes-text-content",
                 data: {
                     componentId: selectedComponent.id,
                     runtimeId: selectedComponent.runtimeId,
@@ -969,7 +969,7 @@ export function NaturalEditingPanel({
                     // Refresh the iframe to show changes
                     if (iframeRefObj.current?.contentWindow) {
                         iframeRefObj.current.contentWindow.postMessage(
-                            { type: "update-dyad-overlay-positions" },
+                            { type: "update-vibes-overlay-positions" },
                             "*",
                         );
                     }
@@ -1053,7 +1053,7 @@ function QuickEditChat({
                 if (result.change.textContent !== undefined) {
                     window.postMessage(
                         {
-                            type: "preview-dyad-text-content",
+                            type: "preview-vibes-text-content",
                             data: {
                                 componentId: selectedComponent.id,
                                 runtimeId: selectedComponent.runtimeId,

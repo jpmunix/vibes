@@ -33,7 +33,7 @@ export function DyadListFiles({ node, children }: DyadListFilesProps) {
 
   return (
     <div
-      data-testid="dyad-list-files"
+      data-testid="vibes-list-files"
       className="my-2 border rounded-md overflow-hidden"
     >
       <button

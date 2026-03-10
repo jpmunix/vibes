@@ -387,7 +387,7 @@ function listenToProcess({
           proxyUrlByApp.set(appId, { proxyUrl, originalUrl: targetUrl });
           safeSend(event.sender, "app:output", {
             type: "stdout",
-            message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${targetUrl}]`,
+            message: `[vibes-proxy-server]started=[${proxyUrl}] original=[${targetUrl}]`,
             appId,
           });
         },
@@ -395,7 +395,7 @@ function listenToProcess({
           logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
           safeSend(event.sender, "app:output", {
             type: "stdout",
-            message: `[dyad-proxy-server]upstream-recovered`,
+            message: `[vibes-proxy-server]upstream-recovered`,
             appId,
           });
         },
@@ -625,7 +625,7 @@ async function executeAppInDocker({
   installCommand?: string | null;
   startCommand?: string | null;
 }): Promise<void> {
-  const containerName = `dyad-app-${appId}`;
+  const containerName = `vibes-app-${appId}`;
 
   // First, check if Docker is available
   try {
@@ -670,7 +670,7 @@ async function executeAppInDocker({
   }
 
   // Create a Dockerfile in the app directory if it doesn't exist
-  const dockerfilePath = path.join(appPath, "Dockerfile.dyad");
+  const dockerfilePath = path.join(appPath, "Dockerfile.vibes");
   if (!fs.existsSync(dockerfilePath)) {
     const dockerfileContent = `FROM node:22-alpine
 `;
@@ -686,7 +686,7 @@ async function executeAppInDocker({
   // Build the Docker image
   const buildProcess = spawn(
     "docker",
-    ["build", "-f", "Dockerfile.dyad", "-t", `dyad-app-${appId}`, "."],
+    ["build", "-f", "Dockerfile.vibes", "-t", `vibes-app-${appId}`, "."],
     {
       cwd: appPath,
       stdio: "pipe",
@@ -725,10 +725,10 @@ async function executeAppInDocker({
       "-v",
       `${appPath}:/app`,
       "-v",
-      `dyad-npm-${appId}:/root/.npm`,
+      `vibes-npm-${appId}:/root/.npm`,
       "-w",
       "/app",
-      `dyad-app-${appId}`,
+      `vibes-app-${appId}`,
       "sh",
       "-c",
       getCommand({ appId, installCommand, startCommand }),
@@ -1275,7 +1275,7 @@ export function registerAppHandlers() {
         if (storedProxy) {
           safeSend(event.sender, "app:output", {
             type: "stdout",
-            message: `[dyad-proxy-server]started=[${storedProxy.proxyUrl}] original=[${storedProxy.originalUrl}]`,
+            message: `[vibes-proxy-server]started=[${storedProxy.proxyUrl}] original=[${storedProxy.originalUrl}]`,
             appId,
           });
         }
@@ -1428,12 +1428,12 @@ export function registerAppHandlers() {
           // If running in Docker mode, also remove container volumes so deps reinstall freshly
           if (runtimeMode === "docker") {
             logger.log(
-              `Docker mode detected for app ${appId}. Removing Docker volumes dyad-pnpm-${appId}...`,
+              `Docker mode detected for app ${appId}. Removing Docker volumes vibes-pnpm-${appId}...`,
             );
             try {
               await removeDockerVolumesForApp(appId);
               logger.log(
-                `Removed Docker volumes for app ${appId} (dyad-pnpm-${appId}).`,
+                `Removed Docker volumes for app ${appId} (vibes-pnpm-${appId}).`,
               );
             } catch (e) {
               // Best-effort cleanup; log and continue

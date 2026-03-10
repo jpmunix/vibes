@@ -167,7 +167,7 @@ export const ROADMAP_TIP: MessageConfig = {
   ],
 };
 
-// Like Dyad? Star it on GitHub https://github.com/dyad-sh/dyad/
+// Like Dyad? Star it on GitHub https://github.com/<vibes-sh/dyad/
 export const GITHUB_TIP: MessageConfig = {
   spans: [
     {
@@ -177,7 +177,7 @@ export const GITHUB_TIP: MessageConfig = {
     {
       type: "link",
       content: "GitHub",
-      url: "https://github.com/dyad-sh/dyad",
+      url: "https://github.com/<vibes-sh/dyad",
     },
   ],
 };

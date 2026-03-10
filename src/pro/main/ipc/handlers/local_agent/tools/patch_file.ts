@@ -165,7 +165,7 @@ EXAMPLE — Replace lines 10-12 with new code:
             })
             .join(", ");
 
-        let xml = `<dyad-patch path="${escapeXmlAttr(args.file_path)}"${retryAttr} lines="${escapeXmlAttr(opsPreview)}" description="">`;
+        let xml = `<vibes-patch path="${escapeXmlAttr(args.file_path)}"${retryAttr} lines="${escapeXmlAttr(opsPreview)}" description="">`;
 
         if (isComplete && ops.length > 0) {
             // Include the operations content for the UI
@@ -179,7 +179,7 @@ EXAMPLE — Replace lines 10-12 with new code:
         }
 
         if (isComplete) {
-            xml += "\n</dyad-patch>";
+            xml += "\n</vibes-patch>";
         }
 
         return xml;

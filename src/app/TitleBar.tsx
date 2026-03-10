@@ -41,7 +41,7 @@ export const TitleBar = () => {
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
   useEffect(() => {
     const handleDeepLink = async () => {
-      if (lastDeepLink?.type === "dyad-pro-return") {
+      if (lastDeepLink?.type === "vibes-pro-return") {
         await refreshSettings();
         clearLastDeepLink();
       }

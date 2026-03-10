@@ -138,7 +138,7 @@ IMPORTANT RULES:
         }
 
         if (!isComplete) {
-            return `<dyad-ask-user ${attrs.join(" ")}>`;
+            return `<vibes-ask-user ${attrs.join(" ")}>`;
         }
         // Return undefined on isComplete — keep the tag OPEN (pending).
         // The closing tag is emitted by execute() after the user responds.
@@ -172,7 +172,7 @@ IMPORTANT RULES:
             const response = await waitForAskUserResponse(requestId, ctx.chatId);
 
             // Now emit the closing tag (the tag was open the whole time)
-            ctx.onXmlComplete(`<dyad-ask-user ${closeAttrs.join(" ")}>${escapeXmlAttr(response)}</dyad-ask-user>`);
+            ctx.onXmlComplete(`<vibes-ask-user ${closeAttrs.join(" ")}>${escapeXmlAttr(response)}</vibes-ask-user>`);
 
             if (!response) {
                 throw new ToolError("The user did not provide a response (stream was cancelled).", {

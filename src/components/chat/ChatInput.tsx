@@ -288,7 +288,7 @@ export function ChatInput({
     // Clear overlays in the preview iframe
     if (previewIframeRef?.contentWindow) {
       previewIframeRef.contentWindow.postMessage(
-        { type: "clear-dyad-component-overlays" },
+        { type: "clear-vibes-component-overlays" },
         "*",
       );
     }
@@ -480,7 +480,7 @@ export function ChatInput({
                   refreshAppIframe();
                   if (previewIframeRef?.contentWindow) {
                     previewIframeRef.contentWindow.postMessage(
-                      { type: "deactivate-dyad-component-selector" },
+                      { type: "deactivate-vibes-component-selector" },
                       "*",
                     );
                   }
@@ -758,7 +758,7 @@ function WriteCodeProperlyButton() {
       return;
     }
     streamMessage({
-      prompt: `¡Escribe el código del mensaje anterior en el formato correcto usando etiquetas \`<dyad-write>\`!`,
+      prompt: `¡Escribe el código del mensaje anterior en el formato correcto usando etiquetas \`<vibes-write>\`!`,
       chatId,
       redo: false,
     });

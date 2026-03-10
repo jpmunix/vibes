@@ -24,7 +24,7 @@ export const addIntegrationTool: ToolDefinition<
 
   buildXml: (args, _isComplete) => {
     if (!args.provider) return undefined;
-    return `<dyad-add-integration provider="${escapeXmlAttr(args.provider)}"></dyad-add-integration>`;
+    return `<vibes-add-integration provider="${escapeXmlAttr(args.provider)}"></vibes-add-integration>`;
   },
 
   execute: async (args) => {

@@ -69,7 +69,7 @@ export async function getMcpTools(
                             const { serverName, toolName } = parseMcpToolKey(key);
                             const content = JSON.stringify(args, null, 2);
                             ctx.onXmlComplete(
-                                `<dyad-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</dyad-mcp-tool-call>`,
+                                `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>`,
                             );
 
                             const res = await mcpTool.execute(args, execCtx);
@@ -77,7 +77,7 @@ export async function getMcpTools(
                                 typeof res === "string" ? res : JSON.stringify(res);
 
                             ctx.onXmlComplete(
-                                `<dyad-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</dyad-mcp-tool-result>`,
+                                `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</vibes-mcp-tool-result>`,
                             );
 
                             return resultStr;
@@ -87,7 +87,7 @@ export async function getMcpTools(
                             const errorStack =
                                 error instanceof Error && error.stack ? error.stack : "";
                             ctx.onXmlComplete(
-                                `<dyad-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</dyad-output>`,
+                                `<vibes-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</vibes-output>`,
                             );
                             throw error;
                         }

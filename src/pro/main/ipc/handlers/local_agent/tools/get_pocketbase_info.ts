@@ -20,7 +20,7 @@ export const getPocketbaseInfoTool: ToolDefinition<
             throw new Error("PocketBase is not configured for this app");
         }
 
-        ctx.onXmlStream(`<dyad-pocketbase-info></dyad-pocketbase-info>`);
+        ctx.onXmlStream(`<vibes-pocketbase-info></vibes-pocketbase-info>`);
 
         let PocketBase: any;
         try {
@@ -28,7 +28,7 @@ export const getPocketbaseInfoTool: ToolDefinition<
         } catch {
             const result = `pocketbase is not installed in the main process. Configuration:\n- URL: ${ctx.pocketbaseConfig.url}\n- Admin Email: ${ctx.pocketbaseConfig.adminEmail}\n\nTo interact with PocketBase, the user's app should use the 'pocketbase' npm package.`;
             ctx.onXmlComplete(
-                `<dyad-pocketbase-info>\n${escapeXmlContent(result)}\n</dyad-pocketbase-info>`
+                `<vibes-pocketbase-info>\n${escapeXmlContent(result)}\n</vibes-pocketbase-info>`
             );
             return result;
         }
@@ -59,7 +59,7 @@ export const getPocketbaseInfoTool: ToolDefinition<
         }
 
         ctx.onXmlComplete(
-            `<dyad-pocketbase-info>\n${escapeXmlContent(result)}\n</dyad-pocketbase-info>`
+            `<vibes-pocketbase-info>\n${escapeXmlContent(result)}\n</vibes-pocketbase-info>`
         );
 
         return result;

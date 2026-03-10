@@ -479,8 +479,8 @@ export function registerChatHandlers() {
           .map((msg) => {
             // Strip dyad tags for the summary to focus on the intent/result
             const cleanContent = msg.content
-              .replace(/<dyad-think>[\s\S]*?<\/dyad-think>/g, "")
-              .replace(/<dyad-[a-z-]+[\s\S]*?>[\s\S]*?<\/dyad-[a-z-]+>/g, "")
+              .replace(/<vibes-think>[\s\S]*?<\/vibes-think>/g, "")
+              .replace(/<vibes-[a-z-]+[\s\S]*?>[\s\S]*?<\/<vibes-[a-z-]+>/g, "")
               .trim();
             return cleanContent ? `${msg.role}: ${cleanContent}` : "";
           })

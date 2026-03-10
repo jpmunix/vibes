@@ -46,7 +46,7 @@ export function getProviderOptions({
     : extraOptions;
 
   const providerOptions: Record<string, any> = {
-    "dyad-engine": {
+    "vibes-engine": {
       dyadAppId,
       dyadRequestId,
       dyadDisableFiles,
@@ -58,7 +58,7 @@ export function getProviderOptions({
         files,
       })),
     },
-    "dyad-gateway": routerOptions,
+    "vibes-gateway": routerOptions,
     openrouter: routerOptions,
     openai: {
       reasoningSummary: "auto",

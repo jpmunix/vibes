@@ -72,7 +72,7 @@ function sanitizeKeywords(keywords: string): string {
 }
 
 // Directory for storing temporary theme images
-const THEME_IMAGES_TEMP_DIR = path.join(os.tmpdir(), "dyad-theme-images");
+const THEME_IMAGES_TEMP_DIR = path.join(os.tmpdir(), "vibes-theme-images");
 
 // Ensure temp directory exists
 if (!fs.existsSync(THEME_IMAGES_TEMP_DIR)) {
@@ -680,7 +680,7 @@ images: ${imagesPart}`;
           messages: [{ role: "user", content: contentParts }],
           providerOptions: {
             openrouter: { service_tier: "batch" },
-            "dyad-gateway": { service_tier: "batch" },
+            "vibes-gateway": { service_tier: "batch" },
           },
         });
 

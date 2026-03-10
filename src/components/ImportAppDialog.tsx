@@ -419,7 +419,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="copy-to-dyad-apps"
+                        id="copy-to-vibes-apps"
                         checked={copyToDyadApps}
                         onCheckedChange={(checked) =>
                           setCopyToDyadApps(checked === true)
@@ -427,12 +427,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                         disabled={importAppMutation.isPending}
                       />
                       <label
-                        htmlFor="copy-to-dyad-apps"
+                        htmlFor="copy-to-vibes-apps"
                         className="text-xs sm:text-sm cursor-pointer"
                       >
                         Copiar a la carpeta{" "}
                         <code className="bg-muted px-1 py-0.5 rounded text-xs">
-                          dyad-apps
+                          vibes-apps
                         </code>{" "}
                       </label>
                     </div>

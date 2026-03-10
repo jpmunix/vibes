@@ -159,9 +159,9 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
       }
     }
 
-    let xml = `<dyad-edit path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
+    let xml = `<vibes-edit path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
-      xml += "\n</dyad-edit>";
+      xml += "\n</vibes-edit>";
     }
     return xml;
   },

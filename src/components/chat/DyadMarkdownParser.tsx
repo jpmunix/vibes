@@ -46,51 +46,51 @@ import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type T
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
 
 const DYAD_CUSTOM_TAGS = [
-  "dyad-write",
-  "dyad-rename",
-  "dyad-delete",
-  "dyad-add-dependency",
-  "dyad-execute-sql",
-  "dyad-read-logs",
-  "dyad-add-integration",
-  "dyad-output",
-  "dyad-problem-report",
-  "dyad-chat-summary",
+  "vibes-write",
+  "vibes-rename",
+  "vibes-delete",
+  "vibes-add-dependency",
+  "vibes-execute-sql",
+  "vibes-read-logs",
+  "vibes-add-integration",
+  "vibes-output",
+  "vibes-problem-report",
+  "vibes-chat-summary",
   "set_chat_summary",
-  "dyad-edit",
-  "dyad-grep",
-  "dyad-search-replace",
-  "dyad-codebase-context",
+  "vibes-edit",
+  "vibes-grep",
+  "vibes-search-replace",
+  "vibes-codebase-context",
 
-  "dyad-web-crawl",
-  "dyad-code-search-result",
-  "dyad-code-search",
-  "dyad-read",
+  "vibes-web-crawl",
+  "vibes-code-search-result",
+  "vibes-code-search",
+  "vibes-read",
   "think",
   "thought",
-  "dyad-command",
-  "dyad-mcp-tool-call",
-  "dyad-mcp-tool-result",
-  "dyad-list-files",
-  "dyad-database-schema",
-  "dyad-supabase-table-schema",
-  "dyad-supabase-project-info",
-  "dyad-pocketbase-info",
-  "dyad-pocketbase-storage-info",
-  "dyad-bunny-db-info",
-  "dyad-bunny-storage-info",
-  "dyad-status",
-  "dyad-think",
-  "dyad-git",
-  "dyad-ask-user",
-  "dyad-patch",
-  "dyad-run-command",
-  "dyad-start-process",
-  "dyad-stop-process",
-  "dyad-list-processes",
-  "dyad-wait-http",
-  "dyad-typecheck-summary",
-  "dyad-token-usage",
+  "vibes-command",
+  "vibes-mcp-tool-call",
+  "vibes-mcp-tool-result",
+  "vibes-list-files",
+  "vibes-database-schema",
+  "vibes-supabase-table-schema",
+  "vibes-supabase-project-info",
+  "vibes-pocketbase-info",
+  "vibes-pocketbase-storage-info",
+  "vibes-bunny-db-info",
+  "vibes-bunny-storage-info",
+  "vibes-status",
+  "vibes-think",
+  "vibes-git",
+  "vibes-ask-user",
+  "vibes-patch",
+  "vibes-run-command",
+  "vibes-start-process",
+  "vibes-stop-process",
+  "vibes-list-processes",
+  "vibes-wait-http",
+  "vibes-typecheck-summary",
+  "vibes-token-usage",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -185,7 +185,7 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
     contentPieces.forEach((piece, index) => {
       if (
         piece.type === "custom-tag" &&
-        piece.tagInfo.tag === "dyad-output" &&
+        piece.tagInfo.tag === "vibes-output" &&
         piece.tagInfo.attributes.type === "error"
       ) {
         const errorMessage = piece.tagInfo.attributes.message;
@@ -213,8 +213,8 @@ export const DyadMarkdownParser = React.memo(function DyadMarkdownParser({
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0) {
         // Separate token-usage badges so they are always visible (never grouped/collapsed)
-        const alwaysVisibleBadges = badgeGroup.filter(b => b.tag === "dyad-token-usage");
-        const groupableBadges = badgeGroup.filter(b => b.tag !== "dyad-token-usage");
+        const alwaysVisibleBadges = badgeGroup.filter(b => b.tag === "vibes-token-usage");
+        const groupableBadges = badgeGroup.filter(b => b.tag !== "vibes-token-usage");
 
         const currentGroupIndex = groupIndex;
         groupIndex++;
@@ -488,7 +488,7 @@ function renderCustomTag(
   const { tag, attributes, content, inProgress } = tagInfo;
 
   switch (tag) {
-    case "dyad-read":
+    case "vibes-read":
       return (
         <DyadRead
           node={{
@@ -501,7 +501,7 @@ function renderCustomTag(
         </DyadRead>
       );
 
-    case "dyad-web-crawl":
+    case "vibes-web-crawl":
       return (
         <DyadWebCrawl
           node={{
@@ -511,7 +511,7 @@ function renderCustomTag(
           {content}
         </DyadWebCrawl>
       );
-    case "dyad-code-search":
+    case "vibes-code-search":
       return (
         <DyadCodeSearch
           node={{
@@ -524,7 +524,7 @@ function renderCustomTag(
           {content}
         </DyadCodeSearch>
       );
-    case "dyad-code-search-result":
+    case "vibes-code-search-result":
       return (
         <DyadCodeSearchResult
           node={{
@@ -537,7 +537,7 @@ function renderCustomTag(
 
     case "think":
     case "thought":
-    case "dyad-think":
+    case "vibes-think":
       return (
         <DyadThink
           node={{
@@ -549,7 +549,7 @@ function renderCustomTag(
           {content}
         </DyadThink>
       );
-    case "dyad-write":
+    case "vibes-write":
       return (
         <DyadWrite
           node={{
@@ -565,7 +565,7 @@ function renderCustomTag(
         </DyadWrite>
       );
 
-    case "dyad-rename":
+    case "vibes-rename":
       return (
         <DyadRename
           node={{
@@ -579,7 +579,7 @@ function renderCustomTag(
         </DyadRename>
       );
 
-    case "dyad-delete":
+    case "vibes-delete":
       return (
         <DyadDelete
           node={{
@@ -592,7 +592,7 @@ function renderCustomTag(
         </DyadDelete>
       );
 
-    case "dyad-add-dependency":
+    case "vibes-add-dependency":
       return (
         <DyadAddDependency
           node={{
@@ -605,7 +605,7 @@ function renderCustomTag(
         </DyadAddDependency>
       );
 
-    case "dyad-execute-sql":
+    case "vibes-execute-sql":
       return (
         <DyadExecuteSql
           node={{
@@ -619,7 +619,7 @@ function renderCustomTag(
         </DyadExecuteSql>
       );
 
-    case "dyad-read-logs":
+    case "vibes-read-logs":
       return (
         <DyadLogs
           node={{
@@ -636,7 +636,7 @@ function renderCustomTag(
         </DyadLogs>
       );
 
-    case "dyad-grep":
+    case "vibes-grep":
       return (
         <DyadGrep
           node={{
@@ -654,7 +654,7 @@ function renderCustomTag(
         </DyadGrep>
       );
 
-    case "dyad-add-integration":
+    case "vibes-add-integration":
       return (
         <DyadAddIntegration
           node={{
@@ -667,7 +667,7 @@ function renderCustomTag(
         </DyadAddIntegration>
       );
 
-    case "dyad-edit":
+    case "vibes-edit":
       return (
         <DyadEdit
           node={{
@@ -683,7 +683,7 @@ function renderCustomTag(
         </DyadEdit>
       );
 
-    case "dyad-search-replace":
+    case "vibes-search-replace":
       return (
         <DyadSearchReplace
           node={{
@@ -699,7 +699,7 @@ function renderCustomTag(
         </DyadSearchReplace>
       );
 
-    case "dyad-patch":
+    case "vibes-patch":
       return (
         <DyadPatch
           node={{
@@ -716,7 +716,7 @@ function renderCustomTag(
         </DyadPatch>
       );
 
-    case "dyad-codebase-context":
+    case "vibes-codebase-context":
       return (
         <DyadCodebaseContext
           node={{
@@ -730,7 +730,7 @@ function renderCustomTag(
         </DyadCodebaseContext>
       );
 
-    case "dyad-mcp-tool-call":
+    case "vibes-mcp-tool-call":
       return (
         <DyadMcpToolCall
           node={{
@@ -744,7 +744,7 @@ function renderCustomTag(
         </DyadMcpToolCall>
       );
 
-    case "dyad-mcp-tool-result":
+    case "vibes-mcp-tool-result":
       return (
         <DyadMcpToolResult
           node={{
@@ -758,7 +758,7 @@ function renderCustomTag(
         </DyadMcpToolResult>
       );
 
-    case "dyad-output":
+    case "vibes-output":
       return (
         <DyadOutput
           type={attributes.type as "warning" | "error" | "success" | "info"}
@@ -768,23 +768,23 @@ function renderCustomTag(
         </DyadOutput>
       );
 
-    case "dyad-problem-report":
+    case "vibes-problem-report":
       return (
         <DyadProblemSummary summary={attributes.summary}>
           {content}
         </DyadProblemSummary>
       );
 
-    case "dyad-chat-summary":
+    case "vibes-chat-summary":
     case "set_chat_summary":
       // Don't render anything for chat summary tags
       return null;
 
-    case "dyad-command":
+    case "vibes-command":
       // Botones de "Actualizar vista" y "Reiniciar app" eliminados a petición del usuario
       return null;
 
-    case "dyad-list-files":
+    case "vibes-list-files":
       return (
         <DyadListFiles
           node={{
@@ -799,7 +799,7 @@ function renderCustomTag(
         </DyadListFiles>
       );
 
-    case "dyad-database-schema":
+    case "vibes-database-schema":
       return (
         <DyadDatabaseSchema
           node={{
@@ -812,7 +812,7 @@ function renderCustomTag(
         </DyadDatabaseSchema>
       );
 
-    case "dyad-supabase-table-schema":
+    case "vibes-supabase-table-schema":
       return (
         <DyadSupabaseTableSchema
           node={{
@@ -826,7 +826,7 @@ function renderCustomTag(
         </DyadSupabaseTableSchema>
       );
 
-    case "dyad-supabase-project-info":
+    case "vibes-supabase-project-info":
       return (
         <DyadSupabaseProjectInfo
           node={{
@@ -839,7 +839,7 @@ function renderCustomTag(
         </DyadSupabaseProjectInfo>
       );
 
-    case "dyad-bunny-db-info":
+    case "vibes-bunny-db-info":
       return (
         <DyadSupabaseProjectInfo
           node={{
@@ -852,7 +852,7 @@ function renderCustomTag(
         </DyadSupabaseProjectInfo>
       );
 
-    case "dyad-bunny-storage-info":
+    case "vibes-bunny-storage-info":
       return (
         <DyadSupabaseProjectInfo
           node={{
@@ -865,7 +865,7 @@ function renderCustomTag(
         </DyadSupabaseProjectInfo>
       );
 
-    case "dyad-status":
+    case "vibes-status":
       return (
         <DyadStatus
           node={{
@@ -879,7 +879,7 @@ function renderCustomTag(
         </DyadStatus>
       );
 
-    case "dyad-git":
+    case "vibes-git":
       return (
         <DyadGit
           node={{
@@ -901,7 +901,7 @@ function renderCustomTag(
         </DyadGit>
       );
 
-    case "dyad-ask-user":
+    case "vibes-ask-user":
       return (
         <DyadAskUser
           node={{
@@ -919,11 +919,11 @@ function renderCustomTag(
       );
 
     // === Process/command tools (Phase 1) ===
-    case "dyad-run-command":
-    case "dyad-start-process":
-    case "dyad-stop-process":
-    case "dyad-list-processes":
-    case "dyad-wait-http": {
+    case "vibes-run-command":
+    case "vibes-start-process":
+    case "vibes-stop-process":
+    case "vibes-list-processes":
+    case "vibes-wait-http": {
       const cmd = attributes.cmd || "";
       const url = attributes.url || "";
       const processId = attributes["process-id"] || "";
@@ -960,7 +960,7 @@ function renderCustomTag(
       );
     }
 
-    case "dyad-typecheck-summary":
+    case "vibes-typecheck-summary":
       return (
         <DyadTypecheckSummary
           node={{
@@ -973,9 +973,9 @@ function renderCustomTag(
         </DyadTypecheckSummary>
       );
 
-    case "dyad-token-usage":
-    case "dyad-pocketbase-info":
-    case "dyad-pocketbase-storage-info":
+    case "vibes-token-usage":
+    case "vibes-pocketbase-info":
+    case "vibes-pocketbase-storage-info":
       // Rendered primarily as compact badge + modal
       return null;
 
@@ -1000,14 +1000,14 @@ function renderModalContent(
     // === Think: already renders clean content, reuse existing ===
     case "think":
     case "thought":
-    case "dyad-think":
+    case "vibes-think":
       return renderCustomTag(tagInfo, { isStreaming });
 
     // === File operations: path + description + code ===
-    case "dyad-write":
-    case "dyad-edit":
-    case "dyad-search-replace":
-    case "dyad-patch": {
+    case "vibes-write":
+    case "vibes-edit":
+    case "vibes-search-replace":
+    case "vibes-patch": {
       const path = attributes.path || "";
       const description = attributes.description || "";
       const retryCount = attributes["retry-count"] || "";
@@ -1036,7 +1036,7 @@ function renderModalContent(
     }
 
     // === Read file ===
-    case "dyad-read": {
+    case "vibes-read": {
       const path = attributes.path || "";
       const startLine = attributes.start_line;
       const endLine = attributes.end_line;
@@ -1061,7 +1061,7 @@ function renderModalContent(
     }
 
     // === Delete file ===
-    case "dyad-delete": {
+    case "vibes-delete": {
       const path = attributes.path || "";
       return (
         <div className="space-y-2">
@@ -1076,7 +1076,7 @@ function renderModalContent(
     }
 
     // === Rename file ===
-    case "dyad-rename": {
+    case "vibes-rename": {
       const from = attributes.from || "";
       const to = attributes.to || "";
       return (
@@ -1097,7 +1097,7 @@ function renderModalContent(
     }
 
     // === Grep ===
-    case "dyad-grep": {
+    case "vibes-grep": {
       const query = attributes.query || "";
       const includePattern = attributes.include || "";
       const excludePattern = attributes.exclude || "";
@@ -1123,7 +1123,7 @@ function renderModalContent(
     }
 
     // === Code search ===
-    case "dyad-code-search": {
+    case "vibes-code-search": {
       const query = attributes.query || "";
       return (
         <div className="space-y-2">
@@ -1136,8 +1136,8 @@ function renderModalContent(
     }
 
     // === PocketBase ===
-    case "dyad-pocketbase-info":
-    case "dyad-pocketbase-storage-info": {
+    case "vibes-pocketbase-info":
+    case "vibes-pocketbase-storage-info": {
       return (
         <div className="space-y-2">
           {content && (
@@ -1150,7 +1150,7 @@ function renderModalContent(
     }
 
     // === Code search result ===
-    case "dyad-code-search-result": {
+    case "vibes-code-search-result": {
       const files = content ? content.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("<") && !l.startsWith(">")) : [];
       return (
         <div className="space-y-2">
@@ -1175,7 +1175,7 @@ function renderModalContent(
     }
 
     // === List files ===
-    case "dyad-list-files": {
+    case "vibes-list-files": {
       const directory = attributes.directory || "";
       const isRecursive = attributes.recursive === "true";
       return (
@@ -1220,7 +1220,7 @@ function renderModalContent(
       );
 
     // === Web crawl ===
-    case "dyad-web-crawl":
+    case "vibes-web-crawl":
       return (
         <div className="text-sm text-muted-foreground">
           {content || ""}
@@ -1228,7 +1228,7 @@ function renderModalContent(
       );
 
     // === Add dependency ===
-    case "dyad-add-dependency": {
+    case "vibes-add-dependency": {
       const packages = (attributes.packages || "").split(" ").filter(Boolean);
       return (
         <div className="space-y-2">
@@ -1251,11 +1251,11 @@ function renderModalContent(
     }
 
     // === Add integration ===
-    case "dyad-add-integration":
+    case "vibes-add-integration":
       return renderCustomTag(tagInfo, { isStreaming });
 
     // === Execute SQL ===
-    case "dyad-execute-sql": {
+    case "vibes-execute-sql": {
       const queryDescription = attributes.description || "";
       return (
         <div className="space-y-2">
@@ -1272,7 +1272,7 @@ function renderModalContent(
     }
 
     // === Read logs ===
-    case "dyad-read-logs": {
+    case "vibes-read-logs": {
       const logCount = attributes.count || "";
       const logType = attributes.type || "all";
       const logLevel = attributes.level || "all";
@@ -1298,7 +1298,7 @@ function renderModalContent(
     }
 
     // === Codebase context ===
-    case "dyad-codebase-context": {
+    case "vibes-codebase-context": {
       const files = (attributes.files || "").split(",").map(f => f.trim()).filter(Boolean);
       return (
         <div className="space-y-2">
@@ -1321,7 +1321,7 @@ function renderModalContent(
     }
 
     // === MCP tool call ===
-    case "dyad-mcp-tool-call": {
+    case "vibes-mcp-tool-call": {
       const serverName = attributes.server || "";
       const toolName = attributes.tool || "";
       let prettyJson = content;
@@ -1353,7 +1353,7 @@ function renderModalContent(
     }
 
     // === MCP tool result ===
-    case "dyad-mcp-tool-result": {
+    case "vibes-mcp-tool-result": {
       const serverName = attributes.server || "";
       const toolName = attributes.tool || "";
       let prettyJson = content;
@@ -1385,7 +1385,7 @@ function renderModalContent(
     }
 
     // === Database schema ===
-    case "dyad-database-schema":
+    case "vibes-database-schema":
       return (
         <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
           {content || ""}
@@ -1393,7 +1393,7 @@ function renderModalContent(
       );
 
     // === Supabase table schema ===
-    case "dyad-supabase-table-schema": {
+    case "vibes-supabase-table-schema": {
       const table = attributes.table || "";
       return (
         <div className="space-y-2">
@@ -1410,9 +1410,9 @@ function renderModalContent(
     }
 
     // === Provider Project/Storage Info ===
-    case "dyad-supabase-project-info":
-    case "dyad-bunny-db-info":
-    case "dyad-bunny-storage-info":
+    case "vibes-supabase-project-info":
+    case "vibes-bunny-db-info":
+    case "vibes-bunny-storage-info":
       return (
         <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
           {content || ""}
@@ -1420,7 +1420,7 @@ function renderModalContent(
       );
 
     // === Status ===
-    case "dyad-status": {
+    case "vibes-status": {
       const title = attributes.title || "Processing...";
       return (
         <div className="space-y-2">
@@ -1435,7 +1435,7 @@ function renderModalContent(
     }
 
     // === Git operations ===
-    case "dyad-git": {
+    case "vibes-git": {
       const operation = attributes.operation || "";
       return (
         <div className="space-y-2">
@@ -1454,7 +1454,7 @@ function renderModalContent(
     }
 
     // === Process/command tools (Phase 1) ===
-    case "dyad-run-command": {
+    case "vibes-run-command": {
       const cmd = attributes.cmd || "";
       const status = attributes.status || "";
       const exitCode = attributes["exit-code"] || "";
@@ -1481,8 +1481,8 @@ function renderModalContent(
       );
     }
 
-    case "dyad-start-process":
-    case "dyad-stop-process": {
+    case "vibes-start-process":
+    case "vibes-stop-process": {
       const cmd = attributes.cmd || "";
       const processId = attributes["process-id"] || "";
       const status = attributes.status || "";
@@ -1499,7 +1499,7 @@ function renderModalContent(
       );
     }
 
-    case "dyad-list-processes": {
+    case "vibes-list-processes": {
       const count = attributes.count || "";
       return (
         <div className="space-y-2">
@@ -1513,7 +1513,7 @@ function renderModalContent(
       );
     }
 
-    case "dyad-wait-http": {
+    case "vibes-wait-http": {
       const url = attributes.url || "";
       const status = attributes.status || "";
       const httpStatus = attributes["http-status"] || "";
@@ -1535,7 +1535,7 @@ function renderModalContent(
       );
     }
 
-    case "dyad-typecheck-summary": {
+    case "vibes-typecheck-summary": {
       return (
         <DyadTypecheckSummary
           node={{
@@ -1550,7 +1550,7 @@ function renderModalContent(
       );
     }
 
-    case "dyad-token-usage": {
+    case "vibes-token-usage": {
       const inp = parseInt(attributes.input || "0", 10);
       const out = parseInt(attributes.output || "0", 10);
       const cached = parseInt(attributes.cached || "0", 10);

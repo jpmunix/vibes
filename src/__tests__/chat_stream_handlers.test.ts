@@ -5,7 +5,7 @@ import {
   getDyadRenameTags,
   getDyadAddDependencyTags,
   getDyadDeleteTags,
-} from "../ipc/utils/dyad_tag_parser";
+} from "../ipc/utils/tag_parser";
 
 import { processFullResponseActions } from "../ipc/processors/response_processor";
 import {

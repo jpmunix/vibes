@@ -34,7 +34,7 @@ export const getBunnyDbInfoTool: ToolDefinition<
         const db = ctx.bunnyConfig.databases[0];
 
         ctx.onXmlStream(
-            `<dyad-bunny-db-info${args.tableName ? ` table="${args.tableName}"` : ""}></dyad-bunny-db-info>`,
+            `<vibes-bunny-db-info${args.tableName ? ` table="${args.tableName}"` : ""}></vibes-bunny-db-info>`,
         );
 
         // Dynamic import to avoid bundling issues if @libsql/client is not installed
@@ -45,7 +45,7 @@ export const getBunnyDbInfoTool: ToolDefinition<
         } catch {
             const result = `@libsql/client is not installed in the main process. Database info:\n- Name: ${db.name}\n- URL: ${db.databaseUrl}\n\nTo query the database, the user's app should use @libsql/client directly.`;
             ctx.onXmlComplete(
-                `<dyad-bunny-db-info>${escapeXmlContent(result)}</dyad-bunny-db-info>`,
+                `<vibes-bunny-db-info>${escapeXmlContent(result)}</vibes-bunny-db-info>`,
             );
             return result;
         }
@@ -86,7 +86,7 @@ export const getBunnyDbInfoTool: ToolDefinition<
         }
 
         ctx.onXmlComplete(
-            `<dyad-bunny-db-info${args.tableName ? ` table="${args.tableName}"` : ""}>\n${escapeXmlContent(result)}\n</dyad-bunny-db-info>`,
+            `<vibes-bunny-db-info${args.tableName ? ` table="${args.tableName}"` : ""}>\n${escapeXmlContent(result)}\n</vibes-bunny-db-info>`,
         );
 
         return result;

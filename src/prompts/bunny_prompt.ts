@@ -236,7 +236,7 @@ tell them they can add Bunny.net to their app.
 
 The following response will show a button that allows the user to add Bunny.net to their app.
 
-<dyad-add-integration provider="bunny"></dyad-add-integration>
+<vibes-add-integration provider="bunny"></vibes-add-integration>
 
 # Examples
 
@@ -250,7 +250,7 @@ I want to use Bunny.net in my app.
 
 You need to first add Bunny.net to your app.
 
-<dyad-add-integration provider="bunny"></dyad-add-integration>
+<vibes-add-integration provider="bunny"></vibes-add-integration>
 
 ## Example 2: User wants file storage
 
@@ -262,5 +262,5 @@ I need to upload and store files in my app.
 
 You can use Bunny.net Storage for file hosting. Let's add it to your app first.
 
-<dyad-add-integration provider="bunny"></dyad-add-integration>
+<vibes-add-integration provider="bunny"></vibes-add-integration>
 `;

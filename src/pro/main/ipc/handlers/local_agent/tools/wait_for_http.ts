@@ -71,7 +71,7 @@ EXAMPLES:
     buildXml: (args, isComplete) => {
         if (!args.url) return undefined;
         if (isComplete) return undefined;
-        return `<dyad-wait-http url="${escapeXmlAttr(args.url)}">Esperando...</dyad-wait-http>`;
+        return `<vibes-wait-http url="${escapeXmlAttr(args.url)}">Esperando...</vibes-wait-http>`;
     },
 
     execute: async (args, ctx: AgentContext) => {
@@ -97,7 +97,7 @@ EXAMPLES:
 
                     logger.log(result);
                     ctx.onXmlComplete(
-                        `<dyad-wait-http url="${escapeXmlAttr(args.url)}" status="ok" http-status="${resp.status}" attempts="${attempts}" response-time="${responseTimeMs}ms">${escapeXmlContent(result)}</dyad-wait-http>`,
+                        `<vibes-wait-http url="${escapeXmlAttr(args.url)}" status="ok" http-status="${resp.status}" attempts="${attempts}" response-time="${responseTimeMs}ms">${escapeXmlContent(result)}</vibes-wait-http>`,
                     );
 
                     return result;
@@ -124,7 +124,7 @@ EXAMPLES:
         logger.warn(result);
 
         ctx.onXmlComplete(
-            `<dyad-wait-http url="${escapeXmlAttr(args.url)}" status="timeout" attempts="${attempts}">${escapeXmlContent(result)}</dyad-wait-http>`,
+            `<vibes-wait-http url="${escapeXmlAttr(args.url)}" status="timeout" attempts="${attempts}">${escapeXmlContent(result)}</vibes-wait-http>`,
         );
 
         return result;

@@ -46,7 +46,7 @@ export function registerDependencyHandlers() {
         .reverse()
         .find((m) =>
           m.content.includes(
-            `<dyad-add-dependency packages="${packages.join(" ")}">`,
+            `<vibes-add-dependency packages="${packages.join(" ")}">`,
           ),
         );
 

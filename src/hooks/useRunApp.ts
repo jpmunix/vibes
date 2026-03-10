@@ -31,12 +31,12 @@ export function useAppOutputSubscription() {
   const processProxyServerOutput = useCallback(
     (output: AppOutput) => {
       const matchesProxyServerStart = output.message.includes(
-        "[dyad-proxy-server]started=[",
+        "[vibes-proxy-server]started=[",
       );
       if (matchesProxyServerStart) {
         // Extract both proxy URL and original URL using regex
         const proxyUrlMatch = output.message.match(
-          /\[dyad-proxy-server\]started=\[(.*?)\]/,
+          /\[vibes-proxy-server\]started=\[(.*?)\]/,
         );
         const originalUrlMatch = output.message.match(/original=\[(.*?)\]/);
 
@@ -52,7 +52,7 @@ export function useAppOutputSubscription() {
       }
 
       // Detect upstream recovery after ECONNREFUSED retries - trigger iframe refresh
-      if (output.message.includes("[dyad-proxy-server]upstream-recovered")) {
+      if (output.message.includes("[vibes-proxy-server]upstream-recovered")) {
         // Debounce: only refresh once even if multiple recovery signals arrive
         if (recoveryRefreshTimerRef.current) {
           clearTimeout(recoveryRefreshTimerRef.current);
@@ -185,10 +185,10 @@ export function useRunApp() {
       console.error(`Error running app ${appId}:`, error);
       setPreviewErrorMessage(
         error instanceof Error
-          ? { message: error.message, source: "dyad-app" }
+          ? { message: error.message, source: "vibes-app" }
           : {
             message: error?.toString() || "Unknown error",
-            source: "dyad-app",
+            source: "vibes-app",
           },
       );
     } finally {
@@ -210,10 +210,10 @@ export function useRunApp() {
       console.error(`Error stopping app ${appId}:`, error);
       setPreviewErrorMessage(
         error instanceof Error
-          ? { message: error.message, source: "dyad-app" }
+          ? { message: error.message, source: "vibes-app" }
           : {
             message: error?.toString() || "Unknown error",
-            source: "dyad-app",
+            source: "vibes-app",
           },
       );
     } finally {
@@ -271,10 +271,10 @@ export function useRunApp() {
         console.error(`Error restarting app ${appId}:`, error);
         setPreviewErrorMessage(
           error instanceof Error
-            ? { message: error.message, source: "dyad-app" }
+            ? { message: error.message, source: "vibes-app" }
             : {
               message: error?.toString() || "Unknown error",
-              source: "dyad-app",
+              source: "vibes-app",
             },
         );
       } finally {

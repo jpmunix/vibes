@@ -215,7 +215,7 @@ export function registerDebateStreamHandlers() {
           inThinkingBlock &&
           part.type !== "reasoning-delta"
         ) {
-          chunk = "</dyad-think>\n";
+          chunk = "</vibes-think>\n";
           inThinkingBlock = false;
         }
 
@@ -225,7 +225,7 @@ export function registerDebateStreamHandlers() {
           const text = part.text;
 
           if (!inThinkingBlock) {
-            chunk = "<dyad-think>\n";
+            chunk = "<vibes-think>\n";
             inThinkingBlock = true;
           }
           chunk += text;
@@ -249,7 +249,7 @@ export function registerDebateStreamHandlers() {
 
       // Close thinking block if still open
       if (inThinkingBlock) {
-        fullResponse += "\n</dyad-think>";
+        fullResponse += "\n</vibes-think>";
         safeSend(event.sender, "debate:response:chunk", {
           debateId,
           messages: [

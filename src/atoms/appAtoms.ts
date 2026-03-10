@@ -59,5 +59,5 @@ export const previewCurrentUrlAtom = atom<Record<number, string>>({});
 export const routeHistoryAtom = atom<Record<number, string[]>>({});
 
 export const previewErrorMessageAtom = atom<
-  { message: string; source: "preview-app" | "dyad-app" } | undefined
+  { message: string; source: "preview-app" | "vibes-app" } | undefined
 >(undefined);

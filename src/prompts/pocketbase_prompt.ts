@@ -154,5 +154,5 @@ tell them they can add PocketBase to their app.
 
 The following response will show a button that allows the user to add PocketBase to their app.
 
-<dyad-add-integration provider="pocketbase"></dyad-add-integration>
+<vibes-add-integration provider="pocketbase"></vibes-add-integration>
 `;

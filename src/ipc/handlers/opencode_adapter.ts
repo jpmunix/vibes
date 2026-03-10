@@ -810,7 +810,7 @@ async function processEvents(
 
                     if (isReasoning) {
                         // Strip ALL HTML/XML-like tags from reasoning content.
-                        // The LLM generates <dyad-read>, <dyad-write>, etc. in its
+                        // The LLM generates <vibes-read>, <vibes-write>, etc. in its
                         // thinking because it learned the format from context history.
                         // Tags arrive split across deltas so we can't rely on matching
                         // complete tag names — just strip everything between < >.
@@ -941,49 +941,49 @@ async function processEvents(
  */
 function mapToolToDyadTag(tool: string): string {
     const map: Record<string, string> = {
-        write: "dyad-write",
-        read: "dyad-read",
-        edit: "dyad-search-replace",
-        bash: "dyad-run-command",
-        glob: "dyad-list-files",
-        grep: "dyad-grep",
-        fetch: "dyad-web-crawl",
-        patch: "dyad-patch",
-        todowrite: "dyad-write",
-        todorewrite: "dyad-write",
-        codesearch: "dyad-code-search",
-        webfetch: "dyad-web-crawl",
-        websearch: "dyad-web-crawl",
-        lsp: "dyad-status",
+        write: "vibes-write",
+        read: "vibes-read",
+        edit: "vibes-search-replace",
+        bash: "vibes-run-command",
+        glob: "vibes-list-files",
+        grep: "vibes-grep",
+        fetch: "vibes-web-crawl",
+        patch: "vibes-patch",
+        todowrite: "vibes-write",
+        todorewrite: "vibes-write",
+        codesearch: "vibes-code-search",
+        webfetch: "vibes-web-crawl",
+        websearch: "vibes-web-crawl",
+        lsp: "vibes-status",
     };
-    return map[tool] || "dyad-status";
+    return map[tool] || "vibes-status";
 }
 
 function buildDyadTag(tool: string, detail: string, content: string): string {
     const dyadTag = mapToolToDyadTag(tool);
 
     switch (dyadTag) {
-        case "dyad-write":
-            return `<dyad-write path="${escapeAttr(detail)}" description="">${content}</dyad-write>`;
-        case "dyad-search-replace":
-            return `<dyad-search-replace path="${escapeAttr(detail)}" description="">${content}</dyad-search-replace>`;
-        case "dyad-read":
-            return `<dyad-read path="${escapeAttr(detail)}">${content}</dyad-read>`;
-        case "dyad-grep":
-            return `<dyad-grep query="${escapeAttr(detail)}">${content}</dyad-grep>`;
-        case "dyad-code-search":
-            return `<dyad-code-search query="${escapeAttr(detail)}">${content}</dyad-code-search>`;
-        case "dyad-run-command":
-            return `<dyad-run-command cmd="${escapeAttr(detail)}">${content}</dyad-run-command>`;
-        case "dyad-list-files":
-            return `<dyad-list-files directory="${escapeAttr(detail)}">${content}</dyad-list-files>`;
-        case "dyad-web-crawl":
-            return `<dyad-web-crawl url="${escapeAttr(detail)}">${content}</dyad-web-crawl>`;
-        case "dyad-patch":
-            return `<dyad-patch path="${escapeAttr(detail)}">${content}</dyad-patch>`;
-        case "dyad-status":
+        case "vibes-write":
+            return `<vibes-write path="${escapeAttr(detail)}" description="">${content}</vibes-write>`;
+        case "vibes-search-replace":
+            return `<vibes-search-replace path="${escapeAttr(detail)}" description="">${content}</vibes-search-replace>`;
+        case "vibes-read":
+            return `<vibes-read path="${escapeAttr(detail)}">${content}</vibes-read>`;
+        case "vibes-grep":
+            return `<vibes-grep query="${escapeAttr(detail)}">${content}</vibes-grep>`;
+        case "vibes-code-search":
+            return `<vibes-code-search query="${escapeAttr(detail)}">${content}</vibes-code-search>`;
+        case "vibes-run-command":
+            return `<vibes-run-command cmd="${escapeAttr(detail)}">${content}</vibes-run-command>`;
+        case "vibes-list-files":
+            return `<vibes-list-files directory="${escapeAttr(detail)}">${content}</vibes-list-files>`;
+        case "vibes-web-crawl":
+            return `<vibes-web-crawl url="${escapeAttr(detail)}">${content}</vibes-web-crawl>`;
+        case "vibes-patch":
+            return `<vibes-patch path="${escapeAttr(detail)}">${content}</vibes-patch>`;
+        case "vibes-status":
         default:
-            return `<dyad-status title="${escapeAttr(detail)}">${content}</dyad-status>`;
+            return `<vibes-status title="${escapeAttr(detail)}">${content}</vibes-status>`;
     }
 }
 
@@ -1072,7 +1072,7 @@ function buildFinalResponse(
         }
     }
 
-    // Add file edits as dyad-write tags (for files tracked via file.edited events
+    // Add file edits as vibes-write tags (for files tracked via file.edited events
     // but not already covered by tool operations)
     if (filesEdited.length > 0) {
         const loggedPaths = new Set(
@@ -1085,7 +1085,7 @@ function buildFinalResponse(
         for (const file of filesEdited) {
             const basename = path.basename(file);
             if (!loggedPaths.has(basename)) {
-                content += `<dyad-write path="${escapeAttr(file)}" description=""></dyad-write>\n`;
+                content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
             }
         }
     }

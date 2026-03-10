@@ -155,7 +155,7 @@ export async function onReady() {
     // Cleanup old ai_messages_json entries to prevent database bloat
     await cleanupOldAiMessagesJson();
 
-    // Add dyad-apps directory to git safe.directory (required for Windows).
+    // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
       await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
     }
@@ -581,7 +581,7 @@ async function handleDeepLinkReturn(url: string) {
     return;
   }
 
-  if (parsed.hostname === "dyad-pro-return") {
+  if (parsed.hostname === "vibes-pro-return") {
     const apiKey = parsed.searchParams.get("key");
     if (!apiKey) {
       dialog.showErrorBox("Invalid URL", "Expected key");

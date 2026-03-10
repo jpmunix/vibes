@@ -406,7 +406,7 @@ describe("searchReplaceTool", () => {
       expect(result).toContain("=======");
       expect(result).toContain("new content");
       expect(result).toContain(">>>>>>> REPLACE");
-      expect(result).toContain("</dyad-search-replace>");
+      expect(result).toContain("</vibes-search-replace>");
     });
   });
 

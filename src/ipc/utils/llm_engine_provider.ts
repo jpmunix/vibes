@@ -87,7 +87,7 @@ export function createDyadEngine(
   }
 
   const getCommonModelConfig = (): CommonModelConfig => ({
-    provider: `dyad-engine`,
+    provider: `vibes-engine`,
     url: ({ path }) => {
       const url = new URL(`${baseURL}${path}`);
       if (options.queryParams) {
@@ -99,7 +99,7 @@ export function createDyadEngine(
     fetch: options.fetch,
   });
 
-  // Custom fetch implementation that adds dyad-specific options to the request
+  // Custom fetch implementation that adds vibes-specific options to the request
   const createDyadFetch = ({
     providerId,
   }: {

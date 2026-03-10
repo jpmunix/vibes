@@ -22,7 +22,7 @@ export const getFirebaseProjectInfoTool: ToolDefinition<
         }
 
         ctx.onXmlStream(
-            "<dyad-firebase-project-info></dyad-firebase-project-info>",
+            "<vibes-firebase-project-info></vibes-firebase-project-info>",
         );
 
         const info = await getFirebaseProjectInfo({
@@ -30,7 +30,7 @@ export const getFirebaseProjectInfoTool: ToolDefinition<
         });
 
         ctx.onXmlComplete(
-            `<dyad-firebase-project-info>\n${escapeXmlContent(info)}\n</dyad-firebase-project-info>`,
+            `<vibes-firebase-project-info>\n${escapeXmlContent(info)}\n</vibes-firebase-project-info>`,
         );
 
         return info;

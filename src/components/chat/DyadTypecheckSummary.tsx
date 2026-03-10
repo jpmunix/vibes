@@ -50,7 +50,7 @@ export const DyadTypecheckSummary: React.FC<DyadTypecheckSummaryProps> = ({ chil
     const entries = parseEntries(content);
 
     return (
-        <div data-testid="dyad-typecheck-summary" className="mt-2 space-y-1">
+        <div data-testid="vibes-typecheck-summary" className="mt-2 space-y-1">
             {entries.map((entry, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs">
                     {entry.status === "ok" ? (

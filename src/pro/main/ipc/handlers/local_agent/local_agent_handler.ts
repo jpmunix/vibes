@@ -660,13 +660,13 @@ export async function handleLocalAgentStream(
 
     // Check if the model failed to use any state-modifying tools when we expected it to
     // But skip the warning if the response contains interactive content (e.g. integration prompts, user questions)
-    const INTERACTIVE_TAGS = ["dyad-add-integration", "dyad-ask-user"];
+    const INTERACTIVE_TAGS = ["vibes-add-integration", "vibes-ask-user"];
     const hasInteractiveContent = INTERACTIVE_TAGS.some(tag => fullResponse.includes(`<${tag}`));
     const isSummarize = req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) || req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
 
     if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent && !isSummarize) {
       // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
-      const noOpWarning = `\n<dyad-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</dyad-output>\n`;
+      const noOpWarning = `\n<vibes-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</vibes-output>\n`;
       fullResponse += noOpWarning;
       await updateResponseInDb(placeholderMessageId, fullResponse);
       sendResponseChunk(event, req.chatId, chat, fullResponse);
@@ -698,7 +698,7 @@ export async function handleLocalAgentStream(
         return `ERR:${file}${countStr}\n${errDetail}`;
       });
 
-      const summaryXml = `<dyad-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</dyad-typecheck-summary>`;
+      const summaryXml = `<vibes-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</vibes-typecheck-summary>`;
       fullResponse += "\n" + summaryXml + "\n";
       updateResponseInDb(placeholderMessageId, fullResponse);
       sendResponseChunk(event, req.chatId, chat, fullResponse);
@@ -721,7 +721,7 @@ export async function handleLocalAgentStream(
         priceOut = modelData?.pricingOutput || "";
       } catch { /* pricing unavailable — non-OpenRouter or cache miss */ }
 
-      const tokenXml = `<dyad-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" price-input="${priceIn}" price-output="${priceOut}"></dyad-token-usage>`;
+      const tokenXml = `<vibes-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
       fullResponse += tokenXml + "\n";
       updateResponseInDb(placeholderMessageId, fullResponse);
       sendResponseChunk(event, req.chatId, chat, fullResponse);

@@ -3,8 +3,8 @@
  * search_replace and patch_file into a single tool with an
  * `action` enum so the LLM doesn't have to guess which tool to use.
  *
- * The frontend XML tags (dyad-write, dyad-edit, dyad-search-replace,
- * dyad-patch) are preserved for backward compatibility with the UI.
+ * The frontend XML tags (vibes-write, vibes-edit, vibes-search-replace,
+ * vibes-patch) are preserved for backward compatibility with the UI.
  */
 
 import fs from "node:fs";
@@ -575,27 +575,27 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
         );
 
         switch (args.action) {
-            // ── create / overwrite → dyad-write ──
+            // ── create / overwrite → vibes-write ──
             case "create":
             case "overwrite": {
-                let xml = `<dyad-write path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="${desc}">\n${args.content ?? ""}`;
-                if (isComplete) xml += "\n</dyad-write>";
+                let xml = `<vibes-write path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="${desc}">\n${args.content ?? ""}`;
+                if (isComplete) xml += "\n</vibes-write>";
                 return xml;
             }
 
-            // ── edit → dyad-edit ──
+            // ── edit → vibes-edit ──
             case "edit": {
-                let xml = `<dyad-edit path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="${desc}">\n${args.edit_content ?? ""}`;
-                if (isComplete) xml += "\n</dyad-edit>";
+                let xml = `<vibes-edit path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="${desc}">\n${args.edit_content ?? ""}`;
+                if (isComplete) xml += "\n</vibes-edit>";
                 return xml;
             }
 
-            // ── search_replace → dyad-search-replace ──
+            // ── search_replace → vibes-search-replace ──
             case "search_replace": {
                 const escapedOld = escapeSearchReplaceMarkers(
                     args.search_replace?.old_string ?? "",
                 );
-                let xml = `<dyad-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
+                let xml = `<vibes-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
                 if (args.search_replace?.new_string !== undefined) {
                     const escapedNew = escapeSearchReplaceMarkers(
                         args.search_replace.new_string,
@@ -606,12 +606,12 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     if (args.search_replace?.new_string === undefined) {
                         xml += "\n=======\n";
                     }
-                    xml += "\n>>>>>>> REPLACE\n</dyad-search-replace>";
+                    xml += "\n>>>>>>> REPLACE\n</vibes-search-replace>";
                 }
                 return xml;
             }
 
-            // ── patch → dyad-patch ──
+            // ── patch → vibes-patch ──
             case "patch": {
                 const ops = args.patch_operations ?? [];
                 const opsPreview = ops
@@ -622,7 +622,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                     )
                     .join(", ");
 
-                let xml = `<dyad-patch path="${escapeXmlAttr(args.file_path)}"${retryAttr} lines="${escapeXmlAttr(opsPreview)}" description="">`;
+                let xml = `<vibes-patch path="${escapeXmlAttr(args.file_path)}"${retryAttr} lines="${escapeXmlAttr(opsPreview)}" description="">`;
                 if (isComplete && ops.length > 0) {
                     for (const op of ops) {
                         const range =
@@ -632,7 +632,7 @@ export const fileEditorTool: ToolDefinition<FileEditorArgs> = {
                         xml += `\n[${range}]\n${escapeXmlContent(op.content ?? "")}`;
                     }
                 }
-                if (isComplete) xml += "\n</dyad-patch>";
+                if (isComplete) xml += "\n</vibes-patch>";
                 return xml;
             }
 

@@ -350,7 +350,7 @@ export const runCommandTool: ToolDefinition<RunCommandArgs> = {
             : "";
 
         if (isComplete) return undefined; // onXmlComplete handles final
-        return `<dyad-run-command cmd="${escapeXmlAttr(cmdStr)}"${cwdAttr}>Ejecutando...</dyad-run-command>`;
+        return `<vibes-run-command cmd="${escapeXmlAttr(cmdStr)}"${cwdAttr}>Ejecutando...</vibes-run-command>`;
     },
 
     execute: async (args, ctx: AgentContext) => {
@@ -426,7 +426,7 @@ export const runCommandTool: ToolDefinition<RunCommandArgs> = {
                 : ` status="error"`;
 
         ctx.onXmlComplete(
-            `<dyad-run-command cmd="${escapeXmlAttr(cmdStr)}"${exitAttr}${durationAttr}${statusAttr}>\n${escapeXmlContent(outputText)}\n</dyad-run-command>`,
+            `<vibes-run-command cmd="${escapeXmlAttr(cmdStr)}"${exitAttr}${durationAttr}${statusAttr}>\n${escapeXmlContent(outputText)}\n</vibes-run-command>`,
         );
 
         return outputText;

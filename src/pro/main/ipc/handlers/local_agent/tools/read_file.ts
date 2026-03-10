@@ -75,7 +75,7 @@ export const readFileTool: ToolDefinition<z.infer<typeof readFileSchema>> = {
         `end_line="${escapeXmlAttr(String(args.end_line_one_indexed_inclusive))}"`,
       );
     }
-    return `<dyad-read ${attrs.join(" ")}></dyad-read>`;
+    return `<vibes-read ${attrs.join(" ")}></vibes-read>`;
   },
 
   execute: async (args, ctx: AgentContext) => {

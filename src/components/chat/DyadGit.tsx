@@ -71,7 +71,7 @@ export const DyadGit: React.FC<DyadGitProps> = ({ children, node }) => {
 
     return (
         <div
-            data-testid="dyad-git"
+            data-testid="vibes-git"
             className={`bg-(--background-lightest) hover:bg-(--background-lighter) rounded-lg px-4 py-2 border my-2 cursor-pointer ${borderClass}`}
             onClick={() => setIsContentVisible(!isContentVisible)}
         >

@@ -35,7 +35,7 @@ export const getBunnyStorageInfoTool: ToolDefinition<
         const dirPath = args.path || "/";
 
         ctx.onXmlStream(
-            `<dyad-bunny-storage-info path="${dirPath}"></dyad-bunny-storage-info>`,
+            `<vibes-bunny-storage-info path="${dirPath}"></vibes-bunny-storage-info>`,
         );
 
         // Use the Bunny.net Storage HTTP API directly (no SDK dependency needed)
@@ -79,7 +79,7 @@ export const getBunnyStorageInfoTool: ToolDefinition<
         const result = `# Bunny Storage: ${sz.name}\n## Path: ${dirPath}\n\n${formatted.length === 0 ? "(empty)" : JSON.stringify(formatted, null, 2)}`;
 
         ctx.onXmlComplete(
-            `<dyad-bunny-storage-info path="${dirPath}">\n${escapeXmlContent(result)}\n</dyad-bunny-storage-info>`,
+            `<vibes-bunny-storage-info path="${dirPath}">\n${escapeXmlContent(result)}\n</vibes-bunny-storage-info>`,
         );
 
         return result;

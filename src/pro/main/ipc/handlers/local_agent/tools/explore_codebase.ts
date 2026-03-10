@@ -2,8 +2,8 @@
  * Unified explore_codebase tool — consolidates read_file, list_files,
  * grep and code_search into a single tool with an `action` enum.
  *
- * The frontend XML tags (dyad-read, dyad-list-files, dyad-grep,
- * dyad-code-search) are preserved for backward compatibility.
+ * The frontend XML tags (vibes-read, vibes-list-files, vibes-grep,
+ * vibes-code-search) are preserved for backward compatibility.
  */
 
 import fs from "node:fs";
@@ -306,7 +306,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
 
     buildXml: (args, isComplete) => {
         switch (args.action) {
-            // ── read_file → dyad-read ──
+            // ── read_file → vibes-read ──
             case "read_file": {
                 if (!args.path) return undefined;
                 const attrs = [`path="${escapeXmlAttr(args.path)}"`];
@@ -314,10 +314,10 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                     attrs.push(`start_line="${escapeXmlAttr(String(args.start_line))}"`);
                 if (args.end_line != null)
                     attrs.push(`end_line="${escapeXmlAttr(String(args.end_line))}"`);
-                return `<dyad-read ${attrs.join(" ")}></dyad-read>`;
+                return `<vibes-read ${attrs.join(" ")}></vibes-read>`;
             }
 
-            // ── list_files → dyad-list-files ──
+            // ── list_files → vibes-list-files ──
             case "list_files": {
                 if (isComplete) return undefined;
                 const dirAttr = args.directory
@@ -327,22 +327,22 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                     args.recursive !== undefined
                         ? ` recursive="${args.recursive}"`
                         : "";
-                return `<dyad-list-files${dirAttr}${recursiveAttr}></dyad-list-files>`;
+                return `<vibes-list-files${dirAttr}${recursiveAttr}></vibes-list-files>`;
             }
 
-            // ── search_text → dyad-grep ──
+            // ── search_text → vibes-grep ──
             case "search_text": {
                 if (isComplete) return undefined;
                 if (!args.query) return undefined;
                 const attrs = buildGrepAttributes(args);
-                return `<dyad-grep ${attrs}>Searching...</dyad-grep>`;
+                return `<vibes-grep ${attrs}>Searching...</vibes-grep>`;
             }
 
-            // ── search_code → dyad-code-search ──
+            // ── search_code → vibes-code-search ──
             case "search_code": {
                 if (!args.query) return undefined;
                 if (isComplete) return undefined;
-                return `<dyad-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
+                return `<vibes-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
             }
 
             default:
@@ -453,7 +453,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                         : "";
 
                 ctx.onXmlComplete(
-                    `<dyad-list-files${dirAttr}${recursiveAttr}>${escapeXmlContent(abbreviatedList + countInfo)}</dyad-list-files>`,
+                    `<vibes-list-files${dirAttr}${recursiveAttr}>${escapeXmlContent(abbreviatedList + countInfo)}</vibes-list-files>`,
                 );
 
                 return allFilesList;
@@ -500,7 +500,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
 
                 if (limitedMatches.length === 0) {
                     ctx.onXmlComplete(
-                        `<dyad-grep ${attrs}>No matches found.</dyad-grep>`,
+                        `<vibes-grep ${attrs}>No matches found.</vibes-grep>`,
                     );
                     return "No matches found.";
                 }
@@ -522,7 +522,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                 }
 
                 ctx.onXmlComplete(
-                    `<dyad-grep ${attrs}>\n${escapeXmlContent(resultText)}\n</dyad-grep>`,
+                    `<vibes-grep ${attrs}>\n${escapeXmlContent(resultText)}\n</vibes-grep>`,
                 );
 
                 return resultText;
@@ -592,7 +592,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                             : files.map((f) => ` - ${f}`).join("\n");
 
                     ctx.onXmlComplete(
-                        `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</dyad-code-search>`,
+                        `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</vibes-code-search>`,
                     );
 
                     if (files.length === 0) {
@@ -606,7 +606,7 @@ export const exploreCodebaseTool: ToolDefinition<ExploreCodebaseArgs> = {
                         const noResult =
                             "No relevant files found for the given query.";
                         ctx.onXmlComplete(
-                            `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(noResult)}</dyad-code-search>`,
+                            `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(noResult)}</vibes-code-search>`,
                         );
                         return noResult;
                     }

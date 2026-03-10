@@ -95,7 +95,7 @@ export const DyadAskUser: React.FC<DyadAskUserProps> = ({ children, node }) => {
 
     return (
         <div
-            data-testid="dyad-ask-user"
+            data-testid="vibes-ask-user"
             className={`bg-(--background-lightest) rounded-lg px-4 py-3 border my-2 ${borderClass}`}
         >
             {/* Header */}

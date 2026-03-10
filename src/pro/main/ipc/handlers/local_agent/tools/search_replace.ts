@@ -83,7 +83,7 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
 
     const escapedOld = escapeSearchReplaceMarkers(args.old_string ?? "");
 
-    let xml = `<dyad-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
+    let xml = `<vibes-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
 
     // Add separator and replace content if new_string has started
     if (args.new_string !== undefined) {
@@ -95,7 +95,7 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
       if (args.new_string === undefined) {
         xml += "\n=======\n";
       }
-      xml += "\n>>>>>>> REPLACE\n</dyad-search-replace>";
+      xml += "\n>>>>>>> REPLACE\n</vibes-search-replace>";
     }
 
     return xml;

@@ -86,11 +86,11 @@ import { createProblemFixPrompt } from "@/shared/problem_prompt";
 import { AsyncVirtualFileSystem } from "../../../shared/VirtualFilesystem";
 import { escapeXmlAttr, escapeXmlContent } from "../../../shared/xmlEscape";
 import {
-  getDyadAddDependencyTags,
-  getDyadWriteTags,
-  getDyadDeleteTags,
-  getDyadRenameTags,
-} from "../utils/dyad_tag_parser";
+  getAddDependencyTags,
+  getWriteTags,
+  getDeleteTags,
+  getRenameTags,
+} from "../utils/tag_parser";
 import { fileExists } from "../utils/file_utils";
 import { FileUploadsState } from "../utils/file_uploads_state";
 import { extractMentionedAppsCodebases } from "../utils/mention_apps";
@@ -128,7 +128,7 @@ const activeStreams = new Map<number, AbortController>();
 const partialResponses = new Map<number, string>();
 
 // Directory for storing temporary files
-const TEMP_DIR = path.join(os.tmpdir(), "dyad-attachments");
+const TEMP_DIR = path.join(os.tmpdir(), "vibes-attachments");
 
 // Common helper functions
 const TEXT_FILE_EXTENSIONS = [
@@ -215,11 +215,11 @@ async function processStreamChunks({
     } else if (part.type === "tool-call") {
       const { serverName, toolName } = parseMcpToolKey(part.toolName);
       const content = escapeDyadTags(JSON.stringify(part.input));
-      chunk = `<dyad-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</dyad-mcp-tool-call>\n`;
+      chunk = `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>\n`;
     } else if (part.type === "tool-result") {
       const { serverName, toolName } = parseMcpToolKey(part.toolName);
       const content = escapeDyadTags(part.output);
-      chunk = `<dyad-mcp-tool-result server="${serverName}" tool="${toolName}">\n${content}\n</dyad-mcp-tool-result>\n`;
+      chunk = `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-result>\n`;
     }
 
     if (!chunk) {
@@ -411,7 +411,7 @@ function registerChatStreamHandlers() {
           } else {
             attachmentInfo += `- ${attachment.name} (${attachment.type})\n`;
             if (await isTextFile(filePath)) {
-              attachmentInfo += `<dyad-text-attachment filename="${attachment.name}" type="${attachment.type}" path="${filePath}">\n                </dyad-text-attachment>\n\n`;
+              attachmentInfo += `<vibes-text-attachment filename="${attachment.name}" type="${attachment.type}" path="${filePath}">\n                </vibes-text-attachment>\n\n`;
             }
           }
         }
@@ -612,7 +612,7 @@ ${componentSnippet}
           );
 
           // Set the title of this summarize chat directly — don't rely on the model
-          // to generate a <dyad-chat-summary> tag (cheap models often skip it).
+          // to generate a <vibes-chat-summary> tag (cheap models often skip it).
           try {
             // Extract the original chat ID from the prompt (e.g. "Resumir el chat chat-id=276")
             const originalChatIdMatch = req.prompt.match(/chat-id=(\d+)/);
@@ -838,7 +838,7 @@ ${componentSnippet}
 
         // For smart context and selected components, we will mark the selected components' files as focused.
         // This means that we don't do the regular smart context handling, but we'll allow fetching
-        // additional files through <dyad-read> as needed.
+        // additional files through <vibes-read> as needed.
         if (
           isSmartContextEnabled &&
           req.selectedComponents &&
@@ -1095,7 +1095,7 @@ ${componentSnippet}
           );
         // If there's mixed attachments (e.g. some upload to codebase attachments and some upload images as chat context attachemnts)
         // we will just include the file upload system prompt, otherwise the AI gets confused and doesn't reliably
-        // print out the dyad-write tags.
+        // print out the vibes-write tags.
         // Usually, AI models will want to use the image as reference to generate code (e.g. UI mockups) anyways, so
         // it's not that critical to include the image analysis instructions.
         if (hasUploadedAttachments) {
@@ -1116,14 +1116,14 @@ write_file(path="src/components/Button.jsx", content="DYAD_ATTACHMENT_0", descri
   
 When files are attached to this conversation, upload them to the codebase using this exact format:
 
-<dyad-write path="path/to/destination/filename.ext" description="Upload file to codebase">
+<vibes-write path="path/to/destination/filename.ext" description="Upload file to codebase">
 DYAD_ATTACHMENT_X
-</dyad-write>
+</vibes-write>
 
 Example for file with id of DYAD_ATTACHMENT_0:
-<dyad-write path="src/components/Button.jsx" description="Upload file to codebase">
+<vibes-write path="src/components/Button.jsx" description="Upload file to codebase">
 DYAD_ATTACHMENT_0
-</dyad-write>
+</vibes-write>
 
   `;
           }
@@ -1181,7 +1181,7 @@ This conversation includes one or more image attachments. When the user uploads 
               ? removeDyadTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
-            "dyad-engine": {
+            "vibes-engine": {
               sourceCommitHash: msg.sourceCommitHash,
               commitHash: msg.commitHash,
             },
@@ -1723,7 +1723,7 @@ This conversation includes one or more image attachments. When the user uploads 
               priceOut = modelData?.pricingOutput || "";
             } catch { /* pricing unavailable */ }
 
-            const tokenXml = `<dyad-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" price-input="${priceIn}" price-output="${priceOut}"></dyad-token-usage>`;
+            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
 
             // Log token usage for verbose chat logs and ChatLogsPanel
@@ -1833,7 +1833,7 @@ This conversation includes one or more image attachments. When the user uploads 
               !abortController.signal.aborted
             ) {
               logger.warn(
-                `Received unclosed dyad-write tag, attempting to continue, attempt #${continuationAttempts + 1}`,
+                `Received unclosed vibes-write tag, attempting to continue, attempt #${continuationAttempts + 1}`,
               );
               continuationAttempts++;
 
@@ -1861,7 +1861,7 @@ This conversation includes one or more image attachments. When the user uploads 
               }
             }
           }
-          const addDependencies = getDyadAddDependencyTags(fullResponse);
+          const addDependencies = getAddDependencyTags(fullResponse);
 
         } catch (streamError) {
           // Check if this was an abort error
@@ -1900,9 +1900,9 @@ This conversation includes one or more image attachments. When the user uploads 
 
       // Only save the response and process it if we weren't aborted
       if (!abortController.signal.aborted && fullResponse) {
-        // Scrape from: <dyad-chat-summary>Renaming profile file</dyad-chat-title>
+        // Scrape from: <vibes-chat-summary>Renaming profile file</<vibes-chat-title>
         const chatTitle = fullResponse.match(
-          /<dyad-chat-summary>(.*?)<\/dyad-chat-summary>/,
+          /<vibes-chat-summary>(.*?)<\/vibes-chat-summary>/,
         );
         if (chatTitle) {
           await db
@@ -1936,7 +1936,7 @@ This conversation includes one or more image attachments. When the user uploads 
           settings.selectedChatMode !== "ask"
         ) {
           // NOTE: This applies to generic/fallback generation. Build mode itself is deprecated,
-          // but if we ever get here, processFullResponseActions handles the dyad-* tags.
+          // but if we ever get here, processFullResponseActions handles the vibes-* tags.
           const status = await processFullResponseActions(
             fullResponse,
             req.chatId,
@@ -2104,7 +2104,7 @@ async function replaceTextAttachmentWithContent(
       // Replace the placeholder tag with the full content
       const escapedPath = filePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const tagPattern = new RegExp(
-        `<dyad-text-attachment filename="[^"]*" type="[^"]*" path="${escapedPath}">\\s*<\\/dyad-text-attachment>`,
+        `<vibes-text-attachment filename="[^"]*" type="[^"]*" path="${escapedPath}">\\s*<\\/vibes-text-attachment>`,
         "g",
       );
 
@@ -2203,18 +2203,18 @@ function removeThinkingTags(text: string): string {
 
 export function removeProblemReportTags(text: string): string {
   const problemReportRegex =
-    /<dyad-problem-report[^>]*>[\s\S]*?<\/dyad-problem-report>/g;
+    /<vibes-problem-report[^>]*>[\s\S]*?<\/vibes-problem-report>/g;
   return text.replace(problemReportRegex, "").trim();
 }
 
 export function removeDyadTags(text: string): string {
-  const dyadRegex = /<dyad-[^>]*>[\s\S]*?<\/dyad-[^>]*>/g;
+  const dyadRegex = /<vibes-[^>]*>[\s\S]*?<\/<vibes-[^>]*>/g;
   return text.replace(dyadRegex, "").trim();
 }
 
 export function hasUnclosedDyadWrite(text: string): boolean {
-  // Find the last opening dyad-write tag
-  const openRegex = /<dyad-write[^>]*>/g;
+  // Find the last opening vibes-write tag
+  const openRegex = /<vibes-write[^>]*>/g;
   let lastOpenIndex = -1;
   let match;
 
@@ -2229,7 +2229,7 @@ export function hasUnclosedDyadWrite(text: string): boolean {
 
   // Look for a closing tag after the last opening tag
   const textAfterLastOpen = text.substring(lastOpenIndex);
-  const hasClosingTag = /<\/dyad-write>/.test(textAfterLastOpen);
+  const hasClosingTag = /<\/vibes-write>/.test(textAfterLastOpen);
 
   return !hasClosingTag;
 }

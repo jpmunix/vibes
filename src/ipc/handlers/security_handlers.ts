@@ -31,7 +31,7 @@ export function registerSecurityHandlers() {
             eq(remoteSchema.chats.userId, context.userId),
             eq(remoteSchema.messages.userId, context.userId),
             eq(remoteSchema.messages.role, "assistant"),
-            like(remoteSchema.messages.content, "%<dyad-security-finding%"),
+            like(remoteSchema.messages.content, "%<vibes-security-finding%"),
           ),
         )
         .orderBy(desc(remoteSchema.messages.createdAt))
@@ -60,10 +60,10 @@ export function registerSecurityHandlers() {
 function parseSecurityFindings(content: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
 
-  // Regex to match dyad-security-finding tags
+  // Regex to match vibes-security-finding tags
   // Using lazy quantifier with proper boundaries to prevent catastrophic backtracking
   const regex =
-    /<dyad-security-finding\s+title="([^"]+)"\s+level="(critical|high|medium|low)">([\s\S]*?)<\/dyad-security-finding>/g;
+    /<vibes-security-finding\s+title="([^"]+)"\s+level="(critical|high|medium|low)">([\s\S]*?)<\/vibes-security-finding>/g;
 
   let match;
   while ((match = regex.exec(content)) !== null) {

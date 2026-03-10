@@ -27,7 +27,7 @@ export function VisualEditingChangesDialog({
   // Listen for text content responses
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "dyad-text-content-response") {
+      if (event.data?.type === "vibes-text-content-response") {
         const { componentId, text } = event.data;
         if (text !== null) {
           textContentCache.current.set(componentId, text);
@@ -128,7 +128,7 @@ export function VisualEditingChangesDialog({
         for (const change of changesNeedingIframeText) {
           iframeRef.current.contentWindow.postMessage(
             {
-              type: "get-dyad-text-content",
+              type: "get-vibes-text-content",
               data: { componentId: change.componentId },
             },
             "*",

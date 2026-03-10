@@ -169,15 +169,15 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     if (!message.content || !message.content.trim()) return defaultInfo;
 
     const DYAD_CUSTOM_TAGS = [
-      "dyad-write", "dyad-rename", "dyad-delete", "dyad-add-dependency",
-      "dyad-execute-sql", "dyad-read-logs", "dyad-add-integration",
-      "dyad-edit", "dyad-grep", "dyad-search-replace", "dyad-codebase-context",
-      "dyad-web-crawl", "dyad-code-search", "dyad-read", "think", "thought",
-      "dyad-mcp-tool-call", "dyad-list-files", "dyad-database-schema",
-      "dyad-supabase-table-schema", "dyad-supabase-project-info", "dyad-status",
-      "dyad-think", "dyad-git", "dyad-ask-user", "dyad-patch", "dyad-run-command",
-      "dyad-start-process", "dyad-stop-process", "dyad-list-processes",
-      "dyad-wait-http", "dyad-typecheck-summary", "dyad-token-usage"
+      "vibes-write", "vibes-rename", "vibes-delete", "vibes-add-dependency",
+      "vibes-execute-sql", "vibes-read-logs", "vibes-add-integration",
+      "vibes-edit", "vibes-grep", "vibes-search-replace", "vibes-codebase-context",
+      "vibes-web-crawl", "vibes-code-search", "vibes-read", "think", "thought",
+      "vibes-mcp-tool-call", "vibes-list-files", "vibes-database-schema",
+      "vibes-supabase-table-schema", "vibes-supabase-project-info", "vibes-status",
+      "vibes-think", "vibes-git", "vibes-ask-user", "vibes-patch", "vibes-run-command",
+      "vibes-start-process", "vibes-stop-process", "vibes-list-processes",
+      "vibes-wait-http", "vibes-typecheck-summary", "vibes-token-usage"
     ];
 
     let lastOpenTag: string | null = null;
@@ -229,7 +229,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
         let contentExcerpt: string | undefined = undefined;
         // If it's a thinking tag, extract a short, clean snippet of the ongoing thought
-        if (["think", "thought", "dyad-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
+        if (["think", "thought", "vibes-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
           const ongoingContent = message.content.slice(lastOpenIndex);
           // Strip basic markdown to get clean text for the excerpt
           const cleanText = ongoingContent
@@ -249,7 +249,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
         }
 
         // For ask-user, don't append the (potentially very long) question as detail
-        const skipDetail = lastOpenTag === "dyad-ask-user";
+        const skipDetail = lastOpenTag === "vibes-ask-user";
 
         return {
           label: (!skipDetail && detail) ? `${activeLabel} ${detail}` : activeLabel,
@@ -261,7 +261,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     }
 
     // Fallback: check if the last completed tool was git
-    const lastGitTag = message.content.lastIndexOf("<dyad-git ");
+    const lastGitTag = message.content.lastIndexOf("<vibes-git ");
     if (lastGitTag !== -1) {
       return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500", contentExcerpt: undefined };
     }
@@ -274,7 +274,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const plainTextExcerpt = useMemo(() => {
     if (!message.content || !isAssistant) return "";
     const stripped = message.content
-      .replace(/<(dyad-[\w-]+|think|dyad-think)[^>]*>[\s\S]*?<\/\1>/g, "")
+      .replace(/<(vibes-[\w-]+|think|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "")
       .replace(/<[^>]+>/g, "")
       .replace(/[#*_`~>\-|]/g, "")
       .replace(/\n+/g, " ")
@@ -285,7 +285,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   // Tool usage summary grouped by icon (for collapsed badges)
   const toolSummary = useMemo(() => {
     if (!message.content || !isAssistant) return [];
-    const tagPattern = /<(dyad-[\w-]+)\s[^>]*>[\s\S]*?<\/\1>/g;
+    const tagPattern = /<(vibes-[\w-]+)\s[^>]*>[\s\S]*?<\/\1>/g;
     const counts = new Map<string, number>();
     let match;
     while ((match = tagPattern.exec(message.content)) !== null) {

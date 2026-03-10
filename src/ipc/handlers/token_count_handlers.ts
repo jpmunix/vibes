@@ -124,7 +124,7 @@ export function registerTokenCountHandlers() {
                 // It doesn't need to be the exact format but it's just to get a token estimate
                 .map(
                   (file) =>
-                    `<dyad-file=${file.path}>${file.content}</dyad-file>`,
+                    `<vibes-file=${file.path}>${file.content}</vibes-file>`,
                 )
                 .join("\n\n"),
             );

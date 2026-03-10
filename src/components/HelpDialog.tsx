@@ -109,14 +109,14 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       if (isDyadProUser) {
         labels.push("pro");
       }
-      const githubIssueUrl = `https://github.com/dyad-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
+      const githubIssueUrl = `https://github.com/<vibes-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
 
       // Open the pre-filled GitHub issue page
       ipc.system.openExternalUrl(githubIssueUrl);
     } catch (error) {
       console.error("Failed to prepare bug report:", error);
       // Fallback to opening the regular GitHub issue page
-      ipc.system.openExternalUrl("https://github.com/dyad-sh/dyad/issues/new");
+      ipc.system.openExternalUrl("https://github.com/<vibes-sh/dyad/issues/new");
     } finally {
       setIsLoading(false);
     }
@@ -232,7 +232,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
     if (isDyadProUser) {
       labels.push("pro");
     }
-    const githubIssueUrl = `https://github.com/dyad-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
+    const githubIssueUrl = `https://github.com/<vibes-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
 
     ipc.system.openExternalUrl(githubIssueUrl);
     handleClose();

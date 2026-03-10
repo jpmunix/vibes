@@ -31,8 +31,8 @@ export const getPocketbaseStorageInfoTool: ToolDefinition<
         }
 
         const infoTag = args.collectionName
-            ? `<dyad-pocketbase-storage-info collection="${args.collectionName}"></dyad-pocketbase-storage-info>`
-            : `<dyad-pocketbase-storage-info></dyad-pocketbase-storage-info>`;
+            ? `<vibes-pocketbase-storage-info collection="${args.collectionName}"></vibes-pocketbase-storage-info>`
+            : `<vibes-pocketbase-storage-info></vibes-pocketbase-storage-info>`;
 
         ctx.onXmlStream(infoTag);
 
@@ -42,7 +42,7 @@ export const getPocketbaseStorageInfoTool: ToolDefinition<
         } catch {
             const result = `pocketbase is not installed in the main process. Configuration:\n- URL: ${ctx.pocketbaseConfig.url}\n\nTo interact with PocketBase Storage, the user's app should use the 'pocketbase' npm package.`;
             ctx.onXmlComplete(
-                `<dyad-pocketbase-storage-info>\n${escapeXmlContent(result)}\n</dyad-pocketbase-storage-info>`
+                `<vibes-pocketbase-storage-info>\n${escapeXmlContent(result)}\n</vibes-pocketbase-storage-info>`
             );
             return result;
         }
@@ -89,7 +89,7 @@ export const getPocketbaseStorageInfoTool: ToolDefinition<
         }
 
         ctx.onXmlComplete(
-            `<dyad-pocketbase-storage-info>\n${escapeXmlContent(result)}\n</dyad-pocketbase-storage-info>`
+            `<vibes-pocketbase-storage-info>\n${escapeXmlContent(result)}\n</vibes-pocketbase-storage-info>`
         );
 
         return result;

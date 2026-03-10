@@ -51,12 +51,12 @@ export function registerImportHandlers() {
       _,
       { appName, skipCopy }: { appName: string; skipCopy?: boolean },
     ) => {
-      // Only check filesystem if we're copying to dyad-apps
+      // Only check filesystem if we're copying to vibes-apps
       if (!skipCopy) {
         const appPath = getDyadAppPath(appName);
         try {
           await fs.access(appPath);
-          // Folder exists in dyad-apps — check if it's already registered in the DB
+          // Folder exists in vibes-apps — check if it's already registered in the DB
           const existingApp = await getRemoteDb().query.apps.findFirst({
             where: eq(remoteSchema.apps.name, appName),
           });
@@ -105,7 +105,7 @@ export function registerImportHandlers() {
       const appPath = skipCopy ? sourcePath : getDyadAppPath(appName);
 
       if (!skipCopy) {
-        // Check if the app already exists in dyad-apps
+        // Check if the app already exists in vibes-apps
         const errorMessage = "An app with this name already exists";
         try {
           await fs.access(appPath);

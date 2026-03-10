@@ -87,7 +87,7 @@ import { chatPositionAtom } from "@/atoms/uiAtoms";
 import { VibesInitLoader } from "./VibesInitLoader";
 
 interface ErrorBannerProps {
-  error: { message: string; source: "preview-app" | "dyad-app" } | undefined;
+  error: { message: string; source: "preview-app" | "vibes-app" } | undefined;
   onDismiss: () => void;
   onAIFix: () => void;
 }
@@ -131,7 +131,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Error en la aplicación
               </h3>
-              {error.source === "dyad-app" && (
+              {error.source === "vibes-app" && (
                 <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/50 rounded text-xs font-medium text-red-700 dark:text-red-300">
                   Error interno
                 </span>
@@ -171,7 +171,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
               <span className="font-semibold">Consejo: </span>
               {isDockerError
                 ? "Asegúrate de que Docker Desktop está en ejecución e intenta reiniciar la aplicación."
-                : error.source === "dyad-app"
+                : error.source === "vibes-app"
                   ? "Intenta reiniciar la aplicación Dyad o reiniciar tu computadora para ver si eso soluciona el error."
                   : "Verifica si reiniciar la aplicación soluciona el error."}
             </div>
@@ -456,7 +456,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       if (result.hasStaticText && iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           {
-            type: "enable-dyad-text-editing",
+            type: "enable-vibes-text-editing",
             data: {
               componentId: componentId,
               runtimeId: visualEditingSelectedComponent?.runtimeId,
@@ -513,7 +513,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       // Send message to iframe to get current styles
       iframeRef.current.contentWindow.postMessage(
         {
-          type: "get-dyad-component-styles",
+          type: "get-vibes-component-styles",
           data: {
             elementId: visualEditingSelectedComponent.id,
             runtimeId: visualEditingSelectedComponent.runtimeId,
@@ -583,7 +583,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   useEffect(() => {
     if (iframeRef.current?.contentWindow && isComponentSelectorInitialized) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "dyad-pro-mode", enabled: isProMode },
+        { type: "vibes-pro-mode", enabled: isProMode },
         "*",
       );
     }
@@ -706,26 +706,26 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-selector-initialized") {
+      if (event.data?.type === "vibes-component-selector-initialized") {
         setIsComponentSelectorInitialized(true);
         iframeRef.current?.contentWindow?.postMessage(
-          { type: "dyad-pro-mode", enabled: isProMode },
+          { type: "vibes-pro-mode", enabled: isProMode },
           "*",
         );
         return;
       }
 
-      if (event.data?.type === "dyad-text-updated") {
+      if (event.data?.type === "vibes-text-updated") {
         handleTextUpdated(event.data);
         return;
       }
 
-      if (event.data?.type === "dyad-text-finalized") {
+      if (event.data?.type === "vibes-text-finalized") {
         handleTextUpdated(event.data);
         return;
       }
 
-      if (event.data?.type === "dyad-component-selected") {
+      if (event.data?.type === "vibes-component-selected") {
         console.log("Component picked:", event.data);
 
         const component = parseComponentSelection(event.data);
@@ -763,7 +763,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               if (iframeRef.current?.contentWindow) {
                 iframeRef.current.contentWindow.postMessage(
                   {
-                    type: "remove-dyad-component-overlay",
+                    type: "remove-vibes-component-overlay",
                     componentId: prev.id,
                   },
                   "*",
@@ -785,14 +785,14 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-deselected") {
+      if (event.data?.type === "vibes-component-deselected") {
         const componentId = event.data.componentId;
         if (componentId) {
           // Disable text editing for the deselected component
           if (iframeRef.current?.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
               {
-                type: "disable-dyad-text-editing",
+                type: "disable-vibes-text-editing",
                 data: { componentId },
               },
               "*",
@@ -813,14 +813,14 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-coordinates-updated") {
+      if (event.data?.type === "vibes-component-coordinates-updated") {
         if (event.data.coordinates) {
           setCurrentComponentCoordinates(event.data.coordinates);
         }
         return;
       }
 
-      if (event.data?.type === "dyad-request-native-screenshot") {
+      if (event.data?.type === "vibes-request-native-screenshot") {
         const { rect } = event.data;
         const iframeRect = iframeRef.current?.getBoundingClientRect();
 
@@ -879,7 +879,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-screenshot-response") {
+      if (event.data?.type === "vibes-screenshot-response") {
         if (event.data.success && event.data.dataUrl) {
           if (isProMode) {
             setScreenshotDataUrl(event.data.dataUrl);
@@ -1102,7 +1102,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         if (visualEditingSelectedComponent) {
           iframeRef.current.contentWindow.postMessage(
             {
-              type: "remove-dyad-component-overlay",
+              type: "remove-vibes-component-overlay",
               componentId: visualEditingSelectedComponent.id,
             },
             "*",
@@ -1119,8 +1119,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       iframeRef.current.contentWindow.postMessage(
         {
           type: newIsPicking
-            ? "activate-dyad-component-selector"
-            : "deactivate-dyad-component-selector",
+            ? "activate-vibes-component-selector"
+            : "deactivate-vibes-component-selector",
         },
         "*",
       );
@@ -1138,7 +1138,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           {
-            type: "dyad-take-screenshot",
+            type: "vibes-take-screenshot",
           },
           "*",
         );
@@ -1152,7 +1152,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           {
-            type: "dyad-start-selection",
+            type: "vibes-start-selection",
           },
           "*",
         );
@@ -1889,7 +1889,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 };
 
 function parseComponentSelection(data: any): ComponentSelection | null {
-  if (!data || data.type !== "dyad-component-selected") {
+  if (!data || data.type !== "vibes-component-selected") {
     return null;
   }
 

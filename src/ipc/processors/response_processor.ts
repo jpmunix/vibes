@@ -30,13 +30,13 @@ import {
 import { readSettings } from "@/main/settings";
 import { writeMigrationFile } from "../utils/file_utils";
 import {
-  getDyadWriteTags,
-  getDyadRenameTags,
-  getDyadDeleteTags,
-  getDyadAddDependencyTags,
-  getDyadExecuteSqlTags,
-  getDyadSearchReplaceTags,
-} from "../utils/dyad_tag_parser";
+  getWriteTags,
+  getRenameTags,
+  getDeleteTags,
+  getAddDependencyTags,
+  getExecuteSqlTags,
+  getSearchReplaceTags,
+} from "../utils/tag_parser";
 import {
   applySearchReplace,
   formatMatchFailureSummary,
@@ -61,7 +61,7 @@ export async function dryRunSearchReplace({
   appPath: string;
 }) {
   const issues: { filePath: string; error: string }[] = [];
-  const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
+  const dyadSearchReplaceTags = getSearchReplaceTags(fullResponse);
 
   // Group tags by file path to handle multi-block edits to the same file correctly
   const tagsByFile = new Map<
@@ -178,12 +178,12 @@ export async function processFullResponseActions(
 
   try {
     // Extract all tags
-    const dyadWriteTags = getDyadWriteTags(fullResponse);
-    const dyadRenameTags = getDyadRenameTags(fullResponse);
-    const dyadDeletePaths = getDyadDeleteTags(fullResponse);
-    const dyadAddDependencyPackages = getDyadAddDependencyTags(fullResponse);
+    const dyadWriteTags = getWriteTags(fullResponse);
+    const dyadRenameTags = getRenameTags(fullResponse);
+    const dyadDeletePaths = getDeleteTags(fullResponse);
+    const dyadAddDependencyPackages = getAddDependencyTags(fullResponse);
     const dyadExecuteSqlQueries = chatWithApp.app.supabaseProjectId
-      ? getDyadExecuteSqlTags(fullResponse)
+      ? getExecuteSqlTags(fullResponse)
       : [];
 
     const message = await db.query.messages.findFirst({
@@ -383,7 +383,7 @@ export async function processFullResponseActions(
     }
 
     // Process all search-replace edits
-    const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
+    const dyadSearchReplaceTags = getSearchReplaceTags(fullResponse);
     // Group tags by file path
     const srTagsByFile = new Map<
       string,
@@ -405,7 +405,7 @@ export async function processFullResponseActions(
 
       try {
         if (!fs.existsSync(fullFilePath)) {
-          // Do not show warning to user because we already attempt to do a <dyad-write> tag to fix it.
+          // Do not show warning to user because we already attempt to do a <vibes-write> tag to fix it.
           logger.warn(`Search-replace target file does not exist: ${filePath}`);
           continue;
         }
@@ -415,7 +415,7 @@ export async function processFullResponseActions(
         const result = applySearchReplace(original, combinedContent);
 
         if (!result.success || typeof result.content !== "string") {
-          // Do not show warning to user because we already attempt to do a <dyad-write> and/or a subsequent <dyad-search-replace> tag to fix it.
+          // Do not show warning to user because we already attempt to do a <vibes-write> and/or a subsequent <vibes-search-replace> tag to fix it.
           logger.warn(
             `Failed to apply search-replace to ${filePath}: ${result.error ?? "unknown"}`,
           );
@@ -690,13 +690,13 @@ export async function processFullResponseActions(
     ${warnings
         .map(
           (warning) =>
-            `<dyad-output type="warning" message="${warning.message}">${warning.error}</dyad-output>`,
+            `<vibes-output type="warning" message="${warning.message}">${warning.error}</vibes-output>`,
         )
         .join("\n")}
     ${errors
         .map(
           (error) =>
-            `<dyad-output type="error" message="${error.message}">${error.error}</dyad-output>`,
+            `<vibes-output type="error" message="${error.message}">${error.error}</vibes-output>`,
         )
         .join("\n")}
     `;
