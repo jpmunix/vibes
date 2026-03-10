@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useAtom } from "jotai";
 import { userSettingsAtom, envVarsAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
-import { type UserSettings, hasDyadProKey } from "@/lib/schemas";
+import { type UserSettings } from "@/lib/schemas";
 import { usePostHog } from "posthog-js/react";
 import { useAppVersion } from "./useAppVersion";
 import { showSuccess } from "@/lib/toast";
 
-const TELEMETRY_CONSENT_KEY = "dyadTelemetryConsent";
-const TELEMETRY_USER_ID_KEY = "dyadTelemetryUserId";
+const TELEMETRY_CONSENT_KEY = "vibesTelemetryConsent";
+const TELEMETRY_USER_ID_KEY = "vibesTelemetryUserId";
 
 export function isTelemetryOptedIn() {
   return window.localStorage.getItem(TELEMETRY_CONSENT_KEY) === "opted_in";
@@ -36,7 +36,7 @@ export function useSettings() {
         ipc.misc.getEnvVars(),
       ]);
       processSettingsForTelemetry(userSettings);
-      const isPro = hasDyadProKey(userSettings);
+      const isPro = true; // Always Pro after acquisition
       posthog.people.set({ isPro });
       if (!isInitialLoad && appVersion) {
         posthog.capture("app:initial-load", {
@@ -67,7 +67,7 @@ export function useSettings() {
       const updatedSettings = await ipc.settings.setUserSettings(newSettings);
       setSettingsAtom(updatedSettings);
       processSettingsForTelemetry(updatedSettings);
-      posthog.people.set({ isPro: hasDyadProKey(updatedSettings) });
+      posthog.people.set({ isPro: true });
 
       setError(null);
       if (options?.showToast) {

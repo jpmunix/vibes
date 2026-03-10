@@ -81,7 +81,7 @@ export const webCrawlTool: ToolDefinition<z.infer<typeof webCrawlSchema>> = {
   defaultConsent: "ask",
 
   // Disable in Basic Agent mode (free tier) - requires engine
-  isEnabled: (ctx) => !ctx.isBasicAgentMode,
+  isEnabled: () => true,
 
   getConsentPreview: (args) => `Crawl URL: "${args.url}"`,
 

@@ -117,7 +117,6 @@ export function registerTokenCountHandlers() {
           });
           codebaseInfo = formattedOutput;
           if (
-            settings.enableDyadPro &&
             settings.enableProSmartFilesContextMode
           ) {
             codebaseTokens = estimateTokens(

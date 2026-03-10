@@ -179,7 +179,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["local-agent", "legacy-agent", "plan", "ask"]);
+export const ChatModeSchema = z.enum(["local-agent", "plan", "ask"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -244,11 +244,7 @@ export const ExperimentsSchema = z.object({
 });
 export type Experiments = z.infer<typeof ExperimentsSchema>;
 
-export const DyadProBudgetSchema = z.object({
-  budgetResetAt: z.string(),
-  maxBudget: z.number(),
-});
-export type DyadProBudget = z.infer<typeof DyadProBudgetSchema>;
+// DyadProBudgetSchema removed — Pro concept eliminated after acquisition
 
 export const GlobPathSchema = z.object({
   globPath: z.string(),
@@ -310,7 +306,7 @@ export const UserSettingsSchema = z
     // DEPRECATED.
     ////////////////////////////////
     enableProSaverMode: z.boolean().optional(),
-    dyadProBudget: DyadProBudgetSchema.optional(),
+    // dyadProBudget: removed (Pro eliminated)
     runtimeMode: RuntimeModeSchema.optional(),
 
     ////////////////////////////////
@@ -341,7 +337,7 @@ export const UserSettingsSchema = z
     telemetryConsent: z.enum(["opted_in", "opted_out", "unset"]).optional(),
     telemetryUserId: z.string().optional(),
     hasRunBefore: z.boolean().optional(),
-    enableDyadPro: z.boolean().optional(),
+    // enableDyadPro: removed (Pro eliminated — always Pro)
     experiments: ExperimentsSchema.optional(),
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
@@ -375,14 +371,14 @@ export const UserSettingsSchema = z
     selectedChatMode: z.preprocess(
       (val) => {
         // Migrate deprecated mode values before validation
-        if (val === "crush-agent" || val === "build" || val === "agent") return "local-agent";
+        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
         return val;
       },
       ChatModeSchema.optional(),
     ),
     defaultChatMode: z.preprocess(
       (val) => {
-        if (val === "crush-agent" || val === "build" || val === "agent") return "local-agent";
+        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
         return val;
       },
       ChatModeSchema.optional(),
@@ -447,13 +443,7 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-export function isDyadProEnabled(settings: UserSettings): boolean {
-  return settings.enableDyadPro ?? false;
-}
-
-export function hasDyadProKey(settings: UserSettings): boolean {
-  return settings.enableDyadPro ?? false;
-}
+// isDyadProEnabled / hasDyadProKey removed — always Pro after acquisition
 
 /**
  * Gets the effective default chat mode based on settings and pro status.
@@ -479,18 +469,7 @@ export function getEffectiveDefaultChatMode(
   return "local-agent";
 }
 
-/**
- * Determines if the current session is using Basic Agent mode (free tier with quota).
- * Basic Agent mode is when:
- * - User is NOT a Pro subscriber
- * - User is using legacy-agent chat mode
- * Note: OpenCode (local-agent) does NOT use the free quota system.
- */
-export function isBasicAgentMode(settings: UserSettings): boolean {
-  return (
-    !isDyadProEnabled(settings) && settings.selectedChatMode === "legacy-agent"
-  );
-}
+// isBasicAgentMode removed — legacy-agent eliminated, always Pro
 
 export function isSupabaseConnected(settings: UserSettings | null): boolean {
   if (!settings) {

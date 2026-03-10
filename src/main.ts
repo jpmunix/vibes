@@ -11,7 +11,7 @@ import {
   writeSettings,
 } from "./main/settings";
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
-import { handleDyadProReturn } from "./main/pro";
+import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
 
 import { getDatabasePath, initializeDatabase } from "./db";
@@ -587,7 +587,7 @@ async function handleDeepLinkReturn(url: string) {
       dialog.showErrorBox("Invalid URL", "Expected key");
       return;
     }
-    await handleDyadProReturn({
+    await handleProReturn({
       apiKey,
     });
     mainWindow?.webContents.send("deep-link-received", {

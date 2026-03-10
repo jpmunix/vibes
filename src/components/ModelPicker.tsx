@@ -1,4 +1,4 @@
-import { isDyadProEnabled, type LargeLanguageModel } from "@/lib/schemas";
+import { type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {

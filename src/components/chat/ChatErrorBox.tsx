@@ -11,11 +11,9 @@ import remarkGfm from "remark-gfm";
 export function ChatErrorBox({
   onDismiss,
   error,
-  isDyadProEnabled,
 }: {
   onDismiss: () => void;
   error: string;
-  isDyadProEnabled: boolean;
 }) {
   if (error.includes("doesn't have a free quota tier")) {
     return (
@@ -25,17 +23,11 @@ export function ChatErrorBox({
     );
   }
 
-  // Important, this needs to come after the "free quota tier" check
-  // because it also includes this URL in the error message
-  //
-  // Sometimes Dyad Pro can return rate limit errors and we do not want to
-  // show the upgrade to Dyad Pro link in that case because they are
-  // already on the Dyad Pro plan.
+  // Rate limit / resource exhaustion errors
   if (
-    !isDyadProEnabled &&
-    (error.includes("Resource has been exhausted") ||
-      error.includes("https://ai.google.dev/gemini-api/docs/rate-limits") ||
-      error.includes("Provider returned error"))
+    error.includes("Resource has been exhausted") ||
+    error.includes("https://ai.google.dev/gemini-api/docs/rate-limits") ||
+    error.includes("Provider returned error")
   ) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
@@ -44,7 +36,7 @@ export function ChatErrorBox({
     );
   }
 
-  if (isDyadProEnabled && error.includes("ExceededBudget:")) {
+  if (error.includes("ExceededBudget:")) {
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
         <span>

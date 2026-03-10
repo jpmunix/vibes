@@ -16,10 +16,8 @@ const ChatLogsPanel = React.lazy(() =>
   import("./chat/ChatLogsPanel").then((m) => ({ default: m.ChatLogsPanel }))
 );
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Loader2, ListChecks } from "lucide-react";
+import { ArrowDown, Loader2 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
-import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
-import { isBasicAgentMode } from "@/lib/schemas";
 const PlanPanel = React.lazy(() =>
   import("./chat/PlanPanel").then((m) => ({ default: m.PlanPanel }))
 );
@@ -48,9 +46,7 @@ export function ChatPanel({
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { settings, updateSettings } = useSettings();
-  const { isQuotaExceeded } = useFreeAgentQuota();
-  const showFreeAgentQuotaBanner =
-    settings && isBasicAgentMode(settings) && isQuotaExceeded;
+  const showFreeAgentQuotaBanner = false; // Pro always enabled after acquisition
 
   // Sync plan state from chat messages (in plan mode)
   usePlanSync(chatId);

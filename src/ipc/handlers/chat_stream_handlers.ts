@@ -103,15 +103,8 @@ import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
 
 import {
-  isDyadProEnabled,
-  isBasicAgentMode,
   isSupabaseConnected,
 } from "@/lib/schemas";
-import {
-  getFreeAgentQuotaStatus,
-  markMessageAsUsingFreeAgentQuota,
-  unmarkMessageAsUsingFreeAgentQuota,
-} from "./free_agent_quota_handlers";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
 import { getCurrentCommitHash } from "../utils/git_utils";
@@ -517,11 +510,8 @@ ${componentSnippet}
       // placeholder in the database, avoiding a UI flicker where the assistant bubble disappears.
 
       const settings = readSettings();
-      // Only Dyad Pro requests have request ids.
-      if (settings.enableDyadPro) {
-        // Generate requestId early so it can be saved with the message
-        dyadRequestId = uuidv4();
-      }
+      // Always generate requestId
+      dyadRequestId = uuidv4();
 
       let fullResponse = "";
       let maxTokensUsed: number | undefined;
@@ -874,9 +864,7 @@ ${componentSnippet}
         );
         const willUseLocalAgentStream =
           (settings.selectedChatMode === "local-agent" ||
-            settings.selectedChatMode === "build" || // build is deprecated, route to agent
-            (settings.selectedChatMode === "ask" &&
-              isDyadProEnabled(settings))) &&
+            settings.selectedChatMode === "ask") &&
           !mentionedAppsCodebases.length;
 
         const isDeepContextEnabled =
@@ -986,12 +974,9 @@ ${componentSnippet}
 
         let systemPrompt = constructSystemPrompt({
           aiRules,
-          chatMode:
-            settings.selectedChatMode === "agent"
-              ? "build"
-              : settings.selectedChatMode,
+          chatMode: settings.selectedChatMode,
           themePrompt,
-          basicAgentMode: isBasicAgentMode(settings),
+          basicAgentMode: false,
           chatLanguage: settings.chatLanguage || "es",
           settings,
         });
@@ -1584,7 +1569,6 @@ This conversation includes one or more image attachments. When the user uploads 
         if (
           !isSummarizeIntent &&
           settings.selectedChatMode === "ask" &&
-          isDyadProEnabled(settings) &&
           !mentionedAppsCodebases.length
         ) {
           // Reconstruct system prompt for local-agent read-only mode
@@ -1814,83 +1798,8 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // Handle legacy-agent mode — uses the old local agent handler
-        // Also handles deprecated "build" and "agent" modes for backwards compatibility
-        // Skip for summarize intent — summaries don't need agent tools.
-        if (
-          !isSummarizeIntent &&
-          (settings.selectedChatMode === "legacy-agent" ||
-            (settings.selectedChatMode as string) === "build" ||
-            (settings.selectedChatMode as string) === "agent")
-        ) {
-          if (!mentionedAppsCodebases.length) {
-            // Check quota for Basic Agent mode (non-Pro users)
-            const isBasicAgentModeRequest = isBasicAgentMode(settings);
-            if (isBasicAgentModeRequest) {
-              const quotaStatus = await getFreeAgentQuotaStatus(currentUserId);
-              if (quotaStatus.isQuotaExceeded) {
-                safeSend(event.sender, "chat:response:error", {
-                  chatId: req.chatId,
-                  error: JSON.stringify({
-                    type: "FREE_AGENT_QUOTA_EXCEEDED",
-                    hoursUntilReset: quotaStatus.hoursUntilReset,
-                    resetTime: quotaStatus.resetTime,
-                  }),
-                });
-                return;
-              }
-            }
-
-            // Mark the user message as using quota BEFORE starting the stream
-            // to prevent race conditions with parallel requests
-            if (isBasicAgentModeRequest && userMessageId) {
-              await markMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
-            }
-
-            // Add semantic context for Agente inteligente
-            // Extract codebase and use semantic search to provide initial context
-            // Skip for summarize intent to save tokens
-            logger.log(
-              `[AGENT MODE] Starting Agente inteligente${isSummarizeIntent ? " (summarize mode - no codebase)" : " with semantic context"}`,
-            );
-            let localAgentSystemPrompt = systemPrompt;
-
-            if (!isSummarizeIntent) {
-              // AGENT MODE: Generate a compact micro-summary of the project structure
-              // to give the LLM spatial awareness without injecting full file content.
-              const projectSummary = generateProjectMicroSummary(appPath);
-              localAgentSystemPrompt += `\n\n# Project Context\n${projectSummary}\nUse \`list_files\`, \`code_search\`, or \`grep\` to explore the codebase and find specific files.`;
-            } else {
-              logger.log(
-                `[AGENT MODE] Skipping codebase context for summarize intent`,
-              );
-            }
-
-            let streamSuccess = false;
-            try {
-              streamSuccess = await handleLocalAgentStream(
-                event,
-                req,
-                abortController,
-                {
-                  placeholderMessageId: placeholderAssistantMessage.id,
-                  systemPrompt: localAgentSystemPrompt,
-                  dyadRequestId: dyadRequestId ?? "[no-request-id]",
-                  messageOverride: isSummarizeIntent ? chatMessages : undefined,
-                },
-              );
-            } finally {
-              // If the stream failed, was aborted, or threw, refund the quota
-              if (isBasicAgentModeRequest && userMessageId && !streamSuccess) {
-                await unmarkMessageAsUsingFreeAgentQuota(userMessageId, currentUserId);
-              }
-            }
-
-            return;
-          } // end !mentionedAppsCodebases.length
-        } // end legacy-agent
-
-        // NOTE: Old "agent" mode (MCP) code was here but is now handled by legacy-agent above.
+        // NOTE: legacy-agent / build / agent modes removed.
+        // The preprocessor in schemas.ts migrates them to local-agent.
 
         // When calling streamText, the messages need to be properly formatted for mixed content
         const { fullStream } = await simpleStreamText({

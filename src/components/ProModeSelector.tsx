@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Info } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { ipc } from "@/ipc/types";
-import { hasDyadProKey, type UserSettings } from "@/lib/schemas";
+import { type UserSettings } from "@/lib/schemas";
 
 export function ProModeSelector() {
   const { settings, updateSettings } = useSettings();
@@ -40,14 +40,8 @@ export function ProModeSelector() {
     }
   };
 
-  const toggleProEnabled = () => {
-    updateSettings({
-      enableDyadPro: !settings?.enableDyadPro,
-    });
-  };
-
-  const hasProKey = settings ? hasDyadProKey(settings) : false;
-  const proModeTogglable = hasProKey && Boolean(settings?.enableDyadPro);
+  // Pro is always enabled after acquisition — no toggle needed
+  const proModeTogglable = true;
 
   return (
     <Popover>
@@ -64,7 +58,7 @@ export function ProModeSelector() {
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>Configure Vibes Pro settings</TooltipContent>
+        <TooltipContent>Configurar Vibes Pro</TooltipContent>
       </Tooltip>
       <PopoverContent className="w-80 border-primary/20">
         <div className="space-y-4">
@@ -75,21 +69,7 @@ export function ProModeSelector() {
             </h4>
             <div className="h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
           </div>
-          {!hasProKey && (
-            <div className="text-sm text-center text-muted-foreground">
-              Please configure an API key in settings to enable Pro modes.
-            </div>
-          )}
           <div className="flex flex-col gap-5">
-            <SelectorRow
-              id="pro-enabled"
-              label="Enable vibes Pro"
-              tooltip="Uses vibes Pro modes"
-              isTogglable={hasProKey}
-              settingEnabled={Boolean(settings?.enableDyadPro)}
-              toggle={toggleProEnabled}
-            />
-
             <SmartContextSelector
               isTogglable={proModeTogglable}
               settings={settings}

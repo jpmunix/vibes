@@ -29,7 +29,7 @@ import {
   saveCommitHash,
 } from "./message_persistence";
 
-import { isDyadProEnabled, isBasicAgentMode } from "@/lib/schemas";
+
 import { readSettings } from "@/main/settings";
 import { getDyadAppPath } from "@/paths/paths";
 import { getModelClient } from "@/ipc/utils/get_model_client";
@@ -153,7 +153,7 @@ export async function handleLocalAgentStream(
 
   // Check Pro status or Basic Agent mode
   // Basic Agent mode allows non-Pro users with quota (quota check is done in chat_stream_handlers)
-  if (!isDyadProEnabled(settings) && !isBasicAgentMode(settings)) {
+  if (false) { // Pro eliminated
     safeSend(event.sender, "chat:response:error", {
       chatId: req.chatId,
       error:
@@ -232,7 +232,7 @@ export async function handleLocalAgentStream(
       dyadRequestId,
       fileEditTracker,
       typecheckResults: [],
-      isBasicAgentMode: isBasicAgentMode(settings),
+      isBasicAgentMode: false,
       onXmlStream: (accumulatedXml: string) => {
         // Stream accumulated XML to UI without persisting
         streamingPreview = accumulatedXml;
@@ -277,7 +277,7 @@ export async function handleLocalAgentStream(
     // In read-only mode, only include read-only tools and skip MCP tools
     // (since we can't determine if MCP tools modify state)
     logger.log(
-      `[AGENT] Building tool set (readOnly: ${readOnly}, basicAgentMode: ${isBasicAgentMode(settings)})`,
+      `[AGENT] Building tool set (readOnly: ${readOnly}, basicAgentMode: ${false})`,
     );
     const agentTools = buildAgentToolSet(ctx, { readOnly });
     const mcpTools = readOnly ? {} : await getMcpTools(event, ctx);

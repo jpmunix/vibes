@@ -22,7 +22,7 @@ export function ChatModeSelector() {
   // Migrate deprecated modes to their replacements
   const rawMode = settings?.selectedChatMode || "local-agent";
   const selectedMode: ChatMode =
-    rawMode === "build" || rawMode === "agent" || rawMode === "crush-agent" || rawMode === "legacy-agent"
+    rawMode === "build" || rawMode === "agent" || rawMode === "crush-agent"
       ? "local-agent"
       : (rawMode as ChatMode);
   const { } = useFreeAgentQuota();

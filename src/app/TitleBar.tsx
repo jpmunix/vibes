@@ -6,7 +6,7 @@ import { useRouter, useLocation } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 import { useEffect, useState } from "react";
-import { DyadProSuccessDialog } from "@/components/DyadProSuccessDialog";
+
 import { ipc } from "@/ipc/types";
 import { ActionHeader } from "@/components/preview_panel/ActionHeader";
 import { WindowsControls } from "@/components/WindowsControls";
@@ -17,7 +17,6 @@ export const TitleBar = () => {
   const { navigate } = useRouter();
   const location = useLocation();
   const { settings, refreshSettings } = useSettings();
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [showWindowControls, setShowWindowControls] = useState(false);
   const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
 
@@ -37,16 +36,13 @@ export const TitleBar = () => {
     checkPlatform();
   }, []);
 
-  const showDyadProSuccessDialog = () => {
-    setIsSuccessDialogOpen(true);
-  };
+
 
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
   useEffect(() => {
     const handleDeepLink = async () => {
       if (lastDeepLink?.type === "dyad-pro-return") {
         await refreshSettings();
-        showDyadProSuccessDialog();
         clearLastDeepLink();
       }
     };
@@ -85,10 +81,7 @@ export const TitleBar = () => {
         {showWindowControls && <WindowsControls className="ml-auto h-full pr-1" buttonClassName="h-full" />}
       </div >
 
-      <DyadProSuccessDialog
-        isOpen={isSuccessDialogOpen}
-        onClose={() => setIsSuccessDialogOpen(false)}
-      />
+
     </>
   );
 };
