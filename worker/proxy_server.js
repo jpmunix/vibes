@@ -36,12 +36,12 @@ let rememberedOrigin = null; // e.g. "http://localhost:5173"
 /* ---------- optional resources for HTML injection ---------------------- */
 
 let stacktraceJsContent = null;
-let dyadShimContent = null;
-let dyadComponentSelectorClientContent = null;
-let dyadScreenshotClientContent = null;
+let vibesShimContent = null;
+let vibesComponentSelectorClientContent = null;
+let vibesScreenshotClientContent = null;
 let htmlToImageContent = null;
-let dyadVisualEditorClientContent = null;
-let dyadLogsContent = null;
+let vibesVisualEditorClientContent = null;
+let vibesLogsContent = null;
 
 try {
   const htmlToImagePath = path.join(
@@ -80,98 +80,98 @@ try {
 }
 
 try {
-  const dyadShimPath = path.join(__dirname, "dyad-shim.js");
-  dyadShimContent = fs.readFileSync(dyadShimPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-shim.js loaded.");
+  const vibesShimPath = path.join(__dirname, "vibes-shim.js");
+  vibesShimContent = fs.readFileSync(vibesShimPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-shim.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-shim.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-shim.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadComponentSelectorClientPath = path.join(
+  const vibesComponentSelectorClientPath = path.join(
     __dirname,
-    "dyad-component-selector-client.js",
+    "vibes-component-selector-client.js",
   );
-  dyadComponentSelectorClientContent = fs.readFileSync(
-    dyadComponentSelectorClientPath,
+  vibesComponentSelectorClientContent = fs.readFileSync(
+    vibesComponentSelectorClientPath,
     "utf-8",
   );
   parentPort?.postMessage(
-    "[proxy-worker] dyad-component-selector-client.js loaded.",
+    "[proxy-worker] vibes-component-selector-client.js loaded.",
   );
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-component-selector-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-component-selector-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadScreenshotClientPath = path.join(
+  const vibesScreenshotClientPath = path.join(
     __dirname,
-    "dyad-screenshot-client.js",
+    "vibes-screenshot-client.js",
   );
-  dyadScreenshotClientContent = fs.readFileSync(
-    dyadScreenshotClientPath,
+  vibesScreenshotClientContent = fs.readFileSync(
+    vibesScreenshotClientPath,
     "utf-8",
   );
-  parentPort?.postMessage("[proxy-worker] dyad-screenshot-client.js loaded.");
+  parentPort?.postMessage("[proxy-worker] vibes-screenshot-client.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-screenshot-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-screenshot-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadVisualEditorClientPath = path.join(
+  const vibesVisualEditorClientPath = path.join(
     __dirname,
-    "dyad-visual-editor-client.js",
+    "vibes-visual-editor-client.js",
   );
-  dyadVisualEditorClientContent = fs.readFileSync(
-    dyadVisualEditorClientPath,
+  vibesVisualEditorClientContent = fs.readFileSync(
+    vibesVisualEditorClientPath,
     "utf-8",
   );
   parentPort?.postMessage(
-    "[proxy-worker] dyad-visual-editor-client.js loaded.",
+    "[proxy-worker] vibes-visual-editor-client.js loaded.",
   );
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-visual-editor-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-visual-editor-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadLogsPath = path.join(__dirname, "dyad_logs.js");
-  dyadLogsContent = fs.readFileSync(dyadLogsPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad_logs.js loaded.");
+  const vibesLogsPath = path.join(__dirname, "vibes_logs.js");
+  vibesLogsContent = fs.readFileSync(vibesLogsPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes_logs.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad_logs.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes_logs.js: ${error.message}`,
   );
 }
 
 // Load Service Worker files
-let dyadSwContent = null;
-let dyadSwRegisterContent = null;
+let vibesSwContent = null;
+let vibesSwRegisterContent = null;
 
 try {
-  const dyadSwPath = path.join(__dirname, "dyad-sw.js");
-  dyadSwContent = fs.readFileSync(dyadSwPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-sw.js loaded.");
+  const vibesSwPath = path.join(__dirname, "vibes-sw.js");
+  vibesSwContent = fs.readFileSync(vibesSwPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-sw.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-sw.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-sw.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadSwRegisterPath = path.join(__dirname, "dyad-sw-register.js");
-  dyadSwRegisterContent = fs.readFileSync(dyadSwRegisterPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-sw-register.js loaded.");
+  const vibesSwRegisterPath = path.join(__dirname, "vibes-sw-register.js");
+  vibesSwRegisterContent = fs.readFileSync(vibesSwRegisterPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-sw-register.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-sw-register.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-sw-register.js: ${error.message}`,
   );
 }
 
@@ -184,8 +184,8 @@ function needsInjection(pathname) {
 
 function injectHTML(buf) {
   let txt = buf.toString("utf8");
-  // These are strings that were used since the first version of the dyad shim.
-  // If the dyad shim is used from legacy apps which came pre-baked with the shim
+  // These are strings that were used since the first version of the vibes shim.
+  // If the vibes shim is used from legacy apps which came pre-baked with the shim
   // as a vite plugin, then do not inject the shim twice to avoid weird behaviors.
   const legacyAppWithShim =
     txt.includes("window-error") && txt.includes("unhandled-rejection");
@@ -201,19 +201,19 @@ function injectHTML(buf) {
       );
     }
 
-    if (dyadShimContent) {
-      scripts.push(`<script>${dyadShimContent}</script>`);
+    if (vibesShimContent) {
+      scripts.push(`<script>${vibesShimContent}</script>`);
     } else {
       scripts.push(
-        '<script>console.warn("[proxy-worker] dyad shim was not injected.");</script>',
+        '<script>console.warn("[proxy-worker] vibes shim was not injected.");</script>',
       );
     }
   }
-  if (dyadComponentSelectorClientContent) {
-    scripts.push(`<script>${dyadComponentSelectorClientContent}</script>`);
+  if (vibesComponentSelectorClientContent) {
+    scripts.push(`<script>${vibesComponentSelectorClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad component selector client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes component selector client was not injected.");</script>',
     );
   }
   if (htmlToImageContent) {
@@ -229,32 +229,32 @@ function injectHTML(buf) {
       "[proxy-worker] WARNING: html-to-image not injected!",
     );
   }
-  if (dyadScreenshotClientContent) {
-    scripts.push(`<script>${dyadScreenshotClientContent}</script>`);
+  if (vibesScreenshotClientContent) {
+    scripts.push(`<script>${vibesScreenshotClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad screenshot client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes screenshot client was not injected.");</script>',
     );
   }
-  if (dyadVisualEditorClientContent) {
-    scripts.push(`<script>${dyadVisualEditorClientContent}</script>`);
+  if (vibesVisualEditorClientContent) {
+    scripts.push(`<script>${vibesVisualEditorClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad visual editor client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes visual editor client was not injected.");</script>',
     );
   }
-  if (dyadLogsContent) {
-    scripts.push(`<script>${dyadLogsContent}</script>`);
+  if (vibesLogsContent) {
+    scripts.push(`<script>${vibesLogsContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad_logs.js was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes_logs.js was not injected.");</script>',
     );
   }
-  if (dyadSwRegisterContent) {
-    scripts.push(`<script>${dyadSwRegisterContent}</script>`);
+  if (vibesSwRegisterContent) {
+    scripts.push(`<script>${vibesSwRegisterContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad-sw-register.js was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes-sw-register.js was not injected.");</script>',
     );
   }
   const allScripts = scripts.join("\n");
@@ -285,14 +285,14 @@ function buildTargetURL(clientReq) {
 
 const server = http.createServer((clientReq, clientRes) => {
   // Special handling for Service Worker file
-  if (clientReq.url === "/dyad-sw.js") {
-    if (dyadSwContent) {
+  if (clientReq.url === "/vibes-sw.js") {
+    if (vibesSwContent) {
       clientRes.writeHead(200, {
         "content-type": "application/javascript",
         "service-worker-allowed": "/",
         "cache-control": "no-cache",
       });
-      clientRes.end(dyadSwContent);
+      clientRes.end(vibesSwContent);
       return;
     } else {
       clientRes.writeHead(404, { "content-type": "text/plain" });

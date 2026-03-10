@@ -8,7 +8,7 @@
     // We now prefer native screenshot via parent Electron process
     // This is much more reliable than html-to-image
     window.parent.postMessage({
-      type: "dyad-request-native-screenshot",
+      type: "vibes-request-native-screenshot",
       rect: options
     }, "*");
     return null; // Response will come asynchronously via parent
@@ -114,7 +114,7 @@
 
   function sendResponse(success, dataUrl, error = null) {
     window.parent.postMessage({
-      type: "dyad-screenshot-response",
+      type: "vibes-screenshot-response",
       success,
       dataUrl,
       error
@@ -122,16 +122,16 @@
   }
 
   async function handleScreenshotRequest(options = {}) {
-    console.debug("[dyad-screenshot] Requesting native screenshot from parent...");
+    console.debug("[vibes-screenshot] Requesting native screenshot from parent...");
     captureScreenshot(options);
   }
 
   window.addEventListener("message", (event) => {
     if (event.source !== window.parent) return;
 
-    if (event.data.type === "dyad-take-screenshot") {
+    if (event.data.type === "vibes-take-screenshot") {
       handleScreenshotRequest();
-    } else if (event.data.type === "dyad-start-selection") {
+    } else if (event.data.type === "vibes-start-selection") {
       startSelection();
     }
   });

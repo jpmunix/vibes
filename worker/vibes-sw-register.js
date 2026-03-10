@@ -1,5 +1,5 @@
 /**
- * dyad-sw-register.js – Service Worker registration script
+ * vibes-sw-register.js – Service Worker registration script
  * This script is injected into the HTML to register the Service Worker
  * and forward messages to the parent window
  */
@@ -13,7 +13,7 @@
 
   // Register the Service Worker
   navigator.serviceWorker
-    .register("/dyad-sw.js", { scope: "/" })
+    .register("/vibes-sw.js", { scope: "/" })
     .then((registration) => {
       console.log("[Dyad] Service Worker registered:", registration.scope);
 

@@ -4,20 +4,20 @@
   // Track text editing state globally
   let textEditingState = new Map(); // componentId -> { originalText, currentText, cleanup }
 
-  function findElementByDyadId(dyadId, runtimeId) {
+  function findElementByVibesId(vibesId, runtimeId) {
     // If runtimeId is provided, try to find element by runtime ID first
     if (runtimeId) {
       const elementByRuntimeId = document.querySelector(
-        `[data-dyad-runtime-id="${runtimeId}"]`,
+        `[data-vibes-runtime-id="${runtimeId}"]`,
       );
       if (elementByRuntimeId) {
         return elementByRuntimeId;
       }
     }
 
-    // Fall back to finding by dyad-id (will get first match)
-    const escaped = CSS.escape(dyadId);
-    return document.querySelector(`[data-dyad-id="${escaped}"]`);
+    // Fall back to finding by vibes-id (will get first match)
+    const escaped = CSS.escape( vibesId);
+    return document.querySelector(`[data-vibes-id="${escaped}"]`);
   }
 
   function applyStyles(element, styles) {
@@ -94,7 +94,7 @@
 
   function handleGetStyles(data) {
     const { elementId, runtimeId } = data;
-    const element = findElementByDyadId(elementId, runtimeId);
+    const element = findElementByVibesId(elementId, runtimeId);
     if (element) {
       const computedStyle = window.getComputedStyle(element);
       const styles = {
@@ -132,7 +132,7 @@
 
       window.parent.postMessage(
         {
-          type: "dyad-component-styles",
+          type: "vibes-component-styles",
           data: styles,
         },
         "*",
@@ -142,7 +142,7 @@
 
   function handleModifyStyles(data) {
     const { elementId, runtimeId, styles } = data;
-    const element = findElementByDyadId(elementId, runtimeId);
+    const element = findElementByVibesId(elementId, runtimeId);
     if (element) {
       applyStyles(element, styles);
 
@@ -151,7 +151,7 @@
       const rect = element.getBoundingClientRect();
       window.parent.postMessage(
         {
-          type: "dyad-component-coordinates-updated",
+          type: "vibes-component-coordinates-updated",
           coordinates: {
             top: rect.top,
             left: rect.left,
@@ -174,7 +174,7 @@
       }
     });
 
-    const element = findElementByDyadId(componentId, runtimeId);
+    const element = findElementByVibesId(componentId, runtimeId);
     if (element) {
       const originalText = element.innerText;
 
@@ -200,7 +200,7 @@
 
         window.parent.postMessage(
           {
-            type: "dyad-text-updated",
+            type: "vibes-text-updated",
             componentId,
             text: currentText,
           },
@@ -224,7 +224,7 @@
         const finalText = element.innerText;
         window.parent.postMessage(
           {
-            type: "dyad-text-finalized",
+            type: "vibes-text-finalized",
             componentId,
             text: finalText,
           },
@@ -245,7 +245,7 @@
 
   function handlePreviewTextContent(data) {
     const { componentId, runtimeId, text } = data;
-    const element = findElementByDyadId(componentId, runtimeId);
+    const element = findElementByVibesId(componentId, runtimeId);
     if (!element) return;
 
     // Check if element has child elements (like icons)
@@ -287,12 +287,12 @@
 
   function handleGetTextContent(data) {
     const { componentId, runtimeId } = data;
-    const element = findElementByDyadId(componentId, runtimeId);
+    const element = findElementByVibesId(componentId, runtimeId);
     const state = textEditingState.get(componentId);
 
     window.parent.postMessage(
       {
-        type: "dyad-text-content-response",
+        type: "vibes-text-content-response",
         componentId,
         text: state ? state.currentText : element ? element.innerText : null,
         isEditing: !!state,
@@ -303,12 +303,12 @@
 
   function handleGetElementInfo(data) {
     const { elementId, runtimeId } = data;
-    const element = findElementByDyadId(elementId, runtimeId);
+    const element = findElementByVibesId(elementId, runtimeId);
     if (element) {
       const computedStyle = window.getComputedStyle(element);
       window.parent.postMessage(
         {
-          type: "dyad-element-info",
+          type: "vibes-element-info",
           data: {
             tagName: element.tagName.toLowerCase(),
             hasOnClick: !!element.onclick || element.hasAttribute("onclick"),
@@ -331,22 +331,22 @@
     const { type, data } = e.data;
 
     switch (type) {
-      case "get-dyad-component-styles":
+      case "get-vibes-component-styles":
         handleGetStyles(data);
         break;
-      case "modify-dyad-component-styles":
+      case "modify-vibes-component-styles":
         handleModifyStyles(data);
         break;
-      case "enable-dyad-text-editing":
+      case "enable-vibes-text-editing":
         handleEnableTextEditing(data);
         break;
-      case "disable-dyad-text-editing":
+      case "disable-vibes-text-editing":
         handleDisableTextEditing(data);
         break;
-      case "get-dyad-text-content":
+      case "get-vibes-text-content":
         handleGetTextContent(data);
         break;
-      case "get-dyad-element-info":
+      case "get-vibes-element-info":
         handleGetElementInfo(data);
         break;
       case "cleanup-all-text-editing":
@@ -355,7 +355,7 @@
           state.cleanup();
         });
         break;
-      case "preview-dyad-text-content":
+      case "preview-vibes-text-content":
         handlePreviewTextContent(data);
         break;
     }

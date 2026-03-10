@@ -64,7 +64,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@dyad-sh/supabase-management-js": "v1.0.1",
+    "@vibes/supabase-management-js": "v1.0.1",
     "@lexical/react": "^0.33.1",
     "@libsql/client": "^0.17.0",
     "@modelcontextprotocol/sdk": "^1.17.5",

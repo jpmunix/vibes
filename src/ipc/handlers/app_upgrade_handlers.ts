@@ -66,7 +66,7 @@ function isComponentTaggerUpgradeNeeded(appPath: string): boolean {
 
   try {
     const viteConfigContent = fs.readFileSync(viteConfigPath, "utf-8");
-    return !viteConfigContent.includes("@dyad-sh/react-vite-component-tagger");
+    return !viteConfigContent.includes("@vibes/react-vite-component-tagger");
   } catch (e) {
     logger.error("Error reading vite config", e);
     return false;
@@ -114,7 +114,7 @@ async function applyComponentTagger(appPath: string) {
   // Add import statement if not present
   if (
     !content.includes(
-      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@vibes/react-vite-component-tagger';",
     )
   ) {
     // Add it after the last import statement
@@ -129,7 +129,7 @@ async function applyComponentTagger(appPath: string) {
     lines.splice(
       lastImportIndex + 1,
       0,
-      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@vibes/react-vite-component-tagger';",
     );
     content = lines.join("\n");
   }
@@ -154,7 +154,7 @@ async function applyComponentTagger(appPath: string) {
   await new Promise<void>((resolve, reject) => {
     logger.info("Installing component-tagger dependency");
     const process = spawn(
-      "npm install --save-dev --legacy-peer-deps @dyad-sh/react-vite-component-tagger",
+      "npm install --save-dev --legacy-peer-deps @vibes/react-vite-component-tagger",
       {
         cwd: appPath,
         shell: true,

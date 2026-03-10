@@ -1,5 +1,5 @@
 /**
- * dyad-sw.js – Service Worker for network request interception
+ * vibes-sw.js – Service Worker for network request interception
  * Intercepts all fetch requests and reports them to the client
  */
 
