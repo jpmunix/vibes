@@ -39,7 +39,7 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
     };
 
     return (
-        <div className={`flex items-center no-app-region-drag ${className}`}>
+        <div className={`flex items-center h-full no-app-region-drag ${className}`}>
             <button
                 className={`w-11 flex items-center justify-center hover:bg-accent transition-colors cursor-pointer ${buttonClassName}`}
                 onClick={minimizeWindow}
