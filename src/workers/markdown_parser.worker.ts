@@ -47,7 +47,6 @@ const VIBES_CUSTOM_TAGS = [
     "vibes-wait-http",
     "vibes-typecheck-summary",
     "vibes-token-usage",
-    "vibes-command",
 ];
 
 /**
@@ -171,10 +170,14 @@ function parseCustomTags(content: string): ContentPiece[] {
     return contentPieces;
 }
 
+import { normalizeLegacyTags } from "../../shared/normalizeLegacyTags";
+
 const ctx: Worker = self as any;
 
 ctx.onmessage = (event: MessageEvent<WorkerInput>) => {
-    const { content, requestId } = event.data;
+    const { content: rawContent, requestId } = event.data;
+    // Normalize legacy dyad-* tags to vibes-* in one pass before parsing
+    const content = normalizeLegacyTags(rawContent);
 
     try {
         const contentPieces = parseCustomTags(content);

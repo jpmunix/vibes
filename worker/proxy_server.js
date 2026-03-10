@@ -493,10 +493,36 @@ server.on("upgrade", (req, socket, _head) => {
   upReq.end();
 });
 
-/* ----------------------------------------------------------------------- */
+/* ---------- listen with EADDRINUSE retry ------------------------------- */
+let currentPort = LISTEN_PORT;
+const MAX_LISTEN_RETRIES = 10;
+let listenAttempt = 0;
 
-server.listen(LISTEN_PORT, LISTEN_HOST, () => {
+function tryListen() {
+  server.listen(currentPort, LISTEN_HOST);
+}
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE" && listenAttempt < MAX_LISTEN_RETRIES) {
+    listenAttempt++;
+    const oldPort = currentPort;
+    currentPort = 50000 + Math.floor(Math.random() * 10000);
+    parentPort?.postMessage(
+      `[proxy-worker] Port ${oldPort} in use, retrying with ${currentPort} (attempt ${listenAttempt}/${MAX_LISTEN_RETRIES})`,
+    );
+    tryListen();
+  } else {
+    parentPort?.postMessage(
+      `[proxy-worker] Fatal server error: ${err.message}`,
+    );
+    throw err;
+  }
+});
+
+server.on("listening", () => {
   parentPort?.postMessage(
-    `proxy-server-start url=http://${LISTEN_HOST}:${LISTEN_PORT}`,
+    `proxy-server-start url=http://${LISTEN_HOST}:${currentPort}`,
   );
 });
+
+tryListen();

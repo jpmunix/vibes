@@ -113,7 +113,7 @@ import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 
-import { getAppPort, getProxyPort } from "../../../shared/ports";
+import { getAppPort, getProxyPort, findFreeAppPort } from "../../../shared/ports";
 import {
   getRgExecutablePath,
   MAX_FILE_SEARCH_SIZE,
@@ -176,8 +176,8 @@ function buildSnippetFromMatch({
   };
 }
 
-function getDefaultCommand(appId: number): string {
-  const port = getAppPort(appId);
+async function getDefaultCommand(appId: number): Promise<string> {
+  const port = await findFreeAppPort(appId);
   return `npm install --legacy-peer-deps && npm run dev -- --port ${port}`;
 }
 async function copyDir(
@@ -211,6 +211,9 @@ const proxyUrlByApp = new Map<number, { proxyUrl: string; originalUrl: string }>
 // Track apps that have already attempted auto-recovery for missing modules
 // to prevent infinite restart loops. Cleared on user-initiated restarts.
 const autoRecoveryAttempted = new Set<number>();
+
+// Track the actual port assigned to each app (may differ from getAppPort if port was busy)
+const actualPortByApp = new Map<number, number>();
 
 // Needed, otherwise electron in MacOS/Linux will not be able
 // to find node/pnpm.
@@ -274,7 +277,7 @@ async function executeAppLocalNode({
   installCommand?: string | null;
   startCommand?: string | null;
 }): Promise<void> {
-  const command = getCommand({ appId, installCommand, startCommand });
+  const command = await getCommand({ appId, installCommand, startCommand });
   const spawnedProcess = spawn(command, [], {
     cwd: appPath,
     shell: true,
@@ -418,7 +421,7 @@ function listenToProcess({
       return;
     }
 
-    const appPort = getAppPort(appId);
+    const appPort = actualPortByApp.get(appId) ?? getAppPort(appId);
     const isOpen = await checkPortOpen(appPort);
 
     if (isOpen && !proxyStarted) {
@@ -712,7 +715,7 @@ async function executeAppInDocker({
   });
 
   // Run the Docker container
-  const port = getAppPort(appId);
+  const port = await findFreeAppPort(appId);
   const process = spawn(
     "docker",
     [
@@ -731,7 +734,7 @@ async function executeAppInDocker({
       `vibes-app-${appId}`,
       "sh",
       "-c",
-      getCommand({ appId, installCommand, startCommand }),
+      await getCommand({ appId, installCommand, startCommand }),
     ],
     {
       stdio: "pipe",
@@ -2725,7 +2728,7 @@ export function registerAppHandlers() {
   });
 }
 
-function getCommand({
+async function getCommand({
   appId,
   installCommand,
   startCommand,
@@ -2734,7 +2737,9 @@ function getCommand({
   installCommand?: string | null;
   startCommand?: string | null;
 }) {
-  const port = getAppPort(appId);
+  const port = await findFreeAppPort(appId);
+  // Store the actual port for polling-based readiness detection
+  actualPortByApp.set(appId, port);
   const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
   const start = (startCommand?.trim() || `npm run dev -- --port ${port}`).replace(/\{port\}/g, String(port));
   return `${install} && ${start}`;

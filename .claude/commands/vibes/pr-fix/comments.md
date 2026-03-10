@@ -140,7 +140,7 @@ Only process review comments from these trusted authors. Comments from other aut
 5. **After processing all comments, verify and commit changes:**
 
    If any code changes were made:
-   - Run `/dyad:lint` to ensure code passes all checks
+   - Run `/vibes:lint` to ensure code passes all checks
    - Stage and commit the changes:
 
      ```
@@ -156,7 +156,7 @@ Only process review comments from these trusted authors. Comments from other aut
 
 6. **Push the changes:**
 
-   Run the `/dyad:pr-push` skill to lint, fix any issues, and push.
+   Run the `/vibes:pr-push` skill to lint, fix any issues, and push.
 
 7. **Verify all threads are resolved:**
 

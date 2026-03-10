@@ -1,8 +1,8 @@
-# Comparativa: Modo "Construir" vs "Agente Inteligente" en Dyad
+# Comparativa: Modo "Construir" vs "Agente Inteligente" en Vibes
 
 ## Resumen Ejecutivo
 
-Este documento presenta un análisis exhaustivo de las diferencias entre los dos modos principales de chat en la aplicación **Dyad**:
+Este documento presenta un análisis exhaustivo de las diferencias entre los dos modos principales de chat en la aplicación **Vibes**:
 
 - **Modo "Construir" (Build)** - Sistema basado en streaming con tags XML propietarios
 - **Modo "Agente inteligente" (Local Agent)** - Sistema basado en herramientas con AI SDK Tool Calling
@@ -30,7 +30,7 @@ Llamada única a streamText() con system prompt de Build
     ↓
 Streaming de respuesta con tags XML intercalados
     ↓
-Parsing de tags: <dyad-write>, <dyad-search-replace>, etc.
+Parsing de tags: <vibes-write>, <vibes-search-replace>, etc.
     ↓
 Ejecución de acciones en archivos
     ↓
@@ -139,22 +139,22 @@ Finalización (iterativo, hasta 25 steps)
 
 | Tag                     | Función                               | Ejemplo de uso                     |
 | ----------------------- | ------------------------------------- | ---------------------------------- |
-| `<dyad-write>`          | Crear o sobrescribir archivo completo | Crear nuevo componente             |
-| `<dyad-search-replace>` | Buscar y reemplazar texto             | Fix typo, cambiar import           |
-| `<dyad-rename>`         | Renombrar archivo                     | Reorganizar estructura             |
-| `<dyad-delete>`         | Eliminar archivo                      | Limpiar código no usado            |
-| `<dyad-add-dependency>` | Instalar paquetes npm                 | Agregar librería                   |
-| `<dyad-read>`           | Leer archivo (solo con motor remoto)  | Verificar contenido actual         |
-| `<dyad-command>`        | Sugerir comandos UI                   | rebuild, restart, refresh          |
-| `<dyad-chat-summary>`   | Establecer título del chat            | Resumir conversación               |
-| `<dyad-mcp-tool-call>`  | Llamar herramientas MCP               | Si hay servidores MCP configurados |
-| `<dyad-output>`         | Mensajes de estado/error              | Notificar al usuario               |
+| `<vibes-write>`          | Crear o sobrescribir archivo completo | Crear nuevo componente             |
+| `<vibes-search-replace>` | Buscar y reemplazar texto             | Fix typo, cambiar import           |
+| `<vibes-rename>`         | Renombrar archivo                     | Reorganizar estructura             |
+| `<vibes-delete>`         | Eliminar archivo                      | Limpiar código no usado            |
+| `<vibes-add-dependency>` | Instalar paquetes npm                 | Agregar librería                   |
+| `<vibes-read>`           | Leer archivo (solo con motor remoto)  | Verificar contenido actual         |
+| `<vibes-command>`        | Sugerir comandos UI                   | rebuild, restart, refresh          |
+| `<vibes-chat-summary>`   | Establecer título del chat            | Resumir conversación               |
+| `<vibes-mcp-tool-call>`  | Llamar herramientas MCP               | Si hay servidores MCP configurados |
+| `<vibes-output>`         | Mensajes de estado/error              | Notificar al usuario               |
 
 **Capacidades especiales:**
 
 - **Turbo Edits v2:** Sistema de auto-corrección en 2 etapas
-  1. Intento 1: Usa `dyad-read` + retry search-replace
-  2. Intento 2: Usa `dyad-write` para reescribir archivo completo
+  1. Intento 1: Usa `vibes-read` + retry search-replace
+  2. Intento 2: Usa `vibes-write` para reescribir archivo completo
   - Timeout: 20 segundos (configurable)
   - Máximo 1 intento por defecto (configurable hasta 5)
 
@@ -588,7 +588,7 @@ Con info externa   ❌ No disponible        🟢 AGENTE PRO
 - **Herramientas:** Solo lectura (grep, code_search, read_file)
 - **Beneficio:** Sin riesgo de modificar código
 
-### 8.2 Recomendación del Equipo Dyad
+### 8.2 Recomendación del Equipo Vibes
 
 > **"Use Agente Inteligente como default, Build como turbo boost."**
 >
@@ -622,6 +622,6 @@ Con info externa   ❌ No disponible        🟢 AGENTE PRO
 
 **Documento generado:** 2026-02-06
 **Versión:** 1.0
-**Basado en análisis exhaustivo del codebase de Dyad**
+**Basado en análisis exhaustivo del codebase de Vibes**
 
 _Este informe fue creado analizando 2,500+ líneas de código fuente, 19 implementaciones de herramientas, y 878 líneas de system prompts._

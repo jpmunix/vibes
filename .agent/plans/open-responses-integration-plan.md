@@ -148,7 +148,7 @@ Step 10: [system + history + prompt + step1..step9]    → ~95K tokens input
 
 **Total enviado en 10 steps:** ~725K tokens de input (acumulativo).
 
-Además en `chat_stream_handlers.ts` (build mode), la continuation de dyad-write sin cerrar (líneas 1896-1904) reenvía todo el historial + la respuesta parcial:
+Además en `chat_stream_handlers.ts` (build mode), la continuation de vibes-write sin cerrar (líneas 1896-1904) reenvía todo el historial + la respuesta parcial:
 
 ```typescript
 chatMessages: [
@@ -185,7 +185,7 @@ Step 10: previous_response_id: "resp_xyz" + [tool_result] → ~1K tokens input
 | **DB Schema** (`schema.ts`) | Añadir campo `responseId: text` a tabla `messages` |
 | **DB Migration** | Nueva migración para añadir columna `response_id` |
 | `local_agent_handler.ts` | Capturar `response_id` del primer step, enviar `previous_response_id` en steps siguientes |
-| `chat_stream_handlers.ts` | En continuation loops (dyad-write, auto-fix), usar `previous_response_id` en lugar de re-enviar todo |
+| `chat_stream_handlers.ts` | En continuation loops (vibes-write, auto-fix), usar `previous_response_id` en lugar de re-enviar todo |
 | Nuevo: `src/ipc/utils/response_id_cache.ts` | Cache en memoria de response_ids con TTL (por si el provider los expira) |
 
 ### 2.5 Cambios Requeridos (alternativa: cache local)
@@ -280,7 +280,7 @@ const { fullStream } = await simpleStreamText({
 
 Esto causa que a veces el modelo:
 - Responde con texto en lugar de generar code edits
-- Usa `dyad-write` cuando debería usar `dyad-search-replace` (o viceversa)
+- Usa `vibes-write` cuando debería usar `vibes-search-replace` (o viceversa)
 - Ignora las herramientas y da una explicación textual
 
 ### 3.2 Solución Propuesta
@@ -443,7 +443,7 @@ En `ChatErrorBox`, si hay respuesta parcial + error retryable:
 
 ### 4.4 Edge Cases
 
-- **Respuesta parcial con `dyad-write` abierto:** Ya tienes lógica para esto (continuation de dyad-write sin cerrar). Se puede reusar.
+- **Respuesta parcial con `vibes-write` abierto:** Ya tienes lógica para esto (continuation de vibes-write sin cerrar). Se puede reusar.
 - **Respuesta parcial con tool_call incompleto:** Descartar el tool_call parcial, reintentar solo el texto.
 - **Múltiples errores seguidos:** Después de 3 retries, mostrar error final con opción de "Enviar de nuevo".
 

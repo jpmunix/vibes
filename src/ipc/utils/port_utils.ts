@@ -6,7 +6,7 @@ export function findAvailablePort(
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 10;
 
     function tryPort() {
       if (attempts >= maxAttempts) {

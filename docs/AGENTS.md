@@ -14,10 +14,10 @@ npm run init-precommit
 
 RUN THE FOLLOWING CHECKS before you do a commit.
 
-If you have access to the `/dyad:lint` skill, use it to run all pre-commit checks automatically:
+If you have access to the `/vibes:lint` skill, use it to run all pre-commit checks automatically:
 
 ```
-/dyad:lint
+/vibes:lint
 ```
 
 Otherwise, run the following commands directly:

@@ -2208,7 +2208,7 @@ export function removeProblemReportTags(text: string): string {
 }
 
 export function removeVibesTags(text: string): string {
-  const vibesTagRegex = /<vibes-[^>]*>[\s\S]*?<\/<vibes-[^>]*>/g;
+  const vibesTagRegex = /<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g;
   return text.replace(vibesTagRegex, "").trim();
 }
 
@@ -2244,6 +2244,8 @@ function escapeVibesTags(text: string): string {
   return text
     .replace(/<vibes/g, "＜vibes")
     .replace(/<\/vibes/g, "＜/vibes")
+    .replace(/<dyad/g, "＜dyad")
+    .replace(/<\/dyad/g, "＜/dyad")
     .replace(/<assistant_/g, "＜assistant_")
     .replace(/<\/assistant_/g, "＜/assistant_");
 }

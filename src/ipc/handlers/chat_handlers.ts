@@ -10,6 +10,7 @@ import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { logChatInfo } from "../utils/chat_logger";
+import { normalizeLegacyTags } from "../../shared/normalizeLegacyTags";
 
 const logger = log.scope("chat_handlers");
 
@@ -84,6 +85,7 @@ export function registerChatHandlers() {
       title: chat.title ?? "",
       messages: chat.messages.map((m) => ({
         ...m,
+        content: m.content ? normalizeLegacyTags(m.content) : m.content,
         role: m.role as "user" | "assistant",
       })),
       isPlan: chat.isPlan ?? false,

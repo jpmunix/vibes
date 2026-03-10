@@ -1,6 +1,33 @@
 import path from "node:path";
 import os from "node:os";
+import fs from "node:fs";
 import { IS_TEST_BUILD } from "../ipc/utils/test_utils";
+
+let migrationAttempted = false;
+
+/**
+ * Migrate ~/dyad-apps → ~/vibes-apps if the old directory exists.
+ * Runs once per app lifecycle, silently skips if already migrated or
+ * if both directories exist (to avoid data loss).
+ */
+function migrateDyadAppsDir(newDir: string): void {
+  if (migrationAttempted) return;
+  migrationAttempted = true;
+
+  try {
+    const oldDir = newDir.replace(/vibes-apps$/, "dyad-apps");
+    if (
+      fs.existsSync(oldDir) &&
+      fs.statSync(oldDir).isDirectory() &&
+      !fs.existsSync(newDir)
+    ) {
+      fs.renameSync(oldDir, newDir);
+      console.log(`[migration] Renamed ${oldDir} → ${newDir}`);
+    }
+  } catch (err) {
+    console.error("[migration] Failed to rename dyad-apps → vibes-apps:", err);
+  }
+}
 
 /**
  * Gets the base vibes-apps directory path (without a specific app subdirectory)
@@ -10,7 +37,9 @@ export function getVibesAppsBaseDirectory(): string {
     const electron = getElectron();
     return path.join(electron!.app.getPath("userData"), "vibes-apps");
   }
-  return path.join(os.homedir(), "vibes-apps");
+  const dir = path.join(os.homedir(), "vibes-apps");
+  migrateDyadAppsDir(dir);
+  return dir;
 }
 
 export function getVibesAppPath(appPath: string): string {

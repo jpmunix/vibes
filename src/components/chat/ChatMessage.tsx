@@ -8,6 +8,7 @@ import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
+import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 import { AlertTriangle } from "lucide-react";
 import {
   CheckCircle,
@@ -30,7 +31,7 @@ import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { userAtom } from "@/atoms/authAtoms";
+import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import {
@@ -162,11 +163,19 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const handleCopyFormatted = useCallback(async () => {
     await copyMessageContent(message.content);
   }, [copyMessageContent, message.content]);
+
+  // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
+  // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
+  const normalizedMessageContent = useMemo(() => {
+    if (!message.content) return "";
+    return normalizeLegacyTags(message.content);
+  }, [message.content]);
+
   // Extract the real current action from the streaming content
   const streamingInfo = useMemo(() => {
     const defaultInfo = { label: "Pensando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined, contentExcerpt: undefined as string | undefined };
     if (!isStreaming || !isLastMessage) return defaultInfo;
-    if (!message.content || !message.content.trim()) return defaultInfo;
+    if (!normalizedMessageContent || !normalizedMessageContent.trim()) return defaultInfo;
 
     const VIBES_CUSTOM_TAGS = [
       "vibes-write", "vibes-rename", "vibes-delete", "vibes-add-dependency",
@@ -191,12 +200,12 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
       let match;
       const openings: { index: number, attrs: string, fullMatchLength: number }[] = [];
-      while ((match = openTagPattern.exec(message.content)) !== null) {
+      while ((match = openTagPattern.exec(normalizedMessageContent)) !== null) {
         openings.push({ index: match.index, attrs: match[1], fullMatchLength: match[0].length });
       }
 
       const openCount = openings.length;
-      const closeCount = (message.content.match(closeTagPattern) || []).length;
+      const closeCount = (normalizedMessageContent.match(closeTagPattern) || []).length;
 
       // If we have more opening tags than closing tags, this tag is in progress
       if (openCount > closeCount) {
@@ -230,7 +239,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
         let contentExcerpt: string | undefined = undefined;
         // If it's a thinking tag, extract a short, clean snippet of the ongoing thought
         if (["think", "thought", "vibes-think"].includes(lastOpenTag) && lastOpenIndex !== -1) {
-          const ongoingContent = message.content.slice(lastOpenIndex);
+          const ongoingContent = normalizedMessageContent.slice(lastOpenIndex);
           // Strip basic markdown to get clean text for the excerpt
           const cleanText = ongoingContent
             .replace(/<[^>]+>/g, "") // remove inner tags if any
@@ -261,7 +270,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     }
 
     // Fallback: check if the last completed tool was git
-    const lastGitTag = message.content.lastIndexOf("<vibes-git ");
+    const lastGitTag = normalizedMessageContent.lastIndexOf("<vibes-git ");
     if (lastGitTag !== -1) {
       return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500", contentExcerpt: undefined };
     }
@@ -272,23 +281,23 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
   // Plain-text excerpt for collapsed view (~80 chars)
   const plainTextExcerpt = useMemo(() => {
-    if (!message.content || !isAssistant) return "";
-    const stripped = message.content
+    if (!normalizedMessageContent || !isAssistant) return "";
+    const stripped = normalizedMessageContent
       .replace(/<(vibes-[\w-]+|think|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "")
       .replace(/<[^>]+>/g, "")
       .replace(/[#*_`~>\-|]/g, "")
       .replace(/\n+/g, " ")
       .trim();
     return stripped.length > 80 ? stripped.slice(0, 80) + "…" : stripped;
-  }, [message.content, isAssistant]);
+  }, [normalizedMessageContent, isAssistant]);
 
   // Tool usage summary grouped by icon (for collapsed badges)
   const toolSummary = useMemo(() => {
-    if (!message.content || !isAssistant) return [];
+    if (!normalizedMessageContent || !isAssistant) return [];
     const tagPattern = /<(vibes-[\w-]+)\s[^>]*>[\s\S]*?<\/\1>/g;
     const counts = new Map<string, number>();
     let match;
-    while ((match = tagPattern.exec(message.content)) !== null) {
+    while ((match = tagPattern.exec(normalizedMessageContent)) !== null) {
       const tag = match[1];
       if (TOOL_META[tag]) {
         counts.set(tag, (counts.get(tag) || 0) + 1);

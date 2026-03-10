@@ -14,12 +14,12 @@ Address all outstanding issues on a GitHub Pull Request by handling both review 
 
 This is a meta-skill that orchestrates two sub-skills to comprehensively fix PR issues.
 
-1. **Run `/dyad:pr-fix:comments`** to handle all unresolved review comments:
+1. **Run `/vibes:pr-fix:comments`** to handle all unresolved review comments:
    - Address valid code review concerns
    - Resolve invalid concerns with explanations
    - Flag ambiguous issues for human attention
 
-2. **Run `/dyad:pr-fix:actions`** to handle failing CI checks:
+2. **Run `/vibes:pr-fix:actions`** to handle failing CI checks:
    - Fix failing tests (unit and E2E)
    - Update snapshots if needed
    - Ensure all checks pass
@@ -54,7 +54,7 @@ This is a meta-skill that orchestrates two sub-skills to comprehensively fix PR 
    </details>
 
    ---
-   [Workflow run](https://github.com/dyad-sh/dyad/actions/runs/12345678)
+   [Workflow run](https://github.com/vibes-sh/vibes/actions/runs/12345678)
    ```
 
    **Failure:**
@@ -80,7 +80,7 @@ This is a meta-skill that orchestrates two sub-skills to comprehensively fix PR 
    </details>
 
    ---
-   [Workflow run](https://github.com/dyad-sh/dyad/actions/runs/12345678)
+   [Workflow run](https://github.com/vibes-sh/vibes/actions/runs/12345678)
    ```
 
    Note: Include a link to the workflow run at the end. If the `GITHUB_REPOSITORY` and `GITHUB_RUN_ID` environment variables are available, use them to construct the URL: `https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID`. If these environment variables are not set, omit the workflow run link.

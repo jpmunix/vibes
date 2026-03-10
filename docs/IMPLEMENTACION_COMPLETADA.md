@@ -23,7 +23,7 @@ Se han implementado exitosamente todas las optimizaciones de eficiencia para el 
 - ✅ Búsqueda por similitud coseno
 - ✅ Cache inteligente basado en hash (skip archivos sin cambios)
 - ✅ Chunking inteligente para mejor calidad
-- ✅ Índice guardado en `<app-path>/.dyad/vector_index.db`
+- ✅ Índice guardado en `<app-path>/.vibes/vector_index.db`
 
 ### 3. **File Watcher Incremental** (`src/ipc/utils/file_watcher.ts`)
 
@@ -138,7 +138,7 @@ En settings JSON:
 - ✅ **100% local**: No envía código a servicios externos
 - ✅ **Sin telemetría**: Embeddings se calculan en tu máquina
 - ✅ **Sin API keys**: No requiere configuración adicional
-- ✅ **Datos locales**: Índice guardado en `.dyad/` (git ignored)
+- ✅ **Datos locales**: Índice guardado en `.vibes/` (git ignored)
 
 ---
 

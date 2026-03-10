@@ -1,5 +1,5 @@
 ---
-name: dyad:multi-pr-review
+name: vibes:multi-pr-review
 description: Multi-agent code review system that spawns three independent Claude sub-agents to review PR diffs. Each agent receives files in different randomized order to reduce ordering bias. One agent focuses specifically on code health and maintainability. Issues are classified as high/medium/low severity (sloppy code that hurts maintainability is MEDIUM). Results are aggregated using consensus voting - only issues identified by 2+ agents where at least one rated it medium or higher severity are reported. Automatically deduplicates against existing PR comments. Always posts a summary (even if no new issues), with low priority issues mentioned in a collapsible section.
 ---
 

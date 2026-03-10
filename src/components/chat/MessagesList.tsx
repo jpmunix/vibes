@@ -39,6 +39,9 @@ interface MessagesListProps {
   distanceFromBottomRef?: React.MutableRefObject<number>;
   isUserScrolling?: boolean;
   onAtBottomStateChange?: (atBottom: boolean) => void;
+  hasMoreMessages?: boolean;
+  onLoadMore?: () => void;
+  firstItemIndex?: number;
 }
 
 // Memoize ChatMessage at module level to prevent recreation on every render
@@ -161,6 +164,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       distanceFromBottomRef,
       isUserScrolling,
       onAtBottomStateChange,
+      hasMoreMessages,
+      onLoadMore,
+      firstItemIndex = 0,
     },
     ref,
   ) {
@@ -407,14 +413,29 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       >
         <Virtuoso
           data={messages}
-          increaseViewportBy={{ top: 1000, bottom: 500 }}
-          initialTopMostItemIndex={messages.length - 1}
+          firstItemIndex={firstItemIndex}
+          increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll
+          initialTopMostItemIndex={messages.length - 1} // Virtuoso only respecting this on first mount
           itemContent={itemContent}
-          components={{ Footer: FooterComponent }}
+          components={{
+            Footer: FooterComponent,
+            ...(hasMoreMessages ? {
+              Header: () => (
+                <div className="flex justify-center py-3">
+                  <div className="text-xs text-muted-foreground animate-pulse">Cargando mensajes anteriores…</div>
+                </div>
+              ),
+            } : {}),
+          }}
           context={footerContext}
           scrollerRef={onScrollerRef}
           atBottomStateChange={onAtBottomStateChange}
           atBottomThreshold={300}
+          startReached={() => {
+            if (hasMoreMessages && onLoadMore) {
+              onLoadMore();
+            }
+          }}
           followOutput={(isAtBottom) => {
             // During streaming, auto-scroll smoothly but keep up
             if (isStreaming) {

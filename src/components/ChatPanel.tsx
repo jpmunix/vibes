@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useDeferredValue, Suspense } from "react";
+import React, { useState, useRef, useEffect, useCallback, useDeferredValue, Suspense, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
@@ -249,6 +249,35 @@ export function ChatPanel({
   const messages = useDeferredValue(rawMessages);
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
 
+  // Progressive loading: start with the last INITIAL_VISIBLE messages,
+  // load more in chunks when scrolling up. Prevents render storms on long chats.
+  const INITIAL_VISIBLE = 6;
+  const LOAD_MORE_COUNT = 6;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+
+  // Reset visible count when chat changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE);
+  }, [chatId]);
+
+  // Expand visible count when streaming adds new messages
+  useEffect(() => {
+    if (isStreaming && messages.length <= visibleCount + 1) {
+      setVisibleCount(messages.length);
+    }
+  }, [isStreaming, messages.length]);
+
+  const progressiveMessages = useMemo(() => {
+    if (messages.length <= visibleCount) return messages;
+    return messages.slice(messages.length - visibleCount);
+  }, [messages, visibleCount]);
+
+  const hasMoreMessages = messages.length > visibleCount;
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + LOAD_MORE_COUNT, messages.length));
+  }, [messages.length]);
+
   // Scroll to bottom when streaming completes to ensure footer content is visible
   useEffect(() => {
     const wasStreaming = prevIsStreamingRef.current;
@@ -364,12 +393,15 @@ export function ChatPanel({
                     while the skeleton is still visible on top */}
                 <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
                   <MessagesList
-                    messages={messages}
+                    messages={progressiveMessages}
                     messagesEndRef={messagesEndRef}
                     ref={messagesContainerRef}
                     onScrollerRef={handleScrollerRef}
                     distanceFromBottomRef={distanceFromBottomRef}
                     isUserScrolling={isUserScrolling}
+                    hasMoreMessages={hasMoreMessages}
+                    onLoadMore={handleLoadMore}
+                    firstItemIndex={messages.length > visibleCount ? messages.length - visibleCount : 0}
                     onAtBottomStateChange={(atBottom) => {
                       if (!settings?.isTestMode) {
                         setShowScrollButton(!atBottom);

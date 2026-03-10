@@ -44,6 +44,48 @@ import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
 import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+/** Clickable token-usage pill: shows Icon + price, click opens detailed breakdown */
+const TokenUsageBadge: React.FC<{
+  icon: React.ElementType;
+  color: string;
+  label: string;
+  detail?: string;
+  modalContent: React.ReactNode;
+}> = ({ icon: Icon, color, label, detail, modalContent }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 hover:bg-accent text-xs mb-4 cursor-pointer transition-colors"
+      >
+        <Icon size={12} className={color} />
+        {detail && (
+          <span className="text-muted-foreground">{detail}</span>
+        )}
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 ${color}`}>
+              <Icon size={20} />
+              {label}
+              {detail && <span className="text-muted-foreground font-normal text-sm ml-1">{detail}</span>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2">{modalContent}</div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
 
 const VIBES_CUSTOM_TAGS = [
   "vibes-write",
@@ -144,36 +186,46 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const isStreamingMap = useAtomValue(isStreamingByIdAtom);
   const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
 
-  // Defer content updates during streaming
-  const deferredContent = useDeferredValue(content);
+  // Optimize: Do we really need to defer content and use a worker if it's not streaming?
+  // When a message is static (not streaming), we want to parse it exactly once
+  // synchronously so that fast scrolling in Virtuoso doesn't create flashes of unparsed content.
+  const activeContent = isStreaming ? useDeferredValue(content) : content;
 
   // Initialize with synchronous parse to avoid flash of content
   const [contentPieces, setContentPieces] = useState<ContentPiece[]>(() => {
-    return parseCustomTags(content);
+    return parseCustomTags(activeContent);
   });
 
-  // Use worker for updates to avoid blocking main thread during streaming
+  // Keep state in sync with content changes, particularly when remounted by Virtuoso
+  // or when static content updates.
   useEffect(() => {
     let isCancelled = false;
 
-    markdownParser
-      .parse(deferredContent)
-      .then((pieces) => {
-        if (!isCancelled) {
-          setContentPieces(pieces);
-        }
-      })
-      .catch((err) => {
-        console.error("Worker extraction failed, falling back to sync:", err);
-        if (!isCancelled) {
-          setContentPieces(parseCustomTags(deferredContent));
-        }
-      });
+    if (isStreaming) {
+      // Use worker for updates to avoid blocking main thread ONLY during active streaming
+      markdownParser
+        .parse(activeContent)
+        .then((pieces) => {
+          if (!isCancelled) {
+            setContentPieces(pieces);
+          }
+        })
+        .catch((err) => {
+          console.error("Worker extraction failed, falling back to sync:", err);
+          if (!isCancelled) {
+            setContentPieces(parseCustomTags(activeContent));
+          }
+        });
+    } else {
+      // For static messages, parse synchronously immediately.
+      // This is crucial for Virtuoso fast scrolling so there's zero frames of delay.
+      setContentPieces(parseCustomTags(activeContent));
+    }
 
     return () => {
       isCancelled = true;
     };
-  }, [deferredContent]);
+  }, [activeContent, isStreaming]);
 
   // Extract error messages and track positions
   const { errorMessages, lastErrorIndex, errorCount } = useMemo(() => {
@@ -237,12 +289,14 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
           const meta = resolveToolMeta(tokenBadge.tag, tokenBadge.attributes);
           const Icon = meta.icon;
           elements.push(
-            <div key={`token-usage-${elements.length}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-xs mb-4">
-              <Icon size={12} className={meta.color} />
-              {tokenBadge.detail && (
-                <span className="text-muted-foreground">{tokenBadge.detail}</span>
-              )}
-            </div>
+            <TokenUsageBadge
+              key={`token-usage-${elements.length}`}
+              icon={Icon}
+              color={meta.color}
+              label={meta.label}
+              detail={tokenBadge.detail}
+              modalContent={tokenBadge.originalContent}
+            />
           );
         }
 

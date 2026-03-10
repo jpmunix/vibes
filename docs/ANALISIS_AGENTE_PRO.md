@@ -19,7 +19,7 @@ let { formattedOutput: codebaseInfo, files } = await extractCodebase({
 **Consecuencias:**
 
 - ✗ Se envían **TODOS los archivos** del proyecto (~60-200+ archivos)
-- ✗ Cada archivo se formatea como XML: `<dyad-file path="...">content</dyad-file>`
+- ✗ Cada archivo se formatea como XML: `<vibes-file path="...">content</vibes-file>`
 - ✗ Token count masivo: ~50k-200k tokens solo en codebase
 - ✗ El modelo debe procesar todo esto CADA VEZ
 
@@ -292,7 +292,7 @@ export function buildCodebaseXml(files: CodebaseFile[]): string {
   return files
     .map(
       (file) =>
-        `<dyad-file path="${file.path}">\n${file.content}\n</dyad-file>\n`,
+        `<vibes-file path="${file.path}">\n${file.content}\n</vibes-file>\n`,
     )
     .join("\n");
 }
@@ -300,9 +300,9 @@ export function buildCodebaseXml(files: CodebaseFile[]): string {
 
 **Overhead:**
 
-- Cada archivo: `<dyad-file path="src/...">\n` + contenido + `</dyad-file>\n`
+- Cada archivo: `<vibes-file path="src/...">\n` + contenido + `</vibes-file>\n`
 - Para 60 archivos: ~1,500 tokens adicionales solo en tags
-- Más tags en respuestas: `<dyad-write>`, `<dyad-read>`, `<dyad-search-replace>`, etc.
+- Más tags en respuestas: `<vibes-write>`, `<vibes-read>`, `<vibes-search-replace>`, etc.
 
 ---
 
@@ -394,7 +394,7 @@ export class LocalVectorIndex implements VectorIndex {
   private db: Database.Database;
 
   constructor(appPath: string) {
-    this.db = new Database(path.join(appPath, ".dyad", "vector_index.db"));
+    this.db = new Database(path.join(appPath, ".vibes", "vector_index.db"));
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS file_embeddings USING vss0(
         embedding(768)
@@ -572,7 +572,7 @@ const initialContext = `
 ${fileTree}
 </codebase-structure>
 
-To read a file, use: <dyad-read path="file/path.ts" />
+To read a file, use: <vibes-read path="file/path.ts" />
 `;
 
 // El LLM pide archivos cuando los necesita
@@ -583,7 +583,7 @@ To read a file, use: <dyad-read path="file/path.ts" />
 
 ```
 Instead of receiving all file contents upfront, you'll see the file structure.
-When you need to read a file, use <dyad-read path="..." />.
+When you need to read a file, use <vibes-read path="..." />.
 Only request files that are directly relevant to the user's task.
 ```
 
@@ -643,15 +643,15 @@ export const COMPACT_SYSTEM_PROMPT = `
 You are minube vibes, an AI code editor. Users see live preview while you edit.
 
 ## Core Actions
-- Read files: <dyad-read path="..." />
-- Write files: <dyad-write path="..." description="...">content</dyad-write>
-- Search & replace: <dyad-search-replace path="...">
+- Read files: <vibes-read path="..." />
+- Write files: <vibes-write path="..." description="...">content</vibes-write>
+- Search & replace: <vibes-search-replace path="...">
     <search>old text</search>
     <replace>new text</replace>
-  </dyad-search-replace>
-- Install deps: <dyad-add-dependency packages="pkg1 pkg2" />
-- Rename: <dyad-rename from="..." to="..." />
-- Delete: <dyad-delete path="..." />
+  </vibes-search-replace>
+- Install deps: <vibes-add-dependency packages="pkg1 pkg2" />
+- Rename: <vibes-rename from="..." to="..." />
+- Delete: <vibes-delete path="..." />
 
 ## Rules
 1. Only change what user requests
@@ -815,7 +815,7 @@ const indexer = new IncrementalIndexer(appPath);
 
 1. ✅ Modificar system prompt para lazy loading
 2. ✅ Enviar solo file tree inicialmente
-3. ✅ Mejorar dyad-read tool en local agent
+3. ✅ Mejorar vibes-read tool en local agent
 
 **Resultado esperado: -20k tokens adicionales, mejor control**
 
@@ -838,19 +838,19 @@ const indexer = new IncrementalIndexer(appPath);
 export const COMPACT_BUILD_PROMPT = `You are minube vibes, an AI code editor for React apps.
 
 ## Actions
-- <dyad-write path="...">code</dyad-write> - Create/update files
-- <dyad-read path="..." /> - Read files (use before editing)
-- <dyad-search-replace path="..."><search>old</search><replace>new</replace></dyad-search-replace>
-- <dyad-add-dependency packages="pkg1 pkg2" />
-- <dyad-rename from="..." to="..." />
-- <dyad-delete path="..." />
+- <vibes-write path="...">code</vibes-write> - Create/update files
+- <vibes-read path="..." /> - Read files (use before editing)
+- <vibes-search-replace path="..."><search>old</search><replace>new</replace></vibes-search-replace>
+- <vibes-add-dependency packages="pkg1 pkg2" />
+- <vibes-rename from="..." to="..." />
+- <vibes-delete path="..." />
 
 ## Rules
 1. Read before editing
 2. Only change what's requested
 3. Complete implementations (no TODOs)
 4. Brief explanations
-5. Set chat summary: <dyad-chat-summary>title</dyad-chat-summary>
+5. Set chat summary: <vibes-chat-summary>title</vibes-chat-summary>
 
 ${AI_RULES}
 `;

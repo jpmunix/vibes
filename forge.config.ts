@@ -81,7 +81,7 @@ const config: ForgeConfig = {
     windowsSign: isGitHubActions ? windowsSign : undefined,
     protocols: [
       {
-        name: "Dyad",
+        name: "Vibes",
         schemes: ["dyad"],
       },
     ],
