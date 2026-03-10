@@ -429,7 +429,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   />
                 </div>
               )}
-              {(isAssistant && message.content && !isStreaming) ? (
+              {(isAssistant && message.content) ? (
                 <div
                   onClick={() => setIsCollapsed(!isCollapsed)}
                   className="mt-2 flex items-center justify-between text-xs cursor-pointer hover:bg-accent/50 rounded-lg px-1 py-1 -mx-1 transition-colors"
