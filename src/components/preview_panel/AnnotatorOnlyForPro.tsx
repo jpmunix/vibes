@@ -36,7 +36,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
         </h2>
         <p className="text-muted-foreground mb-10 text-center max-w-md text-base leading-relaxed">
           Unlock the ability to annotate screenshots and enhance your workflow
-          with Dyad Pro.
+          with Vibes Pro.
         </p>
 
         {/* Get Pro Button */}
@@ -45,7 +45,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
           size="lg"
           className="px-8 shadow-md hover:shadow-lg transition-[box-shadow]"
         >
-          Get Dyad Pro
+          Get Vibes Pro
         </Button>
       </div>
     </div>

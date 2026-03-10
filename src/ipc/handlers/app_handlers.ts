@@ -10,7 +10,7 @@ import { miscContracts } from "../types/misc";
 import { systemContracts } from "../types/system";
 import fs from "node:fs";
 import path from "node:path";
-import { getDyadAppPath, getUserDataPath } from "../../paths/paths";
+import { getVibesAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import net from "node:net";
@@ -447,7 +447,7 @@ function listenToProcess({
     // This is a hacky heuristic to pick up when drizzle is asking for user
     // to select from one of a few choices. We automatically pick the first
     // option because it's usually a good default choice. We guard this with
-    // isNeon because: 1) only Neon apps (for the official Dyad templates) should
+    // isNeon because: 1) only Neon apps (for the official Vibes templates) should
     // get this template and 2) it's safer to do this with Neon apps because
     // their databases have point in time restore built-in.
     if (isNeon && message.includes("created or renamed from another")) {
@@ -988,7 +988,7 @@ async function searchAppFilesWithRipgrep({
 }
 
 export function registerAppHandlers() {
-  createTypedHandler(systemContracts.restartDyad, async () => {
+  createTypedHandler(systemContracts.restartVibes, async () => {
     app.relaunch();
     app.quit();
   });
@@ -998,7 +998,7 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const appPath = params.name;
-    const fullAppPath = getDyadAppPath(appPath);
+    const fullAppPath = getVibesAppPath(appPath);
     if (fs.existsSync(fullAppPath)) {
       throw new Error(`App already exists at: ${fullAppPath}`);
     }
@@ -1080,8 +1080,8 @@ export function registerAppHandlers() {
       throw new Error("Original app not found.");
     }
 
-    const originalAppPath = getDyadAppPath(originalApp.path);
-    const newAppPath = getDyadAppPath(newAppName);
+    const originalAppPath = getVibesAppPath(originalApp.path);
+    const newAppPath = getVibesAppPath(newAppName);
 
     // 3. Copy the app folder
     try {
@@ -1150,7 +1150,7 @@ export function registerAppHandlers() {
     }
 
     // Get app files
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     let files: string[] = [];
 
     try {
@@ -1201,7 +1201,7 @@ export function registerAppHandlers() {
       orderBy: [desc(remoteSchema.apps.createdAt)],
     });
     const appsWithResolvedPath = allApps.map((app) => {
-      const resolvedPath = getDyadAppPath(app.path);
+      const resolvedPath = getVibesAppPath(app.path);
       return {
         ...app,
         resolvedPath,
@@ -1227,7 +1227,7 @@ export function registerAppHandlers() {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const fullPath = path.join(appPath, filePath);
 
     // Check if the path is within the app directory (security check)
@@ -1292,7 +1292,7 @@ export function registerAppHandlers() {
 
       logger.debug(`Starting app ${appId} in path ${app.path}`);
 
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
       try {
         // There may have been a previous run that left a process on this port.
         await cleanUpPort(getAppPort(appId));
@@ -1404,7 +1404,7 @@ export function registerAppHandlers() {
           throw new Error("App not found");
         }
 
-        const appPath = getDyadAppPath(app.path);
+        const appPath = getVibesAppPath(app.path);
 
         // Remove node_modules if requested
         if (removeNodeModules) {
@@ -1480,7 +1480,7 @@ export function registerAppHandlers() {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const fullPath = path.join(appPath, filePath);
 
     // Check if the path is within the app directory (security check)
@@ -1616,7 +1616,7 @@ export function registerAppHandlers() {
 
       // Delete app files with retry logic to handle race conditions
       // (e.g. file watchers or dev servers releasing handles)
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
       const maxRetries = 3;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -1762,10 +1762,10 @@ export function registerAppHandlers() {
 
       // If the current path is absolute, preserve the directory and only change the folder name
       // Otherwise, resolve the new path using the default base path
-      const currentResolvedPath = getDyadAppPath(app.path);
+      const currentResolvedPath = getVibesAppPath(app.path);
       const newAppPath = path.isAbsolute(app.path)
         ? path.join(path.dirname(app.path), appPath)
-        : getDyadAppPath(appPath);
+        : getVibesAppPath(appPath);
 
       let hasPathConflict = false;
       if (pathChanged) {
@@ -1776,7 +1776,7 @@ export function registerAppHandlers() {
           if (existingApp.id === appId) {
             return false;
           }
-          return getDyadAppPath(existingApp.path) === newAppPath;
+          return getVibesAppPath(existingApp.path) === newAppPath;
         });
       }
 
@@ -1930,11 +1930,11 @@ export function registerAppHandlers() {
     // Doing this last because it's the most time-consuming and the least important
     // in terms of resetting the app state.
     logger.log("removing all app files...");
-    const dyadAppPath = getDyadAppPath(".");
-    if (fs.existsSync(dyadAppPath)) {
-      await fsPromises.rm(dyadAppPath, { recursive: true, force: true });
+    const vibesAppPath = getVibesAppPath(".");
+    if (fs.existsSync(vibesAppPath)) {
+      await fsPromises.rm(vibesAppPath, { recursive: true, force: true });
       // Recreate the base directory
-      await fsPromises.mkdir(dyadAppPath, { recursive: true });
+      await fsPromises.mkdir(vibesAppPath, { recursive: true });
     }
     logger.log("all app files removed.");
     logger.log("reset all complete.");
@@ -1960,7 +1960,7 @@ export function registerAppHandlers() {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     return withLock(appId, async () => {
       try {
@@ -2044,7 +2044,7 @@ export function registerAppHandlers() {
       throw new Error(`App ${appId} not found`);
     }
 
-    const appPath = getDyadAppPath(appRecord.path);
+    const appPath = getVibesAppPath(appRecord.path);
     const currentCwd = shellCwdMap.get(appId) || appPath;
 
     // Kill any previously running shell command for this app
@@ -2222,7 +2222,7 @@ export function registerAppHandlers() {
       return { completions: [] };
     }
 
-    const appPath = getDyadAppPath(appRecord.path);
+    const appPath = getVibesAppPath(appRecord.path);
     const currentCwd = shellCwdMap.get(appId) || appPath;
 
     return new Promise((resolve) => {
@@ -2277,7 +2277,7 @@ export function registerAppHandlers() {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(appRecord.path);
+    const appPath = getVibesAppPath(appRecord.path);
 
     // Search file contents with ripgrep
     const contentMatches = await searchAppFilesWithRipgrep({
@@ -2434,7 +2434,7 @@ export function registerAppHandlers() {
         throw new Error("App not found");
       }
 
-      const currentResolvedPath = getDyadAppPath(app.path);
+      const currentResolvedPath = getVibesAppPath(app.path);
       // Extract app folder name from current path (works for both absolute and relative paths)
       const appFolderName = path.basename(
         path.isAbsolute(app.path) ? app.path : currentResolvedPath,
@@ -2460,7 +2460,7 @@ export function registerAppHandlers() {
       const conflict = allApps.some(
         (existingApp) =>
           existingApp.id !== appId &&
-          getDyadAppPath(existingApp.path) === nextResolvedPath,
+          getVibesAppPath(existingApp.path) === nextResolvedPath,
       );
 
       if (conflict) {
@@ -2702,7 +2702,7 @@ export function registerAppHandlers() {
     const githubSettings = settings.providerSettings?.github as any;
     const accessToken = githubSettings?.accessToken?.value;
 
-    const resolvedPath = getDyadAppPath(appInfo.path);
+    const resolvedPath = getVibesAppPath(appInfo.path);
     const parentDir = path.dirname(resolvedPath);
 
     if (!fs.existsSync(parentDir)) {

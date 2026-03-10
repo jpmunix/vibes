@@ -2,8 +2,8 @@ import type { Message } from "@/ipc/types";
 import { ipc } from "@/ipc/types";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import {
-  DyadMarkdownParser,
-} from "./DyadMarkdownParser";
+  VibesMarkdownParser,
+} from "./VibesMarkdownParser";
 import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
@@ -147,7 +147,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
 
-  // Detect persisted errors (content starts with $$DYAD_ERROR$$)
+  // Detect persisted errors (content starts with $$VIBES_ERROR$$)
   const persistedError = isAssistant && message.content?.startsWith(PERSISTED_ERROR_PREFIX)
     ? message.content.slice(PERSISTED_ERROR_PREFIX.length)
     : null;
@@ -168,7 +168,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     if (!isStreaming || !isLastMessage) return defaultInfo;
     if (!message.content || !message.content.trim()) return defaultInfo;
 
-    const DYAD_CUSTOM_TAGS = [
+    const VIBES_CUSTOM_TAGS = [
       "vibes-write", "vibes-rename", "vibes-delete", "vibes-add-dependency",
       "vibes-execute-sql", "vibes-read-logs", "vibes-add-integration",
       "vibes-edit", "vibes-grep", "vibes-search-replace", "vibes-codebase-context",
@@ -185,7 +185,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     let lastAttrs: string = "";
 
     // Iterate through all tags to find the one that was opened last and is still open
-    for (const tagName of DYAD_CUSTOM_TAGS) {
+    for (const tagName of VIBES_CUSTOM_TAGS) {
       const openTagPattern = new RegExp(`<${tagName}\\b([^>]*)>`, "g");
       const closeTagPattern = new RegExp(`</${tagName}>`, "g");
 
@@ -392,7 +392,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
                         suppressHydrationWarning
                       >
-                        <DyadMarkdownParser content={message.content} />
+                        <VibesMarkdownParser content={message.content} />
                       </div>
                       {/* Streaming loader: visible while streaming, hidden on error */}
                       {isLastMessage && isStreaming && (

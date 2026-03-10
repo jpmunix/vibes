@@ -20,7 +20,7 @@
 import { ipcMain } from "electron";
 import log from "electron-log";
 import { openCodeHealthCheck, openCodeTestRun } from "./opencode_adapter";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { readSettings, decrypt } from "../../main/settings";
 import type { Secret } from "../../lib/schemas";
 
@@ -85,7 +85,7 @@ export function registerOpenCodeDiagnosticHandlers() {
         const appPath = params?.appPath || ".";
 
         try {
-            const result = await openCodeTestRun(getDyadAppPath(appPath));
+            const result = await openCodeTestRun(getVibesAppPath(appPath));
             return result;
         } catch (error: any) {
             logger.error("[OpenCode Diagnostic] Test run failed:", error);

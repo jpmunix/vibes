@@ -37,7 +37,7 @@ import {
   CloneRepoResult,
 } from "../types/github";
 import log from "electron-log";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
@@ -144,7 +144,7 @@ export async function prepareLocalBranch({
   if (!app) {
     throw new Error("App not found");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const targetBranch = branch || "main";
   const autoCommitEnabled = true; // Always enabled
 
@@ -866,7 +866,7 @@ async function handlePushToGithub(
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const branch = app.githubBranch || "main";
 
   // Auto-commit changes if commitMessage is provided
@@ -989,7 +989,7 @@ async function handleAbortRebase(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitRebaseAbort({ path: appPath });
 }
@@ -1003,7 +1003,7 @@ async function handleContinueRebase(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitRebaseContinue({ path: appPath });
 }
@@ -1024,7 +1024,7 @@ async function handleRebaseFromGithub(
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const branch = app.githubBranch || "main";
 
   // Set up remote URL with token
@@ -1083,7 +1083,7 @@ async function handleGetGitState(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const mergeInProgress = isGitMergeInProgress({ path: appPath });
   const rebaseInProgress = isGitRebaseInProgress({ path: appPath });
@@ -1273,7 +1273,7 @@ async function handleGetMergeConflicts(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const conflicts = await gitGetMergeConflicts({ path: appPath });
   return conflicts;
@@ -1353,7 +1353,7 @@ async function handleCloneRepoFromUrl(
       return { error: `An app named "${finalAppName}" already exists.` };
     }
 
-    const appPath = getDyadAppPath(finalAppName);
+    const appPath = getVibesAppPath(finalAppName);
     // Ensure the app directory exists if native git is disabled
     if (!settings.enableNativeGit) {
       if (!fs.existsSync(appPath)) {
@@ -1449,7 +1449,7 @@ async function handleGetPreview(
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const branch = app.githubBranch || "main";
 
     // Get uncommitted files with diffs
@@ -1559,7 +1559,7 @@ async function handleGenerateCommitMessage(
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     // Get uncommitted files with diffs
     const { default: git } = await import("isomorphic-git");
@@ -1623,7 +1623,7 @@ Return ONLY the commit message, nothing else.`;
       ],
       temperature: 0.7,
       max_tokens: 100,
-      title: "Dyad - Git Commit Message Generator",
+      title: "Vibes - Git Commit Message Generator",
     });
     const generatedMessage =
       data.choices?.[0]?.message?.content?.trim() ||

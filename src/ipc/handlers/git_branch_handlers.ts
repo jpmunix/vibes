@@ -41,7 +41,7 @@ import { withLock } from "../utils/lock_utils";
 import { updateAppGithubRepo, ensureCleanWorkspace } from "./github_handlers";
 import { createTypedHandler, HandlerContext } from "./base";
 import { githubContracts, gitContracts } from "../types/github";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import type {
   GitBranchAppIdParams,
   CreateGitBranchParams,
@@ -63,7 +63,7 @@ async function handleAbortMerge(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitMergeAbort({ path: appPath });
 }
@@ -85,7 +85,7 @@ async function handleFetchFromGithub(
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitFetch({
     path: appPath,
@@ -122,7 +122,7 @@ async function handleCreateBranch(
   }
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitCreateBranch({
     path: appPath,
@@ -140,7 +140,7 @@ async function handleDeleteBranch(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitDeleteBranch({
     path: appPath,
@@ -157,7 +157,7 @@ async function handleSwitchBranch(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check for merge or rebase in progress before attempting to switch
   // This provides structured error codes instead of relying on string matching
@@ -220,7 +220,7 @@ async function handleRenameBranch(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check if we're renaming the current branch BEFORE renaming to avoid race conditions
   const currentBranch = await gitCurrentBranch({ path: appPath });
@@ -262,7 +262,7 @@ async function handleMergeBranch(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check if branch exists locally, if not, check if it's a remote branch
   const localBranches = await gitListBranches({ path: appPath });
@@ -326,7 +326,7 @@ async function handleListLocalBranches(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const branches = await gitListBranches({ path: appPath });
   const current = await gitCurrentBranch({ path: appPath });
@@ -342,7 +342,7 @@ async function handleListRemoteBranches(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const branches = await gitListRemoteBranches({ path: appPath, remote });
   return branches;
@@ -357,7 +357,7 @@ async function handleGetUncommittedFiles(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return getGitUncommittedFilesWithStatus({ path: appPath });
 }
@@ -371,7 +371,7 @@ async function handleCommitChanges(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return withLock(appId, async () => {
     // Safety: remove stale index.lock if it exists.
@@ -428,7 +428,7 @@ async function handleStageFile(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   await gitAdd({ path: appPath, filepath });
 }
 
@@ -441,7 +441,7 @@ async function handleUnstageFile(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   await gitResetFile({ path: appPath, filepath });
 }
 
@@ -454,7 +454,7 @@ async function handleStageAll(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   await gitAddAll({ path: appPath });
 }
 
@@ -467,7 +467,7 @@ async function handleUnstageAll(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   await gitReset({ path: appPath });
 }
 
@@ -480,7 +480,7 @@ async function handleGetFileDiff(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   return gitDiffFile({ path: appPath, filepath });
 }
 
@@ -501,7 +501,7 @@ async function handlePullFromGithub(
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const currentBranch = await gitCurrentBranch({ path: appPath });
 
   try {
@@ -545,7 +545,7 @@ async function handleGetCommitHistory(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check if it's a git repo
   if (!fs.existsSync(path.join(appPath, ".git"))) {
@@ -564,7 +564,7 @@ async function handleGetCommitDetail(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitShowCommitDetail({ path: appPath, commitHash });
 }
@@ -580,7 +580,7 @@ async function handleGetConflictFiles(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const mergeInProgress = isGitMergeInProgress({ path: appPath });
   let files: string[] = [];
@@ -605,7 +605,7 @@ async function handleResolveMergeOurs(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitResolveMergeOurs({ path: appPath });
 }
@@ -619,7 +619,7 @@ async function handleResolveMergeTheirs(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitResolveMergeTheirs({ path: appPath });
 }
@@ -633,7 +633,7 @@ async function handleAbortMergeFromGit(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitMergeAbort({ path: appPath });
 }
@@ -647,7 +647,7 @@ async function handleGetConflictFileDiff(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitGetConflictFileDiff({ path: appPath, filepath });
 }
@@ -661,7 +661,7 @@ async function handleResolveFileOurs(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitResolveFileOurs({ path: appPath, filepath });
 }
@@ -675,7 +675,7 @@ async function handleResolveFileTheirs(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitResolveFileTheirs({ path: appPath, filepath });
 }
@@ -689,7 +689,7 @@ async function handleRemoveIndexLock(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return gitRemoveIndexLock({ path: appPath });
 }

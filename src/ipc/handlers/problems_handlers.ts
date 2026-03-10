@@ -2,7 +2,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { generateProblemReport } from "../processors/tsc";
-import { getDyadAppPath } from "@/paths/paths";
+import { getVibesAppPath } from "@/paths/paths";
 import log from "electron-log";
 import { createTypedHandler, HandlerContext } from "./base";
 import { miscContracts } from "../types/misc";
@@ -23,7 +23,7 @@ export function registerProblemsHandlers() {
         throw new Error(`App not found: ${params.appId}`);
       }
 
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
 
       // Call autofix with empty full response to just run TypeScript checking
       const problemReport = await generateProblemReport({

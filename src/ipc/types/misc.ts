@@ -51,7 +51,7 @@ export const ChatLogsDataSchema = z.object({
     telemetryId: z.string(),
     telemetryConsent: z.string(),
     telemetryUrl: z.string(),
-    dyadVersion: z.string(),
+    vibesVersion: z.string(),
     platform: z.string(),
     architecture: z.string(),
     logs: z.string(),

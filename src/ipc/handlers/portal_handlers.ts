@@ -3,7 +3,7 @@ import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { spawn } from "child_process";
 import { gitCommit, gitAdd } from "../utils/git_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
@@ -28,7 +28,7 @@ export function registerPortalHandlers() {
     async (_, { appId }: { appId: number }, context): Promise<{ output: string }> => {
       if (!context.userId) throw new Error("Unauthorized");
       const app = await getApp(appId, context.userId);
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
 
       // Run the migration command
       const migrationOutput = await new Promise<string>((resolve, reject) => {

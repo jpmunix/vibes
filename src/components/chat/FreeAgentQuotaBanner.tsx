@@ -53,12 +53,12 @@ export function FreeAgentQuotaBanner({
           <p className="text-sm text-amber-700 dark:text-amber-300">
             Has usado los 5 mensajes del modo Agente gratuito por hoy. Vuelve en{" "}
             {resetTimeDisplay} ({resetDateTime}). Si no quieres esperar,
-            actualiza a Dyad Pro o vuelve al modo Build.
+            actualiza a Vibes Pro o vuelve al modo Build.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleUpgrade} size="sm" className="gap-1.5">
               <Sparkles className="h-3.5 w-3.5" />
-              Actualizar a Dyad Pro
+              Actualizar a Vibes Pro
             </Button>
             <Button
               onClick={onSwitchToBuildMode}

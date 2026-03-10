@@ -22,7 +22,7 @@ import log from "electron-log";
 import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk";
 import type { IpcMainInvokeEvent } from "electron";
 import { readSettings, writeSettings, decrypt } from "../../main/settings";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
 import type { ChatStreamParams } from "@/ipc/types";
 import * as path from "node:path";
@@ -337,7 +337,7 @@ export async function handleOpenCodeStream(
     }
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
-    const projectDir = getDyadAppPath(appPath);
+    const projectDir = getVibesAppPath(appPath);
     logger.info(`[OpenCode] Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
     // Write a .ignore file to the project dir so ripgrep skips heavy directories.
@@ -738,7 +738,7 @@ async function processEvents(
 
                         case "tool": {
                             // If reasoning is open, close the think block before the tool
-                            // entry enters the timeline (otherwise the dyad tag would appear
+                            // entry enters the timeline (otherwise the vibes tag would appear
                             // inside the <think> block in the rendered output)
                             if (isCurrentlyReasoning) {
                                 callbacks.onTextDelta(`\n</think>\n`);
@@ -935,11 +935,11 @@ async function processEvents(
 }
 
 /**
- * Map OpenCode tool names → dyad tag names for consistent UI rendering.
- * The DyadMarkdownParser will intercept these tags and render the
+ * Map OpenCode tool names → vibes tag names for consistent UI rendering.
+ * The VibesMarkdownParser will intercept these tags and render the
  * collapsible icon badges that the user expects.
  */
-function mapToolToDyadTag(tool: string): string {
+function mapToolToVibesTag(tool: string): string {
     const map: Record<string, string> = {
         write: "vibes-write",
         read: "vibes-read",
@@ -959,10 +959,10 @@ function mapToolToDyadTag(tool: string): string {
     return map[tool] || "vibes-status";
 }
 
-function buildDyadTag(tool: string, detail: string, content: string): string {
-    const dyadTag = mapToolToDyadTag(tool);
+function buildVibesTag(tool: string, detail: string, content: string): string {
+    const vibesTag = mapToolToVibesTag(tool);
 
-    switch (dyadTag) {
+    switch (vibesTag) {
         case "vibes-write":
             return `<vibes-write path="${escapeAttr(detail)}" description="">${content}</vibes-write>`;
         case "vibes-search-replace":
@@ -1014,7 +1014,7 @@ function escapeAttr(s: string): string {
 }
 
 /**
- * Build live content showing accumulated dyad tags + current activity + response text.
+ * Build live content showing accumulated vibes tags + current activity + response text.
  * This is what the user sees in the chat bubble while OpenCode works.
  */
 /**
@@ -1032,19 +1032,19 @@ function buildLiveContent(
     for (const entry of timeline) {
         if (entry.type === "tool") {
             const tagContent = entry.error ? "[error]" : entry.output;
-            content += buildDyadTag(entry.tool, entry.detail, tagContent) + "\n";
+            content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
         } else {
             content += cleanResponseText(entry.text);
         }
     }
 
-    // Active tool indicator (pending tools shown as dyad tags with pending state)
+    // Active tool indicator (pending tools shown as vibes tags with pending state)
     const activeEdits = Array.from(toolsActive.values()).filter(
         t => (t.status === "running" || t.status === "pending") &&
             (t.tool === "edit" || t.tool === "write" || t.tool === "read")
     );
     for (const t of activeEdits) {
-        const tag = mapToolToDyadTag(t.tool);
+        const tag = mapToolToVibesTag(t.tool);
         content += `<${tag} path="${escapeAttr(t.detail || "...")}">`;  // unclosed = pending
     }
 
@@ -1066,7 +1066,7 @@ function buildFinalResponse(
     for (const entry of timeline) {
         if (entry.type === "tool") {
             const tagContent = entry.error ? "[error]" : entry.output;
-            content += buildDyadTag(entry.tool, entry.detail, tagContent) + "\n";
+            content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
         } else {
             content += cleanResponseText(entry.text);
         }

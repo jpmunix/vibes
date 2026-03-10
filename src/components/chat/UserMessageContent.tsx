@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { VanillaMarkdownParser } from "./DyadMarkdownParser";
+import { VanillaMarkdownParser } from "./VibesMarkdownParser";
 import { Image as ImageIcon, X, Wrench } from "lucide-react";
 import {
     Dialog,

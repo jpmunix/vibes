@@ -218,7 +218,7 @@ vi.mock("@/main/settings", () => ({
 }));
 
 vi.mock("@/paths/paths", () => ({
-  getDyadAppPath: vi.fn((appPath: string) => `/mock/apps/${appPath}`),
+  getVibesAppPath: vi.fn((appPath: string) => `/mock/apps/${appPath}`),
   getUserDataPath: vi.fn(() => "/mock/user/data"),
 }));
 
@@ -291,7 +291,7 @@ import { handleLocalAgentStream } from "@/pro/main/ipc/handlers/local_agent/loca
 // Tests
 // ============================================================================
 
-const dyadRequestId = "test-request-id";
+const vibesRequestId = "test-request-id";
 describe("handleLocalAgentStream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -320,7 +320,7 @@ describe("handleLocalAgentStream", () => {
   });
 
   describe("Pro status validation", () => {
-    it("should send error when Dyad Pro is not enabled", async () => {
+    it("should send error when Vibes Pro is not enabled", async () => {
       // Arrange
       const { event, getMessagesByChannel } = createFakeEvent();
       mockSettings = buildTestSettings({ enableDyadPro: false });
@@ -333,7 +333,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -342,7 +342,7 @@ describe("handleLocalAgentStream", () => {
       expect(errorMessages).toHaveLength(1);
       expect(errorMessages[0].args[0]).toMatchObject({
         chatId: 1,
-        error: expect.stringContaining("Agent v2 requires Dyad Pro"),
+        error: expect.stringContaining("Agent v2 requires Vibes Pro"),
       });
     });
 
@@ -363,7 +363,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -389,7 +389,7 @@ describe("handleLocalAgentStream", () => {
           {
             placeholderMessageId: 10,
             systemPrompt: "You are helpful",
-            dyadRequestId,
+            vibesRequestId,
           },
         ),
       ).rejects.toThrow("Chat not found: 999");
@@ -410,7 +410,7 @@ describe("handleLocalAgentStream", () => {
           {
             placeholderMessageId: 10,
             systemPrompt: "You are helpful",
-            dyadRequestId,
+            vibesRequestId,
           },
         ),
       ).rejects.toThrow("Chat not found: 1");
@@ -438,7 +438,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -487,7 +487,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -524,7 +524,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -577,7 +577,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -621,7 +621,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -654,7 +654,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -683,7 +683,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 

@@ -26,7 +26,7 @@ export const CommunityCodeConsentDialog: React.FC<
           <AlertDialogTitle>Aviso de código de la comunidad</AlertDialogTitle>
           <AlertDialogDescription className="space-y-3">
             <p>
-              Este código fue creado por un miembro de la comunidad de Dyad, no
+              Este código fue creado por un miembro de la comunidad de Vibes, no
               por nuestro equipo principal.
             </p>
             <p>

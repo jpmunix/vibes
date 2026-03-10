@@ -27,7 +27,7 @@ vi.mock("@/ipc/utils/read_env", () => ({
 }));
 
 describe("engineFetch", () => {
-  const ctx = { dyadRequestId: "test-request-id" };
+  const ctx = { vibesRequestId: "test-request-id" };
 
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());

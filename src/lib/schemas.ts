@@ -244,7 +244,7 @@ export const ExperimentsSchema = z.object({
 });
 export type Experiments = z.infer<typeof ExperimentsSchema>;
 
-// DyadProBudgetSchema removed — Pro concept eliminated after acquisition
+// VibesProBudgetSchema removed — Pro concept eliminated after acquisition
 
 export const GlobPathSchema = z.object({
   globPath: z.string(),
@@ -306,7 +306,7 @@ export const UserSettingsSchema = z
     // DEPRECATED.
     ////////////////////////////////
     enableProSaverMode: z.boolean().optional(),
-    // dyadProBudget: removed (Pro eliminated)
+    // vibesProBudget: removed (Pro eliminated)
     runtimeMode: RuntimeModeSchema.optional(),
 
     ////////////////////////////////
@@ -337,7 +337,7 @@ export const UserSettingsSchema = z
     telemetryConsent: z.enum(["opted_in", "opted_out", "unset"]).optional(),
     telemetryUserId: z.string().optional(),
     hasRunBefore: z.boolean().optional(),
-    // enableDyadPro: removed (Pro eliminated — always Pro)
+    // enableVibesPro: removed (Pro eliminated — always Pro)
     experiments: ExperimentsSchema.optional(),
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
@@ -443,7 +443,7 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-// isDyadProEnabled / hasDyadProKey removed — always Pro after acquisition
+// isVibesProEnabled / hasVibesProKey removed — always Pro after acquisition
 
 /**
  * Gets the effective default chat mode based on settings and pro status.

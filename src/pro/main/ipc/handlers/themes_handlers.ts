@@ -581,7 +581,7 @@ Modern dark theme with purple accents for testing.
 
       if (false) { // Pro eliminated
         throw new Error(
-          "Dyad Pro is required for AI theme generation. Please enable Dyad Pro in Settings.",
+          "Vibes Pro is required for AI theme generation. Please enable Vibes Pro in Settings.",
         );
       }
 
@@ -721,7 +721,7 @@ Modern theme extracted from website for testing.
 
       if (false) { // Pro eliminated
         throw new Error(
-          "Dyad Pro is required for AI theme generation. Please enable Dyad Pro in Settings.",
+          "Vibes Pro is required for AI theme generation. Please enable Vibes Pro in Settings.",
         );
       }
 
@@ -772,17 +772,17 @@ Modern theme extracted from website for testing.
         throw new Error("Invalid model selection");
       }
 
-      // Get API key for Dyad Engine
+      // Get API key for Vibes Engine
       const apiKey = settings.providerSettings?.auto?.apiKey?.value;
       if (!apiKey) {
-        throw new Error("Dyad Pro API key is required");
+        throw new Error("Vibes Pro API key is required");
       }
 
       // Crawl the website
       logger.log(`Crawling website for theme: ${params.url}`);
 
-      const DYAD_ENGINE_URL =
-        process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
+      const VIBES_ENGINE_URL =
+        process.env.VIBES_ENGINE_URL ?? "https://engine.dyad.sh/v1";
 
       // Create AbortController for timeout
       const controller = new AbortController();
@@ -793,12 +793,12 @@ Modern theme extracted from website for testing.
 
       let crawlResponse: Response;
       try {
-        crawlResponse = await fetch(`${DYAD_ENGINE_URL}/tools/web-crawl`, {
+        crawlResponse = await fetch(`${VIBES_ENGINE_URL}/tools/web-crawl`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
-            "X-Dyad-Request-Id": `theme-crawl-${uuidv4()}`,
+            "X-Vibes-Request-Id": `theme-crawl-${uuidv4()}`,
           },
           body: JSON.stringify({ url: params.url }),
           signal: controller.signal,

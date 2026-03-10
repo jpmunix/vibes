@@ -2,7 +2,7 @@ import { readSettings, writeSettings } from "./settings";
 
 /**
  * Handles a deep link return that sets up an API key.
- * Note: enableDyadPro removed — always Pro after acquisition.
+ * Note: enableVibesPro removed — always Pro after acquisition.
  */
 export function handleProReturn({ apiKey }: { apiKey: string }) {
   const settings = readSettings();

@@ -7,7 +7,7 @@ import * as remoteSchema from "../../../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { createTypedHandler } from "../../../../ipc/handlers/base";
 import { visualEditingContracts } from "../../../../ipc/types/visual-editing";
-import { getDyadAppPath } from "../../../../paths/paths";
+import { getVibesAppPath } from "../../../../paths/paths";
 import {
   stylesToTailwind,
   extractClassPrefixes,
@@ -53,7 +53,7 @@ export function registerVisualEditingHandlers() {
           throw new Error(`App not found: ${appId}`);
         }
 
-        const appPath = getDyadAppPath(app.path);
+        const appPath = getVibesAppPath(app.path);
         const fileChanges = new Map<
           string,
           Map<
@@ -156,7 +156,7 @@ export function registerVisualEditingHandlers() {
           throw new Error(`App not found: ${appId}`);
         }
 
-        const appPath = getDyadAppPath(app.path);
+        const appPath = getVibesAppPath(app.path);
         const fullPath = safeJoin(appPath, filePath);
         const content = await fsPromises.readFile(fullPath, "utf-8");
         return analyzeComponent(content, line);
@@ -197,7 +197,7 @@ export function registerVisualEditingHandlers() {
           throw new Error(`App not found: ${appId}`);
         }
 
-        const appPath = getDyadAppPath(app.path);
+        const appPath = getVibesAppPath(app.path);
         const fullPath = safeJoin(appPath, filePath);
         const content = await fsPromises.readFile(fullPath, "utf-8");
 

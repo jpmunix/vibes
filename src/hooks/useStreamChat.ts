@@ -144,7 +144,7 @@ export function useStreamChat({
                 });
               }
 
-              window.dispatchEvent(new CustomEvent('dyad:restore-chat-input', {
+              window.dispatchEvent(new CustomEvent('vibes:restore-chat-input', {
                 detail: { prompt: data.prompt, attachments: attachmentsToRestore }
               }));
             }

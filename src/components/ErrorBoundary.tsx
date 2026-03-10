@@ -28,7 +28,7 @@ export function ErrorBoundary({ error }: ErrorComponentProps) {
 ${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
 
 == System Information ==
-- App Version: ${debugInfo.dyadVersion}
+- App Version: ${debugInfo.vibesVersion}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
 - Node Version: ${debugInfo.nodeVersion || "Not available"}

@@ -167,7 +167,7 @@ export const ROADMAP_TIP: MessageConfig = {
   ],
 };
 
-// Like Dyad? Star it on GitHub https://github.com/<vibes-sh/dyad/
+// Like Vibes? Star it on GitHub https://github.com/<vibes-sh/dyad/
 export const GITHUB_TIP: MessageConfig = {
   spans: [
     {

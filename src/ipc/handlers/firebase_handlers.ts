@@ -15,7 +15,7 @@ import {
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { addLog } from "../../lib/log_store";
 import util from "util";
 
@@ -159,7 +159,7 @@ export function registerFirebaseHandlers() {
                 throw new Error("La aplicación no tiene un proyecto de Firebase configurado o no se encuentra el path.");
             }
 
-            const appPath = getDyadAppPath(app.path);
+            const appPath = getVibesAppPath(app.path);
             const projectId = app.firebaseProjectId;
 
             logger.info(`Starting deploy for app ${appId} at path: ${appPath}`);

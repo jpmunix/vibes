@@ -10,9 +10,9 @@ export interface MentionedAppCodebase {
 }
 
 export interface GetProviderOptionsParams {
-  dyadAppId: number;
-  dyadRequestId?: string;
-  dyadDisableFiles?: boolean;
+  vibesAppId: number;
+  vibesRequestId?: string;
+  vibesDisableFiles?: boolean;
   smartContextMode?: SmartContextMode;
   files: CodebaseFile[];
   versionedFiles?: VersionedFiles;
@@ -27,9 +27,9 @@ export interface GetProviderOptionsParams {
  * Builds provider options for the AI SDK streamText call.
  */
 export function getProviderOptions({
-  dyadAppId,
-  dyadRequestId,
-  dyadDisableFiles,
+  vibesAppId,
+  vibesRequestId,
+  vibesDisableFiles,
   smartContextMode,
   files,
   versionedFiles,
@@ -47,13 +47,13 @@ export function getProviderOptions({
 
   const providerOptions: Record<string, any> = {
     "vibes-engine": {
-      dyadAppId,
-      dyadRequestId,
-      dyadDisableFiles,
-      dyadSmartContextMode: smartContextMode,
-      dyadFiles: versionedFiles ? undefined : files,
-      dyadVersionedFiles: versionedFiles,
-      dyadMentionedApps: mentionedAppsCodebases.map(({ files, appName }) => ({
+      vibesAppId,
+      vibesRequestId,
+      vibesDisableFiles,
+      vibesSmartContextMode: smartContextMode,
+      vibesFiles: versionedFiles ? undefined : files,
+      vibesVersionedFiles: versionedFiles,
+      vibesMentionedApps: mentionedAppsCodebases.map(({ files, appName }) => ({
         appName,
         files,
       })),

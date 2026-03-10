@@ -1,7 +1,7 @@
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { executeAddDependency } from "../processors/executeAddDependency";
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
@@ -59,7 +59,7 @@ export function registerDependencyHandlers() {
       executeAddDependency({
         packages,
         message,
-        appPath: getDyadAppPath(app.path),
+        appPath: getVibesAppPath(app.path),
       });
     },
   );

@@ -4,7 +4,7 @@ import { desc, eq, and, like, ne, gte, sql } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
 
 import log from "electron-log";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
@@ -34,7 +34,7 @@ export function registerChatHandlers() {
     try {
       // Get the current git revision of the currently checked-out branch
       initialCommitHash = await getCurrentCommitHash({
-        path: getDyadAppPath(app.path),
+        path: getVibesAppPath(app.path),
       });
     } catch (error) {
       logger.error("Error getting git revision:", error);
@@ -477,7 +477,7 @@ export function registerChatHandlers() {
         const chatTitle = chat.title || "Sin título";
         const messagesText = chat.messages
           .map((msg) => {
-            // Strip dyad tags for the summary to focus on the intent/result
+            // Strip vibes tags for the summary to focus on the intent/result
             const cleanContent = msg.content
               .replace(/<vibes-think>[\s\S]*?<\/vibes-think>/g, "")
               .replace(/<vibes-[a-z-]+[\s\S]*?>[\s\S]*?<\/<vibes-[a-z-]+>/g, "")

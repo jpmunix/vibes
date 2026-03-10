@@ -35,7 +35,7 @@ import {
 } from "../../prompts/bunny_prompt";
 import type { BunnyConfig } from "@/ipc/types/bunny";
 import { getPocketBaseAvailableSystemPrompt, POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT } from "../../prompts/pocketbase_prompt";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { readSettings } from "../../main/settings";
 import type { ChatResponseEnd, ChatStreamParams } from "@/ipc/types";
 import {
@@ -118,8 +118,8 @@ type AsyncIterableStream<T> = AsyncIterable<T> & ReadableStream<T>;
 
 const logger = log.scope("chat_stream_handlers");
 const disableRemoteEngine =
-  process.env.DYAD_DISABLE_REMOTE_ENGINE === "true" ||
-  process.env.DYAD_ENABLE_REMOTE_ENGINE === "false";
+  process.env.VIBES_DISABLE_REMOTE_ENGINE === "true" ||
+  process.env.VIBES_ENABLE_REMOTE_ENGINE === "false";
 
 // Track active streams for cancellation
 const activeStreams = new Map<number, AbortController>();
@@ -211,14 +211,14 @@ async function processStreamChunks({
         inThinkingBlock = true;
       }
 
-      chunk += escapeDyadTags(part.text);
+      chunk += escapeVibesTags(part.text);
     } else if (part.type === "tool-call") {
       const { serverName, toolName } = parseMcpToolKey(part.toolName);
-      const content = escapeDyadTags(JSON.stringify(part.input));
+      const content = escapeVibesTags(JSON.stringify(part.input));
       chunk = `<vibes-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-call>\n`;
     } else if (part.type === "tool-result") {
       const { serverName, toolName } = parseMcpToolKey(part.toolName);
-      const content = escapeDyadTags(part.output);
+      const content = escapeVibesTags(part.output);
       chunk = `<vibes-mcp-tool-result server="${serverName}" tool="${toolName}">\n${content}\n</vibes-mcp-tool-result>\n`;
     }
 
@@ -260,7 +260,7 @@ function registerChatStreamHandlers() {
       const fileUploadsState = FileUploadsState.getInstance();
       // Clear any stale state from previous requests for this chat
       fileUploadsState.clear(req.chatId);
-      let dyadRequestId: string | undefined;
+      let vibesRequestId: string | undefined;
       // Create an AbortController for this stream
       const abortController = new AbortController();
       activeStreams.set(req.chatId, abortController);
@@ -405,7 +405,7 @@ function registerChatStreamHandlers() {
           attachmentPaths.push(filePath);
 
           if (attachment.attachmentType === "upload-to-codebase") {
-            const fileId = `DYAD_ATTACHMENT_${index}`;
+            const fileId = `VIBES_ATTACHMENT_${index}`;
             fileUploadsState.addFileUpload({ chatId: req.chatId, fileId }, { filePath, originalName: attachment.name });
             attachmentInfo += `\n\nFile to upload to codebase: ${attachment.name} (file id: ${fileId})\n`;
           } else {
@@ -449,7 +449,7 @@ function registerChatStreamHandlers() {
           let componentSnippet = "[component snippet not available]";
           try {
             const componentFileContent = await readFile(
-              path.join(getDyadAppPath(chat.app.path), component.relativePath),
+              path.join(getVibesAppPath(chat.app.path), component.relativePath),
               "utf8",
             );
             const lines = componentFileContent.split(/\r?\n/);
@@ -511,7 +511,7 @@ ${componentSnippet}
 
       const settings = readSettings();
       // Always generate requestId
-      dyadRequestId = uuidv4();
+      vibesRequestId = uuidv4();
 
       let fullResponse = "";
       let maxTokensUsed: number | undefined;
@@ -541,10 +541,10 @@ ${componentSnippet}
             chatId: req.chatId,
             role: "assistant",
             content: "",
-            requestId: dyadRequestId,
+            requestId: vibesRequestId,
             model: settings.selectedModel.name,
             sourceCommitHash: await getCurrentCommitHash({
-              path: getDyadAppPath(chat.app.path),
+              path: getVibesAppPath(chat.app.path),
             }),
             createdAt: new Date(),
           })
@@ -744,10 +744,10 @@ ${componentSnippet}
             chatId: req.chatId,
             role: "assistant",
             content: "",
-            requestId: dyadRequestId,
+            requestId: vibesRequestId,
             model: selectedModel.name,
             sourceCommitHash: await getCurrentCommitHash({
-              path: getDyadAppPath(chat.app.path),
+              path: getVibesAppPath(chat.app.path),
             }),
             createdAt: new Date(),
           })
@@ -793,7 +793,7 @@ ${componentSnippet}
         const { modelClient, isEngineEnabled, isSmartContextEnabled } =
           await getModelClient(selectedModel, settings);
 
-        const appPath = getDyadAppPath(updatedChat.app.path);
+        const appPath = getVibesAppPath(updatedChat.app.path);
         // When we don't have smart context enabled, we
         // only include the selected components' files for codebase context.
         //
@@ -922,7 +922,7 @@ ${componentSnippet}
           commitHash: message.commitHash,
         }));
 
-        // For Dyad Pro + Deep Context, we set to 50 chat turns (+1)
+        // For Vibes Pro + Deep Context, we set to 50 chat turns (+1)
         // REDUCED from 201 to save tokens while maintaining good context
         //
         // Limit chat history based on maxChatTurnsInContext setting
@@ -964,7 +964,7 @@ ${componentSnippet}
           );
         }
 
-        const aiRules = await readAiRules(getDyadAppPath(updatedChat.app.path));
+        const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path));
 
         // Get theme prompt for the app (null themeId means "no theme")
         const themePrompt = await getThemePromptById(updatedChat.app.themeId);
@@ -1004,7 +1004,7 @@ ${componentSnippet}
         if (isSecurityReviewIntent) {
           systemPrompt = SECURITY_REVIEW_SYSTEM_PROMPT;
           try {
-            const appPath = getDyadAppPath(updatedChat.app.path);
+            const appPath = getVibesAppPath(updatedChat.app.path);
             const rulesPath = path.join(appPath, "SECURITY_RULES.md");
             let securityRules = "";
 
@@ -1103,11 +1103,11 @@ ${componentSnippet}
             systemPrompt += `
 
 When files are attached to this conversation, upload them to the codebase using the \`write_file\` tool.
-Use the attachment ID (e.g., DYAD_ATTACHMENT_0) as the content, and it will be automatically resolved to the actual file content.
+Use the attachment ID (e.g., VIBES_ATTACHMENT_0) as the content, and it will be automatically resolved to the actual file content.
 
-Example for file with id of DYAD_ATTACHMENT_0:
+Example for file with id of VIBES_ATTACHMENT_0:
 \`\`\`
-write_file(path="src/components/Button.jsx", content="DYAD_ATTACHMENT_0", description="Upload file to codebase")
+write_file(path="src/components/Button.jsx", content="VIBES_ATTACHMENT_0", description="Upload file to codebase")
 \`\`\`
 
 `;
@@ -1117,12 +1117,12 @@ write_file(path="src/components/Button.jsx", content="DYAD_ATTACHMENT_0", descri
 When files are attached to this conversation, upload them to the codebase using this exact format:
 
 <vibes-write path="path/to/destination/filename.ext" description="Upload file to codebase">
-DYAD_ATTACHMENT_X
+VIBES_ATTACHMENT_X
 </vibes-write>
 
-Example for file with id of DYAD_ATTACHMENT_0:
+Example for file with id of VIBES_ATTACHMENT_0:
 <vibes-write path="src/components/Button.jsx" description="Upload file to codebase">
-DYAD_ATTACHMENT_0
+VIBES_ATTACHMENT_0
 </vibes-write>
 
   `;
@@ -1178,7 +1178,7 @@ This conversation includes one or more image attachments. When the user uploads 
           content:
             settings.selectedChatMode === "ask" ||
               settings.selectedChatMode === "plan"
-              ? removeDyadTags(removeNonEssentialTags(msg.content))
+              ? removeVibesTags(removeNonEssentialTags(msg.content))
               : removeNonEssentialTags(msg.content),
           providerOptions: {
             "vibes-engine": {
@@ -1234,7 +1234,7 @@ This conversation includes one or more image attachments. When the user uploads 
           modelClient,
           tools,
           systemPromptOverride = systemPrompt,
-          dyadDisableFiles = false,
+          vibesDisableFiles = false,
           files,
           toolChoice,
           serviceTier,
@@ -1244,21 +1244,21 @@ This conversation includes one or more image attachments. When the user uploads 
           files: CodebaseFile[];
           tools?: ToolSet;
           systemPromptOverride?: string;
-          dyadDisableFiles?: boolean;
+          vibesDisableFiles?: boolean;
           toolChoice?: Parameters<typeof streamText>[0]["toolChoice"];
           serviceTier?: "default" | "batch";
         }) => {
           if (isEngineEnabled) {
             logger.log(
               "sending AI request to engine with request id:",
-              dyadRequestId,
+              vibesRequestId,
             );
             await logChatInfo(
               req.chatId,
               "streaming",
               "Starting AI request to engine",
               {
-                requestId: dyadRequestId,
+                requestId: vibesRequestId,
                 model: selectedModel.name,
                 provider: selectedModel.provider,
               },
@@ -1289,9 +1289,9 @@ This conversation includes one or more image attachments. When the user uploads 
             ? "deep"
             : "balanced";
           const providerOptions = getProviderOptions({
-            dyadAppId: updatedChat.app.id,
-            dyadRequestId,
-            dyadDisableFiles,
+            vibesAppId: updatedChat.app.id,
+            vibesRequestId,
+            vibesDisableFiles,
             smartContextMode,
             files,
             versionedFiles,
@@ -1484,7 +1484,7 @@ This conversation includes one or more image attachments. When the user uploads 
               }
               const message = errorMessage || JSON.stringify(error);
               const requestIdPrefix = isEngineEnabled
-                ? `[Request ID: ${dyadRequestId}] `
+                ? `[Request ID: ${vibesRequestId}] `
                 : "";
               logger.error(
                 `AI stream text error for request: ${requestIdPrefix} errorMessage=${errorMessage} error=`,
@@ -1497,7 +1497,7 @@ This conversation includes one or more image attachments. When the user uploads 
                 `Streaming error: ${message}`,
                 {
                   errorMessage,
-                  requestId: dyadRequestId,
+                  requestId: vibesRequestId,
                   model: selectedModel.name,
                   provider: selectedModel.provider,
                 },
@@ -1590,7 +1590,7 @@ This conversation includes one or more image attachments. When the user uploads 
             // This is OK because those intents should always happen in a new chat
             // and new chats will default to non-ask modes.
             systemPrompt: readOnlySystemPrompt,
-            dyadRequestId: dyadRequestId ?? "[no-request-id]",
+            vibesRequestId: vibesRequestId ?? "[no-request-id]",
             readOnly: true,
             messageOverride: isSummarizeIntent ? chatMessages : undefined,
           });
@@ -1824,11 +1824,11 @@ This conversation includes one or more image attachments. When the user uploads 
           if (
             !abortController.signal.aborted &&
             settings.selectedChatMode !== "ask" &&
-            hasUnclosedDyadWrite(fullResponse)
+            hasUnclosedVibesWrite(fullResponse)
           ) {
             let continuationAttempts = 0;
             while (
-              hasUnclosedDyadWrite(fullResponse) &&
+              hasUnclosedVibesWrite(fullResponse) &&
               continuationAttempts < 2 &&
               !abortController.signal.aborted
             ) {
@@ -2207,12 +2207,12 @@ export function removeProblemReportTags(text: string): string {
   return text.replace(problemReportRegex, "").trim();
 }
 
-export function removeDyadTags(text: string): string {
-  const dyadRegex = /<vibes-[^>]*>[\s\S]*?<\/<vibes-[^>]*>/g;
-  return text.replace(dyadRegex, "").trim();
+export function removeVibesTags(text: string): string {
+  const vibesTagRegex = /<vibes-[^>]*>[\s\S]*?<\/<vibes-[^>]*>/g;
+  return text.replace(vibesTagRegex, "").trim();
 }
 
-export function hasUnclosedDyadWrite(text: string): boolean {
+export function hasUnclosedVibesWrite(text: string): boolean {
   // Find the last opening vibes-write tag
   const openRegex = /<vibes-write[^>]*>/g;
   let lastOpenIndex = -1;
@@ -2234,16 +2234,16 @@ export function hasUnclosedDyadWrite(text: string): boolean {
   return !hasClosingTag;
 }
 
-function escapeDyadTags(text: string): string {
-  // Escape dyad tags in reasoning content
+function escapeVibesTags(text: string): string {
+  // Escape vibes tags in reasoning content
   // We are replacing the opening tag with a look-alike character
-  // to avoid issues where thinking content includes dyad tags
+  // to avoid issues where thinking content includes vibes tags
   // and are mishandled by:
   // 1. FE markdown parser
   // 2. Main process response processor
   return text
-    .replace(/<dyad/g, "＜dyad")
-    .replace(/<\/dyad/g, "＜/dyad")
+    .replace(/<vibes/g, "＜vibes")
+    .replace(/<\/vibes/g, "＜/vibes")
     .replace(/<assistant_/g, "＜assistant_")
     .replace(/<\/assistant_/g, "＜/assistant_");
 }

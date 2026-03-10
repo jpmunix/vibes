@@ -5,7 +5,7 @@ import log from "electron-log";
 import { logChatInfo } from "../utils/chat_logger";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { todoContracts } from "../types/todo";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
@@ -244,7 +244,7 @@ export function registerTodoHandlers() {
     let initialCommitHash = null;
     try {
       initialCommitHash = await getCurrentCommitHash({
-        path: getDyadAppPath(app.path),
+        path: getVibesAppPath(app.path),
       });
     } catch (error) {
       logger.error("Error getting git revision:", error);

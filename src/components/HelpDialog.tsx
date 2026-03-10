@@ -45,7 +45,7 @@ export function HelpDialog({ isOpen, onClose }: HelpDialogProps) {
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const { settings } = useSettings();
   const { userBudget } = useUserBudgetInfo();
-  const isDyadProUser = settings?.providerSettings?.["auto"]?.apiKey?.value;
+  const isProUser = settings?.providerSettings?.["auto"]?.apiKey?.value;
 
   // Function to reset all dialog state
   const resetDialogState = () => {
@@ -86,7 +86,7 @@ export function HelpDialog({ isOpen, onClose }: HelpDialogProps) {
 <!-- Screenshot of the bug -->
 
 ## System Information
-- Vibes Version: ${debugInfo.dyadVersion}
+- Vibes Version: ${debugInfo.vibesVersion}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
 - Node Version: ${debugInfo.nodeVersion || "n/a"}
@@ -106,7 +106,7 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
       const encodedBody = encodeURIComponent(issueBody);
       const encodedTitle = encodeURIComponent("[bug] <WRITE TITLE HERE>");
       const labels = ["bug"];
-      if (isDyadProUser) {
+      if (isProUser) {
         labels.push("pro");
       }
       const githubIssueUrl = `https://github.com/<vibes-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
@@ -229,7 +229,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
     const encodedBody = encodeURIComponent(issueBody);
     const encodedTitle = encodeURIComponent("[session report] <add title>");
     const labels = ["support"];
-    if (isDyadProUser) {
+    if (isProUser) {
       labels.push("pro");
     }
     const githubIssueUrl = `https://github.com/<vibes-sh/dyad/issues/new?title=${encodedTitle}&labels=${labels}&body=${encodedBody}`;
@@ -334,7 +334,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
             <div className="border rounded-md p-3">
               <h3 className="font-medium mb-2">Información del sistema</h3>
               <div className="text-sm bg-slate-50 dark:bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                <p>Versión de Vibes: {chatLogsData.debugInfo.dyadVersion}</p>
+                <p>Versión de Vibes: {chatLogsData.debugInfo.vibesVersion}</p>
                 <p>Plataforma: {chatLogsData.debugInfo.platform}</p>
                 <p>Arquitectura: {chatLogsData.debugInfo.architecture}</p>
                 <p>
@@ -383,7 +383,7 @@ Pro User ID: ${userBudget?.redactedUserId || "n/a"}
           algunas opciones:
         </DialogDescription>
         <div className="flex flex-col space-y-4 w-full">
-          {isDyadProUser ? (
+          {isProUser ? (
             <div className="flex flex-col space-y-2">
               <Button
                 variant="default"

@@ -33,7 +33,7 @@ interface ApiKeyConfigurationProps {
   onApiKeyInputChange: (value: string) => void;
   onSaveKey: (value: string) => Promise<void>;
   onDeleteKey: () => Promise<void>;
-  isDyad: boolean;
+  isVibes: boolean;
   updateSettings: (settings: Partial<UserSettings>) => Promise<UserSettings>;
 }
 
@@ -49,7 +49,7 @@ export function ApiKeyConfiguration({
   onApiKeyInputChange,
   onSaveKey,
   onDeleteKey,
-  isDyad,
+  isVibes,
   updateSettings,
 }: ApiKeyConfigurationProps) {
   // Special handling for Azure OpenAI which requires environment variables
@@ -86,7 +86,7 @@ export function ApiKeyConfiguration({
   if (isValidUserKey || !hasEnvKey) {
     defaultAccordionValue.push("settings-key");
   }
-  if (!isDyad && hasEnvKey) {
+  if (!isVibes && hasEnvKey) {
     defaultAccordionValue.push("env-key");
   }
 
@@ -191,7 +191,7 @@ export function ApiKeyConfiguration({
         </AccordionContent>
       </AccordionItem>
 
-      {!isDyad && envVarName && (
+      {!isVibes && envVarName && (
         <AccordionItem
           value="env-key"
           className="border rounded-lg px-4 bg-card"

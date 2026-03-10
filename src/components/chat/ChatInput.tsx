@@ -164,12 +164,12 @@ export function ChatInput({
     };
 
     window.addEventListener(
-      "dyad:restore-chat-input" as any,
+      "vibes:restore-chat-input" as any,
       handleRestoreInput,
     );
     return () => {
       window.removeEventListener(
-        "dyad:restore-chat-input" as any,
+        "vibes:restore-chat-input" as any,
         handleRestoreInput,
       );
     };
@@ -570,7 +570,7 @@ export function ChatInput({
                                         }
                                       }
                                     }
-                                    window.dispatchEvent(new CustomEvent("dyad:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
+                                    window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
                                   }
                                   if (currentMessage?.sourceCommitHash) {
                                     await revertVersion({

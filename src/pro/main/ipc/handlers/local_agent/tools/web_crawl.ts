@@ -56,7 +56,7 @@ Always include the placeholder.svg file in your output file tree.
 
 async function callWebCrawl(
   url: string,
-  ctx: Pick<AgentContext, "dyadRequestId">,
+  ctx: Pick<AgentContext, "vibesRequestId">,
 ): Promise<z.infer<typeof webCrawlResponseSchema>> {
   const response = await engineFetch(ctx, "/tools/web-crawl", {
     method: "POST",

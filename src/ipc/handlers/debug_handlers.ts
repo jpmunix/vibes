@@ -14,7 +14,7 @@ import { extractCodebase } from "../../utils/codebase";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { LargeLanguageModel } from "@/lib/schemas";
 import { validateChatContext } from "../utils/context_paths_utils";
 
@@ -48,12 +48,12 @@ async function getSystemDebugInfo({
     console.error("Failed to get node path:", err);
   }
 
-  // Get Dyad version from package.json
+  // Get Vibes version from package.json
   const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
-  let dyadVersion = "unknown";
+  let vibesVersion = "unknown";
   try {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    dyadVersion = packageJson.version;
+    vibesVersion = packageJson.version;
   } catch (err) {
     console.error("Failed to read package.json:", err);
   }
@@ -103,7 +103,7 @@ async function getSystemDebugInfo({
       serializeModelForDebug(settings.selectedModel) || "unknown",
     telemetryConsent: settings.telemetryConsent || "unknown",
     telemetryUrl: "https://us.i.posthog.com", // Hardcoded from renderer.tsx
-    dyadVersion,
+    vibesVersion,
     platform: process.platform,
     architecture: arch(),
     logs,
@@ -168,7 +168,7 @@ export function registerDebugHandlers() {
       }
 
       // Extract codebase
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
       const codebase = (
         await extractCodebase({
           appPath,

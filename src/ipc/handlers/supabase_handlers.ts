@@ -187,7 +187,7 @@ export function registerSupabaseHandlers() {
     });
   });
 
-  // Set app project - links a Dyad app to a Supabase project
+  // Set app project - links a Vibes app to a Supabase project
   createTypedHandler(supabaseContracts.setAppProject, async (_, params, context) => {
     const userId = context.userId;
     if (!userId) throw new Error("Unauthorized");
@@ -207,7 +207,7 @@ export function registerSupabaseHandlers() {
     );
   });
 
-  // Unset app project - removes the link between a Dyad app and a Supabase project
+  // Unset app project - removes the link between a Vibes app and a Supabase project
   createTypedHandler(supabaseContracts.unsetAppProject, async (_, params, context) => {
     const userId = context.userId;
     if (!userId) throw new Error("Unauthorized");

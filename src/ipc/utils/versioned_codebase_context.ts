@@ -19,7 +19,7 @@ export interface VersionedFiles {
   hasExternalChanges: boolean;
 }
 
-interface DyadEngineProviderOptions {
+interface VibesEngineProviderOptions {
   sourceCommitHash: string | null;
   commitHash: string | null;
 }
@@ -40,9 +40,9 @@ export function parseFilesFromMessage(content: string): string[] {
   const matches: TagMatch[] = [];
 
   // Parse <vibes-read path="$filePath"></vibes-read>
-  const dyadReadRegex = /<vibes-read\s+path="([^"]+)"[^>]*><\/vibes-read>/gs;
+  const vibesReadRegex = /<vibes-read\s+path="([^"]+)"[^>]*><\/vibes-read>/gs;
   let match: RegExpExecArray | null;
-  while ((match = dyadReadRegex.exec(content)) !== null) {
+  while ((match = vibesReadRegex.exec(content)) !== null) {
     const filePath = normalizePath(match[1].trim());
     if (filePath) {
       matches.push({
@@ -140,7 +140,7 @@ export async function processChatMessagesWithVersionedFiles({
     // Extract sourceCommitHash from providerOptions
     const engineOptions = message.providerOptions?.[
       "vibes-engine"
-    ] as unknown as DyadEngineProviderOptions;
+    ] as unknown as VibesEngineProviderOptions;
     const sourceCommitHash = engineOptions?.sourceCommitHash;
 
     // Skip messages without sourceCommitHash
@@ -226,7 +226,7 @@ export async function processChatMessagesWithVersionedFiles({
     if (message.role === "assistant") {
       const engineOptions = message.providerOptions?.[
         "vibes-engine"
-      ] as unknown as DyadEngineProviderOptions;
+      ] as unknown as VibesEngineProviderOptions;
       if (engineOptions?.commitHash) {
         latestCommitHash = engineOptions.commitHash;
         break;

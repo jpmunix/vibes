@@ -10,7 +10,7 @@ import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/supabase_prompt";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
 import { extractCodebase } from "../../utils/codebase";
 import {
@@ -71,7 +71,7 @@ export function registerTokenCountHandlers() {
       const selectedMode = (req.chatMode || settings.selectedChatMode || "build") as any;
 
       let systemPrompt = constructSystemPrompt({
-        aiRules: await readAiRules(getDyadAppPath(chat.app.path)),
+        aiRules: await readAiRules(getVibesAppPath(chat.app.path)),
         chatMode: selectedMode,
         themePrompt,
         chatLanguage: settings.chatLanguage || "es",
@@ -104,7 +104,7 @@ export function registerTokenCountHandlers() {
       let codebaseTokens = 0;
 
       if (chat.app) {
-        const appPath = getDyadAppPath(chat.app.path);
+        const appPath = getVibesAppPath(chat.app.path);
 
         if (selectedMode === "local-agent") {
           // Agent mode starts with no file context (uses tools to explore)

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
-  getDyadWriteTags,
-  getDyadRenameTags,
-  getDyadAddDependencyTags,
-  getDyadDeleteTags,
+  getVibesWriteTags,
+  getVibesRenameTags,
+  getVibesAddDependencyTags,
+  getVibesDeleteTags,
 } from "../ipc/utils/tag_parser";
 
 import { processFullResponseActions } from "../ipc/processors/response_processor";
 import {
-  removeDyadTags,
-  hasUnclosedDyadWrite,
+  removeVibesTags,
+  hasUnclosedVibesWrite,
 } from "../ipc/handlers/chat_stream_handlers";
 import fs from "node:fs";
 import { db } from "../db";
@@ -58,9 +58,9 @@ vi.mock("../ipc/utils/git_utils", () => ({
   getGitUncommittedFiles: vi.fn().mockResolvedValue([]),
 }));
 
-// Mock paths module to control getDyadAppPath
+// Mock paths module to control getVibesAppPath
 vi.mock("../paths/paths", () => ({
-  getDyadAppPath: vi.fn().mockImplementation((appPath) => {
+  getVibesAppPath: vi.fn().mockImplementation((appPath) => {
     return `/mock/user/data/path/${appPath}`;
   }),
   getUserDataPath: vi.fn().mockReturnValue("/mock/user/data/path"),
@@ -85,49 +85,49 @@ vi.mock("../db", () => ({
   },
 }));
 
-describe("getDyadAddDependencyTags", () => {
+describe("getVibesAddDependencyTags", () => {
   it("should return an empty array when no dyad-add-dependency tags are found", () => {
-    const result = getDyadAddDependencyTags("No dyad-add-dependency tags here");
+    const result = getVibesAddDependencyTags("No dyad-add-dependency tags here");
     expect(result).toEqual([]);
   });
 
   it("should return an array of dyad-add-dependency tags", () => {
-    const result = getDyadAddDependencyTags(
+    const result = getVibesAddDependencyTags(
       `<dyad-add-dependency packages="uuid"></dyad-add-dependency>`,
     );
     expect(result).toEqual(["uuid"]);
   });
 
   it("should return all the packages in the dyad-add-dependency tags", () => {
-    const result = getDyadAddDependencyTags(
+    const result = getVibesAddDependencyTags(
       `<dyad-add-dependency packages="pkg1 pkg2"></dyad-add-dependency>`,
     );
     expect(result).toEqual(["pkg1", "pkg2"]);
   });
 
   it("should return all the packages in the dyad-add-dependency tags", () => {
-    const result = getDyadAddDependencyTags(
+    const result = getVibesAddDependencyTags(
       `txt before<dyad-add-dependency packages="pkg1 pkg2"></dyad-add-dependency>text after`,
     );
     expect(result).toEqual(["pkg1", "pkg2"]);
   });
 
   it("should return all the packages in multiple dyad-add-dependency tags", () => {
-    const result = getDyadAddDependencyTags(
+    const result = getVibesAddDependencyTags(
       `txt before<dyad-add-dependency packages="pkg1 pkg2"></dyad-add-dependency>txt between<dyad-add-dependency packages="pkg3"></dyad-add-dependency>text after`,
     );
     expect(result).toEqual(["pkg1", "pkg2", "pkg3"]);
   });
 });
-describe("getDyadWriteTags", () => {
+describe("getVibesWriteTags", () => {
   it("should return an empty array when no dyad-write tags are found", () => {
-    const result = getDyadWriteTags("No dyad-write tags here");
+    const result = getVibesWriteTags("No dyad-write tags here");
     expect(result).toEqual([]);
   });
 
   it("should return a dyad-write tag", () => {
     const result =
-      getDyadWriteTags(`<dyad-write path="src/components/TodoItem.tsx" description="Creating a component for individual todo items">
+      getVibesWriteTags(`<dyad-write path="src/components/TodoItem.tsx" description="Creating a component for individual todo items">
 import React from "react";
 console.log("TodoItem");
 </dyad-write>`);
@@ -143,7 +143,7 @@ console.log("TodoItem");`,
 
   it("should strip out code fence (if needed) from a dyad-write tag", () => {
     const result =
-      getDyadWriteTags(`<dyad-write path="src/components/TodoItem.tsx" description="Creating a component for individual todo items">
+      getVibesWriteTags(`<dyad-write path="src/components/TodoItem.tsx" description="Creating a component for individual todo items">
 \`\`\`tsx
 import React from "react";
 console.log("TodoItem");
@@ -161,7 +161,7 @@ console.log("TodoItem");`,
   });
 
   it("should handle missing description", () => {
-    const result = getDyadWriteTags(`
+    const result = getVibesWriteTags(`
       <dyad-write path="src/pages/locations/neighborhoods/louisville/Highlands.tsx">
 import React from 'react';
 </dyad-write>
@@ -176,7 +176,7 @@ import React from 'react';
   });
 
   it("should handle extra space", () => {
-    const result = getDyadWriteTags(
+    const result = getVibesWriteTags(
       cleanFullResponse(`
       <dyad-write path="src/pages/locations/neighborhoods/louisville/Highlands.tsx" description="Updating Highlands neighborhood page to use <a> tags." >
 import React from 'react';
@@ -193,7 +193,7 @@ import React from 'react';
   });
 
   it("should handle nested tags", () => {
-    const result = getDyadWriteTags(
+    const result = getVibesWriteTags(
       cleanFullResponse(`
       BEFORE TAG
   <dyad-write path="src/pages/locations/neighborhoods/louisville/Highlands.tsx" description="Updating Highlands neighborhood page to use <a> tags.">
@@ -223,7 +223,7 @@ AFTER TAG
 
     const cleanedInput = cleanFullResponse(inputWithNestedTags);
 
-    const result = getDyadWriteTags(cleanedInput);
+    const result = getVibesWriteTags(cleanedInput);
     expect(result).toEqual([
       {
         path: "src/pages/locations/neighborhoods/louisville/Highlands.tsx",
@@ -238,7 +238,7 @@ AFTER TAG
 
     // This simulates what cleanFullResponse should do
     const cleanedInput = cleanFullResponse(inputWithMultipleNestedTags);
-    const result = getDyadWriteTags(cleanedInput);
+    const result = getVibesWriteTags(cleanedInput);
     expect(result).toEqual([
       {
         path: "src/file.tsx",
@@ -254,7 +254,7 @@ AFTER TAG
     // This simulates what cleanFullResponse should do
     const cleanedInput = cleanFullResponse(inputWithNestedInMultipleAttrs);
 
-    const result = getDyadWriteTags(cleanedInput);
+    const result = getVibesWriteTags(cleanedInput);
     expect(result).toEqual([
       {
         path: "src/＜component＞.tsx",
@@ -265,7 +265,7 @@ AFTER TAG
   });
 
   it("should return an array of dyad-write tags", () => {
-    const result = getDyadWriteTags(
+    const result = getVibesWriteTags(
       `I'll create a simple todo list app using React, TypeScript, and shadcn/ui components. Let's get started!
 
 First, I'll create the necessary files for our todo list application:
@@ -597,14 +597,14 @@ I've created a complete todo list application with the ability to add, complete,
   });
 });
 
-describe("getDyadRenameTags", () => {
+describe("getVibesRenameTags", () => {
   it("should return an empty array when no dyad-rename tags are found", () => {
-    const result = getDyadRenameTags("No dyad-rename tags here");
+    const result = getVibesRenameTags("No dyad-rename tags here");
     expect(result).toEqual([]);
   });
 
   it("should return an array of dyad-rename tags", () => {
-    const result = getDyadRenameTags(
+    const result = getVibesRenameTags(
       `<dyad-rename from="src/components/UserProfile.jsx" to="src/components/ProfileCard.jsx"></dyad-rename>
       <dyad-rename from="src/utils/helpers.js" to="src/utils/utils.js"></dyad-rename>`,
     );
@@ -618,14 +618,14 @@ describe("getDyadRenameTags", () => {
   });
 });
 
-describe("getDyadDeleteTags", () => {
+describe("getVibesDeleteTags", () => {
   it("should return an empty array when no dyad-delete tags are found", () => {
-    const result = getDyadDeleteTags("No dyad-delete tags here");
+    const result = getVibesDeleteTags("No dyad-delete tags here");
     expect(result).toEqual([]);
   });
 
   it("should return an array of dyad-delete paths", () => {
-    const result = getDyadDeleteTags(
+    const result = getVibesDeleteTags(
       `<dyad-delete path="src/components/Analytics.jsx"></dyad-delete>
       <dyad-delete path="src/utils/unused.js"></dyad-delete>`,
     );
@@ -973,43 +973,43 @@ describe("processFullResponse", () => {
   });
 });
 
-describe("removeDyadTags", () => {
+describe("removeVibesTags", () => {
   it("should return empty string when input is empty", () => {
-    const result = removeDyadTags("");
+    const result = removeVibesTags("");
     expect(result).toBe("");
   });
 
-  it("should return the same text when no dyad tags are present", () => {
-    const text = "This is a regular text without any dyad tags.";
-    const result = removeDyadTags(text);
+  it("should return the same text when no vibes tags are present", () => {
+    const text = "This is a regular text without any vibes tags.";
+    const result = removeVibesTags(text);
     expect(result).toBe(text);
   });
 
   it("should remove a single dyad-write tag", () => {
     const text = `Before text <dyad-write path="src/file.js">console.log('hello');</dyad-write> After text`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Before text  After text");
   });
 
   it("should remove a single dyad-delete tag", () => {
     const text = `Before text <dyad-delete path="src/file.js"></dyad-delete> After text`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Before text  After text");
   });
 
   it("should remove a single dyad-rename tag", () => {
     const text = `Before text <dyad-rename from="old.js" to="new.js"></dyad-rename> After text`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Before text  After text");
   });
 
-  it("should remove multiple different dyad tags", () => {
+  it("should remove multiple different vibes tags", () => {
     const text = `Start <dyad-write path="file1.js">code here</dyad-write> middle <dyad-delete path="file2.js"></dyad-delete> end <dyad-rename from="old.js" to="new.js"></dyad-rename> finish`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Start  middle  end  finish");
   });
 
-  it("should remove dyad tags with multiline content", () => {
+  it("should remove vibes tags with multiline content", () => {
     const text = `Before
 <dyad-write path="src/component.tsx" description="A React component">
 import React from 'react';
@@ -1021,19 +1021,19 @@ const Component = () => {
 export default Component;
 </dyad-write>
 After`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Before\n\nAfter");
   });
 
-  it("should handle dyad tags with complex attributes", () => {
+  it("should handle vibes tags with complex attributes", () => {
     const text = `Text <dyad-write path="src/file.js" description="Complex component with quotes" version="1.0">const x = "hello world";</dyad-write> more text`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Text  more text");
   });
 
-  it("should remove dyad tags and trim whitespace", () => {
+  it("should remove vibes tags and trim whitespace", () => {
     const text = `  <dyad-write path="file.js">code</dyad-write>  `;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("");
   });
 
@@ -1042,72 +1042,72 @@ After`;
 const html = '<div>Hello</div>';
 const component = <Component />;
 </dyad-write>`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("");
   });
 
-  it("should handle self-closing dyad tags", () => {
+  it("should handle self-closing vibes tags", () => {
     const text = `Before <dyad-delete path="file.js" /> After`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe('Before <dyad-delete path="file.js" /> After');
   });
 
-  it("should handle malformed dyad tags gracefully", () => {
+  it("should handle malformed vibes tags gracefully", () => {
     const text = `Before <dyad-write path="file.js">unclosed tag After`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe('Before <dyad-write path="file.js">unclosed tag After');
   });
 
-  it("should handle dyad tags with special characters in content", () => {
+  it("should handle vibes tags with special characters in content", () => {
     const text = `<dyad-write path="file.js">
 const regex = /<div[^>]*>.*?</div>/g;
 const special = "Special chars: @#$%^&*()[]{}|\\";
 </dyad-write>`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("");
   });
 
-  it("should handle multiple dyad tags of the same type", () => {
+  it("should handle multiple vibes tags of the same type", () => {
     const text = `<dyad-write path="file1.js">code1</dyad-write> between <dyad-write path="file2.js">code2</dyad-write>`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("between");
   });
 
-  it("should handle dyad tags with custom tag names", () => {
+  it("should handle vibes tags with custom tag names", () => {
     const text = `Before <dyad-custom-action param="value">content</dyad-custom-action> After`;
-    const result = removeDyadTags(text);
+    const result = removeVibesTags(text);
     expect(result).toBe("Before  After");
   });
 });
 
-describe("hasUnclosedDyadWrite", () => {
+describe("hasUnclosedVibesWrite", () => {
   it("should return false when there are no dyad-write tags", () => {
-    const text = "This is just regular text without any dyad tags.";
-    const result = hasUnclosedDyadWrite(text);
+    const text = "This is just regular text without any vibes tags.";
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
   it("should return false when dyad-write tag is properly closed", () => {
     const text = `<dyad-write path="src/file.js">console.log('hello');</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
   it("should return true when dyad-write tag is not closed", () => {
     const text = `<dyad-write path="src/file.js">console.log('hello');`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
   it("should return false when dyad-write tag with attributes is properly closed", () => {
     const text = `<dyad-write path="src/file.js" description="A test file">console.log('hello');</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
   it("should return true when dyad-write tag with attributes is not closed", () => {
     const text = `<dyad-write path="src/file.js" description="A test file">console.log('hello');`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
@@ -1115,7 +1115,7 @@ describe("hasUnclosedDyadWrite", () => {
     const text = `<dyad-write path="src/file1.js">code1</dyad-write>
     Some text in between
     <dyad-write path="src/file2.js">code2</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
@@ -1123,7 +1123,7 @@ describe("hasUnclosedDyadWrite", () => {
     const text = `<dyad-write path="src/file1.js">code1</dyad-write>
     Some text in between
     <dyad-write path="src/file2.js">code2`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
@@ -1131,7 +1131,7 @@ describe("hasUnclosedDyadWrite", () => {
     const text = `<dyad-write path="src/file1.js">code1
     Some text in between
     <dyad-write path="src/file2.js">code2</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
@@ -1149,7 +1149,7 @@ const Component = () => {
 
 export default Component;
 </dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
@@ -1166,7 +1166,7 @@ const Component = () => {
 };
 
 export default Component;`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
@@ -1175,7 +1175,7 @@ export default Component;`;
 const message = "Hello 'world'";
 const regex = /<div[^>]*>/g;
 </dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
@@ -1183,7 +1183,7 @@ const regex = /<div[^>]*>/g;
     const text = `Some text before the tag
 <dyad-write path="src/file.js">console.log('hello');</dyad-write>
 Some text after the tag`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
@@ -1191,19 +1191,19 @@ Some text after the tag`;
     const text = `Some text before the tag
 <dyad-write path="src/file.js">console.log('hello');
 Some text after the unclosed tag`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
   it("should handle empty dyad-write tags", () => {
     const text = `<dyad-write path="src/file.js"></dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
   it("should handle unclosed empty dyad-write tags", () => {
     const text = `<dyad-write path="src/file.js">`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(true);
   });
 
@@ -1211,13 +1211,13 @@ Some text after the unclosed tag`;
     const text = `<dyad-write path="src/file1.js">completed content</dyad-write>
     <dyad-write path="src/file2.js">unclosed content
     <dyad-write path="src/file3.js">final content</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 
   it("should handle tags with special characters in attributes", () => {
     const text = `<dyad-write path="src/file-name_with.special@chars.js" description="File with special chars in path">content</dyad-write>`;
-    const result = hasUnclosedDyadWrite(text);
+    const result = hasUnclosedVibesWrite(text);
     expect(result).toBe(false);
   });
 });

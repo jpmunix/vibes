@@ -52,7 +52,7 @@ describe("searchReplaceTool", () => {
     isBasicAgentMode: false,
     todos: [],
     typecheckResults: [],
-    dyadRequestId: "test-request",
+    vibesRequestId: "test-request",
     fileEditTracker: {},
     onXmlStream: vi.fn(),
     onXmlComplete: vi.fn(),

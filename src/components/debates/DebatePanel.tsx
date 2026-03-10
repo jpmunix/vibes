@@ -25,9 +25,9 @@ import { useDebates } from "@/hooks/useDebates";
 import { useNotes } from "@/hooks/useNotes";
 import { showError, showSuccess } from "@/lib/toast";
 import {
-  DyadMarkdownParser,
+  VibesMarkdownParser,
   VanillaMarkdownParser,
-} from "@/components/chat/DyadMarkdownParser";
+} from "@/components/chat/VibesMarkdownParser";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import logoSrc from "../../../assets/icon/logo.png";
 
@@ -538,7 +538,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                         </div>
                       )}
                       {m.role === "assistant" ? (
-                        <DyadMarkdownParser
+                        <VibesMarkdownParser
                           content={
                             m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]
                           }

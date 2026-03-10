@@ -42,7 +42,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { VanillaMarkdownParser } from "@/components/chat/DyadMarkdownParser";
+import { VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 
 interface TodoEditModalProps {
   todo: Todo | null;

@@ -74,8 +74,8 @@ export interface AgentContext {
   chatSummary?: string;
   /** Turn-scoped todo list for agent task tracking */
   todos: Todo[];
-  /** Request ID for tracking requests to the Dyad engine */
-  dyadRequestId: string;
+  /** Request ID for tracking requests to the Vibes engine */
+  vibesRequestId: string;
   /** Tracks file edit tool usage per file for telemetry */
   fileEditTracker: FileEditTracker;
   /** Accumulated typecheck results per file edit for summary badge */

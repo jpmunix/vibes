@@ -634,8 +634,8 @@ export const getSystemPromptForChatMode = ({
 ${postfix}`;
 };
 
-export const readAiRules = async (dyadAppPath: string) => {
-  const aiRulesPath = path.join(dyadAppPath, "AI_RULES.md");
+export const readAiRules = async (vibesAppPath: string) => {
+  const aiRulesPath = path.join(vibesAppPath, "AI_RULES.md");
   try {
     const aiRules = await fs.promises.readFile(aiRulesPath, "utf8");
     return aiRules;

@@ -348,7 +348,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
   return (
     // When collapsed: only show the main menu
     <SidebarGroup className="pr-0">
-      {/* <SidebarGroupLabel>Dyad</SidebarGroupLabel> */}
+      {/* <SidebarGroupLabel>Vibes</SidebarGroupLabel> */}
 
       <SidebarGroupContent>
         <SidebarMenu>

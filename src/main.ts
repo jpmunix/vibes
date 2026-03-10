@@ -31,7 +31,7 @@ import {
 import { cleanupOldAiMessagesJson } from "./pro/main/ipc/handlers/local_agent/ai_messages_cleanup";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
-import { getDyadAppsBaseDirectory } from "./paths/paths";
+import { getVibesAppsBaseDirectory } from "./paths/paths";
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -92,7 +92,7 @@ if (fs.existsSync(gitDir)) {
 
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("dyad", process.execPath, [
+    app.setAsDefaultProtocolClient("vibes", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
     app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3", process.execPath, [
@@ -100,7 +100,7 @@ if (process.defaultApp) {
     ]);
   }
 } else {
-  app.setAsDefaultProtocolClient("dyad");
+  app.setAsDefaultProtocolClient("vibes");
   app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3");
 }
 
@@ -157,7 +157,7 @@ export async function onReady() {
 
     // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
-      await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
+      await gitAddSafeDirectory(`${getVibesAppsBaseDirectory()}/*`);
     }
 
     // Start performance monitoring after everything is initialized

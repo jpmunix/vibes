@@ -23,7 +23,7 @@ export const SystemDebugInfoSchema = z.object({
   telemetryId: z.string(),
   telemetryConsent: z.string(),
   telemetryUrl: z.string(),
-  dyadVersion: z.string(),
+  vibesVersion: z.string(),
   platform: z.string(),
   architecture: z.string(),
   logs: z.string(),
@@ -274,8 +274,8 @@ export const systemContracts = {
   }),
 
   // Restart
-  restartDyad: defineContract({
-    channel: "restart-dyad",
+  restartVibes: defineContract({
+    channel: "restart-vibes",
     input: z.void(),
     output: z.void(),
   }),

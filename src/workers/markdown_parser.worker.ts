@@ -2,7 +2,7 @@
 import { unescapeXmlAttr, unescapeXmlContent } from "../../shared/xmlEscape";
 import { WorkerInput, WorkerOutput, ContentPiece, CustomTagInfo } from "./markdown_parser_types";
 
-const DYAD_CUSTOM_TAGS = [
+const VIBES_CUSTOM_TAGS = [
     "vibes-write",
     "vibes-rename",
     "vibes-delete",
@@ -65,7 +65,7 @@ function preprocessUnclosedTags(content: string): {
     const inProgressTags = new Map<string, Set<number>>();
 
     // For each tag type, check if there are unclosed tags
-    for (const tagName of DYAD_CUSTOM_TAGS) {
+    for (const tagName of VIBES_CUSTOM_TAGS) {
         // Count opening and closing tags
         const openTagPattern = new RegExp(`<${tagName}(?:\\s[^>]*)?>`, "g");
         const closeTagPattern = new RegExp(`</${tagName}>`, "g");
@@ -112,7 +112,7 @@ function parseCustomTags(content: string): ContentPiece[] {
     const { processedContent, inProgressTags } = preprocessUnclosedTags(content);
 
     const tagPattern = new RegExp(
-        `<(${DYAD_CUSTOM_TAGS.join("|")})\\s*([^>]*)>(.*?)<\\/\\1>`,
+        `<(${VIBES_CUSTOM_TAGS.join("|")})\\s*([^>]*)>(.*?)<\\/\\1>`,
         "gs",
     );
 

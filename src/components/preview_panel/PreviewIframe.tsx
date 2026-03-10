@@ -172,7 +172,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
               {isDockerError
                 ? "Asegúrate de que Docker Desktop está en ejecución e intenta reiniciar la aplicación."
                 : error.source === "vibes-app"
-                  ? "Intenta reiniciar la aplicación Dyad o reiniciar tu computadora para ver si eso soluciona el error."
+                  ? "Intenta reiniciar la aplicación Vibes o reiniciar tu computadora para ver si eso soluciona el error."
                   : "Verifica si reiniciar la aplicación soluciona el error."}
             </div>
           </div>
@@ -1365,7 +1365,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
     try {
       const url = new URL(base);
-      url.searchParams.set("dyad_v", reloadKey.toString());
+      url.searchParams.set("vibes_v", reloadKey.toString());
       return url.toString();
     } catch {
       return base;

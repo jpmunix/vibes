@@ -2,7 +2,7 @@ import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import fs from "node:fs";
 import path from "node:path";
 import { simpleSpawn } from "../utils/simpleSpawn";
@@ -39,7 +39,7 @@ export function registerCapacitorHandlers() {
   createTypedHandler(capacitorContracts.isCapacitor, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const app = await getApp(params.appId, context.userId);
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     // check for the required Node.js version before running any commands
     const currentNodeVersion = process.version;
@@ -60,7 +60,7 @@ export function registerCapacitorHandlers() {
   createTypedHandler(capacitorContracts.syncCapacitor, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const app = await getApp(params.appId, context.userId);
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {
       throw new Error("Capacitor is not installed in this app");
@@ -88,7 +88,7 @@ export function registerCapacitorHandlers() {
   createTypedHandler(capacitorContracts.openIos, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const app = await getApp(params.appId, context.userId);
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {
       throw new Error("Capacitor is not installed in this app");
@@ -111,7 +111,7 @@ export function registerCapacitorHandlers() {
   createTypedHandler(capacitorContracts.openAndroid, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const app = await getApp(params.appId, context.userId);
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     if (!isCapacitorInstalled(appPath)) {
       throw new Error("Capacitor is not installed in this app");

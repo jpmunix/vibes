@@ -14,7 +14,7 @@ import { getModelClient } from "../utils/get_model_client";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { extractCodebase } from "../../utils/codebase";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getEffectivePrompt } from "../../prompts";
@@ -207,7 +207,7 @@ export function registerDossierHandlers() {
                     return { ok: true as const };
                 }
 
-                const appPath = getDyadAppPath(app.path);
+                const appPath = getVibesAppPath(app.path);
 
                 // Check if dossier already exists (skip if forceRegenerate)
                 const dossierDir = getDossierDir(appPath);
@@ -566,7 +566,7 @@ export function registerDossierHandlers() {
                 return { exists: true, zipPath: dossierRecord.storagePath };
             }
 
-            const appPath = getDyadAppPath(app.path);
+            const appPath = getVibesAppPath(app.path);
             const dossierDir = getDossierDir(appPath);
             const zipName = `dossier_${app.name.replace(/[^a-zA-Z0-9]/g, "_")}.zip`;
             const zipPath = path.join(dossierDir, zipName);
@@ -624,7 +624,7 @@ export function registerDossierHandlers() {
                 }
             }
 
-            const appPath = getDyadAppPath(app.path);
+            const appPath = getVibesAppPath(app.path);
             const dossierDir = getDossierDir(appPath);
             const zipPath = path.join(dossierDir, zipName);
 

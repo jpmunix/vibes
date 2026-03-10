@@ -31,7 +31,7 @@ import {
 
 
 import { readSettings } from "@/main/settings";
-import { getDyadAppPath } from "@/paths/paths";
+import { getVibesAppPath } from "@/paths/paths";
 import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
@@ -125,13 +125,13 @@ export async function handleLocalAgentStream(
   {
     placeholderMessageId,
     systemPrompt,
-    dyadRequestId,
+    vibesRequestId,
     readOnly = false,
     messageOverride,
   }: {
     placeholderMessageId: number;
     systemPrompt: string;
-    dyadRequestId: string;
+    vibesRequestId: string;
     /**
      * If true, the agent operates in read-only mode (e.g., ask mode).
      * State-modifying tools are disabled, and no commits/deploys are made.
@@ -157,7 +157,7 @@ export async function handleLocalAgentStream(
     safeSend(event.sender, "chat:response:error", {
       chatId: req.chatId,
       error:
-        "Agent v2 requires Dyad Pro. Please enable Dyad Pro in Settings → Pro.",
+        "Agent v2 requires Vibes Pro. Please enable Vibes Pro in Settings → Pro.",
     });
     return false;
   }
@@ -178,7 +178,7 @@ export async function handleLocalAgentStream(
     throw new Error(`Chat not found: ${req.chatId}`);
   }
 
-  const appPath = getDyadAppPath(chat.app.path);
+  const appPath = getVibesAppPath(chat.app.path);
 
   // The frontend handles optimistic UI updates (showing the loader).
   // We should NOT send `chat.messages` here because it doesn't contain the assistant placeholder yet,
@@ -229,7 +229,7 @@ export async function handleLocalAgentStream(
       messageId: placeholderMessageId,
       isSharedModulesChanged: false,
       todos: [],
-      dyadRequestId,
+      vibesRequestId,
       fileEditTracker,
       typecheckResults: [],
       isBasicAgentMode: false,
@@ -351,9 +351,9 @@ export async function handleLocalAgentStream(
         builtinProviderId: modelClient.builtinProviderId,
       }),
       providerOptions: getProviderOptions({
-        dyadAppId: chat.app.id,
-        dyadRequestId,
-        dyadDisableFiles: true, // Local agent uses tools, not file injection
+        vibesAppId: chat.app.id,
+        vibesRequestId,
+        vibesDisableFiles: true, // Local agent uses tools, not file injection
         files: [],
         mentionedAppsCodebases: [],
         builtinProviderId: modelClient.builtinProviderId,

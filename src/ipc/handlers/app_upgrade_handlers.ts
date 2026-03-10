@@ -4,7 +4,7 @@ import { AppUpgrade } from "@/ipc/types";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -114,7 +114,7 @@ async function applyComponentTagger(appPath: string) {
   // Add import statement if not present
   if (
     !content.includes(
-      "import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
     )
   ) {
     // Add it after the last import statement
@@ -129,17 +129,17 @@ async function applyComponentTagger(appPath: string) {
     lines.splice(
       lastImportIndex + 1,
       0,
-      "import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
     );
     content = lines.join("\n");
   }
 
   // Add plugin to plugins array
   if (content.includes("plugins: [")) {
-    if (!content.includes("dyadComponentTagger()")) {
+    if (!content.includes("vibesComponentTagger()")) {
       content = content.replace(
         "plugins: [",
-        "plugins: [dyadComponentTagger(), ",
+        "plugins: [vibesComponentTagger(), ",
       );
     }
   } else {
@@ -257,7 +257,7 @@ export function registerAppUpgradeHandlers() {
     async (_, { appId }: { appId: number }, context): Promise<AppUpgrade[]> => {
       if (!context.userId) throw new Error("Unauthorized");
       const app = await getApp(appId, context.userId);
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
 
       const upgradesWithStatus = availableUpgrades.map((upgrade) => {
         let isNeeded = false;
@@ -282,7 +282,7 @@ export function registerAppUpgradeHandlers() {
       }
 
       const app = await getApp(appId, context.userId);
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
 
       if (upgradeId === "component-tagger") {
         await applyComponentTagger(appPath);
