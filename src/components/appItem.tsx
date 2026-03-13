@@ -49,41 +49,42 @@ export function AppItem({
     }
   };
   return (
-    <SidebarMenuItem className="mb-1">
+    <SidebarMenuItem className="mb-0.5">
       <div className="flex ml-2 mr-2 items-center relative group/menu-item">
         <Button
           variant="ghost"
           onClick={() => handleAppClick(app.id)}
-          className={`justify-start h-11 w-full text-left pr-1 cursor-pointer hover:bg-sidebar-accent/80 ${selectedAppId === app.id
-            ? "bg-primary/10 text-primary"
-            : ""
+          className={`justify-start h-auto w-full text-left pr-1 cursor-pointer rounded-xl py-2 transition-all duration-150
+            ${selectedAppId === app.id
+              ? "bg-primary/10 text-primary"
+              : "hover:bg-sidebar-accent/60"
             }`}
           data-testid={`app-list-item-${app.name}`}
         >
           <div className="flex flex-col w-full relative overflow-hidden">
             <div className="flex items-center gap-1.5 overflow-hidden">
               <span
-                className={`truncate ${selectedAppId === app.id ? "font-semibold" : ""}`}
+                className={`truncate text-[13px] leading-tight ${selectedAppId === app.id ? "font-semibold" : "font-medium"}`}
               >
                 {app.name}
               </span>
               {app.localPathExists === false && (
                 <AlertTriangle
-                  size={12}
+                  size={11}
                   className="text-red-500 flex-shrink-0 animate-pulse"
                   title="Archivos locales no encontrados"
                 />
               )}
             </div>
             <span
-              className={`text-xs flex items-center gap-1 ${selectedAppId === app.id ? "text-primary/70" : "text-muted-foreground"}`}
+              className={`text-[10.5px] leading-tight mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "text-primary/60" : "text-muted-foreground/60"}`}
             >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
                 locale: es,
               })}
               {app.localPathExists === false && (
-                <span className="text-[10px] text-red-400 font-medium whitespace-nowrap">
+                <span className="text-[9.5px] text-red-400/80 font-medium whitespace-nowrap">
                   • Sin archivos locales
                 </span>
               )}
@@ -93,10 +94,10 @@ export function AppItem({
 
         {/* Hover gradient shadow */}
         <div
-          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+          className={`absolute right-0 top-0 bottom-0 w-20 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 rounded-r-xl
           ${selectedAppId === app.id
-              ? "bg-gradient-to-l from-primary/10 via-primary/8 to-transparent"
-              : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+              ? "bg-gradient-to-l from-primary/10 to-transparent"
+              : "bg-gradient-to-l from-[var(--sidebar-accent)]/60 to-transparent"
             }`}
         />
 

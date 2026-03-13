@@ -32,16 +32,16 @@ export function OpenRouterCreditsButton() {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 mb-2 text-foreground"
+            className="no-app-region-drag sidebar-util-btn"
             onClick={() => refetch()}
             disabled={isFetching}
           >
             {isFetching ? (
-              <RefreshCw size={20} className="animate-spin" />
+              <RefreshCw size={19} className="animate-spin" />
             ) : (
-              <DollarSign size={20} className="opacity-100" />
+              <DollarSign size={19} />
             )}
-            <span className="text-xs font-bold leading-none mt-0.5">
+            <span className="text-[9.5px] font-bold leading-none mt-0.5 opacity-70">
               {isLoading ? "..." : formattedBalance}
             </span>
           </button>

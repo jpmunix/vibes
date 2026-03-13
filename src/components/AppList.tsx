@@ -177,58 +177,100 @@ export function AppList({ show }: { show?: boolean }) {
 
   return (
     <>
+      {/* ── Sidebar premium styles ── */}
+      <style>{`
+        .sidebar-action-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 7px 10px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--sidebar);
+          color: var(--sidebar-foreground);
+          font-size: 12.5px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sidebar-action-btn:hover {
+          background: var(--sidebar-accent);
+          border-color: var(--border);
+          transform: translateY(-0.5px);
+          box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+        }
+        .sidebar-action-btn:active {
+          transform: scale(0.98);
+        }
+        .sidebar-action-btn svg {
+          opacity: 0.55;
+          flex-shrink: 0;
+          color: var(--primary);
+        }
+        .sidebar-action-btn:hover svg {
+          opacity: 0.85;
+        }
+
+        .sidebar-section-label {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--muted-foreground);
+          opacity: 0.5;
+          padding: 10px 12px 4px;
+        }
+      `}</style>
+
       <SidebarGroup
         className="overflow-y-auto h-[calc(100vh-112px)]"
         data-testid="app-list-container"
       >
         <SidebarGroupLabel>Tus aplicaciones</SidebarGroupLabel>
         <SidebarGroupContent>
-          <div className="flex flex-col space-y-2">
-            <Button
-              onClick={handleNewApp}
-              variant="outline"
-              className="flex items-center justify-start gap-2 mx-2 py-2"
-            >
-              <PlusCircle size={16} />
+          <div className="flex flex-col gap-1.5 px-2">
+            <button onClick={handleNewApp} className="sidebar-action-btn" type="button">
+              <PlusCircle size={15} />
               <span>Nueva aplicación</span>
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={() => setIsEmptyAppDialogOpen(true)}
-              variant="outline"
-              className="flex items-center justify-start gap-2 mx-2 py-2"
+              className="sidebar-action-btn"
               data-testid="new-empty-app-button"
+              type="button"
             >
-              <FolderPlus size={16} />
+              <FolderPlus size={15} />
               <span>Nueva aplicación vacía</span>
-            </Button>
-            <ImportAppButton className="mx-2 px-0 pb-0" />
-            <Button
+            </button>
+            <ImportAppButton className="mx-0 px-0 pb-0" />
+            <button
               onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
-              variant="outline"
-              className="flex items-center justify-start gap-2 mx-2 py-3"
+              className="sidebar-action-btn"
               data-testid="search-apps-button"
+              type="button"
             >
-              <Search size={16} />
+              <Search size={15} />
               <span>Buscar aplicaciones</span>
-            </Button>
+            </button>
 
             {loading ? (
-              <div className="py-2 px-4 text-sm text-muted-foreground">
+              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
                 Cargando aplicaciones...
               </div>
             ) : error ? (
-              <div className="py-2 px-4 text-sm text-red-500">
+              <div className="py-3 px-2 text-xs text-red-400 text-center">
                 Error al cargar las aplicaciones
               </div>
             ) : apps.length === 0 ? (
-              <div className="py-2 px-4 text-sm text-muted-foreground">
+              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
                 No se encontraron aplicaciones
               </div>
             ) : (
-              <SidebarMenu className="space-y-1" data-testid="app-list">
+              <SidebarMenu className="mt-1" data-testid="app-list">
                 {favoriteApps.length > 0 && (
                   <>
-                    <SidebarGroupLabel>Aplicaciones favoritas</SidebarGroupLabel>
+                    <div className="sidebar-section-label">Aplicaciones favoritas</div>
                     {favoriteApps.map((app) => (
                       <AppItem
                         key={app.id}
@@ -245,7 +287,7 @@ export function AppList({ show }: { show?: boolean }) {
                 )}
                 {nonFavoriteApps.length > 0 && (
                   <>
-                    <SidebarGroupLabel>Otras aplicaciones</SidebarGroupLabel>
+                    <div className="sidebar-section-label">Otras aplicaciones</div>
                     {nonFavoriteApps.map((app) => (
                       <AppItem
                         key={app.id}
@@ -262,7 +304,7 @@ export function AppList({ show }: { show?: boolean }) {
                 )}
                 {noLocalFilesApps.length > 0 && (
                   <>
-                    <SidebarGroupLabel className="text-muted-foreground/60">Sin archivos locales</SidebarGroupLabel>
+                    <div className="sidebar-section-label" style={{ opacity: 0.35 }}>Sin archivos locales</div>
                     {noLocalFilesApps.map((app) => (
                       <AppItem
                         key={app.id}

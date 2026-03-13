@@ -70,16 +70,71 @@ export function HomeChatInput({
 
   return (
     <>
+      <style>{`
+        /* ── Animated gradient border ── */
+        @property --home-input-angle {
+          syntax: "<angle>";
+          initial-value: 0deg;
+          inherits: false;
+        }
+        @keyframes home-input-border-spin {
+          to { --home-input-angle: 360deg; }
+        }
+        .home-input-border-wrap {
+          --_border-w: 1.5px;
+          position: relative;
+          border-radius: 14px;
+          padding: var(--_border-w);
+          background: conic-gradient(
+            from var(--home-input-angle),
+            color-mix(in oklch, var(--primary) 40%, transparent) 0%,
+            color-mix(in oklch, var(--primary) 15%, transparent) 25%,
+            var(--border) 50%,
+            color-mix(in oklch, var(--primary) 15%, transparent) 75%,
+            color-mix(in oklch, var(--primary) 40%, transparent) 100%
+          );
+          animation: home-input-border-spin 4s linear infinite;
+          transition: box-shadow 0.3s ease;
+        }
+        .home-input-border-wrap:hover,
+        .home-input-border-wrap:focus-within {
+          box-shadow: 0 0 32px -8px color-mix(in oklch, var(--primary) 30%, transparent);
+        }
+
+        /* ── Inner glassmorphism container ── */
+        .home-input-inner {
+          border-radius: 12.5px;
+          backdrop-filter: blur(20px) saturate(1.5);
+          -webkit-backdrop-filter: blur(20px) saturate(1.5);
+          background: color-mix(in oklch, var(--background) 85%, transparent);
+        }
+
+        /* ── Send button glow ── */
+        .home-send-btn {
+          position: relative;
+          overflow: hidden;
+        }
+        .home-send-btn::after {
+          content: "";
+          position: absolute;
+          inset: -2px;
+          border-radius: inherit;
+          background: var(--primary);
+          opacity: 0;
+          filter: blur(8px);
+          z-index: -1;
+          transition: opacity 0.25s ease;
+        }
+        .home-send-btn:not(:disabled):hover::after {
+          opacity: 0.4;
+        }
+      `}</style>
+
       <div className="px-4 pb-4" data-testid="home-chat-input-container">
         <div className="max-w-3xl mx-auto">
-          <div
-            className="rounded-lg p-[1.5px]"
-            style={{
-              background: `linear-gradient(to bottom, oklch(0.58 0.09 260 / 0.4), var(--border) 50%, oklch(0.58 0.09 260 / 0.15))`,
-            }}
-          >
+          <div className="home-input-border-wrap">
             <div
-              className={`relative flex flex-col rounded-lg bg-(--background-lighter) overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
+              className={`home-input-inner relative flex flex-col overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
                 }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -106,7 +161,7 @@ export function HomeChatInput({
               />
 
               {/* Bottom controls bar */}
-              <div className="px-3 py-5 flex items-center border-t border-border/50">
+              <div className="px-3 py-5 flex items-center border-t border-border/30">
                 <AuxiliaryActionsMenu
                   onFileSelect={handleFileSelect}
                   hideContextFilesPicker
@@ -127,7 +182,7 @@ export function HomeChatInput({
                     <button
                       onClick={handleCustomSubmit}
                       disabled={!inputValue.trim() && attachments.length === 0}
-                      className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
+                      className="home-send-btn p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
                       title="Enviar mensaje"
                     >
                       <SendHorizontalIcon size={18} />

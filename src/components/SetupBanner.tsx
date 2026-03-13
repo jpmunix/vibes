@@ -325,30 +325,52 @@ function VibesStartHeading() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center mb-8">
-      <h1 className="relative text-5xl font-semibold tracking-tight">
-        <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400">
+    <div className="flex flex-col items-center justify-center mb-10">
+      <h1 className="relative text-6xl font-bold tracking-tight">
+        <span
+          className="relative z-10 bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, var(--foreground) 0%, color-mix(in oklch, var(--primary) 70%, var(--foreground)) 50%, var(--foreground) 100%)",
+          }}
+        >
           {text}
           <span
-            className="inline-block ml-1 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400"
-            style={{ animation: "vibes-start-blink 1.1s step-end infinite" }}
+            className="inline-block ml-0.5 bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(135deg, var(--foreground) 0%, color-mix(in oklch, var(--primary) 70%, var(--foreground)) 100%)",
+              animation: "vibes-start-blink 1.1s step-end infinite",
+            }}
           >
             |
           </span>
         </span>
 
-        {/* glow respirando */}
+        {/* Vivid breathing glow */}
         <span
           aria-hidden
-          className="absolute inset-[-120%] -z-10 rounded-full"
+          className="absolute inset-[-150%] -z-10 rounded-full"
           style={{
             background:
-              "radial-gradient(circle, color-mix(in srgb, var(--primary) 55%, transparent) 0%, color-mix(in srgb, var(--primary) 35%, transparent) 35%, color-mix(in srgb, var(--primary) 15%, transparent) 55%, color-mix(in srgb, var(--primary) 5%, transparent) 70%, transparent 80%)",
+              "radial-gradient(circle, color-mix(in srgb, var(--primary) 60%, transparent) 0%, color-mix(in srgb, var(--primary) 35%, transparent) 30%, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent 70%)",
             animation:
               "vibes-start-breathe 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
           }}
         />
       </h1>
+
+      {/* Subtle subtitle */}
+      <p
+        className="mt-3 text-sm font-medium tracking-wide"
+        style={{
+          color: "color-mix(in oklch, var(--foreground) 40%, transparent)",
+          animation: "vibes-subtitle-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards",
+          opacity: 0,
+        }}
+      >
+        ¿Qué construimos hoy?
+      </p>
 
       <style>{`
         @keyframes vibes-start-blink {
@@ -359,19 +381,24 @@ function VibesStartHeading() {
         @keyframes vibes-start-breathe {
           0% {
             transform: scale(0.9);
-            opacity: 0.45;
+            opacity: 0.5;
             filter: blur(48px);
           }
           50% {
-            transform: scale(1.15);
-            opacity: 0.75;
+            transform: scale(1.2);
+            opacity: 0.85;
             filter: blur(72px);
           }
           100% {
             transform: scale(0.9);
-            opacity: 0.45;
+            opacity: 0.5;
             filter: blur(48px);
           }
+        }
+
+        @keyframes vibes-subtitle-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

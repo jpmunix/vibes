@@ -298,33 +298,45 @@ export default function HomePage() {
     const phase = CREATION_PHASES[creationPhase];
     return (
       <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
-        {/* Glow background effect */}
+        {/* Ambient glow orbs (same as main view) */}
         <div
           aria-hidden
-          className="glow-static pointer-events-none absolute rounded-full"
-          style={{
-            width: "1400px",
-            height: "1400px",
-            top: "50%",
-            left: "50%",
-          }}
+          className="home-orb home-orb--primary pointer-events-none absolute rounded-full"
+          style={{ width: "900px", height: "900px", top: "40%", left: "50%" }}
+        />
+        <div
+          aria-hidden
+          className="home-orb home-orb--accent pointer-events-none absolute rounded-full"
+          style={{ width: "600px", height: "600px", top: "15%", left: "65%" }}
         />
 
         <style>{`
-          .glow-static {
+          .home-orb {
+            transform: translate(-50%, -50%);
+            filter: blur(100px);
+            z-index: 0;
+          }
+          .home-orb--primary {
             background: radial-gradient(
               circle,
-              var(--primary) 0%,
-              color-mix(in oklch, var(--primary) 55%, transparent) 20%,
-              color-mix(in oklch, var(--primary) 30%, transparent) 40%,
-              color-mix(in oklch, var(--primary) 12%, transparent) 60%,
-              color-mix(in oklch, var(--primary) 4%, transparent) 80%,
-              transparent 100%
+              color-mix(in oklch, var(--primary) 45%, transparent) 0%,
+              color-mix(in oklch, var(--primary) 20%, transparent) 40%,
+              transparent 70%
             );
-            filter: blur(90px);
-            transform: translate(-50%, -50%) scale(1.1);
-            opacity: 0.5;
-            z-index: 0;
+            animation: home-orb-breathe 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          }
+          .home-orb--accent {
+            background: radial-gradient(
+              circle,
+              color-mix(in oklch, var(--primary) 30%, oklch(0.7 0.15 280 / 0.4)) 0%,
+              color-mix(in oklch, var(--primary) 10%, transparent) 50%,
+              transparent 70%
+            );
+            animation: home-orb-breathe 8s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
+          }
+          @keyframes home-orb-breathe {
+            0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.55; }
+            50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.85; }
           }
 
           .phase-fade {
@@ -388,33 +400,150 @@ export default function HomePage() {
   // Main Home Page Content
   return (
     <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
-      {/* Glow background effect */}
+      {/* ═══ Premium ambient background ═══ */}
+      {/* Primary orb — centered */}
       <div
         aria-hidden
-        className="glow-static pointer-events-none absolute rounded-full"
+        className="home-orb home-orb--primary pointer-events-none absolute rounded-full"
+        style={{ width: "900px", height: "900px", top: "35%", left: "50%" }}
+      />
+      {/* Secondary accent orb — top-right, shifted hue */}
+      <div
+        aria-hidden
+        className="home-orb home-orb--accent pointer-events-none absolute rounded-full"
+        style={{ width: "600px", height: "600px", top: "10%", left: "70%" }}
+      />
+      {/* Tertiary soft orb — bottom-left */}
+      <div
+        aria-hidden
+        className="home-orb home-orb--soft pointer-events-none absolute rounded-full"
+        style={{ width: "500px", height: "500px", top: "65%", left: "20%" }}
+      />
+
+      {/* Subtle dot-grid overlay for depth */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1]"
         style={{
-          width: "1400px",
-          height: "1400px",
-          top: "50%",
-          left: "50%",
+          backgroundImage: "radial-gradient(circle, var(--foreground) 0.4px, transparent 0.4px)",
+          backgroundSize: "24px 24px",
+          opacity: 0.03,
         }}
       />
 
       <style>{`
-        .glow-static {
+        /* ── Ambient glow orbs ── */
+        .home-orb {
+          transform: translate(-50%, -50%);
+          filter: blur(100px);
+          z-index: 0;
+        }
+        .home-orb--primary {
           background: radial-gradient(
             circle,
-            var(--primary) 0%,
-            color-mix(in oklch, var(--primary) 55%, transparent) 20%,
-            color-mix(in oklch, var(--primary) 30%, transparent) 40%,
-            color-mix(in oklch, var(--primary) 12%, transparent) 60%,
-            color-mix(in oklch, var(--primary) 4%, transparent) 80%,
-            transparent 100%
+            color-mix(in oklch, var(--primary) 45%, transparent) 0%,
+            color-mix(in oklch, var(--primary) 20%, transparent) 40%,
+            transparent 70%
           );
-          filter: blur(90px);
-          transform: translate(-50%, -50%) scale(1.1);
-          opacity: 0.5;
-          z-index: 0;
+          animation: home-orb-breathe 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .home-orb--accent {
+          background: radial-gradient(
+            circle,
+            color-mix(in oklch, var(--primary) 30%, oklch(0.7 0.15 280 / 0.4)) 0%,
+            color-mix(in oklch, var(--primary) 10%, transparent) 50%,
+            transparent 70%
+          );
+          animation: home-orb-breathe 8s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
+        }
+        .home-orb--soft {
+          background: radial-gradient(
+            circle,
+            color-mix(in oklch, var(--primary) 25%, oklch(0.7 0.12 200 / 0.35)) 0%,
+            transparent 60%
+          );
+          animation: home-orb-breathe 7s cubic-bezier(0.4, 0, 0.2, 1) 3s infinite;
+        }
+        @keyframes home-orb-breathe {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.55; }
+          50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.85; }
+        }
+
+        /* ── Staggered fade-in for cards ── */
+        @keyframes home-card-in {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+        .home-card-enter {
+          opacity: 0;
+          animation: home-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Glassmorphism inspiration card ── */
+        .home-inspiration-card {
+          backdrop-filter: blur(16px) saturate(1.4);
+          -webkit-backdrop-filter: blur(16px) saturate(1.4);
+          background: color-mix(in oklch, var(--primary) 6%, var(--background) 70%);
+          border: 1px solid color-mix(in oklch, var(--primary) 15%, transparent);
+          border-radius: 14px;
+          padding: 10px 18px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                      box-shadow 0.22s ease,
+                      border-color 0.22s ease,
+                      background 0.22s ease;
+        }
+        .home-inspiration-card:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 24px -4px color-mix(in oklch, var(--primary) 20%, transparent);
+          border-color: color-mix(in oklch, var(--primary) 35%, transparent);
+          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
+        }
+        .home-inspiration-card:active {
+          transform: scale(0.98);
+        }
+
+        /* ── "Más ideas" refresh button ── */
+        .home-refresh-btn {
+          backdrop-filter: blur(12px) saturate(1.3);
+          -webkit-backdrop-filter: blur(12px) saturate(1.3);
+          background: color-mix(in oklch, var(--primary) 5%, var(--background) 75%);
+          border: 1px solid color-mix(in oklch, var(--primary) 12%, transparent);
+          border-radius: 14px;
+          padding: 8px 20px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .home-refresh-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px -2px color-mix(in oklch, var(--primary) 15%, transparent);
+          border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
+        }
+        .home-refresh-btn:hover svg {
+          transform: rotate(180deg);
+        }
+        .home-refresh-btn svg {
+          transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .home-refresh-btn:active {
+          transform: scale(0.97);
+        }
+
+        /* ── Section label ── */
+        .home-section-label {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          opacity: 0.4;
+          margin-bottom: 2px;
         }
       `}</style>
 
@@ -432,8 +561,10 @@ export default function HomePage() {
         <div className="w-full">
           <HomeChatInput onSubmit={handleSubmit} />
 
-          <div className="flex flex-col gap-4 mt-2">
-            <div className="flex flex-wrap gap-4 justify-center">
+          {/* ═══ Inspiration prompts ═══ */}
+          <div className="flex flex-col gap-5 mt-6">
+            <p className="home-section-label text-center text-foreground">Inspírate</p>
+            <div className="flex flex-wrap gap-3 justify-center max-w-3xl mx-auto">
               {randomPrompts.map((item, index) => (
                 <button
                   type="button"
@@ -441,16 +572,13 @@ export default function HomePage() {
                   onClick={() =>
                     setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
                   }
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl border border-primary/20
-                             bg-primary/5
-                             transition-colors duration-200
-                             hover:bg-primary/10 hover:shadow-md hover:border-primary/30
-                             active:scale-[0.98]"
+                  className="home-inspiration-card home-card-enter"
+                  style={{ animationDelay: `${0.06 + index * 0.07}s` }}
                 >
-                  <span className="text-foreground/70">
+                  <span className="text-foreground/60 flex-shrink-0">
                     {item.icon}
                   </span>
-                  <span className="text-sm font-medium text-foreground/70">
+                  <span className="text-[13px] font-medium text-foreground/75 whitespace-nowrap">
                     {item.label}
                   </span>
                 </button>
@@ -460,14 +588,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setRandomPrompts(getRandomPrompts())}
-              className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-primary/20
-                         bg-primary/5
-                         transition-colors duration-200
-                         hover:bg-primary/10 hover:shadow-md hover:border-primary/30
-                         active:scale-[0.98]"
+              className="home-refresh-btn self-center home-card-enter"
+              style={{ animationDelay: "0.55s" }}
             >
               <svg
-                className="w-5 h-5 text-foreground/70"
+                className="w-4 h-4 text-foreground/50"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -479,13 +604,12 @@ export default function HomePage() {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              <span className="text-sm font-medium text-foreground/70">
+              <span className="text-[13px] font-medium text-foreground/50">
                 Más ideas
               </span>
             </button>
           </div>
         </div>
-        {/*<PrivacyBanner />*/}
 
         <ReleaseNotesDialog
           isOpen={releaseNotesOpen}

@@ -189,6 +189,74 @@ export function AppSidebar() {
         }
       }}
     >
+      {/* ── Sidebar icon column premium styles ── */}
+      <style>{`
+        .sidebar-icon-btn {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          cursor: pointer;
+          border: none;
+          background: transparent;
+          color: var(--sidebar-foreground);
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+          text-decoration: none;
+        }
+        .sidebar-icon-btn:hover {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-icon-btn--active {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-icon-btn--active .sidebar-icon-label {
+          color: var(--primary);
+          font-weight: 700;
+        }
+        .sidebar-icon-btn--active svg {
+          color: var(--primary);
+        }
+        .sidebar-icon-label {
+          font-size: 10px;
+          font-weight: 500;
+          line-height: 1;
+          opacity: 0.8;
+        }
+
+        /* Bottom utility button */
+        .sidebar-util-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          border: none;
+          background: transparent;
+          color: var(--sidebar-foreground);
+          cursor: pointer;
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sidebar-util-btn:hover {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-util-btn:hover svg {
+          color: var(--primary);
+          opacity: 1;
+        }
+        .sidebar-util-btn svg {
+          opacity: 0.65;
+          transition: all 0.18s ease;
+        }
+      `}</style>
+
       <SidebarContent className="overflow-hidden">
         <div className="flex mt-8 w-full flex-1">
           {/* Left Column: Menu items */}
@@ -209,15 +277,15 @@ export function AppSidebar() {
                 }}
               />
             </div>
-            <div className="flex items-center flex-col gap-2 mb-4">
+            <div className="flex items-center flex-col gap-1 mb-4">
               <OpenRouterCreditsButton />
               <button
-                className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
+                className="no-app-region-drag sidebar-util-btn"
                 title="Documentación"
                 onClick={() => setIsDocsOpen(true)}
               >
-                <HelpCircle size={20} />
-                <span className="text-[10px] font-bold leading-none mt-1">
+                <HelpCircle size={19} />
+                <span className="text-[9.5px] font-semibold leading-none mt-0.5 opacity-70">
                   Docs
                 </span>
               </button>
@@ -227,7 +295,7 @@ export function AppSidebar() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="no-app-region-drag cursor-pointer relative flex items-center justify-center px-2 py-2 rounded-2xl hover:bg-sidebar-accent transition-colors w-14 h-14"
+                      className="no-app-region-drag cursor-pointer relative flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/30 transition-all w-9 h-9 mt-1"
                       title={user.displayName || user.email || "Usuario"}
                     >
                       <SimpleAvatar
@@ -303,8 +371,12 @@ export function AppSidebar() {
               )}
             </div>
           </div>
-          {/* Right Column: Chat List Section */}
-          <div className={cn("flex-1 min-w-0", state === "collapsed" && "hidden")}>
+          {/* Right Column: List panel with subtle left separator */}
+          <div className={cn(
+            "flex-1 min-w-0",
+            state === "collapsed" && "hidden",
+            state === "expanded" && "border-l border-border/30"
+          )}>
             <AppList show={selectedItem === "Aplicaciones"} />
             <NotesList show={selectedItem === "Notas"} />
             <TodosList show={selectedItem === "Tareas"} />
@@ -346,10 +418,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const displayItems = selectedAppId ? [...items] : items.filter(item => item.title !== "Chat");
 
   return (
-    // When collapsed: only show the main menu
     <SidebarGroup className="pr-0">
-      {/* <SidebarGroupLabel>Vibes</SidebarGroupLabel> */}
-
       <SidebarGroupContent>
         <SidebarMenu>
           {displayItems.map((item) => {
@@ -366,8 +435,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
-                      }`}
+                    className={`sidebar-icon-btn mb-1 ${isActive ? "sidebar-icon-btn--active" : ""}`}
                     onClick={() => {
                       if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
@@ -382,10 +450,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                       }
                     }}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <item.icon className="h-5 w-5" />
-                      <span className={"text-xs"}>{item.title}</span>
-                    </div>
+                    <item.icon className="h-[18px] w-[18px]" />
+                    <span className="sidebar-icon-label">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
