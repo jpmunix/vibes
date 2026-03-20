@@ -12,7 +12,6 @@ import {
 
 export const NodeSystemInfoSchema = z.object({
   nodeVersion: z.string().nullable(),
-  pnpmVersion: z.string().nullable(),
   nodeDownloadUrl: z.string(),
 });
 
@@ -20,12 +19,11 @@ export type NodeSystemInfo = z.infer<typeof NodeSystemInfoSchema>;
 
 export const SystemDebugInfoSchema = z.object({
   nodeVersion: z.string().nullable(),
-  pnpmVersion: z.string().nullable(),
   nodePath: z.string().nullable(),
   telemetryId: z.string(),
   telemetryConsent: z.string(),
   telemetryUrl: z.string(),
-  dyadVersion: z.string(),
+  vibesVersion: z.string(),
   platform: z.string(),
   architecture: z.string(),
   logs: z.string(),
@@ -180,6 +178,21 @@ export const systemContracts = {
     output: SelectAppFolderResultSchema,
   }),
 
+  saveTextToFile: defineContract({
+    channel: "save-text-to-file",
+    input: z.object({
+      content: z.string(),
+      defaultName: z.string().optional(),
+      filters: z
+        .array(z.object({ name: z.string(), extensions: z.array(z.string()) }))
+        .optional(),
+    }),
+    output: z.object({
+      filePath: z.string().nullable(),
+      canceled: z.boolean(),
+    }),
+  }),
+
   // External
   openExternalUrl: defineContract({
     channel: "open-external-url",
@@ -245,13 +258,24 @@ export const systemContracts = {
   // Screenshot
   takeScreenshot: defineContract({
     channel: "take-screenshot",
-    input: z.void(),
-    output: z.void(),
+    input: z
+      .object({
+        rect: z
+          .object({
+            x: z.number(),
+            y: z.number(),
+            width: z.number(),
+            height: z.number(),
+          })
+          .optional(),
+      })
+      .optional(),
+    output: z.string(),
   }),
 
   // Restart
-  restartDyad: defineContract({
-    channel: "restart-dyad",
+  restartVibes: defineContract({
+    channel: "restart-vibes",
     input: z.void(),
     output: z.void(),
   }),
@@ -261,6 +285,77 @@ export const systemContracts = {
     channel: "system:get-openrouter-credits",
     input: z.void(),
     output: OpenRouterCreditsSchema,
+  }),
+
+  // Database viewer window
+  openDatabaseWindow: defineContract({
+    channel: "window:open-database",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  // Git viewer window — lazy, only opened on demand
+  openGitWindow: defineContract({
+    channel: "window:open-git",
+    input: z.object({
+      appId: z.number(),
+      commitHash: z.string().optional(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Chat window (P18 — dedicated chat+preview for performance isolation)
+  openChatWindow: defineContract({
+    channel: "window:open-chat",
+    input: z.object({
+      appId: z.number(),
+      chatId: z.number().optional(),
+      prompt: z.string().optional(),
+      chatMode: z.string().optional(),
+      attachments: z.array(z.object({
+        name: z.string(),
+        type: z.string(),
+        data: z.string(),
+        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+      })).optional(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  // Retrieve and clear pending prompt data stored by openChatWindow
+  getPendingChatPrompt: defineContract({
+    channel: "window:get-pending-chat-prompt",
+    input: z.number(), // chatId
+    output: z.object({
+      prompt: z.string(),
+      attachments: z.array(z.object({
+        name: z.string(),
+        type: z.string(),
+        data: z.string(),
+        attachmentType: z.enum(["upload-to-codebase", "chat-context"]),
+      })).optional(),
+    }).nullable(),
+  }),
+
+  // Update checker — fetch remote version from CDN (avoids CORS in renderer)
+  checkRemoteVersion: defineContract({
+    channel: "system:check-remote-version",
+    input: z.void(),
+    output: z.string().nullable(),
+  }),
+
+  // Cross-window navigation: tells the main window to navigate to a route
+  navigateMainWindow: defineContract({
+    channel: "window:navigate-main",
+    input: z.object({
+      route: z.string(),
+      search: z.record(z.string(), z.any()).optional(),
+    }),
+    output: z.void(),
   }),
 } as const;
 

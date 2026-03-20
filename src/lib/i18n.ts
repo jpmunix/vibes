@@ -11,7 +11,6 @@ interface UITranslations {
   processing: string;
   loading: string;
   codeSearch: string;
-  webSearch: string;
 }
 
 const translations: Record<Language, UITranslations> = {
@@ -21,7 +20,6 @@ const translations: Record<Language, UITranslations> = {
     processing: "Procesando...",
     loading: "Cargando...",
     codeSearch: "Búsqueda de Código",
-    webSearch: "Búsqueda Web",
   },
   en: {
     thinking: "Thinking",
@@ -29,7 +27,6 @@ const translations: Record<Language, UITranslations> = {
     processing: "Processing...",
     loading: "Loading...",
     codeSearch: "Code Search",
-    webSearch: "Web Search",
   },
 };
 

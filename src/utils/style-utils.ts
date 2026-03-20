@@ -18,7 +18,13 @@ interface StyleObject {
     fontWeight?: string;
     color?: string;
     fontFamily?: string;
+    textAlign?: string;
   };
+  opacity?: string;
+  boxShadow?: string;
+  gap?: string;
+  display?: string;
+  flexDirection?: string;
 }
 
 /**
@@ -122,6 +128,68 @@ export function stylesToTailwind(styles: StyleObject): string[] {
       const fontFamilyValue = styles.text.fontFamily.replace(/\s/g, "_");
       classes.push(`font-[${fontFamilyValue}]`);
     }
+    if (styles.text.textAlign !== undefined) {
+      const alignMap: Record<string, string> = {
+        left: "text-left",
+        center: "text-center",
+        right: "text-right",
+        justify: "text-justify",
+      };
+      const alignClass = alignMap[styles.text.textAlign];
+      if (alignClass) classes.push(alignClass);
+      else classes.push(`text-[${styles.text.textAlign}]`);
+    }
+  }
+
+  if (styles.opacity !== undefined) {
+    // Convert decimal to percentage for Tailwind
+    const opacityNum = parseFloat(styles.opacity);
+    if (!isNaN(opacityNum)) {
+      const pct = Math.round(opacityNum * 100);
+      classes.push(`opacity-[${pct}%]`);
+    }
+  }
+
+  if (styles.boxShadow !== undefined) {
+    const shadowMap: Record<string, string> = {
+      none: "shadow-none",
+      sm: "shadow-sm",
+      md: "shadow-md",
+      lg: "shadow-lg",
+      xl: "shadow-xl",
+      "2xl": "shadow-2xl",
+    };
+    const shadowClass = shadowMap[styles.boxShadow];
+    classes.push(shadowClass || `shadow-[${styles.boxShadow}]`);
+  }
+
+  if (styles.gap !== undefined) {
+    classes.push(`gap-[${styles.gap}]`);
+  }
+
+  if (styles.display !== undefined) {
+    const displayMap: Record<string, string> = {
+      flex: "flex",
+      grid: "grid",
+      block: "block",
+      "inline-flex": "inline-flex",
+      inline: "inline",
+      hidden: "hidden",
+      none: "hidden",
+    };
+    const displayClass = displayMap[styles.display];
+    classes.push(displayClass || `[display:${styles.display}]`);
+  }
+
+  if (styles.flexDirection !== undefined) {
+    const dirMap: Record<string, string> = {
+      row: "flex-row",
+      column: "flex-col",
+      "row-reverse": "flex-row-reverse",
+      "column-reverse": "flex-col-reverse",
+    };
+    const dirClass = dirMap[styles.flexDirection];
+    classes.push(dirClass || `[flex-direction:${styles.flexDirection}]`);
   }
 
   return classes;
@@ -188,6 +256,29 @@ export function extractClassPrefixes(classes: string[]): string[] {
           if (cls.match(/^text-\[[\d.]+[a-z]+\]$/)) {
             return "text-size-";
           }
+        }
+
+        // Handle display-related classes
+        if (
+          ["flex", "grid", "block", "inline-flex", "inline", "hidden"].includes(
+            cls,
+          )
+        ) {
+          return "display-";
+        }
+
+        // Handle flex-direction classes
+        if (cls.startsWith("flex-row") || cls.startsWith("flex-col")) {
+          return "flex-direction-";
+        }
+
+        // Handle text-align classes
+        if (
+          ["text-left", "text-center", "text-right", "text-justify"].includes(
+            cls,
+          )
+        ) {
+          return "text-align-";
         }
 
         // Handle regular Tailwind classes

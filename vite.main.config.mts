@@ -9,15 +9,11 @@ export default defineConfig({
     },
   },
   build: {
-    minify: false, // Desactiva la minificación de nombres de variables
+    minify: true,
     sourcemap: true, // Te ayudará a ver errores reales en la consola
     rollupOptions: {
       external: [
         "better-sqlite3",
-        "onnxruntime-web",
-        "onnxruntime-node",
-        "onnxruntime-common",
-        "@xenova/transformers",
         "@huggingface/jinja",
         "sharp",
         "semver",
@@ -32,6 +28,13 @@ export default defineConfig({
         "@babel/parser",
         "@babel/traverse",
         "@babel/types",
+        // Externalize libSQL native bindings (Bunny Edge SQL)
+        "@libsql/client",
+        "@libsql/linux-x64-gnu",
+        "@libsql/linux-x64-musl",
+        "@libsql/darwin-arm64",
+        "@libsql/darwin-x64",
+        "@libsql/win32-x64-msvc",
       ],
     },
   },

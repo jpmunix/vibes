@@ -1,9 +1,14 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
-import { forwardRef, useState, useCallback, useMemo } from "react";
+import { forwardRef, useState, useCallback, useMemo, Suspense } from "react";
 import { Virtuoso } from "react-virtuoso";
 import ChatMessage from "./ChatMessage";
-import { OpenRouterSetupBanner, SetupBanner } from "../SetupBanner";
+const SetupBanner = React.lazy(() =>
+  import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
+);
+const OpenRouterSetupBanner = React.lazy(() =>
+  import("../SetupBanner").then((m) => ({ default: m.OpenRouterSetupBanner }))
+);
 
 import { useStreamChat } from "@/hooks/useStreamChat";
 import {
@@ -11,14 +16,14 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
 } from "@/atoms/chatAtoms";
-import { useAtomValue, useSetAtom } from "jotai";
-import { CheckCircle2, Loader2, RefreshCw, Undo } from "lucide-react";
+import { userAtom } from "@/atoms/authAtoms";
+import { useAtomValue } from "jotai";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useVersions } from "@/hooks/useVersions";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
-import { showError, showSuccess, showWarning } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
-import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
+
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
@@ -33,6 +38,10 @@ interface MessagesListProps {
   onScrollerRef?: (ref: HTMLElement | Window | null) => void | (() => void);
   distanceFromBottomRef?: React.MutableRefObject<number>;
   isUserScrolling?: boolean;
+  onAtBottomStateChange?: (atBottom: boolean) => void;
+  hasMoreMessages?: boolean;
+  onLoadMore?: () => void;
+  firstItemIndex?: number;
 }
 
 // Memoize ChatMessage at module level to prevent recreation on every render
@@ -44,16 +53,7 @@ interface FooterContext {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isStreaming: boolean;
   tokenCountResult: ReturnType<typeof useCountTokens>["result"];
-  isUndoLoading: boolean;
-  isRetryLoading: boolean;
-  setIsUndoLoading: (loading: boolean) => void;
-  setIsRetryLoading: (loading: boolean) => void;
-  versions: ReturnType<typeof useVersions>["versions"];
-  revertVersion: ReturnType<typeof useVersions>["revertVersion"];
-  streamMessage: ReturnType<typeof useStreamChat>["streamMessage"];
-  selectedChatId: number | null;
   appId: number | null;
-  setMessagesById: ReturnType<typeof useSetAtom<typeof chatMessagesByIdAtom>>;
   settings: ReturnType<typeof useSettings>["settings"];
   userBudget: ReturnType<typeof useUserBudgetInfo>["userBudget"];
   renderSetupBanner: () => React.ReactNode;
@@ -62,10 +62,15 @@ interface FooterContext {
     typeof useAtomValue<typeof autoRouterModelInfoByChatIdAtom>
   >;
   todoId: number | null;
+  isTodoCompleted: boolean;
+  onMarkTodoCompleted: () => void;
 }
 
-// Footer component for Virtuoso - receives context via props
-function FooterComponent({ context }: { context?: FooterContext }) {
+
+// Footer component for Virtuoso - receives context via props (memoized to skip unnecessary renders)
+// IMPORTANT: This component must NOT use any hooks (useState, useEffect, etc.)
+// because Virtuoso may render it with context=undefined, causing conditional hook calls.
+const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
   if (!context) return null;
 
   const {
@@ -73,40 +78,11 @@ function FooterComponent({ context }: { context?: FooterContext }) {
     messagesEndRef,
     isStreaming,
     tokenCountResult,
-    isUndoLoading,
-    isRetryLoading,
-    setIsUndoLoading,
-    setIsRetryLoading,
-    versions,
-    revertVersion,
-    streamMessage,
-    selectedChatId,
-    appId,
-    setMessagesById,
-    settings,
-    userBudget,
     renderSetupBanner,
     todoId,
+    isTodoCompleted,
+    onMarkTodoCompleted,
   } = context;
-
-  const [isTodoCompleted, setIsTodoCompleted] = useState(false);
-
-  // Fetch todo completion status
-  React.useEffect(() => {
-    if (todoId) {
-      ipc.todo
-        .getTodosByApp(appId ?? 0)
-        .then((todos) => {
-          const todo = todos.find((t) => t.id === todoId);
-          if (todo) {
-            setIsTodoCompleted(todo.completed);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching todo:", error);
-        });
-    }
-  }, [todoId, appId]);
 
   return (
     <>
@@ -119,148 +95,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
       )}
 
       {!isStreaming && (
-        <div className="flex max-w-3xl mx-auto gap-2 mt-4">
-          {!!messages.length &&
-            messages[messages.length - 1].role === "assistant" && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isUndoLoading}
-                onClick={async () => {
-                  if (!selectedChatId || !appId) {
-                    console.error("No chat selected or app ID not available");
-                    return;
-                  }
-
-                  setIsUndoLoading(true);
-                  try {
-                    const currentMessage = messages[messages.length - 1];
-                    // The user message that triggered this assistant response
-                    const userMessage = messages[messages.length - 2];
-                    if (currentMessage?.sourceCommitHash) {
-                      console.debug(
-                        "Reverting to source commit hash",
-                        currentMessage.sourceCommitHash,
-                      );
-                      await revertVersion({
-                        versionId: currentMessage.sourceCommitHash,
-                        currentChatMessageId: userMessage
-                          ? {
-                            chatId: selectedChatId,
-                            messageId: userMessage.id,
-                          }
-                          : undefined,
-                      });
-                      const chat = await ipc.chat.getChat(selectedChatId);
-                      setMessagesById((prev) => {
-                        const next = new Map(prev);
-                        next.set(selectedChatId, chat.messages);
-                        return next;
-                      });
-                    } else {
-                      showWarning(
-                        "No source commit hash found for message. Need to manually undo code changes",
-                      );
-                    }
-                  } catch (error) {
-                    console.error("Error during undo operation:", error);
-                    showError("Failed to undo changes");
-                  } finally {
-                    setIsUndoLoading(false);
-                  }
-                }}
-              >
-                {isUndoLoading ? (
-                  <Loader2 size={16} className="mr-1 animate-spin" />
-                ) : (
-                  <Undo size={16} />
-                )}
-                Deshacer
-              </Button>
-            )}
-          {!!messages.length && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isRetryLoading}
-              onClick={async () => {
-                if (!selectedChatId) {
-                  console.error("No chat selected");
-                  return;
-                }
-
-                setIsRetryLoading(true);
-                try {
-                  // The last message is usually an assistant, but it might not be.
-                  const lastVersion = versions[0];
-                  const lastMessage = messages[messages.length - 1];
-                  let shouldRedo = true;
-                  if (
-                    lastVersion.oid === lastMessage.commitHash &&
-                    lastMessage.role === "assistant"
-                  ) {
-                    const previousAssistantMessage =
-                      messages[messages.length - 3];
-                    if (
-                      previousAssistantMessage?.role === "assistant" &&
-                      previousAssistantMessage?.commitHash
-                    ) {
-                      console.debug("Reverting to previous assistant version");
-                      await revertVersion({
-                        versionId: previousAssistantMessage.commitHash,
-                      });
-                      shouldRedo = false;
-                    } else {
-                      const chat = await ipc.chat.getChat(selectedChatId);
-                      if (chat.initialCommitHash) {
-                        console.debug(
-                          "Reverting to initial commit hash",
-                          chat.initialCommitHash,
-                        );
-                        await revertVersion({
-                          versionId: chat.initialCommitHash,
-                        });
-                      } else {
-                        showWarning(
-                          "No initial commit hash found for chat. Need to manually undo code changes",
-                        );
-                      }
-                    }
-                  }
-
-                  // Find the last user message
-                  const lastUserMessage = [...messages]
-                    .reverse()
-                    .find((message) => message.role === "user");
-                  if (!lastUserMessage) {
-                    console.error("No user message found");
-                    return;
-                  }
-                  // Need to do a redo, if we didn't delete the message from a revert.
-                  const redo = shouldRedo;
-                  console.debug("Streaming message with redo", redo);
-
-                  streamMessage({
-                    prompt: lastUserMessage.content,
-                    chatId: selectedChatId,
-                    redo,
-                  });
-                } catch (error) {
-                  console.error("Error during retry operation:", error);
-                  showError("Failed to retry message");
-                } finally {
-                  setIsRetryLoading(false);
-                }
-              }}
-            >
-              {isRetryLoading ? (
-                <Loader2 size={16} className="mr-1 animate-spin" />
-              ) : (
-                <RefreshCw size={16} />
-              )}
-              Reintentar
-            </Button>
-          )}
+        <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
           {!!messages.length && todoId && (
             <Button
               variant="outline"
@@ -271,20 +106,7 @@ function FooterComponent({ context }: { context?: FooterContext }) {
                   ? "bg-green-500/20 border-green-500/30 text-white hover:bg-green-500/20"
                   : ""
               }
-              onClick={async () => {
-                if (!todoId) return;
-                try {
-                  await ipc.todo.updateTodo({ todoId, completed: true });
-                  setIsTodoCompleted(true);
-                  // Generate development summary
-                  await ipc.todo.generateTodoSummary(todoId);
-                  showSuccess("Tarea marcada como completada y resumen generado");
-                } catch (error) {
-                  showError(
-                    `Error al marcar tarea: ${(error as Error).message}`,
-                  );
-                }
-              }}
+              onClick={onMarkTodoCompleted}
             >
               <CheckCircle2 size={16} className="mr-1" />
               {isTodoCompleted ? "Completada" : "Marcar como completada"}
@@ -293,19 +115,16 @@ function FooterComponent({ context }: { context?: FooterContext }) {
         </div>
       )}
 
-      {isStreaming &&
-        !settings?.enableDyadPro &&
-        !userBudget &&
-        messages.length > 0 && (
-          <PromoMessage
-            seed={messages.length * (appId ?? 1) * (selectedChatId ?? 1)}
-          />
-        )}
-      <div ref={messagesEndRef} />
       {renderSetupBanner()}
+
+      {/* Spacer to push content above the floating ChatInput */}
+      <div className="h-32 w-full" />
+
+      {/* Scroll anchor at the very end to ensure all content above is visible */}
+      <div ref={messagesEndRef} />
     </>
   );
-}
+});
 
 export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
   function MessagesList(
@@ -315,18 +134,19 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       onScrollerRef,
       distanceFromBottomRef,
       isUserScrolling,
+      onAtBottomStateChange,
+      hasMoreMessages,
+      onLoadMore,
+      firstItemIndex = 0,
     },
     ref,
   ) {
     const appId = useAtomValue(selectedAppIdAtom);
-    const { versions, revertVersion } = useVersions(appId);
-    const { streamMessage, isStreaming } = useStreamChat();
+    const { isStreaming } = useStreamChat();
     const { isAnyProviderSetup, isProviderSetup } = useLanguageModelProviders();
     const { settings } = useSettings();
-    const setMessagesById = useSetAtom(chatMessagesByIdAtom);
-    const [isUndoLoading, setIsUndoLoading] = useState(false);
-    const [isRetryLoading, setIsRetryLoading] = useState(false);
     const [todoId, setTodoId] = useState<number | null>(null);
+    const [isTodoCompleted, setIsTodoCompleted] = useState(false);
     const selectedChatId = useAtomValue(selectedChatIdAtom);
     const { userBudget } = useUserBudgetInfo();
     const autoRouterModelInfo = useAtomValue(autoRouterModelInfoByChatIdAtom);
@@ -334,6 +154,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     const isSelectingModel = selectedChatId
       ? (isSelectingModelById.get(selectedChatId) ?? false)
       : false;
+    const user = useAtomValue(userAtom);
 
     // Fetch todoId from chat
     React.useEffect(() => {
@@ -349,6 +170,25 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [selectedChatId]);
 
+    // Fetch todo completion status (moved from FooterComponent to avoid hooks-in-conditional)
+    React.useEffect(() => {
+      if (todoId && appId) {
+        ipc.todo
+          .getTodosByApp(appId)
+          .then((todos) => {
+            const todo = todos.find((t) => t.id === todoId);
+            if (todo) {
+              setIsTodoCompleted(todo.completed);
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching todo:", error);
+          });
+      } else {
+        setIsTodoCompleted(false);
+      }
+    }, [todoId, appId]);
+
     // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
     // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
     // 2. Tests would need complex scrolling logic to bring elements into view before interaction
@@ -360,27 +200,35 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       "",
     );
 
-    // Wrap state setters in useCallback to stabilize references
-    const handleSetIsUndoLoading = useCallback((loading: boolean) => {
-      setIsUndoLoading(loading);
-    }, []);
 
-    const handleSetIsRetryLoading = useCallback((loading: boolean) => {
-      setIsRetryLoading(loading);
-    }, []);
 
     // Stabilize renderSetupBanner with proper dependencies
     const renderSetupBanner = useCallback(() => {
+      // SetupBanner is only relevant in the main window. In the dedicated
+      // chat window (URL contains ?window=chat) it should never render —
+      // it pulls in navigation/settings UI that doesn't work in memory router.
+      if (window.location.search.includes("window=chat")) {
+        return null;
+      }
+
       const selectedModel = settings?.selectedModel;
       if (
         selectedModel?.name === "free" &&
         selectedModel?.provider === "auto" &&
         !isProviderSetup("openrouter")
       ) {
-        return <OpenRouterSetupBanner className="w-full" />;
+        return (
+          <Suspense fallback={null}>
+            <OpenRouterSetupBanner className="w-full" />
+          </Suspense>
+        );
       }
       if (!isAnyProviderSetup()) {
-        return <SetupBanner />;
+        return (
+          <Suspense fallback={null}>
+            <SetupBanner />
+          </Suspense>
+        );
       }
       return null;
     }, [
@@ -419,6 +267,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
               <MemoizedChatMessage
                 message={message}
                 isLastMessage={isLastMessage}
+                user={user}
               />
             </div>
             {shouldShowAutoRouter && (
@@ -436,8 +285,22 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         autoRouterModelInfo,
         selectedChatId,
         messages,
+        user,
       ],
     );
+
+    // Stable callback for marking todo as completed
+    const handleMarkTodoCompleted = useCallback(async () => {
+      if (!todoId) return;
+      try {
+        await ipc.todo.updateTodo({ todoId, completed: true });
+        setIsTodoCompleted(true);
+        await ipc.todo.generateTodoSummary(todoId);
+        showSuccess("Tarea marcada como completada y resumen generado");
+      } catch (error) {
+        showError(`Error al marcar tarea: ${(error as Error).message}`);
+      }
+    }, [todoId]);
 
     // Create context object for Footer component with stable references
     const footerContext = useMemo<FooterContext>(
@@ -446,75 +309,47 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         messagesEndRef,
         isStreaming,
         tokenCountResult,
-        isUndoLoading,
-        isRetryLoading,
-        setIsUndoLoading: handleSetIsUndoLoading,
-        setIsRetryLoading: handleSetIsRetryLoading,
-        versions,
-        revertVersion,
-        streamMessage,
-        selectedChatId,
         appId,
-        setMessagesById,
         settings,
         userBudget,
         renderSetupBanner,
         isSelectingModel,
         autoRouterModelInfo,
         todoId,
+        isTodoCompleted,
+        onMarkTodoCompleted: handleMarkTodoCompleted,
       }),
       [
         messages,
         messagesEndRef,
         isStreaming,
         tokenCountResult,
-        isUndoLoading,
-        isRetryLoading,
-        handleSetIsUndoLoading,
-        handleSetIsRetryLoading,
-        versions,
-        revertVersion,
-        streamMessage,
-        selectedChatId,
         appId,
-        setMessagesById,
         settings,
         userBudget,
         isSelectingModel,
         autoRouterModelInfo,
         renderSetupBanner,
         todoId,
+        isTodoCompleted,
+        handleMarkTodoCompleted,
       ],
     );
 
-    // Render empty state or setup banner
-    if (messages.length === 0) {
-      const setupBanner = renderSetupBanner();
+    // Render empty state or setup banner as Virtuoso component
+    const EmptyPlaceholder = useCallback(() => {
+      const setupBanner = renderSetupBanner ? renderSetupBanner() : null;
       if (setupBanner) {
-        return (
-          <div
-            className="absolute inset-0 overflow-y-auto p-4"
-            ref={ref}
-            data-testid="messages-list"
-          >
-            {setupBanner}
-          </div>
-        );
+        return <div className="h-full py-4">{setupBanner}</div>;
       }
       return (
-        <div
-          className="absolute inset-0 overflow-y-auto p-4"
-          ref={ref}
-          data-testid="messages-list"
-        >
-          <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
-            <div className="flex flex-1 items-center justify-center text-gray-500">
-              Aún no hay mensajes
-            </div>
+        <div className="flex flex-col items-center justify-center h-full min-h-[50vh] max-w-2xl mx-auto">
+          <div className="flex flex-1 items-center justify-center text-gray-500">
+            Aún no hay mensajes
           </div>
         </div>
       );
-    }
+    }, [renderSetupBanner]);
 
     // In test mode, render all messages without virtualization
     // so E2E tests can query all messages in the DOM
@@ -547,6 +382,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
                   <ChatMessage
                     message={message}
                     isLastMessage={isLastMessage}
+                    user={user}
                   />
                 </div>
                 {shouldShowAutoRouter && (
@@ -565,25 +401,46 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
 
     return (
       <div
-        className="absolute inset-0 overflow-y-auto p-4"
+        className="absolute inset-0 overflow-y-auto px-4 pt-4 pb-8"
         ref={ref}
         data-testid="messages-list"
       >
         <Virtuoso
           data={messages}
-          increaseViewportBy={{ top: 1000, bottom: 500 }}
-          initialTopMostItemIndex={messages.length - 1}
+          firstItemIndex={firstItemIndex}
+          increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll
+          initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0} // Virtuoso only respecting this on first mount
           itemContent={itemContent}
-          components={{ Footer: FooterComponent }}
+          components={{
+            EmptyPlaceholder,
+            Footer: FooterComponent,
+            ...(hasMoreMessages ? {
+              Header: () => (
+                <div className="flex justify-center py-3">
+                  <div className="text-xs text-muted-foreground animate-pulse">Cargando mensajes anteriores…</div>
+                </div>
+              ),
+            } : {}),
+          }}
           context={footerContext}
           scrollerRef={onScrollerRef}
-          followOutput={() => {
-            const shouldAutoScroll =
-              !isUserScrolling &&
-              isStreaming &&
-              distanceFromBottomRef &&
-              distanceFromBottomRef.current <= 280;
-            return shouldAutoScroll ? "auto" : false;
+          atBottomStateChange={onAtBottomStateChange}
+          atBottomThreshold={300}
+          startReached={() => {
+            if (hasMoreMessages && onLoadMore) {
+              onLoadMore();
+            }
+          }}
+          followOutput={(isAtBottom) => {
+            // During streaming, auto-scroll smoothly but keep up
+            if (isStreaming) {
+              const distanceFromBottom = distanceFromBottomRef?.current ?? 0;
+              // If we are within 1500px, auto-scroll
+              if (distanceFromBottom <= 1500) {
+                return "smooth";
+              }
+            }
+            return false;
           }}
         />
       </div>

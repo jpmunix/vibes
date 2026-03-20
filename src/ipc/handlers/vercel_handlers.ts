@@ -1,17 +1,17 @@
 import { IpcMainInvokeEvent } from "electron";
 import { Vercel } from "@vercel/sdk";
 import { writeSettings, readSettings } from "../../main/settings";
-import * as schema from "../../db/schema";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 import log from "electron-log";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import * as fs from "fs";
 import * as path from "path";
 import { CreateProjectFramework } from "@vercel/sdk/models/createprojectop.js";
-import { getDyadAppPath } from "@/paths/paths";
-import { createTypedHandler } from "./base";
+import { getVibesAppPath } from "@/paths/paths";
+// Redundant imports removed
 import {
   vercelContracts,
   SaveVercelAccessTokenParams,
@@ -139,19 +139,19 @@ async function detectFramework(
       file: string;
       framework: CreateProjectFramework;
     }> = [
-      { file: "next.config.js", framework: "nextjs" },
-      { file: "next.config.mjs", framework: "nextjs" },
-      { file: "next.config.ts", framework: "nextjs" },
-      { file: "vite.config.js", framework: "vite" },
-      { file: "vite.config.ts", framework: "vite" },
-      { file: "vite.config.mjs", framework: "vite" },
-      { file: "nuxt.config.js", framework: "nuxtjs" },
-      { file: "nuxt.config.ts", framework: "nuxtjs" },
-      { file: "astro.config.js", framework: "astro" },
-      { file: "astro.config.mjs", framework: "astro" },
-      { file: "astro.config.ts", framework: "astro" },
-      { file: "svelte.config.js", framework: "svelte" },
-    ];
+        { file: "next.config.js", framework: "nextjs" },
+        { file: "next.config.mjs", framework: "nextjs" },
+        { file: "next.config.ts", framework: "nextjs" },
+        { file: "vite.config.js", framework: "vite" },
+        { file: "vite.config.ts", framework: "vite" },
+        { file: "vite.config.mjs", framework: "vite" },
+        { file: "nuxt.config.js", framework: "nuxtjs" },
+        { file: "nuxt.config.ts", framework: "nuxtjs" },
+        { file: "astro.config.js", framework: "astro" },
+        { file: "astro.config.mjs", framework: "astro" },
+        { file: "astro.config.ts", framework: "astro" },
+        { file: "svelte.config.js", framework: "svelte" },
+      ];
 
     for (const { file, framework } of configFiles) {
       if (fs.existsSync(path.join(appPath, file))) {
@@ -288,7 +288,10 @@ async function handleIsProjectAvailable(
 async function handleCreateProject(
   event: IpcMainInvokeEvent,
   { name, appId }: CreateVercelProjectParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.vercelAccessToken?.value;
   if (!accessToken) {
@@ -299,7 +302,7 @@ async function handleCreateProject(
     logger.info(`Creating Vercel project: ${name} for app ${appId}`);
 
     // Get app details to determine the framework
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app) {
       throw new Error("App not found.");
     }
@@ -312,7 +315,7 @@ async function handleCreateProject(
     }
 
     // Detect the framework from the app's directory
-    const detectedFramework = await detectFramework(getDyadAppPath(app.path));
+    const detectedFramework = await detectFramework(getVibesAppPath(app.path));
 
     logger.info(
       `Detected framework: ${detectedFramework || "none detected"} for app at ${app.path}`,
@@ -340,7 +343,10 @@ async function handleCreateProject(
     const projectDomains = await vercel.projects.getProjectDomains({
       idOrName: projectData.id,
     });
-    const projectUrl = "https://" + projectDomains.domains[0].name;
+    const primaryDomain =
+      projectDomains.domains.find((d: any) => !d.redirect) ||
+      projectDomains.domains[0];
+    const projectUrl = "https://" + primaryDomain.name;
 
     // Store project info in the app's DB row
     await updateAppVercelProject({
@@ -349,6 +355,7 @@ async function handleCreateProject(
       projectName: projectData.name,
       teamId: teamId,
       deploymentUrl: projectUrl,
+      userId: context.userId,
     });
 
     logger.info(
@@ -392,7 +399,9 @@ async function handleCreateProject(
 async function handleConnectToExistingProject(
   event: IpcMainInvokeEvent,
   { projectId, appId }: ConnectToExistingVercelProjectParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
   try {
     const settings = readSettings();
     const accessToken = settings.vercelAccessToken?.value;
@@ -417,15 +426,32 @@ async function handleConnectToExistingProject(
     // Get the default team ID
     const teamId = await getDefaultTeamId(accessToken);
 
+    // Get the primary domain
+    const vercel = createVercelClient(accessToken);
+    const domainsResponse = await vercel.projects.getProjectDomains({
+      idOrName: projectData.id,
+    });
+
+    let deploymentUrl = projectData.targets?.production?.url
+      ? `https://${projectData.targets.production.url}`
+      : null;
+
+    if (domainsResponse.domains && domainsResponse.domains.length > 0) {
+      // Prefer custom domains or the primary one (non-redirect)
+      const primaryDomain =
+        domainsResponse.domains.find((d: any) => !d.redirect) ||
+        domainsResponse.domains[0];
+      deploymentUrl = `https://${primaryDomain.name}`;
+    }
+
     // Store project info in the app's DB row
     await updateAppVercelProject({
       appId,
       projectId: projectData.id,
       projectName: projectData.name,
       teamId: teamId,
-      deploymentUrl: projectData.targets?.production?.url
-        ? `https://${projectData.targets.production.url}`
-        : null,
+      deploymentUrl,
+      userId: context.userId,
     });
 
     logger.info(`Successfully connected to Vercel project: ${projectData.id}`);
@@ -442,7 +468,10 @@ async function handleConnectToExistingProject(
 async function handleGetVercelDeployments(
   event: IpcMainInvokeEvent,
   { appId }: GetVercelDeploymentsParams,
+  context: HandlerContext,
 ): Promise<VercelDeployment[]> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
     const settings = readSettings();
     const accessToken = settings.vercelAccessToken?.value;
@@ -450,7 +479,7 @@ async function handleGetVercelDeployments(
       throw new Error("Not authenticated with Vercel.");
     }
 
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app || !app.vercelProjectId) {
       throw new Error("App is not linked to a Vercel project.");
     }
@@ -471,22 +500,44 @@ async function handleGetVercelDeployments(
       throw new Error("Failed to retrieve deployments from Vercel.");
     }
 
-    // Find the most recent READY production deployment and update the stored URL
-    const readyProductionDeployment = deploymentsResponse.deployments.find(
-      (d) => d.readyState === "READY" && d.target === "production",
-    );
+    // Try to get the primary domain first (custom or project default)
+    const domainsResponse = await vercel.projects.getProjectDomains({
+      idOrName: app.vercelProjectId,
+    });
 
-    if (readyProductionDeployment?.url) {
-      const newDeploymentUrl = `https://${readyProductionDeployment.url}`;
+    let newDeploymentUrl = null;
+    if (domainsResponse.domains && domainsResponse.domains.length > 0) {
+      // Vercel returns domains in order. The first one is usually the primary.
+      const primaryDomain =
+        domainsResponse.domains.find((d: any) => !d.redirect) ||
+        domainsResponse.domains[0];
+      newDeploymentUrl = `https://${primaryDomain.name}`;
+    } else {
+      // Fallback to the latest production deployment URL if no domains found
+      const readyProductionDeployment = deploymentsResponse.deployments.find(
+        (d) => d.readyState === "READY" && d.target === "production",
+      );
+
+      if (readyProductionDeployment?.url) {
+        newDeploymentUrl = `https://${readyProductionDeployment.url}`;
+      }
+    }
+
+    if (newDeploymentUrl) {
       // Only update if the URL has changed
       if (newDeploymentUrl !== app.vercelDeploymentUrl) {
         logger.info(
           `Updating deployment URL for app ${appId}: ${app.vercelDeploymentUrl} -> ${newDeploymentUrl}`,
         );
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ vercelDeploymentUrl: newDeploymentUrl })
-          .where(eq(apps.id, appId));
+          .where(
+            and(
+              eq(remoteSchema.apps.id, appId),
+              eq(remoteSchema.apps.userId, context.userId),
+            ),
+          );
       }
     }
 
@@ -508,11 +559,14 @@ async function handleGetVercelDeployments(
 async function handleDisconnectVercelProject(
   event: IpcMainInvokeEvent,
   { appId }: DisconnectVercelProjectParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   logger.log(`Disconnecting Vercel project for appId: ${appId}`);
 
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
   });
 
   if (!app) {
@@ -521,14 +575,14 @@ async function handleDisconnectVercelProject(
 
   // Update app in database to remove Vercel project info
   await db
-    .update(apps)
+    .update(remoteSchema.apps)
     .set({
       vercelProjectId: null,
       vercelProjectName: null,
       vercelTeamId: null,
       vercelDeploymentUrl: null,
     })
-    .where(eq(apps.id, appId));
+    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 }
 
 // --- Registration ---
@@ -549,23 +603,23 @@ export function registerVercelHandlers() {
     },
   );
 
-  createTypedHandler(vercelContracts.createProject, async (event, params) => {
-    await handleCreateProject(event, params);
+  createTypedHandler(vercelContracts.createProject, async (event, params, context) => {
+    await handleCreateProject(event, params, context);
   });
 
   createTypedHandler(
     vercelContracts.connectExistingProject,
-    async (event, params) => {
-      await handleConnectToExistingProject(event, params);
+    async (event, params, context) => {
+      await handleConnectToExistingProject(event, params, context);
     },
   );
 
-  createTypedHandler(vercelContracts.getDeployments, async (event, params) => {
-    return handleGetVercelDeployments(event, params);
+  createTypedHandler(vercelContracts.getDeployments, async (event, params, context) => {
+    return handleGetVercelDeployments(event, params, context);
   });
 
-  createTypedHandler(vercelContracts.disconnect, async (event, params) => {
-    await handleDisconnectVercelProject(event, params);
+  createTypedHandler(vercelContracts.disconnect, async (event, params, context) => {
+    await handleDisconnectVercelProject(event, params, context);
   });
 
   logger.debug("Registered Vercel IPC handlers");
@@ -577,20 +631,23 @@ export async function updateAppVercelProject({
   projectName,
   teamId,
   deploymentUrl,
+  userId,
 }: {
   appId: number;
   projectId: string;
   projectName: string;
   teamId: string;
   deploymentUrl?: string | null;
+  userId: string;
 }): Promise<void> {
+  const db = getRemoteDb();
   await db
-    .update(schema.apps)
+    .update(remoteSchema.apps)
     .set({
       vercelProjectId: projectId,
       vercelProjectName: projectName,
       vercelTeamId: teamId,
       vercelDeploymentUrl: deploymentUrl,
     })
-    .where(eq(schema.apps.id, appId));
+    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
 }

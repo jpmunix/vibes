@@ -15,7 +15,7 @@ vi.mock("@/main/settings", () => ({
       },
       auto: {
         apiKey: {
-          value: "dyad-api-key",
+          value: "vibes-api-key",
         },
       },
     },
@@ -27,7 +27,7 @@ vi.mock("@/ipc/utils/read_env", () => ({
 }));
 
 describe("engineFetch", () => {
-  const ctx = { dyadRequestId: "test-request-id" };
+  const ctx = { vibesRequestId: "test-request-id" };
 
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
@@ -75,6 +75,6 @@ describe("engineFetch", () => {
     const requestBody = JSON.parse(
       (fetchMock.mock.calls[0]?.[1]?.body as string) ?? "{}",
     );
-    expect(requestBody.model).toBe("google/gemini-3-flash-preview");
+    expect(requestBody.model).toBe("openai/gpt-5.1-codex-mini");
   });
 });

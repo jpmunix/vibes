@@ -1,25 +1,54 @@
 import path from "node:path";
 import os from "node:os";
+import fs from "node:fs";
 import { IS_TEST_BUILD } from "../ipc/utils/test_utils";
 
+let migrationAttempted = false;
+
 /**
- * Gets the base dyad-apps directory path (without a specific app subdirectory)
+ * Migrate ~/dyad-apps → ~/vibes-apps if the old directory exists.
+ * Runs once per app lifecycle, silently skips if already migrated or
+ * if both directories exist (to avoid data loss).
  */
-export function getDyadAppsBaseDirectory(): string {
-  if (IS_TEST_BUILD) {
-    const electron = getElectron();
-    return path.join(electron!.app.getPath("userData"), "dyad-apps");
+function migrateDyadAppsDir(newDir: string): void {
+  if (migrationAttempted) return;
+  migrationAttempted = true;
+
+  try {
+    const oldDir = newDir.replace(/vibes-apps$/, "dyad-apps");
+    if (
+      fs.existsSync(oldDir) &&
+      fs.statSync(oldDir).isDirectory() &&
+      !fs.existsSync(newDir)
+    ) {
+      fs.renameSync(oldDir, newDir);
+      console.log(`[migration] Renamed ${oldDir} → ${newDir}`);
+    }
+  } catch (err) {
+    console.error("[migration] Failed to rename dyad-apps → vibes-apps:", err);
   }
-  return path.join(os.homedir(), "dyad-apps");
 }
 
-export function getDyadAppPath(appPath: string): string {
+/**
+ * Gets the base vibes-apps directory path (without a specific app subdirectory)
+ */
+export function getVibesAppsBaseDirectory(): string {
+  if (IS_TEST_BUILD) {
+    const electron = getElectron();
+    return path.join(electron!.app.getPath("userData"), "vibes-apps");
+  }
+  const dir = path.join(os.homedir(), "vibes-apps");
+  migrateDyadAppsDir(dir);
+  return dir;
+}
+
+export function getVibesAppPath(appPath: string): string {
   // If appPath is already absolute, use it as-is
   if (path.isAbsolute(appPath)) {
     return appPath;
   }
   // Otherwise, use the default base path
-  return path.join(getDyadAppsBaseDirectory(), appPath);
+  return path.join(getVibesAppsBaseDirectory(), appPath);
 }
 
 export function getTypeScriptCachePath(): string {
@@ -37,11 +66,11 @@ export function getUserDataPath(): string {
   const electron = getElectron();
 
   // When running in Electron and app is ready
-  if (process.env.NODE_ENV !== "development" && electron) {
+  if (electron) {
     return electron!.app.getPath("userData");
   }
 
-  // For development or when the Electron app object isn't available
+  // For when the Electron app object isn't available
   return path.resolve("./userData");
 }
 

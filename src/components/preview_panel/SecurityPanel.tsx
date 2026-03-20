@@ -33,7 +33,7 @@ import type {
   SecurityReviewResult,
 } from "@/ipc/types/security";
 import { useState, useEffect } from "react";
-import { VanillaMarkdownParser } from "@/components/chat/DyadMarkdownParser";
+import { VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { showSuccess, showWarning } from "@/lib/toast";
 import { useLoadAppFile } from "@/hooks/useLoadAppFile";
 import { useQueryClient } from "@tanstack/react-query";
@@ -288,7 +288,7 @@ function SecurityHeader({
             <Button
               variant="outline"
               onClick={onFixSelected}
-              className="gap-2 transition-all duration-300"
+              className="gap-2 transition-colors duration-300"
               disabled={isFixingSelected}
               style={{
                 visibility: shouldRender ? "visible" : "hidden",
@@ -537,7 +537,7 @@ function FindingsTable({
               finding.description.length > DESCRIPTION_PREVIEW_LENGTH;
             const displayDescription = isLongDescription
               ? finding.description.substring(0, DESCRIPTION_PREVIEW_LENGTH) +
-                "..."
+              "..."
               : finding.description;
             const findingKey = createFindingKey(finding);
             const isFixing = fixingFindingKey === findingKey;

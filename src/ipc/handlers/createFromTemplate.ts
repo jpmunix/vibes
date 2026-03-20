@@ -5,23 +5,38 @@ import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
+import { SCAFFOLD_TEMPLATE_IDS } from "../../shared/templates";
 import log from "electron-log";
+import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold_cache";
 
 const logger = log.scope("createFromTemplate");
 
 export async function createFromTemplate({
   fullAppPath,
+  appName,
+  forceDefaultScaffold,
 }: {
   fullAppPath: string;
+  appName?: string;
+  forceDefaultScaffold?: boolean;
 }) {
   const settings = readSettings();
-  const templateId = settings.selectedTemplateId;
+  const templateId = forceDefaultScaffold ? "react" : settings.selectedTemplateId;
 
-  if (templateId === "react") {
+  // Check if this template has a local scaffold directory
+  const scaffoldDirName = SCAFFOLD_TEMPLATE_IDS[templateId];
+  if (scaffoldDirName) {
+    logger.info(`Using local scaffold "${scaffoldDirName}" for template "${templateId}"`);
+    // Ensure node_modules are cached for this scaffold (on-demand, first time runs npm install)
+    await ensureScaffoldCached(scaffoldDirName);
     await copyDirectoryRecursive(
-      path.join(__dirname, "..", "..", "scaffold"),
+      path.join(__dirname, "..", "..", scaffoldDirName),
       fullAppPath,
     );
+    // Sustituir wildcards en la plantilla
+    await replaceTemplateWildcards(fullAppPath, appName);
+    // Copy pre-cached node_modules for instant startup
+    await copyScaffoldNodeModules(fullAppPath);
     return;
   }
 
@@ -31,6 +46,32 @@ export async function createFromTemplate({
   }
   const repoCachePath = await cloneRepo(template.githubUrl);
   await copyRepoToApp(repoCachePath, fullAppPath);
+  // También sustituir wildcards en templates de GitHub
+  await replaceTemplateWildcards(fullAppPath, appName);
+  // Copy pre-cached node_modules (only matches scaffold deps, but still speeds things up)
+  await copyScaffoldNodeModules(fullAppPath);
+}
+
+async function replaceTemplateWildcards(
+  appPath: string,
+  appName?: string,
+): Promise<void> {
+  const displayName = appName || "minube vibes";
+  const indexHtmlPath = path.join(appPath, "index.html");
+  try {
+    const content = await fs.readFile(indexHtmlPath, "utf-8");
+    if (content.includes("{{APP_NAME}}")) {
+      await fs.writeFile(
+        indexHtmlPath,
+        content.replace(/\{\{APP_NAME\}\}/g, displayName),
+        "utf-8",
+      );
+      logger.info(`Replaced {{APP_NAME}} with "${displayName}" in index.html`);
+    }
+  } catch (error) {
+    // index.html puede no existir en templates de GitHub personalizados
+    logger.debug(`Could not replace wildcards in index.html: ${error}`);
+  }
 }
 
 async function cloneRepo(repoUrl: string): Promise<string> {
@@ -83,7 +124,7 @@ async function cloneRepo(repoUrl: string): Promise<string> {
       const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
-          "User-Agent": "Dyad", // GitHub API requires this
+          "User-Agent": "Vibes", // GitHub API requires this
           Accept: "application/vnd.github.v3+json",
         },
       });

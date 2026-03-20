@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   PlusCircle,
   Trash2,
   Search,
   Loader2,
   MessageSquare,
-  Tag as TagIcon,
 } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { ipc } from "@/ipc/types";
@@ -141,60 +141,55 @@ export function DebatesList({ show }: { show?: boolean }) {
           ) : (
             <SidebarMenu className="space-y-1">
               {filteredDebates.map((debate) => (
-                <SidebarMenuItem key={debate.id}>
-                  <div className="group relative flex items-center">
+                <SidebarMenuItem key={debate.id} className="mb-1">
+                  <div className="group/menu-item relative flex ml-2 mr-2 items-center">
                     <Button
                       variant="ghost"
                       onClick={() => handleDebateClick(debate.id)}
-                      className={`justify-start h-14 w-full text-left bg-transparent hover:bg-sidebar-accent/50 ${selectedDebateId === debate.id
-                        ? "bg-primary/5 text-primary"
+                      className={`justify-start h-11 w-full text-left hover:bg-sidebar-accent/80 pr-1 ${selectedDebateId === debate.id
+                        ? "bg-primary/10 text-primary"
                         : ""
                         }`}
                     >
-                      <div className="flex flex-col gap-1 w-full overflow-hidden">
-                        <div className="flex items-center justify-between">
-                          <span className="truncate font-medium flex-1">
-                            {debate.title}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MessageSquare size={10} />
-                            {formatDistanceToNow(new Date(debate.updatedAt), {
-                              addSuffix: true,
-                            })}
-                          </span>
-                        </div>
-                        {debate.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {debate.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag.id}
-                                className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold truncate max-w-[80px]"
-                                style={{
-                                  backgroundColor: `#3b82f620`,
-                                  color: "#3b82f6",
-                                  border: `1px solid #3b82f640`,
-                                }}
-                              >
-                                {tag.name}
-                              </span>
-                            ))}
-                            {debate.tags.length > 3 && (
-                              <span className="text-[9px] text-muted-foreground">
-                                +{debate.tags.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      <div className="flex flex-col w-full overflow-hidden">
+                        <span
+                          className={`truncate mr-8 ${selectedDebateId === debate.id ? "font-semibold" : ""}`}
+                        >
+                          {debate.title}
+                        </span>
+                        <span
+                          className={`text-xs ${selectedDebateId === debate.id
+                            ? "text-primary/70"
+                            : "text-muted-foreground"
+                            }`}
+                        >
+                          {formatDistanceToNow(new Date(debate.updatedAt), {
+                            addSuffix: true,
+                            locale: es,
+                          })}
+                        </span>
                       </div>
                     </Button>
-                    <button
-                      onClick={(e) => handleDeleteClick(e, debate.id)}
-                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
+
+                    {/* Hover gradient shadow */}
+                    <div
+                      className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10
+                        ${selectedDebateId === debate.id
+                          ? "bg-gradient-to-l from-primary/10 via-primary/8 to-transparent"
+                          : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+                        }`}
+                    />
+
+                    <SidebarMenuAction
+                      showOnHover
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(e, debate.id);
+                      }}
+                      className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                     >
-                      <Trash2 size={14} />
-                    </button>
+                      <Trash2 className="h-4 w-4" />
+                    </SidebarMenuAction>
                   </div>
                 </SidebarMenuItem>
               ))}
@@ -217,7 +212,7 @@ export function DebatesList({ show }: { show?: boolean }) {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={confirmDelete}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  className="bg-destructive hover:bg-destructive/90 text-white"
                 >
                   Eliminar
                 </AlertDialogAction>

@@ -1,5 +1,7 @@
-import { app, BrowserWindow, dialog, Menu } from "electron";
+import { app, BrowserWindow, dialog, Menu, screen } from "electron";
 import * as path from "node:path";
+import { createSplashWindow, updateSplash, closeSplash } from "./main/splash";
+import { ensureOpenCodeInstalled } from "./main/ensure_opencode";
 import { registerIpcHandlers } from "./ipc/ipc_host";
 import dotenv from "dotenv";
 // @ts-ignore
@@ -11,12 +13,13 @@ import {
   writeSettings,
 } from "./main/settings";
 import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_handler";
-import { handleDyadProReturn } from "./main/pro";
+import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
-import { BackupManager } from "./backup_manager";
+
 import { getDatabasePath, initializeDatabase } from "./db";
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
+import { handleFirebaseOAuthReturn } from "./firebase_admin/firebase_return_handler";
 import {
   AddMcpServerConfigSchema,
   AddMcpServerPayload,
@@ -30,11 +33,35 @@ import {
 import { cleanupOldAiMessagesJson } from "./pro/main/ipc/handlers/local_agent/ai_messages_cleanup";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
-import { getDyadAppsBaseDirectory } from "./paths/paths";
+import { getVibesAppsBaseDirectory } from "./paths/paths";
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
 log.scope.labelPadding = false;
+
+// Optimization: Only write errors to disk to avoid I/O contention
+log.transports.file.level = "error";
+log.transports.console.level = "info"; // Keep info logs in console/stdout
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Performance: Chromium command-line flags (must be set before app.ready)
+// Inspired by VS Code's Electron optimizations
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Enable GPU rasterization for smoother rendering
+app.commandLine.appendSwitch("enable-gpu-rasterization");
+
+// Enable zero-copy rasterization for reduced memory overhead
+app.commandLine.appendSwitch("enable-zero-copy");
+
+// Ignore GPU blocklist — use GPU even on "unsupported" configs (VS Code does this)
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
+// Prevent Chromium from throttling the renderer process when window is not focused
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+
+// Enable smooth scrolling at Chromium level
+app.commandLine.appendSwitch("enable-smooth-scrolling");
 
 const logger = log.scope("main");
 
@@ -65,21 +92,20 @@ if (fs.existsSync(gitDir)) {
   process.env.LOCAL_GIT_DIRECTORY = gitDir;
 }
 
-// https://www.electronjs.org/docs/latest/tutorial/launch-app-from-url-in-another-app#main-process-mainjs
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("dyad", process.execPath, [
+    app.setAsDefaultProtocolClient("vibes", process.execPath, [
+      path.resolve(process.argv[1]),
+    ]);
+    app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
   }
 } else {
-  app.setAsDefaultProtocolClient("dyad");
+  app.setAsDefaultProtocolClient("vibes");
+  app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3");
 }
 
-/**
- * Get recent logs from electron-log
- * Returns the last N lines from the log file
- */
 function getRecentLogs(lines: number = 50): string {
   try {
     const logPath = log.transports.file.getFile().path;
@@ -93,7 +119,7 @@ function getRecentLogs(lines: number = 50): string {
 }
 
 export async function onReady() {
-  // Read settings first (quick operation)
+  // Read settings first (quick, synchronous operation)
   const settings = readSettings();
 
   // Check if app was force-closed
@@ -115,35 +141,52 @@ export async function onReady() {
   // Set isRunning to true at startup
   writeSettings({ isRunning: true });
 
-  // Create window FIRST to show UI quickly
   await onFirstRunMaybe(settings);
+
+  // ─── Splash Screen Startup Flow ──────────────────────────────────────
+  // Show a splash screen with progress bar while running initialization tasks.
+  // This replaces the "white screen" that appeared during startup.
+  const TOTAL_STEPS = 4;
+  const splash = createSplashWindow();
+  // Give the splash window time to render
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // Step 1: Initialize database
+  updateSplash(splash, 1, TOTAL_STEPS, "Inicializando base de datos...");
+  initializeDatabase();
+
+  // Step 2: Ensure OpenCode CLI is installed
+  updateSplash(splash, 2, TOTAL_STEPS, "Verificando OpenCode...");
+  const openCodeOk = await ensureOpenCodeInstalled();
+  if (!openCodeOk) {
+    logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
+  }
+
+  // Step 3: Cleanup old data
+  updateSplash(splash, 3, TOTAL_STEPS, "Limpieza de datos...");
+  await cleanupOldAiMessagesJson();
+
+  // Step 4: Create main window
+  updateSplash(splash, 4, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
-  // Then do heavy operations in background (non-blocking)
+  // Wait for main window content to fully load, then swap splash → main
+  if (mainWindow) {
+    await new Promise<void>(resolve => {
+      mainWindow!.webContents.once("did-finish-load", resolve);
+      // Safety timeout in case did-finish-load already fired
+      setTimeout(resolve, 5000);
+    });
+    await closeSplash(splash);
+    mainWindow.show();
+  }
+
+  // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
-    try {
-      // Initialize backup manager
-      const backupManager = new BackupManager({
-        settingsFile: getSettingsFilePath(),
-        dbFile: getDatabasePath(),
-      });
-      await backupManager.initialize();
-    } catch (e) {
-      logger.error("Error initializing backup manager", e);
-    }
-
-    // Initialize database (blocking but in background)
-    initializeDatabase();
-
-    // Cleanup old ai_messages_json entries to prevent database bloat
-    await cleanupOldAiMessagesJson();
-
-    // Add dyad-apps directory to git safe.directory (required for Windows).
-    // The trailing /* allows access to all repositories under the named directory.
-    // See: https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory
+    // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
-      await gitAddSafeDirectory(`${getDyadAppsBaseDirectory()}/*`);
+      await gitAddSafeDirectory(`${getVibesAppsBaseDirectory()}/*`);
     }
 
     // Start performance monitoring after everything is initialized
@@ -151,8 +194,6 @@ export async function onReady() {
 
     logger.info("Background initialization completed");
   });
-
-  // Auto-update disabled by request
 }
 
 export async function onFirstRunMaybe(settings: UserSettings) {
@@ -169,14 +210,7 @@ export async function onFirstRunMaybe(settings: UserSettings) {
   }
 }
 
-/**
- * Ask the user if the app should be moved to the
- * applications folder.
- */
 async function promptMoveToApplicationsFolder(): Promise<void> {
-  // Why not in e2e tests?
-  // There's no way to stub this dialog in time, so we just skip it
-  // in e2e testing mode.
   if (IS_TEST_BUILD) return;
   if (process.platform !== "darwin") return;
   if (app.isInApplicationsFolder()) return;
@@ -204,13 +238,61 @@ declare global {
 let mainWindow: BrowserWindow | null = null;
 let pendingForceCloseData: any = null;
 
+/**
+ * Validates that the saved window position is on a visible display.
+ * If the target display is no longer available, returns undefined so
+ * Electron places the window on the primary display.
+ */
+function getValidatedWindowPosition(windowState?: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  isMaximized?: boolean;
+}): { x?: number; y?: number } {
+  if (windowState?.x == null || windowState?.y == null) {
+    return {};
+  }
+
+  const displays = screen.getAllDisplays();
+  // Check if the saved position falls within any available display
+  const targetDisplay = displays.find((display) => {
+    const { x, y, width, height } = display.bounds;
+    return (
+      windowState.x! >= x &&
+      windowState.x! < x + width &&
+      windowState.y! >= y &&
+      windowState.y! < y + height
+    );
+  });
+
+  if (targetDisplay) {
+    return { x: windowState.x, y: windowState.y };
+  }
+
+  // Target monitor is gone — let Electron center the window on primary display
+  logger.warn(
+    `Saved window position (${windowState.x}, ${windowState.y}) is off-screen. Resetting to primary display.`,
+  );
+  return {};
+}
+
 const createWindow = () => {
-  // Create the browser window.
+  const settings = readSettings();
+  const windowState = settings.windowState;
+  const validatedPosition = getValidatedWindowPosition(windowState);
+
   mainWindow = new BrowserWindow({
-    width: process.env.NODE_ENV === "development" ? 1280 : 960,
+    x: validatedPosition.x,
+    y: validatedPosition.y,
+    width:
+      windowState?.width || (process.env.NODE_ENV === "development" ? 1280 : 960),
     minWidth: 800,
-    height: 700,
+    height: windowState?.height || 700,
     minHeight: 500,
+    // Show window only after content is rendered to prevent white flash (VS Code pattern)
+    show: false,
+    backgroundColor: "#1e1e24", // Match dark theme to prevent white flash
     titleBarStyle: "hidden",
     titleBarOverlay: false,
     trafficLightPosition: {
@@ -221,13 +303,16 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
-      // transparent: true,
+      // Enable V8 code caching — compiles and caches JS bytecode immediately
+      // instead of waiting for hot paths. Dramatically faster subsequent loads.
+      v8CacheOptions: "bypassHeatCheck",
+      // Disable spellcheck to reduce CPU overhead (we handle it ourselves)
+      spellcheck: false,
+      // Prevent Chromium from throttling timers/animations when window loses focus
+      backgroundThrottling: false,
     },
     icon: path.join(app.getAppPath(), "assets/icon/logo.png"),
-    // backgroundColor: "#00000001",
-    // frame: false,
   });
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -235,12 +320,10 @@ const createWindow = () => {
       path.join(__dirname, "../renderer/main_window/index.html"),
     );
   }
-  // if (process.env.NODE_ENV === "development") {
-  //   // Open the DevTools.
-  //   mainWindow.webContents.openDevTools();
-  // }
 
-  // Send force-close event if it was detected
+  // Show window is handled by the splash manager in onReady().
+  // The splash closes first, then mainWindow.show() is called.
+
   if (pendingForceCloseData) {
     mainWindow.webContents.once("did-finish-load", () => {
       mainWindow?.webContents.send(
@@ -251,9 +334,7 @@ const createWindow = () => {
     });
   }
 
-  // Enable native context menu on right-click
   mainWindow.webContents.on("context-menu", (event, params) => {
-    // Prevent any default behavior and show our own menu
     event.preventDefault();
 
     const template: Electron.MenuItemConstructorOptions[] = [];
@@ -296,7 +377,6 @@ const createWindow = () => {
       template.push({ role: "selectAll" });
     }
 
-    //if (process.env.NODE_ENV === "development") {
     template.push(
       { type: "separator" },
       {
@@ -304,41 +384,76 @@ const createWindow = () => {
         click: () => mainWindow?.webContents.inspectElement(params.x, params.y),
       },
     );
-    //}
 
     const menu = Menu.buildFromTemplate(template);
     menu.popup({ window: mainWindow! });
   });
+
+  if (windowState?.isMaximized) {
+    mainWindow.maximize();
+  }
+
+  const saveWindowState = () => {
+    if (!mainWindow) return;
+    const isMaximized = mainWindow.isMaximized();
+    const currentSettings = readSettings();
+    const newState = {
+      ...currentSettings.windowState,
+      isMaximized,
+    };
+
+    if (!isMaximized) {
+      const bounds = mainWindow.getBounds();
+      newState.x = bounds.x;
+      newState.y = bounds.y;
+      newState.width = bounds.width;
+      newState.height = bounds.height;
+    }
+
+    writeSettings({ windowState: newState });
+  };
+
+  let saveTimeout: NodeJS.Timeout;
+  const debouncedSave = () => {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveWindowState, 500);
+  };
+
+  mainWindow.on("resize", debouncedSave);
+  mainWindow.on("move", debouncedSave);
+  mainWindow.on("maximize", saveWindowState);
+  mainWindow.on("unmaximize", saveWindowState);
+
+  // Save state synchronously on close so hot-reload / forced restarts
+  // don't lose the window position (the debounce may not have fired yet).
+  mainWindow.on("close", () => {
+    clearTimeout(saveTimeout);
+    saveWindowState();
+  });
 };
 
-/**
- * Create application menu with Edit shortcuts (Undo, Redo, Cut, Copy, Paste, etc.)
- * This enables standard keyboard shortcuts like Cmd/Ctrl+C, Cmd/Ctrl+V, etc.
- */
 const createApplicationMenu = () => {
   const isMac = process.platform === "darwin";
 
   const template: Electron.MenuItemConstructorOptions[] = [
-    // App menu (macOS only)
     ...(isMac
       ? [
-          {
-            label: app.name,
-            submenu: [
-              { role: "about" as const },
-              { type: "separator" as const },
-              { role: "services" as const },
-              { type: "separator" as const },
-              { role: "hide" as const },
-              { role: "hideOthers" as const },
-              { role: "unhide" as const },
-              { type: "separator" as const },
-              { role: "quit" as const },
-            ],
-          },
-        ]
+        {
+          label: app.name,
+          submenu: [
+            { role: "about" as const },
+            { type: "separator" as const },
+            { role: "services" as const },
+            { type: "separator" as const },
+            { role: "hide" as const },
+            { role: "hideOthers" as const },
+            { role: "unhide" as const },
+            { type: "separator" as const },
+            { role: "quit" as const },
+          ],
+        },
+      ]
       : []),
-    // Edit menu - enables keyboard shortcuts for clipboard operations
     {
       label: "Edit",
       submenu: [
@@ -353,7 +468,6 @@ const createApplicationMenu = () => {
         { role: "selectAll" as const },
       ],
     },
-    // View menu
     {
       label: "View",
       submenu: [
@@ -370,7 +484,6 @@ const createApplicationMenu = () => {
         { role: "togglefullscreen" as const },
       ],
     },
-    // Window menu
     {
       label: "Window",
       submenu: [
@@ -378,11 +491,11 @@ const createApplicationMenu = () => {
         { role: "zoom" as const },
         ...(isMac
           ? [
-              { type: "separator" as const },
-              { role: "front" as const },
-              { type: "separator" as const },
-              { role: "window" as const },
-            ]
+            { type: "separator" as const },
+            { role: "front" as const },
+            { type: "separator" as const },
+            { role: "window" as const },
+          ]
           : [{ role: "close" as const }]),
       ],
     },
@@ -398,24 +511,20 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on("second-instance", (_event, commandLine, _workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
-    // the commandLine is array of strings in which last element is deep link url
     handleDeepLinkReturn(commandLine.pop()!);
   });
   app.whenReady().then(onReady);
 }
 
-// Handle the protocol. In this case, we choose to show an Error Box.
 app.on("open-url", (event, url) => {
   handleDeepLinkReturn(url);
 });
 
 async function handleDeepLinkReturn(url: string) {
-  // example url: "dyad://supabase-oauth-return?token=a&refreshToken=b"
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -424,13 +533,25 @@ async function handleDeepLinkReturn(url: string) {
     return;
   }
 
-  // Intentionally do NOT log the full URL which may contain sensitive tokens.
   log.log(
     "Handling deep link: protocol",
     parsed.protocol,
     "hostname",
     parsed.hostname,
   );
+
+  // Handle Google iOS-style redirect (e.g. com.googleusercontent.apps.xxx:/oauth2redirect)
+  if (parsed.protocol === "com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3:" && parsed.pathname === "/oauth2redirect") {
+    const code = parsed.searchParams.get("code");
+    if (code) {
+      await handleFirebaseOAuthReturn({ code });
+      mainWindow?.webContents.send("deep-link-received", {
+        type: "firebase-oauth-return",
+      });
+      return;
+    }
+  }
+
   if (parsed.protocol !== "dyad:") {
     dialog.showErrorBox(
       "Invalid Protocol",
@@ -438,6 +559,7 @@ async function handleDeepLinkReturn(url: string) {
     );
     return;
   }
+
   if (parsed.hostname === "neon-oauth-return") {
     const token = parsed.searchParams.get("token");
     const refreshToken = parsed.searchParams.get("refreshToken");
@@ -449,13 +571,26 @@ async function handleDeepLinkReturn(url: string) {
       );
       return;
     }
-    handleNeonOAuthReturn({ token, refreshToken, expiresIn });
-    // Send message to renderer to trigger re-render
+    await handleNeonOAuthReturn({ token, refreshToken, expiresIn });
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
+
+  if (parsed.hostname === "firebase-oauth-return") {
+    const code = parsed.searchParams.get("code");
+    if (!code) {
+      dialog.showErrorBox("Invalid URL", "Expected code parameter");
+      return;
+    }
+    await handleFirebaseOAuthReturn({ code });
+    mainWindow?.webContents.send("deep-link-received", {
+      type: parsed.hostname,
+    });
+    return;
+  }
+
   if (parsed.hostname === "supabase-oauth-return") {
     const token = parsed.searchParams.get("token");
     const refreshToken = parsed.searchParams.get("refreshToken");
@@ -468,29 +603,27 @@ async function handleDeepLinkReturn(url: string) {
       return;
     }
     await handleSupabaseOAuthReturn({ token, refreshToken, expiresIn });
-    // Send message to renderer to trigger re-render
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
-  // dyad://dyad-pro-return?key=123&budget_reset_at=2025-05-26T16:31:13.492000Z&max_budget=100
-  if (parsed.hostname === "dyad-pro-return") {
+
+  if (parsed.hostname === "vibes-pro-return") {
     const apiKey = parsed.searchParams.get("key");
     if (!apiKey) {
       dialog.showErrorBox("Invalid URL", "Expected key");
       return;
     }
-    handleDyadProReturn({
+    await handleProReturn({
       apiKey,
     });
-    // Send message to renderer to trigger re-render
     mainWindow?.webContents.send("deep-link-received", {
       type: parsed.hostname,
     });
     return;
   }
-  // dyad://add-mcp-server?name=Chrome%20DevTools&config=eyJjb21tYW5kIjpudWxsLCJ0eXBlIjoic3RkaW8ifQ%3D%3D
+
   if (parsed.hostname === "add-mcp-server") {
     const name = parsed.searchParams.get("name");
     const config = parsed.searchParams.get("config");
@@ -520,7 +653,7 @@ async function handleDeepLinkReturn(url: string) {
     }
     return;
   }
-  // dyad://add-prompt?data=<base64-encoded-json>
+
   if (parsed.hostname === "add-prompt") {
     const data = parsed.searchParams.get("data");
     if (!data) {
@@ -546,35 +679,24 @@ async function handleDeepLinkReturn(url: string) {
     }
     return;
   }
+
   dialog.showErrorBox("Invalid deep link URL", url);
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-// Only set isRunning to false when the app is properly quit by the user
 app.on("will-quit", () => {
   logger.info("App is quitting, setting isRunning to false");
-
-  // Stop performance monitoring and capture final metrics
   stopPerformanceMonitoring();
-
   writeSettings({ isRunning: false });
 });
 
 app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

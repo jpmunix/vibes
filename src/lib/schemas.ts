@@ -15,6 +15,7 @@ export const ChatSummarySchema = z.object({
   appId: z.number(),
   title: z.string().nullable(),
   createdAt: z.date(),
+  isPlan: z.boolean().optional().default(false),
 });
 
 /**
@@ -36,6 +37,7 @@ export const ChatSearchResultSchema = z.object({
   title: z.string().nullable(),
   createdAt: z.date(),
   matchedMessageContent: z.string().nullable(),
+  isPlan: z.boolean().optional().default(false),
 });
 
 /**
@@ -177,7 +179,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["build", "ask", "agent", "local-agent"]);
+export const ChatModeSchema = z.enum(["local-agent", "plan", "ask"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -226,6 +228,14 @@ export const NeonSchema = z.object({
 });
 export type Neon = z.infer<typeof NeonSchema>;
 
+export const FirebaseSchema = z.object({
+  accessToken: SecretSchema.optional(),
+  refreshToken: SecretSchema.optional(),
+  expiresIn: z.number().optional(),
+  tokenTimestamp: z.number().optional(),
+});
+export type Firebase = z.infer<typeof FirebaseSchema>;
+
 export const ExperimentsSchema = z.object({
   // Deprecated
   enableLocalAgent: z.boolean().describe("DEPRECATED").optional(),
@@ -234,11 +244,7 @@ export const ExperimentsSchema = z.object({
 });
 export type Experiments = z.infer<typeof ExperimentsSchema>;
 
-export const DyadProBudgetSchema = z.object({
-  budgetResetAt: z.string(),
-  maxBudget: z.number(),
-});
-export type DyadProBudget = z.infer<typeof DyadProBudgetSchema>;
+// VibesProBudgetSchema removed — Pro concept eliminated after acquisition
 
 export const GlobPathSchema = z.object({
   globPath: z.string(),
@@ -300,7 +306,7 @@ export const UserSettingsSchema = z
     // DEPRECATED.
     ////////////////////////////////
     enableProSaverMode: z.boolean().optional(),
-    dyadProBudget: DyadProBudgetSchema.optional(),
+    // vibesProBudget: removed (Pro eliminated)
     runtimeMode: RuntimeModeSchema.optional(),
 
     ////////////////////////////////
@@ -308,69 +314,85 @@ export const UserSettingsSchema = z
     ////////////////////////////////
     selectedModel: LargeLanguageModelSchema,
     providerSettings: z.record(z.string(), ProviderSettingSchema),
+    // DEPRECATED — legacy individual model fields. Use standardModeModel / proModeModel instead.
+    // Kept in schema for backwards-compat (.passthrough() preserves them in settings files).
     turboEditModel: z.string().optional(),
     appTitleGenerationModel: z.string().optional(),
     todoAnalysisModel: z.string().optional(),
     debateModel: z.string().optional(),
     summaryModel: z.string().optional(),
+    knowledgeExtractionModel: z.string().optional(),
+    dossierModel: z.string().optional(),
+    // Unified model keys — two tiers that replace all 7 individual fields above
+    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates, dossiers)
+    proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
     vercelAccessToken: SecretSchema.optional(),
     supabase: SupabaseSchema.optional(),
     neon: NeonSchema.optional(),
+    firebase: FirebaseSchema.optional(),
     autoApproveChanges: z.boolean().optional(),
     telemetryConsent: z.enum(["opted_in", "opted_out", "unset"]).optional(),
     telemetryUserId: z.string().optional(),
     hasRunBefore: z.boolean().optional(),
-    enableDyadPro: z.boolean().optional(),
+    // enableVibesPro: removed (Pro eliminated — always Pro)
     experiments: ExperimentsSchema.optional(),
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
+    reasoningEffort: z.enum(["none", "minimal", "low", "medium", "high", "xhigh"]).optional(),
+    enabledOpenRouterModels: z.array(z.string()).optional(),
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),
     enableProSmartFilesContextMode: z.boolean().optional(),
-    // Local smart context ranking (no remote engine)
-    enableLocalSmartContext: z.boolean().optional(),
-    // Allow using MCP server for smart context/file ranking
-    enableMcpSmartContext: z.boolean().optional(),
-    // Enable semantic search with local embeddings (vector search)
-    enableSemanticSearch: z.boolean().optional(),
-    // Maximum files to include in context (reduces tokens)
-    maxContextFiles: z.number().optional(),
     // Persist token stats for charts/logging
     enableTokenStats: z.boolean().optional(),
     // Enable verbose internal chat logs (debugging/diagnostics)
     enableVerboseChatLogs: z.boolean().optional(),
+    // Master switch: enable all stats, logs, and metrics (default off for performance)
+    enableAllStatsAndLogs: z.boolean().optional(),
     // Notifications when el chat termina
     enableChatCompletionNotifications: z.boolean().optional(),
     // Control GitHub auto-commit behavior
     enableGithubAutoCommit: z.boolean().optional(),
-    enableProWebSearch: z.boolean().optional(),
+
     proSmartContextOption: SmartContextModeSchema.optional(),
     selectedTemplateId: z.string(),
     selectedThemeId: z.string().optional(),
     enableSupabaseWriteSqlMigration: z.boolean().optional(),
     skipPruneEdgeFunctions: z.boolean().optional(),
-    selectedChatMode: ChatModeSchema.optional(),
-    defaultChatMode: ChatModeSchema.optional(),
+
+    // Ripgrep ignore patterns — written as .ignore in project dirs before each session.
+    // Synced via Bunny DB so the user gets the same config on all devices.
+    openCodeIgnorePatterns: z.array(z.string()).optional(),
+    selectedChatMode: z.preprocess(
+      (val) => {
+        // Migrate deprecated mode values before validation
+        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
+        return val;
+      },
+      ChatModeSchema.optional(),
+    ),
+    defaultChatMode: z.preprocess(
+      (val) => {
+        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
+        return val;
+      },
+      ChatModeSchema.optional(),
+    ),
     acceptedCommunityCode: z.boolean().optional(),
     zoomLevel: ZoomLevelSchema.optional(),
     previewDeviceMode: DeviceModeSchema.optional(),
 
-    enableAutoFixProblems: z.boolean().optional(),
-    enableBackgroundProblemAutoFix: z.boolean().optional(),
     autoExpandPreviewPanel: z.boolean().optional(),
+    previewPosition: z.enum(["left", "right"]).optional(),
     showTokenBar: z.boolean().optional(),
     enableNativeGit: z.boolean().optional(),
     enableAutoUpdate: z.boolean().optional(),
     releaseChannel: ReleaseChannelSchema.optional(),
-    autoFixModel: LargeLanguageModelSchema.optional(),
-    autoFixMaxDurationMs: z.number().optional(),
-    autoFixMaxAttempts: z.number().optional(),
-    autoFixMaxIssues: z.number().optional(),
     runtimeMode2: RuntimeMode2Schema.optional(),
     customNodePath: z.string().optional().nullable(),
     isRunning: z.boolean().optional(),
@@ -386,9 +408,31 @@ export const UserSettingsSchema = z
       .optional(),
     hideLocalAgentNewChatToast: z.boolean().optional(),
     chatLanguage: ChatLanguageSchema.optional(),
-    serperApiKey: SecretSchema.optional(),
+
     themeIntensity: z.number().optional(),
+    primaryColorLight: z.string().optional(),
+    primaryColorDark: z.string().optional(),
+    primaryChromaLight: z.number().optional(),
+    primaryChromaDark: z.number().optional(),
     customPrompts: z.record(z.string(), z.string()).optional(),
+    aiQueryLogRotationThreshold: z.enum(["50", "100", "200", "500", "1000"]).optional(),
+    // Embeddings for semantic search
+    embeddingsEnabled: z.boolean().optional(),
+    embeddingsModel: z.string().optional(),
+
+    // Auth (Vibes System)
+    sessionToken: SecretSchema.optional(),
+    userId: z.string().optional(),
+
+    windowState: z
+      .object({
+        x: z.number().optional(),
+        y: z.number().optional(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        isMaximized: z.boolean().optional(),
+      })
+      .optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)
@@ -399,62 +443,33 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-export function isDyadProEnabled(_settings: UserSettings): boolean {
-  return true;
-}
-
-export function hasDyadProKey(_settings: UserSettings): boolean {
-  return true;
-}
+// isVibesProEnabled / hasVibesProKey removed — always Pro after acquisition
 
 /**
- * Gets the effective default chat mode based on settings, pro status, and free quota availability.
- * - If defaultChatMode is set and valid for the user's Pro status, use it
- * - If defaultChatMode is "local-agent" but user doesn't have Pro:
- *   - If free agent quota available AND OpenAI/Anthropic is set up, use "local-agent" (basic agent mode)
- *   - Otherwise, fall back to "build"
- * - If defaultChatMode is NOT set:
- *   - Default to "build" because local-agent is still unreliable
+ * Gets the effective default chat mode based on settings and pro status.
+ * Migration: deprecated modes map to their replacements.
+ * - "build" / "agent" / "crush-agent" → "local-agent" (OpenCode)
+ * - Default: "local-agent" (OpenCode)
  */
 export function getEffectiveDefaultChatMode(
   settings: UserSettings,
-  envVars: Record<string, string | undefined>,
-  freeAgentQuotaAvailable?: boolean,
+  _envVars: Record<string, string | undefined>,
+  _freeAgentQuotaAvailable?: boolean,
 ): ChatMode {
-  const isPro = isDyadProEnabled(settings);
-  // We are checking that OpenAI or Anthropic is setup, which are the first two
-  // choices for the Auto model selection.
-  //
-  // If user only has Gemini API key, we don't default to local-agent because
-  // most likely it's a free API key with stringent limits and they'll get
-  // a bad experience with local-agent.
-  const hasPaidProviderSetup = isOpenAIOrAnthropicSetup(settings, envVars);
-
   if (settings.defaultChatMode) {
-    // "local-agent" requires either Pro OR (available free quota AND provider setup)
-    if (settings.defaultChatMode === "local-agent") {
-      if (isPro) return "local-agent";
-      if (freeAgentQuotaAvailable && hasPaidProviderSetup) return "local-agent";
-      return "build";
+    const mode = settings.defaultChatMode as string;
+    // Deprecated modes → "local-agent" (OpenCode)
+    if (mode === "build" || mode === "agent" || mode === "crush-agent") {
+      return "local-agent";
     }
     return settings.defaultChatMode;
   }
 
-  // No explicit default set - default to "build" because local-agent is still unreliable
-  return "build";
+  // Default to "local-agent" (Agente — OpenCode)
+  return "local-agent";
 }
 
-/**
- * Determines if the current session is using Basic Agent mode (free tier with quota).
- * Basic Agent mode is when:
- * - User is NOT a Pro subscriber
- * - User is using local-agent chat mode
- */
-export function isBasicAgentMode(settings: UserSettings): boolean {
-  return (
-    !isDyadProEnabled(settings) && settings.selectedChatMode === "local-agent"
-  );
-}
+// isBasicAgentMode removed — legacy-agent eliminated, always Pro
 
 export function isSupabaseConnected(settings: UserSettings | null): boolean {
   if (!settings) {
@@ -467,10 +482,8 @@ export function isSupabaseConnected(settings: UserSettings | null): boolean {
   );
 }
 
-export function isTurboEditsV2Enabled(settings: UserSettings): boolean {
-  // Enabled by default; can be explicitly disabled by the user
-  return settings.enableTurboEditsV2 ?? true;
-}
+
+
 
 // Define interfaces for the props
 export interface SecurityRisk {

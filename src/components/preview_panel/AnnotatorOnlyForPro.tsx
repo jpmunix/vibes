@@ -16,7 +16,7 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
       {/* Go Back Button */}
       <button
         onClick={onGoBack}
-        className="absolute top-4 left-4 p-2 hover:bg-accent rounded-md transition-all z-10 group"
+        className="absolute top-4 left-4 p-2 hover:bg-accent rounded-md transition-colors z-10 group"
         aria-label="Volver"
       >
         <ArrowLeft
@@ -36,16 +36,16 @@ export const AnnotatorOnlyForPro = ({ onGoBack }: AnnotatorOnlyForProProps) => {
         </h2>
         <p className="text-muted-foreground mb-10 text-center max-w-md text-base leading-relaxed">
           Unlock the ability to annotate screenshots and enhance your workflow
-          with Dyad Pro.
+          with Vibes Pro.
         </p>
 
         {/* Get Pro Button */}
         <Button
           onClick={handleGetPro}
           size="lg"
-          className="px-8 shadow-md hover:shadow-lg transition-all"
+          className="px-8 shadow-md hover:shadow-lg transition-[box-shadow]"
         >
-          Get Dyad Pro
+          Get Vibes Pro
         </Button>
       </div>
     </div>

@@ -1,6 +1,6 @@
-import { db } from "../../db";
-import { messages } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
 import log from "electron-log";
@@ -74,8 +74,9 @@ export const QUOTA_WINDOW_MS = 23 * 60 * 60 * 1000;
 export function registerFreeAgentQuotaHandlers() {
   createTypedHandler(
     freeAgentQuotaContracts.getFreeAgentQuotaStatus,
-    async () => {
-      return getFreeAgentQuotaStatus();
+    async (_, __, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      return getFreeAgentQuotaStatus(context.userId);
     },
   );
 
@@ -109,11 +110,13 @@ export function registerFreeAgentQuotaHandlers() {
  */
 export async function markMessageAsUsingFreeAgentQuota(
   messageId: number,
+  userId: string,
 ): Promise<void> {
+  const db = getRemoteDb();
   await db
-    .update(messages)
+    .update(remoteSchema.messages)
     .set({ usingFreeAgentModeQuota: true })
-    .where(eq(messages.id, messageId));
+    .where(and(eq(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, userId)));
 
   logger.log(`Marked message ${messageId} as using free agent quota`);
 }
@@ -125,11 +128,13 @@ export async function markMessageAsUsingFreeAgentQuota(
  */
 export async function unmarkMessageAsUsingFreeAgentQuota(
   messageId: number,
+  userId: string,
 ): Promise<void> {
+  const db = getRemoteDb();
   await db
-    .update(messages)
+    .update(remoteSchema.messages)
     .set({ usingFreeAgentModeQuota: false })
-    .where(eq(messages.id, messageId));
+    .where(and(eq(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, userId)));
 
   logger.log(`Unmarked message ${messageId} (refunded free agent quota)`);
 }
@@ -141,15 +146,16 @@ export async function unmarkMessageAsUsingFreeAgentQuota(
  * Quota behavior: All 5 messages are released at once when 24 hours have passed
  * since the oldest message was sent (not a rolling window).
  */
-export async function getFreeAgentQuotaStatus() {
-  // Get all messages with usingFreeAgentModeQuota = true, ordered by creation time
+export async function getFreeAgentQuotaStatus(userId: string) {
+  const db = getRemoteDb();
+  // Get all messages with usingFreeAgentModeQuota = true, ordered by creation time for this user
   const quotaMessages = await db
     .select({
-      createdAt: messages.createdAt,
+      createdAt: remoteSchema.messages.createdAt,
     })
-    .from(messages)
-    .where(eq(messages.usingFreeAgentModeQuota, true))
-    .orderBy(messages.createdAt);
+    .from(remoteSchema.messages)
+    .where(and(eq(remoteSchema.messages.usingFreeAgentModeQuota, true), eq(remoteSchema.messages.userId, userId)))
+    .orderBy(remoteSchema.messages.createdAt);
 
   // If there are no quota messages, quota is fresh
   if (quotaMessages.length === 0) {
@@ -175,9 +181,9 @@ export async function getFreeAgentQuotaStatus() {
     // Clean up expired quota messages before returning fresh quota
     // This prevents stale messages from accumulating and causing incorrect window calculations
     await db
-      .update(messages)
+      .update(remoteSchema.messages)
       .set({ usingFreeAgentModeQuota: false })
-      .where(eq(messages.usingFreeAgentModeQuota, true));
+      .where(and(eq(remoteSchema.messages.usingFreeAgentModeQuota, true), eq(remoteSchema.messages.userId, userId)));
 
     logger.log("Quota reset: cleaned up expired quota messages");
 

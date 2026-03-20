@@ -11,16 +11,13 @@ type SettingsSection = {
 };
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: "general-settings", label: "General" },
-  { id: "models-connectivity", label: "Modelos y Conectividad" },
-  { id: "ai-behavior", label: "Configuración Asistente" },
-  { id: "automation-settings", label: "Automatización" },
+  { id: "general-settings", label: "Tema" },
+  { id: "models-connectivity", label: "OpenRouter" },
+  { id: "ai-behavior", label: "Agente" },
+
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },
-  { id: "agent-permissions", label: "Permisos del agente" },
-  { id: "stats-settings", label: "Estadísticas" },
-  { id: "experiments", label: "Experimentos" },
-  { id: "danger-zone", label: "Zona peligrosa" },
+  { id: "stats-settings", label: "Estadísticas y Logs" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {

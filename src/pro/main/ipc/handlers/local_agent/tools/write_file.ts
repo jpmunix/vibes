@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import log from "electron-log";
-import { ToolDefinition, AgentContext, escapeXmlAttr } from "./types";
+import { ToolDefinition, ToolError, AgentContext, escapeXmlAttr } from "./types";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import { deploySupabaseFunction } from "../../../../../../supabase_admin/supabase_management_client";
 import {
@@ -31,12 +31,21 @@ export const writeFileTool: ToolDefinition<z.infer<typeof writeFileSchema>> = {
 
   getConsentPreview: (args) => `Write to ${args.path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.path) return undefined;
 
-    let xml = `<dyad-write path="${escapeXmlAttr(args.path)}" description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.path]) {
+      const counts = ctx.fileEditTracker[args.path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
+
+    let xml = `<vibes-write path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.description ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
-      xml += "\n</dyad-write>";
+      xml += "\n</vibes-write>";
     }
     return xml;
   },
@@ -52,6 +61,18 @@ export const writeFileTool: ToolDefinition<z.infer<typeof writeFileSchema>> = {
     // Resolve file upload IDs to actual content
     const resolved = await resolveFileUploadContent(args.content, ctx.chatId);
     const contentToWrite = resolved.content;
+
+    // SAFETY CHECK: Prevent write_file from being used with placeholders
+    if (
+      contentToWrite.includes("// ... existing code ...") ||
+      contentToWrite.includes("// ... existing code") ||
+      contentToWrite.includes("/* ... existing code ... */")
+    ) {
+      throw new ToolError(
+        "No se puede usar 'write_file' con marcadores de posición. Esta herramienta es para reescritura COMPLETA del archivo. Si quieres hacer una edición parcial, usa 'edit_file' con contexto suficiente, o bien proporciona el contenido íntegro del archivo.",
+        { retryable: true, hint: "Provide the COMPLETE file content without placeholders, or use edit_file/search_replace for partial edits." },
+      );
+    }
 
     // Ensure directory exists
     const dirPath = path.dirname(fullFilePath);

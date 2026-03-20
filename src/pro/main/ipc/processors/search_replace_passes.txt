@@ -1043,3 +1043,86 @@ step4
 <output_file>
 step4
 </output_file>
+
+--- Test case name: recovery - line-number prefix stripping ---
+<original_file>
+function greet(name) {
+  const msg = `Hello, ${name}`;
+  console.log(msg);
+  return msg;
+}
+</original_file>
+<<<<<<< SEARCH
+1: function greet(name) {
+2:   const msg = `Hello, ${name}`;
+3:   console.log(msg);
+4:   return msg;
+5: }
+=======
+function greet(name) {
+  const msg = `Hi, ${name}!`;
+  console.log(msg);
+  return msg;
+}
+>>>>>>> REPLACE
+<output_file>
+function greet(name) {
+  const msg = `Hi, ${name}!`;
+  console.log(msg);
+  return msg;
+}
+</output_file>
+
+--- Test case name: recovery - block-level fuzzy match 4 of 5 lines ---
+<original_file>
+import React from 'react';
+import { useState } from 'react';
+import { Button } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+</original_file>
+<<<<<<< SEARCH
+import React from 'react';
+import { useState } from 'react';
+import { Btn } from './Button';
+import { Input } from './Input';
+import { Label } from './Label';
+=======
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { Button } from './components/Button';
+import { Input } from './components/Input';
+import { Label } from './components/Label';
+>>>>>>> REPLACE
+<output_file>
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { Button } from './components/Button';
+import { Input } from './components/Input';
+import { Label } from './components/Label';
+</output_file>
+
+--- Test case name: recovery - line-number prefix with pipe separator ---
+<original_file>
+const API_URL = "https://api.example.com";
+const TIMEOUT = 5000;
+const MAX_RETRIES = 3;
+const DEBUG = false;
+</original_file>
+<<<<<<< SEARCH
+ 1| const API_URL = "https://api.example.com";
+ 2| const TIMEOUT = 5000;
+ 3| const MAX_RETRIES = 3;
+ 4| const DEBUG = false;
+=======
+const API_URL = "https://api.staging.example.com";
+const TIMEOUT = 10000;
+const MAX_RETRIES = 5;
+const DEBUG = true;
+>>>>>>> REPLACE
+<output_file>
+const API_URL = "https://api.staging.example.com";
+const TIMEOUT = 10000;
+const MAX_RETRIES = 5;
+const DEBUG = true;
+</output_file>

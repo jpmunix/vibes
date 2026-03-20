@@ -131,9 +131,12 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
   return (
     <>
       <Card className="mt-1" data-testid="capacitor-controls">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Desarrollo móvil
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between text-base">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Desarrollo móvil
+            </div>
             <Button
               variant="ghost"
               size="sm"

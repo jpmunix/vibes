@@ -21,6 +21,7 @@ export type SearchReplaceResult = {
   content?: string;
   error?: string;
   diagnostic?: MatchFailureDiagnostic;
+  recoveryStrategy?: string;
 };
 
 // ============================================================================
@@ -80,6 +81,14 @@ const unicodeNormalized: LineComparator = (fileLine, patternLine) =>
   normalizeString(fileLine.trim()) === normalizeString(patternLine.trim());
 
 /**
+ * Pass 4.5: Internal Whitespace Normalized
+ * Ignore variations in internal spacing/tabs
+ */
+const internalWhitespaceNormalized: LineComparator = (fileLine, patternLine) =>
+  normalizeString(fileLine.trim()).replace(/\s+/g, " ") ===
+  normalizeString(patternLine.trim()).replace(/\s+/g, " ");
+
+/**
  * Pass 5: Partial Match with Threshold (90%)
  * Allow small differences like extra/missing comments or minor formatting
  */
@@ -119,8 +128,132 @@ const MATCHING_PASSES: Array<{ name: string; comparator: LineComparator }> = [
   },
   { name: "all-edge-whitespace-ignored", comparator: allEdgeWhitespaceIgnored },
   { name: "unicode-normalized", comparator: unicodeNormalized },
+  {
+    name: "internal-whitespace-normalized",
+    comparator: internalWhitespaceNormalized,
+  },
   { name: "partial-match-90%", comparator: partialMatch90Percent },
 ];
+
+// ============================================================================
+// Recovery Strategy A: Line-Number Prefix Stripping
+// ============================================================================
+// LLMs sometimes include line numbers like "42: const x = 1" or "42| const x"
+// in their SEARCH blocks. This strips those prefixes before retrying the match.
+
+function stripLineNumberPrefixes(lines: string[]): {
+  stripped: string[];
+  hadPrefixes: boolean;
+} {
+  const lineNumRegex = /^\s*\d+\s*[:|]\s?/;
+  // Only strip if ALL non-empty lines have the prefix (to avoid false positives)
+  const nonEmptyLines = lines.filter((l) => l.trim() !== "");
+  if (nonEmptyLines.length === 0) return { stripped: lines, hadPrefixes: false };
+
+  const allHavePrefix = nonEmptyLines.every((l) => lineNumRegex.test(l));
+  if (!allHavePrefix) return { stripped: lines, hadPrefixes: false };
+
+  return {
+    stripped: lines.map((l) =>
+      l.trim() === "" ? l : l.replace(lineNumRegex, ""),
+    ),
+    hadPrefixes: true,
+  };
+}
+
+// ============================================================================
+// Recovery Strategy B: Block-Level Fuzzy Matching
+// ============================================================================
+// When individual line-level passes fail because 1-2 lines differ slightly,
+// this strategy accepts a match if ≥80% of lines match at a single unambiguous
+// position. Uses internal-whitespace-normalized comparison.
+
+function blockLevelFuzzyMatch(
+  resultLines: string[],
+  searchLines: string[],
+): { matchIndex: number; error?: string; passName?: string } {
+  const THRESHOLD = 0.8;
+  const minMatchingLines = Math.ceil(searchLines.length * THRESHOLD);
+
+  // Don't use block-level fuzzy for very short searches (too risky)
+  if (searchLines.length < 4) {
+    return {
+      matchIndex: -1,
+      error: "Block-level fuzzy match skipped: search too short (< 4 lines)",
+    };
+  }
+
+  type Candidate = { index: number; matchCount: number };
+  const candidates: Candidate[] = [];
+
+  for (let i = 0; i <= resultLines.length - searchLines.length; i++) {
+    let matchCount = 0;
+    for (let j = 0; j < searchLines.length; j++) {
+      if (internalWhitespaceNormalized(resultLines[i + j], searchLines[j])) {
+        matchCount++;
+      }
+    }
+    if (matchCount >= minMatchingLines) {
+      candidates.push({ index: i, matchCount });
+      // For ambiguity detection, stop after finding 2
+      if (candidates.length > 1) break;
+    }
+  }
+
+  if (candidates.length > 1) {
+    return {
+      matchIndex: -1,
+      error: `Block-level fuzzy match found multiple positions (ambiguous, ≥${Math.round(THRESHOLD * 100)}% threshold)`,
+    };
+  }
+
+  if (candidates.length === 1) {
+    const pct = Math.round(
+      (candidates[0].matchCount / searchLines.length) * 100,
+    );
+    return {
+      matchIndex: candidates[0].index,
+      passName: `block-fuzzy-${pct}%`,
+    };
+  }
+
+  return {
+    matchIndex: -1,
+    error: `Block-level fuzzy match: no position reached ${Math.round(THRESHOLD * 100)}% line match threshold`,
+  };
+}
+
+// ============================================================================
+// Recovery Strategy C: Context-Rich Error Messages
+// ============================================================================
+// When all recovery fails, build an error message that includes a snippet of
+// the file content near the best partial match so the LLM can self-correct.
+
+function buildContextRichError(
+  resultLines: string[],
+  searchLines: string[],
+  baseError: string,
+  diagnostic: MatchFailureDiagnostic,
+): string {
+  const summary = formatMatchFailureSummary(diagnostic);
+
+  // Extract up to 10 lines of context around the best match
+  const contextStart = Math.max(0, diagnostic.startLine - 3);
+  const contextEnd = Math.min(
+    resultLines.length,
+    diagnostic.endLine + 3,
+  );
+  const snippetLines = resultLines
+    .slice(contextStart, contextEnd)
+    .map((l, i) => `${contextStart + i + 1}: ${l}`);
+
+  const snippet =
+    snippetLines.length > 0
+      ? `\nFile content near the expected match (lines ${contextStart + 1}-${contextEnd}):\n${snippetLines.join("\n")}`
+      : "";
+
+  return `${baseError}. ${summary}${snippet}\nAdjust old_string to match the exact file content shown above. Do NOT use write_file.`;
+}
 
 /**
  * Trim leading and trailing empty lines from an array of lines
@@ -385,6 +518,7 @@ export function applySearchReplace(
   const lineEnding = originalContent.includes("\r\n") ? "\r\n" : "\n";
   let resultLines = originalContent.split(/\r?\n/);
   let appliedCount = 0;
+  const strategiesUsed = new Set<string>();
 
   logger.debug(
     `Applying search-replace: ${blocks.length} blocks, file has ${resultLines.length} lines`,
@@ -416,7 +550,7 @@ export function applySearchReplace(
     // Use cascading fuzzy matching to find the match
     let matchResult = cascadingMatch(resultLines, searchLines);
 
-    // If no match found, try with trimmed leading/trailing empty lines as a fallback
+    // Recovery fallback 1: Try with trimmed leading/trailing empty lines
     if (matchResult.error && !matchResult.error.includes("ambiguous")) {
       const trimmedSearchLines = trimEmptyLines(searchLines);
       if (trimmedSearchLines.length !== searchLines.length) {
@@ -428,6 +562,48 @@ export function applySearchReplace(
             "Matched after trimming leading/trailing empty lines from search content",
           );
         }
+      }
+    }
+
+    // Recovery fallback 2: Strip line-number prefixes (e.g., "42: const x")
+    if (matchResult.error && !matchResult.error.includes("ambiguous")) {
+      const { stripped, hadPrefixes } = stripLineNumberPrefixes(searchLines);
+      if (hadPrefixes) {
+        const strippedResult = cascadingMatch(resultLines, stripped);
+        if (!strippedResult.error) {
+          matchResult = strippedResult;
+          searchLines = stripped;
+          logger.debug(
+            "Matched after stripping line-number prefixes from search content",
+          );
+        }
+      }
+    }
+
+    // Recovery fallback 3: Block-level fuzzy match (≥80% of lines match)
+    if (matchResult.error && !matchResult.error.includes("ambiguous")) {
+      const blockResult = blockLevelFuzzyMatch(resultLines, searchLines);
+      if (!blockResult.error) {
+        matchResult = blockResult;
+        logger.debug(
+          `Matched via block-level fuzzy match (${blockResult.passName})`,
+        );
+      } else if (
+        blockResult.error &&
+        blockResult.error.includes("ambiguous")
+      ) {
+        // Propagate ambiguity error from block-fuzzy — it's more informative
+        matchResult = blockResult;
+      }
+    }
+
+    if (!matchResult.error && matchResult.passName) {
+      if (
+        !["exact", "trailing-whitespace", "edge-whitespace", "unicode"].includes(
+          matchResult.passName,
+        )
+      ) {
+        strategiesUsed.add(matchResult.passName);
       }
     }
 
@@ -448,12 +624,21 @@ export function applySearchReplace(
       const diagnostic = buildMatchFailureDiagnostic(resultLines, searchLines);
       // Log detailed diagnostic information for debugging
       logMatchFailure(resultLines, searchLines, appliedCount);
+
+      // Build context-rich error message (Strategy C)
+      const enrichedError = buildContextRichError(
+        resultLines,
+        searchLines,
+        matchResult.error ?? "Search block did not match any content",
+        diagnostic,
+      );
+
       logger.error(
         `search_replace: Failed to apply block ${appliedCount + 1}/${blocks.length}. Error: ${matchResult.error}`,
       );
       return {
         success: false,
-        error: matchResult.error,
+        error: enrichedError,
         diagnostic,
       };
     }
@@ -491,9 +676,9 @@ export function applySearchReplace(
       const finalIndent =
         relativeLevel < 0
           ? matchedIndent.slice(
-              0,
-              Math.max(0, matchedIndent.length + relativeLevel),
-            )
+            0,
+            Math.max(0, matchedIndent.length + relativeLevel),
+          )
           : matchedIndent + currentIndent.slice(searchBaseLevel);
 
       return finalIndent + line.trim();
@@ -515,5 +700,12 @@ export function applySearchReplace(
   logger.info(
     `search_replace: Successfully applied ${appliedCount}/${blocks.length} blocks`,
   );
-  return { success: true, content: resultLines.join(lineEnding) };
+  const recoveryStrategy =
+    strategiesUsed.size > 0 ? Array.from(strategiesUsed).join(", ") : undefined;
+
+  return {
+    success: true,
+    content: resultLines.join(lineEnding),
+    recoveryStrategy,
+  };
 }

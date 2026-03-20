@@ -44,6 +44,7 @@ export function useVersions(appId: number | null) {
     {
       versionId: string;
       currentChatMessageId?: { chatId: number; messageId: number };
+      silent?: boolean;
     }
   >({
     mutationFn: async ({
@@ -52,6 +53,7 @@ export function useVersions(appId: number | null) {
     }: {
       versionId: string;
       currentChatMessageId?: { chatId: number; messageId: number };
+      silent?: boolean;
     }) => {
       const currentAppId = appId;
       if (currentAppId === null) {
@@ -63,11 +65,13 @@ export function useVersions(appId: number | null) {
         currentChatMessageId,
       });
     },
-    onSuccess: async (result) => {
-      if ("successMessage" in result) {
-        toast.success(result.successMessage);
-      } else if ("warningMessage" in result) {
-        toast.warning(result.warningMessage);
+    onSuccess: async (result, variables) => {
+      if (!variables.silent) {
+        if ("successMessage" in result) {
+          toast.success(result.successMessage);
+        } else if ("warningMessage" in result) {
+          toast.warning(result.warningMessage);
+        }
       }
       await queryClient.invalidateQueries({
         queryKey: queryKeys.versions.list({ appId }),

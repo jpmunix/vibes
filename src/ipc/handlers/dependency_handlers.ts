@@ -1,7 +1,7 @@
-import { db } from "../../db";
-import { messages, apps, chats } from "../../db/schema";
-import { eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { getVibesAppPath } from "../../paths/paths";
 import { executeAddDependency } from "../processors/executeAddDependency";
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
@@ -15,15 +15,18 @@ export function registerDependencyHandlers() {
     async (
       _event,
       { chatId, packages }: { chatId: number; packages: string[] },
+      context,
     ): Promise<void> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       // Find the message from the database
       const foundMessages = await db.query.messages.findMany({
-        where: eq(messages.chatId, chatId),
+        where: and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.userId, context.userId)),
       });
 
       // Find the chat first
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, chatId),
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
       });
 
       if (!chat) {
@@ -32,7 +35,7 @@ export function registerDependencyHandlers() {
 
       // Get the app using the appId from the chat
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, chat.appId),
+        where: and(eq(remoteSchema.apps.id, chat.appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -43,7 +46,7 @@ export function registerDependencyHandlers() {
         .reverse()
         .find((m) =>
           m.content.includes(
-            `<dyad-add-dependency packages="${packages.join(" ")}">`,
+            `<vibes-add-dependency packages="${packages.join(" ")}">`,
           ),
         );
 
@@ -56,7 +59,7 @@ export function registerDependencyHandlers() {
       executeAddDependency({
         packages,
         message,
-        appPath: getDyadAppPath(app.path),
+        appPath: getVibesAppPath(app.path),
       });
     },
   );

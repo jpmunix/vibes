@@ -47,12 +47,11 @@ export const SetAppEnvVarsParamsSchema = z.object({
 export const ChatLogsDataSchema = z.object({
   debugInfo: z.object({
     nodeVersion: z.string().nullable(),
-    pnpmVersion: z.string().nullable(),
     nodePath: z.string().nullable(),
     telemetryId: z.string(),
     telemetryConsent: z.string(),
     telemetryUrl: z.string(),
-    dyadVersion: z.string(),
+    vibesVersion: z.string(),
     platform: z.string(),
     architecture: z.string(),
     logs: z.string(),
@@ -141,6 +140,12 @@ export const miscContracts = {
   }),
 
   // Console logs
+  getConsoleLogs: defineContract({
+    channel: "get-console-logs",
+    input: z.object({ appId: z.number() }),
+    output: z.array(ConsoleEntrySchema),
+  }),
+
   addLog: defineContract({
     channel: "add-log",
     input: ConsoleEntrySchema,
@@ -171,6 +176,13 @@ export const miscContracts = {
   }),
 } as const;
 
+export const AppLogsBatchSchema = z.object({
+  appId: z.number(),
+  logs: z.array(AppOutputSchema),
+});
+
+export type AppLogsBatch = z.infer<typeof AppLogsBatchSchema>;
+
 // =============================================================================
 // Misc Event Contracts
 // =============================================================================
@@ -179,6 +191,11 @@ export const miscEvents = {
   appOutput: defineEvent({
     channel: "app:output",
     payload: AppOutputSchema,
+  }),
+
+  appLogsBatch: defineEvent({
+    channel: "app:logs-batch",
+    payload: AppLogsBatchSchema,
   }),
 
   deepLinkReceived: defineEvent({

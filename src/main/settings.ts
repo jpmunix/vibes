@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { DEFAULT_THEME_ID } from "@/shared/themes";
+import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
@@ -22,33 +23,19 @@ const DEFAULT_SETTINGS: UserSettings = {
     provider: "openrouter",
   },
   providerSettings: {},
-  turboEditModel: "openai/gpt-4.1",
-  appTitleGenerationModel: "openai/gpt-5-mini",
-  debateModel: "x-ai/grok-4.1-fast",
-  summaryModel: "x-ai/grok-4.1-fast",
+  // Unified model keys (v2) — two tiers replace the old 7 individual fields
+  standardModeModel: "openai/gpt-4.1-nano",
+  proModeModel: "openai/gpt-5.1-codex-mini",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
   experiments: {},
   enableProLazyEditsMode: true,
-  enableTurboEditsV2: true,
   enableProSmartFilesContextMode: true,
-  enableLocalSmartContext: true,
-  enableMcpSmartContext: false,
-  enableTokenStats: true,
-  enableVerboseChatLogs: true,
+
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
-  autoFixModel: {
-    name: "google/gemini-3-flash-preview",
-    provider: "openrouter",
-  },
-  autoFixMaxDurationMs: 20_000,
-  autoFixMaxAttempts: 1,
-  autoFixMaxIssues: 5,
-  selectedChatMode: "build",
-  enableAutoFixProblems: false,
-  enableBackgroundProblemAutoFix: false,
+  selectedChatMode: "local-agent",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
   selectedThemeId: DEFAULT_THEME_ID,
   isRunning: false,
@@ -56,21 +43,56 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Enabled by default in 0.33.0-beta.1
   enableNativeGit: true,
   autoExpandPreviewPanel: false,
+  previewPosition: "right",
   chatLanguage: "es",
   showTokenBar: false,
+  aiQueryLogRotationThreshold: "200",
+  windowState: undefined,
+  reasoningEffort: "medium",
+  // Embeddings (enabled by default)
+  embeddingsEnabled: true,
+  embeddingsModel: "openai/text-embedding-3-small",
+  // OpenCode ignore patterns — written as .ignore to project dirs (ripgrep standard)
+  openCodeIgnorePatterns: [
+    "node_modules/",
+    ".vite/",
+    "dist/",
+    "build/",
+    ".next/",
+    ".nuxt/",
+    ".output/",
+    ".git/",
+    ".git",
+    "*.lock",
+    "*.log",
+  ],
 };
 
 const SETTINGS_FILE = "user-settings.json";
+
+// In-memory cache for settings to avoid blocking I/O
+let cachedSettings: UserSettings | null = null;
+
+/** @internal — only for testing. Clears the in-memory cache so the next readSettings() re-reads from disk. */
+export function resetSettingsCache() {
+  cachedSettings = null;
+}
 
 export function getSettingsFilePath(): string {
   return path.join(getUserDataPath(), SETTINGS_FILE);
 }
 
 export function readSettings(): UserSettings {
+  // Return cached settings if available
+  if (cachedSettings) {
+    return cachedSettings;
+  }
+
   try {
     const filePath = getSettingsFilePath();
     if (!fs.existsSync(filePath)) {
       fs.writeFileSync(filePath, JSON.stringify(DEFAULT_SETTINGS, null, 2));
+      cachedSettings = DEFAULT_SETTINGS;
       return DEFAULT_SETTINGS;
     }
     const rawSettings = JSON.parse(fs.readFileSync(filePath, "utf-8"));
@@ -79,117 +101,95 @@ export function readSettings(): UserSettings {
       ...rawSettings,
     };
     const supabase = combinedSettings.supabase;
+
+    // Decrypt legacy tokens
     if (supabase) {
-      // Decrypt legacy tokens (kept but ignored)
-      if (supabase.refreshToken) {
-        const encryptionType = supabase.refreshToken.encryptionType;
-        if (encryptionType) {
-          supabase.refreshToken = {
-            value: decrypt(supabase.refreshToken),
-            encryptionType,
+      const decryptLegacy = (secret: Secret | undefined): Secret | undefined => {
+        if (!secret || secret.encryptionType !== "electron-safe-storage") return secret;
+        try {
+          return {
+            value: decrypt(secret),
+            encryptionType: "plaintext",
           };
+        } catch (e) {
+          logger.error("Failed to decrypt legacy secret:", e);
+          return secret;
         }
-      }
-      if (supabase.accessToken) {
-        const encryptionType = supabase.accessToken.encryptionType;
-        if (encryptionType) {
-          supabase.accessToken = {
-            value: decrypt(supabase.accessToken),
-            encryptionType,
-          };
-        }
-      }
-      // Decrypt tokens for each organization in the organizations map
-      if (supabase.organizations) {
-        for (const orgId in supabase.organizations) {
-          const org = supabase.organizations[orgId];
-          if (org.accessToken) {
-            const encryptionType = org.accessToken.encryptionType;
-            if (encryptionType) {
-              org.accessToken = {
-                value: decrypt(org.accessToken),
-                encryptionType,
-              };
-            }
-          }
-          if (org.refreshToken) {
-            const encryptionType = org.refreshToken.encryptionType;
-            if (encryptionType) {
-              org.refreshToken = {
-                value: decrypt(org.refreshToken),
-                encryptionType,
-              };
-            }
-          }
-        }
-      }
-    }
-    const neon = combinedSettings.neon;
-    if (neon) {
-      if (neon.refreshToken) {
-        const encryptionType = neon.refreshToken.encryptionType;
-        if (encryptionType) {
-          neon.refreshToken = {
-            value: decrypt(neon.refreshToken),
-            encryptionType,
-          };
-        }
-      }
-      if (neon.accessToken) {
-        const encryptionType = neon.accessToken.encryptionType;
-        if (encryptionType) {
-          neon.accessToken = {
-            value: decrypt(neon.accessToken),
-            encryptionType,
-          };
-        }
-      }
-    }
-    if (combinedSettings.githubAccessToken) {
-      const encryptionType = combinedSettings.githubAccessToken.encryptionType;
-      combinedSettings.githubAccessToken = {
-        value: decrypt(combinedSettings.githubAccessToken),
-        encryptionType,
       };
+      supabase.refreshToken = decryptLegacy(supabase.refreshToken);
+      supabase.accessToken = decryptLegacy(supabase.accessToken);
     }
-    if (combinedSettings.vercelAccessToken) {
-      const encryptionType = combinedSettings.vercelAccessToken.encryptionType;
-      combinedSettings.vercelAccessToken = {
-        value: decrypt(combinedSettings.vercelAccessToken),
-        encryptionType,
-      };
-    }
-    for (const provider in combinedSettings.providerSettings) {
-      if (combinedSettings.providerSettings[provider].apiKey) {
-        const encryptionType =
-          combinedSettings.providerSettings[provider].apiKey.encryptionType;
-        combinedSettings.providerSettings[provider].apiKey = {
-          value: decrypt(combinedSettings.providerSettings[provider].apiKey),
-          encryptionType,
-        };
-      }
-      // Decrypt Vertex service account key if present
-      const v = combinedSettings.providerSettings[
-        provider
-      ] as VertexProviderSetting;
-      if (provider === "vertex" && v?.serviceAccountKey) {
-        const encryptionType = v.serviceAccountKey.encryptionType;
-        v.serviceAccountKey = {
-          value: decrypt(v.serviceAccountKey),
-          encryptionType,
-        };
-      }
-      // Decrypt OpenRouter keys if present
-      const p = combinedSettings.providerSettings[provider] as any;
-      if (p.keys && Array.isArray(p.keys)) {
-        for (const keyEntry of p.keys) {
-          if (keyEntry.key) {
-            const encryptionType = keyEntry.key.encryptionType;
-            keyEntry.key = {
-              value: decrypt(keyEntry.key),
-              encryptionType,
+
+    // Decrypt tokens for each organization in the organizations map
+    if (supabase && supabase.organizations) {
+      for (const orgId in supabase.organizations) {
+        const org = supabase.organizations[orgId];
+        try {
+          if (org.accessToken && org.accessToken.encryptionType === "electron-safe-storage") {
+            org.accessToken = {
+              value: decrypt(org.accessToken),
+              encryptionType: "plaintext",
             };
           }
+        } catch (e) {
+          logger.error(`Failed to decrypt accessToken for org ${orgId}:`, e);
+        }
+
+        try {
+          if (org.refreshToken && org.refreshToken.encryptionType === "electron-safe-storage") {
+            org.refreshToken = {
+              value: decrypt(org.refreshToken),
+              encryptionType: "plaintext",
+            };
+          }
+        } catch (e) {
+          logger.error(`Failed to decrypt refreshToken for org ${orgId}:`, e);
+        }
+      }
+    }
+
+    const decryptSafe = (secret: Secret | undefined): Secret | undefined => {
+      if (!secret || secret.encryptionType !== "electron-safe-storage") return secret;
+      try {
+        return {
+          value: decrypt(secret),
+          encryptionType: "plaintext",
+        };
+      } catch (e) {
+        logger.error("Failed to decrypt field, keeping encrypted value:", e);
+        return secret;
+      }
+    };
+
+    if (combinedSettings.neon) {
+      combinedSettings.neon.accessToken = decryptSafe(combinedSettings.neon.accessToken);
+      combinedSettings.neon.refreshToken = decryptSafe(combinedSettings.neon.refreshToken);
+    }
+
+    if (combinedSettings.firebase) {
+      combinedSettings.firebase.accessToken = decryptSafe(combinedSettings.firebase.accessToken);
+      combinedSettings.firebase.refreshToken = decryptSafe(combinedSettings.firebase.refreshToken);
+    }
+
+    if (combinedSettings.githubAccessToken) {
+      combinedSettings.githubAccessToken = decryptSafe(combinedSettings.githubAccessToken);
+    }
+
+    if (combinedSettings.vercelAccessToken) {
+      combinedSettings.vercelAccessToken = decryptSafe(combinedSettings.vercelAccessToken);
+    }
+
+    for (const provider in combinedSettings.providerSettings) {
+      const p = combinedSettings.providerSettings[provider] as any;
+      if (p.apiKey) {
+        p.apiKey = decryptSafe(p.apiKey);
+      }
+      if (provider === "vertex" && p.serviceAccountKey) {
+        p.serviceAccountKey = decryptSafe(p.serviceAccountKey);
+      }
+      if (p.keys && Array.isArray(p.keys)) {
+        for (const keyEntry of p.keys) {
+          keyEntry.key = decryptSafe(keyEntry.key);
         }
       }
     }
@@ -200,6 +200,279 @@ export function readSettings(): UserSettings {
     if (validatedSettings.proSmartContextOption === "conservative") {
       validatedSettings.proSmartContextOption = undefined;
     }
+
+    // ── Migration: v1 model defaults ──
+    // Apply curated model defaults to existing users who haven't customized.
+    // This runs once: the flag is persisted so it won't re-run on future launches.
+    if (!(validatedSettings as any)._migrations?.v1_model_defaults_applied) {
+      const OLD_DEFAULTS = [
+        "", "SAME_AS_CHAT",
+        "x-ai/grok-4.1-fast", "x-ai/grok-code-fast-1",
+        "google/gemini-2.5-flash-lite", "openai/gpt-4.1-mini",
+      ];
+      const shouldMigrate = (current: string | undefined) =>
+        !current || OLD_DEFAULTS.includes(current);
+
+      const migrated: Partial<UserSettings> = {};
+      if (shouldMigrate(validatedSettings.appTitleGenerationModel))
+        (migrated as any).appTitleGenerationModel = "openai/gpt-4.1-nano";
+      if (shouldMigrate(validatedSettings.debateModel))
+        (migrated as any).debateModel = "openai/gpt-5-mini";
+      if (shouldMigrate(validatedSettings.summaryModel))
+        (migrated as any).summaryModel = "google/gemini-3-flash-preview";
+      if (shouldMigrate((validatedSettings as any).todoAnalysisModel))
+        (migrated as any).todoAnalysisModel = "google/gemini-3-flash-preview";
+      if (shouldMigrate((validatedSettings as any).knowledgeExtractionModel))
+        (migrated as any).knowledgeExtractionModel = "openai/gpt-5.1-codex-mini";
+      if (shouldMigrate((validatedSettings as any).dossierModel))
+        (migrated as any).dossierModel = "google/gemini-3-flash-preview";
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v1_model_defaults_applied: true },
+      };
+      logger.info("[Migration] Applied v1 model defaults:", Object.keys(migrated));
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v1 model defaults:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v2 gemini-3-pro → gemini-3.1-pro ──
+    // Replace the deprecated gemini-3-pro-preview with gemini-3.1-pro-preview
+    // in enabledOpenRouterModels and selectedModel. Runs once.
+    if (!(validatedSettings as any)._migrations?.v2_gemini31_pro_applied) {
+      const OLD_MODEL = "google/gemini-3-pro-preview";
+      const NEW_MODEL = "google/gemini-3.1-pro-preview";
+      const migrated: Partial<UserSettings> = {};
+
+      // Migrate enabledOpenRouterModels
+      const enabledModels = (validatedSettings as any).enabledOpenRouterModels as string[] | undefined;
+      if (enabledModels && Array.isArray(enabledModels)) {
+        const idx = enabledModels.indexOf(OLD_MODEL);
+        if (idx !== -1) {
+          const updated = [...enabledModels];
+          // Replace old with new, unless new is already present
+          if (!updated.includes(NEW_MODEL)) {
+            updated[idx] = NEW_MODEL;
+          } else {
+            updated.splice(idx, 1);
+          }
+          (migrated as any).enabledOpenRouterModels = updated;
+        } else if (!enabledModels.includes(NEW_MODEL)) {
+          // Old model not present and new model not present either — add the new one
+          (migrated as any).enabledOpenRouterModels = [...enabledModels, NEW_MODEL];
+        }
+      }
+
+      // Migrate selectedModel if it points to the old model
+      if (validatedSettings.selectedModel?.name === OLD_MODEL) {
+        migrated.selectedModel = {
+          ...validatedSettings.selectedModel,
+          name: NEW_MODEL,
+        };
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v2_gemini31_pro_applied: true },
+      };
+      logger.info("[Migration] Applied v2 gemini-3.1-pro swap:", Object.keys(migrated));
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v2 gemini-3.1-pro swap:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v3 curated model list ──
+    // Replace enabledOpenRouterModels with the new curated 10-model list.
+    // Also migrate selectedModel if it's no longer in the curated set.
+    if (!(validatedSettings as any)._migrations?.v3_curated_models_applied) {
+      const migrated: Partial<UserSettings> = {};
+
+      // Force the curated list
+      (migrated as any).enabledOpenRouterModels = [...DEFAULT_ENABLED_MODELS];
+
+      // If the currently selected model is not in the new curated list, switch to default
+      const currentModelName = validatedSettings.selectedModel?.name;
+      if (currentModelName && !DEFAULT_ENABLED_MODELS.includes(currentModelName)) {
+        migrated.selectedModel = {
+          name: "google/gemini-3-flash-preview",
+          provider: "openrouter",
+        };
+        logger.info(`[Migration v3] Migrated selectedModel from ${currentModelName} to gemini-3-flash-preview`);
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v3_curated_models_applied: true },
+      };
+      logger.info("[Migration] Applied v3 curated model list");
+      // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v3 curated model list:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v4 qwen-plus → qwen-plus:thinking ──
+    // Replace the base qwen/qwen-plus-2025-07-28 with the :thinking variant
+    // in enabledOpenRouterModels and selectedModel. Runs once.
+    if (!(validatedSettings as any)._migrations?.v4_qwen_thinking_model) {
+      const OLD_QWEN = "qwen/qwen-plus-2025-07-28";
+      const NEW_QWEN = "qwen/qwen-plus-2025-07-28:thinking";
+      const migrated: Partial<UserSettings> = {};
+
+      // Migrate enabledOpenRouterModels
+      const enabledModels = (validatedSettings as any).enabledOpenRouterModels as string[] | undefined;
+      if (enabledModels && Array.isArray(enabledModels)) {
+        const idx = enabledModels.indexOf(OLD_QWEN);
+        if (idx !== -1) {
+          const updated = [...enabledModels];
+          if (!updated.includes(NEW_QWEN)) {
+            updated[idx] = NEW_QWEN;
+          } else {
+            updated.splice(idx, 1);
+          }
+          (migrated as any).enabledOpenRouterModels = updated;
+        }
+      }
+
+      // Migrate selectedModel if it points to the old model
+      if (validatedSettings.selectedModel?.name === OLD_QWEN) {
+        migrated.selectedModel = {
+          ...validatedSettings.selectedModel,
+          name: NEW_QWEN,
+        };
+      }
+
+      // Mark migration as done and persist
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v4_qwen_thinking_model: true },
+      };
+      logger.info("[Migration] Applied v4 qwen-plus:thinking swap:", Object.keys(migrated));
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v4 qwen-plus:thinking swap:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v5 unified model keys ──
+    // Replace the 7 individual model fields with 2 unified keys:
+    //   standardModeModel  (cheap/fast)  ← appTitleGenerationModel, todoAnalysisModel, summaryModel, debateModel, dossierModel
+    //   proModeModel        (thinking)   ← turboEditModel, knowledgeExtractionModel
+    if (!(validatedSettings as any)._migrations?.v5_unified_model_keys) {
+      const migrated: Partial<UserSettings> = {};
+      const vs = validatedSettings as any;
+
+      // Pick the best value for standardModeModel from old fields (first non-empty wins)
+      const standardCandidate = vs.standardModeModel || vs.appTitleGenerationModel || vs.summaryModel || vs.todoAnalysisModel || vs.debateModel || vs.dossierModel;
+      if (standardCandidate) {
+        (migrated as any).standardModeModel = standardCandidate;
+      } else {
+        (migrated as any).standardModeModel = "openai/gpt-4.1-nano";
+      }
+
+      // Pick the best value for proModeModel from old fields
+      const proCandidate = vs.proModeModel || vs.turboEditModel || vs.knowledgeExtractionModel;
+      if (proCandidate && proCandidate !== "SAME_AS_CHAT") {
+        (migrated as any).proModeModel = proCandidate;
+      } else {
+        (migrated as any).proModeModel = "openai/gpt-5.1-codex-mini";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v5_unified_model_keys: true },
+      };
+      logger.info("[Migration] Applied v5 unified model keys:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v5 unified model keys:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v6 reasoning effort high ──
+    // Set reasoningEffort to "high" for everyone who hasn't explicitly set it to something else,
+    // or who was using the old default (medium).
+    if (!(validatedSettings as any)._migrations?.v6_reasoning_effort_high) {
+      const migrated: Partial<UserSettings> = {};
+      const currentEffort = (validatedSettings as any).reasoningEffort;
+
+      if (!currentEffort || currentEffort === "medium") {
+        (migrated as any).reasoningEffort = "high";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v6_reasoning_effort_high: true },
+      };
+      logger.info("[Migration] Applied v6 reasoning effort high:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v6 reasoning effort high:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v7 reasoning effort medium ──
+    // Revert reasoning effort from "high" (set by v6) back to "medium".
+    // "medium" provides a better balance of speed and quality for most use cases.
+    if (!(validatedSettings as any)._migrations?.v7_reasoning_effort_medium) {
+      const migrated: Partial<UserSettings> = {};
+      const currentEffort = (validatedSettings as any).reasoningEffort;
+
+      if (!currentEffort || currentEffort === "high") {
+        (migrated as any).reasoningEffort = "medium";
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v7_reasoning_effort_medium: true },
+      };
+      logger.info("[Migration] Applied v7 reasoning effort medium:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v7 reasoning effort medium:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // Update cache
+    cachedSettings = validatedSettings;
+
     return validatedSettings;
   } catch (error) {
     logger.error("Error reading settings:", error);
@@ -210,77 +483,69 @@ export function readSettings(): UserSettings {
 export function writeSettings(settings: Partial<UserSettings>): void {
   try {
     const filePath = getSettingsFilePath();
+
+    // Use readSettings which now uses cache
     const currentSettings = readSettings();
     const newSettings = { ...currentSettings, ...settings };
-    if (newSettings.githubAccessToken) {
-      newSettings.githubAccessToken = encrypt(
-        newSettings.githubAccessToken.value,
-      );
+
+    // Update cache immediately with UNENCRYPTED values
+    cachedSettings = newSettings;
+
+    // Create a deep clone for encryption/writing to avoid mutating the cache
+    const settingsToWrite = JSON.parse(JSON.stringify(newSettings));
+
+    const encryptSafe = (secret: Secret | undefined): Secret | undefined => {
+      if (!secret) return secret;
+      // If already encrypted, don't double-encrypt
+      if (secret.encryptionType === "electron-safe-storage") return secret;
+      return encrypt(secret.value);
+    };
+
+    if (settingsToWrite.githubAccessToken) {
+      settingsToWrite.githubAccessToken = encryptSafe(settingsToWrite.githubAccessToken);
     }
-    if (newSettings.vercelAccessToken) {
-      newSettings.vercelAccessToken = encrypt(
-        newSettings.vercelAccessToken.value,
-      );
+    if (settingsToWrite.vercelAccessToken) {
+      settingsToWrite.vercelAccessToken = encryptSafe(settingsToWrite.vercelAccessToken);
     }
-    if (newSettings.supabase) {
+    if (settingsToWrite.supabase) {
       // Encrypt legacy tokens (kept for backwards compat)
-      if (newSettings.supabase.accessToken) {
-        newSettings.supabase.accessToken = encrypt(
-          newSettings.supabase.accessToken.value,
-        );
-      }
-      if (newSettings.supabase.refreshToken) {
-        newSettings.supabase.refreshToken = encrypt(
-          newSettings.supabase.refreshToken.value,
-        );
-      }
+      settingsToWrite.supabase.accessToken = encryptSafe(settingsToWrite.supabase.accessToken);
+      settingsToWrite.supabase.refreshToken = encryptSafe(settingsToWrite.supabase.refreshToken);
+
       // Encrypt tokens for each organization in the organizations map
-      if (newSettings.supabase.organizations) {
-        for (const orgId in newSettings.supabase.organizations) {
-          const org = newSettings.supabase.organizations[orgId];
-          if (org.accessToken) {
-            org.accessToken = encrypt(org.accessToken.value);
-          }
-          if (org.refreshToken) {
-            org.refreshToken = encrypt(org.refreshToken.value);
-          }
+      if (settingsToWrite.supabase.organizations) {
+        for (const orgId in settingsToWrite.supabase.organizations) {
+          const org = settingsToWrite.supabase.organizations[orgId];
+          org.accessToken = encryptSafe(org.accessToken) as Secret; // Schema says it's required
+          org.refreshToken = encryptSafe(org.refreshToken) as Secret;
         }
       }
     }
-    if (newSettings.neon) {
-      if (newSettings.neon.accessToken) {
-        newSettings.neon.accessToken = encrypt(
-          newSettings.neon.accessToken.value,
-        );
-      }
-      if (newSettings.neon.refreshToken) {
-        newSettings.neon.refreshToken = encrypt(
-          newSettings.neon.refreshToken.value,
-        );
-      }
+    if (settingsToWrite.neon) {
+      settingsToWrite.neon.accessToken = encryptSafe(settingsToWrite.neon.accessToken);
+      settingsToWrite.neon.refreshToken = encryptSafe(settingsToWrite.neon.refreshToken);
     }
-    for (const provider in newSettings.providerSettings) {
-      if (newSettings.providerSettings[provider].apiKey) {
-        newSettings.providerSettings[provider].apiKey = encrypt(
-          newSettings.providerSettings[provider].apiKey.value,
-        );
+    if (settingsToWrite.firebase) {
+      settingsToWrite.firebase.accessToken = encryptSafe(settingsToWrite.firebase.accessToken);
+      settingsToWrite.firebase.refreshToken = encryptSafe(settingsToWrite.firebase.refreshToken);
+    }
+    for (const provider in settingsToWrite.providerSettings) {
+      const p = settingsToWrite.providerSettings[provider] as any;
+      if (p.apiKey) {
+        p.apiKey = encryptSafe(p.apiKey);
       }
       // Encrypt Vertex service account key if present
-      const v = newSettings.providerSettings[provider] as VertexProviderSetting;
-      if (provider === "vertex" && v?.serviceAccountKey) {
-        v.serviceAccountKey = encrypt(v.serviceAccountKey.value);
+      if (provider === "vertex" && p.serviceAccountKey) {
+        p.serviceAccountKey = encryptSafe(p.serviceAccountKey);
       }
       // Encrypt OpenRouter keys if present
-      const p = newSettings.providerSettings[provider] as any;
       if (p.keys && Array.isArray(p.keys)) {
         for (const keyEntry of p.keys) {
-          if (keyEntry.key) {
-            keyEntry.key = encrypt(keyEntry.key.value);
-          }
+          keyEntry.key = encryptSafe(keyEntry.key) as Secret;
         }
       }
     }
-    const validatedSettings = UserSettingsSchema.parse(newSettings);
+    const validatedSettings = UserSettingsSchema.parse(settingsToWrite);
     fs.writeFileSync(filePath, JSON.stringify(validatedSettings, null, 2));
   } catch (error) {
     logger.error("Error writing settings:", error);
@@ -302,6 +567,13 @@ export function encrypt(data: string): Secret {
 
 export function decrypt(data: Secret): string {
   if (data.encryptionType === "electron-safe-storage") {
+    // safeStorage is not available in worker threads (e.g. context_worker)
+    if (!safeStorage?.decryptString) {
+      logger.warn(
+        "safeStorage.decryptString not available (possibly running in a worker thread). Returning raw value.",
+      );
+      return data.value;
+    }
     return safeStorage.decryptString(Buffer.from(data.value, "base64"));
   }
   return data.value;

@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { apps } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -10,7 +10,7 @@ import {
 import { estimateTokens } from "../utils/token_utils";
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
-import { getDyadAppPath } from "@/paths/paths";
+import { getVibesAppPath } from "@/paths/paths";
 import { extractCodebase } from "@/utils/codebase";
 import { validateChatContext } from "../utils/context_paths_utils";
 
@@ -23,8 +23,8 @@ export function registerContextPathsHandlers() {
     async (_, { appId }: { appId: number }): Promise<ContextPathResults> => {
       z.object({ appId: z.number() }).parse({ appId });
 
-      const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+      const app = await getRemoteDb().query.apps.findFirst({
+        where: eq(remoteSchema.apps.id, appId),
       });
 
       if (!app) {
@@ -34,7 +34,7 @@ export function registerContextPathsHandlers() {
       if (!app.path) {
         throw new Error("App path not set");
       }
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
 
       const results: ContextPathResults = {
         contextPaths: [],
@@ -109,7 +109,7 @@ export function registerContextPathsHandlers() {
       });
       schema.parse({ appId, chatContext });
 
-      await db.update(apps).set({ chatContext }).where(eq(apps.id, appId));
+      await getRemoteDb().update(remoteSchema.apps).set({ chatContext }).where(eq(remoteSchema.apps.id, appId));
     },
   );
 }

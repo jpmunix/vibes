@@ -4,22 +4,22 @@ import type {
   ProposalResult,
   ActionProposal,
 } from "../../lib/schemas";
-import { db } from "../../db";
-import { messages, chats } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and } from "drizzle-orm";
 import path from "node:path"; // Import path for basename
 // Import tag parsers
 import { processFullResponseActions } from "../processors/response_processor";
 import {
-  getDyadWriteTags,
-  getDyadRenameTags,
-  getDyadDeleteTags,
-  getDyadExecuteSqlTags,
-  getDyadAddDependencyTags,
-  getDyadChatSummaryTag,
-  getDyadCommandTags,
-  getDyadSearchReplaceTags,
-} from "../utils/dyad_tag_parser";
+  getWriteTags,
+  getRenameTags,
+  getDeleteTags,
+  getExecuteSqlTags,
+  getAddDependencyTags,
+  getChatSummaryTag,
+  getCommandTags,
+  getSearchReplaceTags,
+} from "../utils/tag_parser";
 import log from "electron-log";
 import { isServerFunction } from "../../supabase_admin/supabase_utils";
 import {
@@ -28,7 +28,7 @@ import {
   getContextWindow,
 } from "../utils/token_utils";
 import { extractCodebase } from "../../utils/codebase";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import { withLock } from "../utils/lock_utils";
 import { createLoggedHandler } from "./safe_handle";
 import { ApproveProposalResult } from "@/ipc/types";
@@ -102,7 +102,7 @@ async function getCodebaseTokenCount(
   logger.log(`Calculating codebase token count for chatId: ${chatId}`);
   const codebase = (
     await extractCodebase({
-      appPath: getDyadAppPath(appPath),
+      appPath: getVibesAppPath(appPath),
       chatContext: validateChatContext(chatContext),
     })
   ).formattedOutput;
@@ -124,15 +124,18 @@ async function getCodebaseTokenCount(
 const getProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId }: { chatId: number },
+  context: any,
 ): Promise<ProposalResult | null> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   return withLock("get-proposal:" + chatId, async () => {
     logger.log(`IPC: get-proposal called for chatId: ${chatId}`);
 
     try {
       // Find the latest ASSISTANT message for the chat
       const latestAssistantMessage = await db.query.messages.findFirst({
-        where: and(eq(messages.chatId, chatId), eq(messages.role, "assistant")),
-        orderBy: [desc(messages.createdAt)],
+        where: and(eq(remoteSchema.messages.chatId, chatId), eq(remoteSchema.messages.role, "assistant"), eq(remoteSchema.messages.userId, context.userId)),
+        orderBy: [desc(remoteSchema.messages.createdAt)],
         columns: {
           id: true, // Fetch the ID
           content: true, // Fetch the content to parse
@@ -151,15 +154,15 @@ const getProposalHandler = async (
         );
         const messageContent = latestAssistantMessage.content;
 
-        const proposalTitle = getDyadChatSummaryTag(messageContent);
+        const proposalTitle = getChatSummaryTag(messageContent);
 
-        const proposalWriteFiles = getDyadWriteTags(messageContent);
+        const proposalWriteFiles = getWriteTags(messageContent);
         const proposalSearchReplaceFiles =
-          getDyadSearchReplaceTags(messageContent);
-        const proposalRenameFiles = getDyadRenameTags(messageContent);
-        const proposalDeleteFiles = getDyadDeleteTags(messageContent);
-        const proposalExecuteSqlQueries = getDyadExecuteSqlTags(messageContent);
-        const packagesAdded = getDyadAddDependencyTags(messageContent);
+          getSearchReplaceTags(messageContent);
+        const proposalRenameFiles = getRenameTags(messageContent);
+        const proposalDeleteFiles = getDeleteTags(messageContent);
+        const proposalExecuteSqlQueries = getExecuteSqlTags(messageContent);
+        const packagesAdded = getAddDependencyTags(messageContent);
 
         const filesChanged = [
           ...proposalWriteFiles
@@ -226,7 +229,7 @@ const getProposalHandler = async (
       }
       const actions: ActionProposal["actions"] = [];
       if (latestAssistantMessage?.content) {
-        const writeTags = getDyadWriteTags(latestAssistantMessage.content);
+        const writeTags = getWriteTags(latestAssistantMessage.content);
         const refactorTarget = writeTags.reduce(
           (largest, tag) => {
             const lineCount = tag.content.split("\n").length;
@@ -253,7 +256,7 @@ const getProposalHandler = async (
         }
 
         // Check for command tags and add corresponding actions
-        const commandTags = getDyadCommandTags(latestAssistantMessage.content);
+        const commandTags = getCommandTags(latestAssistantMessage.content);
         if (commandTags.includes("rebuild")) {
           actions.push({
             id: "rebuild",
@@ -273,7 +276,7 @@ const getProposalHandler = async (
 
       // Get all chat messages to calculate token usage
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, chatId),
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           app: true,
           messages: {
@@ -336,7 +339,10 @@ const getProposalHandler = async (
 const approveProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId, messageId }: { chatId: number; messageId: number },
+  context: any,
 ): Promise<ApproveProposalResult> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   if (settings.selectedChatMode === "ask") {
     throw new Error(
@@ -346,9 +352,10 @@ const approveProposalHandler = async (
   // 1. Fetch the specific assistant message
   const messageToApprove = await db.query.messages.findFirst({
     where: and(
-      eq(messages.id, messageId),
-      eq(messages.chatId, chatId),
-      eq(messages.role, "assistant"),
+      eq(remoteSchema.messages.id, messageId),
+      eq(remoteSchema.messages.chatId, chatId),
+      eq(remoteSchema.messages.role, "assistant"),
+      eq(remoteSchema.messages.userId, context.userId),
     ),
     columns: {
       content: true,
@@ -362,7 +369,7 @@ const approveProposalHandler = async (
   }
 
   // 2. Process the actions defined in the message content
-  const chatSummary = getDyadChatSummaryTag(messageToApprove.content);
+  const chatSummary = getChatSummaryTag(messageToApprove.content);
   const processResult = await processFullResponseActions(
     messageToApprove.content,
     chatId,
@@ -389,7 +396,10 @@ const approveProposalHandler = async (
 const rejectProposalHandler = async (
   _event: IpcMainInvokeEvent,
   { chatId, messageId }: { chatId: number; messageId: number },
+  context: any,
 ): Promise<void> => {
+  if (!context?.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   logger.log(
     `IPC: reject-proposal called for chatId: ${chatId}, messageId: ${messageId}`,
   );
@@ -397,9 +407,10 @@ const rejectProposalHandler = async (
   // 1. Verify the message exists and is an assistant message
   const messageToReject = await db.query.messages.findFirst({
     where: and(
-      eq(messages.id, messageId),
-      eq(messages.chatId, chatId),
-      eq(messages.role, "assistant"),
+      eq(remoteSchema.messages.id, messageId),
+      eq(remoteSchema.messages.chatId, chatId),
+      eq(remoteSchema.messages.role, "assistant"),
+      eq(remoteSchema.messages.userId, context.userId),
     ),
     columns: { id: true },
   });
@@ -412,9 +423,9 @@ const rejectProposalHandler = async (
 
   // 2. Update the message's approval state to 'rejected'
   await db
-    .update(messages)
+    .update(remoteSchema.messages)
     .set({ approvalState: "rejected" })
-    .where(eq(messages.id, messageId));
+    .where(and(eq(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, context.userId)));
 
   logger.log(`Message ${messageId} marked as rejected.`);
 };

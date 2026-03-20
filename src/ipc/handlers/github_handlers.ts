@@ -26,21 +26,24 @@ import {
   gitDiffFile,
   gitLocalCommits,
 } from "../utils/git_utils";
-import * as schema from "../../db/schema";
-import fs from "node:fs";
-import { getDyadAppPath } from "../../paths/paths";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 import { GithubUser } from "../../lib/schemas";
+import {
+  githubContracts,
+  CloneRepoParams,
+  CloneRepoResult,
+} from "../types/github";
 import log from "electron-log";
+import { getVibesAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
-import { createTypedHandler } from "./base";
-import { githubContracts } from "../types/github";
-import type { CloneRepoParams, CloneRepoResult } from "../types/github";
-import { openRouterCompletion } from "../utils/openrouter";
+import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
+import * as fs from "node:fs"; // Re-added fs since I removed it above
+// createTypedHandler removed as it's now imported above with HandlerContext
 
 const logger = log.scope("github_handlers");
 
@@ -128,19 +131,22 @@ export async function prepareLocalBranch({
   branch,
   remoteUrl,
   accessToken,
+  userId,
 }: {
   appId: number;
   branch?: string;
   remoteUrl?: string;
   accessToken?: string;
+  userId: string;
 }) {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)) });
   if (!app) {
     throw new Error("App not found");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const targetBranch = branch || "main";
-  const autoCommitEnabled = readSettings().enableGithubAutoCommit !== false;
+  const autoCommitEnabled = true; // Always enabled
 
   try {
     // Set up remote URL if provided (should be set up before calling this)
@@ -177,13 +183,13 @@ export async function prepareLocalBranch({
         if (isGitMergeInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a merge is in progress. " +
-              "Please complete or abort the merge and try again.",
+            "Please complete or abort the merge and try again.",
           );
         }
         if (isGitRebaseInProgress({ path: appPath })) {
           throw new Error(
             "Cannot auto-commit changes because a rebase is in progress. " +
-              "Please complete or abort the rebase and try again.",
+            "Please complete or abort the rebase and try again.",
           );
         }
 
@@ -258,8 +264,8 @@ export async function prepareLocalBranch({
               } catch (innerErr: any) {
                 throw new Error(
                   `Failed to resolve remote branch 'origin/${targetBranch}' to a commit. ` +
-                    "Ensure 'git fetch' succeeded and the remote branch exists. " +
-                    `${innerErr?.message || String(innerErr)}`,
+                  "Ensure 'git fetch' succeeded and the remote branch exists. " +
+                  `${innerErr?.message || String(innerErr)}`,
                 );
               }
             }
@@ -284,7 +290,7 @@ export async function prepareLocalBranch({
               } else {
                 logger.warn(
                   "[GitHub Handler] Previous branch unknown; repository may remain in detached HEAD at " +
-                    `${commitSha}.`,
+                  `${commitSha}.`,
                 );
               }
               throw error;
@@ -317,7 +323,7 @@ export async function prepareLocalBranch({
     ) {
       throw new Error(
         `Failed to prepare local branch: uncommitted changes detected. ` +
-          "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
+        "Unable to automatically handle uncommitted changes. Please commit or stash your changes manually and try again.",
       );
     }
     throw new Error(errorMessage);
@@ -426,9 +432,8 @@ async function pollForAccessToken(event: IpcMainInvokeEvent) {
   } catch (error) {
     logger.error("Error polling for GitHub access token:", error);
     event.sender.send("github:flow-error", {
-      error: `Network or unexpected error during polling: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      error: `Network or unexpected error during polling: ${error instanceof Error ? error.message : String(error)
+        }`,
     });
     stopPolling();
   }
@@ -668,7 +673,9 @@ async function handleCreateRepo(
     appId,
     branch,
   }: { org: string; repo: string; appId: number; branch?: string },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
   // Normalize the repo name to match GitHub's automatic normalization
   // GitHub converts spaces to hyphens when creating repositories
   const normalizedRepo = normalizeGitHubRepoName(repo);
@@ -756,6 +763,7 @@ async function handleCreateRepo(
     branch,
     remoteUrl,
     accessToken,
+    userId: context.userId,
   });
 
   // Store org, repo (normalized), and branch in the app's DB row (apps table)
@@ -764,6 +772,7 @@ async function handleCreateRepo(
     org: owner,
     repo: normalizedRepo,
     branch,
+    userId: context.userId,
   });
 }
 
@@ -776,7 +785,9 @@ async function handleConnectToExistingRepo(
     branch,
     appId,
   }: { owner: string; repo: string; branch: string; appId: number },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
   try {
     // Get access token from settings
     const settings = readSettings();
@@ -814,10 +825,11 @@ async function handleConnectToExistingRepo(
       branch,
       remoteUrl,
       accessToken,
+      userId: context.userId,
     });
 
     // Store org, repo, and branch in the app's DB row
-    await updateAppGithubRepo({ appId, org: owner, repo, branch });
+    await updateAppGithubRepo({ appId, org: owner, repo, branch, userId: context.userId });
   } catch (err: any) {
     logger.error("[GitHub Handler] Failed to connect to existing repo:", err);
     throw new Error(err.message || "Failed to connect to existing repository.");
@@ -838,7 +850,10 @@ async function handlePushToGithub(
     forceWithLease?: boolean;
     commitMessage?: string;
   },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   // Get access token from settings
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
@@ -847,28 +862,28 @@ async function handlePushToGithub(
   }
 
   // Get app info from DB
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const branch = app.githubBranch || "main";
 
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
-    const autoCommitEnabled = settings.enableGithubAutoCommit !== false;
+    const autoCommitEnabled = true; // Always enabled
     if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a merge is in progress. " +
-            "Please complete or abort the merge and try again.",
+          "Please complete or abort the merge and try again.",
         );
       }
       if (isGitRebaseInProgress({ path: appPath })) {
         throw new Error(
           "Cannot auto-commit changes because a rebase is in progress. " +
-            "Please complete or abort the rebase and try again.",
+          "Please complete or abort the rebase and try again.",
         );
       }
 
@@ -968,10 +983,13 @@ async function handlePushToGithub(
 async function handleAbortRebase(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitRebaseAbort({ path: appPath });
 }
@@ -979,10 +997,13 @@ async function handleAbortRebase(
 async function handleContinueRebase(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitRebaseContinue({ path: appPath });
 }
@@ -990,17 +1011,20 @@ async function handleContinueRebase(
 async function handleRebaseFromGithub(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const branch = app.githubBranch || "main";
 
   // Set up remote URL with token
@@ -1042,21 +1066,24 @@ export async function ensureCleanWorkspace(
   if (isClean) return;
   throw new Error(
     `Workspace is not clean before ${operationDescription}. ` +
-      "Please commit or stash your changes manually and try again.",
+    "Please commit or stash your changes manually and try again.",
   );
 }
 
 async function handleGetGitState(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<{
   mergeInProgress: boolean;
   rebaseInProgress: boolean;
   ahead?: number;
 }> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const mergeInProgress = isGitMergeInProgress({ path: appPath });
   const rebaseInProgress = isGitRebaseInProgress({ path: appPath });
@@ -1079,7 +1106,10 @@ async function handleGetGitState(
 async function handleListCollaborators(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<{ login: string; avatar_url: string; permissions: any }[]> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
     const settings = readSettings();
     const accessToken = settings.githubAccessToken?.value;
@@ -1087,7 +1117,7 @@ async function handleListCollaborators(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1123,7 +1153,10 @@ async function handleListCollaborators(
 async function handleInviteCollaborator(
   event: IpcMainInvokeEvent,
   { appId, username }: { appId: number; username: string },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
     // Validate username
     const trimmedUsername = username.trim();
@@ -1155,7 +1188,7 @@ async function handleInviteCollaborator(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1179,7 +1212,7 @@ async function handleInviteCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-          `Failed to invite collaborator: ${response.status} ${response.statusText}`,
+        `Failed to invite collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1191,7 +1224,10 @@ async function handleInviteCollaborator(
 async function handleRemoveCollaborator(
   event: IpcMainInvokeEvent,
   { appId, username }: { appId: number; username: string },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
     const settings = readSettings();
     const accessToken = settings.githubAccessToken?.value;
@@ -1199,7 +1235,7 @@ async function handleRemoveCollaborator(
       throw new Error("Not authenticated with GitHub.");
     }
 
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app || !app.githubOrg || !app.githubRepo) {
       throw new Error("App is not linked to a GitHub repo.");
     }
@@ -1219,7 +1255,7 @@ async function handleRemoveCollaborator(
       const data = await response.json();
       throw new Error(
         data.message ||
-          `Failed to remove collaborator: ${response.status} ${response.statusText}`,
+        `Failed to remove collaborator: ${response.status} ${response.statusText}`,
       );
     }
   } catch (err: any) {
@@ -1231,10 +1267,13 @@ async function handleRemoveCollaborator(
 async function handleGetMergeConflicts(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<string[]> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const conflicts = await gitGetMergeConflicts({ path: appPath });
   return conflicts;
@@ -1243,12 +1282,15 @@ async function handleGetMergeConflicts(
 async function handleDisconnectGithubRepo(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   logger.log(`Disconnecting GitHub repo for appId: ${appId}`);
 
   // Get the app from the database
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
   });
 
   if (!app) {
@@ -1257,19 +1299,22 @@ async function handleDisconnectGithubRepo(
 
   // Update app in database to remove GitHub repo, org, and branch
   await db
-    .update(apps)
+    .update(remoteSchema.apps)
     .set({
       githubRepo: null,
       githubOrg: null,
       githubBranch: null,
     })
-    .where(eq(apps.id, appId));
+    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 }
 // --- GitHub Clone Repo from URL Handler ---
 async function handleCloneRepoFromUrl(
   event: IpcMainInvokeEvent,
   params: CloneRepoParams,
+  context: HandlerContext,
 ): Promise<CloneRepoResult> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const { url, installCommand, startCommand, appName } = params;
   try {
     const settings = readSettings();
@@ -1301,14 +1346,14 @@ async function handleCloneRepoFromUrl(
     }
     const finalAppName = appName && appName.trim() ? appName.trim() : repoName;
     const existingApp = await db.query.apps.findFirst({
-      where: eq(apps.name, finalAppName),
+      where: and(eq(remoteSchema.apps.name, finalAppName), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (existingApp) {
       return { error: `An app named "${finalAppName}" already exists.` };
     }
 
-    const appPath = getDyadAppPath(finalAppName);
+    const appPath = getVibesAppPath(finalAppName);
     // Ensure the app directory exists if native git is disabled
     if (!settings.enableNativeGit) {
       if (!fs.existsSync(appPath)) {
@@ -1338,8 +1383,9 @@ async function handleCloneRepoFromUrl(
     const aiRulesPath = path.join(appPath, "AI_RULES.md");
     const hasAiRules = fs.existsSync(aiRulesPath);
     const [newApp] = await db
-      .insert(schema.apps)
+      .insert(remoteSchema.apps)
       .values({
+        userId: context.userId,
         name: finalAppName,
         path: finalAppName,
         createdAt: new Date(),
@@ -1376,6 +1422,7 @@ async function handleCloneRepoFromUrl(
 async function handleGetPreview(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<{
   uncommittedFiles: Array<{
     path: string;
@@ -1394,13 +1441,15 @@ async function handleGetPreview(
   totalAdditions: number;
   totalDeletions: number;
 }> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const branch = app.githubBranch || "main";
 
     // Get uncommitted files with diffs
@@ -1492,22 +1541,25 @@ async function handleGetPreview(
 async function handleGenerateCommitMessage(
   event: IpcMainInvokeEvent,
   { appId }: { appId: number },
+  context: HandlerContext,
 ): Promise<{ message: string }> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   try {
-    const settings = readSettings();
-    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+    if (!hasOpenRouterApiKey()) {
       throw new Error("OpenRouter API key not found");
     }
+    const settings = readSettings();
 
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
 
-    const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     // Get uncommitted files with diffs
     const { default: git } = await import("isomorphic-git");
@@ -1571,7 +1623,7 @@ Return ONLY the commit message, nothing else.`;
       ],
       temperature: 0.7,
       max_tokens: 100,
-      title: "Dyad - Git Commit Message Generator",
+      title: "Vibes - Git Commit Message Generator",
     });
     const generatedMessage =
       data.choices?.[0]?.message?.content?.trim() ||
@@ -1604,81 +1656,81 @@ export function registerGithubHandlers() {
     return handleIsRepoAvailable(event, params);
   });
 
-  createTypedHandler(githubContracts.createRepo, async (event, params) => {
-    return handleCreateRepo(event, params);
+  createTypedHandler(githubContracts.createRepo, async (event, params, context) => {
+    return handleCreateRepo(event, params, context);
   });
 
   createTypedHandler(
     githubContracts.connectExistingRepo,
-    async (event, params) => {
-      return handleConnectToExistingRepo(event, params);
+    async (event, params, context) => {
+      return handleConnectToExistingRepo(event, params, context);
     },
   );
 
-  createTypedHandler(githubContracts.push, async (event, params) => {
-    return handlePushToGithub(event, params);
+  createTypedHandler(githubContracts.push, async (event, params, context) => {
+    return handlePushToGithub(event, params, context);
   });
 
-  createTypedHandler(githubContracts.rebase, async (event, params) => {
-    return handleRebaseFromGithub(event, params);
+  createTypedHandler(githubContracts.rebase, async (event, params, context) => {
+    return handleRebaseFromGithub(event, params, context);
   });
 
-  createTypedHandler(githubContracts.rebaseAbort, async (event, params) => {
-    return handleAbortRebase(event, params);
+  createTypedHandler(githubContracts.rebaseAbort, async (event, params, context) => {
+    return handleAbortRebase(event, params, context);
   });
 
-  createTypedHandler(githubContracts.rebaseContinue, async (event, params) => {
-    return handleContinueRebase(event, params);
+  createTypedHandler(githubContracts.rebaseContinue, async (event, params, context) => {
+    return handleContinueRebase(event, params, context);
   });
 
   createTypedHandler(
     githubContracts.listCollaborators,
-    async (event, params) => {
-      return handleListCollaborators(event, params);
+    async (event, params, context) => {
+      return handleListCollaborators(event, params, context);
     },
   );
 
   createTypedHandler(
     githubContracts.inviteCollaborator,
-    async (event, params) => {
-      return handleInviteCollaborator(event, params);
+    async (event, params, context) => {
+      return handleInviteCollaborator(event, params, context);
     },
   );
 
   createTypedHandler(
     githubContracts.removeCollaborator,
-    async (event, params) => {
-      return handleRemoveCollaborator(event, params);
+    async (event, params, context) => {
+      return handleRemoveCollaborator(event, params, context);
     },
   );
 
-  createTypedHandler(githubContracts.getConflicts, async (event, params) => {
-    return handleGetMergeConflicts(event, params);
+  createTypedHandler(githubContracts.getConflicts, async (event, params, context) => {
+    return handleGetMergeConflicts(event, params, context);
   });
 
-  createTypedHandler(githubContracts.getGitState, async (event, params) => {
-    return handleGetGitState(event, params);
+  createTypedHandler(githubContracts.getGitState, async (event, params, context) => {
+    return handleGetGitState(event, params, context);
   });
 
-  createTypedHandler(githubContracts.disconnect, async (event, params) => {
-    return handleDisconnectGithubRepo(event, params);
+  createTypedHandler(githubContracts.disconnect, async (event, params, context) => {
+    return handleDisconnectGithubRepo(event, params, context);
   });
 
   createTypedHandler(
     githubContracts.cloneRepoFromUrl,
-    async (event, params) => {
-      return handleCloneRepoFromUrl(event, params);
+    async (event, params, context) => {
+      return handleCloneRepoFromUrl(event, params, context);
     },
   );
 
-  createTypedHandler(githubContracts.getPreview, async (event, params) => {
-    return handleGetPreview(event, params);
+  createTypedHandler(githubContracts.getPreview, async (event, params, context) => {
+    return handleGetPreview(event, params, context);
   });
 
   createTypedHandler(
     githubContracts.generateCommitMessage,
-    async (event, params) => {
-      return handleGenerateCommitMessage(event, params);
+    async (event, params, context) => {
+      return handleGenerateCommitMessage(event, params, context);
     },
   );
 }
@@ -1688,18 +1740,21 @@ export async function updateAppGithubRepo({
   org,
   repo,
   branch,
+  userId,
 }: {
   appId: number;
   org?: string;
   repo: string;
   branch?: string;
+  userId: string;
 }): Promise<void> {
+  const db = getRemoteDb();
   await db
-    .update(schema.apps)
+    .update(remoteSchema.apps)
     .set({
       githubOrg: org,
       githubRepo: repo,
       githubBranch: branch || "main",
     })
-    .where(eq(schema.apps.id, appId));
+    .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
 }

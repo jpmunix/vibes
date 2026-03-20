@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
 import log from "electron-log";
 import {
   ToolDefinition,
@@ -6,140 +9,129 @@ import {
   escapeXmlAttr,
   escapeXmlContent,
 } from "./types";
-import { extractCodebase } from "../../../../../../utils/codebase";
+
+const execFileAsync = promisify(execFile);
 
 const codeSearchSchema = z.object({
   query: z.string().describe("Search query to find relevant files"),
 });
 
-const FileContextSchema = z.object({
-  path: z.string(),
-  content: z.string(),
-});
-
 const logger = log.scope("code_search");
 
-function rankFilesLocally({
-  query,
-  files,
-  maxResults = 20,
-}: {
-  query: string;
-  files: z.infer<typeof FileContextSchema>[];
-  maxResults?: number;
-}): string[] {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return [];
-
-  const scored = files.map((file) => {
-    const pathLower = file.path.toLowerCase();
-    const contentLower = file.content.toLowerCase();
-    let score = 0;
-
-    for (const term of terms) {
-      if (pathLower.includes(term)) {
-        score += 5; // path match is strong
-      }
-      // Count occurrences in content (cheap heuristic, capped)
-      const matches = contentLower.split(term).length - 1;
-      score += Math.min(matches, 5);
-    }
-
-    // Light bonus for shorter files (often more focused)
-    const lengthBonus = Math.max(0, 3 - Math.floor(file.content.length / 5000));
-    score += lengthBonus;
-
-    return { path: file.path, score };
-  });
-
-  return scored
-    .filter((f) => f.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxResults)
-    .map((f) => f.path);
-}
-
-const DESCRIPTION = `Search the codebase semantically to find files relevant to a query. Use this tool when you need to discover which files contain code related to a specific concept, feature, or functionality. Returns a list of file paths that are most relevant to the search query.
+const DESCRIPTION = `Search the codebase using text-based grep to find files relevant to a query. Use this tool when you need to discover which files contain code related to a specific concept, feature, or functionality. Returns a list of file paths that match the search query.
 
 ### When to Use This Tool
 
 - Explore unfamiliar codebases
 - Ask "how / where / what" questions to understand behavior
-- Find code by meaning rather than exact text
+- Find code by keyword or pattern
 
 ### When NOT to Use
 
 Skip this tool for:
-1. Exact text matches (use \`grep\`)
-2. Reading known files (use \`read_file\`)
-3. Simple symbol lookups (use \`grep\`)
+1. Reading known files (use \`read_file\`)
+2. Listing directory contents (use \`list_files\`)
 `;
 
 export const codeSearchTool: ToolDefinition<z.infer<typeof codeSearchSchema>> =
-  {
-    name: "code_search",
-    description: DESCRIPTION,
-    inputSchema: codeSearchSchema,
-    defaultConsent: "always",
+{
+  name: "code_search",
+  description: DESCRIPTION,
+  inputSchema: codeSearchSchema,
+  defaultConsent: "always",
 
-    // Disable in Basic Agent mode (free tier) - requires engine
-    isEnabled: () => true,
+  isEnabled: () => true,
 
-    getConsentPreview: (args) => `Search for "${args.query}"`,
+  getConsentPreview: (args) => `Search for "${args.query}"`,
 
-    buildXml: (args, isComplete) => {
-      if (!args.query) return undefined;
-      if (isComplete) return undefined;
-      return `<dyad-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
-    },
+  buildXml: (args, isComplete) => {
+    if (!args.query) return undefined;
+    if (isComplete) return undefined;
+    return `<vibes-code-search query="${escapeXmlAttr(args.query)}">Searching...`;
+  },
 
-    execute: async (args, ctx: AgentContext) => {
-      logger.log(`Executing code search: ${args.query}`);
+  execute: async (args, ctx: AgentContext) => {
+    logger.log(`Executing code search: ${args.query}`);
 
-      // Gather all files from the project (respecting chatContext includes/excludes)
-      const { files } = await extractCodebase({
-        appPath: ctx.appPath,
-        chatContext: {
-          contextPaths: [],
-          smartContextAutoIncludes: [],
-          excludePaths: [],
+    try {
+      // Use grep to search for the query in the codebase
+      const { stdout } = await execFileAsync(
+        "grep",
+        [
+          "-r",         // recursive
+          "-l",         // files-with-matches only
+          "-i",         // case-insensitive
+          "--include=*.ts",
+          "--include=*.tsx",
+          "--include=*.js",
+          "--include=*.jsx",
+          "--include=*.css",
+          "--include=*.html",
+          "--include=*.json",
+          "--include=*.md",
+          "--include=*.yaml",
+          "--include=*.yml",
+          "--include=*.toml",
+          "--include=*.py",
+          "--include=*.go",
+          "--include=*.rs",
+          "--include=*.vue",
+          "--include=*.svelte",
+          "--exclude-dir=node_modules",
+          "--exclude-dir=.git",
+          "--exclude-dir=dist",
+          "--exclude-dir=.next",
+          "--exclude-dir=.vite",
+          "--exclude-dir=build",
+          args.query,
+          ".",
+        ],
+        {
+          cwd: ctx.appPath,
+          maxBuffer: 1024 * 1024,
+          timeout: 10000,
         },
-      });
+      );
 
-      // Map files to FileContext format (content may be trimmed/omitted upstream)
-      const filesContext = files.map((file) => ({
-        path: file.path,
-        content: file.content,
-      }));
+      // Parse results and make paths relative
+      const files = stdout
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((f) => f.replace(/^\.\//, ""))
+        .slice(0, 30); // Limit to 30 results
 
-      logger.log(`Locally searching ${filesContext.length} files`);
+      logger.log(`Code search returned ${files.length} files`);
 
-      // Local ranking (MCP/engine-free)
-      const relevantFiles = rankFilesLocally({
-        query: args.query,
-        files: filesContext,
-        maxResults: 30,
-      });
-
-      // Format results
       const resultText =
-        relevantFiles.length === 0
+        files.length === 0
           ? "No relevant files found."
-          : relevantFiles.map((f) => ` - ${f}`).join("\n");
+          : files.map((f) => ` - ${f}`).join("\n");
 
-      // Write final result to UI and DB with dyad-code-search wrapper
       ctx.onXmlComplete(
-        `<dyad-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</dyad-code-search>`,
+        `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(resultText)}</vibes-code-search>`,
       );
 
       logger.log(
-        `Code search completed for query: ${args.query}, ${relevantFiles.length} hits`,
+        `Code search completed for query: ${args.query}, ${files.length} hits`,
       );
 
-      if (relevantFiles.length === 0) {
+      if (files.length === 0) {
         return "No relevant files found for the given query.";
       }
 
-      return `Found ${relevantFiles.length} relevant file(s):\n${resultText}`;
-    },
-  };
+      return `Found ${files.length} relevant file(s):\n${resultText}`;
+    } catch (error: any) {
+      // grep returns exit code 1 when no matches found — that's not an error
+      if (error.code === 1) {
+        const noResult = "No relevant files found for the given query.";
+        ctx.onXmlComplete(
+          `<vibes-code-search query="${escapeXmlAttr(args.query)}">${escapeXmlContent(noResult)}</vibes-code-search>`,
+        );
+        return noResult;
+      }
+      logger.error(`Error in code_search:`, error);
+      return `Error performing code search: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  },
+};

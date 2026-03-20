@@ -1,6 +1,10 @@
 import { readSettings, writeSettings } from "./settings";
 
-export function handleDyadProReturn({ apiKey }: { apiKey: string }) {
+/**
+ * Handles a deep link return that sets up an API key.
+ * Note: enableVibesPro removed — always Pro after acquisition.
+ */
+export function handleProReturn({ apiKey }: { apiKey: string }) {
   const settings = readSettings();
   writeSettings({
     providerSettings: {
@@ -12,7 +16,6 @@ export function handleDyadProReturn({ apiKey }: { apiKey: string }) {
         },
       },
     },
-    enableDyadPro: true,
     // Switch to local-agent mode and auto model for a good default experience
     selectedChatMode: "local-agent",
     selectedModel: {

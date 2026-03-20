@@ -40,15 +40,14 @@ or to provide a custom fetch implementation for e.g. testing.
 */
   fetch?: FetchFunction;
 
-  dyadOptions: {
+  vibesOptions: {
     enableLazyEdits?: boolean;
     enableSmartFilesContext?: boolean;
-    enableWebSearch?: boolean;
   };
   settings: UserSettings;
 }
 
-export interface DyadEngineProvider {
+export interface VibesEngineProvider {
   /**
 Creates a model for text generation.
 */
@@ -62,11 +61,11 @@ Creates a chat model for text generation.
   responses(modelId: ExampleChatModelId, chatParams: ChatParams): LanguageModel;
 }
 
-export function createDyadEngine(
+export function createVibesEngine(
   options: ExampleProviderSettings,
-): DyadEngineProvider {
+): VibesEngineProvider {
   const baseURL = withoutTrailingSlash(options.baseURL);
-  logger.info("creating dyad engine with baseURL", baseURL);
+  logger.info("creating vibes engine with baseURL", baseURL);
 
   // Track request ID attempts
   const requestIdAttempts = new Map<string, number>();
@@ -74,7 +73,7 @@ export function createDyadEngine(
   const getHeaders = () => ({
     Authorization: `Bearer ${loadApiKey({
       apiKey: options.apiKey,
-      environmentVariableName: "DYAD_PRO_API_KEY",
+      environmentVariableName: "VIBES_PRO_API_KEY",
       description: "Example API key",
     })}`,
     ...options.headers,
@@ -88,7 +87,7 @@ export function createDyadEngine(
   }
 
   const getCommonModelConfig = (): CommonModelConfig => ({
-    provider: `dyad-engine`,
+    provider: `vibes-engine`,
     url: ({ path }) => {
       const url = new URL(`${baseURL}${path}`);
       if (options.queryParams) {
@@ -100,8 +99,8 @@ export function createDyadEngine(
     fetch: options.fetch,
   });
 
-  // Custom fetch implementation that adds dyad-specific options to the request
-  const createDyadFetch = ({
+  // Custom fetch implementation that adds vibes-specific options to the request
+  const createVibesFetch = ({
     providerId,
   }: {
     providerId: string;
@@ -118,33 +117,33 @@ export function createDyadEngine(
           ...JSON.parse(init.body),
           ...getExtraProviderOptions(providerId, options.settings),
         };
-        const dyadVersionedFiles = parsedBody.dyadVersionedFiles;
-        if ("dyadVersionedFiles" in parsedBody) {
-          delete parsedBody.dyadVersionedFiles;
+        const vibesVersionedFiles = parsedBody.vibesVersionedFiles;
+        if ("vibesVersionedFiles" in parsedBody) {
+          delete parsedBody.vibesVersionedFiles;
         }
-        const dyadFiles = parsedBody.dyadFiles;
-        if ("dyadFiles" in parsedBody) {
-          delete parsedBody.dyadFiles;
+        const vibesFiles = parsedBody.vibesFiles;
+        if ("vibesFiles" in parsedBody) {
+          delete parsedBody.vibesFiles;
         }
-        const requestId = parsedBody.dyadRequestId;
-        if ("dyadRequestId" in parsedBody) {
-          delete parsedBody.dyadRequestId;
+        const requestId = parsedBody.vibesRequestId;
+        if ("vibesRequestId" in parsedBody) {
+          delete parsedBody.vibesRequestId;
         }
-        const dyadAppId = parsedBody.dyadAppId;
-        if ("dyadAppId" in parsedBody) {
-          delete parsedBody.dyadAppId;
+        const vibesAppId = parsedBody.vibesAppId;
+        if ("vibesAppId" in parsedBody) {
+          delete parsedBody.vibesAppId;
         }
-        const dyadDisableFiles = parsedBody.dyadDisableFiles;
-        if ("dyadDisableFiles" in parsedBody) {
-          delete parsedBody.dyadDisableFiles;
+        const vibesDisableFiles = parsedBody.vibesDisableFiles;
+        if ("vibesDisableFiles" in parsedBody) {
+          delete parsedBody.vibesDisableFiles;
         }
-        const dyadMentionedApps = parsedBody.dyadMentionedApps;
-        if ("dyadMentionedApps" in parsedBody) {
-          delete parsedBody.dyadMentionedApps;
+        const vibesMentionedApps = parsedBody.vibesMentionedApps;
+        if ("vibesMentionedApps" in parsedBody) {
+          delete parsedBody.vibesMentionedApps;
         }
-        const dyadSmartContextMode = parsedBody.dyadSmartContextMode;
-        if ("dyadSmartContextMode" in parsedBody) {
-          delete parsedBody.dyadSmartContextMode;
+        const vibesSmartContextMode = parsedBody.vibesSmartContextMode;
+        if ("vibesSmartContextMode" in parsedBody) {
+          delete parsedBody.vibesSmartContextMode;
         }
 
         // Track and modify requestId with attempt number
@@ -156,19 +155,18 @@ export function createDyadEngine(
         }
 
         // Add files to the request if they exist
-        if (!dyadDisableFiles) {
-          parsedBody.dyad_options = {
-            files: dyadFiles,
-            versioned_files: dyadVersionedFiles,
-            enable_lazy_edits: options.dyadOptions.enableLazyEdits,
+        if (!vibesDisableFiles) {
+          parsedBody.vibes_options = {
+            files: vibesFiles,
+            versioned_files: vibesVersionedFiles,
+            enable_lazy_edits: options.vibesOptions.enableLazyEdits,
             enable_smart_files_context:
-              options.dyadOptions.enableSmartFilesContext,
-            smart_context_mode: dyadSmartContextMode,
-            enable_web_search: options.dyadOptions.enableWebSearch,
-            app_id: dyadAppId,
+              options.vibesOptions.enableSmartFilesContext,
+            smart_context_mode: vibesSmartContextMode,
+            app_id: vibesAppId,
           };
-          if (dyadMentionedApps?.length) {
-            parsedBody.dyad_options.mentioned_apps = dyadMentionedApps;
+          if (vibesMentionedApps?.length) {
+            parsedBody.vibes_options.mentioned_apps = vibesMentionedApps;
           }
         }
 
@@ -178,7 +176,7 @@ export function createDyadEngine(
           headers: {
             ...init.headers,
             ...(modifiedRequestId && {
-              "X-Dyad-Request-Id": modifiedRequestId,
+              "X-Vibes-Request-Id": modifiedRequestId,
             }),
           },
           body: JSON.stringify(parsedBody),
@@ -200,7 +198,7 @@ export function createDyadEngine(
   ) => {
     const config = {
       ...getCommonModelConfig(),
-      fetch: createDyadFetch({ providerId: chatParams.providerId }),
+      fetch: createVibesFetch({ providerId: chatParams.providerId }),
     };
 
     return new OpenAICompatibleChatLanguageModel(modelId, config);
@@ -212,7 +210,7 @@ export function createDyadEngine(
   ) => {
     const config = {
       ...getCommonModelConfig(),
-      fetch: createDyadFetch({ providerId: chatParams.providerId }),
+      fetch: createVibesFetch({ providerId: chatParams.providerId }),
     };
 
     return new OpenAIResponsesLanguageModel(modelId, config);

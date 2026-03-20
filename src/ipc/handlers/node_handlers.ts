@@ -69,17 +69,9 @@ export function registerNodeHandlers() {
       return { nodeVersion: null, pnpmVersion: null, nodeDownloadUrl };
     }
 
-    // Run checks in parallel
-    const [nodeVersion, pnpmVersion] = await Promise.all([
-      runShellCommand("node --version"),
-      // First, check if pnpm is installed.
-      // If not, try to install it using corepack.
-      // If both fail, then pnpm is not available.
-      runShellCommand(
-        "pnpm --version || (corepack enable pnpm && pnpm --version) || (npm install -g pnpm@latest-10 && pnpm --version)",
-      ),
-    ]);
-    return { nodeVersion, pnpmVersion, nodeDownloadUrl };
+    // Run check for node version
+    const nodeVersion = await runShellCommand("node --version");
+    return { nodeVersion, nodeDownloadUrl };
   });
 
   createTypedHandler(systemContracts.reloadEnvPath, async () => {

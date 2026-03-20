@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard } from "electron";
+import { BrowserWindow, clipboard, dialog } from "electron";
 import { platform, arch } from "os";
 import { readSettings } from "../../main/settings";
 import { createTypedHandler } from "./base";
@@ -11,10 +11,10 @@ import path from "path";
 import fs from "fs";
 import { runShellCommand } from "../utils/runShellCommand";
 import { extractCodebase } from "../../utils/codebase";
-import { db } from "../../db";
-import { chats, apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
+import { getVibesAppPath } from "../../paths/paths";
 import { LargeLanguageModel } from "@/lib/schemas";
 import { validateChatContext } from "../utils/context_paths_utils";
 
@@ -28,7 +28,7 @@ async function getSystemDebugInfo({
 }): Promise<SystemDebugInfo> {
   console.log("Getting system debug info");
 
-  // Get Node.js and pnpm versions
+  // Get Node.js version
   let nodeVersion: string | null = null;
   let pnpmVersion: string | null = null;
   let nodePath: string | null = null;
@@ -36,12 +36,6 @@ async function getSystemDebugInfo({
     nodeVersion = await runShellCommand("node --version");
   } catch (err) {
     console.error("Failed to get Node.js version:", err);
-  }
-
-  try {
-    pnpmVersion = await runShellCommand("pnpm --version");
-  } catch (err) {
-    console.error("Failed to get pnpm version:", err);
   }
 
   try {
@@ -54,12 +48,12 @@ async function getSystemDebugInfo({
     console.error("Failed to get node path:", err);
   }
 
-  // Get Dyad version from package.json
+  // Get Vibes version from package.json
   const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
-  let dyadVersion = "unknown";
+  let vibesVersion = "unknown";
   try {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    dyadVersion = packageJson.version;
+    vibesVersion = packageJson.version;
   } catch (err) {
     console.error("Failed to read package.json:", err);
   }
@@ -103,14 +97,13 @@ async function getSystemDebugInfo({
 
   return {
     nodeVersion,
-    pnpmVersion,
     nodePath,
     telemetryId,
     selectedLanguageModel:
       serializeModelForDebug(settings.selectedModel) || "unknown",
     telemetryConsent: settings.telemetryConsent || "unknown",
     telemetryUrl: "https://us.i.posthog.com", // Hardcoded from renderer.tsx
-    dyadVersion,
+    vibesVersion,
     platform: process.platform,
     architecture: arch(),
     logs,
@@ -126,8 +119,9 @@ export function registerDebugHandlers() {
     });
   });
 
-  createTypedHandler(miscContracts.getChatLogs, async (_, chatId) => {
+  createTypedHandler(miscContracts.getChatLogs, async (_, chatId, context) => {
     console.log(`IPC: get-chat-logs called for chat ${chatId}`);
+    if (!context.userId) throw new Error("Unauthorized");
 
     try {
       // We can retrieve a lot more lines here because we're not limited by the
@@ -137,9 +131,10 @@ export function registerDebugHandlers() {
         level: "info",
       });
 
-      // Get chat data from database
+      // Get chat data from remote database
+      const db = getRemoteDb();
       const chatRecord = await db.query.chats.findFirst({
-        where: eq(chats.id, chatId),
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -163,9 +158,9 @@ export function registerDebugHandlers() {
         })),
       };
 
-      // Get app data from database
+      // Get app data from remote database
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, chatRecord.appId),
+        where: and(eq(remoteSchema.apps.id, chatRecord.appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -173,7 +168,7 @@ export function registerDebugHandlers() {
       }
 
       // Extract codebase
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
       const codebase = (
         await extractCodebase({
           appPath,
@@ -194,18 +189,46 @@ export function registerDebugHandlers() {
 
   console.log("Registered debug IPC handlers");
 
-  createTypedHandler(systemContracts.takeScreenshot, async () => {
-    const win = BrowserWindow.getFocusedWindow();
-    if (!win) throw new Error("No focused window to capture");
+  createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (!win) throw new Error("No window to capture");
 
-    // Capture the window's current contents as a NativeImage
-    const image = await win.capturePage();
+    // Capture the window's current contents
+    // Electron's capturePage accepts a rect {x, y, width, height}
+    const image = params?.rect
+      ? await win.capturePage(params.rect)
+      : await win.capturePage();
+
     // Validate image
     if (!image || image.isEmpty()) {
       throw new Error("Failed to capture screenshot");
     }
-    // Write the image to the clipboard
+    // Write the image to the clipboard (still useful for manual paste)
     clipboard.writeImage(image);
+
+    // Return data URL for the UI to use
+    return image.toDataURL();
+  });
+
+  createTypedHandler(systemContracts.saveTextToFile, async (_, params) => {
+    const { content, defaultName, filters } = params;
+
+    const result = await dialog.showSaveDialog({
+      defaultPath: defaultName,
+      filters: filters,
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { filePath: null, canceled: true };
+    }
+
+    try {
+      fs.writeFileSync(result.filePath, content, "utf8");
+      return { filePath: result.filePath, canceled: false };
+    } catch (error) {
+      log.error("Failed to save text to file:", error);
+      throw error;
+    }
   });
 }
 

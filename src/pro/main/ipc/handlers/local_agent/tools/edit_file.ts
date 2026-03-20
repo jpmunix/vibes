@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import log from "electron-log";
-import { ToolDefinition, AgentContext, escapeXmlAttr } from "./types";
+import { ToolDefinition, ToolError, AgentContext, escapeXmlAttr } from "./types";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import { deploySupabaseFunction } from "../../../../../../supabase_admin/supabase_management_client";
 import {
@@ -29,6 +29,14 @@ const turboFileEditResponseSchema = z.object({
   result: z.string(),
 });
 
+function containsPlaceholders(content: string): boolean {
+  return (
+    content.includes("// ... existing code ...") ||
+    content.includes("// ... existing code") ||
+    content.includes("/* ... existing code ... */")
+  );
+}
+
 async function callTurboFileEdit(
   params: {
     path: string;
@@ -51,19 +59,33 @@ async function callTurboFileEdit(
       }),
     });
   } catch (error) {
-    logger.warn(
-      "Turbo edit request failed, falling back to local rewrite",
-      error,
+    logger.warn("Turbo edit request failed", error);
+    throw new ToolError(
+      `Fallo crítico en la fusión de archivos (Network Error). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
     );
-    response = null;
   }
 
   if (!response || !response.ok) {
-    // Fallback: return requested content so caller can write full file
-    return params.content;
+    const errorText = await response?.text().catch(() => "Unknown error");
+    logger.error("Turbo edit failed", errorText);
+    throw new ToolError(
+      `No se pudo fusionar el archivo correctamente (Engine Error: ${response?.status}). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.`,
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
+    );
   }
 
   const data = turboFileEditResponseSchema.parse(await response.json());
+
+  // FINAL SAFETY CHECK: Never allow returning content that still has placeholders
+  if (containsPlaceholders(data.result)) {
+    logger.error("Turbo edit returned content with placeholders", data.result);
+    throw new ToolError(
+      "El motor de fusión devolvió un archivo incompleto (contiene marcadores de posición). Reintenta usando 'search_replace' con al menos 5 líneas de contexto antes y después de cada cambio. NO uses 'write_file'.",
+      { retryable: true, hint: "Use search_replace instead of edit_file." },
+    );
+  }
+
   return data.result;
 }
 
@@ -85,19 +107,6 @@ Do NOT use this tool when:
 
 When writing the edit, you should specify each edit in sequence, with the special comment // ... existing code ... to represent unchanged code in between edited lines.
 
-Basic example:
-\`\`\`
-edit_file(path="file.js", instructions="I am adding error handling to the fetchData function and updating the return type.", content="""
-// ... existing code ...
-FIRST_EDIT
-// ... existing code ...
-SECOND_EDIT
-// ... existing code ...
-THIRD_EDIT
-// ... existing code ...
-""")
-\`\`\`
-
 ## General Principles
 
 You should bias towards repeating as few lines of the original file as possible to convey the change.
@@ -107,41 +116,24 @@ NEVER show unmodified code in the edit, unless sufficient context of unchanged l
 DO NOT omit spans of pre-existing code without using the // ... existing code ... comment to indicate its absence.
 
 ## Example: Basic Edit
-\`\`\`
-edit_file(path="LandingPage.tsx", instructions="I am changing the return statement in LandingPage to render a div with 'hello' instead of the previous content.", content="""
-// ... existing code ...
-
-const LandingPage = () => {
-  // ... existing code ...
-  return (
-    <div>hello</div>
-  );
-};
-
-// ... existing code ...
-""")
-\`\`\`
+\\\`\\\`\\\`json
+{
+  "path": "LandingPage.tsx",
+  "instructions": "I am changing the return statement in LandingPage to render a div with 'hello' instead of the previous content.",
+  "content": "// ... existing code ...\\n\\nconst LandingPage = () => {\\n  // ... existing code ...\\n  return (\\n    <div>hello</div>\\n  );\\n};\\n\\n// ... existing code ..."
+}
+\\\`\\\`\\\`
 
 ## Example: Deleting Code
 
 **When deleting code, you must provide surrounding context and leave an explicit comment indicating what was removed.**
-\`\`\`
-edit_file(path="utils.ts", instructions="I am removing the deprecatedHelper function located between currentHelper and anotherHelper.", content="""
-// ... existing code ...
-
-export function currentHelper() {
-  return "active";
+\\\`\\\`\\\`json
+{
+  "path": "utils.ts",
+  "instructions": "I am removing the deprecatedHelper function located between currentHelper and anotherHelper.",
+  "content": "// ... existing code ...\\n\\nexport function currentHelper() {\\n  return \\"active\\";\\n}\\n\\n// REMOVED: deprecatedHelper() function\\n\\nexport function anotherHelper() {\\n  return \\"working\\";\\n}\\n\\n// ... existing code ..."
 }
-
-// REMOVED: deprecatedHelper() function
-
-export function anotherHelper() {
-  return "working";
-}
-
-// ... existing code ...
-""")
-\`\`\`
+\\\`\\\`\\\`
 `;
 export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
   name: "edit_file",
@@ -155,12 +147,21 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
 
   getConsentPreview: (args) => `Edit ${args.path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.path) return undefined;
 
-    let xml = `<dyad-edit path="${escapeXmlAttr(args.path)}" description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.path]) {
+      const counts = ctx.fileEditTracker[args.path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
+
+    let xml = `<vibes-edit path="${escapeXmlAttr(args.path)}"${retryAttr} description="${escapeXmlAttr(args.instructions ?? "")}">\n${args.content ?? ""}`;
     if (isComplete) {
-      xml += "\n</dyad-edit>";
+      xml += "\n</vibes-edit>";
     }
     return xml;
   },
@@ -175,7 +176,10 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
 
     // Read original file content
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.path}`);
+      throw new ToolError(`File does not exist: ${args.path}`, {
+        retryable: false,
+        hint: "Check the file path. Use list_files to see available files.",
+      });
     }
 
     const originalContent = await readFile(fullFilePath, "utf8");
@@ -194,8 +198,9 @@ export const editFileTool: ToolDefinition<z.infer<typeof editFileSchema>> = {
     );
 
     if (!newContent) {
-      throw new Error(
+      throw new ToolError(
         "Failed to extract content from turbo-file-edit response",
+        { retryable: true, hint: "Try using search_replace instead." },
       );
     }
 

@@ -302,26 +302,6 @@ export function AIGeneratorTab({
     setAiGeneratedPrompt,
   ]);
 
-  // Show Pro-only locked state for non-Pro users
-  if (!userBudget) {
-    return (
-      <div className="space-y-4 mt-4">
-        <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/10">
-          <Lock className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold text-center mb-2">
-            Generador de temas por IA
-          </h3>
-          <p className="text-sm text-muted-foreground text-center max-w-md">
-            Sube capturas de pantalla y deja que la IA genere un prompt de tema
-            personalizado adaptado a tu estilo de diseño.
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-2">
-            Función exclusiva Pro
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4 mt-4">
@@ -352,11 +332,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setInputSource("images")}
-            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${
-              inputSource === "images"
+            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${inputSource === "images"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <Upload className="h-5 w-5 mb-1" />
             <span className="font-medium text-sm">Subir imágenes</span>
@@ -367,11 +346,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setInputSource("url")}
-            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${
-              inputSource === "url"
+            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${inputSource === "url"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <Link className="h-5 w-5 mb-1" />
             <span className="font-medium text-sm">URL del sitio web</span>
@@ -482,11 +460,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setAiGenerationMode("inspired")}
-            className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${
-              aiGenerationMode === "inspired"
+            className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${aiGenerationMode === "inspired"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <span className="font-medium">Inspirado</span>
             <span className="text-xs text-muted-foreground mt-1">
@@ -497,11 +474,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setAiGenerationMode("high-fidelity")}
-            className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${
-              aiGenerationMode === "high-fidelity"
+            className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${aiGenerationMode === "high-fidelity"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <span className="font-medium">Alta fidelidad</span>
             <span className="text-xs text-muted-foreground mt-1">
@@ -518,11 +494,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setAiSelectedModel("gemini-3-pro")}
-            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${
-              aiSelectedModel === "gemini-3-pro"
+            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${aiSelectedModel === "gemini-3-pro"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <span className="font-medium text-sm">Gemini 3 Pro</span>
             <span className="text-xs text-muted-foreground mt-1">
@@ -532,11 +507,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setAiSelectedModel("claude-opus-4.5")}
-            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${
-              aiSelectedModel === "claude-opus-4.5"
+            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${aiSelectedModel === "claude-opus-4.5"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <span className="font-medium text-sm">Claude Opus 4.5</span>
             <span className="text-xs text-muted-foreground mt-1">
@@ -546,11 +520,10 @@ export function AIGeneratorTab({
           <button
             type="button"
             onClick={() => setAiSelectedModel("gpt-5.2")}
-            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${
-              aiSelectedModel === "gpt-5.2"
+            className={`flex flex-col items-center rounded-lg border p-3 text-center transition-colors ${aiSelectedModel === "gpt-5.2"
                 ? "border-primary bg-primary/5"
                 : "hover:bg-muted/50"
-            }`}
+              }`}
           >
             <span className="font-medium text-sm">GPT 5.2</span>
             <span className="text-xs text-muted-foreground mt-1">

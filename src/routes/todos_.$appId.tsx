@@ -1,9 +1,16 @@
+import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { createRoute } from "@tanstack/react-router";
-import TodoDetailPage from "../pages/todos_.$appId";
 import { todosRoute } from "./todos";
+
+const TodoDetailPage = React.lazy(() => import("../pages/todos_.$appId"));
 
 export const todoDetailRoute = createRoute({
   getParentRoute: () => todosRoute,
   path: "$appId",
-  component: TodoDetailPage,
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <TodoDetailPage />
+    </Suspense>
+  ),
 });

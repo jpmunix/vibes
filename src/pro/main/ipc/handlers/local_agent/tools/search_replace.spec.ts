@@ -26,6 +26,7 @@ vi.mock("electron-log", () => ({
       warn: vi.fn(),
       error: vi.fn(),
       debug: vi.fn(),
+      info: vi.fn(),
     }),
   },
 }));
@@ -43,11 +44,15 @@ describe("searchReplaceTool", () => {
     chatId: 1,
     supabaseProjectId: null,
     supabaseOrganizationSlug: null,
+    firebaseProjectId: "test-project",
+    bunnyConfig: null,
+    pocketbaseConfig: null,
     messageId: 1,
     isSharedModulesChanged: false,
     isBasicAgentMode: false,
     todos: [],
-    dyadRequestId: "test-request",
+    typecheckResults: [],
+    vibesRequestId: "test-request",
     fileEditTracker: {},
     onXmlStream: vi.fn(),
     onXmlComplete: vi.fn(),
@@ -230,7 +235,7 @@ describe("searchReplaceTool", () => {
           },
           mockContext,
         ),
-      ).rejects.toThrow(/ambiguous|multiple/i);
+      ).rejects.toThrow(/search_replace failed.*old_string not found/i);
     });
 
     it("matches with fuzzy matching when whitespace differs", async () => {
@@ -362,7 +367,7 @@ describe("searchReplaceTool", () => {
           },
           mockContext,
         ),
-      ).rejects.toThrow(/Read the latest file/i);
+      ).rejects.toThrow(/search_replace failed.*old_string not found/i);
     });
   });
 
@@ -401,7 +406,7 @@ describe("searchReplaceTool", () => {
       expect(result).toContain("=======");
       expect(result).toContain("new content");
       expect(result).toContain(">>>>>>> REPLACE");
-      expect(result).toContain("</dyad-search-replace>");
+      expect(result).toContain("</vibes-search-replace>");
     });
   });
 

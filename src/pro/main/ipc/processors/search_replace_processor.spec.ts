@@ -611,7 +611,8 @@ function greet() {
         File line 2:   "  console.log('Hello');"
 
       === END MATCH FAILURE ===
-      "
+
+      search_replace: Failed to apply block 1/1. Error: Search block did not match any content in the target file."
     `);
   });
 
@@ -666,11 +667,12 @@ replaced
         File line 3:   "line three"
 
       === END MATCH FAILURE ===
-      "
+
+      search_replace: Failed to apply block 1/1. Error: Search block did not match any content in the target file."
     `);
   });
 
-  it("logs with JSON escaping to show invisible characters", () => {
+  it("matches tab as equivalent to spaces (internal whitespace normalization)", () => {
     const original = "hello\tworld\ntest";
 
     const diff = `
@@ -681,33 +683,9 @@ replaced
 >>>>>>> REPLACE
 `;
 
-    const { success } = applySearchReplace(original, diff);
-    expect(success).toBe(false);
-
-    // Verify JSON.stringify is used (shows \t as escaped in the output)
-    const allErrorCalls = mockError.mock.calls
-      .map((call) => call[0])
-      .join("\n");
-    expect(allErrorCalls).toMatchInlineSnapshot(`
-      "=== SEARCH/REPLACE MATCH FAILURE (Block 1) ===
-
-      --- SEARCH CONTENT (1 lines) ---
-          1: "hello world"
-
-      --- BEST PARTIAL MATCH: 0/1 lines match ---
-          Location: lines 1-1 of original file
-          First mismatch at search line: 1
-
-      --- ORIGINAL FILE (lines 1-2, match region marked with >) ---
-        X    1: "hello\\tworld"
-             2: "test"
-
-      --- FIRST MISMATCH DETAILS ---
-        Search line 1: "hello world"
-        File line 1:   "hello\\tworld"
-
-      === END MATCH FAILURE ===
-      "
-    `);
+    const { success, content } = applySearchReplace(original, diff);
+    expect(success).toBe(true);
+    expect(content).toContain("replaced");
+    expect(content).toContain("test");
   });
 });

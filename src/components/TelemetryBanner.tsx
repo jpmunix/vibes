@@ -26,7 +26,7 @@ export function PrivacyBanner() {
             ¿Compartir datos anónimos?
           </h4>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Ayuda a mejorar Dyad con datos de uso anónimos.
+            Ayuda a mejorar Vibes con datos de uso anónimos.
             <em className="block italic mt-0.5">
               Nota: esto no registra tu código ni tus mensajes.
             </em>

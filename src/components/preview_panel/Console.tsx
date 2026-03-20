@@ -1,4 +1,4 @@
-import { appConsoleEntriesAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
+import { appConsoleEntriesAtom, currentAppAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
 import type { ConsoleEntry } from "@/ipc/types";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ipc } from "@/ipc/types";
@@ -68,6 +68,7 @@ export const Console = () => {
   const consoleEntries = useAtomValue(appConsoleEntriesAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const currentApp = useAtomValue(currentAppAtom);
   const { settings } = useSettings();
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -140,6 +141,50 @@ export const Console = () => {
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Fetch initial logs and subscribe to updates
+  useEffect(() => {
+    if (!selectedAppId) return;
+
+    let isMounted = true;
+
+    // Fetch existing logs
+    ipc.misc.getConsoleLogs({ appId: selectedAppId }).then((logs) => {
+      if (isMounted) {
+        // Convert ConsoleEntry to match local AppOutput-like structure if needed
+        // The atom expects an array of log objects.
+        // ConsoleEntry has { type, level, message, timestamp, sourceName, appId }
+        // AppOutput has { type, message, appId, timestamp }
+        // They are compatible enough for display.
+        setConsoleEntries(logs);
+      }
+    }).catch(console.error);
+
+    // Subscribe to batched logs
+    const unsubscribeBatch = ipc.events.misc.onAppLogsBatch((batch) => {
+      if (batch.appId === selectedAppId) {
+        setConsoleEntries((prev) => {
+          // Deduplicate logic could go here if needed, but timestamp should be unique enough?
+          // Actually, simplest is just append.
+          return [...prev, ...batch.logs.map(log => ({
+            ...log,
+            level: log.type === "stderr" || log.type === "client-error" ? "error" as const : "info" as const,
+            type: "server" as const,
+            timestamp: log.timestamp ?? Date.now()
+          }))];
+        });
+      }
+    });
+
+    // Note: we intentionally do NOT subscribe to onAppOutput here.
+    // The batch subscription above already covers all app output.
+    // Proxy events and client errors are handled by useAppOutputSubscription in layout.tsx.
+
+    return () => {
+      isMounted = false;
+      unsubscribeBatch();
+    };
+  }, [selectedAppId, setConsoleEntries]);
+
   // Show filters after initial render and when panel is large enough
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -157,22 +202,59 @@ export const Console = () => {
     return Array.from(sources).sort();
   }, [consoleEntries]);
 
-  // Filter and sort console entries by timestamp
+  // Filter console entries (logs arrive in chronological order from the backend)
   const filteredEntries = useMemo(() => {
-    return consoleEntries
-      .filter((entry) => {
-        if (levelFilter !== "all" && entry.level !== levelFilter) return false;
-        if (typeFilter !== "all" && entry.type !== typeFilter) return false;
-        if (
-          sourceFilter &&
-          sourceFilter !== "all" &&
-          entry.sourceName !== sourceFilter
-        )
-          return false;
-        return true;
-      })
-      .sort((a, b) => a.timestamp - b.timestamp);
+    return consoleEntries.filter((entry) => {
+      if (levelFilter !== "all" && entry.level !== levelFilter) return false;
+      if (typeFilter !== "all" && entry.type !== typeFilter) return false;
+      if (
+        sourceFilter &&
+        sourceFilter !== "all" &&
+        entry.sourceName !== sourceFilter
+      )
+        return false;
+      return true;
+    });
   }, [consoleEntries, levelFilter, typeFilter, sourceFilter]);
+
+  const handleExportLogs = useCallback(async () => {
+    if (filteredEntries.length === 0) {
+      showError("No hay logs para exportar");
+      return;
+    }
+
+    const logText = filteredEntries
+      .map((entry) => {
+        const time = new Date(entry.timestamp).toLocaleString();
+        const level = entry.level.toUpperCase();
+        const type = entry.type.toUpperCase();
+        const source = entry.sourceName ? `[${entry.sourceName}] ` : "";
+        return `[${time}] [${type}] [${level}] ${source}${entry.message}`;
+      })
+      .join("\n");
+
+    const appName = currentApp?.name ?? `app-${selectedAppId}`;
+    const normalizedName = appName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    try {
+      const result = await ipc.system.saveTextToFile({
+        content: logText,
+        defaultName: `logs-${normalizedName}.txt`,
+        filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
+      });
+
+      if (!result.canceled && result.filePath) {
+        // Log saved successfully
+      }
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Error al exportar logs",
+      );
+    }
+  }, [filteredEntries, selectedAppId, currentApp]);
 
   // Generate unique key for each entry
   const getEntryKey = useCallback(
@@ -234,6 +316,7 @@ export const Console = () => {
         onSourceFilterChange={setSourceFilter}
         onClearFilters={handleClearFilters}
         onClearLogs={handleClearLogs}
+        onExportLogs={handleExportLogs}
         uniqueSources={uniqueSources}
         totalLogs={filteredEntries.length}
         showFilters={showFilters}

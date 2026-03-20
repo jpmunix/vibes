@@ -1,23 +1,26 @@
 import { createTypedHandler } from "./base";
 import { chatLogsContracts } from "../types/chat_logs";
-import { db } from "../../db";
-import { chatLogs } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { and, desc, eq } from "drizzle-orm";
+import { createTypedHandler, HandlerContext } from "./base";
 
 export function registerChatLogsHandlers() {
-  createTypedHandler(chatLogsContracts.getChatLogs, async (_event, params) => {
+  createTypedHandler(chatLogsContracts.getChatLogs, async (_event, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const { chatId, messageId, limit = 500 } = params;
 
-    const conditions = [eq(chatLogs.chatId, chatId)];
+    const conditions = [eq(remoteSchema.chatLogs.chatId, chatId), eq(remoteSchema.chatLogs.userId, context.userId)];
     if (messageId !== undefined) {
-      conditions.push(eq(chatLogs.messageId, messageId));
+      conditions.push(eq(remoteSchema.chatLogs.messageId, messageId));
     }
 
     const logs = await db
       .select()
-      .from(chatLogs)
+      .from(remoteSchema.chatLogs)
       .where(and(...conditions))
-      .orderBy(desc(chatLogs.timestamp))
+      .orderBy(desc(remoteSchema.chatLogs.timestamp))
       .limit(limit);
 
     return logs.map((log) => ({
@@ -32,8 +35,11 @@ export function registerChatLogsHandlers() {
     }));
   });
 
-  createTypedHandler(chatLogsContracts.addChatLog, async (_event, entry) => {
-    await db.insert(chatLogs).values({
+  createTypedHandler(chatLogsContracts.addChatLog, async (_event, entry, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.insert(remoteSchema.chatLogs).values({
+      userId: context.userId,
       chatId: entry.chatId,
       messageId: entry.messageId ?? null,
       level: entry.level,
@@ -46,8 +52,10 @@ export function registerChatLogsHandlers() {
 
   createTypedHandler(
     chatLogsContracts.clearChatLogs,
-    async (_event, { chatId }) => {
-      await db.delete(chatLogs).where(eq(chatLogs.chatId, chatId));
+    async (_event, { chatId }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      await db.delete(remoteSchema.chatLogs).where(and(eq(remoteSchema.chatLogs.chatId, chatId), eq(remoteSchema.chatLogs.userId, context.userId)));
     },
   );
 }

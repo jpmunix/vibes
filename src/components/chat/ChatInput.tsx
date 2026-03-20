@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
   StopCircleIcon,
   X,
@@ -16,11 +17,14 @@ import {
   ChevronsDownUp,
   SendHorizontalIcon,
   Lock,
+  Undo,
+  RefreshCw,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSettings } from "@/hooks/useSettings";
+import { showError, showWarning } from "@/lib/toast";
 import { ipc } from "@/ipc/types";
 import {
   chatInputValueAtom,
@@ -31,6 +35,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
+
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { Button } from "@/components/ui/button";
 import { useProposal } from "@/hooks/useProposal";
@@ -41,7 +46,7 @@ import { useRunApp } from "@/hooks/useRunApp";
 import { AutoApproveSwitch } from "../AutoApproveSwitch";
 import { usePostHog } from "posthog-js/react";
 import { CodeHighlight } from "./CodeHighlight";
-import { TokenBar } from "./TokenBar";
+
 import {
   Tooltip,
   TooltipContent,
@@ -56,7 +61,7 @@ import { DragDropOverlay } from "./DragDropOverlay";
 import { showExtraFilesToast } from "@/lib/toast";
 import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 import { ChatInputControls } from "../ChatInputControls";
-import { ChatErrorBox } from "./ChatErrorBox";
+
 import { AgentConsentBanner } from "./AgentConsentBanner";
 import { TodoList } from "./TodoList";
 import {
@@ -79,34 +84,32 @@ import { queryKeys } from "@/lib/queryKeys";
 export function ChatInput({
   chatId,
   autoStart,
+  isPlanMode,
 }: {
   chatId?: number;
   autoStart?: boolean;
+  isPlanMode?: boolean;
 }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
-  const { refreshVersions } = useVersions(appId);
+  const { versions, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
-  const [showError, setShowError] = useState(true);
+
   const [isApproving, setIsApproving] = useState(false); // State for approving
+  const navigate = useNavigate();
+  const setChatIdAtom = useSetAtom(selectedChatIdAtom);
   const [isRejecting, setIsRejecting] = useState(false); // State for rejecting
   const hasAutoStartedRef = useRef(false);
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
+  const [isUndoLoading, setIsUndoLoading] = useState(false);
+  const [isRetryLoading, setIsRetryLoading] = useState(false);
+  const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
-  const [showTokenBar, setShowTokenBar] = useState(false);
-  const queryClient = useQueryClient();
-  const toggleShowTokenBar = useCallback(() => {
-    setShowTokenBar((prev) => {
-      const next = !prev;
-      void updateSettings({ showTokenBar: next });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
-      return next;
-    });
-  }, [updateSettings, queryClient]);
+
   const [selectedComponents, setSelectedComponents] = useAtom(
     selectedComponentsPreviewAtom,
   );
@@ -127,11 +130,7 @@ export function ChatInput({
   );
   const pendingAgentConsent = consentsForThisChat[0] ?? null;
 
-  useEffect(() => {
-    if (settings?.showTokenBar !== undefined) {
-      setShowTokenBar(settings.showTokenBar);
-    }
-  }, [settings?.showTokenBar]);
+
 
   // Get todos for this chat
   const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
@@ -149,7 +148,32 @@ export function ChatInput({
     handleDrop,
     clearAttachments,
     handlePaste,
+    addAttachments,
   } = useAttachments();
+
+  // Listen for restoring chat input (undo functionality)
+  useEffect(() => {
+    const handleRestoreInput = (
+      e: CustomEvent<{ prompt: string; attachments?: File[] }>,
+    ) => {
+      setInputValue(e.detail.prompt);
+      clearAttachments();
+      if (e.detail.attachments && e.detail.attachments.length > 0) {
+        addAttachments(e.detail.attachments, "chat-context");
+      }
+    };
+
+    window.addEventListener(
+      "vibes:restore-chat-input" as any,
+      handleRestoreInput,
+    );
+    return () => {
+      window.removeEventListener(
+        "vibes:restore-chat-input" as any,
+        handleRestoreInput,
+      );
+    };
+  }, [setInputValue, addAttachments, clearAttachments]);
 
   // Use the hook to fetch the proposal
   const {
@@ -164,6 +188,7 @@ export function ChatInput({
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
   const disableSendButton =
     settings?.selectedChatMode !== "local-agent" &&
+    settings?.selectedChatMode !== "ask" &&
     lastMessage?.role === "assistant" &&
     !lastMessage.approvalState &&
     !!proposal &&
@@ -172,11 +197,7 @@ export function ChatInput({
 
   const { userBudget } = useUserBudgetInfo();
 
-  useEffect(() => {
-    if (error) {
-      setShowError(true);
-    }
-  }, [error]);
+
 
   // Reset hasAutoStartedRef when chatId changes
   useEffect(() => {
@@ -233,6 +254,30 @@ export function ChatInput({
     const currentInput = inputValue;
     setInputValue("");
 
+    let currentChatId = chatId;
+
+    // P18: When in plan mode, we start a fresh chat for new user requests.
+    // This keeps the planning chat focused on the plan itself, while the
+    // actual implementation or follow-up starts in a new thread.
+    if (isPlanMode && appId && currentMessages.length > 0) {
+      try {
+        currentChatId = await ipc.chat.createChat(appId);
+        setChatIdAtom(currentChatId);
+        // Navigate the router so useSearch hook picks up the new ID
+        navigate({ to: "/chat", search: { id: currentChatId }, replace: true });
+
+        // Also switch out of plan mode so the new chat's implementation is visible
+        const defaultMode = settings.defaultChatMode || "build";
+        const resetTo = defaultMode === "plan" ? "build" : defaultMode;
+        updateSettings({ selectedChatMode: resetTo });
+      } catch (err) {
+        console.error("Failed to create new chat for plan implementation:", err);
+        showError("No se pudo crear el nuevo chat");
+        // Fallback to current chat if creation fails
+        currentChatId = chatId;
+      }
+    }
+
     // Use all selected components for multi-component editing
     const componentsToSend =
       selectedComponents && selectedComponents.length > 0
@@ -243,7 +288,7 @@ export function ChatInput({
     // Clear overlays in the preview iframe
     if (previewIframeRef?.contentWindow) {
       previewIframeRef.contentWindow.postMessage(
-        { type: "clear-dyad-component-overlays" },
+        { type: "clear-vibes-component-overlays" },
         "*",
       );
     }
@@ -251,13 +296,13 @@ export function ChatInput({
     // Send message with attachments and clear them after sending
     await streamMessage({
       prompt: currentInput,
-      chatId,
+      chatId: currentChatId!,
       attachments,
       redo: false,
       selectedComponents: componentsToSend,
     });
     clearAttachments();
-    posthog.capture("chat:submit", { chatMode: settings?.selectedChatMode });
+    posthog?.capture("chat:submit", { chatMode: settings?.selectedChatMode });
   };
 
   const handleCancel = () => {
@@ -267,9 +312,7 @@ export function ChatInput({
     setIsStreaming(false);
   };
 
-  const dismissError = () => {
-    setShowError(false);
-  };
+
 
   const handleApprove = async () => {
     if (!chatId || !messageId || isApproving || isRejecting || isStreaming)
@@ -278,7 +321,7 @@ export function ChatInput({
       `Approving proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsApproving(true);
-    posthog.capture("chat:approve");
+    posthog?.capture("chat:approve");
     try {
       const result = await ipc.proposal.approveProposal({
         chatId,
@@ -300,9 +343,7 @@ export function ChatInput({
         setIsPreviewOpen(true);
       }
       refreshVersions();
-      if (settings?.enableAutoFixProblems) {
-        checkProblems();
-      }
+      checkProblems();
 
       // Keep same as handleReject
       refreshProposal();
@@ -317,7 +358,7 @@ export function ChatInput({
       `Rejecting proposal for chatId: ${chatId}, messageId: ${messageId}`,
     );
     setIsRejecting(true);
-    posthog.capture("chat:reject");
+    posthog?.capture("chat:reject");
     try {
       await ipc.proposal.rejectProposal({
         chatId,
@@ -340,199 +381,301 @@ export function ChatInput({
 
   return (
     <>
-      {error && showError && (
-        <ChatErrorBox
-          onDismiss={dismissError}
-          error={error}
-          isDyadProEnabled={settings.enableDyadPro ?? false}
-        />
-      )}
+
       {/* Display loading or error state for proposal */}
-      {isProposalLoading && (
-        <div className="p-4 text-sm text-muted-foreground">
-          Cargando propuesta...
-        </div>
-      )}
+      {isProposalLoading &&
+        settings.selectedChatMode !== "ask" &&
+        settings.selectedChatMode !== "local-agent" &&
+        !isPlanMode && (
+          <div className="p-4 text-sm text-muted-foreground">
+            Cargando propuesta...
+          </div>
+        )}
       {proposalError && (
         <div className="p-4 text-sm text-red-600">
           Error al cargar la propuesta: {proposalError.message}
         </div>
       )}
-      <div className="p-4" data-testid="chat-input-container">
-        <div
-          className={`relative flex flex-col border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Show todo list if there are todos for this chat */}
-          {chatTodos.length > 0 && <TodoList todos={chatTodos} />}
-          {/* Show agent consent banner if there's a pending consent request */}
-          {pendingAgentConsent && (
-            <AgentConsentBanner
-              consent={pendingAgentConsent}
-              queueTotal={consentsForThisChat.length}
-              onDecision={(decision) => {
-                ipc.agent.respondToConsent({
-                  requestId: pendingAgentConsent.requestId,
-                  decision,
-                });
-                // Remove this consent from the queue by requestId
-                setPendingAgentConsents((prev) =>
-                  prev.filter(
-                    (c) => c.requestId !== pendingAgentConsent.requestId,
-                  ),
-                );
-              }}
-              onClose={() => {
-                ipc.agent.respondToConsent({
-                  requestId: pendingAgentConsent.requestId,
-                  decision: "decline",
-                });
-                // Remove this consent from the queue by requestId
-                setPendingAgentConsents((prev) =>
-                  prev.filter(
-                    (c) => c.requestId !== pendingAgentConsent.requestId,
-                  ),
-                );
-              }}
-            />
-          )}
-          {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
-          {!pendingAgentConsent &&
-            proposal &&
-            proposalResult?.chatId === chatId &&
-            settings.selectedChatMode !== "ask" &&
-            settings.selectedChatMode !== "local-agent" && (
-              <ChatInputActions
-                proposal={proposal}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                isApprovable={
-                  !isProposalLoading &&
-                  !!proposal &&
-                  !!messageId &&
-                  !isApproving &&
-                  !isRejecting &&
-                  !isStreaming
+      <div className="px-4 pb-4" data-testid="chat-input-container">
+        <div className="max-w-3xl mx-auto">
+          <div
+            className="rounded-lg p-[1.5px]"
+            style={{
+              background: `linear-gradient(to bottom, oklch(0.58 0.09 260 / 0.4), var(--border) 50%, oklch(0.58 0.09 260 / 0.15))`,
+            }}
+          >
+            <div
+              className={`relative flex flex-col rounded-lg bg-(--background-lighter) overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
+                }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Show todo list if there are todos for this chat */}
+              {chatTodos.length > 0 && <TodoList todos={chatTodos} />}
+              {/* Show agent consent banner if there's a pending consent request */}
+              {pendingAgentConsent && (
+                <AgentConsentBanner
+                  consent={pendingAgentConsent}
+                  queueTotal={consentsForThisChat.length}
+                  onDecision={(decision) => {
+                    ipc.agent.respondToConsent({
+                      requestId: pendingAgentConsent.requestId,
+                      decision,
+                    });
+                    setPendingAgentConsents((prev) =>
+                      prev.filter(
+                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                      ),
+                    );
+                  }}
+                  onClose={() => {
+                    ipc.agent.respondToConsent({
+                      requestId: pendingAgentConsent.requestId,
+                      decision: "decline",
+                    });
+                    setPendingAgentConsents((prev) =>
+                      prev.filter(
+                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                      ),
+                    );
+                  }}
+                />
+              )}
+              {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
+              {!pendingAgentConsent &&
+                proposal &&
+                proposalResult?.chatId === chatId &&
+                settings.selectedChatMode !== "ask" &&
+                !isPlanMode &&
+                settings.selectedChatMode !== "local-agent" && (
+                  <ChatInputActions
+                    proposal={proposal}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    isApprovable={
+                      !isProposalLoading &&
+                      !!proposal &&
+                      !!messageId &&
+                      !isApproving &&
+                      !isRejecting &&
+                      !isStreaming
+                    }
+                    isApproving={isApproving}
+                    isRejecting={isRejecting}
+                  />
+                )}
+
+              <VisualEditingChangesDialog
+                iframeRef={
+                  previewIframeRef
+                    ? { current: previewIframeRef }
+                    : { current: null }
                 }
-                isApproving={isApproving}
-                isRejecting={isRejecting}
+                onReset={() => {
+                  setSelectedComponents([]);
+                  setVisualEditingSelectedComponent(null);
+                  setCurrentComponentCoordinates(null);
+                  setPendingVisualChanges(new Map());
+                  refreshAppIframe();
+                  if (previewIframeRef?.contentWindow) {
+                    previewIframeRef.contentWindow.postMessage(
+                      { type: "deactivate-vibes-component-selector" },
+                      "*",
+                    );
+                  }
+                }}
               />
-            )}
 
-          {userBudget ? (
-            <VisualEditingChangesDialog
-              iframeRef={
-                previewIframeRef
-                  ? { current: previewIframeRef }
-                  : { current: null }
-              }
-              onReset={() => {
-                // Exit component selection mode and visual editing
-                setSelectedComponents([]);
-                setVisualEditingSelectedComponent(null);
-                setCurrentComponentCoordinates(null);
-                setPendingVisualChanges(new Map());
-                refreshAppIframe();
+              {/* Use the AttachmentsList component */}
+              <AttachmentsList
+                attachments={attachments}
+                onRemove={removeAttachment}
+              />
 
-                // Deactivate component selector in iframe
-                if (previewIframeRef?.contentWindow) {
-                  previewIframeRef.contentWindow.postMessage(
-                    { type: "deactivate-dyad-component-selector" },
-                    "*",
-                  );
-                }
-              }}
-            />
-          ) : (
-            selectedComponents.length > 0 && (
-              <div className="border-b border-border p-3 bg-muted/30">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => {
-                          ipc.system.openExternalUrl(
-                            "https://github.com/minube/vibes",
-                          );
-                        }}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                      >
-                        <Lock size={16} />
-                        <span className="font-medium">Editor visual (Pro)</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      La edición visual te permite hacer cambios en la interfaz
-                      sin IA y es una función exclusiva de Pro
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              {/* Use the DragDropOverlay component */}
+              <DragDropOverlay isDraggingOver={isDraggingOver} />
+
+              <LexicalChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSubmit={handleSubmit}
+                onPaste={handlePaste}
+                placeholder="Pídele a vibes que haga..."
+                excludeCurrentApp={true}
+                disableSendButton={disableSendButton}
+              />
+
+              {/* Bottom controls bar */}
+              <div className="px-3 py-5 flex items-center border-t border-border/50">
+                <AuxiliaryActionsMenu
+                  onFileSelect={handleFileSelect}
+                  appId={appId ?? undefined}
+                />
+                <div className="flex items-center ml-2.5">
+                  <ChatInputControls showContextFilesPicker={false} />
+                </div>
+
+                <div className="ml-auto flex items-center gap-1.5">
+                  {/* Undo button — circular, icon-only */}
+                  {!isStreaming &&
+                    !!currentMessages.length &&
+                    currentMessages[currentMessages.length - 1].role === "assistant" && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              disabled={isUndoLoading}
+                              onClick={async () => {
+                                if (!chatId || !appId) return;
+                                setIsUndoLoading(true);
+                                try {
+                                  const currentMessage = currentMessages[currentMessages.length - 1];
+                                  const userMessage = currentMessages[currentMessages.length - 2];
+                                  if (userMessage) {
+                                    let prompt = userMessage.content;
+                                    const idx = prompt.indexOf("\n\nAttachments:\n");
+                                    if (idx !== -1) prompt = prompt.substring(0, idx);
+                                    const attachmentsToRestore: File[] = [];
+                                    let aiMessagesJson = userMessage.aiMessagesJson;
+                                    if (aiMessagesJson) {
+                                      let parsed = aiMessagesJson;
+                                      if (typeof parsed === "string") {
+                                        try {
+                                          parsed = JSON.parse(parsed);
+                                        } catch {
+                                          parsed = null;
+                                        }
+                                      }
+                                      const aiMessages = Array.isArray(parsed) ? parsed : parsed?.messages;
+                                      if (aiMessages && Array.isArray(aiMessages)) {
+                                        const userMsg = aiMessages.find((m: any) => m.role === "user");
+                                        if (userMsg && Array.isArray(userMsg.content)) {
+                                          userMsg.content.forEach((part: any, i: number) => {
+                                            if (part.type === "image" && part.image) {
+                                              const mimeType = part.mediaType || part.mimeType || "image/png";
+                                              const ext = mimeType.split("/")[1] || "png";
+                                              try {
+                                                let base64 = part.image;
+                                                if (base64.startsWith("data:")) {
+                                                  base64 = base64.split(",")[1] || "";
+                                                }
+                                                const byteChars = atob(base64);
+                                                const byteArr = new Uint8Array(byteChars.length);
+                                                for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j);
+                                                attachmentsToRestore.push(new File([new Blob([byteArr], { type: mimeType })], `restored-${Date.now()}-${i}.${ext}`, { type: mimeType }));
+                                              } catch { /* skip */ }
+                                            }
+                                          });
+                                        }
+                                      }
+                                    }
+                                    window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
+                                  }
+                                  if (currentMessage?.sourceCommitHash) {
+                                    await revertVersion({
+                                      versionId: currentMessage.sourceCommitHash,
+                                      currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+                                      silent: true,
+                                    });
+                                    const chat = await ipc.chat.getChat(chatId);
+                                    setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
+                                  } else {
+                                    showWarning("No source commit hash found for message. Need to manually undo code changes");
+                                  }
+                                } catch (error) {
+                                  console.error("Error during undo:", error);
+                                  showError("Failed to undo changes");
+                                } finally {
+                                  setIsUndoLoading(false);
+                                }
+                              }}
+                              className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
+                              title="Deshacer"
+                            >
+                              {isUndoLoading ? <Loader2 size={16} className="animate-spin" /> : <Undo size={16} />}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Deshacer</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+
+                  {/* Retry button — circular, icon-only */}
+                  {!isStreaming && !!currentMessages.length && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            disabled={isRetryLoading}
+                            onClick={async () => {
+                              if (!chatId) return;
+                              setIsRetryLoading(true);
+                              try {
+                                const lastVersion = versions[0];
+                                const lastMsg = currentMessages[currentMessages.length - 1];
+                                let shouldRedo = true;
+                                if (lastVersion.oid === lastMsg.commitHash && lastMsg.role === "assistant") {
+                                  const prevAssistant = currentMessages[currentMessages.length - 3];
+                                  if (prevAssistant?.role === "assistant" && prevAssistant?.commitHash) {
+                                    await revertVersion({ versionId: prevAssistant.commitHash });
+                                    shouldRedo = false;
+                                  } else {
+                                    const chat = await ipc.chat.getChat(chatId);
+                                    if (chat.initialCommitHash) {
+                                      await revertVersion({ versionId: chat.initialCommitHash });
+                                    } else {
+                                      showWarning("No initial commit hash found for chat.");
+                                    }
+                                  }
+                                }
+                                const lastUserMsg = [...currentMessages].reverse().find(m => m.role === "user");
+                                if (!lastUserMsg) return;
+                                streamMessage({ prompt: lastUserMsg.content, chatId, redo: shouldRedo });
+                              } catch (error) {
+                                console.error("Error during retry:", error);
+                                showError("Failed to retry message");
+                              } finally {
+                                setIsRetryLoading(false);
+                              }
+                            }}
+                            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
+                            title="Reintentar"
+                          >
+                            {isRetryLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Reintentar</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+
+                  {isStreaming ? (
+                    <button
+                      onClick={handleCancel}
+                      className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors cursor-pointer"
+                      title="Cancelar generación"
+                    >
+                      <StopCircleIcon size={18} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={
+                        (!inputValue.trim() && attachments.length === 0) ||
+                        disableSendButton
+                      }
+                      className="p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
+                      title="Enviar mensaje"
+                    >
+                      <SendHorizontalIcon size={18} />
+                    </button>
+                  )}
+                </div>
               </div>
-            )
-          )}
-
-          <SelectedComponentsDisplay />
-
-          {/* Use the AttachmentsList component */}
-          <AttachmentsList
-            attachments={attachments}
-            onRemove={removeAttachment}
-          />
-
-          {/* Use the DragDropOverlay component */}
-          <DragDropOverlay isDraggingOver={isDraggingOver} />
-
-          <div className="flex items-start space-x-2 ">
-            <LexicalChatInput
-              value={inputValue}
-              onChange={setInputValue}
-              onSubmit={handleSubmit}
-              onPaste={handlePaste}
-              placeholder="Pídele a vibes que haga..."
-              excludeCurrentApp={true}
-              disableSendButton={disableSendButton}
-            />
-
-            {isStreaming ? (
-              <button
-                onClick={handleCancel}
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg"
-                title="Cancelar generación"
-              >
-                <StopCircleIcon size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  (!inputValue.trim() && attachments.length === 0) ||
-                  disableSendButton
-                }
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Enviar mensaje"
-              >
-                <SendHorizontalIcon size={20} />
-              </button>
-            )}
-          </div>
-          <div className="pl-2 pr-1 flex items-center justify-between pb-2">
-            <div className="flex items-center">
-              <ChatInputControls showContextFilesPicker={false} />
             </div>
-
-            <AuxiliaryActionsMenu
-              onFileSelect={handleFileSelect}
-              showTokenBar={showTokenBar}
-              toggleShowTokenBar={toggleShowTokenBar}
-              appId={appId ?? undefined}
-            />
           </div>
-          {/* TokenBar is only displayed when showTokenBar is true */}
-          {showTokenBar && <TokenBar chatId={chatId} />}
+
         </div>
       </div>
     </>
@@ -544,7 +687,7 @@ function SuggestionButton({
   onClick,
   tooltipText,
 }: {
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode;
   tooltipText: string;
 }) {
@@ -615,7 +758,7 @@ function WriteCodeProperlyButton() {
       return;
     }
     streamMessage({
-      prompt: `¡Escribe el código del mensaje anterior en el formato correcto usando etiquetas \`<dyad-write>\`!`,
+      prompt: `¡Escribe el código del mensaje anterior en el formato correcto usando etiquetas \`<vibes-write>\`!`,
       chatId,
       redo: false,
     });
@@ -626,66 +769,6 @@ function WriteCodeProperlyButton() {
       tooltipText="Escribe el código correctamente (útil cuando la IA genera el código en el formato incorrecto)"
     >
       Escribir código correctamente
-    </SuggestionButton>
-  );
-}
-
-function RebuildButton() {
-  const { restartApp } = useRunApp();
-  const posthog = usePostHog();
-  const selectedAppId = useAtomValue(selectedAppIdAtom);
-
-  const onClick = useCallback(async () => {
-    if (!selectedAppId) return;
-
-    posthog.capture("action:rebuild");
-    await restartApp({ removeNodeModules: true });
-  }, [selectedAppId, posthog, restartApp]);
-
-  return (
-    <SuggestionButton onClick={onClick} tooltipText="Reconstruye la aplicación">
-      Reconstruir app
-    </SuggestionButton>
-  );
-}
-
-function RestartButton() {
-  const { restartApp } = useRunApp();
-  const posthog = usePostHog();
-  const selectedAppId = useAtomValue(selectedAppIdAtom);
-
-  const onClick = useCallback(async () => {
-    if (!selectedAppId) return;
-
-    posthog.capture("action:restart");
-    await restartApp();
-  }, [selectedAppId, posthog, restartApp]);
-
-  return (
-    <SuggestionButton
-      onClick={onClick}
-      tooltipText="Reinicia el servidor de desarrollo"
-    >
-      Reiniciar app
-    </SuggestionButton>
-  );
-}
-
-function RefreshButton() {
-  const { refreshAppIframe } = useRunApp();
-  const posthog = usePostHog();
-
-  const onClick = useCallback(() => {
-    posthog.capture("action:refresh");
-    refreshAppIframe();
-  }, [posthog, refreshAppIframe]);
-
-  return (
-    <SuggestionButton
-      onClick={onClick}
-      tooltipText="Actualiza la vista previa de la aplicación"
-    >
-      Actualizar vista
     </SuggestionButton>
   );
 }
@@ -718,12 +801,6 @@ export function mapActionToButton(action: SuggestedAction) {
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":
       return <WriteCodeProperlyButton />;
-    case "rebuild":
-      return <RebuildButton />;
-    case "restart":
-      return <RestartButton />;
-    case "refresh":
-      return <RefreshButton />;
     case "keep-going":
       return <KeepGoingButton />;
     default:
@@ -737,7 +814,7 @@ export function mapActionToButton(action: SuggestedAction) {
 }
 
 // Deshabilitado: Botones de sugerencias (Resumir en un nuevo chat, Continuar)
-// function ActionProposalActions({ proposal }: { proposal: ActionProposal }) {
+// function ActionProposalActions({proposal}: {proposal: ActionProposal }) {
 //   return (
 //     <div className="border-b border-border p-2 pb-0 flex items-center justify-between">
 //       <div className="flex items-center space-x-2 overflow-x-auto pb-2">
@@ -926,7 +1003,7 @@ function ChatInputActions({
                         size={16}
                         className="text-muted-foreground flex-shrink-0"
                       />
-                      <span className="cursor-pointer text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                      <span className="cursor-pointer text-primary hover:text-primary/80">
                         {pkg}
                       </span>
                     </li>

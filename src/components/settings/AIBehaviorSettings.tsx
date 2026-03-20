@@ -1,13 +1,71 @@
 import React from "react";
 import { useSettings } from "@/hooks/useSettings";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { ThinkingBudgetSelector } from "@/components/ThinkingBudgetSelector";
-import { MaxChatTurnsSelector } from "@/components/MaxChatTurnsSelector";
-import { ChatLanguageSelector } from "@/components/ChatLanguageSelector";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+
 import { useNavigate } from "@tanstack/react-router";
+import { StandardModeModelSelector } from "./StandardModeModelSelector";
+import { ProModeModelSelector } from "./ProModeModelSelector";
+import { ChevronRight } from "lucide-react";
+import { AgentToolsSettings } from "./AgentToolsSettings";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
+import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
+import type { ChatLanguage } from "@/lib/schemas";
+import { useState } from "react";
+import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
+
+// ─── Chat turns options ───
+const turnsOptions = [
+  { value: "2", label: "Económico (2)" },
+  { value: "default", label: `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})` },
+  { value: "5", label: "Plus (5)" },
+  { value: "10", label: "Alto (10)" },
+  { value: "100", label: "Máximo (100)" },
+];
+
+// ─── Language options ───
+const languageOptions: { value: ChatLanguage; label: string }[] = [
+  { value: "es", label: "Español" },
+  { value: "en", label: "English" },
+];
+
+// ─── Reusable SettingItem ───
+function SettingRow({
+  label,
+  description,
+  control,
+}: {
+  label: string;
+  description?: string;
+  control: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center",
+      )}
+    >
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          {label}
+        </h3>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>{control}</div>
+    </div>
+  );
+}
 
 export function AIBehaviorSettings({
   isHighlighted,
@@ -16,150 +74,151 @@ export function AIBehaviorSettings({
 }) {
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
+  const [modelsExpanded, setModelsExpanded] = useState(false);
 
-  const handleToggle = async (
-    field:
-      | "enableLocalSmartContext"
-      | "enableTokenStats"
-      | "enableVerboseChatLogs",
-    value: boolean,
-  ) => {
-    await updateSettings({ [field]: value } as any);
-  };
+
+  // ─── Current values ───
+
+  const currentTurnsRaw = settings?.maxChatTurnsInContext?.toString() || "default";
+  const currentTurnsLabel = turnsOptions.find(o => o.value === currentTurnsRaw)?.label || `Por defecto (${MAX_CHAT_TURNS_IN_CONTEXT})`;
+
+  const currentLang = settings?.chatLanguage || "es";
+
+  const selectedEmbeddingModel = settings?.embeddingsModel ?? "openai/text-embedding-3-small";
+  const currentEmbeddingLabel = EMBEDDING_MODELS.find(m => m.id === selectedEmbeddingModel)?.name || "text-embedding-3-small";
 
   return (
     <div
       id="ai-behavior"
       className={cn(
-        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-all duration-300",
+        "bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300",
         isHighlighted
           ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
           : "",
       )}
     >
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-        Configuración del Asistente
-      </h2>
-      <p className="text-sm text-muted-foreground mb-8">
-        Personaliza cómo el asistente procesa la información y se comunica
-        contigo.
-      </p>
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Agente
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Personaliza cómo el agente procesa la información y se comunica contigo
+        </p>
+      </div>
 
-      <div className="space-y-12">
-        {/* Reasoning & Turns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Presupuesto de pensamiento
-            </Label>
-            <div className="p-1 rounded-2xl p-5 bg-muted/30 border border-border w-fit">
-              <ThinkingBudgetSelector />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Turnos máximos de chat
-            </Label>
-            <div className="rounded-2xl p-5 bg-muted/30 border border-border w-fit">
-              <MaxChatTurnsSelector />
-            </div>
-          </div>
-        </div>
-
-        {/* Language Section */}
-        <div className="pt-8 border-t border-border">
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold text-gray-900 dark:text-white">
-              Idioma del asistente
-            </Label>
-            <div className="p-5 rounded-2xl bg-muted/30 border border-border w-fit">
-              <ChatLanguageSelector />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              El asistente priorizará este idioma en sus respuestas y
-              explicaciones.
+      <div className="space-y-4">
+        {/* Prompts — clickable row */}
+        <div
+          className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+          onClick={() => navigate({ to: "/settings/prompts" })}
+        >
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Prompts personalizados</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Instrucciones adicionales que el agente seguirá en cada conversación
             </p>
           </div>
+          <ChevronRight
+            className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0"
+          />
         </div>
 
-        {/* Features Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8 border-t border-border">
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Smart Context local
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Ranking de archivos relevantes sin servidores externos.
-              </p>
+        {/* Idioma — two pills */}
+        <SettingRow
+          label="Idioma"
+          description="Idioma en que el agente se comunicará contigo"
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              {languageOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => updateSettings({ chatLanguage: option.value })}
+                  className={cn(
+                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                    currentLang === option.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-            <Switch
-              checked={settings?.enableLocalSmartContext !== false}
-              onCheckedChange={(checked) =>
-                handleToggle("enableLocalSmartContext", checked)
-              }
-            />
-          </div>
+          }
+        />
 
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Métricas de tokens
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Guarda el historial de consumo para las estadísticas.
-              </p>
-            </div>
-            <Switch
-              checked={settings?.enableTokenStats !== false}
-              onCheckedChange={(checked) =>
-                handleToggle("enableTokenStats", checked)
-              }
-            />
-          </div>
+        <SettingRow
+          label="Esfuerzo de razonamiento"
+          description="Controla cuánto análisis previo realiza el agente"
+          control={<ReasoningEffortSelector variant="settings" />}
+        />
 
-          <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
-            <div>
-              <Label className="text-base font-bold text-gray-900 dark:text-white">
-                Logs verbosos
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Información técnica detallada en el panel de chat.
-              </p>
-            </div>
-            <Switch
-              checked={!!settings?.enableVerboseChatLogs}
-              onCheckedChange={(checked) =>
-                handleToggle("enableVerboseChatLogs", checked)
-              }
-            />
-          </div>
-        </div>
 
-        {/* Prompts Navigation */}
-        <div className="pt-8 border-t border-border">
-          <div
-            className="flex items-center justify-between p-6 rounded-2xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer group"
-            onClick={() => navigate({ to: "/settings/prompts" })}
-          >
-            <div>
-              <h3 className="text-lg font-bold text-primary">
-                Prompts del Asistente
-              </h3>
-              <p className="text-sm text-primary/70 mt-1">
-                Personaliza las instrucciones del sistema y las plantillas de
-                IA.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              className="text-primary hover:text-primary hover:bg-transparent font-bold"
+        {/* Turnos de contexto — hidden: OpenCode manages context internally */}
+
+        {/* Búsqueda Semántica — pill showing model, click to select */}
+        <SettingRow
+          label="Búsqueda semántica"
+          description="Modelo de embeddings para indexar y buscar código por significado"
+          control={
+            <Select
+              value={selectedEmbeddingModel}
+              onValueChange={(value) => updateSettings({ embeddingsModel: value })}
             >
-              Configurar →
-            </Button>
+              <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100">
+                <SelectValue>{currentEmbeddingLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {EMBEDDING_MODELS.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    <div className="flex flex-col">
+                      <span>{model.name}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {model.provider} · {model.dims} dims
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+
+        {/* Model Categories Section — collapsible */}
+        <div className="space-y-4">
+          <div
+            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+            onClick={() => setModelsExpanded(e => !e)}
+          >
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Modelos por tarea</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Un modelo para cada modo: Estándar y Pro
+              </p>
+            </div>
+            <ChevronRight
+              className={cn(
+                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+                modelsExpanded && "rotate-90",
+              )}
+            />
           </div>
+          {modelsExpanded && (
+            <div className="space-y-4 pl-8">
+              <SettingRow
+                label="Modo Estándar"
+                description="Títulos, resúmenes y análisis"
+                control={<StandardModeModelSelector />}
+              />
+              <SettingRow
+                label="Modo Pro"
+                description="Debates, conocimientos y dossier"
+                control={<ProModeModelSelector />}
+              />
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );

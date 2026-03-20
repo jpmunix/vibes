@@ -56,7 +56,7 @@ Always include the placeholder.svg file in your output file tree.
 
 async function callWebCrawl(
   url: string,
-  ctx: Pick<AgentContext, "dyadRequestId">,
+  ctx: Pick<AgentContext, "vibesRequestId">,
 ): Promise<z.infer<typeof webCrawlResponseSchema>> {
   const response = await engineFetch(ctx, "/tools/web-crawl", {
     method: "POST",
@@ -81,16 +81,16 @@ export const webCrawlTool: ToolDefinition<z.infer<typeof webCrawlSchema>> = {
   defaultConsent: "ask",
 
   // Disable in Basic Agent mode (free tier) - requires engine
-  isEnabled: (ctx) => !ctx.isBasicAgentMode,
+  isEnabled: () => true,
 
   getConsentPreview: (args) => `Crawl URL: "${args.url}"`,
 
   buildXml: (args, isComplete) => {
     if (!args.url) return undefined;
 
-    let xml = `<dyad-web-crawl>${escapeXmlContent(args.url)}`;
+    let xml = `<vibes-web-crawl>${escapeXmlContent(args.url)}`;
     if (isComplete) {
-      xml += "</dyad-web-crawl>";
+      xml += "</vibes-web-crawl>";
     }
     return xml;
   },

@@ -25,13 +25,15 @@ import { useDebates } from "@/hooks/useDebates";
 import { useNotes } from "@/hooks/useNotes";
 import { showError, showSuccess } from "@/lib/toast";
 import {
-  DyadMarkdownParser,
+  VibesMarkdownParser,
   VanillaMarkdownParser,
-} from "@/components/chat/DyadMarkdownParser";
-import { auth } from "@/lib/firebase";
+} from "@/components/chat/VibesMarkdownParser";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import logoSrc from "../../../assets/icon/logo.png";
 
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { userAtom } from "@/atoms/authAtoms";
 
 interface DebatePanelProps {
   debateId?: number;
@@ -39,6 +41,7 @@ interface DebatePanelProps {
 
 export function DebatePanel({ debateId }: DebatePanelProps) {
   const navigate = useNavigate();
+  const user = useAtomValue(userAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const [debate, setDebate] = useState<Debate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -327,7 +330,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-background/30">
       {/* Header section with glassmorphism */}
-      <div className="border-b p-4 flex items-center justify-between bg-background/60 backdrop-blur-xl sticky top-0 z-20 shadow-sm">
+      <div className="border-b p-4 flex items-center justify-between bg-background sticky top-0 z-20 shadow-sm">
         <div className="flex flex-col overflow-hidden mr-4 flex-1">
           {isEditingTitle ? (
             <div className="flex items-center gap-2">
@@ -387,14 +390,14 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             size="sm"
             onClick={handleSummarize}
             disabled={isSummarizing}
-            className="gap-2 rounded-2xl hover:bg-amber-500/5 hover:border-amber-500/30 transition-all active:scale-95 group min-w-[100px]"
+            className="gap-2 rounded-2xl hover:bg-primary/5 hover:border-primary/30 transition-colors active:scale-95 group min-w-[100px]"
           >
             {isSummarizing ? (
-              <Loader2 size={14} className="text-amber-500 animate-spin" />
+              <Loader2 size={14} className="text-primary animate-spin" />
             ) : (
               <Sparkles
                 size={14}
-                className="text-amber-500 group-hover:animate-pulse"
+                className="text-primary group-hover:animate-pulse"
               />
             )}
             <span className="hidden sm:inline">
@@ -419,31 +422,31 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
           {debate.messages.map((m, index) => (
             <div
               key={m.id}
-              className="flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative"
+              className={`flex gap-4 md:gap-6 group animate-in fade-in duration-300 relative ${m.role === "user" ? "flex-row-reverse" : ""
+                }`}
             >
-              <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm overflow-hidden ${m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-                  }`}
-              >
+              <div className="flex-shrink-0">
                 {m.role === "user" ? (
-                  auth.currentUser?.photoURL ? (
-                    <img
-                      src={auth.currentUser.photoURL}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={18} />
-                  )
+                  <SimpleAvatar
+                    src={user?.photoUrl || undefined}
+                    className="h-8 w-8"
+                    fallbackText={(
+                      user?.displayName?.[0] ||
+                      user?.email?.[0] ||
+                      "U"
+                    ).toUpperCase()}
+                  />
                 ) : (
-                  <Bot size={18} />
+                  <img
+                    src={logoSrc}
+                    alt="Vibes"
+                    className="h-8 w-8 rounded-full object-cover shadow-sm"
+                  />
                 )}
               </div>
 
-              <div className="flex-1 space-y-4 overflow-hidden">
-                <div className="flex items-center justify-between">
+              <div className={`flex-1 space-y-4 overflow-hidden ${m.role === "user" ? "flex flex-col items-end" : ""}`}>
+                <div className={`flex items-center gap-2 ${m.role === "user" ? "flex-row-reverse" : "justify-between"}`}>
                   <span className="text-sm font-bold tracking-tight">
                     {m.isSummary
                       ? "Resumen"
@@ -459,7 +462,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                <div className={`space-y-4 ${m.role === "user" ? "flex flex-col items-end" : ""}`}>
                   {m.injectedItems && m.injectedItems.length > 0 && (
                     <div className="flex flex-col gap-2 mb-2 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-xl relative overflow-hidden group/context">
                       <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
@@ -522,7 +525,12 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     </div>
                   ) : (
                     <div
-                      className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary ? "text-amber-600 dark:text-amber-400 border-l-4 border-amber-500 pl-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-r-lg" : ""}`}
+                      className={`prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-secondary/50 prose-pre:rounded-xl prose-pre:border prose-pre:border-border/50 ${m.isSummary
+                        ? "text-primary dark:text-primary border-l-4 border-primary/50 pl-4 py-2 bg-primary/5 dark:bg-primary/10 rounded-r-lg"
+                        : m.role === "user"
+                          ? "bg-primary/60 text-primary-foreground rounded-2xl px-4 py-3 inline-block max-w-[80%]"
+                          : ""
+                        }`}
                     >
                       {m.isSummary && (
                         <div className="flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-widest opacity-70">
@@ -530,7 +538,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                         </div>
                       )}
                       {m.role === "assistant" ? (
-                        <DyadMarkdownParser
+                        <VibesMarkdownParser
                           content={
                             m.content.split("\n\n--- CONTEXTO INYECTADO ---")[0]
                           }
@@ -563,7 +571,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                                   showSuccess("Resumen guardado como nota");
                                 })
                             }
-                            className="gap-2 text-xs hover:bg-amber-500/20 h-7"
+                            className="gap-2 text-xs hover:bg-primary/20 h-7"
                           >
                             <FileText size={10} /> Guardar Nota
                           </Button>
@@ -572,43 +580,48 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className="absolute -right-2 top-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
-                {m.role === "user" && !isStreaming && (
+                {/* Action buttons below bubble */}
+                <div className={`flex gap-1 opacity-0 group-hover:opacity-100 transition-[opacity,transform] scale-90 group-hover:scale-100 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {m.role === "user" && !isStreaming && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleEditMessage(m);
+                      }}
+                    >
+                      <Edit3 size={12} />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                    className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleEditMessage(m);
+                      handleDeleteMessage(m.id);
                     }}
                   >
-                    <Edit3 size={12} />
+                    <Trash2 size={12} />
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleDeleteMessage(m.id);
-                  }}
-                >
-                  <Trash2 size={12} />
-                </Button>
+                </div>
               </div>
             </div>
           ))}
 
           {isStreaming && (
             <div className="flex gap-4 md:gap-6 animate-in fade-in">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800 shadow-sm">
-                <Bot size={18} />
+              <div className="flex-shrink-0">
+                <img
+                  src={logoSrc}
+                  alt="Vibes"
+                  className="h-8 w-8 rounded-full object-cover shadow-sm"
+                />
               </div>
               <div className="flex-1 pt-2">
                 <div className="flex gap-1.5 items-center h-6">
@@ -623,7 +636,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
       </div>
 
       {/* Modern Input Area */}
-      <div className="p-4 md:p-6 border-t bg-background/50 backdrop-blur-2xl">
+      <div className="p-4 md:p-6 border-t bg-background">
         <div className="max-w-3xl mx-auto flex flex-col gap-4">
           {injectedItems.length > 0 && (
             <div className="flex flex-wrap gap-2 px-2 animate-in slide-in-from-bottom-2">
@@ -646,7 +659,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             </div>
           )}
 
-          <div className="flex items-end gap-3 bg-secondary/30 rounded-3xl p-2 pl-4 border border-border/50 focus-within:border-primary/40 focus-within:bg-secondary/50 transition-all shadow-sm">
+          <div className="flex items-end gap-3 bg-secondary/30 rounded-3xl p-2 pl-4 border border-border/50 focus-within:border-primary/40 focus-within:bg-secondary/50 transition-[border-color,background-color] shadow-sm">
             <div className="flex-shrink-0 mb-1">
               <InjectedItemPicker
                 onSelect={(item) => setInjectedItems((prev) => [...prev, item])}
@@ -675,7 +688,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             <Button
               type="button"
               size="icon"
-              className={`rounded-full h-10 w-10 flex-shrink-0 shadow-lg transition-all active:scale-95 ${isStreaming
+              className={`rounded-full h-10 w-10 flex-shrink-0 shadow-lg transition-colors active:scale-95 ${isStreaming
                 ? "bg-destructive hover:bg-destructive/90 shadow-destructive/10"
                 : "bg-primary hover:bg-primary/90 shadow-primary/10"
                 }`}

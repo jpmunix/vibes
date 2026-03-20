@@ -29,9 +29,15 @@ export function registerReleaseNoteHandlers() {
 
       try {
         const filePath = getReleaseNotesPath();
-        const exists = fs.existsSync(filePath);
-        logger.debug(`Checking for release note at: ${filePath}. Exists: ${exists}`);
-        return { exists };
+        if (!fs.existsSync(filePath)) {
+          logger.debug(`Release note not found at: ${filePath}`);
+          return { exists: false };
+        }
+        // Also check that the file has actual content (not empty/whitespace-only)
+        const content = fs.readFileSync(filePath, "utf-8").trim();
+        const hasContent = content.length > 0;
+        logger.debug(`Checking for release note at: ${filePath}. Has content: ${hasContent}`);
+        return { exists: hasContent };
       } catch (error) {
         logger.error(`Error checking for local release note:`, error);
         return { exists: false };
@@ -43,13 +49,13 @@ export function registerReleaseNoteHandlers() {
     try {
       const filePath = getReleaseNotesPath();
       if (!fs.existsSync(filePath)) {
-        return "# No hay notas de lanzamiento disponibles.";
+        return "";
       }
-      const content = fs.readFileSync(filePath, "utf-8");
+      const content = fs.readFileSync(filePath, "utf-8").trim();
       return content;
     } catch (error) {
       logger.error(`Error reading release notes content:`, error);
-      return "# Error al cargar las notas de lanzamiento.";
+      return "";
     }
   });
 

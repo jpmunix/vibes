@@ -4,6 +4,7 @@ import { z } from "zod";
 import log from "electron-log";
 import {
   ToolDefinition,
+  ToolError,
   AgentContext,
   escapeXmlAttr,
   escapeXmlContent,
@@ -68,12 +69,21 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
 
   getConsentPreview: (args) => `Edit ${args.file_path}`,
 
-  buildXml: (args, isComplete) => {
+  buildXml: (args, isComplete, ctx) => {
     if (!args.file_path) return undefined;
+
+    let retryAttr = "";
+    if (ctx?.fileEditTracker?.[args.file_path]) {
+      const counts = ctx.fileEditTracker[args.file_path];
+      const total = counts.edit_file + counts.write_file + counts.search_replace;
+      if (total > 0) {
+        retryAttr = ` retry-count="${total}"`;
+      }
+    }
 
     const escapedOld = escapeSearchReplaceMarkers(args.old_string ?? "");
 
-    let xml = `<dyad-search-replace path="${escapeXmlAttr(args.file_path)}" description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
+    let xml = `<vibes-search-replace path="${escapeXmlAttr(args.file_path)}"${retryAttr} description="">\n<<<<<<< SEARCH\n${escapeXmlContent(escapedOld)}`;
 
     // Add separator and replace content if new_string has started
     if (args.new_string !== undefined) {
@@ -85,16 +95,29 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
       if (args.new_string === undefined) {
         xml += "\n=======\n";
       }
-      xml += "\n>>>>>>> REPLACE\n</dyad-search-replace>";
+      xml += "\n>>>>>>> REPLACE\n</vibes-search-replace>";
     }
 
     return xml;
   },
 
   execute: async (args, ctx: AgentContext) => {
+    // Hard cap: after 2 failed search_replace attempts on the same file, force fallback
+    if (ctx?.fileEditTracker?.[args.file_path]) {
+      const srCount = ctx.fileEditTracker[args.file_path].search_replace;
+      if (srCount >= 2) {
+        throw new ToolError(
+          `search_replace has failed ${srCount} times on ${args.file_path}. You MUST use 'read_file' to check the current file contents and then use 'write_file' to rewrite the entire file. Do NOT attempt search_replace on this file again.`,
+          { retryable: false, hint: "Use read_file + write_file instead." },
+        );
+      }
+    }
+
     // Validate old_string !== new_string
     if (args.old_string === args.new_string) {
-      throw new Error("old_string and new_string must be different");
+      throw new ToolError("old_string and new_string must be different", {
+        retryable: false,
+      });
     }
 
     const fullFilePath = safeJoin(ctx.appPath, args.file_path);
@@ -105,7 +128,10 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
     }
 
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.file_path}`);
+      throw new ToolError(`File does not exist: ${args.file_path}`, {
+        retryable: false,
+        hint: "Check the file path and try again.",
+      });
     }
 
     const original = await fs.promises.readFile(fullFilePath, "utf8");
@@ -125,15 +151,23 @@ CRITICAL REQUIREMENTS FOR USING THIS TOOL:
         filePath: args.file_path,
         error: result.error ?? "unknown",
       });
-      throw new Error(
-        `Failed to apply search-replace: ${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""} Read the latest file and include more surrounding lines before retrying.`,
+      throw new ToolError(
+        `search_replace failed: old_string not found in ${args.file_path}. Use read_file to check current content, then use write_file.`,
+        {
+          retryable: false,
+          hint: "Do NOT retry search_replace. Use read_file to see actual file content, then write_file to rewrite.",
+        },
       );
     }
 
     await fs.promises.writeFile(fullFilePath, result.content);
     logger.log(`Successfully applied search-replace to: ${fullFilePath}`);
+
+
+
     sendTelemetryEvent("local_agent:search_replace:success", {
       filePath: args.file_path,
+      recoveryStrategy: result.recoveryStrategy,
     });
 
     // Deploy Supabase function if applicable

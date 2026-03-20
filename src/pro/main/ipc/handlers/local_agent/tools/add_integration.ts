@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolDefinition, escapeXmlAttr } from "./types";
 
-const SUPPORTED_PROVIDERS = ["supabase"] as const;
+const SUPPORTED_PROVIDERS = ["supabase", "bunny", "pocketbase"] as const;
 
 const addIntegrationSchema = z.object({
   provider: z
@@ -18,13 +18,13 @@ export const addIntegrationTool: ToolDefinition<
   inputSchema: addIntegrationSchema,
   defaultConsent: "always",
   modifiesState: true,
-  isEnabled: (ctx) => !ctx.supabaseProjectId,
+  isEnabled: (ctx) => !ctx.supabaseProjectId || !ctx.bunnyConfig || !ctx.pocketbaseConfig,
 
   getConsentPreview: (args) => `Add ${args.provider} integration`,
 
   buildXml: (args, _isComplete) => {
     if (!args.provider) return undefined;
-    return `<dyad-add-integration provider="${escapeXmlAttr(args.provider)}"></dyad-add-integration>`;
+    return `<vibes-add-integration provider="${escapeXmlAttr(args.provider)}"></vibes-add-integration>`;
   },
 
   execute: async (args) => {

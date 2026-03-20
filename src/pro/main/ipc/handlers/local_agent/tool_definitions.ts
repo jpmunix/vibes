@@ -6,61 +6,76 @@
 import { IpcMainInvokeEvent } from "electron";
 import crypto from "node:crypto";
 import { readSettings, writeSettings } from "@/main/settings";
-import { writeFileTool } from "./tools/write_file";
+import { fileEditorTool } from "./tools/file_editor";
+import { exploreCodebaseTool } from "./tools/explore_codebase";
 import { deleteFileTool } from "./tools/delete_file";
 import { renameFileTool } from "./tools/rename_file";
 import { addDependencyTool } from "./tools/add_dependency";
 import { executeSqlTool } from "./tools/execute_sql";
+import * as remoteSchema from "@/db/remote-schema";
+import { getRemoteDb } from "@/db/remote";
+import { eq } from "drizzle-orm";
 
-import { readFileTool } from "./tools/read_file";
-import { listFilesTool } from "./tools/list_files";
 import { getSupabaseProjectInfoTool } from "./tools/get_supabase_project_info";
 import { getSupabaseTableSchemaTool } from "./tools/get_supabase_table_schema";
+import { getFirebaseProjectInfoTool } from "./tools/get_firebase_project_info";
+import { getBunnyDbInfoTool } from "./tools/get_bunny_db_info";
+import { getBunnyStorageInfoTool } from "./tools/get_bunny_storage_info";
+import { getPocketbaseInfoTool } from "./tools/get_pocketbase_info";
+import { getPocketbaseStorageInfoTool } from "./tools/get_pocketbase_storage_info";
 import { setChatSummaryTool } from "./tools/set_chat_summary";
 import { addIntegrationTool } from "./tools/add_integration";
 import { readLogsTool } from "./tools/read_logs";
-import { editFileTool } from "./tools/edit_file";
-import { searchReplaceTool } from "./tools/search_replace";
-import { webSearchTool } from "./tools/web_search";
+
 import { webCrawlTool } from "./tools/web_crawl";
 import { updateTodosTool } from "./tools/update_todos";
 import { runTypeChecksTool } from "./tools/run_type_checks";
-import { grepTool } from "./tools/grep";
-import { codeSearchTool } from "./tools/code_search";
+import { gitOperationsTool } from "./tools/git_operations";
+import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
+import { runCommandTool } from "./tools/run_command";
+import { startProcessTool, stopProcessTool, listProcessesTool } from "./tools/process_management";
+import { waitForHttpTool } from "./tools/wait_for_http";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
-  escapeXmlAttr,
-  escapeXmlContent,
   type ToolDefinition,
   type AgentContext,
   type ToolResult,
+  type StructuredToolResult,
+  ToolError,
   type FileEditToolName,
   FILE_EDIT_TOOL_NAMES,
 } from "./tools/types";
 import { AgentToolConsent } from "@/lib/schemas";
 import { getSupabaseClientCode } from "@/supabase_admin/supabase_context";
-// Combined tool definitions array
+import { getFirebaseConfigCode } from "@/firebase_admin/firebase_context";
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
-  writeFileTool,
-  editFileTool,
-  searchReplaceTool,
+  fileEditorTool,
   deleteFileTool,
   renameFileTool,
   addDependencyTool,
   executeSqlTool,
-  readFileTool,
-  listFilesTool,
-  grepTool,
-  codeSearchTool,
+  exploreCodebaseTool,
+  runCommandTool,
+  startProcessTool,
+  stopProcessTool,
+  listProcessesTool,
+  waitForHttpTool,
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
+  getFirebaseProjectInfoTool,
+  getBunnyDbInfoTool,
+  getBunnyStorageInfoTool,
+  getPocketbaseInfoTool,
+  getPocketbaseStorageInfoTool,
   setChatSummaryTool,
   addIntegrationTool,
   readLogsTool,
-  webSearchTool,
+
   webCrawlTool,
   updateTodosTool,
   runTypeChecksTool,
+  gitOperationsTool,
+  askUserTool,
 ];
 // ============================================================================
 // Agent Tool Name Type (derived from TOOL_DEFINITIONS)
@@ -112,6 +127,8 @@ export function clearPendingConsentsForChat(chatId: number): void {
       entry.resolve("decline");
     }
   }
+  // Also clean up any pending ask_user requests for this chat
+  clearPendingAskUsersForChat(chatId);
 }
 
 export function getDefaultConsent(toolName: AgentToolName): AgentToolConsent {
@@ -177,6 +194,10 @@ export async function requireAgentToolConsent(
   if (current === "never")
     throw new Error("Should not ask for consent for a tool marked as 'never'");
 
+  // If autoApproveChanges is enabled globally, skip the consent prompt
+  const settings = readSettings();
+  if (settings.autoApproveChanges) return true;
+
   // Ask renderer for a decision via event bridge
   const requestId = `agent:${params.toolName}:${crypto.randomUUID()}`;
   (event.sender as any).send("agent-tool:consent-request", {
@@ -208,26 +229,46 @@ async function processArgPlaceholders<T extends Record<string, any>>(
   args: T,
   ctx: AgentContext,
 ): Promise<T> {
-  if (!ctx.supabaseProjectId) {
-    return args;
-  }
-
-  // Check if any string values contain the placeholder
   const argsStr = JSON.stringify(args);
-  if (!argsStr.includes("$$SUPABASE_CLIENT_CODE$$")) {
+  const hasSupabase = argsStr.includes("$$SUPABASE_CLIENT_CODE$$");
+  const hasFirebase = argsStr.includes("$$FIREBASE_CLIENT_CODE$$");
+
+  if (!hasSupabase && !hasFirebase) {
     return args;
   }
 
-  // Fetch the replacement value once
-  const supabaseClientCode = await getSupabaseClientCode({
-    projectId: ctx.supabaseProjectId,
-    organizationSlug: ctx.supabaseOrganizationSlug ?? null,
-  });
+  let supabaseClientCode = "";
+  if (hasSupabase && ctx.supabaseProjectId) {
+    supabaseClientCode = await getSupabaseClientCode({
+      projectId: ctx.supabaseProjectId,
+      organizationSlug: ctx.supabaseOrganizationSlug ?? null,
+    });
+  }
 
-  // Process all string values in args
+  let firebaseClientCode = "";
+  if (hasFirebase && ctx.firebaseProjectId) {
+    const app = await getRemoteDb().query.apps.findFirst({
+      where: eq(remoteSchema.apps.id, ctx.appId),
+    });
+    if (app?.firebaseConfig) {
+      firebaseClientCode = await getFirebaseConfigCode({
+        appId: ctx.appId,
+        projectId: ctx.firebaseProjectId,
+        config: app.firebaseConfig,
+      });
+    }
+  }
+
   const processValue = (value: any): any => {
     if (typeof value === "string") {
-      return value.replace(/\$\$SUPABASE_CLIENT_CODE\$\$/g, supabaseClientCode);
+      let result = value;
+      if (supabaseClientCode) {
+        result = result.replace(/\$\$SUPABASE_CLIENT_CODE\$\$/g, supabaseClientCode);
+      }
+      if (firebaseClientCode) {
+        result = result.replace(/\$\$FIREBASE_CLIENT_CODE\$\$/g, firebaseClientCode);
+      }
+      return result;
     }
     if (Array.isArray(value)) {
       return value.map(processValue);
@@ -246,7 +287,9 @@ async function processArgPlaceholders<T extends Record<string, any>>(
 }
 
 /**
- * Convert our ToolResult to AI SDK format
+ * Convert our ToolResult to AI SDK format.
+ * StructuredToolResult with isError=true formats the error message
+ * with context so the model can self-correct.
  */
 function convertToolResultForAiSdk(
   result: ToolResult,
@@ -254,7 +297,20 @@ function convertToolResultForAiSdk(
   if (typeof result === "string") {
     return { type: "text", value: result };
   }
-  throw new Error(`Unsupported tool result type: ${typeof result}`);
+  // StructuredToolResult
+  const parts: string[] = [result.content];
+  if (result.hint) {
+    parts.push(`Hint: ${result.hint}`);
+  }
+  if (result.isError && result.retryable) {
+    parts.push("This error is retryable. Please try again with corrected input.");
+  }
+  // Truncate long error messages to avoid bloating the conversation context
+  let value = parts.join("\n");
+  if (result.isError && value.length > 500) {
+    value = value.slice(0, 500) + "\n[error truncated — use read_file to see actual file content]";
+  }
+  return { type: "text", value };
 }
 
 export interface BuildAgentToolSetOptions {
@@ -287,9 +343,32 @@ function trackFileEditTool(
       write_file: 0,
       edit_file: 0,
       search_replace: 0,
+      patch_file: 0,
+      file_editor: 0,
     };
   }
   ctx.fileEditTracker[filePath][toolName as FileEditToolName]++;
+}
+
+function isTransientError(error: any): boolean {
+  const msg = String(error?.message || error);
+  // File system locks
+  if (
+    msg.includes("EBUSY") ||
+    msg.includes("ETXTBSY") ||
+    msg.includes("EAGAIN")
+  )
+    return true;
+  // Network (if applicable)
+  if (
+    msg.includes("ETIMEDOUT") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("network timeout")
+  )
+    return true;
+  // Generic "Too many open files"
+  if (msg.includes("EMFILE")) return true;
+  return false;
 }
 
 /**
@@ -333,21 +412,37 @@ export function buildAgentToolSet(
             throw new Error(`User denied permission for ${tool.name}`);
           }
 
-          // Track file edit tool usage before execution to capture all attempts
-          // (including failures) for retry/fallback telemetry
-          trackFileEditTool(ctx, tool.name, processedArgs);
 
-          const result = await tool.execute(processedArgs, ctx);
+
+          let result;
+          let retries = 2;
+          while (true) {
+            try {
+              result = await tool.execute(processedArgs, ctx);
+              break;
+            } catch (err) {
+              if (retries > 0 && isTransientError(err)) {
+                retries--;
+                await new Promise((r) => setTimeout(r, 300)); // Wait 300ms before retry
+                continue;
+              }
+              throw err;
+            }
+          }
 
           return convertToolResultForAiSdk(result);
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
 
-          ctx.onXmlComplete(
-            `<dyad-output type="error" message="Tool '${tool.name}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorMessage)}</dyad-output>`,
-          );
-          throw error;
+          // Return error as structured tool result so the model can self-correct
+          // instead of aborting the step with an exception.
+          return convertToolResultForAiSdk({
+            content: `Error: ${errorMessage}`,
+            isError: true,
+            retryable: error instanceof ToolError ? error.retryable : true,
+            hint: error instanceof ToolError ? error.hint : undefined,
+          });
         }
       },
     };

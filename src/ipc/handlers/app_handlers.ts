@@ -1,6 +1,7 @@
 import { ipcMain, app, dialog } from "electron";
-import { db, getDatabasePath } from "../../db";
-import { apps, chats, messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { getDatabasePath, db } from "../../db";
+import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, like, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { appContracts } from "../types/app";
@@ -9,9 +10,57 @@ import { miscContracts } from "../types/misc";
 import { systemContracts } from "../types/system";
 import fs from "node:fs";
 import path from "node:path";
-import { getDyadAppPath, getUserDataPath } from "../../paths/paths";
+import { getVibesAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
+import net from "node:net";
+import { AppOutput } from "../types/misc";
+
+// Buffer for batching log updates to the renderer
+class LogBuffer {
+  private buffers = new Map<number, AppOutput[]>();
+  private timeouts = new Map<number, NodeJS.Timeout>();
+  private readonly FLUSH_INTERVAL_MS = 200;
+  private readonly MAX_BATCH_SIZE = 100;
+
+  add(appId: number, output: AppOutput, event: Electron.IpcMainInvokeEvent) {
+    if (!this.buffers.has(appId)) {
+      this.buffers.set(appId, []);
+    }
+
+    const buffer = this.buffers.get(appId)!;
+    buffer.push(output);
+
+    if (buffer.length >= this.MAX_BATCH_SIZE) {
+      this.flush(appId, event);
+    } else if (!this.timeouts.has(appId)) {
+      const timeout = setTimeout(() => this.flush(appId, event), this.FLUSH_INTERVAL_MS);
+      this.timeouts.set(appId, timeout);
+    }
+  }
+
+  flush(appId: number, event: Electron.IpcMainInvokeEvent) {
+    const buffer = this.buffers.get(appId);
+    if (!buffer || buffer.length === 0) return;
+
+    // Clear timeout if exists
+    if (this.timeouts.has(appId)) {
+      clearTimeout(this.timeouts.get(appId)!);
+      this.timeouts.delete(appId);
+    }
+
+    // Send batch
+    const logs = [...buffer];
+    this.buffers.set(appId, []);
+
+    safeSend(event.sender, "app:logs-batch", {
+      appId,
+      logs,
+    });
+  }
+}
+
+const logBuffer = new LogBuffer();
 
 // Import our utility modules
 import { withLock } from "../utils/lock_utils";
@@ -47,6 +96,7 @@ import {
   gitInit,
   gitListBranches,
   gitRenameBranch,
+  gitClone,
 } from "../utils/git_utils";
 import { safeSend } from "../utils/safe_sender";
 import { normalizePath } from "../../../shared/normalizePath";
@@ -60,10 +110,10 @@ import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 import { AppSearchResult } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
-import { openRouterCompletion } from "../utils/openrouter";
+import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 
-import { getAppPort } from "../../../shared/ports";
+import { getAppPort, getProxyPort, findFreeAppPort } from "../../../shared/ports";
 import {
   getRgExecutablePath,
   MAX_FILE_SEARCH_SIZE,
@@ -126,9 +176,9 @@ function buildSnippetFromMatch({
   };
 }
 
-function getDefaultCommand(appId: number): string {
-  const port = getAppPort(appId);
-  return `(pnpm install && pnpm run dev --port ${port}) || (npm install --legacy-peer-deps && npm run dev -- --port ${port})`;
+async function getDefaultCommand(appId: number): Promise<string> {
+  const port = await findFreeAppPort(appId);
+  return `npm install --legacy-peer-deps && npm run dev -- --port ${port}`;
 }
 async function copyDir(
   source: string,
@@ -154,6 +204,16 @@ async function copyDir(
 }
 
 let proxyWorker: Worker | null = null;
+
+// Track proxy URLs per app to enable re-emission when the app is already running
+const proxyUrlByApp = new Map<number, { proxyUrl: string; originalUrl: string }>();
+
+// Track apps that have already attempted auto-recovery for missing modules
+// to prevent infinite restart loops. Cleared on user-initiated restarts.
+const autoRecoveryAttempted = new Set<number>();
+
+// Track the actual port assigned to each app (may differ from getAppPort if port was busy)
+const actualPortByApp = new Map<number, number>();
 
 // Needed, otherwise electron in MacOS/Linux will not be able
 // to find node/pnpm.
@@ -217,7 +277,7 @@ async function executeAppLocalNode({
   installCommand?: string | null;
   startCommand?: string | null;
 }): Promise<void> {
-  const command = getCommand({ appId, installCommand, startCommand });
+  const command = await getCommand({ appId, installCommand, startCommand });
   const spawnedProcess = spawn(command, [], {
     cwd: appPath,
     shell: true,
@@ -255,8 +315,7 @@ async function executeAppLocalNode({
       .join(", ");
 
     logger.error(
-      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn process for app ${appId}. Command="${command}", CWD="${appPath}", ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -282,6 +341,9 @@ Details: ${details || "n/a"}
     appId,
     isNeon,
     event,
+    appPath,
+    installCommand,
+    startCommand,
   });
 }
 
@@ -290,12 +352,85 @@ function listenToProcess({
   appId,
   isNeon,
   event,
+  appPath,
+  installCommand,
+  startCommand,
 }: {
   process: ChildProcess;
   appId: number;
   isNeon: boolean;
   event: Electron.IpcMainInvokeEvent;
+  appPath: string;
+  installCommand?: string | null;
+  startCommand?: string | null;
 }) {
+  // Buffer to accumulate stderr output for missing module detection on crash
+  let stderrBuffer = "";
+  let proxyStarted = false;
+
+  // Helper to start proxy and emit events - avoids duplication between stdout and polling
+  const startProxyForApp = async (targetUrl: string) => {
+    if (proxyStarted) return;
+    proxyStarted = true;
+
+    const proxyPort = getProxyPort(appId);
+
+    // Use existing proxy worker logic to prevent multiple instances
+    if (proxyWorker) {
+      logger.info(`Terminating existing proxy worker for app ${appId}`);
+      await proxyWorker.terminate();
+      proxyWorker = null;
+    }
+
+    try {
+      proxyWorker = await startProxy(targetUrl, {
+        port: proxyPort,
+        onStarted: (proxyUrl) => {
+          // Store the proxy URL for this app for later re-emission
+          proxyUrlByApp.set(appId, { proxyUrl, originalUrl: targetUrl });
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[vibes-proxy-server]started=[${proxyUrl}] original=[${targetUrl}]`,
+            appId,
+          });
+        },
+        onUpstreamRecovered: () => {
+          logger.info(`[proxy] Upstream recovered after retries for app ${appId}, signaling iframe refresh`);
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[vibes-proxy-server]upstream-recovered`,
+            appId,
+          });
+        },
+      });
+    } catch (err) {
+      logger.error(`Failed to start proxy for app ${appId}:`, err);
+    }
+  };
+
+  // Poll for port open status to detect apps that don't log their URL (e.g. default Express/debug)
+  const pollingInterval = setInterval(async () => {
+    if (proxyStarted) {
+      clearInterval(pollingInterval);
+      return;
+    }
+
+    // Ensure we are still monitoring the correct process
+    if (runningApps.get(appId)?.process?.pid !== spawnedProcess.pid) {
+      clearInterval(pollingInterval);
+      return;
+    }
+
+    const appPort = actualPortByApp.get(appId) ?? getAppPort(appId);
+    const isOpen = await checkPortOpen(appPort);
+
+    if (isOpen && !proxyStarted) {
+      logger.info(`[App ${appId}] Port ${appPort} detected open via polling. Assuming app is ready.`);
+      clearInterval(pollingInterval);
+      await startProxyForApp(`http://localhost:${appPort}`);
+    }
+  }, 3000);
+
   // Log output
   spawnedProcess.stdout?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
@@ -315,7 +450,7 @@ function listenToProcess({
     // This is a hacky heuristic to pick up when drizzle is asking for user
     // to select from one of a few choices. We automatically pick the first
     // option because it's usually a good default choice. We guard this with
-    // isNeon because: 1) only Neon apps (for the official Dyad templates) should
+    // isNeon because: 1) only Neon apps (for the official Vibes templates) should
     // get this template and 2) it's safer to do this with Neon apps because
     // their databases have point in time restore built-in.
     if (isNeon && message.includes("created or renamed from another")) {
@@ -336,30 +471,24 @@ function listenToProcess({
         appId,
       });
     } else {
-      // Normal stdout handling
-      safeSend(event.sender, "app:output", {
+      // Normal stdout handling - buffered
+      logBuffer.add(appId, {
         type: "stdout",
         message,
         appId,
-      });
+        timestamp: Date.now(),
+      }, event);
 
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
-        proxyWorker = await startProxy(urlMatch[1], {
-          onStarted: (proxyUrl) => {
-            safeSend(event.sender, "app:output", {
-              type: "stdout",
-              message: `[dyad-proxy-server]started=[${proxyUrl}] original=[${urlMatch[1]}]`,
-              appId,
-            });
-          },
-        });
+        await startProxyForApp(urlMatch[1]);
       }
     }
   });
 
   spawnedProcess.stderr?.on("data", async (data) => {
     const message = util.stripVTControlCharacters(data.toString());
+    stderrBuffer += message;
     logger.error(
       `App ${appId} (PID: ${spawnedProcess.pid}) stderr: ${message}`,
     );
@@ -373,23 +502,55 @@ function listenToProcess({
       appId,
     });
 
-    safeSend(event.sender, "app:output", {
+    // Buffered stderr
+    logBuffer.add(appId, {
       type: "stderr",
       message,
       appId,
-    });
+      timestamp: Date.now(),
+    }, event);
   });
 
   // Handle process exit/close
   spawnedProcess.on("close", (code, signal) => {
+    clearInterval(pollingInterval); // Stop polling
     logger.log(
       `App ${appId} (PID: ${spawnedProcess.pid}) process closed with code ${code}, signal ${signal}.`,
     );
     removeAppIfCurrentProcess(appId, spawnedProcess);
+
+    // Auto-recovery: if the process crashed with a missing module error,
+    // delete node_modules and restart the app (which will re-run npm install).
+    if (code !== 0 && code !== null && !autoRecoveryAttempted.has(appId)) {
+      const missingModulePattern = /Cannot find module|MODULE_NOT_FOUND/;
+      if (missingModulePattern.test(stderrBuffer)) {
+        logger.info(
+          `[AutoRecovery] App ${appId} crashed with missing module error. Attempting auto-recovery...`,
+        );
+        autoRecoveryAttempted.add(appId);
+
+        safeSend(event.sender, "app:output", {
+          type: "stderr",
+          message:
+            "[vibes] Módulo faltante detectado. Reinstalando dependencias automáticamente...",
+          appId,
+        });
+
+        handleMissingModuleRecovery({
+          appId,
+          appPath,
+          event,
+          isNeon,
+          installCommand,
+          startCommand,
+        });
+      }
+    }
   });
 
   // Handle errors during process lifecycle (e.g., command not found)
   spawnedProcess.on("error", (err) => {
+    clearInterval(pollingInterval); // Stop polling
     logger.error(
       `Error in app ${appId} (PID: ${spawnedProcess.pid}) process: ${err.message}`,
     );
@@ -397,6 +558,59 @@ function listenToProcess({
     // Note: We don't throw here as the error is asynchronous. The caller got a success response already.
     // Consider adding ipcRenderer event emission to notify UI of the error.
   });
+}
+
+/**
+ * Auto-recovery helper: deletes node_modules and re-executes the app.
+ * Called when a process crashes with a MODULE_NOT_FOUND error.
+ */
+async function handleMissingModuleRecovery({
+  appId,
+  appPath,
+  event,
+  isNeon,
+  installCommand,
+  startCommand,
+}: {
+  appId: number;
+  appPath: string;
+  event: Electron.IpcMainInvokeEvent;
+  isNeon: boolean;
+  installCommand?: string | null;
+  startCommand?: string | null;
+}) {
+  try {
+    const nodeModulesPath = path.join(appPath, "node_modules");
+    if (fs.existsSync(nodeModulesPath)) {
+      logger.info(
+        `[AutoRecovery] Removing node_modules for app ${appId} at ${nodeModulesPath}`,
+      );
+      await fsPromises.rm(nodeModulesPath, { recursive: true, force: true });
+      logger.info(
+        `[AutoRecovery] Successfully removed node_modules for app ${appId}`,
+      );
+    }
+
+    // Clean up the port before restarting
+    await cleanUpPort(getAppPort(appId));
+
+    logger.info(`[AutoRecovery] Re-executing app ${appId}...`);
+    await executeApp({
+      appPath,
+      appId,
+      event,
+      isNeon,
+      installCommand,
+      startCommand,
+    });
+  } catch (error) {
+    logger.error(`[AutoRecovery] Failed to recover app ${appId}:`, error);
+    safeSend(event.sender, "app:output", {
+      type: "stderr",
+      message: `[vibes] Error durante la recuperación automática: ${error}`,
+      appId,
+    });
+  }
 }
 
 async function executeAppInDocker({
@@ -414,7 +628,7 @@ async function executeAppInDocker({
   installCommand?: string | null;
   startCommand?: string | null;
 }): Promise<void> {
-  const containerName = `dyad-app-${appId}`;
+  const containerName = `vibes-app-${appId}`;
 
   // First, check if Docker is available
   try {
@@ -459,12 +673,9 @@ async function executeAppInDocker({
   }
 
   // Create a Dockerfile in the app directory if it doesn't exist
-  const dockerfilePath = path.join(appPath, "Dockerfile.dyad");
+  const dockerfilePath = path.join(appPath, "Dockerfile.vibes");
   if (!fs.existsSync(dockerfilePath)) {
     const dockerfileContent = `FROM node:22-alpine
-
-# Install pnpm
-RUN npm install -g pnpm
 `;
 
     try {
@@ -478,7 +689,7 @@ RUN npm install -g pnpm
   // Build the Docker image
   const buildProcess = spawn(
     "docker",
-    ["build", "-f", "Dockerfile.dyad", "-t", `dyad-app-${appId}`, "."],
+    ["build", "-f", "Dockerfile.vibes", "-t", `vibes-app-${appId}`, "."],
     {
       cwd: appPath,
       stdio: "pipe",
@@ -504,7 +715,7 @@ RUN npm install -g pnpm
   });
 
   // Run the Docker container
-  const port = getAppPort(appId);
+  const port = await findFreeAppPort(appId);
   const process = spawn(
     "docker",
     [
@@ -517,15 +728,13 @@ RUN npm install -g pnpm
       "-v",
       `${appPath}:/app`,
       "-v",
-      `dyad-pnpm-${appId}:/app/.pnpm-store`,
-      "-e",
-      "PNPM_STORE_PATH=/app/.pnpm-store",
+      `vibes-npm-${appId}:/root/.npm`,
       "-w",
       "/app",
-      `dyad-app-${appId}`,
+      `vibes-app-${appId}`,
       "sh",
       "-c",
-      getCommand({ appId, installCommand, startCommand }),
+      await getCommand({ appId, installCommand, startCommand }),
     ],
     {
       stdio: "pipe",
@@ -560,8 +769,7 @@ RUN npm install -g pnpm
       .join(", ");
 
     logger.error(
-      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${
-        errorOutput || "(empty)"
+      `Failed to spawn Docker container for app ${appId}. ${details}\nSTDERR:\n${errorOutput || "(empty)"
       }`,
     );
 
@@ -587,6 +795,9 @@ ${errorOutput || "(empty)"}`,
     appId,
     isNeon,
     event,
+    appPath,
+    installCommand,
+    startCommand,
   });
 }
 
@@ -597,6 +808,26 @@ async function killProcessOnPort(port: number): Promise<void> {
   } catch {
     // Ignore if nothing was running on that port
   }
+}
+
+async function checkPortOpen(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(200); // Short timeout for quick checks
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on("error", () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.connect(port, "127.0.0.1");
+  });
 }
 
 // Helper to stop any Docker containers publishing a given host port
@@ -760,59 +991,67 @@ async function searchAppFilesWithRipgrep({
 }
 
 export function registerAppHandlers() {
-  createTypedHandler(systemContracts.restartDyad, async () => {
+  createTypedHandler(systemContracts.restartVibes, async () => {
     app.relaunch();
     app.quit();
   });
 
-  createTypedHandler(appContracts.createApp, async (_, params) => {
+  createTypedHandler(appContracts.createApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const appPath = params.name;
-    const fullAppPath = getDyadAppPath(appPath);
+    const fullAppPath = getVibesAppPath(appPath);
     if (fs.existsSync(fullAppPath)) {
       throw new Error(`App already exists at: ${fullAppPath}`);
     }
     // Create a new app
     const [app] = await db
-      .insert(apps)
+      .insert(remoteSchema.apps)
       .values({
+        userId: context.userId,
         name: params.name,
         // Use the name as the path for now
         path: appPath,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
     // Create an initial chat for this app
     const [chat] = await db
-      .insert(chats)
+      .insert(remoteSchema.chats)
       .values({
+        userId: context.userId,
         appId: app.id,
+        createdAt: new Date(),
       })
       .returning();
 
     await createFromTemplate({
       fullAppPath,
+      appName: params.name,
+      forceDefaultScaffold: params.useDefaultScaffold,
     });
 
     // Initialize git repo and create first commit
-
-    await gitInit({ path: fullAppPath, ref: "main" });
-
-    // Stage all files
-    await gitAdd({ path: fullAppPath, filepath: "." });
-
-    // Create initial commit
-    const commitHash = await gitCommit({
-      path: fullAppPath,
-      message: "Init Dyad app",
+    // Wrap in withLock to prevent race conditions with frontend auto-commit
+    const commitHash = await withLock(app.id, async () => {
+      await gitInit({ path: fullAppPath, ref: "main" });
+      await gitAdd({ path: fullAppPath, filepath: "." });
+      return gitCommit({
+        path: fullAppPath,
+        message: "Init vibes app",
+      });
     });
 
     // Update chat with initial commit hash
     await db
-      .update(chats)
+      .update(remoteSchema.chats)
       .set({
         initialCommitHash: commitHash,
       })
-      .where(eq(chats.id, chat.id));
+      .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId)));
 
     return {
       app: { ...app, resolvedPath: fullAppPath },
@@ -820,12 +1059,15 @@ export function registerAppHandlers() {
     };
   });
 
-  createTypedHandler(appContracts.copyApp, async (_, params) => {
+  createTypedHandler(appContracts.copyApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, newAppName, withHistory } = params;
 
     // 1. Check if an app with the new name already exists
     const existingApp = await db.query.apps.findFirst({
-      where: eq(apps.name, newAppName),
+      where: and(eq(remoteSchema.apps.name, newAppName), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (existingApp) {
@@ -834,15 +1076,15 @@ export function registerAppHandlers() {
 
     // 2. Find the original app
     const originalApp = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!originalApp) {
       throw new Error("Original app not found.");
     }
 
-    const originalAppPath = getDyadAppPath(originalApp.path);
-    const newAppPath = getDyadAppPath(newAppName);
+    const originalAppPath = getVibesAppPath(originalApp.path);
+    const newAppPath = getVibesAppPath(newAppName);
 
     // 3. Copy the app folder
     try {
@@ -864,22 +1106,22 @@ export function registerAppHandlers() {
 
     if (!withHistory) {
       // Initialize git repo and create first commit
-      await gitInit({ path: newAppPath, ref: "main" });
-
-      // Stage all files
-      await gitAdd({ path: newAppPath, filepath: "." });
-
-      // Create initial commit
-      await gitCommit({
-        path: newAppPath,
-        message: "Init Dyad app",
+      // Note: newDbApp doesn't exist yet, use path-based lock
+      await withLock(`git:${newAppName}`, async () => {
+        await gitInit({ path: newAppPath, ref: "main" });
+        await gitAdd({ path: newAppPath, filepath: "." });
+        await gitCommit({
+          path: newAppPath,
+          message: "Init vibes app",
+        });
       });
     }
 
     // 4. Create a new app entry in the database
     const [newDbApp] = await db
-      .insert(apps)
+      .insert(remoteSchema.apps)
       .values({
+        userId: context.userId,
         name: newAppName,
         path: newAppName, // Use the new name for the path
         // Explicitly set these to null because we don't want to copy them over.
@@ -890,15 +1132,20 @@ export function registerAppHandlers() {
         githubRepo: null,
         installCommand: originalApp.installCommand,
         startCommand: originalApp.startCommand,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
     return { app: newDbApp };
   });
 
-  createTypedHandler(appContracts.getApp, async (_, appId) => {
+  createTypedHandler(appContracts.getApp, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
@@ -906,7 +1153,7 @@ export function registerAppHandlers() {
     }
 
     // Get app files
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     let files: string[] = [];
 
     try {
@@ -948,30 +1195,42 @@ export function registerAppHandlers() {
     };
   });
 
-  createTypedHandler(appContracts.listApps, async () => {
+  createTypedHandler(appContracts.listApps, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const allApps = await db.query.apps.findMany({
-      orderBy: [desc(apps.createdAt)],
+      where: eq(remoteSchema.apps.userId, context.userId),
+      orderBy: [desc(remoteSchema.apps.createdAt)],
     });
-    const appsWithResolvedPath = allApps.map((app) => ({
-      ...app,
-      resolvedPath: getDyadAppPath(app.path),
-    }));
+    const appsWithResolvedPath = allApps.map((app) => {
+      const resolvedPath = getVibesAppPath(app.path);
+      return {
+        ...app,
+        resolvedPath,
+        localPathExists: fs.existsSync(resolvedPath),
+        canClone: !!(app.githubOrg && app.githubRepo),
+      };
+    });
     return {
       apps: appsWithResolvedPath,
     };
   });
 
-  createTypedHandler(appContracts.readAppFile, async (_, params) => {
+  createTypedHandler(appContracts.readAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, filePath } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const fullPath = path.join(appPath, filePath);
 
     // Check if the path is within the app directory (security check)
@@ -1004,17 +1263,30 @@ export function registerAppHandlers() {
     return envVars;
   });
 
-  createTypedHandler(appContracts.runApp, async (event, params) => {
+  createTypedHandler(appContracts.runApp, async (event, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     return withLock(appId, async () => {
       // Check if app is already running
       if (runningApps.has(appId)) {
         logger.debug(`App ${appId} is already running.`);
+        // Re-emit the proxy URL if the proxy was previously started
+        // (only if we have a stored URL - don't emit if npm install is still running)
+        const storedProxy = proxyUrlByApp.get(appId);
+        if (storedProxy) {
+          safeSend(event.sender, "app:output", {
+            type: "stdout",
+            message: `[vibes-proxy-server]started=[${storedProxy.proxyUrl}] original=[${storedProxy.originalUrl}]`,
+            appId,
+          });
+        }
         return;
       }
 
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1023,7 +1295,7 @@ export function registerAppHandlers() {
 
       logger.debug(`Starting app ${appId} in path ${app.path}`);
 
-      const appPath = getDyadAppPath(app.path);
+      const appPath = getVibesAppPath(app.path);
       try {
         // There may have been a previous run that left a process on this port.
         await cleanUpPort(getAppPort(appId));
@@ -1081,6 +1353,7 @@ export function registerAppHandlers() {
       }
 
       try {
+        proxyUrlByApp.delete(appId);
         await stopAppByInfo(appId, appInfo);
 
         // Now, safely remove the app from the map *after* confirming closure
@@ -1099,9 +1372,14 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.restartApp, async (event, params) => {
+  createTypedHandler(appContracts.restartApp, async (event, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, removeNodeModules } = params;
     logger.log(`Restarting app ${appId}`);
+    // Clear auto-recovery flag so the next start cycle gets a fresh attempt
+    autoRecoveryAttempted.delete(appId);
     return withLock(appId, async () => {
       try {
         // First stop the app if it's running
@@ -1111,6 +1389,7 @@ export function registerAppHandlers() {
           logger.log(
             `Stopping app ${appId} (processId ${processId}) before restart`,
           );
+          proxyUrlByApp.delete(appId);
           await stopAppByInfo(appId, appInfo);
         } else {
           logger.log(`App ${appId} not running. Proceeding to start.`);
@@ -1121,14 +1400,14 @@ export function registerAppHandlers() {
 
         // Now start the app again
         const app = await db.query.apps.findFirst({
-          where: eq(apps.id, appId),
+          where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
         });
 
         if (!app) {
           throw new Error("App not found");
         }
 
-        const appPath = getDyadAppPath(app.path);
+        const appPath = getVibesAppPath(app.path);
 
         // Remove node_modules if requested
         if (removeNodeModules) {
@@ -1152,12 +1431,12 @@ export function registerAppHandlers() {
           // If running in Docker mode, also remove container volumes so deps reinstall freshly
           if (runtimeMode === "docker") {
             logger.log(
-              `Docker mode detected for app ${appId}. Removing Docker volumes dyad-pnpm-${appId}...`,
+              `Docker mode detected for app ${appId}. Removing Docker volumes vibes-pnpm-${appId}...`,
             );
             try {
               await removeDockerVolumesForApp(appId);
               logger.log(
-                `Removed Docker volumes for app ${appId} (dyad-pnpm-${appId}).`,
+                `Removed Docker volumes for app ${appId} (vibes-pnpm-${appId}).`,
               );
             } catch (e) {
               // Best-effort cleanup; log and continue
@@ -1189,19 +1468,22 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.editAppFile, async (_, params) => {
+  createTypedHandler(appContracts.editAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     let { appId, filePath, content } = params;
     // It should already be normalized, but just in case.
     filePath = normalizePath(filePath);
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
     const fullPath = path.join(appPath, filePath);
 
     // Check if the path is within the app directory (security check)
@@ -1218,7 +1500,7 @@ export function registerAppHandlers() {
         logger.error("Error storing Neon timestamp at current version:", error);
         throw new Error(
           "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-            error,
+          error,
         );
       }
     }
@@ -1293,14 +1575,17 @@ export function registerAppHandlers() {
     return {};
   });
 
-  createTypedHandler(appContracts.deleteApp, async (_, params) => {
+  createTypedHandler(appContracts.deleteApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     // Static server worker is NOT terminated here anymore
 
     return withLock(appId, async () => {
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1324,35 +1609,51 @@ export function registerAppHandlers() {
 
       // Delete app from database
       try {
-        await db.delete(apps).where(eq(apps.id, appId));
+        await db.delete(remoteSchema.apps)
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         // Note: Associated chats will cascade delete
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
         throw new Error(`Failed to delete app from database: ${error.message}`);
       }
 
-      // Delete app files
-      const appPath = getDyadAppPath(app.path);
-      try {
-        await fsPromises.rm(appPath, { recursive: true, force: true });
-      } catch (error: any) {
-        logger.error(`Error deleting app files for app ${appId}:`, error);
-        throw new Error(
-          `App deleted from database, but failed to delete app files. Please delete app files from ${appPath} manually.\n\nError: ${error.message}`,
-        );
+      // Delete app files with retry logic to handle race conditions
+      // (e.g. file watchers or dev servers releasing handles)
+      const appPath = getVibesAppPath(app.path);
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          await fsPromises.rm(appPath, { recursive: true, force: true });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          if (attempt < maxRetries && (error.code === 'ENOTEMPTY' || error.code === 'EBUSY' || error.code === 'EPERM')) {
+            logger.warn(
+              `Attempt ${attempt}/${maxRetries} to delete app files failed (${error.code}). Retrying in ${attempt * 500}ms...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+          } else {
+            logger.error(`Error deleting app files for app ${appId}:`, error);
+            throw new Error(
+              `App deleted from database, but failed to delete app files. Please delete app files from ${appPath} manually.\n\nError: ${error.message}`,
+            );
+          }
+        }
       }
     });
   });
 
-  createTypedHandler(appContracts.addToFavorite, async (_, params) => {
+  createTypedHandler(appContracts.addToFavorite, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId } = params;
     return withLock(appId, async () => {
       try {
         // Fetch the current isFavorite value
         const result = await db
-          .select({ isFavorite: apps.isFavorite })
-          .from(apps)
-          .where(eq(apps.id, appId))
+          .select({ isFavorite: remoteSchema.apps.isFavorite })
+          .from(remoteSchema.apps)
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
           .limit(1);
 
         if (result.length === 0) {
@@ -1363,10 +1664,10 @@ export function registerAppHandlers() {
 
         // Toggle the isFavorite value
         const updated = await db
-          .update(apps)
-          .set({ isFavorite: !currentIsFavorite })
-          .where(eq(apps.id, appId))
-          .returning({ isFavorite: apps.isFavorite });
+          .update(remoteSchema.apps)
+          .set({ isFavorite: currentIsFavorite ? 0 : 1 })
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .returning({ isFavorite: remoteSchema.apps.isFavorite });
 
         if (updated.length === 0) {
           throw new Error(
@@ -1386,13 +1687,43 @@ export function registerAppHandlers() {
     });
   });
 
-  createTypedHandler(appContracts.renameApp, async (_, params) => {
+  createTypedHandler(appContracts.updateAppCommands, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, installCommand, startCommand } = params;
+    return withLock(appId, async () => {
+      try {
+        await db
+          .update(remoteSchema.apps)
+          .set({
+            installCommand: installCommand?.trim() || null,
+            startCommand: startCommand?.trim() || null,
+          })
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+        logger.info(
+          `Updated commands for app ${appId}: install="${installCommand}", start="${startCommand}"`,
+        );
+      } catch (error: any) {
+        logger.error(
+          `Error updating commands for app ID ${appId}:`,
+          error,
+        );
+        throw new Error(`Failed to update app commands: ${error.message}`);
+      }
+    });
+  });
+
+  createTypedHandler(appContracts.renameApp, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, appName, appPath: newPath } = params;
     return withLock(appId, async () => {
       let appPath = newPath;
       // Check if app exists
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
@@ -1425,7 +1756,7 @@ export function registerAppHandlers() {
 
       // Check for conflicts with existing apps
       const nameConflict = await db.query.apps.findFirst({
-        where: eq(apps.name, appName),
+        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (nameConflict && nameConflict.id !== appId) {
@@ -1434,19 +1765,21 @@ export function registerAppHandlers() {
 
       // If the current path is absolute, preserve the directory and only change the folder name
       // Otherwise, resolve the new path using the default base path
-      const currentResolvedPath = getDyadAppPath(app.path);
+      const currentResolvedPath = getVibesAppPath(app.path);
       const newAppPath = path.isAbsolute(app.path)
         ? path.join(path.dirname(app.path), appPath)
-        : getDyadAppPath(appPath);
+        : getVibesAppPath(appPath);
 
       let hasPathConflict = false;
       if (pathChanged) {
-        const allApps = await db.query.apps.findMany();
+        const allApps = await db.query.apps.findMany({
+          where: eq(remoteSchema.apps.userId, context.userId),
+        });
         hasPathConflict = allApps.some((existingApp) => {
           if (existingApp.id === appId) {
             return false;
           }
-          return getDyadAppPath(existingApp.path) === newAppPath;
+          return getVibesAppPath(existingApp.path) === newAppPath;
         });
       }
 
@@ -1526,12 +1859,12 @@ export function registerAppHandlers() {
       const pathToStore = path.isAbsolute(app.path) ? newAppPath : appPath;
       try {
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({
             name: appName,
             path: pathToStore,
           })
-          .where(eq(apps.id, appId))
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
           .returning();
 
         return;
@@ -1579,8 +1912,8 @@ export function registerAppHandlers() {
     const dbPath = getDatabasePath();
     if (fs.existsSync(dbPath)) {
       // Close database connections first
-      if (db.$client) {
-        db.$client.close();
+      if (db && (db as any).$client) {
+        (db as any).$client.close();
       }
       await fsPromises.unlink(dbPath);
       logger.log(`Database file deleted: ${dbPath}`);
@@ -1600,11 +1933,11 @@ export function registerAppHandlers() {
     // Doing this last because it's the most time-consuming and the least important
     // in terms of resetting the app state.
     logger.log("removing all app files...");
-    const dyadAppPath = getDyadAppPath(".");
-    if (fs.existsSync(dyadAppPath)) {
-      await fsPromises.rm(dyadAppPath, { recursive: true, force: true });
+    const vibesAppPath = getVibesAppPath(".");
+    if (fs.existsSync(vibesAppPath)) {
+      await fsPromises.rm(vibesAppPath, { recursive: true, force: true });
       // Recreate the base directory
-      await fsPromises.mkdir(dyadAppPath, { recursive: true });
+      await fsPromises.mkdir(vibesAppPath, { recursive: true });
     }
     logger.log("all app files removed.");
     logger.log("reset all complete.");
@@ -1617,17 +1950,20 @@ export function registerAppHandlers() {
     return { version: packageJson.version };
   });
 
-  createTypedHandler(appContracts.renameBranch, async (_, params) => {
+  createTypedHandler(appContracts.renameBranch, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, oldBranchName, newBranchName } = params;
     const app = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!app) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(app.path);
+    const appPath = getVibesAppPath(app.path);
 
     return withLock(appId, async () => {
       try {
@@ -1669,9 +2005,6 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.respondToAppInput, async (_, params) => {
     const { appId, response } = params;
-    if (response !== "y" && response !== "n") {
-      throw new Error(`Invalid response: ${response}`);
-    }
     const appInfo = runningApps.get(appId);
 
     if (!appInfo) {
@@ -1694,7 +2027,245 @@ export function registerAppHandlers() {
     }
   });
 
-  createTypedHandler(appContracts.searchAppFiles, async (_, params) => {
+  // Track running shell command processes per app
+  const runningShellCommands = new Map<number, ChildProcess>();
+  // Track current working directory per app for persistent cd
+  const shellCwdMap = new Map<number, string>();
+
+  createTypedHandler(appContracts.executeShellCommand, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, command, timeoutMs } = params;
+
+    // Get app path
+    const appRecord = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!appRecord) {
+      throw new Error(`App ${appId} not found`);
+    }
+
+    const appPath = getVibesAppPath(appRecord.path);
+    const currentCwd = shellCwdMap.get(appId) || appPath;
+
+    // Kill any previously running shell command for this app
+    const existingProcess = runningShellCommands.get(appId);
+    if (existingProcess && !existingProcess.killed) {
+      try {
+        if (existingProcess.pid) {
+          process.kill(-existingProcess.pid, "SIGTERM");
+        }
+      } catch {
+        // Process may already be dead
+      }
+      runningShellCommands.delete(appId);
+    }
+
+    const trimmedCommand = command.trim();
+
+    // Handle "cd" specially to track CWD changes
+    const cdMatch = trimmedCommand.match(/^cd\s+(.*)/);
+    if (cdMatch || trimmedCommand === "cd") {
+      const target = cdMatch?.[1]?.trim() || process.env.HOME || "/";
+      // Resolve the new CWD by running cd + pwd
+      const resolveCmd = `cd ${JSON.stringify(currentCwd)} && cd ${target} && pwd`;
+
+      return new Promise((resolve) => {
+        let stdout = "";
+        let stderr = "";
+
+        const p = spawn(resolveCmd, [], {
+          cwd: appPath,
+          shell: true,
+          stdio: "pipe",
+        });
+
+        p.stdout?.on("data", (data) => { stdout += data.toString(); });
+        p.stderr?.on("data", (data) => { stderr += data.toString(); });
+
+        p.on("close", (code) => {
+          if (code === 0 && stdout.trim()) {
+            const newCwd = stdout.trim();
+            shellCwdMap.set(appId, newCwd);
+            resolve({
+              stdout: "",
+              stderr: "",
+              exitCode: 0,
+              cwd: newCwd,
+            });
+          } else {
+            resolve({
+              stdout: "",
+              stderr: stderr || `cd: ${target}: No existe el directorio`,
+              exitCode: code ?? 1,
+              cwd: currentCwd,
+            });
+          }
+        });
+
+        p.on("error", (err) => {
+          resolve({
+            stdout: "",
+            stderr: err.message,
+            exitCode: 1,
+            cwd: currentCwd,
+          });
+        });
+      });
+    }
+
+    // For all other commands, execute in the tracked CWD
+    return new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+
+      const shellProcess = spawn(trimmedCommand, [], {
+        cwd: currentCwd,
+        shell: true,
+        stdio: "pipe",
+        detached: true,
+      });
+
+      runningShellCommands.set(appId, shellProcess);
+
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          try {
+            if (shellProcess.pid) {
+              process.kill(-shellProcess.pid, "SIGTERM");
+            }
+          } catch {
+            // ignore
+          }
+          runningShellCommands.delete(appId);
+          resolve({
+            stdout,
+            stderr,
+            exitCode: null,
+            error: `Command timed out after ${timeoutMs}ms`,
+            cancelled: false,
+            cwd: currentCwd,
+          });
+        }
+      }, timeoutMs);
+
+      shellProcess.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      shellProcess.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      shellProcess.on("close", (code) => {
+        clearTimeout(timeout);
+        runningShellCommands.delete(appId);
+        if (!settled) {
+          settled = true;
+          resolve({
+            stdout,
+            stderr,
+            exitCode: code,
+            cwd: currentCwd,
+          });
+        }
+      });
+
+      shellProcess.on("error", (err) => {
+        clearTimeout(timeout);
+        runningShellCommands.delete(appId);
+        if (!settled) {
+          settled = true;
+          resolve({
+            stdout,
+            stderr,
+            exitCode: null,
+            error: err.message,
+            cwd: currentCwd,
+          });
+        }
+      });
+    });
+  });
+
+  createTypedHandler(appContracts.cancelShellCommand, async (_, params) => {
+    const { appId } = params;
+    const shellProcess = runningShellCommands.get(appId);
+
+    if (!shellProcess || shellProcess.killed) {
+      return;
+    }
+
+    try {
+      if (shellProcess.pid) {
+        process.kill(-shellProcess.pid, "SIGTERM");
+      }
+    } catch (error: any) {
+      logger.warn(`Error killing shell command for app ${appId}:`, error.message);
+    }
+
+    runningShellCommands.delete(appId);
+  });
+
+  createTypedHandler(appContracts.getShellCompletions, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, partial } = params;
+
+    const appRecord = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!appRecord) {
+      return { completions: [] };
+    }
+
+    const appPath = getVibesAppPath(appRecord.path);
+    const currentCwd = shellCwdMap.get(appId) || appPath;
+
+    return new Promise((resolve) => {
+      // Use compgen for bash-style completion of files/directories
+      const escapedPartial = partial.replace(/'/g, "'\\''");
+      const cmd = `cd ${JSON.stringify(currentCwd)} && compgen -f -- '${escapedPartial}' 2>/dev/null | head -20`;
+
+      const p = spawn(cmd, [], {
+        cwd: currentCwd,
+        shell: true,
+        stdio: "pipe",
+      });
+
+      let stdout = "";
+      p.stdout?.on("data", (data) => { stdout += data.toString(); });
+
+      p.on("close", () => {
+        const completions = stdout
+          .trim()
+          .split("\n")
+          .filter((line) => line.length > 0);
+        resolve({ completions });
+      });
+
+      p.on("error", () => {
+        resolve({ completions: [] });
+      });
+
+      // Timeout for completion
+      setTimeout(() => {
+        try { p.kill(); } catch { /* ignore */ }
+        resolve({ completions: [] });
+      }, 3000);
+    });
+  });
+
+  createTypedHandler(appContracts.searchAppFiles, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, query } = params;
     const trimmedQuery = query.trim();
     if (!trimmedQuery) {
@@ -1702,14 +2273,14 @@ export function registerAppHandlers() {
     }
 
     const appRecord = await db.query.apps.findFirst({
-      where: eq(apps.id, appId),
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
     });
 
     if (!appRecord) {
       throw new Error("App not found");
     }
 
-    const appPath = getDyadAppPath(appRecord.path);
+    const appPath = getVibesAppPath(appRecord.path);
 
     // Search file contents with ripgrep
     const contentMatches = await searchAppFilesWithRipgrep({
@@ -1724,25 +2295,29 @@ export function registerAppHandlers() {
   handle(
     "search-app",
     async (_, searchQuery: string): Promise<AppSearchResult[]> => {
+      const settings = readSettings();
+      if (!settings.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
       // Use parameterized query to prevent SQL injection
       const pattern = `%${searchQuery.replace(/[%_]/g, "\\$&")}%`;
 
       // 1) Apps whose name matches
       const appNameMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
         })
-        .from(apps)
-        .where(like(apps.name, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .where(and(like(remoteSchema.apps.name, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       const appNameMatchesResult: AppSearchResult[] = appNameMatches.map(
         (r) => ({
           id: r.id,
           name: r.name,
-          createdAt: r.createdAt,
+          createdAt: r.createdAt as unknown as Date,
           matchedChatTitle: null,
           matchedChatMessage: null,
         }),
@@ -1751,21 +2326,21 @@ export function registerAppHandlers() {
       // 2) Apps whose chat title matches
       const chatTitleMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
-          matchedChatTitle: chats.title,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
+          matchedChatTitle: remoteSchema.chats.title,
         })
-        .from(apps)
-        .innerJoin(chats, eq(apps.id, chats.appId))
-        .where(like(chats.title, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
+        .where(and(like(remoteSchema.chats.title, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       const chatTitleMatchesResult: AppSearchResult[] = chatTitleMatches.map(
         (r) => ({
           id: r.id,
           name: r.name,
-          createdAt: r.createdAt,
+          createdAt: r.createdAt as unknown as Date,
           matchedChatTitle: r.matchedChatTitle,
           matchedChatMessage: null,
         }),
@@ -1774,17 +2349,17 @@ export function registerAppHandlers() {
       // 3) Apps whose chat message content matches
       const chatMessageMatches = await db
         .select({
-          id: apps.id,
-          name: apps.name,
-          createdAt: apps.createdAt,
-          matchedChatTitle: chats.title,
-          matchedChatMessage: messages.content,
+          id: remoteSchema.apps.id,
+          name: remoteSchema.apps.name,
+          createdAt: remoteSchema.apps.createdAt,
+          matchedChatTitle: remoteSchema.chats.title,
+          matchedChatMessage: remoteSchema.messages.content,
         })
-        .from(apps)
-        .innerJoin(chats, eq(apps.id, chats.appId))
-        .innerJoin(messages, eq(chats.id, messages.chatId))
-        .where(like(messages.content, pattern))
-        .orderBy(desc(apps.createdAt));
+        .from(remoteSchema.apps)
+        .innerJoin(remoteSchema.chats, eq(remoteSchema.apps.id, remoteSchema.chats.appId))
+        .innerJoin(remoteSchema.messages, eq(remoteSchema.chats.id, remoteSchema.messages.chatId))
+        .where(and(like(remoteSchema.messages.content, pattern), eq(remoteSchema.apps.userId, settings.userId)))
+        .orderBy(desc(remoteSchema.apps.createdAt));
 
       // Flatten and dedupe by app id
       const allMatches: AppSearchResult[] = [
@@ -1837,7 +2412,10 @@ export function registerAppHandlers() {
     },
   );
 
-  createTypedHandler(appContracts.changeAppLocation, async (_, params) => {
+  createTypedHandler(appContracts.changeAppLocation, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
     const { appId, parentDirectory } = params;
 
     if (!parentDirectory) {
@@ -1852,14 +2430,14 @@ export function registerAppHandlers() {
 
     return withLock(appId, async () => {
       const app = await db.query.apps.findFirst({
-        where: eq(apps.id, appId),
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
       });
 
       if (!app) {
         throw new Error("App not found");
       }
 
-      const currentResolvedPath = getDyadAppPath(app.path);
+      const currentResolvedPath = getVibesAppPath(app.path);
       // Extract app folder name from current path (works for both absolute and relative paths)
       const appFolderName = path.basename(
         path.isAbsolute(app.path) ? app.path : currentResolvedPath,
@@ -1870,20 +2448,22 @@ export function registerAppHandlers() {
         // Path hasn't changed, but we should update to absolute path format if needed
         if (!path.isAbsolute(app.path)) {
           await db
-            .update(apps)
+            .update(remoteSchema.apps)
             .set({ path: nextResolvedPath })
-            .where(eq(apps.id, appId));
+            .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         }
         return {
           resolvedPath: nextResolvedPath,
         };
       }
 
-      const allApps = await db.query.apps.findMany();
+      const allApps = await db.query.apps.findMany({
+        where: eq(remoteSchema.apps.userId, context.userId),
+      });
       const conflict = allApps.some(
         (existingApp) =>
           existingApp.id !== appId &&
-          getDyadAppPath(existingApp.path) === nextResolvedPath,
+          getVibesAppPath(existingApp.path) === nextResolvedPath,
       );
 
       if (conflict) {
@@ -1905,9 +2485,9 @@ export function registerAppHandlers() {
           `Source path ${currentResolvedPath} does not exist. Updating database path only.`,
         );
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(eq(apps.id, appId));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
         return {
           resolvedPath: nextResolvedPath,
         };
@@ -1933,9 +2513,9 @@ export function registerAppHandlers() {
 
         // Update path to absolute path
         await db
-          .update(apps)
+          .update(remoteSchema.apps)
           .set({ path: nextResolvedPath })
-          .where(eq(apps.id, appId));
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
 
         try {
           await fsPromises.rm(currentResolvedPath, {
@@ -1978,7 +2558,7 @@ export function registerAppHandlers() {
 
   createTypedHandler(appContracts.generateAppTitle, async (_, { prompt }) => {
     const settings = readSettings();
-    if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+    if (!hasOpenRouterApiKey()) {
       logger.warn(
         "OpenRouter API key not found, using cute app name as fallback",
       );
@@ -1986,13 +2566,17 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+      settings.standardModeModel || "openai/gpt-4.1-mini";
+
+    logger.info(`[AppTitle] Generating short title with model: ${model}`);
+    logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
 
     try {
       const data = await openRouterCompletion({
         model,
+        title: "app-title-short",
         temperature: 0.3,
-        max_tokens: 20,
+        max_tokens: 30,
         messages: [
           {
             role: "system",
@@ -2005,23 +2589,32 @@ export function registerAppHandlers() {
         ],
       });
 
-      const title =
-        data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+      const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+      if (!rawTitle) {
+        const fallback = generateCuteAppName();
+        logger.warn(`[AppTitle] API returned empty title, using fallback: "${fallback}"`);
+        return { title: fallback };
+      }
 
       // Sanitize title (remove quotes, etc)
-      const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 30);
+      const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 30);
+      logger.info(`[AppTitle] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
       return { title: sanitizedTitle };
     } catch (error) {
-      logger.error("Error generating app title:", error);
-      return { title: generateCuteAppName() };
+      const fallback = generateCuteAppName();
+      logger.error(`[AppTitle] Error generating title, using fallback: "${fallback}"`, error);
+      return { title: fallback };
     }
   });
 
   createTypedHandler(
     appContracts.generateAppTitleFromHistory,
-    async (_, { appId }) => {
+    async (_, { appId }, context) => {
       const settings = readSettings();
-      if (!settings.providerSettings?.openrouter?.apiKey?.value?.trim()) {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+
+      if (!hasOpenRouterApiKey()) {
         logger.warn(
           "OpenRouter API key not found, using cute app name as fallback",
         );
@@ -2029,30 +2622,36 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+        settings.standardModeModel || "openai/gpt-4.1-mini";
+
+      logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 
       try {
         // Fetch the first user message where they define what they want
         const firstUserMessage = await db
           .select({
-            content: messages.content,
+            content: remoteSchema.messages.content,
           })
-          .from(messages)
-          .innerJoin(chats, eq(messages.chatId, chats.id))
-          .where(and(eq(chats.appId, appId), eq(messages.role, "user")))
-          .orderBy(messages.createdAt) // Get oldest first
+          .from(remoteSchema.messages)
+          .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
+          .where(and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.messages.role, "user"), eq(remoteSchema.chats.userId, context.userId)))
+          .orderBy(remoteSchema.messages.createdAt) // Get oldest first
           .limit(1);
 
         if (!firstUserMessage.length) {
-          return { title: generateCuteAppName() };
+          const fallback = generateCuteAppName();
+          logger.warn(`[AppNamePro] No user message found for appId=${appId}, using fallback: "${fallback}"`);
+          return { title: fallback };
         }
 
         const userPrompt = firstUserMessage[0].content;
+        logger.info(`[AppNamePro] User prompt: "${userPrompt.slice(0, 100)}${userPrompt.length > 100 ? '...' : ''}"`);
 
         const data = await openRouterCompletion({
           model,
-          temperature: 0.3,
-          max_tokens: 20,
+          title: "app-name-pro",
+          temperature: 0.5,
+          max_tokens: 30,
           messages: [
             {
               role: "system",
@@ -2065,21 +2664,71 @@ export function registerAppHandlers() {
           ],
         });
 
-        const title =
-          data?.choices?.[0]?.message?.content?.trim() || generateCuteAppName();
+        const rawTitle = data?.choices?.[0]?.message?.content?.trim();
+        logger.info(`[AppNamePro] API response: data=${data ? 'present' : 'null'}, choices=${data?.choices?.length ?? 'none'}, content="${rawTitle ?? '<empty>'}", finish_reason=${data?.choices?.[0]?.finish_reason ?? 'unknown'}`);
+        if (!rawTitle) {
+          const fallback = generateCuteAppName();
+          logger.warn(`[AppNamePro] API returned empty name, using fallback: "${fallback}". Full response: ${JSON.stringify(data)?.slice(0, 500)}`);
+          return { title: fallback };
+        }
 
         // Sanitize title
-        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 40);
+        const sanitizedTitle = rawTitle.replace(/^["']|["']$/g, "").slice(0, 40);
+        logger.info(`[AppNamePro] Generated: "${sanitizedTitle}" (raw: "${rawTitle}")`);
         return { title: sanitizedTitle };
       } catch (error) {
-        logger.error("Error generating app title from history:", error);
-        return { title: generateCuteAppName() };
+        const fallback = generateCuteAppName();
+        logger.error(`[AppNamePro] Error generating name for appId=${appId}, using fallback: "${fallback}"`, error);
+        return { title: fallback };
       }
     },
   );
+
+  createTypedHandler(appContracts.downloadApp, async (_, { appId }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const appInfo = await db.query.apps.findFirst({
+      where: and(
+        eq(remoteSchema.apps.id, appId),
+        eq(remoteSchema.apps.userId, context.userId),
+      ),
+    });
+
+    if (!appInfo) throw new Error("App not found");
+    if (!appInfo.githubOrg || !appInfo.githubRepo) {
+      throw new Error(
+        "Esta aplicación no tiene un repositorio de GitHub asociado.",
+      );
+    }
+
+    const settings = readSettings();
+    const githubSettings = settings.providerSettings?.github as any;
+    const accessToken = githubSettings?.accessToken?.value;
+
+    const resolvedPath = getVibesAppPath(appInfo.path);
+    const parentDir = path.dirname(resolvedPath);
+
+    if (!fs.existsSync(parentDir)) {
+      await fsPromises.mkdir(parentDir, { recursive: true });
+    }
+
+    const url = `https://github.com/${appInfo.githubOrg}/${appInfo.githubRepo}.git`;
+
+    try {
+      await gitClone({
+        path: resolvedPath,
+        url,
+        accessToken,
+      });
+      return { success: true };
+    } catch (error: any) {
+      logger.error(`Failed to clone app ${appId}:`, error);
+      return { success: false, error: error.message };
+    }
+  });
 }
 
-function getCommand({
+async function getCommand({
   appId,
   installCommand,
   startCommand,
@@ -2088,10 +2737,12 @@ function getCommand({
   installCommand?: string | null;
   startCommand?: string | null;
 }) {
-  const hasCustomCommands = !!installCommand?.trim() && !!startCommand?.trim();
-  return hasCustomCommands
-    ? `${installCommand!.trim()} && ${startCommand!.trim()}`
-    : getDefaultCommand(appId);
+  const port = await findFreeAppPort(appId);
+  // Store the actual port for polling-based readiness detection
+  actualPortByApp.set(appId, port);
+  const install = (installCommand?.trim() || "npm install --legacy-peer-deps").replace(/\{port\}/g, String(port));
+  const start = (startCommand?.trim() || `npm run dev -- --port ${port}`).replace(/\{port\}/g, String(port));
+  return `${install} && ${start}`;
 }
 
 async function cleanUpPort(port: number) {

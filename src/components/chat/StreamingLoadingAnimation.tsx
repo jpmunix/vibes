@@ -1,124 +1,135 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 
 interface StreamingLoadingAnimationProps {
   variant: "initial" | "streaming";
   label?: string;
+  /** Tailwind bg-* class for the dots, e.g. "bg-amber-500". Falls back to bg-primary. */
+  dotColorClass?: string;
+  /** Tailwind text-* class for the label, e.g. "text-amber-500". Falls back to text-muted-foreground. */
+  labelColorClass?: string;
+  /** Short text excerpt to display alongside the loader (e.g. for peeking into thoughts) */
+  contentExcerpt?: string;
 }
 
-const INITIAL_ORBS = [0, 1, 2, 3, 4];
-const STREAMING_BARS = [
-  { min: 5, max: 16, delay: 0 },
-  { min: 7, max: 20, delay: 0.1 },
-  { min: 4, max: 14, delay: 0.18 },
-  { min: 8, max: 22, delay: 0.05 },
-  { min: 6, max: 15, delay: 0.24 },
-];
-
+/**
+ * Professional streaming indicator.
+ *
+ * - **initial**: pulsing dots with label (shown when waiting for first content)
+ * - **streaming**: compact inline dots with contextual label (shown while content is arriving)
+ */
 export function StreamingLoadingAnimation({
   variant,
   label,
+  dotColorClass,
+  labelColorClass,
+  contentExcerpt,
 }: StreamingLoadingAnimationProps) {
+  const latestExcerptRef = useRef(contentExcerpt);
+  latestExcerptRef.current = contentExcerpt;
+  const [displayedExcerpt, setDisplayedExcerpt] = useState(contentExcerpt);
+
+  useEffect(() => {
+    // Throttle the excerpt updates so the user can actually read the text
+    // instead of it flashing by token by token.
+    const interval = setInterval(() => {
+      setDisplayedExcerpt((prev) =>
+        prev !== latestExcerptRef.current ? latestExcerptRef.current : prev
+      );
+    }, 1500); // 1.5 seconds per update
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    // If the streaming finishes or changes state abruptly, clear the excerpt
+    if (!contentExcerpt) {
+      setDisplayedExcerpt(undefined);
+    }
+  }, [contentExcerpt]);
+
   if (variant === "initial") {
     return (
-      <div className="flex items-center gap-3 p-2">
-        <div className="relative flex h-8 items-center gap-2">
-          {INITIAL_ORBS.map((i) => (
-            <motion.div
-              key={i}
-              className="relative"
-              animate={{ y: [0, -10, 2, 0] }}
-              transition={{
-                duration: 0.9,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: [0.22, 1.2, 0.36, 1],
-                delay: i * 0.08,
-              }}
+      <div className="flex items-center gap-3 py-2">
+        <PulsingDots size={8} gap={6} colorClass={dotColorClass} />
+        <AnimatePresence mode="wait">
+          {label && (
+            <motion.span
+              key={label}
+              className={`text-sm font-medium ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25 }}
             >
-              <motion.div
-                className="absolute -inset-1 rounded-full blur-md"
-                style={{
-                  background:
-                    "radial-gradient(circle, color-mix(in srgb, var(--primary) 30%, transparent), transparent 70%)",
-                }}
-                animate={{
-                  scale: [1, 1.6, 1],
-                  opacity: [0.2, 0.5, 0.2],
-                }}
-                transition={{
-                  duration: 0.9,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: "easeOut",
-                  delay: i * 0.08,
-                }}
-              />
-              <motion.div
-                className="h-2.5 w-2.5 rounded-full bg-primary"
-                style={{
-                  boxShadow:
-                    "0 0 6px color-mix(in srgb, var(--primary) 30%, transparent)",
-                }}
-                animate={{
-                  scale: [1, 1.2, 0.95, 1],
-                  opacity: [0.6, 1, 0.8, 0.6],
-                }}
-                transition={{
-                  duration: 0.9,
-                  repeat: Number.POSITIVE_INFINITY,
-                  ease: [0.22, 1.2, 0.36, 1],
-                  delay: i * 0.08,
-                }}
-              />
-            </motion.div>
-          ))}
-        </div>
-        {label ? (
-          <span className="text-[11px] text-muted-foreground font-medium">
-            {label}
-          </span>
-        ) : null}
+              {label}
+            </motion.span>
+          )}
+        </AnimatePresence>
+        <AnimatePresence mode="popLayout">
+          {displayedExcerpt && (
+            <motion.span
+              key={displayedExcerpt}
+              className="text-sm italic text-muted-foreground/60 overflow-hidden text-ellipsis whitespace-nowrap flex-1"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.3 }}
+            >
+              {displayedExcerpt}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
 
+  // streaming variant — compact inline
   return (
-    <div className="mt-3 ml-1 flex items-center gap-3">
-      <div className="flex h-6 items-end gap-[3px]">
-        {STREAMING_BARS.map((bar, i) => (
-          <motion.div
-            key={i}
-            className="w-[3px] rounded-full bg-primary"
-            animate={{
-              height: [
-                bar.min,
-                bar.max,
-                bar.min * 1.2,
-                bar.max * 0.85,
-                bar.min,
-              ],
-              opacity: [0.4, 1, 0.7, 0.9, 0.4],
-            }}
-            transition={{
-              duration: 1.1,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: [0.22, 1.2, 0.36, 1],
-              delay: bar.delay,
-            }}
-          />
-        ))}
-      </div>
-      {label ? (
-        <motion.span
-          className="text-xs text-muted-foreground"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{
-            duration: 1.6,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
+    <div className="mt-3 ml-1 flex items-center gap-2.5">
+      <PulsingDots size={5} gap={4} colorClass={dotColorClass} />
+      <AnimatePresence mode="wait">
+        {label && (
+          <motion.span
+            key={label}
+            className={`text-xs ${labelColorClass || "text-muted-foreground"}`}
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 0.85, x: 0 }}
+            exit={{ opacity: 0, x: 4 }}
+            transition={{ duration: 0.2 }}
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Three pulsing dots – the core loading indicator.
+ * Clean, professional, and small enough to sit inline with text.
+ */
+function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: number; colorClass?: string }) {
+  return (
+    <div className="flex items-center" style={{ gap }}>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className={`rounded-full ${colorClass || "bg-primary"}`}
+          style={{ width: size, height: size }}
+          animate={{
+            scale: [1, 1.35, 1],
+            opacity: [0.4, 1, 0.4],
           }}
-        >
-          {label}
-        </motion.span>
-      ) : null}
+          transition={{
+            duration: 1.0,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.18,
+          }}
+        />
+      ))}
     </div>
   );
 }

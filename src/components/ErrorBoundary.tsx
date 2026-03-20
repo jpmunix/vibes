@@ -20,27 +20,15 @@ export function ErrorBoundary({ error }: ErrorComponentProps) {
       // Get system debug info
       const debugInfo = await ipc.system.getSystemDebugInfo();
 
-      // Create a formatted issue body with the debug info and error information
-      const issueBody = `
-## Bug Description
-<!-- Please describe the issue you're experiencing -->
-
-## Steps to Reproduce
-<!-- Please list the steps to reproduce the issue -->
-
-## Expected Behavior
-<!-- What did you expect to happen? -->
-
-## Actual Behavior
-<!-- What actually happened? -->
-
-## Error Details
+      // Create a formatted email body with the debug info and error information
+      const emailBody = `
+== Error Details ==
 - Error Name: ${error?.name || "Unknown"}
 - Error Message: ${error?.message || "Unknown"}
-${error?.stack ? `\n\`\`\`\n${error.stack.slice(0, 1000)}\n\`\`\`` : ""}
+${error?.stack ? `\nStack Trace:\n${error.stack.slice(0, 500)}` : ""}
 
-## System Information
-- App Version: ${debugInfo.dyadVersion}
+== System Information ==
+- App Version: ${debugInfo.vibesVersion}
 - Platform: ${debugInfo.platform}
 - Architecture: ${debugInfo.architecture}
 - Node Version: ${debugInfo.nodeVersion || "Not available"}
@@ -48,43 +36,40 @@ ${error?.stack ? `\n\`\`\`\n${error.stack.slice(0, 1000)}\n\`\`\`` : ""}
 - Node Path: ${debugInfo.nodePath || "Not available"}
 - Telemetry ID: ${debugInfo.telemetryId || "Not available"}
 
-## Logs
-\`\`\`
-${debugInfo.logs.slice(-3_500) || "No logs available"}
-\`\`\`
+== Logs ==
+${debugInfo.logs.slice(-500) || "No logs available"}
 `;
 
-      // Create the GitHub issue URL with the pre-filled body
-      const encodedBody = encodeURIComponent(issueBody);
-      const encodedTitle = encodeURIComponent("[bug] Error in application");
-      const githubIssueUrl = `https://github.com/minube/vibes/issues/new?title=${encodedTitle}&labels=bug,filed-from-app,client-error&body=${encodedBody}`;
+      const subject = encodeURIComponent(`[bug] Error en Vibes: ${error?.name || "Unknown"}`);
+      const body = encodeURIComponent(emailBody);
+      const mailtoUrl = `mailto:pablo@minube.com?subject=${subject}&body=${body}`;
 
-      // Open the pre-filled GitHub issue page
-      await ipc.system.openExternalUrl(githubIssueUrl);
+      // Open the email client with the pre-filled report
+      await ipc.system.openExternalUrl(mailtoUrl);
     } catch (err) {
       console.error("Failed to prepare bug report:", err);
-      // Fallback to opening the regular GitHub issue page
-      ipc.system.openExternalUrl("https://github.com/minube/vibes/issues/new");
+      // Fallback to opening a simple email
+      ipc.system.openExternalUrl("mailto:pablo@minube.com?subject=" + encodeURIComponent("[bug] Error en Vibes"));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full p-6">
-      <div className="max-w-md w-full bg-background p-6 rounded-lg shadow-lg">
-        <h2 className="text-xl font-bold mb-4">
+    <div className="flex flex-col items-center justify-center min-h-screen w-full p-6 bg-background text-foreground">
+      <div className="max-w-md w-full bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border">
+        <h2 className="text-xl font-bold mb-4 text-foreground">
           ¡Lo sentimos, eso no debería haber pasado!
         </h2>
 
-        <p className="text-sm mb-3">Hubo un error al cargar la aplicación...</p>
+        <p className="text-sm mb-3 text-muted-foreground">Hubo un error al cargar la aplicación...</p>
 
         {error && (
-          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-md mb-6">
-            <p className="text-sm mb-1">
+          <div className="bg-muted p-4 rounded-md mb-6">
+            <p className="text-sm mb-1 text-foreground">
               <strong>Nombre del error:</strong> {error.name}
             </p>
-            <p className="text-sm">
+            <p className="text-sm text-foreground">
               <strong>Mensaje del error:</strong> {error.message}
             </p>
           </div>
@@ -96,9 +81,9 @@ ${debugInfo.logs.slice(-3_500) || "No logs available"}
           </Button>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md flex items-center gap-2">
-          <LightbulbIcon className="h-4 w-4 text-blue-700 dark:text-blue-400 flex-shrink-0" />
-          <p className="text-sm text-blue-700 dark:text-blue-400">
+        <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-md flex items-center gap-2">
+          <LightbulbIcon className="h-4 w-4 text-primary flex-shrink-0" />
+          <p className="text-sm text-primary">
             <strong>Consejo:</strong> Intenta cerrar y volver a abrir Vibes como
             solución temporal.
           </p>

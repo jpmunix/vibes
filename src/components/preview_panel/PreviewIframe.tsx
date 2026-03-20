@@ -4,9 +4,10 @@ import {
   appConsoleEntriesAtom,
   previewErrorMessageAtom,
   previewCurrentUrlAtom,
+  routeHistoryAtom,
 } from "@/atoms/appAtoms";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,6 +25,10 @@ import {
   Monitor,
   Tablet,
   Smartphone,
+  Camera,
+  Crop,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";
@@ -45,8 +50,16 @@ import {
   annotatorModeAtom,
   screenshotDataUrlAtom,
   pendingVisualChangesAtom,
+  elementTypeAtom,
+  naturalEditingPanelOpenAtom,
+  isDynamicComponentAtom,
+  hasStaticTextAtom,
+  currentIconNameAtom,
+  iconLineAtom,
+  componentTextContentAtom,
 } from "@/atoms/previewAtoms";
 import { ComponentSelection } from "@/ipc/types";
+import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
   Tooltip,
   TooltipContent,
@@ -66,14 +79,15 @@ import { cn } from "@/lib/utils";
 import { normalizePath } from "../../../shared/normalizePath";
 import { showError } from "@/lib/toast";
 import type { DeviceMode } from "@/lib/schemas";
-import { AnnotatorOnlyForPro } from "./AnnotatorOnlyForPro";
 import { useAttachments } from "@/hooks/useAttachments";
-import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { Annotator } from "@/pro/ui/components/Annotator/Annotator";
 import { VisualEditingToolbar } from "./VisualEditingToolbar";
+import { useSidebar } from "@/components/ui/sidebar";
+import { chatPositionAtom } from "@/atoms/uiAtoms";
+import { VibesInitLoader } from "./VibesInitLoader";
 
 interface ErrorBannerProps {
-  error: { message: string; source: "preview-app" | "dyad-app" } | undefined;
+  error: { message: string; source: "preview-app" | "vibes-app" } | undefined;
   onDismiss: () => void;
   onAIFix: () => void;
 }
@@ -94,77 +108,156 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
   };
 
   return (
-    <div
-      className="absolute top-2 left-2 right-2 z-10 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md shadow-sm p-2"
-      data-testid="preview-error-banner"
-    >
-      {/* Close button in top left */}
-      <button
-        onClick={onDismiss}
-        className="absolute top-1 left-1 p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
-      >
-        <X size={14} className="text-red-500 dark:text-red-400" />
-      </button>
-
-      {/* Add a little chip that says "Internal error" if source is "dyad-app" */}
-      {error.source === "dyad-app" && (
-        <div className="absolute top-1 right-1 p-1 bg-red-100 dark:bg-red-900 rounded-md text-xs font-medium text-red-700 dark:text-red-300">
-          Internal error
-        </div>
-      )}
-
-      {/* Error message in the middle */}
+    <>
+      {/* Overlay oscuro de fondo */}
       <div
-        className={cn(
-          "px-6 py-1 text-sm",
-          error.source === "dyad-app" && "pt-6",
-        )}
+        className="absolute inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        onClick={onDismiss}
+      />
+
+      {/* Modal centrado */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90%] max-w-2xl bg-white dark:bg-gray-900 rounded-lg shadow-2xl border border-red-200 dark:border-red-800"
+        data-testid="preview-error-banner"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="text-red-700 dark:text-red-300 text-wrap font-mono whitespace-pre-wrap break-words text-xs cursor-pointer flex gap-1 items-start"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          <ChevronRight
-            size={14}
-            className={`mt-0.5 transform transition-transform ${isCollapsed ? "" : "rotate-90"}`}
-          />
-
-          {isCollapsed ? getTruncatedError() : error.message}
-        </div>
-      </div>
-
-      {/* Tip message */}
-      <div className="mt-2 px-6">
-        <div className="relative p-2 bg-red-100 dark:bg-red-900 rounded-sm flex gap-1 items-center">
-          <div>
-            <Lightbulb size={16} className=" text-red-800 dark:text-red-300" />
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+              <X size={20} className="text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Error en la aplicación
+              </h3>
+              {error.source === "vibes-app" && (
+                <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/50 rounded text-xs font-medium text-red-700 dark:text-red-300">
+                  Error interno
+                </span>
+              )}
+            </div>
           </div>
-          <span className="text-sm text-red-700 dark:text-red-200">
-            <span className="font-medium">Tip: </span>
-            {isDockerError
-              ? "Make sure Docker Desktop is running and try restarting the app."
-              : error.source === "dyad-app"
-                ? "Try restarting the Dyad app or restarting your computer to see if that fixes the error."
-                : "Check if restarting the app fixes the error."}
-          </span>
-        </div>
-      </div>
-
-      {/* Action buttons at the bottom */}
-      {!isDockerError && error.source === "preview-app" && (
-        <div className="mt-3 px-6 flex justify-end gap-2">
-          <CopyErrorMessage errorMessage={error.message} />
           <button
-            disabled={isStreaming}
-            onClick={onAIFix}
-            className="cursor-pointer flex items-center space-x-1 px-2 py-1 bg-red-500 dark:bg-red-600 text-white rounded text-sm hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onDismiss}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Cerrar"
           >
-            <Sparkles size={14} />
-            <span>Fix error with AI</span>
+            <X size={20} className="text-muted-foreground" />
           </button>
         </div>
-      )}
-    </div>
+
+        {/* Contenido del error */}
+        <div className="p-4">
+          <div
+            className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800/50 cursor-pointer hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            <div className="flex gap-2 items-start">
+              <ChevronRight
+                size={16}
+                className={`mt-0.5 flex-shrink-0 text-red-600 dark:text-red-400 transform transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+              />
+              <div className="flex-1 text-sm font-mono text-red-700 dark:text-red-300 whitespace-pre-wrap break-words">
+                {isCollapsed ? getTruncatedError() : error.message}
+              </div>
+            </div>
+          </div>
+
+          {/* Mensaje de consejo */}
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 flex gap-3">
+            <Lightbulb size={18} className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div className="text-sm text-blue-900 dark:text-blue-200">
+              <span className="font-semibold">Consejo: </span>
+              {isDockerError
+                ? "Asegúrate de que Docker Desktop está en ejecución e intenta reiniciar la aplicación."
+                : error.source === "vibes-app"
+                  ? "Intenta reiniciar la aplicación Vibes o reiniciar tu computadora para ver si eso soluciona el error."
+                  : "Verifica si reiniciar la aplicación soluciona el error."}
+            </div>
+          </div>
+        </div>
+
+        {/* Botones de acción o mensaje tranquilizador */}
+        {!isDockerError && error.source === "preview-app" && (
+          isStreaming ? (
+            <div className="flex items-center gap-3 p-4 border-t border-border bg-amber-50 dark:bg-amber-950/30 rounded-b-lg">
+              <Loader2 size={18} className="flex-shrink-0 text-amber-600 dark:text-amber-400 animate-spin" />
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                Es normal que mientras el agente modifica archivos existan fallos temporales. Espera a que termine de trabajar.
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-3 p-4 border-t border-border bg-muted/50 rounded-b-lg">
+              <CopyErrorMessage errorMessage={error.message} />
+              <button
+                onClick={onAIFix}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+              >
+                <Sparkles size={16} />
+                <span>Arreglar con IA</span>
+              </button>
+            </div>
+          )
+        )}
+      </div>
+    </>
+  );
+};
+
+// Expand/Collapse Preview Button
+// position="left" → renders only when preview is on the left (chat right)
+// position="right" → renders only when preview is on the right (chat left)
+const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
+  const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
+  const chatPosition = useAtomValue(chatPositionAtom);
+  const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
+  const sidebarWasOpenRef = useRef(true);
+
+  // Preview is on the opposite side of chat
+  const previewSide = chatPosition === "left" ? "right" : "left";
+  if (previewSide !== position) return null;
+
+  const handleToggle = () => {
+    if (!isExpanded) {
+      // Expanding: remember sidebar state and collapse it
+      sidebarWasOpenRef.current = sidebarOpen;
+      setSidebarOpen(false);
+      setIsExpanded(true);
+    } else {
+      // Collapsing: restore sidebar if it was open before
+      setIsExpanded(false);
+      if (sidebarWasOpenRef.current) {
+        setSidebarOpen(true);
+      }
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleToggle}
+            className={cn(
+              "p-1 rounded transition-colors duration-200 text-foreground",
+              isExpanded
+                ? "bg-accent"
+                : "hover:bg-accent",
+            )}
+            data-testid="preview-expand-button"
+            aria-label={isExpanded ? "Contraer vista" : "Expandir vista"}
+          >
+            <div className="transition-transform duration-200 hover:scale-110">
+              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </div>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isExpanded ? "Contraer vista" : "Expandir vista"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -181,8 +274,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const { routes: availableRoutes } = useParseRouter(selectedAppId);
   const { restartApp } = useRunApp();
   const { settings, updateSettings } = useSettings();
-  const { userBudget } = useUserBudgetInfo();
-  const isProMode = !!userBudget;
+  const isProMode = true; // Pro features are now available for everyone
 
   // Preserved URL state (persists across HMR-induced remounts)
   const [preservedUrls, setPreservedUrls] = useAtom(previewCurrentUrlAtom);
@@ -226,16 +318,112 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     screenshotDataUrlAtom,
   );
 
+  // Connection error tracking and auto-restart logic
+  const [loadFailureCount, setLoadFailureCount] = useState(0);
+  const [isAutoRestarting, setIsAutoRestarting] = useState(false);
+  const [isIframeLoading, setIsIframeLoading] = useState(false);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const { addAttachments } = useAttachments();
   const setPendingChanges = useSetAtom(pendingVisualChangesAtom);
+  const setElementType = useSetAtom(elementTypeAtom);
+  const setNaturalEditingPanelOpen = useSetAtom(naturalEditingPanelOpenAtom);
 
-  // AST Analysis State
-  const [isDynamicComponent, setIsDynamicComponent] = useState(false);
-  const [hasStaticText, setHasStaticText] = useState(false);
+  // AST Analysis State (atoms for cross-component access)
+  const [isDynamicComponent, setIsDynamicComponent] = useAtom(isDynamicComponentAtom);
+  const [hasStaticText, setHasStaticText] = useAtom(hasStaticTextAtom);
+  const setCurrentIconName = useSetAtom(currentIconNameAtom);
+  const setIconLine = useSetAtom(iconLineAtom);
+  const setComponentTextContent = useSetAtom(componentTextContentAtom);
 
   // Device mode state
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
   const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
+
+  // Address bar combobox state
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [urlInputValue, setUrlInputValue] = useState("/");
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const [routeHistory, setRouteHistory] = useAtom(routeHistoryAtom);
+
+  // Get current path from navigation history
+  const getCurrentPath = useCallback(() => {
+    try {
+      const currentUrl = navigationHistory[currentHistoryPosition];
+      if (currentUrl) return new URL(currentUrl).pathname;
+    } catch { }
+    return "/";
+  }, [navigationHistory, currentHistoryPosition]);
+
+  // Add a path to per-app route history
+  const addToHistory = useCallback(
+    (path: string) => {
+      if (!selectedAppId || path === "/") return;
+      setRouteHistory((prev) => {
+        const appHistory = prev[selectedAppId] || [];
+        // Remove if already exists (will re-add at top)
+        const filtered = appHistory.filter((p) => p !== path);
+        // Add to front, cap at 10
+        const updated = [path, ...filtered].slice(0, 10);
+        return { ...prev, [selectedAppId]: updated };
+      });
+    },
+    [selectedAppId, setRouteHistory],
+  );
+
+  // Remove a path from per-app route history
+  const removeFromHistory = useCallback(
+    (path: string) => {
+      if (!selectedAppId) return;
+      setRouteHistory((prev) => {
+        const appHistory = prev[selectedAppId] || [];
+        return {
+          ...prev,
+          [selectedAppId]: appHistory.filter((p) => p !== path),
+        };
+      });
+    },
+    [selectedAppId, setRouteHistory],
+  );
+
+  // Get filtered history and routes based on input
+  const appHistory = selectedAppId ? routeHistory[selectedAppId] || [] : [];
+  const filteredHistory = useMemo(() => {
+    if (!urlInputValue || urlInputValue === "/") return appHistory;
+    return appHistory.filter((p) =>
+      p.toLowerCase().includes(urlInputValue.toLowerCase()),
+    );
+  }, [appHistory, urlInputValue]);
+  const filteredRoutes = useMemo(() => {
+    if (!urlInputValue || urlInputValue === "/") return availableRoutes;
+    return availableRoutes.filter(
+      (r) =>
+        r.path.toLowerCase().includes(urlInputValue.toLowerCase()) ||
+        r.label.toLowerCase().includes(urlInputValue.toLowerCase()),
+    );
+  }, [availableRoutes, urlInputValue]);
+
+  // Handle submitting a URL from the address bar
+  const handleUrlSubmit = () => {
+    const path = urlInputValue.trim();
+    if (!path) return;
+    // Ensure path starts with /
+    const normalizedPath = path.startsWith("/") ? path : "/" + path;
+    navigateToRoute(normalizedPath);
+    addToHistory(normalizedPath);
+    setIsEditingUrl(false);
+  };
+
+  // Start editing the URL bar
+  const startEditingUrl = () => {
+    setUrlInputValue(getCurrentPath());
+    setIsEditingUrl(true);
+    // Focus and select after render
+    setTimeout(() => {
+      urlInputRef.current?.focus();
+      urlInputRef.current?.select();
+    }, 0);
+  };
 
   // Device configurations
   const deviceWidthConfig = {
@@ -256,12 +444,19 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       });
       setIsDynamicComponent(result.isDynamic);
       setHasStaticText(result.hasStaticText);
+      if (result.elementType) {
+        setElementType(result.elementType);
+      }
+      setCurrentIconName(result.iconName || null);
+      setIconLine(result.iconLine || null);
+      setComponentTextContent(result.textContent || "");
+      setNaturalEditingPanelOpen(true);
 
       // Automatically enable text editing if component has static text
       if (result.hasStaticText && iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
           {
-            type: "enable-dyad-text-editing",
+            type: "enable-vibes-text-editing",
             data: {
               componentId: componentId,
               runtimeId: visualEditingSelectedComponent?.runtimeId,
@@ -318,7 +513,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       // Send message to iframe to get current styles
       iframeRef.current.contentWindow.postMessage(
         {
-          type: "get-dyad-component-styles",
+          type: "get-vibes-component-styles",
           data: {
             elementId: visualEditingSelectedComponent.id,
             runtimeId: visualEditingSelectedComponent.runtimeId,
@@ -343,16 +538,52 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     };
   }, [selectedAppId]);
 
-  // Update iframe ref atom
+  // Reset auto-restart state when manual restart is triggered (loading becomes true)
   useEffect(() => {
-    setPreviewIframeRef(iframeRef.current);
-  }, [iframeRef.current, setPreviewIframeRef]);
+    if (loading && isAutoRestarting) {
+      // Manual restart in progress - cancel auto-restart
+      setIsAutoRestarting(false);
+      setLoadFailureCount(0);
+    }
+  }, [loading, isAutoRestarting]);
+
+  // Handle automatic server restart on connection failures
+  useEffect(() => {
+    // Clear failure count when URL changes successfully
+    if (appUrl) {
+      setLoadFailureCount(0);
+      setIsAutoRestarting(false);
+    }
+  }, [appUrl]);
+
+  // Auto-restart logic when iframe fails to load multiple times
+  useEffect(() => {
+    const MAX_FAILURES = 2;
+
+    if (loadFailureCount >= MAX_FAILURES && !isAutoRestarting && selectedAppId) {
+      console.warn(`[PreviewIframe] Detected ${loadFailureCount} consecutive load failures. Auto-restarting server...`);
+      setIsAutoRestarting(true);
+
+      // Immediately reset failure count to prevent multiple restart attempts
+      setLoadFailureCount(0);
+
+      // Force a complete server restart
+      restartApp({ removeNodeModules: false }).then(() => {
+        console.log('[PreviewIframe] Server restarted successfully');
+        setIsAutoRestarting(false);
+      }).catch((err) => {
+        console.error('[PreviewIframe] Failed to restart server:', err);
+        setIsAutoRestarting(false);
+        // Don't increment failure count here to avoid infinite loop
+      });
+    }
+  }, [loadFailureCount, isAutoRestarting, selectedAppId, restartApp]);
 
   // Send pro mode status to iframe
   useEffect(() => {
     if (iframeRef.current?.contentWindow && isComponentSelectorInitialized) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "dyad-pro-mode", enabled: isProMode },
+        { type: "vibes-pro-mode", enabled: isProMode },
         "*",
       );
     }
@@ -475,26 +706,26 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-selector-initialized") {
+      if (event.data?.type === "vibes-component-selector-initialized") {
         setIsComponentSelectorInitialized(true);
         iframeRef.current?.contentWindow?.postMessage(
-          { type: "dyad-pro-mode", enabled: isProMode },
+          { type: "vibes-pro-mode", enabled: isProMode },
           "*",
         );
         return;
       }
 
-      if (event.data?.type === "dyad-text-updated") {
+      if (event.data?.type === "vibes-text-updated") {
         handleTextUpdated(event.data);
         return;
       }
 
-      if (event.data?.type === "dyad-text-finalized") {
+      if (event.data?.type === "vibes-text-finalized") {
         handleTextUpdated(event.data);
         return;
       }
 
-      if (event.data?.type === "dyad-component-selected") {
+      if (event.data?.type === "vibes-component-selected") {
         console.log("Component picked:", event.data);
 
         const component = parseComponentSelection(event.data);
@@ -523,8 +754,30 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         });
 
         if (isProMode) {
-          // Set as the highlighted component for visual editing
-          setVisualEditingSelectedComponent(component);
+          // Remove previous component's overlay if it exists and close panel if switching
+          let shouldClosePanel = false;
+          setVisualEditingSelectedComponent((prev) => {
+            if (prev && prev.id !== component.id) {
+              // Different component selected - remove old overlay and mark to close panel
+              shouldClosePanel = true;
+              if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                  {
+                    type: "remove-vibes-component-overlay",
+                    componentId: prev.id,
+                  },
+                  "*",
+                );
+              }
+            }
+            return component;
+          });
+
+          // Close panel if we were switching to a different component
+          if (shouldClosePanel) {
+            setNaturalEditingPanelOpen(false);
+          }
+
           // Trigger AST analysis
           analyzeComponent(component.id);
         }
@@ -532,14 +785,14 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-deselected") {
+      if (event.data?.type === "vibes-component-deselected") {
         const componentId = event.data.componentId;
         if (componentId) {
           // Disable text editing for the deselected component
           if (iframeRef.current?.contentWindow) {
             iframeRef.current.contentWindow.postMessage(
               {
-                type: "disable-dyad-text-editing",
+                type: "disable-vibes-text-editing",
                 data: { componentId },
               },
               "*",
@@ -560,17 +813,93 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         return;
       }
 
-      if (event.data?.type === "dyad-component-coordinates-updated") {
+      if (event.data?.type === "vibes-component-coordinates-updated") {
         if (event.data.coordinates) {
           setCurrentComponentCoordinates(event.data.coordinates);
         }
         return;
       }
 
-      if (event.data?.type === "dyad-screenshot-response") {
+      if (event.data?.type === "vibes-request-native-screenshot") {
+        const { rect } = event.data;
+        const iframeRect = iframeRef.current?.getBoundingClientRect();
+
+        if (!iframeRect) {
+          showError(
+            "No se pudo determinar la posición del área de previsualización",
+          );
+          return;
+        }
+
+        // Calculate absolute coordinates relative to the window
+        // We need to account for the fact that Electron's capturePage matches the window's content area
+        const captureRect = (rect && rect.width && rect.height)
+          ? {
+            x: Math.round(iframeRect.left + rect.left),
+            y: Math.round(iframeRect.top + rect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          }
+          : {
+            x: Math.round(iframeRect.left),
+            y: Math.round(iframeRect.top),
+            width: Math.round(iframeRect.width),
+            height: Math.round(iframeRect.height),
+          };
+
+        ipc.system
+          .takeScreenshot({ rect: captureRect })
+          .then((dataUrl) => {
+            if (isProMode) {
+              setScreenshotDataUrl(dataUrl);
+              setAnnotatorMode(true);
+            } else {
+              // Auto-attach for non-pro users
+              fetch(dataUrl)
+                .then((res) => res.blob())
+                .then((blob) => {
+                  const timestamp = new Date()
+                    .toISOString()
+                    .replace(/[:.]/g, "-");
+                  const file = new File([blob], `screenshot-${timestamp}.png`, {
+                    type: "image/png",
+                  });
+                  addAttachments([file], "chat-context");
+                })
+                .catch((err) => {
+                  console.error("Failed to auto-attach screenshot:", err);
+                  showError("Error al adjuntar la captura al chat");
+                });
+            }
+          })
+          .catch((err) => {
+            console.error("Native capture failed:", err);
+            showError("Error al realizar la captura nativa");
+          });
+        return;
+      }
+
+      if (event.data?.type === "vibes-screenshot-response") {
         if (event.data.success && event.data.dataUrl) {
-          setScreenshotDataUrl(event.data.dataUrl);
-          setAnnotatorMode(true);
+          if (isProMode) {
+            setScreenshotDataUrl(event.data.dataUrl);
+            setAnnotatorMode(true);
+          } else {
+            // Auto-attach for non-pro users
+            fetch(event.data.dataUrl)
+              .then((res) => res.blob())
+              .then((blob) => {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const file = new File([blob], `screenshot-${timestamp}.png`, {
+                  type: "image/png",
+                });
+                addAttachments([file], "chat-context");
+              })
+              .catch((err) => {
+                console.error("Failed to auto-attach screenshot:", err);
+                showError("Error al adjuntar la captura al chat");
+              });
+          }
         } else {
           showError(event.data.error);
         }
@@ -579,12 +908,12 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       const { type, payload } = event.data as {
         type:
-          | "window-error"
-          | "unhandled-rejection"
-          | "iframe-sourcemapped-error"
-          | "build-error-report"
-          | "pushState"
-          | "replaceState";
+        | "window-error"
+        | "unhandled-rejection"
+        | "iframe-sourcemapped-error"
+        | "build-error-report"
+        | "pushState"
+        | "replaceState";
         payload?: {
           message?: string;
           stack?: string;
@@ -768,14 +1097,30 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           { type: "cleanup-all-text-editing" },
           "*",
         );
+
+        // Remove all component overlays when deactivating
+        if (visualEditingSelectedComponent) {
+          iframeRef.current.contentWindow.postMessage(
+            {
+              type: "remove-vibes-component-overlay",
+              componentId: visualEditingSelectedComponent.id,
+            },
+            "*",
+          );
+        }
+
+        // Clear visual editing state
+        setVisualEditingSelectedComponent(null);
+        setCurrentComponentCoordinates(null);
+        setNaturalEditingPanelOpen(false);
       }
       setIsPicking(newIsPicking);
       setVisualEditingSelectedComponent(null);
       iframeRef.current.contentWindow.postMessage(
         {
           type: newIsPicking
-            ? "activate-dyad-component-selector"
-            : "deactivate-dyad-component-selector",
+            ? "activate-vibes-component-selector"
+            : "deactivate-vibes-component-selector",
         },
         "*",
       );
@@ -788,14 +1133,31 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       setAnnotatorMode(false);
       return;
     }
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        {
-          type: "dyad-take-screenshot",
-        },
-        "*",
-      );
-    }
+    // Delay to let the dropdown menu close before taking the screenshot
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "vibes-take-screenshot",
+          },
+          "*",
+        );
+      }
+    }, 150);
+  };
+
+  const handleStartSelection = () => {
+    // Delay to let the dropdown menu close before starting selection
+    setTimeout(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: "vibes-start-selection",
+          },
+          "*",
+        );
+      }
+    }, 150);
   };
 
   // Activate component selector using a shortcut
@@ -910,7 +1272,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   };
 
   // Function to handle reload
-  const handleReload = () => {
+  const handleReload = (e?: MouseEvent) => {
+    // If Shift is pressed, do a full restart instead
+    if (e?.shiftKey) {
+      onRestart();
+      return;
+    }
+
     // Store the current URL to preserve the route during reload
     const currentUrl = navigationHistory[currentHistoryPosition] || appUrl;
 
@@ -939,6 +1307,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
     setReloadKey((prevKey) => prevKey + 1);
     setErrorMessage(undefined);
+    setIsIframeLoading(true);
     // Reset visual editing state
     setVisualEditingSelectedComponent(null);
     setPendingChanges(new Map());
@@ -954,6 +1323,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       const newUrl = `${baseUrl}${path}`;
 
       // Navigate to the URL
+      setIsIframeLoading(true);
       iframeRef.current.contentWindow.location.href = newUrl;
 
       // iframeRef.current.src = newUrl;
@@ -967,23 +1337,87 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       setCurrentHistoryPosition(newHistory.length - 1);
       setCanGoBack(true);
       setCanGoForward(false);
+
+      // Preserve URL for tab switches / HMR remounts
+      if (selectedAppId) {
+        if (path === "/" || path === "") {
+          setPreservedUrls((prev) => {
+            const next = { ...prev };
+            delete next[selectedAppId];
+            return next;
+          });
+        } else {
+          setPreservedUrls((prev) => ({
+            ...prev,
+            [selectedAppId]: newUrl,
+          }));
+        }
+      }
     }
   };
 
-  // Display loading state
-  if (loading) {
+  // Convert null to undefined for iframe src prop compatibility
+  // Add a cache-busting parameter when reloadKey changes to force a fresh reload from the server
+  const iframeSrc = useMemo(() => {
+    const base = currentIframeUrlRef.current ?? appUrl;
+    if (!base) return undefined;
+    if (reloadKey === 0) return base;
+
+    try {
+      const url = new URL(base);
+      url.searchParams.set("vibes_v", reloadKey.toString());
+      return url.toString();
+    } catch {
+      return base;
+    }
+  }, [appUrl, reloadKey]);
+
+  // Set iframe load timeout - if iframe doesn't load within 30 seconds, consider it a failure
+  useEffect(() => {
+    if (!iframeSrc || isAutoRestarting) return;
+
+    // Clear any existing timeout
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
+
+    // Set new timeout
+    loadTimeoutRef.current = setTimeout(() => {
+      console.warn('[PreviewIframe] Iframe load timeout - no response after 30 seconds');
+
+      // Increment failure count
+      setLoadFailureCount((prev) => {
+        const newCount = prev + 1;
+        console.warn(`[PreviewIframe] Timeout failure ${newCount}`);
+        return newCount;
+      });
+
+      setErrorMessage({
+        message: 'Timeout: El servidor local no responde. Intentando reiniciar automáticamente...',
+        source: 'preview-app'
+      });
+    }, 30000); // 30 seconds
+
+    // Cleanup timeout on unmount or when src changes
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    };
+  }, [iframeSrc, isAutoRestarting]);
+
+  // Display loading state or auto-restarting state
+  if (loading || isAutoRestarting) {
     return (
       <div className="flex flex-col h-full relative">
-        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
-          <div className="relative w-5 h-5 animate-spin">
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-primary rounded-full"></div>
-            <div className="absolute bottom-0 left-0 w-2 h-2 bg-primary rounded-full opacity-80"></div>
-            <div className="absolute bottom-0 right-0 w-2 h-2 bg-primary rounded-full opacity-60"></div>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300">
-            Preparing app preview...
-          </p>
-        </div>
+        <VibesInitLoader
+          subtitle={
+            isAutoRestarting
+              ? "Reiniciando servidor..."
+              : undefined
+          }
+        />
       </div>
     );
   }
@@ -991,7 +1425,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   // Display message if no app is selected
   if (selectedAppId === null) {
     return (
-      <div className="p-4 text-gray-500 dark:text-gray-400">
+      <div className="p-4 text-muted-foreground">
         Select an app to see the preview.
       </div>
     );
@@ -1001,8 +1435,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
     restartApp();
   };
 
-  // Convert null to undefined for iframe src prop compatibility
-  const iframeSrc = currentIframeUrlRef.current ?? appUrl ?? undefined;
 
   return (
     <div className="flex flex-col h-full">
@@ -1011,25 +1443,28 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         <div className="flex items-center p-2 border-b space-x-2">
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
+            {/* ExpandPreview at left when preview is on the left (chat right) */}
+            <ExpandPreviewButton position="left" />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={handleActivateComponentSelector}
-                    className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      isPicking
-                        ? "bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-                        : " text-purple-700 hover:bg-purple-200  dark:text-purple-300 dark:hover:bg-purple-900"
-                    }`}
-                    disabled={
-                      loading ||
-                      !selectedAppId ||
-                      !isComponentSelectorInitialized
-                    }
-                    data-testid="preview-pick-element-button"
-                  >
-                    <MousePointerClick size={16} />
-                  </button>
+                  <div className="inline-flex">
+                    <button
+                      onClick={handleActivateComponentSelector}
+                      className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
+                        ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
+                        : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      disabled={
+                        loading ||
+                        !selectedAppId ||
+                        !isComponentSelectorInitialized
+                      }
+                      data-testid="preview-pick-element-button"
+                    >
+                      <MousePointerClick size={16} />
+                    </button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
@@ -1041,8 +1476,41 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <DropdownMenu>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-flex">
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
+                          disabled={loading || !selectedAppId}
+                          data-testid="preview-screenshot-button"
+                        >
+                          <Camera size={16} />
+                        </button>
+                      </DropdownMenuTrigger>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Take Screenshot</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={handleAnnotatorClick}>
+                  <Monitor size={14} className="mr-2" />
+                  <span>Full Page</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleStartSelection}>
+                  <Crop size={14} className="mr-2" />
+                  <span>Selection</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={!canGoBack || loading || !selectedAppId}
               onClick={handleNavigateBack}
               data-testid="preview-navigate-back-button"
@@ -1050,61 +1518,151 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               <ArrowLeft size={16} />
             </button>
             <button
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
               disabled={!canGoForward || loading || !selectedAppId}
               onClick={handleNavigateForward}
               data-testid="preview-navigate-forward-button"
             >
               <ArrowRight size={16} />
             </button>
-            <button
-              onClick={handleReload}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
-              disabled={loading || !selectedAppId}
-              data-testid="preview-refresh-button"
-            >
-              <RefreshCw size={16} />
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleReload}
+                    className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
+                    disabled={loading || !selectedAppId}
+                    data-testid="preview-refresh-button"
+                  >
+                    {isIframeLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={16} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Actualizar vista (Shift + Click para reiniciar)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
-          {/* Address Bar with Routes Dropdown - using shadcn/ui dropdown-menu */}
+          {/* Address Bar - editable combobox with history */}
           <div className="relative flex-grow min-w-20">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <div className="flex items-center justify-between px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-200 cursor-pointer w-full min-w-0">
-                  <span
-                    className="truncate flex-1 mr-2 min-w-0"
-                    data-testid="preview-address-bar-path"
+            {isEditingUrl ? (
+              <>
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  value={urlInputValue}
+                  onChange={(e) => setUrlInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleUrlSubmit();
+                    } else if (e.key === "Escape") {
+                      setIsEditingUrl(false);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Don't close if clicking inside the suggestions dropdown
+                    if (e.relatedTarget?.closest("[data-address-suggestions]")) return;
+                    setIsEditingUrl(false);
+                  }}
+                  className="w-full px-3 py-1 bg-muted rounded text-sm text-foreground outline-none ring-2 ring-primary/50"
+                  data-testid="preview-address-bar-input"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {/* Suggestions dropdown */}
+                {(filteredHistory.length > 0 || filteredRoutes.length > 0) && (
+                  <div
+                    data-address-suggestions
+                    tabIndex={-1}
+                    className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md z-50 max-h-60 overflow-y-auto py-1"
                   >
-                    {navigationHistory[currentHistoryPosition]
-                      ? new URL(navigationHistory[currentHistoryPosition])
-                          .pathname
-                      : "/"}
-                  </span>
-                  <ChevronDown size={14} className="flex-shrink-0" />
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
-                {availableRoutes.length > 0 ? (
-                  availableRoutes.map((route) => (
-                    <DropdownMenuItem
-                      key={route.path}
-                      onClick={() => navigateToRoute(route.path)}
-                      className="flex justify-between"
-                    >
-                      <span>{route.label}</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">
-                        {route.path}
-                      </span>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <DropdownMenuItem disabled>
-                    Loading routes...
-                  </DropdownMenuItem>
+                    {/* History section */}
+                    {filteredHistory.length > 0 && (
+                      <>
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Recientes
+                        </div>
+                        {filteredHistory.map((path) => (
+                          <div
+                            key={`hist-${path}`}
+                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground group"
+                          >
+                            <span
+                              className="truncate flex-1 min-w-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                navigateToRoute(path);
+                                setIsEditingUrl(false);
+                              }}
+                            >
+                              {path}
+                            </span>
+                            <button
+                              className="ml-2 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity flex-shrink-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeFromHistory(path);
+                              }}
+                              title="Eliminar del historial"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {/* Detected routes section */}
+                    {filteredRoutes.length > 0 && (
+                      <>
+                        {filteredHistory.length > 0 && (
+                          <div className="border-t border-border my-1" />
+                        )}
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Rutas detectadas
+                        </div>
+                        {filteredRoutes.map((route) => (
+                          <div
+                            key={`route-${route.path}`}
+                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              navigateToRoute(route.path);
+                              addToHistory(route.path);
+                              setIsEditingUrl(false);
+                            }}
+                          >
+                            <span>{route.label}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {route.path}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </>
+            ) : (
+              <div
+                className="flex items-center justify-between px-3 py-1 bg-muted rounded text-sm text-foreground cursor-pointer w-full min-w-0"
+                onClick={startEditingUrl}
+                data-testid="preview-address-bar-path"
+              >
+                <span className="truncate flex-1 mr-2 min-w-0">
+                  {getCurrentPath()}
+                </span>
+                {(availableRoutes.length > 0 || appHistory.length > 0) && (
+                  <ChevronDown size={14} className="flex-shrink-0 text-muted-foreground" />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -1124,7 +1682,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                   ipc.system.openExternalUrl(originalUrl);
                 }
               }}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-300"
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
             >
               <ExternalLink size={16} />
             </button>
@@ -1141,8 +1699,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     setIsDevicePopoverOpen(!isDevicePopoverOpen);
                   }}
                   className={cn(
-                    "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300",
-                    deviceMode !== "desktop" && "bg-gray-200 dark:bg-gray-700",
+                    "p-1 rounded hover:bg-accent text-foreground",
+                    deviceMode !== "desktop" && "bg-accent",
                   )}
                   title="Modo de dispositivo"
                 >
@@ -1217,6 +1775,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 </TooltipProvider>
               </PopoverContent>
             </Popover>
+            {/* ExpandPreview at right when preview is on the right (chat left) */}
+            <ExpandPreviewButton position="right" />
           </div>
         </div>
       )}
@@ -1236,12 +1796,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         />
 
         {!appUrl ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-gray-50 dark:bg-gray-950">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
-            <p className="text-gray-600 dark:text-gray-300">
-              Starting your app server...
-            </p>
-          </div>
+          <VibesInitLoader subtitle="Preparando el servidor..." />
         ) : (
           <div
             className={cn(
@@ -1249,62 +1804,83 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
               deviceMode !== "desktop" && "flex justify-center",
             )}
           >
-            {annotatorMode && screenshotDataUrl ? (
-              <div
-                className="w-full h-full bg-white dark:bg-gray-950"
-                style={
-                  deviceMode == "desktop"
-                    ? {}
-                    : { width: `${deviceWidthConfig[deviceMode]}px` }
-                }
-              >
-                {userBudget ? (
+            <div
+              className="relative h-full"
+              style={
+                deviceMode == "desktop"
+                  ? { width: "100%" }
+                  : { width: `${deviceWidthConfig[deviceMode]}px` }
+              }
+            >
+              {annotatorMode && screenshotDataUrl && (
+                <div className="absolute inset-0 z-50 bg-background">
                   <Annotator
                     screenshotUrl={screenshotDataUrl}
                     onSubmit={addAttachments}
                     handleAnnotatorClick={handleAnnotatorClick}
                   />
-                ) : (
-                  <AnnotatorOnlyForPro
-                    onGoBack={() => setAnnotatorMode(false)}
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                <iframe
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
-                  data-testid="preview-iframe-element"
-                  onLoad={() => {
-                    setErrorMessage(undefined);
-                    // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
-                    // This prevents re-renders from accidentally changing the iframe src
-                  }}
-                  ref={iframeRef}
-                  key={reloadKey}
-                  title={`Preview for App ${selectedAppId}`}
-                  className="w-full h-full border-none bg-white dark:bg-gray-950"
-                  style={
-                    deviceMode == "desktop"
-                      ? {}
-                      : { width: `${deviceWidthConfig[deviceMode]}px` }
+                </div>
+              )}
+              <iframe
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-downloads"
+                data-testid="preview-iframe-element"
+                onLoad={() => {
+                  // Clear any pending load timeout
+                  if (loadTimeoutRef.current) {
+                    clearTimeout(loadTimeoutRef.current);
+                    loadTimeoutRef.current = null;
                   }
-                  src={iframeSrc}
-                  allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
-                />
-                {/* Visual Editing Toolbar */}
-                {isProMode &&
-                  visualEditingSelectedComponent &&
-                  selectedAppId && (
-                    <VisualEditingToolbar
-                      selectedComponent={visualEditingSelectedComponent}
-                      iframeRef={iframeRef}
-                      isDynamic={isDynamicComponent}
-                      hasStaticText={hasStaticText}
-                    />
-                  )}
-              </>
-            )}
+
+                  // Reset error state and failure count on successful load
+                  setErrorMessage(undefined);
+                  setLoadFailureCount(0);
+                  setIsAutoRestarting(false);
+                  setIsIframeLoading(false);
+
+                  console.log('[PreviewIframe] Successfully loaded iframe');
+                  setIsComponentSelectorInitialized(true);
+                  // Note: We don't clear currentIframeUrlRef - it tracks the URL the iframe is showing
+                  // This prevents re-renders from accidentally changing the iframe src
+                }}
+                onError={(e) => {
+                  console.error('[PreviewIframe] iframe load error:', e);
+
+                  // Clear any pending load timeout
+                  if (loadTimeoutRef.current) {
+                    clearTimeout(loadTimeoutRef.current);
+                    loadTimeoutRef.current = null;
+                  }
+
+                  // Increment failure count
+                  setIsIframeLoading(false);
+                  setLoadFailureCount((prev) => {
+                    const newCount = prev + 1;
+                    console.warn(`[PreviewIframe] Load failure ${newCount}`);
+                    return newCount;
+                  });
+
+                  setErrorMessage({
+                    message: 'Error de conexión con el servidor local (127.0.0.1). Intentando reiniciar automáticamente...',
+                    source: 'preview-app'
+                  });
+                }}
+                ref={(el) => {
+                  iframeRef.current = el;
+                  if (setPreviewIframeRef) {
+                    setPreviewIframeRef(el);
+                  }
+                }}
+                key={reloadKey}
+                title={`Preview for App ${selectedAppId}`}
+                className={cn(
+                  "w-full h-full border-none bg-background",
+                  annotatorMode && "invisible",
+                )}
+                src={iframeSrc}
+                allow="clipboard-read; clipboard-write; fullscreen; microphone; camera; display-capture; geolocation; autoplay; picture-in-picture"
+              />
+              {/* Visual Editing Toolbar — replaced by NaturalEditingPanel in PreviewPanel */}
+            </div>
           </div>
         )}
       </div>
@@ -1313,7 +1889,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 };
 
 function parseComponentSelection(data: any): ComponentSelection | null {
-  if (!data || data.type !== "dyad-component-selected") {
+  if (!data || data.type !== "vibes-component-selected") {
     return null;
   }
 

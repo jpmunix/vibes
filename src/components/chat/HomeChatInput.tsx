@@ -1,4 +1,4 @@
-import { SendIcon, StopCircleIcon } from "lucide-react";
+import { SendHorizontalIcon, StopCircleIcon } from "lucide-react";
 
 import { useSettings } from "@/hooks/useSettings";
 import { homeChatInputValueAtom } from "@/atoms/chatAtoms"; // Use a different atom for home input
@@ -59,7 +59,7 @@ export function HomeChatInput({
 
     // Clear attachments as part of submission process
     clearAttachments();
-    posthog.capture("chat:home_submit", {
+    posthog?.capture("chat:home_submit", {
       chatMode: settings?.selectedChatMode,
     });
   };
@@ -70,66 +70,131 @@ export function HomeChatInput({
 
   return (
     <>
-      <div className="p-4" data-testid="home-chat-input-container">
-        <div
-          className={`relative flex flex-col space-y-2 border border-border rounded-lg bg-(--background-lighter) shadow-sm ${
-            isDraggingOver ? "ring-2 ring-blue-500 border-blue-500" : ""
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Attachments list */}
-          <AttachmentsList
-            attachments={attachments}
-            onRemove={removeAttachment}
-          />
+      <style>{`
+        /* ── Animated gradient border ── */
+        @property --home-input-angle {
+          syntax: "<angle>";
+          initial-value: 0deg;
+          inherits: false;
+        }
+        @keyframes home-input-border-spin {
+          to { --home-input-angle: 360deg; }
+        }
+        .home-input-border-wrap {
+          --_border-w: 1.5px;
+          position: relative;
+          border-radius: 14px;
+          padding: var(--_border-w);
+          background: conic-gradient(
+            from var(--home-input-angle),
+            color-mix(in oklch, var(--primary) 40%, transparent) 0%,
+            color-mix(in oklch, var(--primary) 15%, transparent) 25%,
+            var(--border) 50%,
+            color-mix(in oklch, var(--primary) 15%, transparent) 75%,
+            color-mix(in oklch, var(--primary) 40%, transparent) 100%
+          );
+          animation: home-input-border-spin 4s linear infinite;
+          transition: box-shadow 0.3s ease;
+        }
+        .home-input-border-wrap:hover,
+        .home-input-border-wrap:focus-within {
+          box-shadow: 0 0 32px -8px color-mix(in oklch, var(--primary) 30%, transparent);
+        }
 
-          {/* Drag and drop overlay */}
-          <DragDropOverlay isDraggingOver={isDraggingOver} />
+        /* ── Inner glassmorphism container ── */
+        .home-input-inner {
+          border-radius: 12.5px;
+          backdrop-filter: blur(20px) saturate(1.5);
+          -webkit-backdrop-filter: blur(20px) saturate(1.5);
+          background: color-mix(in oklch, var(--background) 85%, transparent);
+        }
 
-          <div className="flex items-start space-x-2 ">
-            <LexicalChatInput
-              value={inputValue}
-              onChange={setInputValue}
-              onSubmit={handleCustomSubmit}
-              onPaste={handlePaste}
-              placeholder={placeholder}
-              disabled={isStreaming}
-              excludeCurrentApp={false}
-              disableSendButton={false}
-            />
+        /* ── Send button glow ── */
+        .home-send-btn {
+          position: relative;
+          overflow: hidden;
+        }
+        .home-send-btn::after {
+          content: "";
+          position: absolute;
+          inset: -2px;
+          border-radius: inherit;
+          background: var(--primary);
+          opacity: 0;
+          filter: blur(8px);
+          z-index: -1;
+          transition: opacity 0.25s ease;
+        }
+        .home-send-btn:not(:disabled):hover::after {
+          opacity: 0.4;
+        }
+      `}</style>
 
-            {isStreaming ? (
-              <button
-                className="px-2 py-2 mt-1 mr-1 text-(--sidebar-accent-fg) rounded-lg opacity-50 cursor-not-allowed" // Indicate disabled state
-                title="Cancelar generación (no disponible aquí)"
-              >
-                <StopCircleIcon size={20} />
-              </button>
-            ) : (
-              <button
-                onClick={handleCustomSubmit}
-                disabled={!inputValue.trim() && attachments.length === 0}
-                className="px-2 py-2 mt-1 mr-1 hover:bg-(--background-darkest) text-(--sidebar-accent-fg) rounded-lg disabled:opacity-50"
-                title="Enviar mensaje"
-              >
-                <SendIcon size={20} />
-              </button>
-            )}
-          </div>
-          <div className="pl-2 pr-1 flex items-center justify-between pb-2">
-            <div className="flex items-center">
-              <ChatInputControls showContextFilesPicker={false} />
+      <div className="px-4 pb-4" data-testid="home-chat-input-container">
+        <div className="max-w-3xl mx-auto">
+          <div className="home-input-border-wrap">
+            <div
+              className={`home-input-inner relative flex flex-col overflow-hidden ${isDraggingOver ? "ring-2 ring-blue-500" : ""
+                }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              {/* Attachments list */}
+              <AttachmentsList
+                attachments={attachments}
+                onRemove={removeAttachment}
+              />
+
+              {/* Drag and drop overlay */}
+              <DragDropOverlay isDraggingOver={isDraggingOver} />
+
+              <LexicalChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSubmit={handleCustomSubmit}
+                onPaste={handlePaste}
+                placeholder={placeholder}
+                disabled={isStreaming}
+                excludeCurrentApp={false}
+                disableSendButton={false}
+              />
+
+              {/* Bottom controls bar */}
+              <div className="px-3 py-5 flex items-center border-t border-border/30">
+                <AuxiliaryActionsMenu
+                  onFileSelect={handleFileSelect}
+                  hideContextFilesPicker
+                />
+                <div className="flex items-center ml-2.5">
+                  <ChatInputControls showContextFilesPicker={false} showTemplatePicker={true} />
+                </div>
+
+                <div className="ml-auto flex items-center gap-1.5">
+                  {isStreaming ? (
+                    <button
+                      className="p-2.5 bg-destructive hover:bg-destructive/90 text-white rounded-full transition-colors cursor-pointer"
+                      title="Cancelar generación (no disponible aquí)"
+                    >
+                      <StopCircleIcon size={18} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleCustomSubmit}
+                      disabled={!inputValue.trim() && attachments.length === 0}
+                      className="home-send-btn p-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full disabled:opacity-30 transition-colors shadow-sm cursor-pointer"
+                      title="Enviar mensaje"
+                    >
+                      <SendHorizontalIcon size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-
-            <AuxiliaryActionsMenu
-              onFileSelect={handleFileSelect}
-              hideContextFilesPicker
-            />
           </div>
         </div>
       </div>
     </>
   );
 }
+

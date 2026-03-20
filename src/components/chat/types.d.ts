@@ -4,24 +4,24 @@ import type { ReactNode } from "react";
 // Extend the ReactMarkdown Components type to include our custom components
 declare module "react-markdown" {
   interface Components extends ReactMarkdownComponents {
-    "dyad-write"?: (props: {
+    "vibes-write"?: (props: {
       children?: ReactNode;
       node?: any;
       path?: string;
       description?: string;
     }) => JSX.Element;
-    "dyad-rename"?: (props: {
+    "vibes-rename"?: (props: {
       children?: ReactNode;
       node?: any;
       from?: string;
       to?: string;
     }) => JSX.Element;
-    "dyad-delete"?: (props: {
+    "vibes-delete"?: (props: {
       children?: ReactNode;
       node?: any;
       path?: string;
     }) => JSX.Element;
-    "dyad-add-dependency"?: (props: {
+    "vibes-add-dependency"?: (props: {
       children?: ReactNode;
       node?: any;
       package?: string;

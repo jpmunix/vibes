@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { type VariantProps, cva } from "class-variance-authority";
-import { Menu } from "lucide-react";
+import { Menu, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,10 @@ type SidebarContextProps = {
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
+
+// Exported so lightweight stubs (e.g. ChatWindowApp) can provide the
+// context without mounting the full SidebarProvider component.
+export { SidebarContext, type SidebarContextProps };
 
 function useSidebar() {
   const context = React.useContext(SidebarContext);
@@ -165,7 +169,6 @@ function SidebarProvider({
             } as React.CSSProperties
           }
           className={cn(
-            "bg-sidebar",
             "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
             className,
           )}
@@ -341,15 +344,20 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onMouseDown={onMouseDown}
       title="Alternar barra lateral"
       className={cn(
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
-        "in-data-[side=left][data-state=collapsed]_&]:cursor-e-resize in-data-[side=right][data-state=collapsed]_&]:cursor-w-resize cursor-col-resize",
-        "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
+        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-colors ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex items-center justify-center cursor-col-resize",
+        "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2",
+        "group-data-[state=expanded]:after:bg-border",
+        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
         className,
       )}
       {...props}
-    />
+    >
+      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border dark:bg-zinc-800 group-data-[state=collapsed]:hidden">
+        <GripVertical className="h-2.5 w-2.5 text-zinc-500" />
+      </div>
+    </button>
   );
 }
 
@@ -623,7 +631,7 @@ function SidebarMenuAction({
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+        "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className,
       )}
       {...props}

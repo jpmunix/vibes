@@ -6,16 +6,15 @@ import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
 import { useEffect, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
+
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   appConsoleEntriesAtom,
   previewModeAtom,
   selectedAppIdAtom,
 } from "@/atoms/appAtoms";
-import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 import { useSettings } from "@/hooks/useSettings";
+import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
 import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
@@ -26,6 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const { refreshAppIframe } = useRunApp();
   // Subscribe to app output events once at the root level to avoid duplicates
   useAppOutputSubscription();
+
   const previewMode = useAtomValue(previewModeAtom);
   const { settings } = useSettings();
   const setSelectedComponentsPreview = useSetAtom(
@@ -34,17 +34,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const setChatInput = useSetAtom(chatInputValueAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
-  const setUser = useSetAtom(userAtom);
-  const setAuthLoading = useSetAtom(authLoadingAtom);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setAuthLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const zoomLevel = settings?.zoomLevel ?? DEFAULT_ZOOM_LEVEL;
@@ -70,6 +59,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
     return () => { };
   }, [settings?.zoomLevel]);
+
+  // Apply user's primary color on startup
+  useEffect(() => {
+    if (settings) {
+      const lightColor = getColorById(settings.primaryColorLight || DEFAULT_LIGHT_COLOR);
+      const darkColor = getColorById(settings.primaryColorDark || DEFAULT_DARK_COLOR);
+      const lightFactor = (settings.primaryChromaLight ?? 100) / 100;
+      const darkFactor = (settings.primaryChromaDark ?? 100) / 100;
+      const root = document.documentElement;
+      if (lightColor) root.style.setProperty("--primary-color-light", adjustChroma(lightColor.light, lightFactor));
+      if (darkColor) root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
+    }
+  }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
   // Global keyboard listener for refresh events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -106,7 +108,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <AppSidebar />
             <div
               id="layout-main-content-container"
-              className="flex h-screenish w-full overflow-x-hidden mt-12 mb-4 mr-4 border-t border-l border-border rounded-lg bg-background"
+              className="flex h-[calc(100vh-44px)] w-full overflow-x-hidden mt-11 bg-background"
             >
               {children}
             </div>

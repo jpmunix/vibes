@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { atom } from "jotai";
 import { ipc, type AppOutput } from "@/ipc/types";
 import {
@@ -21,20 +21,22 @@ const useRunAppLoadingAtom = atom(false);
  * to avoid duplicate event subscriptions causing duplicate log entries.
  */
 export function useAppOutputSubscription() {
-  const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
   const [, setAppUrlObj] = useAtom(appUrlAtom);
   const setPreviewPanelKey = useSetAtom(previewPanelKeyAtom);
   const appId = useAtomValue(selectedAppIdAtom);
 
+  // Ref to debounce recovery refreshes - avoid multiple rapid refreshes
+  const recoveryRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const processProxyServerOutput = useCallback(
     (output: AppOutput) => {
       const matchesProxyServerStart = output.message.includes(
-        "[dyad-proxy-server]started=[",
+        "[vibes-proxy-server]started=[",
       );
       if (matchesProxyServerStart) {
         // Extract both proxy URL and original URL using regex
         const proxyUrlMatch = output.message.match(
-          /\[dyad-proxy-server\]started=\[(.*?)\]/,
+          /\[vibes-proxy-server\]started=\[(.*?)\]/,
         );
         const originalUrlMatch = output.message.match(/original=\[(.*?)\]/);
 
@@ -48,8 +50,21 @@ export function useAppOutputSubscription() {
           });
         }
       }
+
+      // Detect upstream recovery after ECONNREFUSED retries - trigger iframe refresh
+      if (output.message.includes("[vibes-proxy-server]upstream-recovered")) {
+        // Debounce: only refresh once even if multiple recovery signals arrive
+        if (recoveryRefreshTimerRef.current) {
+          clearTimeout(recoveryRefreshTimerRef.current);
+        }
+        recoveryRefreshTimerRef.current = setTimeout(() => {
+          console.log("[useRunApp] Upstream recovered after retries, refreshing iframe...");
+          setPreviewPanelKey((prevKey) => prevKey + 1);
+          recoveryRefreshTimerRef.current = null;
+        }, 300); // Small delay to let remaining sub-resources also recover
+      }
     },
-    [setAppUrlObj],
+    [setAppUrlObj, setPreviewPanelKey],
   );
 
   const onHotModuleReload = useCallback(() => {
@@ -70,43 +85,39 @@ export function useAppOutputSubscription() {
             console.error("Failed to respond to app input:", error);
           }
         });
-        return; // Don't add to regular output
+        return;
       }
-
-      // Add to console entries
-      // Use "server" type for stdout/stderr to match the backend log store
-      // (app_handlers.ts stores these as type: "server")
-      const logEntry = {
-        level:
-          output.type === "stderr" || output.type === "client-error"
-            ? ("error" as const)
-            : ("info" as const),
-        type: "server" as const,
-        message: output.message,
-        appId: output.appId,
-        timestamp: output.timestamp ?? Date.now(),
-      };
 
       // Only send client-error logs to central store
       // Server logs (stdout/stderr) are already stored in the main process
       if (output.type === "client-error") {
-        ipc.misc.addLog(logEntry);
+        ipc.misc.addLog({
+          level: "error",
+          type: "server",
+          message: output.message,
+          appId: output.appId,
+          timestamp: output.timestamp ?? Date.now(),
+        });
       }
-
-      // Also update UI state
-      setConsoleEntries((prev) => [...prev, logEntry]);
 
       // Process proxy server output
       processProxyServerOutput(output);
     },
-    [setConsoleEntries, processProxyServerOutput],
+    [processProxyServerOutput],
   );
+  // Use a ref so the event listener always sees the latest appId
+  // without needing to re-register (which creates a gap where events get lost)
+  const appIdRef = useRef(appId);
+  useEffect(() => {
+    appIdRef.current = appId;
+  }, [appId]);
 
-  // Subscribe to app output events from main process
+  // Subscribe to app output events from main process - register ONCE
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onAppOutput((output) => {
+      const currentAppId = appIdRef.current;
       // Only process events for the currently selected app
-      if (appId !== null && output.appId === appId) {
+      if (currentAppId !== null && output.appId === currentAppId) {
         // Handle HMR updates
         if (
           output.message.includes("hmr update") &&
@@ -119,7 +130,7 @@ export function useAppOutputSubscription() {
     });
 
     return unsubscribe;
-  }, [appId, processAppOutput, onHotModuleReload]);
+  }, [processAppOutput, onHotModuleReload]);
 }
 
 export function useRunApp() {
@@ -137,18 +148,26 @@ export function useRunApp() {
     try {
       console.debug("Running app", appId);
 
-      // Clear the URL and add restart message
-      setAppUrlObj((prevAppUrlObj) => {
-        if (prevAppUrlObj?.appId !== appId) {
+      // Only clear the URL if it belongs to a *different* app, to avoid showing
+      // a stale preview from a previous app. If the URL already belongs to
+      // this app (or is null), keep it — the main process will re-emit the
+      // stored proxy URL if the server is already running, and clearing it
+      // here would cause a race condition where the VibesInitLoader flashes
+      // or stays permanently because the re-emitted URL event gets lost
+      // between React batching cycles.
+      // Full URL clearing is done in restartApp() where we intentionally
+      // want to show the "Preparing server…" state.
+      setAppUrlObj((prev) => {
+        if (prev.appId !== null && prev.appId !== appId) {
           return { appUrl: null, appId: null, originalUrl: null };
         }
-        return prevAppUrlObj; // No change needed
+        return prev;
       });
 
       const logEntry = {
         level: "info" as const,
         type: "server" as const,
-        message: "Trying to restart app...",
+        message: "Trying to start app...",
         appId,
         timestamp: Date.now(),
       };
@@ -166,11 +185,11 @@ export function useRunApp() {
       console.error(`Error running app ${appId}:`, error);
       setPreviewErrorMessage(
         error instanceof Error
-          ? { message: error.message, source: "dyad-app" }
+          ? { message: error.message, source: "vibes-app" }
           : {
-              message: error?.toString() || "Unknown error",
-              source: "dyad-app",
-            },
+            message: error?.toString() || "Unknown error",
+            source: "vibes-app",
+          },
       );
     } finally {
       setLoading(false);
@@ -191,11 +210,11 @@ export function useRunApp() {
       console.error(`Error stopping app ${appId}:`, error);
       setPreviewErrorMessage(
         error instanceof Error
-          ? { message: error.message, source: "dyad-app" }
+          ? { message: error.message, source: "vibes-app" }
           : {
-              message: error?.toString() || "Unknown error",
-              source: "dyad-app",
-            },
+            message: error?.toString() || "Unknown error",
+            source: "vibes-app",
+          },
       );
     } finally {
       setLoading(false);
@@ -252,11 +271,11 @@ export function useRunApp() {
         console.error(`Error restarting app ${appId}:`, error);
         setPreviewErrorMessage(
           error instanceof Error
-            ? { message: error.message, source: "dyad-app" }
+            ? { message: error.message, source: "vibes-app" }
             : {
-                message: error?.toString() || "Unknown error",
-                source: "dyad-app",
-              },
+              message: error?.toString() || "Unknown error",
+              source: "vibes-app",
+            },
         );
       } finally {
         setPreviewPanelKey((prevKey) => prevKey + 1);
@@ -274,8 +293,9 @@ export function useRunApp() {
   );
 
   const refreshAppIframe = useCallback(async () => {
+    setPreviewErrorMessage(undefined);
     setPreviewPanelKey((prevKey) => prevKey + 1);
-  }, [setPreviewPanelKey]);
+  }, [setPreviewPanelKey, setPreviewErrorMessage]);
 
   return {
     loading,

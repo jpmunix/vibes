@@ -52,6 +52,28 @@ export const apps = sqliteTable("apps", {
   vercelProjectName: text("vercel_project_name"),
   vercelTeamId: text("vercel_team_id"),
   vercelDeploymentUrl: text("vercel_deployment_url"),
+  firebaseProjectId: text("firebase_project_id"),
+  firebaseConfig: text("firebase_config", { mode: "json" }),
+  bunnyConfig: text("bunny_config", { mode: "json" }).$type<{
+    databases: {
+      name: string;
+      databaseUrl: string;
+      fullAccessToken: string;
+      readOnlyToken: string;
+    }[];
+    storageZones: {
+      name: string;
+      hostname: string;
+      username: string;
+      password: string;
+      readonlyPassword: string;
+    }[];
+  } | null>(),
+  pocketbaseConfig: text("pocketbase_config", { mode: "json" }).$type<{
+    url: string;
+    adminEmail: string;
+    adminPassword: string;
+  } | null>(),
   installCommand: text("install_command"),
   startCommand: text("start_command"),
   chatContext: text("chat_context", { mode: "json" }),
@@ -72,6 +94,21 @@ export const chats = sqliteTable("chats", {
   }),
   title: text("title"),
   initialCommitHash: text("initial_commit_hash"),
+  isPlan: integer("is_plan", { mode: "boolean" }).default(false),
+  planData: text("plan_data", { mode: "json" }).$type<{
+    objective: string;
+    stages: {
+      id: string;
+      title: string;
+      summary: string;
+      tasks: {
+        id: string;
+        text: string;
+        checked: boolean;
+        isDeveloped?: boolean;
+      }[];
+    }[];
+  } | null>(),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -104,6 +141,12 @@ export const messages = sqliteTable("messages", {
   usingFreeAgentModeQuota: integer("using_free_agent_mode_quota", {
     mode: "boolean",
   }),
+  // Link to the previous response in the chain (for agent state recovery)
+  previousResponseId: integer("previous_response_id"),
+  // Status of the message/response (completed = default, incomplete = stopped/interrupted, failed = tool error)
+  status: text("status", { enum: ["completed", "incomplete", "failed"] }).default("completed"),
+  // Duration in milliseconds for how long the AI response took
+  durationMs: integer("duration_ms"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
@@ -444,3 +487,102 @@ export const debateToTagsRelations = relations(debateToTags, ({ one }) => ({
     references: [debateTags.id],
   }),
 }));
+
+// --- Knowledge Base table ---
+// Auto-fed knowledge entries that the AI learns from interactions per app
+export const knowledgeEntries = sqliteTable("knowledge_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  appId: integer("app_id")
+    .notNull()
+    .references(() => apps.id, { onDelete: "cascade" }),
+  // Category of knowledge: convention, pattern, preference, rule, component
+  category: text("category", {
+    enum: ["convention", "pattern", "preference", "rule", "component"],
+  }).notNull(),
+  // Compressed content - the actual knowledge (short, dense)
+  content: text("content").notNull(),
+  // How this entry was created
+  source: text("source", {
+    enum: ["manual", "auto-extracted", "inferred"],
+  })
+    .notNull()
+    .default("manual"),
+  // Confidence score 0-100 (auto-extracted entries start lower)
+  confidence: integer("confidence").notNull().default(100),
+  // Whether the entry is active (can be soft-disabled)
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  // v2: Durability classification
+  durability: text("durability", {
+    enum: ["permanent", "project-phase", "temporary"],
+  }).default("permanent"),
+  // v2: If this entry was superseded by another entry
+  supersededBy: integer("superseded_by"),
+  // v2: When the user last manually confirmed/edited this entry
+  lastConfirmedAt: integer("last_confirmed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// --- AI Query Logs table ---
+export const aiQueryLogs = sqliteTable("ai_query_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  queryType: text("query_type").notNull(), // chat-stream, chat-title, summarize, etc.
+  model: text("model").notNull(),
+  promptSnippet: text("prompt_snippet").notNull(),
+  payload: text("payload", { mode: "json" }).notNull(),
+  response: text("response", { mode: "json" }).notNull(),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// Knowledge entries relations
+export const knowledgeEntriesRelations = relations(
+  knowledgeEntries,
+  ({ one }) => ({
+    app: one(apps, {
+      fields: [knowledgeEntries.appId],
+      references: [apps.id],
+    }),
+  }),
+);
+
+// --- Embeddings Cache table ---
+// Stores vector embeddings for semantic search across files, debates, etc.
+export const embeddingsCache = sqliteTable(
+  "embeddings_cache",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    // Scope: 'file' | 'debate' | 'debate_message' | 'knowledge'
+    scope: text("scope").notNull(),
+    // Reference to the source (app_id for files, debate_id for debates)
+    sourceId: integer("source_id").notNull(),
+    // Unique identifier within the scope (path for files, message_id for messages)
+    contentKey: text("content_key").notNull(),
+    // Hash of the original content for invalidation
+    contentHash: text("content_hash").notNull(),
+    // The vector as a JSON array of floats
+    embedding: text("embedding").notNull(),
+    // Model used to generate the embedding
+    model: text("model").notNull(),
+    // Dimensions of the vector
+    dimensions: integer("dimensions").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    unique("embeddings_scope_source_key_model").on(
+      table.scope,
+      table.sourceId,
+      table.contentKey,
+      table.model,
+    ),
+  ],
+);

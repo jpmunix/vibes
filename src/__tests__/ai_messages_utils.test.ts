@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   parseAiMessagesJson,
   getAiMessagesJsonIfWithinLimit,
+  stripImagePartsFromHistory,
   MAX_AI_MESSAGES_SIZE,
   type DbMessageForParsing,
 } from "@/ipc/utils/ai_messages_utils";
-import { AI_MESSAGES_SDK_VERSION } from "@/db/schema";
+import { AI_MESSAGES_SDK_VERSION } from "@/db/remote-schema";
 import type { ModelMessage } from "ai";
 
 describe("parseAiMessagesJson", () => {
@@ -319,5 +320,106 @@ describe("getAiMessagesJsonIfWithinLimit", () => {
     expect(result).toBeDefined();
     expect(result?.sdkVersion).toBe(AI_MESSAGES_SDK_VERSION);
     expect(result?.messages[0]).toEqual(messages[0]);
+  });
+});
+
+describe("stripImagePartsFromHistory", () => {
+  it("should return empty array for empty input", () => {
+    expect(stripImagePartsFromHistory([])).toEqual([]);
+  });
+
+  it("should not modify messages without images", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "Hello" },
+      { role: "assistant", content: "Hi!" },
+      { role: "user", content: "Follow up" },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    expect(result).toEqual(messages);
+  });
+
+  it("should strip image from historical user message (text + image)", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Look at this" },
+          { type: "image", image: "base64data", mediaType: "image/png" },
+        ],
+      },
+      { role: "assistant", content: "I see it" },
+      { role: "user", content: "Now do something else" },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    // First message should have image stripped, simplified to string
+    expect(result[0].content).toBe("Look at this");
+    // Last user message unchanged
+    expect(result[2].content).toBe("Now do something else");
+  });
+
+  it("should keep image in last user message", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "First message" },
+      { role: "assistant", content: "OK" },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Look at this" },
+          { type: "image", image: "base64data", mediaType: "image/png" },
+        ],
+      },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    // Last user message should keep its image
+    expect(result[2].content).toEqual([
+      { type: "text", text: "Look at this" },
+      { type: "image", image: "base64data", mediaType: "image/png" },
+    ]);
+  });
+
+  it("should replace image-only historical message with placeholder", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: "base64data", mediaType: "image/png" },
+        ],
+      },
+      { role: "assistant", content: "Nice image" },
+      { role: "user", content: "Thanks" },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    expect(result[0].content).toBe("[image attachment]");
+  });
+
+  it("should not modify assistant messages with array content", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "Hello" },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "Here is the result" },
+          { type: "tool-call", toolCallId: "c1", toolName: "read_file", input: {} },
+        ],
+      },
+      { role: "user", content: "Thanks" },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    expect(result[1]).toEqual(messages[1]);
+  });
+
+  it("should handle single user message (keeps images)", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Look" },
+          { type: "image", image: "data", mediaType: "image/png" },
+        ],
+      },
+    ];
+    const result = stripImagePartsFromHistory(messages);
+    // Only message is the last user message — keep as-is
+    expect(result[0].content).toEqual(messages[0].content);
   });
 });

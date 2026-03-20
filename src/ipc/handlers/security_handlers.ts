@@ -1,14 +1,16 @@
-import { db } from "../../db";
-import { chats, messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, like, desc } from "drizzle-orm";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { securityContracts } from "../types/security";
 import type { SecurityFinding } from "../types/security";
 
 export function registerSecurityHandlers() {
   createTypedHandler(
     securityContracts.getLatestSecurityReview,
-    async (_, appId) => {
+    async (_, appId, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       if (!appId) {
         throw new Error("App ID is required");
       }
@@ -17,20 +19,22 @@ export function registerSecurityHandlers() {
       // Use database filtering instead of loading all data into memory
       const result = await db
         .select({
-          content: messages.content,
-          createdAt: messages.createdAt,
-          chatId: messages.chatId,
+          content: remoteSchema.messages.content,
+          createdAt: remoteSchema.messages.createdAt,
+          chatId: remoteSchema.messages.chatId,
         })
-        .from(messages)
-        .innerJoin(chats, eq(messages.chatId, chats.id))
+        .from(remoteSchema.messages)
+        .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
         .where(
           and(
-            eq(chats.appId, appId),
-            eq(messages.role, "assistant"),
-            like(messages.content, "%<dyad-security-finding%"),
+            eq(remoteSchema.chats.appId, appId),
+            eq(remoteSchema.chats.userId, context.userId),
+            eq(remoteSchema.messages.userId, context.userId),
+            eq(remoteSchema.messages.role, "assistant"),
+            like(remoteSchema.messages.content, "%<vibes-security-finding%"),
           ),
         )
-        .orderBy(desc(messages.createdAt))
+        .orderBy(desc(remoteSchema.messages.createdAt))
         .limit(1);
 
       if (result.length === 0) {
@@ -56,10 +60,10 @@ export function registerSecurityHandlers() {
 function parseSecurityFindings(content: string): SecurityFinding[] {
   const findings: SecurityFinding[] = [];
 
-  // Regex to match dyad-security-finding tags
+  // Regex to match vibes-security-finding tags
   // Using lazy quantifier with proper boundaries to prevent catastrophic backtracking
   const regex =
-    /<dyad-security-finding\s+title="([^"]+)"\s+level="(critical|high|medium|low)">([\s\S]*?)<\/dyad-security-finding>/g;
+    /<vibes-security-finding\s+title="([^"]+)"\s+level="(critical|high|medium|low)">([\s\S]*?)<\/vibes-security-finding>/g;
 
   let match;
   while ((match = regex.exec(content)) !== null) {

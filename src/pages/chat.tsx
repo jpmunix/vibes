@@ -1,98 +1,36 @@
-import { useState, useRef, useEffect } from "react";
-import {
-  PanelGroup,
-  Panel,
-  PanelResizeHandle,
-  type ImperativePanelHandle,
-} from "react-resizable-panels";
-import { ChatPanel } from "../components/ChatPanel";
-import { PreviewPanel } from "../components/preview_panel/PreviewPanel";
+import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
-import { useChats } from "@/hooks/useChats";
+import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { ipc } from "@/ipc/types";
 
+/**
+ * /chat route — redirects to the dedicated chat window.
+ * Chats are no longer rendered in the main window; they open in a
+ * lightweight, independent BrowserWindow (P18).
+ */
 export default function ChatPage() {
-  let { id: chatId, autoStart: autoStartFromUrl } = useSearch({
-    from: "/chat",
-  });
+  const { id: chatId } = useSearch({ from: "/chat" });
   const navigate = useNavigate();
-  const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
-  const [isResizing, setIsResizing] = useState(false);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
-  const setSelectedAppId = useSetAtom(selectedAppIdAtom);
-  const { chats, loading } = useChats(selectedAppId);
-
-  // Store the chatId that should auto-start
-  const [autoStartChatId, setAutoStartChatId] = useState<number | null>(null);
-
-  // Capture autoStart from URL and then remove it
-  useEffect(() => {
-    if (autoStartFromUrl && chatId) {
-      setAutoStartChatId(chatId);
-      navigate({ to: "/chat", search: { id: chatId }, replace: true });
-    }
-  }, [autoStartFromUrl, chatId, navigate]);
-
-  const autoStart = autoStartChatId === chatId;
 
   useEffect(() => {
-    if (!chatId && chats.length && !loading) {
-      // Not a real navigation, just a redirect, when the user navigates to /chat
-      // without a chatId, we redirect to the first chat
-      setSelectedAppId(chats[0].appId);
-      navigate({ to: "/chat", search: { id: chats[0].id }, replace: true });
-    }
-  }, [chatId, chats, loading, navigate, setSelectedAppId]);
-
-  useEffect(() => {
-    if (isPreviewOpen) {
-      ref.current?.expand();
+    if (selectedAppId && chatId) {
+      // Open in dedicated chat window and go to app-details
+      ipc.system.openChatWindow({ appId: selectedAppId, chatId });
+      navigate({ to: "/app-details", search: { appId: selectedAppId }, replace: true });
+    } else if (selectedAppId) {
+      // No chatId, just go to app-details
+      navigate({ to: "/app-details", search: { appId: selectedAppId }, replace: true });
     } else {
-      ref.current?.collapse();
+      // No app selected, go home
+      navigate({ to: "/", replace: true });
     }
-  }, [isPreviewOpen]);
-  const ref = useRef<ImperativePanelHandle>(null);
+  }, [selectedAppId, chatId, navigate]);
 
   return (
-    <PanelGroup autoSaveId="persistence" direction="horizontal">
-      <Panel id="chat-panel" minSize={30}>
-        <div className="h-full w-full">
-          <ChatPanel
-            chatId={chatId}
-            autoStart={autoStart}
-            isPreviewOpen={isPreviewOpen}
-            onTogglePreview={() => {
-              setIsPreviewOpen(!isPreviewOpen);
-              if (isPreviewOpen) {
-                ref.current?.collapse();
-              } else {
-                ref.current?.expand();
-              }
-            }}
-          />
-        </div>
-      </Panel>
-
-      <>
-        <PanelResizeHandle
-          onDragging={(e) => setIsResizing(e)}
-          className="w-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors cursor-col-resize"
-        />
-        <Panel
-          collapsible
-          ref={ref}
-          id="preview-panel"
-          minSize={20}
-          className={cn(
-            !isResizing && "transition-all duration-100 ease-in-out",
-          )}
-        >
-          <PreviewPanel />
-        </Panel>
-      </>
-    </PanelGroup>
+    <div className="flex items-center justify-center h-full text-muted-foreground">
+      Redirigiendo...
+    </div>
   );
 }

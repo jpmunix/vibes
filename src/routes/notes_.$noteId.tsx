@@ -1,9 +1,16 @@
+import React, { Suspense } from "react";
+import { PageLoader } from "@/components/PageLoader";
 import { createRoute } from "@tanstack/react-router";
 import { notesRoute } from "./notes";
-import NoteDetailPage from "../pages/notes_.$noteId";
+
+const NoteDetailPage = React.lazy(() => import("../pages/notes_.$noteId"));
 
 export const noteDetailRoute = createRoute({
   getParentRoute: () => notesRoute,
   path: "$noteId",
-  component: NoteDetailPage,
+  component: () => (
+    <Suspense fallback={<PageLoader />}>
+      <NoteDetailPage />
+    </Suspense>
+  ),
 });

@@ -12,7 +12,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ipc } from "@/ipc/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { useNavigate } from "@tanstack/react-router";
 
 interface DailySummaryDialogProps {
   isOpen: boolean;
@@ -32,7 +31,6 @@ export function DailySummaryDialog({
   const [isCopying, setIsCopying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const handleCopy = async () => {
     try {
@@ -68,9 +66,6 @@ export function DailySummaryDialog({
       await queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
       showSuccess("Nota guardada correctamente");
       onOpenChange(false);
-
-      // Navigate to the newly created note
-      navigate({ to: "/notes/$noteId", params: { noteId: String(noteId) } });
     } catch (error) {
       showError(`Error al guardar la nota: ${(error as any).toString()}`);
     } finally {

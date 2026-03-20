@@ -34,40 +34,14 @@ const testWithMultipleBackups = testWithConfig({
     const backupsDir = path.join(userDataDir, "backups");
     fs.mkdirSync(backupsDir, { recursive: true });
 
-    // Create 5 mock backup directories with different timestamps
+    // Create 12 mock backup directories with different timestamps
     // These timestamps are in ascending order (oldest to newest)
-    const mockBackups = [
-      {
-        name: "v1.0.0_2023-01-01T10-00-00-000Z_upgrade_from_0.9.0",
-        timestamp: "2023-01-01T10:00:00.000Z",
-        version: "1.0.0",
-        reason: "upgrade_from_0.9.0",
-      },
-      {
-        name: "v1.0.1_2023-01-02T10-00-00-000Z_upgrade_from_1.0.0",
-        timestamp: "2023-01-02T10:00:00.000Z",
-        version: "1.0.1",
-        reason: "upgrade_from_1.0.0",
-      },
-      {
-        name: "v1.0.2_2023-01-03T10-00-00-000Z_upgrade_from_1.0.1",
-        timestamp: "2023-01-03T10:00:00.000Z",
-        version: "1.0.2",
-        reason: "upgrade_from_1.0.1",
-      },
-      {
-        name: "v1.0.3_2023-01-04T10-00-00-000Z_upgrade_from_1.0.2",
-        timestamp: "2023-01-04T10:00:00.000Z",
-        version: "1.0.3",
-        reason: "upgrade_from_1.0.2",
-      },
-      {
-        name: "v1.0.4_2023-01-05T10-00-00-000Z_upgrade_from_1.0.3",
-        timestamp: "2023-01-05T10:00:00.000Z",
-        version: "1.0.4",
-        reason: "upgrade_from_1.0.3",
-      },
-    ];
+    const mockBackups = Array.from({ length: 12 }, (_, i) => ({
+      name: `v1.0.${i}_2023-01-${(i + 1).toString().padStart(2, "0")}T10-00-00-000Z_upgrade_from_0.9.0`,
+      timestamp: `2023-01-${(i + 1).toString().padStart(2, "0")}T10:00:00.000Z`,
+      version: `1.0.${i}`,
+      reason: `upgrade_from_0.9.0`,
+    }));
 
     // Create each backup directory with realistic structure
     for (const backup of mockBackups) {
@@ -110,8 +84,7 @@ const testWithMultipleBackups = testWithConfig({
 
 const ensureAppIsRunning = async (po: PageObject) => {
   await po.page.waitForSelector("h1");
-  const text = await po.page.$eval("h1", (el) => el.textContent);
-  expect(text).toBe("Hagamos magia");
+  await expect(po.page.getByText("vibes.start()")).toBeVisible({ timeout: 5000 });
 };
 
 test("backup is not created for first run", async ({ po }) => {
@@ -168,14 +141,21 @@ testWithMultipleBackups(
     const backupsDir = path.join(po.userDataDir, "backups");
     const backups = fs.readdirSync(backupsDir);
 
-    // Should have only 3 backups remaining (MAX_BACKUPS = 3)
-    expect(backups).toHaveLength(3);
+    // Should have only 10 backups remaining (MAX_BACKUPS = 10)
+    expect(backups).toHaveLength(10);
 
     const expectedRemainingBackups = [
       "*",
-      // These are the two older backups
-      "v1.0.4_2023-01-05T10-00-00-000Z_upgrade_from_1.0.3",
-      "v1.0.3_2023-01-04T10-00-00-000Z_upgrade_from_1.0.2",
+      // These are the newest backups from our mock
+      "v1.0.11_2023-01-12T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.10_2023-01-11T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.9_2023-01-10T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.8_2023-01-09T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.7_2023-01-08T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.6_2023-01-07T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.5_2023-01-06T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.4_2023-01-05T10-00-00-000Z_upgrade_from_0.9.0",
+      "v1.0.3_2023-01-04T10-00-00-000Z_upgrade_from_0.9.0",
     ];
 
     // Check that the expected backups exist
@@ -203,11 +183,11 @@ testWithMultipleBackups(
       );
     }
 
-    // The 2 oldest backups should have been deleted
+    // The oldest backups should have been deleted
     const deletedBackups = [
       "v1.0.0_2023-01-01T10-00-00-000Z_upgrade_from_0.9.0", // oldest
-      "v1.0.1_2023-01-02T10-00-00-000Z_upgrade_from_1.0.0", // second oldest
-      "v1.0.2_2023-01-03T10-00-00-000Z_upgrade_from_1.0.1", // third oldest
+      "v1.0.1_2023-01-02T10-00-00-000Z_upgrade_from_0.9.0", // second oldest
+      "v1.0.2_2023-01-03T10-00-00-000Z_upgrade_from_0.9.0", // third oldest
     ];
 
     for (const deletedBackup of deletedBackups) {

@@ -35,6 +35,9 @@ export { mcpContracts, mcpEvents } from "./mcp";
 export { vercelContracts } from "./vercel";
 export { supabaseContracts } from "./supabase";
 export { neonContracts } from "./neon";
+export { firebaseContracts } from "./firebase";
+export { bunnyContracts } from "./bunny";
+export { pocketbaseContracts } from "./pocketbase";
 export { systemContracts, systemEvents } from "./system";
 export { versionContracts } from "./version";
 export { languageModelContracts } from "./language-model";
@@ -54,8 +57,12 @@ export { noteContracts } from "./note";
 export { todoContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
-export { embeddingsContracts } from "./embeddings";
+
 export { debateContracts, debateStreamContract } from "./debate";
+export { knowledgeContracts } from "./knowledge";
+export { aiQueryLogContracts } from "../contracts/ai_query_logs";
+export { dossierContracts, dossierStreamContract } from "./dossier";
+export { authContracts } from "./auth";
 
 // =============================================================================
 // Client Exports
@@ -72,6 +79,9 @@ export { mcpClient, mcpEventClient } from "./mcp";
 export { vercelClient } from "./vercel";
 export { supabaseClient } from "./supabase";
 export { neonClient } from "./neon";
+export { firebaseClient } from "./firebase";
+export { bunnyClient } from "./bunny";
+export { pocketbaseClient } from "./pocketbase";
 export { systemClient, systemEventClient } from "./system";
 export { versionClient } from "./version";
 export { languageModelClient } from "./language-model";
@@ -86,11 +96,15 @@ export { upgradeClient } from "./upgrade";
 export { visualEditingClient } from "./visual-editing";
 export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
-export { embeddingsClient } from "./embeddings";
+
 export { debateClient, debateStreamClient } from "./debate";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 export { freeAgentQuotaClient } from "./free_agent_quota";
+export { knowledgeClient } from "./knowledge";
+export { aiQueryLogClient } from "./ai_query_logs";
+export { dossierClient, dossierStreamClient } from "./dossier";
+export { authClient } from "./auth";
 
 // =============================================================================
 // Type Exports
@@ -117,6 +131,9 @@ export type {
   ChangeAppLocationResult,
   ListAppsResponse,
   RenameBranchParams,
+  ExecuteShellCommandParams,
+  ExecuteShellCommandResult,
+  CancelShellCommandParams,
 } from "./app";
 
 // Chat types
@@ -140,6 +157,8 @@ export type {
   AgentToolConsentRequestPayload,
   AgentToolConsentDecision,
   AgentToolConsentResponseParams,
+  AskUserRequestPayload,
+  AskUserResponseParams,
   AgentTodosUpdatePayload,
   AgentProblemsUpdatePayload,
   SetAgentToolConsentParams,
@@ -163,6 +182,8 @@ export type {
   GitDiffFile,
   GitCommit,
   GitPreview,
+  CommitHistoryEntry,
+  CommitHistoryFile,
 } from "./github";
 
 // MCP types
@@ -211,6 +232,24 @@ export type {
   GetNeonProjectParams,
   GetNeonProjectResponse,
 } from "./neon";
+
+// Firebase types
+export type {
+  FirebaseProject,
+  FirebaseWebConfig,
+  SetFirebaseAppProjectParams,
+  CreateFirebaseProjectParams,
+} from "./firebase";
+
+// Bunny types
+export type {
+  BunnyConfig,
+  BunnyDatabaseEntry,
+  BunnyStorageZoneEntry,
+} from "./bunny";
+
+// PocketBase types
+export type { PocketBaseConfig } from "./pocketbase";
 
 // System types
 export type {
@@ -284,11 +323,11 @@ export type { ContextPathResults, AppChatContext } from "./context";
 // Upgrade types
 export type { AppUpgrade } from "./upgrade";
 
-// Visual editing types
 export type {
   VisualEditingChange,
   ApplyVisualEditingChangesParams,
   AnalyseComponentParams,
+  ElementType,
 } from "./visual-editing";
 
 // Security types
@@ -318,6 +357,29 @@ export type {
 
 // Debate types
 export type { InjectedItem, DebateMessage, DebateTag, Debate } from "./debate";
+
+// Knowledge types
+export type {
+  KnowledgeEntry,
+  KnowledgeCategory,
+  KnowledgeSource,
+  KnowledgeDurability,
+  CreateKnowledgeEntryParams,
+  UpdateKnowledgeEntryParams,
+  ExtractKnowledgeParams,
+  BulkKnowledgeParams,
+  KnowledgeHealthResult,
+} from "./knowledge";
+
+// Dossier types
+export type {
+  DossierGenerateParams,
+  DossierCheckExistingParams,
+  DossierCheckExistingResult,
+  DossierDownloadResult,
+  DossierChunk,
+  DossierEnd,
+} from "./dossier";
 
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
@@ -360,7 +422,7 @@ import { capacitorClient } from "./capacitor";
 import { chatClient, chatStreamClient } from "./chat";
 import { chatLogsClient } from "./chat_logs";
 import { contextClient } from "./context";
-import { embeddingsClient } from "./embeddings";
+
 import { freeAgentQuotaClient } from "./free_agent_quota";
 import { gitClient, githubClient, githubEventClient } from "./github";
 import { helpClient, helpStreamClient } from "./help";
@@ -384,6 +446,13 @@ import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
 import { debateClient, debateStreamClient } from "./debate";
+import { knowledgeClient } from "./knowledge";
+import { firebaseClient } from "./firebase";
+import { bunnyClient } from "./bunny";
+import { pocketbaseClient } from "./pocketbase";
+import { aiQueryLogClient } from "./ai_query_logs";
+import { dossierClient, dossierStreamClient } from "./dossier";
+import { authClient } from "./auth";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -418,6 +487,7 @@ export const ipc = {
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
   debateStream: debateStreamClient,
+  dossierStream: dossierStreamClient,
 
   // Integrations
   github: githubClient,
@@ -426,6 +496,9 @@ export const ipc = {
   vercel: vercelClient,
   supabase: supabaseClient,
   neon: neonClient,
+  firebase: firebaseClient,
+  bunny: bunnyClient,
+  pocketbase: pocketbaseClient,
 
   // Features
   system: systemClient,
@@ -445,7 +518,13 @@ export const ipc = {
   freeAgentQuota: freeAgentQuotaClient,
   tokenStats: tokenStatsClient,
   chatLogs: chatLogsClient,
-  embeddings: embeddingsClient,
+
+  knowledge: knowledgeClient,
+  aiQueryLogs: aiQueryLogClient,
+  dossier: dossierClient,
+
+  // Auth
+  auth: authClient,
 
   // Event clients for main->renderer pub/sub
   events: {

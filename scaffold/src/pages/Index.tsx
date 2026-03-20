@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { MadeWithDyad } from "@/components/made-with-dyad";
 
 const Index = () => {
   const full = "vibes.init()";
@@ -32,8 +31,6 @@ const Index = () => {
           className="glow-breath absolute inset-[-120%] -z-10 rounded-full"
         />
       </h1>
-
-      <MadeWithDyad />
 
       <style>{`
         @keyframes blink {

@@ -1,3 +1,4 @@
+import React from "react";
 import { XCircle, AlertTriangle } from "lucide-react"; // Assuming lucide-react is used
 
 interface ChatErrorProps {
@@ -5,7 +6,7 @@ interface ChatErrorProps {
   onDismiss: () => void;
 }
 
-export function ChatError({ error, onDismiss }: ChatErrorProps) {
+export const ChatError = React.memo(function ChatError({ error, onDismiss }: ChatErrorProps) {
   if (!error) {
     return null;
   }
@@ -29,4 +30,4 @@ export function ChatError({ error, onDismiss }: ChatErrorProps) {
       </button>
     </div>
   );
-}
+});

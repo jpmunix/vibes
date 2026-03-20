@@ -144,9 +144,12 @@ export async function refreshSupabaseToken(): Promise<void> {
       expiresIn,
     } = await response.json();
 
-    // Update settings with new tokens
+    // Re-read settings right before writing to get latest state
+    const freshSettings = readSettings();
+    // Update settings with new tokens, preserving existing fields (e.g. organizations map)
     writeSettings({
       supabase: {
+        ...freshSettings.supabase,
         accessToken: {
           value: accessToken,
         },
@@ -273,15 +276,18 @@ async function refreshSupabaseTokenForOrganization(
       expiresIn,
     } = await response.json();
 
-    // Update the specific organization in settings
-    const existingOrgs = settings.supabase?.organizations ?? {};
+    // Re-read settings right before writing to avoid stale-read race conditions.
+    // The async fetch above may take time, during which other org credentials
+    // could be written. Reading here ensures we merge into the latest state.
+    const freshSettings = readSettings();
+    const existingOrgs = freshSettings.supabase?.organizations ?? {};
     writeSettings({
       supabase: {
-        ...settings.supabase,
+        ...freshSettings.supabase,
         organizations: {
           ...existingOrgs,
           [organizationSlug]: {
-            ...org,
+            ...existingOrgs[organizationSlug],
             accessToken: {
               value: accessToken,
             },
@@ -556,8 +562,6 @@ LIMIT 1000`;
 
   const url = `https://api.supabase.com/v1/projects/${projectId}/analytics/endpoints/logs.all?sql=${encodedSql}&iso_timestamp_start=${isoTimestampStart}&iso_timestamp_end=${isoTimestampEnd}`;
 
-  logger.info(`Fetching logs from: ${url}`);
-
   const response = await fetchWithRetry(
     url,
     {
@@ -578,10 +582,7 @@ LIMIT 1000`;
     );
   }
 
-  const jsonResponse: SupabaseProjectLogsResponse = await response.json();
-  logger.info(`Received ${jsonResponse.result?.length || 0} logs`);
-
-  return jsonResponse;
+  return await response.json();
 }
 
 export async function executeSupabaseSql({
@@ -614,17 +615,13 @@ export async function deleteSupabaseFunction({
   functionName: string;
   organizationSlug: string | null;
 }): Promise<void> {
-  logger.info(
-    `Deleting Supabase function: ${functionName} from project: ${supabaseProjectId}`,
-  );
+
   const supabase = await getSupabaseClient({ organizationSlug });
   await retryWithRateLimit(
     () => supabase.deleteFunction(supabaseProjectId, functionName),
     `Delete function ${functionName}`,
   );
-  logger.info(
-    `Deleted Supabase function: ${functionName} from project: ${supabaseProjectId}`,
-  );
+
 }
 
 export async function listSupabaseFunctions({
@@ -638,7 +635,6 @@ export async function listSupabaseFunctions({
     return [];
   }
 
-  logger.info(`Listing Supabase functions for project: ${supabaseProjectId}`);
   const supabase = await getSupabaseClient({ organizationSlug });
 
   const response = await fetchWithRetry(
@@ -657,9 +653,7 @@ export async function listSupabaseFunctions({
   }
 
   const functions: DeployedFunctionResponse[] = await response.json();
-  logger.info(
-    `Found ${functions.length} functions for project: ${supabaseProjectId}`,
-  );
+
   return functions;
 }
 
@@ -690,7 +684,7 @@ export async function listSupabaseBranches({
     ];
   }
 
-  logger.info(`Listing Supabase branches for project: ${supabaseProjectId}`);
+
   const supabase = await getSupabaseClient({ organizationSlug });
 
   const response = await fetchWithRetry(
@@ -706,9 +700,6 @@ export async function listSupabaseBranches({
 
   if (response.status === 403) {
     // Free tier users don't have access to branches feature
-    logger.info(
-      `Branches not available for project ${supabaseProjectId} (likely free tier account)`,
-    );
     return [];
   }
 
@@ -716,7 +707,7 @@ export async function listSupabaseBranches({
     throw await createResponseError(response, "list branches");
   }
 
-  logger.info(`Listed Supabase branches for project: ${supabaseProjectId}`);
+
   const jsonResponse: SupabaseProjectBranch[] = await response.json();
   return jsonResponse;
 }
@@ -738,9 +729,7 @@ export async function deploySupabaseFunction({
   bundleOnly?: boolean;
   organizationSlug: string | null;
 }): Promise<DeployedFunctionResponse> {
-  logger.info(
-    `Deploying Supabase function: ${functionName} to project: ${supabaseProjectId}`,
-  );
+
 
   const functionPath = path.join(
     appPath,
@@ -827,9 +816,7 @@ export async function deploySupabaseFunction({
 
   const result = (await response.json()) as DeployedFunctionResponse;
 
-  logger.info(
-    `Deployed Supabase function: ${functionName} to project: ${supabaseProjectId}${bundleOnly ? " (bundle only)" : ""}`,
-  );
+
 
   return result;
 }
@@ -843,9 +830,7 @@ export async function bulkUpdateFunctions({
   functions: DeployedFunctionResponse[];
   organizationSlug: string | null;
 }): Promise<void> {
-  logger.info(
-    `Bulk updating ${functions.length} functions for project: ${supabaseProjectId}`,
-  );
+
 
   const supabase = await getSupabaseClient({ organizationSlug });
 
@@ -866,9 +851,7 @@ export async function bulkUpdateFunctions({
     throw await createResponseError(response, "bulk update functions");
   }
 
-  logger.info(
-    `Successfully bulk updated ${functions.length} functions for project: ${supabaseProjectId}`,
-  );
+
 }
 
 // ─────────────────────────────────────────────────────────────────────

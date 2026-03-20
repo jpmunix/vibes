@@ -20,14 +20,16 @@ export function useChatModeToggle() {
     [isMac],
   );
 
-  // Function to toggle between ask and build chat modes
+  // Function to toggle between visible chat modes (skipping deprecated build/agent)
   const toggleChatMode = useCallback(() => {
     if (!settings || !settings.selectedChatMode) return;
 
     const currentMode = settings.selectedChatMode;
-    const modes = ChatModeSchema.options;
-    const currentIndex = modes.indexOf(settings.selectedChatMode);
-    const newMode = modes[(currentIndex + 1) % modes.length];
+    // Only cycle through active modes
+    const visibleModes = ["local-agent", "plan", "ask"] as const;
+    const currentIndex = visibleModes.indexOf(currentMode as typeof visibleModes[number]);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % visibleModes.length;
+    const newMode = visibleModes[nextIndex];
 
     updateSettings({ selectedChatMode: newMode });
     posthog.capture("chat:mode_toggle", {

@@ -75,14 +75,14 @@ export const readFileTool: ToolDefinition<z.infer<typeof readFileSchema>> = {
         `end_line="${escapeXmlAttr(String(args.end_line_one_indexed_inclusive))}"`,
       );
     }
-    return `<dyad-read ${attrs.join(" ")}></dyad-read>`;
+    return `<vibes-read ${attrs.join(" ")}></vibes-read>`;
   },
 
   execute: async (args, ctx: AgentContext) => {
     const fullFilePath = safeJoin(ctx.appPath, args.path);
 
     if (!fs.existsSync(fullFilePath)) {
-      throw new Error(`File does not exist: ${args.path}`);
+      return `File does not exist: ${args.path}`;
     }
 
     const content = await readFile(fullFilePath, "utf8");

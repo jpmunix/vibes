@@ -38,7 +38,7 @@ export function ReleaseChannelSelector() {
         action: {
           label: "Restart Vibes",
           onClick: () => {
-            ipc.system.restartDyad();
+            ipc.system.restartVibes();
           },
         },
       });

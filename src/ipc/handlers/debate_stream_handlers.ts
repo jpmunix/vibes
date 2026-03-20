@@ -1,11 +1,12 @@
 import { ipcMain } from "electron";
-import { db } from "../../db";
-import { debates, debateMessages } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 
 import log from "electron-log";
 import { readSettings } from "../../main/settings";
 import { getModelClient } from "../utils/get_model_client";
+import { logAiQuery } from "../utils/ai_query_logger";
 import { streamText, TextStreamPart } from "ai";
 import { safeSend } from "../utils/safe_sender";
 import { logTokenUsage } from "../utils/token_stats_logger";
@@ -22,13 +23,24 @@ export function registerDebateStreamHandlers() {
 
   ipcMain.handle("debate:stream", async (event, req) => {
     const { debateId, prompt, injectedItems, mode, skipSaveUserMessage } = req;
+    const settings = readSettings();
+    const userId = settings.userId;
+    if (!userId) {
+      safeSend(event.sender, "debate:response:error", {
+        debateId: debateId,
+        error: "Unauthorized",
+      });
+      return;
+    }
+    const db = getRemoteDb();
+
     try {
       // Notify renderer that stream is starting
       safeSend(event.sender, "debate:stream:start", { debateId });
 
       // Get the debate
       const debate = await db.query.debates.findFirst({
-        where: eq(debates.id, debateId),
+        where: and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -59,17 +71,19 @@ export function registerDebateStreamHandlers() {
 
       if (!skipSaveUserMessage) {
         // Save user message
-        await db.insert(debateMessages).values({
+        await db.insert(remoteSchema.debateMessages).values({
+          userId,
           debateId,
           role: "user",
           content: userPrompt,
           injectedItems: injectedItems || [],
+          createdAt: new Date(),
         });
       }
 
       // Fetch all messages including the new (or updated) user message
       const currentMessages = await db.query.debateMessages.findMany({
-        where: eq(debateMessages.debateId, debateId),
+        where: and(eq(remoteSchema.debateMessages.debateId, debateId), eq(remoteSchema.debateMessages.userId, userId)),
         orderBy: (messages, { asc }) => [asc(messages.createdAt)],
       });
 
@@ -95,7 +109,7 @@ export function registerDebateStreamHandlers() {
         try {
           const settings = readSettings();
           const titleModel =
-            settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite"; // Fast model
+            settings.standardModeModel || "openai/gpt-4.1-mini"; // Fast model
           const { getLanguageModelProviders, getLanguageModels } =
             await import("../shared/language_model_helpers");
           const allModels = await getLanguageModels({
@@ -129,9 +143,9 @@ export function registerDebateStreamHandlers() {
 
           if (newTitle && newTitle.trim()) {
             await db
-              .update(debates)
+              .update(remoteSchema.debates)
               .set({ title: newTitle.trim() })
-              .where(eq(debates.id, debateId));
+              .where(and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, userId)));
             safeSend(event.sender, "ipc-event", { channel: "debates:updated" }); // Notify list to refresh
             safeSend(event.sender, "debate:title:updated", {
               debateId,
@@ -146,11 +160,11 @@ export function registerDebateStreamHandlers() {
       const settings = readSettings();
       let selectedModel = settings.selectedModel;
 
-      if (settings.debateModel && settings.debateModel !== "SAME_AS_CHAT") {
+      if (settings.proModeModel && settings.proModeModel !== "SAME_AS_CHAT") {
         const { getLanguageModelProviders, getLanguageModels } =
           await import("../shared/language_model_helpers");
-        const allModels = await getLanguageModels({ providerId: "openrouter" });
-        const found = allModels.find((m) => m.apiName === settings.debateModel);
+        const allModels = await getLanguageModels({ providerId: "openrouter", userId });
+        const found = allModels.find((m) => m.apiName === settings.proModeModel);
         if (found) {
           selectedModel = {
             name: found.apiName,
@@ -164,11 +178,13 @@ export function registerDebateStreamHandlers() {
 
       // Create placeholder assistant message
       const [assistantMsg] = await db
-        .insert(debateMessages)
+        .insert(remoteSchema.debateMessages)
         .values({
+          userId,
           debateId,
           role: "assistant",
           content: "",
+          createdAt: new Date(),
         })
         .returning();
 
@@ -199,7 +215,7 @@ export function registerDebateStreamHandlers() {
           inThinkingBlock &&
           part.type !== "reasoning-delta"
         ) {
-          chunk = "</dyad-think>\n";
+          chunk = "</vibes-think>\n";
           inThinkingBlock = false;
         }
 
@@ -209,7 +225,7 @@ export function registerDebateStreamHandlers() {
           const text = part.text;
 
           if (!inThinkingBlock) {
-            chunk = "<dyad-think>\n";
+            chunk = "<vibes-think>\n";
             inThinkingBlock = true;
           }
           chunk += text;
@@ -233,7 +249,7 @@ export function registerDebateStreamHandlers() {
 
       // Close thinking block if still open
       if (inThinkingBlock) {
-        fullResponse += "\n</dyad-think>";
+        fullResponse += "\n</vibes-think>";
         safeSend(event.sender, "debate:response:chunk", {
           debateId,
           messages: [
@@ -247,7 +263,7 @@ export function registerDebateStreamHandlers() {
         fullResponse = "*Acción completada*";
       }
 
-      const usage = await result.usage;
+      const usage = await result.totalUsage;
       if (usage) {
         const usageAny = usage as any;
         const promptTokens = usageAny.promptTokens ?? usageAny.inputTokens ?? 0;
@@ -270,15 +286,36 @@ export function registerDebateStreamHandlers() {
         });
       }
 
+      // Log the query to the dedicated AI query log
+      try {
+        // const { logAiQuery } = await import("../utils/ai_query_logger");
+        void logAiQuery({
+          queryType: "debate-stream",
+          model: selectedModel.name,
+          promptSnippet: prompt.slice(0, 100),
+          payload: {
+            system: getEffectivePrompt("debate_chat_system", settings),
+            messages: finalHistory,
+          },
+          response: {
+            text: fullResponse,
+          },
+          inputTokens: (usage as any)?.inputTokens ?? (usage as any)?.promptTokens,
+          outputTokens: (usage as any)?.outputTokens ?? (usage as any)?.completionTokens,
+        }, userId);
+      } catch (e) {
+        logger.error("Failed to log debate AI query", e);
+      }
+
       // Final update
       await db
-        .update(debateMessages)
+        .update(remoteSchema.debateMessages)
         .set({ content: fullResponse })
-        .where(eq(debateMessages.id, assistantMsg.id));
+        .where(and(eq(remoteSchema.debateMessages.id, assistantMsg.id), eq(remoteSchema.debateMessages.userId, userId)));
       await db
-        .update(debates)
+        .update(remoteSchema.debates)
         .set({ updatedAt: new Date() })
-        .where(eq(debates.id, debateId));
+        .where(and(eq(remoteSchema.debates.id, debateId), eq(remoteSchema.debates.userId, userId)));
 
       safeSend(event.sender, "debate:response:end", {
         debateId,

@@ -32,13 +32,13 @@ Your task is to analyze the conversation and provide:
 - \`file1.ts\` - Description of changes
 - \`file2.py\` - Description of changes
 
-<dyad-chat-summary>
-[Your concise summary here - less than a sentence, more than a few words]
-</dyad-chat-summary>
+<vibes-chat-summary>
+[Short title, max 30 characters. No quotes, no full sentences. Example: "Cierre modal overlay"]
+</vibes-chat-summary>
 
 **Reminder:**
 
-YOU MUST ALWAYS INCLUDE EXACTLY ONE <dyad-chat-summary> TAG AT THE END.
+YOU MUST ALWAYS INCLUDE EXACTLY ONE <vibes-chat-summary> TAG AT THE END.
 `;
 
 export const SUMMARIZE_IN_SPANISH_PROMPT = `
@@ -46,6 +46,6 @@ Responde este resumen en español incluyendo las cabeceras de "Important Context
 `;
 
 export const SUMMARY_SYSTEM_PROMPT_LANGS = {
-  en: "Summarize from chat-id",
-  es: "Resumir el chat chat-id=",
+   en: "Summarize from chat-id",
+   es: "Resumir el chat chat-id=",
 };

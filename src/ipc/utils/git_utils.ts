@@ -21,7 +21,7 @@ const logger = log.scope("git_utils");
  * Filters out WSL-related PATH entries that can cause WSL interop issues.
  * On non-Windows platforms, returns undefined (use default environment).
  *
- * Issue: https://github.com/dyad-sh/dyad/issues/2194
+ * Issue: https://github.com/<vibes-sh/dyad/issues/2194
  * When WSL is installed on Windows, the PATH can contain entries that cause
  * git commands to be intercepted by WSL's relay system, resulting in errors
  * like "execvpe(/bin/bash) failed: No such file or directory".
@@ -445,7 +445,31 @@ export async function gitReset({ path }: GitBaseParams): Promise<void> {
     // If needed, users can manually reset via command line or enable native git
     throw new Error(
       "gitReset: Resetting the staging area is not fully supported when native git is disabled. " +
-        "Please enable native git or manually unstage files using 'git reset HEAD'.",
+      "Please enable native git or manually unstage files using 'git reset HEAD'.",
+    );
+  }
+}
+
+/**
+ * Unstage a single file from the staging area (git reset HEAD -- filepath).
+ * The file remains modified in the working directory.
+ */
+export async function gitResetFile({
+  path,
+  filepath,
+}: GitFileParams): Promise<void> {
+  const normalizedFilepath = normalizePath(filepath);
+  const settings = readSettings();
+  if (settings.enableNativeGit) {
+    await execOrThrow(
+      ["reset", "HEAD", "--", normalizedFilepath],
+      path,
+      `Failed to unstage file '${normalizedFilepath}'`,
+    );
+  } else {
+    throw new Error(
+      "gitResetFile: Unstaging individual files is not supported when native git is disabled. " +
+      "Please enable native git.",
     );
   }
 }
@@ -454,6 +478,13 @@ export async function gitInit({
   path,
   ref = "main",
 }: GitInitParams): Promise<void> {
+  // Safety: remove stale index.lock if it exists before init.
+  // If we're initializing a new repo, any existing lock is from a crashed process.
+  const lockFile = pathModule.join(path, ".git", "index.lock");
+  if (fs.existsSync(lockFile)) {
+    logger.warn(`Removing stale index.lock at ${lockFile}`);
+    fs.unlinkSync(lockFile);
+  }
   const settings = readSettings();
   if (settings.enableNativeGit) {
     await execOrThrow(
@@ -793,9 +824,9 @@ export async function gitClone({
       url: cleanUrl,
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
       singleBranch,
       depth: depth ?? undefined,
@@ -895,11 +926,11 @@ export async function gitPush({
   if (forceWithLease) {
     logger.warn(
       "gitPush: 'forceWithLease' requested but not supported when native git is disabled. " +
-        "Rejecting push to prevent unsafe force operation.",
+      "Rejecting push to prevent unsafe force operation.",
     );
     throw new Error(
       "gitPush: 'forceWithLease' is not supported when native git is disabled. " +
-        "Falling back to plain force could overwrite remote commits. Enable native git.",
+      "Falling back to plain force could overwrite remote commits. Enable native git.",
     );
   }
   await git.push({
@@ -911,9 +942,9 @@ export async function gitPush({
     remoteRef: targetBranch,
     onAuth: accessToken
       ? () => ({
-          username: accessToken,
-          password: "x-oauth-basic",
-        })
+        username: accessToken,
+        password: "x-oauth-basic",
+      })
       : undefined,
     force: !!force,
   });
@@ -984,6 +1015,81 @@ export async function gitMergeAbort({ path }: GitBaseParams): Promise<void> {
 
   await execOrThrow(["merge", "--abort"], path, "Failed to abort merge");
 }
+
+/**
+ * Resolve all merge conflicts by accepting "ours" (local/current branch changes).
+ * This runs: git checkout --ours . && git add .
+ */
+export async function gitResolveMergeOurs({
+  path,
+}: GitBaseParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  // Verify merge is in progress
+  if (!isGitMergeInProgress({ path })) {
+    return { resolved: false, message: "No hay merge en progreso." };
+  }
+
+  // Checkout --ours for all conflicting files
+  const checkoutResult = await execGit(
+    ["checkout", "--ours", "."],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve with --ours: ${checkoutResult.stderr}`);
+  }
+
+  // Stage all resolved files
+  await execOrThrow(["add", "."], path, "Failed to stage resolved files");
+
+  return {
+    resolved: true,
+    message: "Conflictos resueltos aceptando tus cambios locales.",
+  };
+}
+
+/**
+ * Resolve all merge conflicts by accepting "theirs" (incoming/remote changes).
+ * This runs: git checkout --theirs . && git add .
+ */
+export async function gitResolveMergeTheirs({
+  path,
+}: GitBaseParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  // Verify merge is in progress
+  if (!isGitMergeInProgress({ path })) {
+    return { resolved: false, message: "No hay merge en progreso." };
+  }
+
+  // Checkout --theirs for all conflicting files
+  const checkoutResult = await execGit(
+    ["checkout", "--theirs", "."],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve with --theirs: ${checkoutResult.stderr}`);
+  }
+
+  // Stage all resolved files
+  await execOrThrow(["add", "."], path, "Failed to stage resolved files");
+
+  return {
+    resolved: true,
+    message: "Conflictos resueltos aceptando los cambios entrantes.",
+  };
+}
+
 
 export async function gitCurrentBranch({
   path,
@@ -1168,9 +1274,9 @@ export async function gitFetch({
       remote,
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
     });
   }
@@ -1244,9 +1350,9 @@ export async function gitPull({
       author: author || (await getGitAuthor()),
       onAuth: accessToken
         ? () => ({
-            username: accessToken,
-            password: "x-oauth-basic",
-          })
+          username: accessToken,
+          password: "x-oauth-basic",
+        })
         : undefined,
     });
     // Check for conflicts even if pull succeeded (isomorphic-git may not throw on conflicts)
@@ -1333,7 +1439,7 @@ export async function gitCreateBranch({
   if (from !== "HEAD") {
     throw new Error(
       `gitCreateBranch: 'from' is not supported when native git is disabled (from=${from}). ` +
-        `Branches would be created from HEAD instead.`,
+      `Branches would be created from HEAD instead.`,
     );
   }
   await git.branch({
@@ -1562,3 +1668,554 @@ export async function gitLocalCommits({
     return [];
   }
 }
+
+/**
+ * Get detailed commit history with author, stats, and changed files.
+ * Supports pagination via limit/offset and optional branch filtering.
+ */
+export async function gitLogDetailed({
+  path,
+  limit = 50,
+  offset = 0,
+  branch,
+}: {
+  path: string;
+  limit?: number;
+  offset?: number;
+  branch?: string;
+}): Promise<{
+  commits: Array<{
+    hash: string;
+    shortHash: string;
+    message: string;
+    author: string;
+    email: string;
+    date: string;
+    timestamp: number;
+    filesChanged: number;
+    insertions: number;
+    deletions: number;
+    files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+  }>;
+  total: number;
+  hasMore: boolean;
+}> {
+  // First get total count
+  const countResult = await execGit(
+    ["rev-list", "--count", branch || "HEAD"],
+    path,
+  );
+  const total = countResult.exitCode === 0
+    ? parseInt(countResult.stdout.trim(), 10)
+    : 0;
+
+  // Get commits with full details using a custom format
+  // %H=hash, %h=short hash, %s=subject, %an=author, %ae=email, %aI=ISO date, %at=timestamp
+  const logArgs = [
+    "log",
+    "--max-count", String(limit),
+    "--skip", String(offset),
+    "--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at%x00---END-COMMIT---",
+    "--numstat",
+    branch || "HEAD",
+  ];
+
+  const logResult = await execGit(logArgs, path);
+  if (logResult.exitCode !== 0) {
+    throw new Error(logResult.stderr.toString());
+  }
+
+  const output = logResult.stdout.toString().trim();
+  if (!output) {
+    return { commits: [], total, hasMore: false };
+  }
+
+  // Parse commits - split by END-COMMIT marker
+  const rawChunks = output.split("\x00---END-COMMIT---").filter(Boolean);
+  const commits: Array<{
+    hash: string;
+    shortHash: string;
+    message: string;
+    author: string;
+    email: string;
+    date: string;
+    timestamp: number;
+    filesChanged: number;
+    insertions: number;
+    deletions: number;
+    files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+  }> = [];
+
+  for (const chunk of rawChunks) {
+    const parts = chunk.split("\x00");
+    if (parts.length < 7) continue;
+
+    const hash = parts[0].trim();
+    const shortHash = parts[1];
+    const message = parts[2];
+    const author = parts[3];
+    const email = parts[4];
+    const date = parts[5];
+    const timestampAndRest = parts[6];
+
+    // The timestamp might be followed by numstat output (newline separated)
+    const tsLines = timestampAndRest.split("\n");
+    const timestamp = parseInt(tsLines[0], 10);
+
+    // Parse numstat lines (insertions\tdeletions\tfilepath)
+    const files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }> = [];
+    let totalInsertions = 0;
+    let totalDeletions = 0;
+
+    for (let i = 1; i < tsLines.length; i++) {
+      const line = tsLines[i].trim();
+      if (!line) continue;
+
+      const tabParts = line.split("\t");
+      if (tabParts.length >= 3) {
+        const ins = tabParts[0] === "-" ? 0 : parseInt(tabParts[0], 10);
+        const del = tabParts[1] === "-" ? 0 : parseInt(tabParts[1], 10);
+        const filePath = tabParts.slice(2).join("\t"); // handle renames with =>
+        totalInsertions += ins;
+        totalDeletions += del;
+
+        // Determine status based on insertions/deletions
+        let status: "added" | "modified" | "deleted" | "renamed" | "unknown" = "modified";
+        if (filePath.includes(" => ") || filePath.includes("{")) {
+          status = "renamed";
+        } else if (del === 0 && ins > 0) {
+          // could be new file, but numstat alone can't tell for sure
+          status = "added";
+        } else if (ins === 0 && del > 0) {
+          status = "deleted";
+        }
+
+        files.push({ path: filePath, status });
+      }
+    }
+
+    commits.push({
+      hash,
+      shortHash,
+      message,
+      author,
+      email,
+      date,
+      timestamp,
+      filesChanged: files.length,
+      insertions: totalInsertions,
+      deletions: totalDeletions,
+      files,
+    });
+  }
+
+  // Now try to get accurate file statuses using --name-status for the same range
+  try {
+    const statusArgs = [
+      "log",
+      "--max-count", String(limit),
+      "--skip", String(offset),
+      "--format=%H",
+      "--name-status",
+      branch || "HEAD",
+    ];
+    const statusResult = await execGit(statusArgs, path);
+    if (statusResult.exitCode === 0) {
+      const statusOutput = statusResult.stdout.toString().trim();
+      const statusLines = statusOutput.split("\n");
+      let currentHash = "";
+      const fileStatusMap = new Map<string, Map<string, "added" | "modified" | "deleted" | "renamed" | "unknown">>();
+
+      for (const line of statusLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Check if this is a commit hash (40 hex chars)
+        if (/^[0-9a-f]{40}$/.test(trimmed)) {
+          currentHash = trimmed;
+          if (!fileStatusMap.has(currentHash)) {
+            fileStatusMap.set(currentHash, new Map());
+          }
+          continue;
+        }
+
+        // Parse status line: A/M/D/R\tfilepath
+        if (currentHash) {
+          const statusParts = trimmed.split("\t");
+          if (statusParts.length >= 2) {
+            const rawStatus = statusParts[0].charAt(0);
+            const filePath = statusParts.length > 2
+              ? statusParts.slice(1).join("\t")
+              : statusParts[1];
+
+            let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+            switch (rawStatus) {
+              case "A": status = "added"; break;
+              case "M": status = "modified"; break;
+              case "D": status = "deleted"; break;
+              case "R": status = "renamed"; break;
+              default: status = "unknown"; break;
+            }
+
+            fileStatusMap.get(currentHash)?.set(filePath, status);
+          }
+        }
+      }
+
+      // Merge accurate statuses back into commits
+      for (const commit of commits) {
+        const statusMap = fileStatusMap.get(commit.hash);
+        if (statusMap) {
+          for (const file of commit.files) {
+            const accurateStatus = statusMap.get(file.path);
+            if (accurateStatus) {
+              file.status = accurateStatus;
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // If name-status fails, we still have the numstat-based estimate
+  }
+
+  return {
+    commits,
+    total,
+    hasMore: offset + limit < total,
+  };
+}
+
+/**
+ * Get full details for a single commit including the diff.
+ */
+export async function gitShowCommitDetail({
+  path,
+  commitHash,
+}: {
+  path: string;
+  commitHash: string;
+}): Promise<{
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  email: string;
+  date: string;
+  timestamp: number;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
+  diff: string;
+}> {
+  // Validate commitHash to prevent injection
+  if (!/^[a-f0-9]{4,40}$/i.test(commitHash)) {
+    throw new Error("Invalid commit hash format");
+  }
+
+  // Get commit info
+  const showArgs = [
+    "show",
+    "--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at",
+    "--stat",
+    "--name-status",
+    commitHash,
+  ];
+
+  const showResult = await execGit(showArgs, path);
+  if (showResult.exitCode !== 0) {
+    throw new Error(showResult.stderr.toString());
+  }
+
+  const output = showResult.stdout.toString();
+  const firstLine = output.split("\n")[0];
+  const parts = firstLine.split("\x00");
+
+  if (parts.length < 7) {
+    throw new Error("Failed to parse commit details");
+  }
+
+  const hash = parts[0];
+  const shortHash = parts[1];
+  const message = parts[2];
+  const author = parts[3];
+  const email = parts[4];
+  const date = parts[5];
+  const timestamp = parseInt(parts[6], 10);
+
+  // Parse files from name-status
+  const lines = output.split("\n").slice(1);
+  const files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }> = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const tabParts = trimmed.split("\t");
+    if (tabParts.length >= 2) {
+      const rawStatus = tabParts[0].charAt(0);
+      const filePath = tabParts.slice(1).join("\t");
+
+      let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+      switch (rawStatus) {
+        case "A": status = "added"; break;
+        case "M": status = "modified"; break;
+        case "D": status = "deleted"; break;
+        case "R": status = "renamed"; break;
+        default: status = "unknown"; break;
+      }
+
+      files.push({ path: filePath, status });
+    }
+  }
+
+  // Get diff
+  const diffArgs = ["diff", `${commitHash}^..${commitHash}`, "--no-color"];
+  const diffResult = await execGit(diffArgs, path);
+  const diff = diffResult.exitCode === 0 ? diffResult.stdout.toString() : "";
+
+  // Count insertions/deletions from the diff
+  let insertions = 0;
+  let deletions = 0;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("+") && !line.startsWith("+++")) insertions++;
+    if (line.startsWith("-") && !line.startsWith("---")) deletions++;
+  }
+
+  return {
+    hash,
+    shortHash,
+    message,
+    author,
+    email,
+    date,
+    timestamp,
+    filesChanged: files.length,
+    insertions,
+    deletions,
+    files,
+    diff,
+  };
+}
+
+/**
+ * Get the conflict diff for a single file during a merge.
+ * Shows the raw file content with conflict markers (<<<<<<< / ======= / >>>>>>>).
+ */
+export async function gitGetConflictFileDiff({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ diff: string; hasConflictMarkers: boolean }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Conflict diff requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  // First try git diff to show the unmerged diff
+  const diffResult = await execGit(
+    ["diff", "--no-color", "--", filepath],
+    path,
+  );
+
+  const diff = diffResult.stdout.toString();
+
+  // Also read the raw file to check for conflict markers
+  const fullPath = pathModule.join(path, filepath);
+  let hasConflictMarkers = false;
+  try {
+    if (fs.existsSync(fullPath)) {
+      const content = fs.readFileSync(fullPath, "utf-8");
+      hasConflictMarkers = content.includes("<<<<<<<") && content.includes(">>>>>>>");
+    }
+  } catch {
+    // Ignore read errors
+  }
+
+  return { diff, hasConflictMarkers };
+}
+
+/**
+ * Resolve a single file's merge conflict by accepting "ours" (current branch).
+ * Runs: git checkout --ours <filepath> && git add <filepath>
+ */
+export async function gitResolveFileOurs({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  if (!isGitMergeInProgress({ path }) && !isGitRebaseInProgress({ path })) {
+    return { resolved: false, message: "No hay merge/rebase en progreso." };
+  }
+
+  const checkoutResult = await execGit(
+    ["checkout", "--ours", "--", filepath],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve '${filepath}' with --ours: ${checkoutResult.stderr}`);
+  }
+
+  await execOrThrow(
+    ["add", "--", filepath],
+    path,
+    `Failed to stage resolved file '${filepath}'`,
+  );
+
+  return {
+    resolved: true,
+    message: `'${filepath}' resuelto con tus cambios locales.`,
+  };
+}
+
+/**
+ * Resolve a single file's merge conflict by accepting "theirs" (incoming changes).
+ * Runs: git checkout --theirs <filepath> && git add <filepath>
+ */
+export async function gitResolveFileTheirs({
+  path,
+  filepath,
+}: GitFileParams): Promise<{ resolved: boolean; message: string }> {
+  const settings = readSettings();
+  if (!settings.enableNativeGit) {
+    throw new Error(
+      "Merge resolution requires native Git. Enable native Git in settings.",
+    );
+  }
+
+  if (!isGitMergeInProgress({ path }) && !isGitRebaseInProgress({ path })) {
+    return { resolved: false, message: "No hay merge/rebase en progreso." };
+  }
+
+  const checkoutResult = await execGit(
+    ["checkout", "--theirs", "--", filepath],
+    path,
+  );
+  if (checkoutResult.exitCode !== 0) {
+    throw new Error(`Failed to resolve '${filepath}' with --theirs: ${checkoutResult.stderr}`);
+  }
+
+  await execOrThrow(
+    ["add", "--", filepath],
+    path,
+    `Failed to stage resolved file '${filepath}'`,
+  );
+
+  return {
+    resolved: true,
+    message: `'${filepath}' resuelto con los cambios entrantes.`,
+  };
+}
+
+/**
+ * Remove stale .git/index.lock file that prevents git operations.
+ * This typically happens when a git process crashes or is killed.
+ */
+export function gitRemoveIndexLock({
+  path,
+}: GitBaseParams): { removed: boolean; message: string } {
+  const lockFile = pathModule.join(path, ".git", "index.lock");
+  if (fs.existsSync(lockFile)) {
+    try {
+      fs.unlinkSync(lockFile);
+      logger.info(`Removed stale index.lock at ${lockFile}`);
+      return { removed: true, message: "Archivo index.lock eliminado correctamente." };
+    } catch (err: any) {
+      throw new Error(`No se pudo eliminar el lock file: ${err.message}`);
+    }
+  }
+  return { removed: false, message: "No existe archivo index.lock." };
+}
+
+// ============================================================================
+// Stash Operations
+// ============================================================================
+
+/**
+ * Stash current working directory changes.
+ * Equivalent to: git stash push -m <message>
+ */
+export async function gitStash({
+  path,
+  message,
+}: GitBaseParams & { message?: string }): Promise<string> {
+  const args = ["stash", "push"];
+  if (message) {
+    args.push("-m", message);
+  }
+  const result = await execGit(args, path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash failed: ${result.stderr}`);
+  }
+  return result.stdout.trim() || "No local changes to save";
+}
+
+/**
+ * Pop the latest stash entry and apply it to the working directory.
+ * Equivalent to: git stash pop [index]
+ */
+export async function gitStashPop({
+  path,
+  index,
+}: GitBaseParams & { index?: number }): Promise<string> {
+  const args = ["stash", "pop"];
+  if (index != null) {
+    args.push(`stash@{${index}}`);
+  }
+  const result = await execGit(args, path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash pop failed: ${result.stderr}`);
+  }
+  return result.stdout.trim();
+}
+
+/**
+ * List all stash entries.
+ * Equivalent to: git stash list
+ */
+export async function gitStashList({
+  path,
+}: GitBaseParams): Promise<Array<{ index: number; message: string }>> {
+  const result = await execGit(["stash", "list"], path);
+  if (result.exitCode !== 0) {
+    throw new Error(`Git stash list failed: ${result.stderr}`);
+  }
+  if (!result.stdout.trim()) {
+    return [];
+  }
+  return result.stdout
+    .trim()
+    .split("\n")
+    .map((line, idx) => {
+      // Format: stash@{0}: WIP on main: abc1234 commit message
+      // or:    stash@{0}: On main: custom message
+      const match = line.match(/^stash@\{(\d+)\}:\s*(.+)$/);
+      return {
+        index: match ? parseInt(match[1], 10) : idx,
+        message: match ? match[2] : line,
+      };
+    });
+}
+
+/**
+ * Discard working directory changes for a specific file.
+ * Equivalent to: git checkout -- <filepath>
+ */
+export async function gitDiscardFile({
+  path,
+  filepath,
+}: GitFileParams): Promise<void> {
+  await execOrThrow(
+    ["checkout", "--", filepath],
+    path,
+    `Failed to discard changes for ${filepath}`,
+  );
+}
+

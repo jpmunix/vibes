@@ -5,10 +5,10 @@ import os from "node:os";
 const logger = log.scope("performance-monitor");
 
 // Constants
-const MONITOR_INTERVAL_MS = 30000; // 30 seconds
+const MONITOR_INTERVAL_MS = 120_000; // 120 seconds (reduced from 30s to minimize I/O pressure)
 const BYTES_PER_MB = 1024 * 1024;
 
-let monitorInterval: NodeJS.Timeout | null = null;
+let monitorTimeout: NodeJS.Timeout | null = null;
 let lastCpuUsage: NodeJS.CpuUsage | null = null;
 let lastTimestamp: number | null = null;
 let lastSystemCpuInfo: os.CpuInfo[] | null = null;
@@ -177,31 +177,39 @@ function capturePerformanceMetrics() {
 
 /**
  * Start monitoring performance metrics
- * Captures metrics every 30 seconds
+ * Defers initial capture by 10s to avoid startup contention,
+ * then self-schedules every 120s using setTimeout (GC-friendlier than setInterval).
  */
 export function startPerformanceMonitoring() {
-  if (monitorInterval) {
+  if (monitorTimeout) {
     logger.warn("Performance monitoring already started");
     return;
   }
 
-  logger.info("Starting performance monitoring");
+  logger.info("Starting performance monitoring (deferred 10s)");
 
-  // Capture initial metrics
-  capturePerformanceMetrics();
+  function scheduleNext() {
+    monitorTimeout = setTimeout(() => {
+      capturePerformanceMetrics();
+      scheduleNext();
+    }, MONITOR_INTERVAL_MS);
+  }
 
-  // Capture every 30 seconds
-  monitorInterval = setInterval(capturePerformanceMetrics, MONITOR_INTERVAL_MS);
+  // Defer initial capture so it doesn't overlap with app initialization
+  monitorTimeout = setTimeout(() => {
+    capturePerformanceMetrics();
+    scheduleNext();
+  }, 10_000);
 }
 
 /**
  * Stop monitoring performance metrics
  */
 export function stopPerformanceMonitoring() {
-  if (monitorInterval) {
+  if (monitorTimeout) {
     logger.info("Stopping performance monitoring");
-    clearInterval(monitorInterval);
-    monitorInterval = null;
+    clearTimeout(monitorTimeout);
+    monitorTimeout = null;
 
     // Capture final metrics before stopping
     capturePerformanceMetrics();

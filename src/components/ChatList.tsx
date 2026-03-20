@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback, startTransition } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   PlusCircle,
   Trash2,
@@ -9,6 +10,7 @@ import {
   Search,
   FileText,
   Loader2,
+  ListChecks,
 } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
@@ -45,6 +47,102 @@ import {
 import { ChatSearchDialog } from "./ChatSearchDialog";
 import { useSelectChat } from "@/hooks/useSelectChat";
 import { isStreamingByIdAtom } from "@/atoms/chatAtoms";
+// --- Memoized chat list item ---
+interface ChatListItemProps {
+  chat: { id: number; appId: number; title: string | null; createdAt: string; isPlan?: boolean };
+  isSelected: boolean;
+  isStreaming: boolean;
+  onChatClick: (params: { chatId: number; appId: number }) => void;
+  onRename: (chatId: number, title: string) => void;
+  onDelete: (chatId: number, title: string) => void;
+}
+
+const ChatListItem = React.memo(function ChatListItem({
+  chat,
+  isSelected,
+  isStreaming,
+  onChatClick,
+  onRename,
+  onDelete,
+}: ChatListItemProps) {
+  return (
+    <SidebarMenuItem className="mb-1">
+      <div className="flex ml-2 mr-6 items-center relative group/menu-item">
+        <Button
+          variant="ghost"
+          onClick={() => onChatClick({ chatId: chat.id, appId: chat.appId })}
+          className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${isSelected
+            ? "bg-primary/10 text-primary"
+            : ""
+            }`}
+        >
+          <div className="flex items-center gap-2 w-full relative overflow-hidden">
+            {isStreaming ? (
+              <Loader2
+                size={16}
+                className="text-primary animate-spin flex-shrink-0"
+                aria-label="Chat en progreso"
+              />
+            ) : chat.isPlan ? (
+              <div className="flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 flex-shrink-0">
+                <ListChecks
+                  size={14}
+                  className="text-primary"
+                  aria-label="Chat de Planificación"
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-col w-full overflow-hidden">
+              <span
+                className={`truncate mr-2 ${isSelected ? "font-semibold" : ""}`}
+              >
+                {chat.title || "Nuevo chat"}
+              </span>
+              <span
+                className={`text-xs ${isSelected ? "text-primary/70" : "text-muted-foreground"}`}
+              >
+                {formatDistanceToNow(new Date(chat.createdAt), {
+                  addSuffix: true,
+                  locale: es,
+                })}
+              </span>
+            </div>
+          </div>
+        </Button>
+
+        {/* Hover gradient shadow */}
+        <div
+          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
+          ${isSelected
+              ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
+              : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
+            }`}
+        />
+
+        <SidebarMenuAction
+          showOnHover
+          onClick={(e) => {
+            e.stopPropagation();
+            onRename(chat.id, chat.title || "");
+          }}
+          className="right-8 z-20"
+        >
+          <Edit3 className="h-4 w-4" />
+        </SidebarMenuAction>
+        <SidebarMenuAction
+          showOnHover
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(chat.id, chat.title || "New Chat");
+          }}
+          className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+        >
+          <Trash2 className="h-4 w-4" />
+        </SidebarMenuAction>
+      </div>
+    </SidebarMenuItem>
+  );
+});
 
 export function ChatList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -81,6 +179,30 @@ export function ChatList({ show }: { show?: boolean }) {
   // delete all chats dialog state
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
 
+  // Plan chat identification
+  useEffect(() => {
+    const handleUpdate = () => {
+      invalidateChats();
+    };
+    window.addEventListener("plan-chat-db-update", handleUpdate);
+    return () => window.removeEventListener("plan-chat-db-update", handleUpdate);
+  }, [invalidateChats]);
+
+  const sortedChats = useMemo(() => {
+    if (!chats) return [];
+    return [...chats].sort((a, b) => {
+      // Plan chat first
+      // Assuming isPlan is boolean. Drizzle might return null if not strictly defined, so coalesce.
+      const isPlanA = (a as any).isPlan === true;
+      const isPlanB = (b as any).isPlan === true;
+
+      if (isPlanA && !isPlanB) return -1;
+      if (!isPlanA && isPlanB) return 1;
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [chats]);
+
   // Update selectedChatId when route changes
   useEffect(() => {
     if (isChatRoute) {
@@ -92,20 +214,37 @@ export function ChatList({ show }: { show?: boolean }) {
     }
   }, [isChatRoute, routerState.location.search, setSelectedChatId]);
 
-  if (!show) {
-    return;
-  }
-
-  const handleChatClick = ({
+  // All hooks must be above the early return guard
+  const handleChatClick = useCallback(({
     chatId,
     appId,
   }: {
     chatId: number;
     appId: number;
   }) => {
-    selectChat({ chatId, appId });
+    // Mark chat-switching as a non-urgent transition — the sidebar highlight
+    // responds immediately, heavy re-renders (messages, navigation) are deferred.
+    startTransition(() => {
+      selectChat({ chatId, appId });
+    });
     setIsSearchDialogOpen(false);
-  };
+  }, [selectChat]);
+
+  const handleDeleteChatClick = useCallback((chatId: number, chatTitle: string) => {
+    setDeleteChatId(chatId);
+    setDeleteChatTitle(chatTitle);
+    setIsDeleteDialogOpen(true);
+  }, []);
+
+  const handleRenameChat = useCallback((chatId: number, currentTitle: string) => {
+    setRenameChatId(chatId);
+    setRenameChatTitle(currentTitle);
+    setIsRenameDialogOpen(true);
+  }, []);
+
+  if (!show) {
+    return;
+  }
 
   const handleNewChat = async () => {
     // Only create a new chat if an app is selected
@@ -124,6 +263,10 @@ export function ChatList({ show }: { show?: boolean }) {
             freeAgentQuotaAvailable,
           );
           updateSettings({ selectedChatMode: effectiveDefaultMode });
+
+          if (effectiveDefaultMode === "plan") {
+            await ipc.chat.updateChat({ chatId, isPlan: true });
+          }
         }
 
         // Navigate to the new chat
@@ -163,12 +306,6 @@ export function ChatList({ show }: { show?: boolean }) {
     }
   };
 
-  const handleDeleteChatClick = (chatId: number, chatTitle: string) => {
-    setDeleteChatId(chatId);
-    setDeleteChatTitle(chatTitle);
-    setIsDeleteDialogOpen(true);
-  };
-
   const handleConfirmDelete = async () => {
     if (deleteChatId !== null) {
       await handleDeleteChat(deleteChatId);
@@ -176,12 +313,6 @@ export function ChatList({ show }: { show?: boolean }) {
       setDeleteChatId(null);
       setDeleteChatTitle("");
     }
-  };
-
-  const handleRenameChat = (chatId: number, currentTitle: string) => {
-    setRenameChatId(chatId);
-    setRenameChatTitle(currentTitle);
-    setIsRenameDialogOpen(true);
   };
 
   const handleRenameDialogClose = (open: boolean) => {
@@ -289,92 +420,25 @@ export function ChatList({ show }: { show?: boolean }) {
             </Button>
 
             {loading ? (
-              <div className="py-3 px-4 text-sm text-gray-500">
+              <div className="py-3 px-4 text-sm text-muted-foreground">
                 Cargando chats...
               </div>
             ) : chats.length === 0 ? (
-              <div className="py-3 px-4 text-sm text-gray-500">
+              <div className="py-3 px-4 text-sm text-muted-foreground">
                 No se encontraron chats
               </div>
             ) : (
               <SidebarMenu className="space-y-1">
-                {chats.map((chat) => (
-                  <SidebarMenuItem key={chat.id} className="mb-1">
-                    <div className="flex ml-2 mr-6 items-center relative group/menu-item">
-                      <Button
-                        variant="ghost"
-                        onClick={() =>
-                          handleChatClick({
-                            chatId: chat.id,
-                            appId: chat.appId,
-                          })
-                        }
-                        className={`justify-start h-11 w-full text-left pr-1 hover:bg-sidebar-accent/80 ${
-                          selectedChatId === chat.id
-                            ? "bg-blue-600/10 text-blue-600 dark:text-blue-400"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 w-full relative overflow-hidden">
-                          {isStreamingById.get(chat.id) === true && (
-                            <Loader2
-                              size={16}
-                              className="text-blue-500 animate-spin flex-shrink-0"
-                              aria-label="Chat en progreso"
-                            />
-                          )}
-                          <div className="flex flex-col w-full overflow-hidden">
-                            <span
-                              className={`truncate mr-16 ${selectedChatId === chat.id ? "font-semibold" : ""}`}
-                            >
-                              {chat.title || "Nuevo chat"}
-                            </span>
-                            <span
-                              className={`text-xs ${selectedChatId === chat.id ? "text-blue-600/70 dark:text-blue-400/70" : "text-gray-500"}`}
-                            >
-                              {formatDistanceToNow(new Date(chat.createdAt), {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </Button>
-
-                      {/* Hover gradient shadow - refined for better visibility */}
-                      <div
-                        className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/menu-item:opacity-100 transition-opacity z-10 
-                        ${
-                          selectedChatId === chat.id
-                            ? "bg-gradient-to-l from-[#f0f4ff] dark:from-[#1e2433] via-[#f0f4ff]/90 dark:via-[#1e2433]/90 to-transparent"
-                            : "bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)]/90 to-transparent"
-                        }`}
-                      />
-
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRenameChat(chat.id, chat.title || "");
-                        }}
-                        className="right-8 z-20"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </SidebarMenuAction>
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteChatClick(
-                            chat.id,
-                            chat.title || "New Chat",
-                          );
-                        }}
-                        className="right-1 z-20 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </SidebarMenuAction>
-                    </div>
-                  </SidebarMenuItem>
+                {sortedChats.map((chat) => (
+                  <ChatListItem
+                    key={chat.id}
+                    chat={chat}
+                    isSelected={selectedChatId === chat.id}
+                    isStreaming={isStreamingById.get(chat.id) === true}
+                    onChatClick={handleChatClick}
+                    onRename={handleRenameChat}
+                    onDelete={handleDeleteChatClick}
+                  />
                 ))}
               </SidebarMenu>
             )}

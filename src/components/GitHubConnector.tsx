@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import {
   Github,
@@ -8,8 +9,15 @@ import {
   ChevronRight,
   GitMerge,
   FileWarning,
+  Trash2,
+  Upload,
+  Download,
+  Loader2,
+  Ban,
+  ShieldCheck,
+  ArrowDownToLine,
+  Wrench,
 } from "lucide-react";
-import { ipc, type GithubSyncOptions, type GitPreview } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
@@ -32,7 +40,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GithubBranchManager } from "@/components/GithubBranchManager";
-import { GitPreviewModal } from "@/components/GitPreviewModal";
 
 type SyncResult =
   | { error: Error; handled?: boolean }
@@ -81,8 +88,9 @@ function ConnectedGitHubConnector({
 }: ConnectedGitHubConnectorProps) {
   const { uncommittedFiles, hasUncommittedFiles } = useUncommittedFiles(appId);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+  const [syncSuccess, setSyncSuccess] = useState<"push" | "pull" | false>(false);
   const [showForceDialog, setShowForceDialog] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
@@ -98,10 +106,86 @@ function ConnectedGitHubConnector({
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
   const [, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [gitPreview, setGitPreview] = useState<GitPreview | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
+  const [isFixingError, setIsFixingError] = useState(false);
+
+  // Smart error type detection
+  const errorType = syncError
+    ? syncError.includes("merge is in progress")
+      ? "merge-in-progress"
+      : syncError.includes("index.lock") || syncError.includes("index'.lock")
+        ? "index-lock"
+        : syncError.includes("Merge conflict") || syncError.includes("GitConflictError")
+          ? "merge-conflict"
+          : syncError.includes("ENOENT") || syncError.includes("Git failed to execute")
+            ? "git-not-found"
+            : null
+    : null;
+
+  // Handler: abort merge and retry
+  const handleAbortMergeAndRetry = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.abortMerge({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al abortar el merge.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Handler: remove stale lock file
+  const handleRemoveLockFile = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.removeIndexLock({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al eliminar el lock file.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Handler: resolve all conflicts with ours (keep local)
+  const handleResolveAllOurs = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.resolveMergeOurs({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al resolver conflictos.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Handler: resolve all conflicts with theirs (accept remote)
+  const handleResolveAllTheirs = useCallback(async () => {
+    setIsFixingError(true);
+    try {
+      await ipc.git.resolveMergeTheirs({ appId });
+      setSyncError(null);
+      setSyncSuccess(false);
+    } catch (err: any) {
+      setSyncError(err.message || "Error al resolver conflictos.");
+    } finally {
+      setIsFixingError(false);
+    }
+  }, [appId]);
+
+  // Open GitPanel in a dedicated window
+  const handleOpenGitPanel = useCallback(() => {
+    ipc.system.openGitWindow({
+      appId,
+      theme: (localStorage.getItem("theme") as "light" | "dark" | "system") ?? undefined,
+      themeIntensity: parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
+    });
+  }, [appId]);
 
   useEffect(() => {
     // Fetch git state (ahead/behind) to decide UI visibility
@@ -169,26 +253,6 @@ function ConnectedGitHubConnector({
     }
   };
 
-  const handleOpenPreview = async () => {
-    setIsLoadingPreview(true);
-    setShowPreviewModal(true);
-    try {
-      const preview = await ipc.github.getPreview({ appId });
-      setGitPreview(preview);
-    } catch (err: any) {
-      console.error("Failed to load preview:", err);
-      setSyncError(err.message || "Error al cargar la vista previa.");
-      setShowPreviewModal(false);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  };
-
-  const handleConfirmSync = async () => {
-    setShowPreviewModal(false);
-    await handleSyncToGithub();
-  };
-
   const handleGenerateCommitMessage = async () => {
     setIsGeneratingMessage(true);
     try {
@@ -222,7 +286,7 @@ function ConnectedGitHubConnector({
           forceWithLease,
           commitMessage: hasUncommittedFiles ? commitMessage : undefined,
         });
-        setSyncSuccess(true);
+        setSyncSuccess("push");
         setRebaseInProgress(false);
         setConflicts([]); // Clear conflicts on successful sync
         setRebaseStatusMessage(null);
@@ -418,27 +482,27 @@ function ConnectedGitHubConnector({
   const isRebaseActionPending = isSyncing || !!rebaseAction;
 
   return (
-    <div className="w-full" data-testid="github-connected-repo">
-      <p>Conectado al repositorio de GitHub:</p>
-      <a
-        onClick={(e) => {
-          e.preventDefault();
-          ipc.system.openExternalUrl(
-            `https://github.com/${app.githubOrg}/${app.githubRepo}`,
-          );
-        }}
-        className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {app.githubOrg}/{app.githubRepo}
-      </a>
+    <div className="w-full space-y-3" data-testid="github-connected-repo">
+      <p className="text-sm text-muted-foreground">
+        Conectado al repositorio:{" "}
+        <a
+          onClick={(e) => {
+            e.preventDefault();
+            ipc.system.openExternalUrl(
+              `https://github.com/${app.githubOrg}/${app.githubRepo}`,
+            );
+          }}
+          className="cursor-pointer text-foreground hover:underline font-medium"
+        >
+          {app.githubOrg}/{app.githubRepo}
+        </a>
+      </p>
       {app.githubBranch && (
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
       {hasUncommittedFiles && (
-        <div className="mt-4 p-4 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
-          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200 mb-3">
+        <div className="p-4 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex items-center gap-2 text-sm text-foreground mb-3">
             <FileWarning size={16} />
             <span className="font-medium">
               Tienes {uncommittedFiles.length}{" "}
@@ -468,63 +532,239 @@ function ConnectedGitHubConnector({
               className={cn(
                 "bg-white dark:bg-slate-950",
                 !commitMessage.trim() &&
-                  "border-red-500 focus-visible:ring-red-500",
+                "border-red-500 focus-visible:ring-red-500",
               )}
             />
-            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70">
+            <p className="text-[10px] text-muted-foreground">
               Estos cambios se confirmarán automáticamente antes de sincronizar.
             </p>
           </div>
         </div>
       )}
-      <div className="mt-2 flex gap-2">
+      <div className="flex gap-2">
         <Button
-          onClick={handleOpenPreview}
+          onClick={() => handleSyncToGithub()}
+          variant="outline"
           disabled={
+            isSyncing ||
             isRebaseActionPending ||
             (hasUncommittedFiles && !commitMessage.trim())
           }
         >
-          Vista previa y sincronizar
+          {isSyncing ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 mr-1.5" />
+          )}
+          Subir al repositorio
         </Button>
         <Button
+          onClick={async () => {
+            setIsPulling(true);
+            try {
+              await ipc.github.pull({ appId });
+              setSyncSuccess("pull");
+              refreshApp();
+            } catch (err: any) {
+              setSyncError(err.message || "Error al descargar del repositorio.");
+            } finally {
+              setIsPulling(false);
+            }
+          }}
+          variant="outline"
+          disabled={isPulling || isRebaseActionPending}
+        >
+          {isPulling ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1.5" />
+          )}
+          Descargar del repositorio
+        </Button>
+      </div>
+      <div className="pt-2 border-t flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleDisconnectRepo}
           disabled={isDisconnecting}
-          variant="outline"
+          className="text-muted-foreground hover:text-destructive"
         >
-          {isDisconnecting ? "Desconectando..." : "Desconectar del repositorio"}
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          {isDisconnecting ? "Desconectando..." : "Desconectar repositorio"}
         </Button>
       </div>
 
-      {/* Git Preview Modal */}
-      <GitPreviewModal
-        open={showPreviewModal}
-        onOpenChange={setShowPreviewModal}
-        preview={gitPreview}
-        isLoading={isLoadingPreview}
-        onConfirm={handleConfirmSync}
-        isConfirming={isSyncing}
-        commitMessage={commitMessage}
-        onCommitMessageChange={setCommitMessage}
-        onGenerateCommitMessage={handleGenerateCommitMessage}
-        isGeneratingMessage={isGeneratingMessage}
-      />
       {syncError && (
         <div className="mt-2 space-y-2">
-          <p className="text-red-600">
-            {syncError}{" "}
-            <a
-              onClick={(e) => {
-                e.preventDefault();
-                ipc.system.openExternalUrl("https://github.com/minube/vibes/");
-              }}
-              className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ver guía de solución de problemas
-            </a>
-          </p>
+          {/* Smart error recovery UI */}
+          {errorType === "merge-in-progress" ? (
+            <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Hay un merge en progreso que bloquea esta operación
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Puedes abortar el merge para desbloquear la operación.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleAbortMergeAndRetry}
+                variant="outline"
+                size="sm"
+                disabled={isFixingError}
+                className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+              >
+                {isFixingError ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Ban className="h-4 w-4 mr-2" />
+                )}
+                Abortar merge y desbloquear
+              </Button>
+            </div>
+          ) : errorType === "index-lock" ? (
+            <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                    Git está bloqueado por un proceso anterior
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                    Un proceso de git previo dejó un archivo lock. Se puede eliminar de forma segura.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRemoveLockFile}
+                variant="outline"
+                size="sm"
+                disabled={isFixingError}
+                className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+              >
+                {isFixingError ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Wrench className="h-4 w-4 mr-2" />
+                )}
+                Eliminar lock y desbloquear
+              </Button>
+            </div>
+          ) : errorType === "merge-conflict" ? (
+            <div className="rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2.5">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                    Conflictos de merge detectados
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                    Hay archivos con cambios incompatibles entre tu versión local y la remota. Elige cómo resolverlos:
+                  </p>
+                </div>
+              </div>
+              {/* Quick resolution buttons */}
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={handleResolveAllOurs}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="flex-1 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Conservar lo mío
+                </Button>
+                <Button
+                  onClick={handleResolveAllTheirs}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="flex-1 border-green-400 dark:border-green-600 text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-800/30"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <ArrowDownToLine className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Aceptar lo suyo
+                </Button>
+              </div>
+              {/* Manual resolution & abort */}
+              <div className="flex gap-1.5">
+                <Button
+                  onClick={handleOpenGitPanel}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-orange-400 dark:border-orange-600 text-orange-800 dark:text-orange-200"
+                >
+                  <GitMerge className="h-3.5 w-3.5 mr-1.5" />
+                  Resolver manualmente
+                </Button>
+                <Button
+                  onClick={handleAbortMergeAndRetry}
+                  variant="outline"
+                  size="sm"
+                  disabled={isFixingError}
+                  className="border-red-400 dark:border-red-600 text-red-700 dark:text-red-300"
+                >
+                  {isFixingError ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Ban className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  Abortar
+                </Button>
+              </div>
+            </div>
+          ) : errorType === "git-not-found" ? (
+            <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                    Git no encontrado en el sistema
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                    Asegúrate de que Git esté instalado en tu sistema. Puedes descargarlo desde git-scm.com.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                variant="outline"
+                size="sm"
+                className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar Git
+              </Button>
+            </div>
+          ) : (
+            /* Fallback: original error display for unrecognized errors */
+            <p className="text-red-600">
+              {syncError}{" "}
+              <a
+                onClick={(e) => {
+                  e.preventDefault();
+                  ipc.system.openExternalUrl("https://github.com/minube/vibes/");
+                }}
+                className="cursor-pointer text-muted-foreground hover:underline hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver guía de solución de problemas
+              </a>
+            </p>
+          )}
           {showRebaseRecoveryOptions && (
             <div className="space-y-2 rounded-md border border-orange-200 p-3 dark:border-orange-800 dark:bg-orange-900/20">
               <p className="text-sm text-orange-800 dark:text-orange-100">
@@ -593,8 +833,7 @@ function ConnectedGitHubConnector({
         </div>
       )}
       {/* Conflict Resolver */}
-      {conflicts.length > 0 && (
-        //show a message that there are conflicts and to resolve them in Editor
+      {conflicts.length > 0 && !errorType && (
         <p className="text-sm text-red-600">
           Hay conflictos en el repositorio. Por favor, resuélvelos en el editor.
         </p>
@@ -605,7 +844,9 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {syncSuccess && (
-        <p className="text-green-600 mt-2">¡Subido a GitHub con éxito!</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {syncSuccess === "pull" ? "¡Descargado de GitHub con éxito!" : "¡Subido a GitHub con éxito!"}
+        </p>
       )}
       {disconnectError && (
         <p className="text-red-600 mt-2">{disconnectError}</p>
@@ -712,6 +953,46 @@ export function UnconnectedGitHubConnector({
   const [isCreatingRepo, setIsCreatingRepo] = useState(false);
   const [createRepoError, setCreateRepoError] = useState<string | null>(null);
   const [createRepoSuccess, setCreateRepoSuccess] = useState<boolean>(false);
+  const [isFixingSetupError, setIsFixingSetupError] = useState(false);
+
+  // Smart error type detection for setup errors
+  const setupErrorType = createRepoError
+    ? createRepoError.includes("merge is in progress")
+      ? "merge-in-progress"
+      : createRepoError.includes("index.lock") || createRepoError.includes("index'.lock")
+        ? "index-lock"
+        : createRepoError.includes("ENOENT") || createRepoError.includes("Git failed to execute")
+          ? "git-not-found"
+          : null
+    : null;
+
+  // Handler: abort merge (for setup flow)
+  const handleFixMergeForSetup = useCallback(async () => {
+    if (!appId) return;
+    setIsFixingSetupError(true);
+    try {
+      await ipc.git.abortMerge({ appId });
+      setCreateRepoError(null);
+    } catch (err: any) {
+      setCreateRepoError(err.message || "Error al abortar el merge.");
+    } finally {
+      setIsFixingSetupError(false);
+    }
+  }, [appId]);
+
+  // Handler: remove lock file (for setup flow)
+  const handleFixLockForSetup = useCallback(async () => {
+    if (!appId) return;
+    setIsFixingSetupError(true);
+    try {
+      await ipc.git.removeIndexLock({ appId });
+      setCreateRepoError(null);
+    } catch (err: any) {
+      setCreateRepoError(err.message || "Error al eliminar el lock file.");
+    } finally {
+      setIsFixingSetupError(false);
+    }
+  }, [appId]);
 
   // Assume org is the authenticated user for now (could add org input later)
   const githubOrg = ""; // Use empty string for now (GitHub API will default to the authenticated user)
@@ -862,7 +1143,7 @@ export function UnconnectedGitHubConnector({
       } catch (err: any) {
         setRepoCheckError(
           err.message ||
-            "Error al comprobar la disponibilidad del repositorio.",
+          "Error al comprobar la disponibilidad del repositorio.",
         );
       } finally {
         setIsCheckingRepo(false);
@@ -917,7 +1198,7 @@ export function UnconnectedGitHubConnector({
     } catch (err: any) {
       setCreateRepoError(
         err.message ||
-          `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
+        `Error al ${repoSetupMode === "create" ? "crear" : "conectar con el"} repositorio.`,
       );
     } finally {
       setIsCreatingRepo(false);
@@ -981,7 +1262,7 @@ export function UnconnectedGitHubConnector({
                     }}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-1 text-blue-600 hover:underline dark:text-blue-400"
+                    className="ml-1 text-muted-foreground hover:underline hover:text-foreground"
                   >
                     {githubVerificationUri}
                   </a>
@@ -1009,7 +1290,7 @@ export function UnconnectedGitHubConnector({
                     title="Copiar al portapapeles"
                   >
                     {codeCopied ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-muted-foreground" />
                     ) : (
                       <Clipboard className="h-4 w-4" />
                     )}
@@ -1034,11 +1315,10 @@ export function UnconnectedGitHubConnector({
       <button
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
-        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${
-          !isExpanded
-            ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            : ""
-        }`}
+        className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
+          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          : ""
+          }`}
       >
         <span className="font-medium">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
@@ -1048,9 +1328,8 @@ export function UnconnectedGitHubConnector({
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isExpanded ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
@@ -1059,11 +1338,10 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-l-md border-0 ${
-                  repoSetupMode === "create"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("create");
                   setCreateRepoError(null);
@@ -1075,11 +1353,10 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${
-                  repoSetupMode === "existing"
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${repoSetupMode === "existing"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
                   setCreateRepoError(null);
@@ -1117,7 +1394,7 @@ export function UnconnectedGitHubConnector({
                     </p>
                   )}
                   {repoAvailable === true && (
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       ¡El nombre del repositorio está disponible!
                     </p>
                   )}
@@ -1254,10 +1531,96 @@ export function UnconnectedGitHubConnector({
           </form>
 
           {createRepoError && (
-            <p className="text-red-600 mt-2">{createRepoError}</p>
+            <div className="mt-2">
+              {setupErrorType === "merge-in-progress" ? (
+                <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Hay un merge en progreso que bloquea esta operación
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                        Abórtalo para poder conectar el repositorio.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleFixMergeForSetup}
+                    variant="outline"
+                    size="sm"
+                    disabled={isFixingSetupError}
+                    className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+                  >
+                    {isFixingSetupError ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Ban className="h-4 w-4 mr-2" />
+                    )}
+                    Abortar merge y reintentar
+                  </Button>
+                </div>
+              ) : setupErrorType === "index-lock" ? (
+                <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                        Git está bloqueado por un proceso anterior
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                        Se puede eliminar el lock de forma segura.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleFixLockForSetup}
+                    variant="outline"
+                    size="sm"
+                    disabled={isFixingSetupError}
+                    className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+                  >
+                    {isFixingSetupError ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Wrench className="h-4 w-4 mr-2" />
+                    )}
+                    Eliminar lock y reintentar
+                  </Button>
+                </div>
+              ) : setupErrorType === "git-not-found" ? (
+                <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                        Git no encontrado en el sistema
+                      </p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                        Necesitas Git instalado para conectar repositorios.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar Git
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-red-600">{createRepoError}</p>
+              )}
+            </div>
           )}
           {createRepoSuccess && (
-            <p className="text-green-600 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               {repoSetupMode === "create"
                 ? "¡Repositorio creado y vinculado!"
                 : "¡Conectado al repositorio!"}

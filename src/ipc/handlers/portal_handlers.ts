@@ -1,9 +1,9 @@
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
+import { getVibesAppPath } from "../../paths/paths";
 import { spawn } from "child_process";
 import { gitCommit, gitAdd } from "../utils/git_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
@@ -11,9 +11,10 @@ import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils"
 const logger = log.scope("portal_handlers");
 const handle = createLoggedHandler(logger);
 
-async function getApp(appId: number) {
+async function getApp(appId: number, userId: string) {
+  const db = getRemoteDb();
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
   });
   if (!app) {
     throw new Error(`App with id ${appId} not found`);
@@ -24,9 +25,10 @@ async function getApp(appId: number) {
 export function registerPortalHandlers() {
   handle(
     "portal:migrate-create",
-    async (_, { appId }: { appId: number }): Promise<{ output: string }> => {
-      const app = await getApp(appId);
-      const appPath = getDyadAppPath(app.path);
+    async (_, { appId }: { appId: number }, context): Promise<{ output: string }> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const app = await getApp(appId, context.userId);
+      const appPath = getVibesAppPath(app.path);
 
       // Run the migration command
       const migrationOutput = await new Promise<string>((resolve, reject) => {
@@ -107,7 +109,7 @@ export function registerPortalHandlers() {
           );
           throw new Error(
             "Could not store Neon timestamp at current version; database versioning functionality is not working: " +
-              error,
+            error,
           );
         }
       }

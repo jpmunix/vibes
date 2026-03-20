@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,10 @@ import {
   X,
   HelpCircle,
   ArrowRight,
+  Terminal,
 } from "lucide-react";
 import { showError, showSuccess } from "@/lib/toast";
-import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { selectedAppIdAtom, currentAppAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { useNavigate } from "@tanstack/react-router";
 import { NeonConfigure } from "./NeonConfigure";
@@ -47,7 +48,70 @@ const EnvironmentVariablesTitle = () => (
 
 export const ConfigurePanel = () => {
   const selectedAppId = useAtomValue(selectedAppIdAtom);
+  const currentApp = useAtomValue(currentAppAtom);
   const queryClient = useQueryClient();
+
+  // Startup commands state
+  const [installCmd, setInstallCmd] = useState("");
+  const [startCmd, setStartCmd] = useState("");
+  const [commandsDirty, setCommandsDirty] = useState(false);
+
+  // Load current commands from app data
+  useEffect(() => {
+    if (currentApp) {
+      setInstallCmd(currentApp.installCommand ?? "");
+      setStartCmd(currentApp.startCommand ?? "");
+      setCommandsDirty(false);
+    }
+  }, [currentApp?.id, currentApp?.installCommand, currentApp?.startCommand]);
+
+  // Mutation to save commands
+  const saveCommandsMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAppId) throw new Error("No app selected");
+      return await ipc.app.updateAppCommands({
+        appId: selectedAppId,
+        installCommand: installCmd.trim() || null,
+        startCommand: startCmd.trim() || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["app", selectedAppId],
+      });
+      showSuccess("Comandos de arranque guardados");
+      setCommandsDirty(false);
+    },
+    onError: (error) => {
+      showError(`Error al guardar los comandos: ${error}`);
+    },
+  });
+
+  const handleInstallCmdChange = useCallback(
+    (value: string) => {
+      setInstallCmd(value);
+      setCommandsDirty(true);
+    },
+    [],
+  );
+
+  const handleStartCmdChange = useCallback(
+    (value: string) => {
+      setStartCmd(value);
+      setCommandsDirty(true);
+    },
+    [],
+  );
+
+  const handleSaveCommands = useCallback(() => {
+    saveCommandsMutation.mutate();
+  }, [saveCommandsMutation]);
+
+  const handleResetCommands = useCallback(() => {
+    setInstallCmd("");
+    setStartCmd("");
+    setCommandsDirty(true);
+  }, []);
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingKeyValue, setEditingKeyValue] = useState("");
@@ -236,6 +300,79 @@ export const ConfigurePanel = () => {
 
   return (
     <div className="p-4 space-y-4">
+      {/* Startup Commands Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <div className="flex items-center gap-2">
+              <Terminal size={18} />
+              <span className="text-lg font-semibold">Comandos de arranque</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle size={16} className="text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    Personaliza los comandos de instalación e inicio.
+                    <br />
+                    Si se dejan vacíos, se usarán los comandos por defecto de Vite.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="install-command">Comando de instalación</Label>
+            <Input
+              id="install-command"
+              placeholder="npm install --legacy-peer-deps"
+              value={installCmd}
+              onChange={(e) => handleInstallCmdChange(e.target.value)}
+              className="font-mono text-xs"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="start-command">Comando de inicio</Label>
+            <Input
+              id="start-command"
+              placeholder="npm run dev -- --port {port}"
+              value={startCmd}
+              onChange={(e) => handleStartCmdChange(e.target.value)}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Usa <code className="bg-muted px-1 rounded">{"{port}"}</code> como
+              marcador para el puerto asignado. Ej:{" "}
+              <code className="bg-muted px-1 rounded">
+                PORT={"{port}"} npm run dev
+              </code>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSaveCommands}
+              size="sm"
+              disabled={!commandsDirty || saveCommandsMutation.isPending}
+            >
+              <Save size={14} />
+              {saveCommandsMutation.isPending ? "Guardando..." : "Guardar"}
+            </Button>
+            {(installCmd || startCmd) && (
+              <Button
+                onClick={handleResetCommands}
+                variant="outline"
+                size="sm"
+              >
+                <X size={14} />
+                Usar por defecto
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>

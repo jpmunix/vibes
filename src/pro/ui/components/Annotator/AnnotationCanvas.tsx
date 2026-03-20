@@ -4,7 +4,9 @@ import {
   Layer,
   Image as KonvaImage,
   Path,
+  Rect as KonvaRect,
   Text,
+  Arrow,
   Transformer,
 } from "react-konva";
 import { getStroke } from "perfect-freehand";
@@ -27,28 +29,47 @@ function getSvgPathFromStroke(stroke: number[][]) {
 type Point = [number, number];
 type Shape =
   | {
-      id: string;
-      type: "line";
-      points: Point[];
-      color: string;
-      size: number;
-      isComplete: boolean;
-    }
+    id: string;
+    type: "line";
+    points: Point[];
+    color: string;
+    size: number;
+    isComplete: boolean;
+  }
   | {
-      id: string;
-      type: "text";
-      x: number;
-      y: number;
-      text: string;
-      fontSize: number;
-      color: string;
-    };
+    id: string;
+    type: "rect";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  }
+  | {
+    id: string;
+    type: "text";
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    color: string;
+  }
+  | {
+    id: string;
+    type: "arrow";
+    points: [number, number, number, number];
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  };
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;
   shapes: Shape[];
   selectedId: string | null;
-  tool: "select" | "draw" | "text";
+  tool: "select" | "draw" | "rect" | "text" | "arrow";
   scale: number;
   stageDimensions: { width: number; height: number };
   containerSize: { width: number; height: number };
@@ -124,6 +145,27 @@ export const AnnotationCanvas = ({
                   draggable={tool === "select"}
                 />
               );
+            } else if (shape.type === "rect") {
+              return (
+                <KonvaRect
+                  key={shape.id}
+                  id={shape.id}
+                  x={shape.x * scale}
+                  y={shape.y * scale}
+                  width={shape.width * scale}
+                  height={shape.height * scale}
+                  stroke={shape.color}
+                  strokeWidth={shape.strokeWidth}
+                  fill="transparent"
+                  draggable={tool === "select"}
+                  onClick={() => tool === "select" && onShapeSelect(shape.id)}
+                  onTap={() => tool === "select" && onShapeSelect(shape.id)}
+                  onDragEnd={(e) => {
+                    const node = e.target;
+                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
+                  }}
+                />
+              );
             } else if (shape.type === "text") {
               return (
                 <Text
@@ -142,6 +184,31 @@ export const AnnotationCanvas = ({
                   onDragEnd={(e) => {
                     const node = e.target;
                     onShapeDragEnd(shape.id, node.x(), node.y());
+                  }}
+                />
+              );
+            } else if (shape.type === "arrow") {
+              return (
+                <Arrow
+                  key={shape.id}
+                  id={shape.id}
+                  points={[
+                    shape.points[0] * scale,
+                    shape.points[1] * scale,
+                    shape.points[2] * scale,
+                    shape.points[3] * scale,
+                  ]}
+                  stroke={shape.color}
+                  fill={shape.color}
+                  strokeWidth={shape.strokeWidth}
+                  pointerLength={12}
+                  pointerWidth={10}
+                  draggable={tool === "select"}
+                  onClick={() => tool === "select" && onShapeSelect(shape.id)}
+                  onTap={() => tool === "select" && onShapeSelect(shape.id)}
+                  onDragEnd={(e) => {
+                    const node = e.target;
+                    onShapeDragEnd(shape.id, node.x() / scale, node.y() / scale);
                   }}
                 />
               );

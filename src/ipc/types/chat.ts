@@ -24,7 +24,11 @@ export const MessageSchema = z.object({
   createdAt: z.union([z.date(), z.string()]).optional(),
   requestId: z.string().nullable().optional(),
   totalTokens: z.number().nullable().optional(),
+  durationMs: z.number().nullable().optional(),
   model: z.string().nullable().optional(),
+  // AI SDK structured messages JSON - contains image content parts for screenshots/attachments
+  // Used for: thumbnail display in chat, undo/restore of image attachments, local agent stream
+  aiMessagesJson: z.any().nullable().optional(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;
@@ -39,6 +43,8 @@ export const ChatSchema = z.object({
   todoId: z.number().nullable().optional(),
   initialCommitHash: z.string().nullable().optional(),
   dbTimestamp: z.string().nullable().optional(),
+  isPlan: z.boolean().optional().default(false),
+  planData: z.any().nullable().optional(),
 });
 
 export type Chat = z.infer<typeof ChatSchema>;
@@ -85,6 +91,7 @@ export const ChatStreamParamsSchema = z.object({
   chatId: z.number(),
   prompt: z.string(),
   redo: z.boolean().optional(),
+  undoRedo: z.boolean().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
   selectedComponents: z.array(ComponentSelectionSchema).optional(),
 });
@@ -146,7 +153,9 @@ export const CreateChatResultSchema = z.number();
  */
 export const UpdateChatParamsSchema = z.object({
   chatId: z.number(),
-  title: z.string(),
+  title: z.string().optional(),
+  isPlan: z.boolean().optional(),
+  planData: z.any().nullable().optional(),
 });
 
 export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;
@@ -157,6 +166,7 @@ export type UpdateChatParams = z.infer<typeof UpdateChatParamsSchema>;
 export const TokenCountParamsSchema = z.object({
   chatId: z.number(),
   input: z.string(),
+  chatMode: z.string().optional(),
 });
 
 export type TokenCountParams = z.infer<typeof TokenCountParamsSchema>;
@@ -197,6 +207,7 @@ export const chatContracts = {
         appId: z.number(),
         title: z.string().nullable(),
         createdAt: z.date(),
+        isPlan: z.boolean().optional(),
       }),
     ),
   }),
@@ -238,6 +249,7 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         matchedMessageContent: z.string().nullable(),
+        isPlan: z.boolean().optional(),
       }),
     ),
   }),
@@ -273,6 +285,30 @@ export const chatContracts = {
     channel: "summarize-todays-chats",
     input: z.number(), // appId
     output: z.object({ summary: z.string() }),
+  }),
+
+  savePlanData: defineContract({
+    channel: "save-plan-data",
+    input: z.object({
+      chatId: z.number(),
+      planData: z.any(), // Plan JSON
+    }),
+    output: z.void(),
+  }),
+
+  getPlanData: defineContract({
+    channel: "get-plan-data",
+    input: z.number(), // chatId
+    output: z.any().nullable(), // Plan JSON or null
+  }),
+
+  getInitialPrompt: defineContract({
+    channel: "get-initial-prompt",
+    input: z.number(), // appId
+    output: z.object({
+      content: z.string().nullable(),
+      createdAt: z.union([z.date(), z.string()]).nullable(),
+    }),
   }),
 } as const;
 

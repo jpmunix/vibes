@@ -1,19 +1,38 @@
 import { dropdownOpenAtom } from "@/atoms/uiAtoms";
 import { useSidebar } from "@/components/ui/sidebar"; // import useSidebar hook
+import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   CheckSquare,
   Home,
-  Inbox,
   Settings,
   StickyNote,
   MessageCircle,
   HelpCircle,
+  LogOut,
+  User as UserIcon,
+  CloudUpload,
+  Database,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
+import { useSettings } from "@/hooks/useSettings";
 import { DocumentationDialog } from "./DocumentationDialog";
+import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { userAtom } from "@/atoms/authAtoms";
+import { ipc } from "@/ipc/types";
+import { ProfileModal } from "@/components/ProfileModal";
+import { BackupModal } from "@/components/BackupModal";
+import { useRouter } from "@tanstack/react-router";
 
 import {
   Sidebar,
@@ -27,7 +46,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppList } from "./AppList";
-import { ChatList } from "./ChatList";
 import { LibraryList } from "./LibraryList";
 import { NotesList } from "./NotesList";
 import { SettingsList } from "./SettingsList";
@@ -40,11 +58,6 @@ const items = [
     title: "Apps",
     to: "/",
     icon: Home,
-  },
-  {
-    title: "Chat",
-    to: "/chat",
-    icon: Inbox,
   },
   {
     title: "Notas",
@@ -71,7 +84,6 @@ const items = [
 // Hover state types
 type HoverState =
   | "start-hover:app"
-  | "start-hover:chat"
   | "start-hover:notes"
   | "start-hover:todos"
   | "start-hover:settings"
@@ -89,11 +101,34 @@ export function AppSidebar() {
   const [isDropdownOpen] = useAtom(dropdownOpenAtom);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
 
+  // User avatar state
+  const user = useAtomValue(userAtom);
+  const { navigate } = useRouter();
+  const { settings } = useSettings();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const setUser = useSetAtom(userAtom);
+
+  const handleLogout = async () => {
+    try {
+      // Handle both VibesUser (.id) and legacy Firebase User (.uid)
+      const userId = (user as any)?.id || (user as any)?.uid;
+      if (userId) {
+        await (ipc as any).auth.logout({ userId });
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Always clear client state, even if server call fails
+      setUser(null);
+    }
+  };
+
+
   const routerState = useRouterState();
   const isAppRoute =
     routerState.location.pathname === "/" ||
     routerState.location.pathname.startsWith("/app-details");
-  const isChatRoute = routerState.location.pathname === "/chat";
   const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
   const isLibraryRoute =
     routerState.location.pathname.startsWith("/library") ||
@@ -104,8 +139,6 @@ export function AppSidebar() {
   useEffect(() => {
     if (isAppRoute) {
       setActiveTab("Aplicaciones");
-    } else if (isChatRoute) {
-      setActiveTab("Chat");
     } else if (routerState.location.pathname.startsWith("/notes")) {
       setActiveTab("Notas");
     } else if (isTodosRoute) {
@@ -119,7 +152,6 @@ export function AppSidebar() {
     }
   }, [
     isAppRoute,
-    isChatRoute,
     isSettingsRoute,
     isLibraryRoute,
     isTodosRoute,
@@ -157,6 +189,74 @@ export function AppSidebar() {
         }
       }}
     >
+      {/* ── Sidebar icon column premium styles ── */}
+      <style>{`
+        .sidebar-icon-btn {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          cursor: pointer;
+          border: none;
+          background: transparent;
+          color: var(--sidebar-foreground);
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+          text-decoration: none;
+        }
+        .sidebar-icon-btn:hover {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-icon-btn--active {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-icon-btn--active .sidebar-icon-label {
+          color: var(--primary);
+          font-weight: 700;
+        }
+        .sidebar-icon-btn--active svg {
+          color: var(--primary);
+        }
+        .sidebar-icon-label {
+          font-size: 10px;
+          font-weight: 500;
+          line-height: 1;
+          opacity: 0.8;
+        }
+
+        /* Bottom utility button */
+        .sidebar-util-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          border: none;
+          background: transparent;
+          color: var(--sidebar-foreground);
+          cursor: pointer;
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sidebar-util-btn:hover {
+          background: var(--sidebar-accent);
+        }
+        .sidebar-util-btn:hover svg {
+          color: var(--primary);
+          opacity: 1;
+        }
+        .sidebar-util-btn svg {
+          opacity: 0.65;
+          transition: all 0.18s ease;
+        }
+      `}</style>
+
       <SidebarContent className="overflow-hidden">
         <div className="flex mt-8 w-full flex-1">
           {/* Left Column: Menu items */}
@@ -177,24 +277,107 @@ export function AppSidebar() {
                 }}
               />
             </div>
-            <div className="flex items-center flex-col gap-2 mb-4">
+            <div className="flex items-center flex-col gap-1 mb-4">
               <OpenRouterCreditsButton />
               <button
-                className="no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2 py-2 rounded-2xl flex-col hover:bg-sidebar-accent transition-colors w-14 h-14 text-foreground"
+                className="no-app-region-drag sidebar-util-btn"
                 title="Documentación"
                 onClick={() => setIsDocsOpen(true)}
               >
-                <HelpCircle size={20} />
-                <span className="text-[10px] font-bold leading-none mt-1">
+                <HelpCircle size={19} />
+                <span className="text-[9.5px] font-semibold leading-none mt-0.5 opacity-70">
                   Docs
                 </span>
               </button>
+
+              {/* User Avatar */}
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="no-app-region-drag cursor-pointer relative flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/30 transition-all w-9 h-9 mt-1"
+                      title={user.displayName || user.email || "Usuario"}
+                    >
+                      <SimpleAvatar
+                        src={(user as any).photoUrl || undefined}
+                        className="h-7 w-7"
+                        fallbackText={(
+                          user.displayName?.[0] ||
+                          user.email?.[0] ||
+                          "U"
+                        ).toUpperCase()}
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="end" className="w-64 p-2 shadow-xl border-border/50">
+                    <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                      Cuenta
+                    </DropdownMenuLabel>
+                    <div className="flex items-center gap-3 px-2 py-3">
+                      <div className="h-10 w-10">
+                        <SimpleAvatar
+                          src={(user as any).photoUrl || undefined}
+                          fallbackText={(
+                            user.displayName?.[0] ||
+                            user.email?.[0] ||
+                            "U"
+                          ).toUpperCase()}
+                        />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold truncate">
+                          {user.displayName || "Usuario"}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {user.email}
+                        </span>
+                      </div>
+                    </div>
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent"
+                      onClick={() => setIsProfileModalOpen(true)}
+                    >
+                      <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Editar Perfil</span>
+                    </DropdownMenuItem>
+                    {/* Hiding for now at user request */}
+                    {/* 
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent"
+                      onClick={() => setIsBackupModalOpen(true)}
+                    >
+                      <CloudUpload className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Copias de seguridad</span>
+                    </DropdownMenuItem>
+                    {settings?.enableAllStatsAndLogs && (
+                      <DropdownMenuItem
+                        className="py-2 cursor-pointer focus:bg-accent"
+                        onClick={() => navigate({ to: "/settings/ai-query-logs" })}
+                      >
+                        <Database className="mr-3 h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Logs de Consultas IA</span>
+                      </DropdownMenuItem>
+                    )}
+                    */}
+                    <DropdownMenuItem
+                      className="py-2 cursor-pointer focus:bg-accent text-foreground"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-3 h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Cerrar sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
-          {/* Right Column: Chat List Section */}
-          <div className="flex-1 min-w-0">
+          {/* Right Column: List panel with subtle left separator */}
+          <div className={cn(
+            "flex-1 min-w-0",
+            state === "collapsed" && "hidden",
+            state === "expanded" && "border-l border-border/30"
+          )}>
             <AppList show={selectedItem === "Aplicaciones"} />
-            <ChatList show={selectedItem === "Chat"} />
             <NotesList show={selectedItem === "Notas"} />
             <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
@@ -206,6 +389,21 @@ export function AppSidebar() {
 
       <SidebarRail />
       <DocumentationDialog isOpen={isDocsOpen} onOpenChange={setIsDocsOpen} />
+
+      {/* User modals */}
+      {user && (
+        <>
+          <ProfileModal
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            user={user}
+          />
+          <BackupModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+          />
+        </>
+      )}
     </Sidebar>
   );
 }
@@ -214,13 +412,13 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
-  const displayItems = [...items];
+  const selectedAppId = useAtomValue(selectedAppIdAtom);
+
+  // Filtrar el botón de Chat si no hay app seleccionada
+  const displayItems = selectedAppId ? [...items] : items.filter(item => item.title !== "Chat");
 
   return (
-    // When collapsed: only show the main menu
     <SidebarGroup className="pr-0">
-      {/* <SidebarGroupLabel>Dyad</SidebarGroupLabel> */}
-
       <SidebarGroupContent>
         <SidebarMenu>
           {displayItems.map((item) => {
@@ -237,13 +435,10 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                 >
                   <Link
                     to={item.to}
-                    className={`flex flex-col items-center gap-1 h-14 mb-2 rounded-2xl ${isActive ? "bg-sidebar-accent" : ""
-                      }`}
+                    className={`sidebar-icon-btn mb-1 ${isActive ? "sidebar-icon-btn--active" : ""}`}
                     onClick={() => {
                       if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
-                      } else if (item.title === "Chat") {
-                        onTabChange("Chat");
                       } else if (item.title === "Notas") {
                         onTabChange("Notas");
                       } else if (item.title === "Ajustes") {
@@ -255,10 +450,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                       }
                     }}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <item.icon className="h-5 w-5" />
-                      <span className={"text-xs"}>{item.title}</span>
-                    </div>
+                    <item.icon className="h-[18px] w-[18px]" />
+                    <span className="sidebar-icon-label">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

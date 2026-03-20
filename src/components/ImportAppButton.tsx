@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+
 import { Upload } from "lucide-react";
 import { useState } from "react";
 import { ImportAppDialog } from "./ImportAppDialog";
@@ -9,15 +9,15 @@ export function ImportAppButton({ className }: { className?: string }) {
 
   return (
     <>
-      <div className={cn("px-4 pb-1 flex justify-center", className)}>
-        <Button
-          variant="default"
-          size="default"
+      <div className={cn("px-0 pb-0 flex justify-stretch", className)}>
+        <button
+          type="button"
           onClick={() => setIsDialogOpen(true)}
+          className="sidebar-action-btn"
         >
-          <Upload className="mr-2 h-4 w-4" />
+          <Upload className="h-4 w-4" />
           Importar App
-        </Button>
+        </button>
       </div>
       <ImportAppDialog
         isOpen={isDialogOpen}

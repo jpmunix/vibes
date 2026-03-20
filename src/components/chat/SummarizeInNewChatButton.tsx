@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { selectedAppIdAtom, userSettingsAtom } from "@/atoms/appAtoms";
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -9,6 +9,7 @@ import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_pro
 
 export function useSummarizeInNewChat() {
   const chatId = useAtomValue(selectedChatIdAtom);
+  const setChatId = useSetAtom(selectedChatIdAtom);
   const appId = useAtomValue(selectedAppIdAtom);
   const settings = useAtomValue(userSettingsAtom);
   const lang = settings?.chatLanguage || "es";
@@ -26,6 +27,7 @@ export function useSummarizeInNewChat() {
     }
     try {
       const newChatId = await ipc.chat.createChat(appId);
+      setChatId(newChatId);
       // navigate to new chat
       await navigate({ to: "/chat", search: { id: newChatId } });
       await streamMessage({

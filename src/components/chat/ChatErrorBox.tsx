@@ -11,88 +11,36 @@ import remarkGfm from "remark-gfm";
 export function ChatErrorBox({
   onDismiss,
   error,
-  isDyadProEnabled,
 }: {
   onDismiss: () => void;
   error: string;
-  isDyadProEnabled: boolean;
 }) {
   if (error.includes("doesn't have a free quota tier")) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
-        {error}
-        <span className="ml-1">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=free-quota-error"
-            variant="primary"
-          >
-            Access with Vibes Pro
-          </ExternalLink>
-        </span>{" "}
-        or switch to another model.
+        {error} — prueba con otro modelo.
       </ChatErrorContainer>
     );
   }
 
-  // Important, this needs to come after the "free quota tier" check
-  // because it also includes this URL in the error message
-  //
-  // Sometimes Dyad Pro can return rate limit errors and we do not want to
-  // show the upgrade to Dyad Pro link in that case because they are
-  // already on the Dyad Pro plan.
+  // Rate limit / resource exhaustion errors
   if (
-    !isDyadProEnabled &&
-    (error.includes("Resource has been exhausted") ||
-      error.includes("https://ai.google.dev/gemini-api/docs/rate-limits") ||
-      error.includes("Provider returned error"))
+    error.includes("Resource has been exhausted") ||
+    error.includes("https://ai.google.dev/gemini-api/docs/rate-limits") ||
+    error.includes("Provider returned error")
   ) {
     return (
       <ChatErrorContainer onDismiss={onDismiss}>
         {error}
-        <div className="mt-2 space-y-2 space-x-2">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=rate-limit-error"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>
-
-          <ExternalLink href="https://github.com/minube/vibes/help/ai-rate-limit">
-            Troubleshooting guide
-          </ExternalLink>
-        </div>
       </ChatErrorContainer>
     );
   }
 
-  if (error.includes("LiteLLM Virtual Key expected")) {
+  if (error.includes("ExceededBudget:")) {
     return (
       <ChatInfoContainer onDismiss={onDismiss}>
         <span>
-          Looks like you don't have a valid Vibes Pro key.{" "}
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=invalid-pro-key-error"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>{" "}
-          today.
-        </span>
-      </ChatInfoContainer>
-    );
-  }
-  if (isDyadProEnabled && error.includes("ExceededBudget:")) {
-    return (
-      <ChatInfoContainer onDismiss={onDismiss}>
-        <span>
-          You have used all of your Vibes AI credits this month.{" "}
-          <ExternalLink
-            href="https://academy.dyad.sh/subscription?utm_source=dyad-app&utm_medium=app&utm_campaign=exceeded-budget-error"
-            variant="primary"
-          >
-            Reload or upgrade your subscription
-          </ExternalLink>{" "}
-          and get more AI credits
+          Se han agotado los créditos de IA de este mes.
         </span>
       </ChatInfoContainer>
     );
@@ -101,47 +49,19 @@ export function ChatErrorBox({
   //
   // We are matching "Fallbacks=[{" and not just "Fallbacks=" because the fallback
   // model itself can error and we want to include the fallback model error in the error message.
-  // Example: https://github.com/dyad-sh/dyad/issues/1849#issuecomment-3590685911
+  // Example: https://github.com/<vibes-sh/dyad/issues/1849#issuecomment-3590685911
   const fallbackPrefix = "Fallbacks=[{";
   if (error.includes(fallbackPrefix)) {
     error = error.split(fallbackPrefix)[0];
-  }
-  // Handle FREE_AGENT_QUOTA_EXCEEDED error (Basic Agent mode quota exceeded)
-  if (error.includes("FREE_AGENT_QUOTA_EXCEEDED")) {
-    return (
-      <ChatErrorContainer onDismiss={onDismiss}>
-        You have used all 5 free Agent messages for today. Please upgrade to
-        Vibes Pro for unlimited access or switch to Build mode.
-        <div className="mt-2 space-y-2 space-x-2">
-          <ExternalLink
-            href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=free-agent-quota-exceeded"
-            variant="primary"
-          >
-            Upgrade to Vibes Pro
-          </ExternalLink>
-        </div>
-      </ChatErrorContainer>
-    );
   }
 
   return (
     <ChatErrorContainer onDismiss={onDismiss}>
       {error}
-      {!isDyadProEnabled &&
-        error.includes(AI_STREAMING_ERROR_MESSAGE_PREFIX) &&
-        !error.includes("TypeError: terminated") && (
-          <div className="mt-2">
-            <ExternalLink
-              href="https://github.com/minube/vibes?utm_source=dyad-app&utm_medium=app&utm_campaign=general-error"
-              variant="primary"
-            >
-              Upgrade to Vibes Pro
-            </ExternalLink>
-          </div>
-        )}
     </ChatErrorContainer>
   );
 }
+
 
 function ExternalLink({
   href,

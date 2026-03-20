@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { safeStorage } from "electron";
-import { readSettings, getSettingsFilePath } from "@/main/settings";
+import { readSettings, getSettingsFilePath, resetSettingsCache } from "@/main/settings";
 import { getUserDataPath } from "@/paths/paths";
 import { UserSettings } from "@/lib/schemas";
 
@@ -13,6 +13,7 @@ vi.mock("electron", () => ({
   safeStorage: {
     isEncryptionAvailable: vi.fn(),
     decryptString: vi.fn(),
+    encryptString: vi.fn(() => Buffer.from("mock-encrypted")),
   },
 }));
 vi.mock("@/paths/paths", () => ({
@@ -30,6 +31,7 @@ describe("readSettings", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSettingsCache();
     mockGetUserDataPath.mockReturnValue(mockUserDataPath);
     mockPath.join.mockReturnValue(mockSettingsPath);
     mockSafeStorage.isEncryptionAvailable.mockReturnValue(true);
@@ -42,7 +44,7 @@ describe("readSettings", () => {
   describe("when settings file does not exist", () => {
     it("should create default settings file and return default settings", () => {
       mockFs.existsSync.mockReturnValue(false);
-      mockFs.writeFileSync.mockImplementation(() => {});
+      mockFs.writeFileSync.mockImplementation(() => { });
 
       const result = readSettings();
 
@@ -53,37 +55,35 @@ describe("readSettings", () => {
       );
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "aiQueryLogRotationThreshold": "200",
           "autoExpandPreviewPanel": false,
-          "autoFixMaxAttempts": 1,
-          "autoFixMaxDurationMs": 20000,
-          "autoFixMaxIssues": 5,
-          "autoFixModel": {
-            "name": "google/gemini-3-flash-preview",
-            "provider": "openrouter",
-          },
           "chatLanguage": "es",
-          "enableAutoFixProblems": false,
-          "enableBackgroundProblemAutoFix": false,
+          "embeddingsEnabled": true,
+          "embeddingsModel": "openai/text-embedding-3-small",
+          "enableChatCompletionNotifications": true,
+          "enableGithubAutoCommit": true,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
-          "enableTurboEditsV2": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
+          "previewPosition": "right",
+          "proModeModel": "openai/gpt-5.1-codex-mini",
           "providerSettings": {},
-          "selectedChatMode": "build",
+          "selectedChatMode": "local-agent",
           "selectedModel": {
             "name": "google/gemini-3-flash-preview",
             "provider": "openrouter",
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
+          "showTokenBar": false,
+          "standardModeModel": "openai/gpt-4.1-nano",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
-          "turboEditModel": "openai/gpt-4.1",
+          "windowState": undefined,
         }
       `);
     });
@@ -143,7 +143,7 @@ describe("readSettings", () => {
       );
       expect(result.providerSettings.openai.apiKey).toEqual({
         value: "decrypted-api-key",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 
@@ -166,7 +166,7 @@ describe("readSettings", () => {
       );
       expect(result.githubAccessToken).toEqual({
         value: "decrypted-github-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 
@@ -195,11 +195,11 @@ describe("readSettings", () => {
       expect(mockSafeStorage.decryptString).toHaveBeenCalledTimes(2);
       expect(result.supabase?.refreshToken).toEqual({
         value: "decrypted-refresh-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
       expect(result.supabase?.accessToken).toEqual({
         value: "decrypted-access-token",
-        encryptionType: "electron-safe-storage",
+        encryptionType: "plaintext",
       });
     });
 
@@ -319,37 +319,35 @@ describe("readSettings", () => {
 
       expect(scrubSettings(result)).toMatchInlineSnapshot(`
         {
-          "appTitleGenerationModel": "openai/gpt-4.1-nano",
+          "aiQueryLogRotationThreshold": "200",
           "autoExpandPreviewPanel": false,
-          "autoFixMaxAttempts": 1,
-          "autoFixMaxDurationMs": 20000,
-          "autoFixMaxIssues": 5,
-          "autoFixModel": {
-            "name": "google/gemini-3-flash-preview",
-            "provider": "openrouter",
-          },
           "chatLanguage": "es",
-          "enableAutoFixProblems": false,
-          "enableBackgroundProblemAutoFix": false,
+          "embeddingsEnabled": true,
+          "embeddingsModel": "openai/text-embedding-3-small",
+          "enableChatCompletionNotifications": true,
+          "enableGithubAutoCommit": true,
           "enableNativeGit": true,
           "enableProLazyEditsMode": true,
           "enableProSmartFilesContextMode": true,
-          "enableTurboEditsV2": true,
           "experiments": {},
           "hasRunBefore": false,
           "isRunning": false,
           "lastKnownPerformance": undefined,
+          "previewPosition": "right",
+          "proModeModel": "openai/gpt-5.1-codex-mini",
           "providerSettings": {},
-          "selectedChatMode": "build",
+          "selectedChatMode": "local-agent",
           "selectedModel": {
             "name": "google/gemini-3-flash-preview",
             "provider": "openrouter",
           },
           "selectedTemplateId": "react",
           "selectedThemeId": "default",
+          "showTokenBar": false,
+          "standardModeModel": "openai/gpt-4.1-nano",
           "telemetryConsent": "unset",
           "telemetryUserId": "[scrubbed]",
-          "turboEditModel": "openai/gpt-4.1",
+          "windowState": undefined,
         }
       `);
     });

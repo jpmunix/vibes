@@ -1,6 +1,6 @@
-import { db } from "../../db";
-import { chats } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
 import {
   constructSystemPrompt,
   readAiRules,
@@ -10,7 +10,7 @@ import {
   getSupabaseAvailableSystemPrompt,
   SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
 } from "../../prompts/supabase_prompt";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
 import { extractCodebase } from "../../utils/codebase";
 import {
@@ -25,7 +25,8 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { readSettings } from "@/main/settings";
 import { extractMentionedAppsCodebases } from "../utils/mention_apps";
 import { parseAppMentions } from "@/shared/parse_mention_apps";
-import { isTurboEditsV2Enabled } from "@/lib/schemas";
+
+
 
 const logger = log.scope("token_count_handlers");
 
@@ -34,9 +35,11 @@ const handle = createLoggedHandler(logger);
 export function registerTokenCountHandlers() {
   handle(
     "chat:count-tokens",
-    async (event, req: TokenCountParams): Promise<TokenCountResult> => {
+    async (event, req: TokenCountParams, context): Promise<TokenCountResult> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
       const chat = await db.query.chats.findFirst({
-        where: eq(chats.id, req.chatId),
+        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, context.userId)),
         with: {
           messages: {
             orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -65,16 +68,14 @@ export function registerTokenCountHandlers() {
 
       // Count system prompt tokens
       const themePrompt = await getThemePromptById(chat.app?.themeId ?? null);
+      const selectedMode = (req.chatMode || settings.selectedChatMode || "build") as any;
+
       let systemPrompt = constructSystemPrompt({
-        aiRules: await readAiRules(getDyadAppPath(chat.app.path)),
-        chatMode:
-          settings.selectedChatMode === "agent" ||
-          settings.selectedChatMode === "local-agent"
-            ? "build"
-            : settings.selectedChatMode,
-        enableTurboEditsV2: isTurboEditsV2Enabled(settings),
+        aiRules: await readAiRules(getVibesAppPath(chat.app.path)),
+        chatMode: selectedMode,
         themePrompt,
         chatLanguage: settings.chatLanguage || "es",
+        settings,
       });
       let supabaseContext = "";
 
@@ -103,26 +104,37 @@ export function registerTokenCountHandlers() {
       let codebaseTokens = 0;
 
       if (chat.app) {
-        const appPath = getDyadAppPath(chat.app.path);
-        const { formattedOutput, files } = await extractCodebase({
-          appPath,
-          chatContext: validateChatContext(chat.app.chatContext),
-        });
-        codebaseInfo = formattedOutput;
-        if (settings.enableDyadPro && settings.enableProSmartFilesContextMode) {
-          codebaseTokens = estimateTokens(
-            files
-              // It doesn't need to be the exact format but it's just to get a token estimate
-              .map(
-                (file) => `<dyad-file=${file.path}>${file.content}</dyad-file>`,
-              )
-              .join("\n\n"),
-          );
+        const appPath = getVibesAppPath(chat.app.path);
+
+        if (selectedMode === "local-agent") {
+          // Agent mode starts with no file context (uses tools to explore)
+          codebaseTokens = 200;
         } else {
-          codebaseTokens = estimateTokens(codebaseInfo);
+          // Standard extraction for build mode and others
+          const { formattedOutput, files } = await extractCodebase({
+            appPath,
+            chatContext: validateChatContext(chat.app.chatContext),
+          });
+          codebaseInfo = formattedOutput;
+          if (
+            settings.enableProSmartFilesContextMode
+          ) {
+            codebaseTokens = estimateTokens(
+              files
+                // It doesn't need to be the exact format but it's just to get a token estimate
+                .map(
+                  (file) =>
+                    `<vibes-file=${file.path}>${file.content}</vibes-file>`,
+                )
+                .join("\n\n"),
+            );
+          } else {
+            codebaseTokens = estimateTokens(codebaseInfo);
+          }
         }
+
         logger.log(
-          `Extracted codebase information from ${appPath}, tokens: ${codebaseTokens}`,
+          `Extracted codebase information estimate from ${appPath}, tokens: ${codebaseTokens}`,
         );
       }
 

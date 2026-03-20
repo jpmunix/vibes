@@ -1,4 +1,4 @@
-name: Create Release (Linux & Mac)
+name: Create Mac release
 on:
   workflow_dispatch:
 
@@ -151,3 +151,28 @@ jobs:
             out/make/**/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZIP to BunnyCDN Storage
+        if: success() && startsWith(matrix.os.id, 'macos')
+        run: |
+          # Leer versión desde package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "App version: $VERSION"
+
+          # Encontrar el zip generado
+          ZIP_FILE=$(find out/make -name "*.zip" | head -1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "❌ No se encontró ningún archivo .zip en out/make"
+            exit 1
+          fi
+          echo "📦 Archivo encontrado: $ZIP_FILE"
+
+          # Subir vía API HTTP de BunnyCDN Storage
+          curl --request PUT \
+               --url "https://storage.bunnycdn.com/minube-vibes/mac/${VERSION}.zip" \
+               --header "AccessKey: d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647" \
+               --header "Content-Type: application/octet-stream" \
+               --data-binary @"$ZIP_FILE" \
+               --fail --show-error
+
+          echo "✅ Subido como ${VERSION}.zip a /minube-vibes/mac/"

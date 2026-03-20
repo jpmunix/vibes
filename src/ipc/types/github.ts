@@ -95,6 +95,26 @@ export const GitCommitSchema = z.object({
   shortHash: z.string(),
 });
 
+export const CommitHistoryFileSchema = z.object({
+  path: z.string(),
+  status: z.enum(["added", "modified", "deleted", "renamed", "unknown"]),
+});
+
+export const CommitHistoryEntrySchema = z.object({
+  hash: z.string(),
+  shortHash: z.string(),
+  message: z.string(),
+  author: z.string(),
+  email: z.string(),
+  date: z.string(), // ISO string
+  timestamp: z.number(),
+  filesChanged: z.number(),
+  insertions: z.number(),
+  deletions: z.number(),
+  files: z.array(CommitHistoryFileSchema),
+  branches: z.array(z.string()).optional(),
+});
+
 export const GitPreviewSchema = z.object({
   uncommittedFiles: z.array(GitDiffFileSchema),
   localCommits: z.array(GitCommitSchema),
@@ -352,6 +372,131 @@ export const gitContracts = {
     input: CommitChangesParamsSchema,
     output: z.string(), // Returns commit hash
   }),
+
+  stageFile: defineContract({
+    channel: "git:stage-file",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.void(),
+  }),
+
+  unstageFile: defineContract({
+    channel: "git:unstage-file",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.void(),
+  }),
+
+  stageAll: defineContract({
+    channel: "git:stage-all",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  unstageAll: defineContract({
+    channel: "git:unstage-all",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  getFileDiff: defineContract({
+    channel: "git:get-file-diff",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({
+      additions: z.number(),
+      deletions: z.number(),
+      diff: z.string(),
+    }),
+  }),
+
+  getCommitHistory: defineContract({
+    channel: "git:get-commit-history",
+    input: z.object({
+      appId: z.number(),
+      limit: z.number().optional(),
+      offset: z.number().optional(),
+      branch: z.string().optional(),
+    }),
+    output: z.object({
+      commits: z.array(CommitHistoryEntrySchema),
+      total: z.number(),
+      hasMore: z.boolean(),
+    }),
+  }),
+
+  getCommitDetail: defineContract({
+    channel: "git:get-commit-detail",
+    input: z.object({
+      appId: z.number(),
+      commitHash: z.string(),
+    }),
+    output: z.object({
+      hash: z.string(),
+      shortHash: z.string(),
+      message: z.string(),
+      author: z.string(),
+      email: z.string(),
+      date: z.string(),
+      timestamp: z.number(),
+      filesChanged: z.number(),
+      insertions: z.number(),
+      deletions: z.number(),
+      files: z.array(CommitHistoryFileSchema),
+      diff: z.string(),
+    }),
+  }),
+
+  getConflictFiles: defineContract({
+    channel: "git:get-conflict-files",
+    input: z.object({ appId: z.number() }),
+    output: z.object({
+      files: z.array(z.string()),
+      mergeInProgress: z.boolean(),
+    }),
+  }),
+
+  resolveMergeOurs: defineContract({
+    channel: "git:resolve-merge-ours",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
+
+  resolveMergeTheirs: defineContract({
+    channel: "git:resolve-merge-theirs",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
+
+  abortMerge: defineContract({
+    channel: "git:abort-merge",
+    input: z.object({ appId: z.number() }),
+    output: z.void(),
+  }),
+
+  getConflictFileDiff: defineContract({
+    channel: "git:get-conflict-file-diff",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({
+      diff: z.string(),
+      hasConflictMarkers: z.boolean(),
+    }),
+  }),
+
+  resolveFileOurs: defineContract({
+    channel: "git:resolve-file-ours",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
+
+  resolveFileTheirs: defineContract({
+    channel: "git:resolve-file-theirs",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ resolved: z.boolean(), message: z.string() }),
+  }),
+
+  removeIndexLock: defineContract({
+    channel: "git:remove-index-lock",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ removed: z.boolean(), message: z.string() }),
+  }),
 } as const;
 
 // =============================================================================
@@ -403,3 +548,5 @@ export type CloneRepoResult = z.infer<typeof CloneRepoResultSchema>;
 export type GitDiffFile = z.infer<typeof GitDiffFileSchema>;
 export type GitCommit = z.infer<typeof GitCommitSchema>;
 export type GitPreview = z.infer<typeof GitPreviewSchema>;
+export type CommitHistoryEntry = z.infer<typeof CommitHistoryEntrySchema>;
+export type CommitHistoryFile = z.infer<typeof CommitHistoryFileSchema>;

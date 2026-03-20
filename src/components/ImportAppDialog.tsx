@@ -43,6 +43,8 @@ interface ImportAppDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+import { useTheme } from "@/contexts/ThemeContext";
+
 export const AI_RULES_PROMPT =
   "Genera un archivo AI_RULES.md para esta aplicación. Describe el stack tecnológico en 5-10 puntos y describe reglas claras sobre qué librerías usar para qué.";
 export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
@@ -50,10 +52,11 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [hasAiRules, setHasAiRules] = useState<boolean | null>(null);
   const [customAppName, setCustomAppName] = useState<string>("");
   const [nameExists, setNameExists] = useState<boolean>(false);
+  const [existingAppId, setExistingAppId] = useState<number | null>(null);
   const [isCheckingName, setIsCheckingName] = useState<boolean>(false);
   const [installCommand, setInstallCommand] = useState("");
   const [startCommand, setStartCommand] = useState("");
-  const [copyToDyadApps, setCopyToDyadApps] = useState(true);
+  const [copyToVibesApps, setCopyToVibesApps] = useState(true);
   const navigate = useNavigate();
   const { streamMessage } = useStreamChat({ hasChatId: false });
   const { refreshApps } = useLoadApps();
@@ -65,6 +68,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [importing, setImporting] = useState(false);
   const { settings, refreshSettings } = useSettings();
   const isAuthenticated = !!settings?.githubAccessToken;
+  const { theme, intensity } = useTheme();
 
   const [githubAppName, setGithubAppName] = useState("");
   const [githubNameExists, setGithubNameExists] = useState(false);
@@ -80,12 +84,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     }
   }, [isOpen, isAuthenticated]);
 
-  // Re-check app name when copyToDyadApps changes
+  // Re-check app name when copyToVibesApps changes
   useEffect(() => {
     if (customAppName.trim() && selectedPath) {
-      checkAppName({ name: customAppName, skipCopy: !copyToDyadApps });
+      checkAppName({ name: customAppName, skipCopy: !copyToVibesApps });
     }
-  }, [copyToDyadApps]);
+  }, [copyToVibesApps]);
 
   const fetchRepos = async () => {
     setLoading(true);
@@ -114,7 +118,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-            (error as any).toString(),
+          (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -145,7 +149,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      navigate({ to: "/chat", search: { id: chatId } });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -181,7 +186,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       setSelectedAppId(result.app.id);
       showSuccess(`Importado con éxito: ${result.app.name}`);
       const chatId = await ipc.chat.createChat(result.app.id);
-      navigate({ to: "/chat", search: { id: chatId } });
+      ipc.system.openChatWindow({ appId: result.app.id, chatId, theme, themeIntensity: intensity });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
       if (!result.hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -213,7 +219,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       } catch (error: unknown) {
         showError(
           "Error al comprobar el nombre de la app: " +
-            (error as any).toString(),
+          (error as any).toString(),
         );
       } finally {
         setIsCheckingGithubName(false);
@@ -235,6 +241,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         skipCopy,
       });
       setNameExists(result.exists);
+      setExistingAppId(result.existingAppId ?? null);
     } catch (error: unknown) {
       showError(
         "Error al comprobar el nombre de la app: " + (error as any).toString(),
@@ -258,7 +265,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       // Use the folder name from the IPC response
       setCustomAppName(result.name);
       // Check if the app name already exists
-      await checkAppName({ name: result.name, skipCopy: !copyToDyadApps });
+      await checkAppName({ name: result.name, skipCopy: !copyToVibesApps });
       return result;
     },
     onError: (error: Error) => {
@@ -274,7 +281,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         appName: customAppName,
         installCommand: installCommand || undefined,
         startCommand: startCommand || undefined,
-        skipCopy: !copyToDyadApps,
+        skipCopy: !copyToVibesApps,
       });
     },
     onSuccess: async (result) => {
@@ -285,7 +292,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       );
       onClose();
 
-      navigate({ to: "/chat", search: { id: result.chatId } });
+      navigate({ to: "/app-details", search: { appId: result.appId } });
+      ipc.system.openChatWindow({ appId: result.appId, chatId: result.chatId, theme, themeIntensity: intensity });
       if (!hasAiRules) {
         streamMessage({
           prompt: AI_RULES_PROMPT,
@@ -313,9 +321,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     setHasAiRules(null);
     setCustomAppName("");
     setNameExists(false);
+    setExistingAppId(null);
     setInstallCommand("");
     setStartCommand("");
-    setCopyToDyadApps(true);
+    setCopyToVibesApps(true);
   };
 
   const handleAppNameChange = async (
@@ -324,7 +333,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     const newName = e.target.value;
     setCustomAppName(newName);
     if (newName.trim()) {
-      await checkAppName({ name: newName, skipCopy: !copyToDyadApps });
+      await checkAppName({ name: newName, skipCopy: !copyToVibesApps });
     }
   };
 
@@ -343,13 +352,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6 overflow-y-auto flex-1">
-          <Alert className="border-blue-500/20 text-blue-500 mb-2">
-            <Info className="h-4 w-4 flex-shrink-0" />
-            <AlertDescription className="text-xs sm:text-sm">
-              La importación de apps es una función experimental. Si encuentras
-              algún problema, infórmalo usando el botón de Ayuda.
-            </AlertDescription>
-          </Alert>
+
           <Tabs defaultValue="local-folder" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger
@@ -416,29 +419,34 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="copy-to-dyad-apps"
-                        checked={copyToDyadApps}
+                        id="copy-to-vibes-apps"
+                        checked={copyToVibesApps}
                         onCheckedChange={(checked) =>
-                          setCopyToDyadApps(checked === true)
+                          setCopyToVibesApps(checked === true)
                         }
                         disabled={importAppMutation.isPending}
                       />
                       <label
-                        htmlFor="copy-to-dyad-apps"
+                        htmlFor="copy-to-vibes-apps"
                         className="text-xs sm:text-sm cursor-pointer"
                       >
                         Copiar a la carpeta{" "}
                         <code className="bg-muted px-1 py-0.5 rounded text-xs">
-                          dyad-apps
+                          vibes-apps
                         </code>{" "}
                       </label>
                     </div>
 
                     <div className="space-y-2">
-                      {nameExists && (
+                      {nameExists && !existingAppId && (
                         <p className="text-xs sm:text-sm text-yellow-500">
                           Ya existe una aplicación con este nombre. Por favor,
                           elige un nombre diferente:
+                        </p>
+                      )}
+                      {nameExists && existingAppId && (
+                        <p className="text-xs sm:text-sm text-blue-500">
+                          Esta app ya está registrada. Se abrirá directamente.
                         </p>
                       )}
                       <div className="relative">
@@ -475,7 +483,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                               onChange={(e) =>
                                 setInstallCommand(e.target.value)
                               }
-                              placeholder="pnpm install"
+                              placeholder="npm install"
                               className="text-sm"
                               disabled={importAppMutation.isPending}
                             />
@@ -487,7 +495,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                             <Input
                               value={startCommand}
                               onChange={(e) => setStartCommand(e.target.value)}
-                              placeholder="pnpm dev"
+                              placeholder="npm run dev"
                               className="text-sm"
                               disabled={importAppMutation.isPending}
                             />
@@ -543,17 +551,28 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   Cancelar
                 </Button>
                 <Button
-                  onClick={handleImport}
+                  onClick={() => {
+                    if (existingAppId) {
+                      // Open the existing app directly
+                      setSelectedAppId(existingAppId);
+                      navigate({ to: "/app-details", search: { appId: existingAppId } });
+                      onClose();
+                    } else {
+                      handleImport();
+                    }
+                  }}
                   disabled={
                     !selectedPath ||
                     importAppMutation.isPending ||
-                    nameExists ||
+                    (nameExists && !existingAppId) ||
                     !commandsValid
                   }
                   className="w-full sm:w-auto min-w-[80px]"
                 >
                   {importAppMutation.isPending ? (
                     <>Importando...</>
+                  ) : existingAppId ? (
+                    "Abrir"
                   ) : (
                     "Importar"
                   )}
@@ -655,7 +674,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                 onChange={(e) =>
                                   setInstallCommand(e.target.value)
                                 }
-                                placeholder="pnpm install"
+                                placeholder="npm install"
                                 className="text-sm"
                                 disabled={importing}
                               />
@@ -669,7 +688,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                 onChange={(e) =>
                                   setStartCommand(e.target.value)
                                 }
-                                placeholder="pnpm dev"
+                                placeholder="npm run dev"
                                 className="text-sm"
                                 disabled={importing}
                               />
@@ -738,7 +757,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Input
                         value={installCommand}
                         onChange={(e) => setInstallCommand(e.target.value)}
-                        placeholder="pnpm install"
+                        placeholder="npm install"
                         className="text-sm"
                         disabled={importing}
                       />
@@ -750,7 +769,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Input
                         value={startCommand}
                         onChange={(e) => setStartCommand(e.target.value)}
-                        placeholder="pnpm dev"
+                        placeholder="npm run dev"
                         className="text-sm"
                         disabled={importing}
                       />

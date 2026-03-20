@@ -18,6 +18,7 @@ import { debatesRoute } from "./routes/debates";
 
 import { settingsIndexRoute } from "./routes/settings/index";
 import { promptsSettingsRoute } from "./routes/settings/prompts";
+import { aiQueryLogsRoute } from "./routes/settings/ai-query-logs";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -29,7 +30,7 @@ const routeTree = rootRoute.addChildren([
   todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
   debatesRoute,
-  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, aiQueryLogsRoute]),
 ]);
 
 import { useNavigate } from "@tanstack/react-router";

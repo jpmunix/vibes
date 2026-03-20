@@ -2,12 +2,12 @@ import { db } from "../../db";
 import { chats, messages } from "../../db/schema";
 import { and, eq } from "drizzle-orm";
 import fs from "node:fs";
-import { getDyadAppPath } from "../../paths/paths";
+import { getVibesAppPath } from "../../paths/paths";
 import path from "node:path";
 import { safeJoin } from "../utils/path_utils";
 
 import log from "electron-log";
-import { executeAddDependency } from "./executeAddDependency";
+import { executeAddDependency, execPromise } from "./executeAddDependency";
 import {
   deleteSupabaseFunction,
   deploySupabaseFunction,
@@ -30,14 +30,17 @@ import {
 import { readSettings } from "@/main/settings";
 import { writeMigrationFile } from "../utils/file_utils";
 import {
-  getDyadWriteTags,
-  getDyadRenameTags,
-  getDyadDeleteTags,
-  getDyadAddDependencyTags,
-  getDyadExecuteSqlTags,
-  getDyadSearchReplaceTags,
-} from "../utils/dyad_tag_parser";
-import { applySearchReplace } from "../../pro/main/ipc/processors/search_replace_processor";
+  getWriteTags,
+  getRenameTags,
+  getDeleteTags,
+  getAddDependencyTags,
+  getExecuteSqlTags,
+  getSearchReplaceTags,
+} from "../utils/tag_parser";
+import {
+  applySearchReplace,
+  formatMatchFailureSummary,
+} from "../../pro/main/ipc/processors/search_replace_processor";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
 
 import { FileUploadsState } from "../utils/file_uploads_state";
@@ -58,9 +61,20 @@ export async function dryRunSearchReplace({
   appPath: string;
 }) {
   const issues: { filePath: string; error: string }[] = [];
-  const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
-  for (const tag of dyadSearchReplaceTags) {
-    const filePath = tag.path;
+  const searchReplaceTags = getSearchReplaceTags(fullResponse);
+
+  // Group tags by file path to handle multi-block edits to the same file correctly
+  const tagsByFile = new Map<
+    string,
+    { path: string; content: string; description?: string }[]
+  >();
+  for (const tag of searchReplaceTags) {
+    const list = tagsByFile.get(tag.path) || [];
+    list.push(tag);
+    tagsByFile.set(tag.path, list);
+  }
+
+  for (const [filePath, fileTags] of tagsByFile.entries()) {
     const fullFilePath = safeJoin(appPath, filePath);
     try {
       if (!fs.existsSync(fullFilePath)) {
@@ -72,15 +86,22 @@ export async function dryRunSearchReplace({
       }
 
       const original = await readFile(fullFilePath, "utf8");
-      const result = applySearchReplace(original, tag.content);
+      // Combine all content blocks for this file
+      const combinedContent = fileTags.map((tag) => tag.content).join("\n");
+      const result = applySearchReplace(original, combinedContent);
+
       if (!result.success || typeof result.content !== "string") {
+        const diagnosticSummary =
+          result.diagnostic && formatMatchFailureSummary(result.diagnostic);
+        const baseError = (result.error ?? "unknown").replace(/\.+$/, "");
+        const fullerError = `${baseError}.${diagnosticSummary ? ` ${diagnosticSummary}` : ""} Read the latest file and include more surrounding lines before retrying.`;
+
         issues.push({
           filePath,
-          error:
-            "Unable to apply search-replace to file because: " + result.error,
+          error: fullerError,
         });
         logger.warn(
-          `Unable to apply search-replace to file ${filePath} because: ${result.error}. Original content:\n${original}\n Diff content:\n${tag.content}`,
+          `Unable to apply search-replace to file ${filePath} because: ${fullerError}. Original content:\n${original}\n Diff content:\n${combinedContent}`,
         );
         continue;
       }
@@ -138,13 +159,13 @@ export async function processFullResponseActions(
       logger.error("Error creating Neon branch at current version:", error);
       throw new Error(
         "Could not create Neon branch; database versioning functionality is not working: " +
-          error,
+        error,
       );
     }
   }
 
   const settings: UserSettings = readSettings();
-  const appPath = getDyadAppPath(chatWithApp.app.path);
+  const appPath = getVibesAppPath(chatWithApp.app.path);
   const writtenFiles: string[] = [];
   const renamedFiles: string[] = [];
   const deletedFiles: string[] = [];
@@ -157,12 +178,12 @@ export async function processFullResponseActions(
 
   try {
     // Extract all tags
-    const dyadWriteTags = getDyadWriteTags(fullResponse);
-    const dyadRenameTags = getDyadRenameTags(fullResponse);
-    const dyadDeletePaths = getDyadDeleteTags(fullResponse);
-    const dyadAddDependencyPackages = getDyadAddDependencyTags(fullResponse);
-    const dyadExecuteSqlQueries = chatWithApp.app.supabaseProjectId
-      ? getDyadExecuteSqlTags(fullResponse)
+    const writeTags = getWriteTags(fullResponse);
+    const renameTags = getRenameTags(fullResponse);
+    const deletePaths = getDeleteTags(fullResponse);
+    const addDependencyPackages = getAddDependencyTags(fullResponse);
+    const executeSqlQueries = chatWithApp.app.supabaseProjectId
+      ? getExecuteSqlTags(fullResponse)
       : [];
 
     const message = await db.query.messages.findFirst({
@@ -179,8 +200,8 @@ export async function processFullResponseActions(
     }
 
     // Handle SQL execution tags
-    if (dyadExecuteSqlQueries.length > 0) {
-      for (const query of dyadExecuteSqlQueries) {
+    if (executeSqlQueries.length > 0) {
+      for (const query of executeSqlQueries) {
         try {
           await executeSupabaseSql({
             supabaseProjectId: chatWithApp.app.supabaseProjectId!,
@@ -211,20 +232,20 @@ export async function processFullResponseActions(
           });
         }
       }
-      logger.log(`Executed ${dyadExecuteSqlQueries.length} SQL queries`);
+      logger.log(`Executed ${executeSqlQueries.length} SQL queries`);
     }
 
     // TODO: Handle add dependency tags
-    if (dyadAddDependencyPackages.length > 0) {
+    if (addDependencyPackages.length > 0) {
       try {
         await executeAddDependency({
-          packages: dyadAddDependencyPackages,
+          packages: addDependencyPackages,
           message: message,
           appPath,
         });
       } catch (error) {
         errors.push({
-          message: `Failed to add dependencies: ${dyadAddDependencyPackages.join(", ")}`,
+          message: `Failed to add dependencies: ${addDependencyPackages.join(", ")}`,
           error: error,
         });
       }
@@ -252,7 +273,7 @@ export async function processFullResponseActions(
     //////////////////////
 
     // Process all file deletions
-    for (const filePath of dyadDeletePaths) {
+    for (const filePath of deletePaths) {
       const fullFilePath = safeJoin(appPath, filePath);
 
       // Track if this is a shared module
@@ -298,7 +319,7 @@ export async function processFullResponseActions(
     }
 
     // Process all file renames
-    for (const tag of dyadRenameTags) {
+    for (const tag of renameTags) {
       const fromPath = safeJoin(appPath, tag.from);
       const toPath = safeJoin(appPath, tag.to);
 
@@ -362,9 +383,19 @@ export async function processFullResponseActions(
     }
 
     // Process all search-replace edits
-    const dyadSearchReplaceTags = getDyadSearchReplaceTags(fullResponse);
-    for (const tag of dyadSearchReplaceTags) {
-      const filePath = tag.path;
+    const searchReplaceTags = getSearchReplaceTags(fullResponse);
+    // Group tags by file path
+    const srTagsByFile = new Map<
+      string,
+      { path: string; content: string; description?: string }[]
+    >();
+    for (const tag of searchReplaceTags) {
+      const list = srTagsByFile.get(tag.path) || [];
+      list.push(tag);
+      srTagsByFile.set(tag.path, list);
+    }
+
+    for (const [filePath, fileTags] of srTagsByFile.entries()) {
       const fullFilePath = safeJoin(appPath, filePath);
 
       // Track if this is a shared module
@@ -374,14 +405,17 @@ export async function processFullResponseActions(
 
       try {
         if (!fs.existsSync(fullFilePath)) {
-          // Do not show warning to user because we already attempt to do a <dyad-write> tag to fix it.
+          // Do not show warning to user because we already attempt to do a <vibes-write> tag to fix it.
           logger.warn(`Search-replace target file does not exist: ${filePath}`);
           continue;
         }
         const original = await readFile(fullFilePath, "utf8");
-        const result = applySearchReplace(original, tag.content);
+        // Combine all blocks for this file
+        const combinedContent = fileTags.map((tag) => tag.content).join("\n");
+        const result = applySearchReplace(original, combinedContent);
+
         if (!result.success || typeof result.content !== "string") {
-          // Do not show warning to user because we already attempt to do a <dyad-write> and/or a subsequent <dyad-search-replace> tag to fix it.
+          // Do not show warning to user because we already attempt to do a <vibes-write> and/or a subsequent <vibes-search-replace> tag to fix it.
           logger.warn(
             `Failed to apply search-replace to ${filePath}: ${result.error ?? "unknown"}`,
           );
@@ -417,7 +451,7 @@ export async function processFullResponseActions(
     }
 
     // Process all file writes
-    for (const tag of dyadWriteTags) {
+    for (const tag of writeTags) {
       const filePath = tag.path;
       let content: string | Buffer = tag.content;
       const fullFilePath = safeJoin(appPath, filePath);
@@ -518,12 +552,59 @@ export async function processFullResponseActions(
       writtenFiles.length > 0 ||
       renamedFiles.length > 0 ||
       deletedFiles.length > 0 ||
-      dyadAddDependencyPackages.length > 0;
+      addDependencyPackages.length > 0;
 
     let uncommittedFiles: string[] = [];
     let extraFilesError: string | undefined;
 
     if (hasChanges) {
+      // If package.json was modified, ensure lockfiles are up to date before staging
+      if (writtenFiles.includes("package.json")) {
+        try {
+          logger.info(
+            `Detected changes to package.json in ${appPath}. Running install to update lockfiles...`,
+          );
+          // Use npm exclusively
+          try {
+            logger.info(`Running npm install to update lockfiles in ${appPath}...`);
+            await execPromise("npm install --legacy-peer-deps", {
+              cwd: appPath,
+              timeout: 300000,
+            });
+
+            // Always ensure pnpm-lock.yaml is removed to avoid Vercel deployment issues
+            const pnpmLockPath = safeJoin(appPath, "pnpm-lock.yaml");
+            if (fs.existsSync(pnpmLockPath)) {
+              logger.info("Removing pnpm-lock.yaml to ensure npm-only project");
+              fs.unlinkSync(pnpmLockPath);
+              deletedFiles.push("pnpm-lock.yaml");
+            }
+          } catch (error) {
+            logger.error("Failed to update lockfiles with npm:", error);
+          }
+
+          // Check which lockfiles were created/updated and add them to writtenFiles if not already there
+          const possibleLockfiles = [
+            "pnpm-lock.yaml",
+            "package-lock.json",
+            "yarn.lock",
+          ];
+          for (const lockfile of possibleLockfiles) {
+            if (
+              fs.existsSync(safeJoin(appPath, lockfile)) &&
+              !writtenFiles.includes(lockfile)
+            ) {
+              writtenFiles.push(lockfile);
+            }
+          }
+        } catch (error) {
+          logger.error(
+            "Failed to update lockfiles after package.json modification:",
+            error,
+          );
+        }
+      }
+
       // Stage all written files
       for (const file of writtenFiles) {
         await gitAdd({ path: appPath, filepath: file });
@@ -537,12 +618,12 @@ export async function processFullResponseActions(
         changes.push(`renamed ${renamedFiles.length} file(s)`);
       if (deletedFiles.length > 0)
         changes.push(`deleted ${deletedFiles.length} file(s)`);
-      if (dyadAddDependencyPackages.length > 0)
+      if (addDependencyPackages.length > 0)
         changes.push(
-          `added ${dyadAddDependencyPackages.join(", ")} package(s)`,
+          `added ${addDependencyPackages.join(", ")} package(s)`,
         );
-      if (dyadExecuteSqlQueries.length > 0)
-        changes.push(`executed ${dyadExecuteSqlQueries.length} SQL queries`);
+      if (executeSqlQueries.length > 0)
+        changes.push(`executed ${executeSqlQueries.length} SQL queries`);
 
       let message = chatSummary
         ? `[vibes] ${chatSummary} - ${changes.join(", ")}`
@@ -563,17 +644,17 @@ export async function processFullResponseActions(
         try {
           commitHash = await gitCommit({
             path: appPath,
-            message: message + " + extra files edited outside of Dyad",
+            message: message + " + extra files edited outside of Vibes",
             amend: true,
           });
           logger.log(
-            `Amend commit with changes outside of dyad: ${uncommittedFiles.join(", ")}`,
+            `Amend commit with changes outside of vibes: ${uncommittedFiles.join(", ")}`,
           );
         } catch (error) {
           // Just log, but don't throw an error because the user can still
-          // commit these changes outside of Dyad if needed.
+          // commit these changes outside of Vibes if needed.
           logger.error(
-            `Failed to commit changes outside of dyad: ${uncommittedFiles.join(", ")}`,
+            `Failed to commit changes outside of vibes: ${uncommittedFiles.join(", ")}`,
           );
           extraFilesError = (error as any).toString();
         }
@@ -607,17 +688,17 @@ export async function processFullResponseActions(
   } finally {
     const appendedContent = `
     ${warnings
-      .map(
-        (warning) =>
-          `<dyad-output type="warning" message="${warning.message}">${warning.error}</dyad-output>`,
-      )
-      .join("\n")}
+        .map(
+          (warning) =>
+            `<vibes-output type="warning" message="${warning.message}">${warning.error}</vibes-output>`,
+        )
+        .join("\n")}
     ${errors
-      .map(
-        (error) =>
-          `<dyad-output type="error" message="${error.message}">${error.error}</dyad-output>`,
-      )
-      .join("\n")}
+        .map(
+          (error) =>
+            `<vibes-output type="error" message="${error.message}">${error.error}</vibes-output>`,
+        )
+        .join("\n")}
     `;
     if (appendedContent.length > 0) {
       await db

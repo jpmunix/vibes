@@ -9,14 +9,13 @@ import { useSettings } from "@/hooks/useSettings";
 import { SetupBanner } from "@/components/SetupBanner";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useStreamChat } from "@/hooks/useStreamChat";
+
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
 import { usePostHog } from "posthog-js/react";
 import { INSPIRATION_PROMPTS } from "@/prompts/inspiration_prompts";
 import { useAppVersion } from "@/hooks/useAppVersion";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { ImportAppButton } from "@/components/ImportAppButton";
 import { showError } from "@/lib/toast";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,11 +50,11 @@ export default function HomePage() {
     platform?: string;
     recentLogs?: string;
   }>({});
-  const { streamMessage } = useStreamChat({ hasChatId: false });
+
   const posthog = usePostHog();
   const appVersion = useAppVersion();
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
 
   // Listen for force-close events
@@ -111,10 +110,15 @@ export default function HomePage() {
     typeof INSPIRATION_PROMPTS
   >([]);
 
-  // Function to get random prompts
+  // Function to get random prompts using Fisher-Yates shuffle for true randomness
   const getRandomPrompts = useCallback(() => {
-    const shuffled = [...INSPIRATION_PROMPTS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 3);
+    const shuffled = [...INSPIRATION_PROMPTS];
+    // Fisher-Yates shuffle algorithm for true randomness
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, 6);
   }, []);
 
   // Initialize random prompts
@@ -129,23 +133,22 @@ export default function HomePage() {
     }
   }, [appId, navigate]);
 
-  // Apply default chat mode when navigating to home page
-  // Wait for quota status to load to avoid race condition where we default to Basic Agent
-  // before knowing if quota is actually exceeded
+  // Apply the user's preferred default chat mode on Home screen for new apps
   const hasAppliedDefaultChatMode = useRef(false);
   useEffect(() => {
-    if (settings && !hasAppliedDefaultChatMode.current && !isQuotaLoading) {
+    // Wait for settings to load
+    if (settings && envVars && !hasAppliedDefaultChatMode.current) {
       hasAppliedDefaultChatMode.current = true;
-      const effectiveDefaultMode = getEffectiveDefaultChatMode(
+      const effectiveDefault = getEffectiveDefaultChatMode(
         settings,
         envVars,
         !isQuotaExceeded,
       );
-      if (settings.selectedChatMode !== effectiveDefaultMode) {
-        updateSettings({ selectedChatMode: effectiveDefaultMode });
+      if (settings.selectedChatMode !== effectiveDefault) {
+        updateSettings({ selectedChatMode: effectiveDefault });
       }
     }
-  }, [settings, updateSettings, isQuotaExceeded, isQuotaLoading, envVars]);
+  }, [settings, envVars, isQuotaExceeded, updateSettings]);
 
   const handleSubmit = async (options?: HomeSubmitOptions) => {
     const attachments = options?.attachments || [];
@@ -190,15 +193,31 @@ export default function HomePage() {
         });
       }
 
-      // Stream the message with attachments
-      streamMessage({
-        prompt: inputValue,
-        chatId: result.chatId,
-        attachments,
-      });
-      await new Promise((resolve) =>
-        setTimeout(resolve, settings?.isTestMode ? 0 : 2000),
-      );
+      // Stream the message in the dedicated chat window (not here — avoids race condition)
+      const prompt = inputValue;
+
+      // Convert FileAttachments to base64 ChatAttachments for IPC transfer
+      let convertedAttachments: Array<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }> | undefined;
+      if (attachments && attachments.length > 0) {
+        convertedAttachments = await Promise.all(
+          attachments.map(
+            (attachment) =>
+              new Promise<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  resolve({
+                    name: attachment.file.name,
+                    type: attachment.file.type,
+                    data: reader.result as string,
+                    attachmentType: attachment.type,
+                  });
+                };
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(attachment.file);
+              }),
+          ),
+        );
+      }
 
       setInputValue("");
       setSelectedAppId(result.app.id);
@@ -206,7 +225,17 @@ export default function HomePage() {
       await refreshApps(); // Ensure refreshApps is awaited if it's async
       await invalidateAppQuery(queryClient, { appId: result.app.id });
       posthog.capture("home:chat-submit");
-      navigate({ to: "/chat", search: { id: result.chatId } });
+      // Open chat window with prompt + attachments — the window will start streaming on mount
+      ipc.system.openChatWindow({
+        appId: result.app.id,
+        chatId: result.chatId,
+        prompt,
+        chatMode: settings?.selectedChatMode || "build",
+        attachments: convertedAttachments,
+        theme,
+        themeIntensity: intensity,
+      });
+      navigate({ to: "/app-details", search: { appId: result.app.id } });
     } catch (error) {
       console.error("Failed to create chat:", error);
       showError("Error al crear la aplicación. " + (error as any).toString());
@@ -215,23 +244,154 @@ export default function HomePage() {
     // No finally block needed for setIsLoading(false) here if navigation happens on success
   };
 
+  // Dynamic loading phases for app creation
+  const CREATION_PHASES = [
+    { title: "Pensando un nombre genial", subtitle: "La IA está eligiendo el nombre perfecto para tu app…", icon: "💭" },
+    { title: "Preparando el proyecto", subtitle: "Creando la estructura de archivos y configuración…", icon: "📁" },
+    { title: "Instalando dependencias", subtitle: "Copiando librerías pre-cacheadas para arrancar al instante…", icon: "📦" },
+    { title: "Inicializando el repositorio", subtitle: "Configurando Git para control de versiones…", icon: "🔧" },
+    { title: "Aplicando tu tema", subtitle: "Personalizando los estilos y colores de la app…", icon: "🎨" },
+    { title: "¡Casi listo!", subtitle: "Abriendo el entorno de desarrollo…", icon: "🚀" },
+  ];
+
+  const [creationPhase, setCreationPhase] = useState(0);
+  const [phaseVisible, setPhaseVisible] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setCreationPhase(0);
+      setPhaseVisible(true);
+      return;
+    }
+
+    // Timings that roughly match real operations
+    const phaseTimings = [1800, 2200, 3000, 1500, 1200, 5000];
+    let timeoutId: NodeJS.Timeout;
+    let fadeTimeoutId: NodeJS.Timeout;
+
+    const advancePhase = (currentPhase: number) => {
+      if (currentPhase >= CREATION_PHASES.length - 1) return;
+
+      const delay = phaseTimings[currentPhase] || 2000;
+      timeoutId = setTimeout(() => {
+        // Fade out
+        setPhaseVisible(false);
+        fadeTimeoutId = setTimeout(() => {
+          // Switch phase and fade in
+          setCreationPhase(currentPhase + 1);
+          setPhaseVisible(true);
+          advancePhase(currentPhase + 1);
+        }, 300);
+      }, delay);
+    };
+
+    advancePhase(0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(fadeTimeoutId);
+    };
+  }, [isLoading]);
+
   // Loading overlay for app creation
   if (isLoading) {
+    const phase = CREATION_PHASES[creationPhase];
     return (
-      <div className="flex flex-col items-center justify-center max-w-3xl m-auto p-8">
-        <div className="w-full flex flex-col items-center">
+      <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
+        {/* Ambient glow orbs (same as main view) */}
+        <div
+          aria-hidden
+          className="home-orb home-orb--primary pointer-events-none absolute rounded-full"
+          style={{ width: "900px", height: "900px", top: "40%", left: "50%" }}
+        />
+        <div
+          aria-hidden
+          className="home-orb home-orb--accent pointer-events-none absolute rounded-full"
+          style={{ width: "600px", height: "600px", top: "15%", left: "65%" }}
+        />
+
+        <style>{`
+          .home-orb {
+            transform: translate(-50%, -50%);
+            filter: blur(100px);
+            z-index: 0;
+          }
+          .home-orb--primary {
+            background: radial-gradient(
+              circle,
+              color-mix(in oklch, var(--primary) 45%, transparent) 0%,
+              color-mix(in oklch, var(--primary) 20%, transparent) 40%,
+              transparent 70%
+            );
+            animation: home-orb-breathe 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          }
+          .home-orb--accent {
+            background: radial-gradient(
+              circle,
+              color-mix(in oklch, var(--primary) 30%, oklch(0.7 0.15 280 / 0.4)) 0%,
+              color-mix(in oklch, var(--primary) 10%, transparent) 50%,
+              transparent 70%
+            );
+            animation: home-orb-breathe 8s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
+          }
+          @keyframes home-orb-breathe {
+            0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.55; }
+            50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.85; }
+          }
+
+          .phase-fade {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+          }
+          .phase-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          .phase-fade.hidden {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+
+          @keyframes progress-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+
+        <div className="relative z-10 w-full max-w-5xl flex flex-col items-center p-8">
           {/* Loading Spinner */}
           <div className="relative w-24 h-24 mb-8">
             <div className="absolute top-0 left-0 w-full h-full border-8 border-gray-200 dark:border-gray-700 rounded-full"></div>
             <div className="absolute top-0 left-0 w-full h-full border-8 border-t-primary rounded-full animate-spin"></div>
           </div>
-          <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">
-            Construyendo tu aplicación
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-8">
-            Estamos configurando tu app con magia de IA. <br />
-            Esto puede tardar un momento.
-          </p>
+
+          <div className="relative w-full" style={{ minHeight: '5rem' }}>
+            <div className={`phase-fade ${phaseVisible ? 'visible' : 'hidden'} flex flex-col items-center w-full`}>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">
+                {phase.title}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-6">
+                {phase.subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress dots */}
+          <div className="flex items-center gap-2 mt-2">
+            {CREATION_PHASES.map((_, i) => (
+              <div
+                key={i}
+                className="rounded-full transition-[width,background-color,opacity] duration-500"
+                style={{
+                  width: i === creationPhase ? 24 : 8,
+                  height: 8,
+                  backgroundColor: i <= creationPhase
+                    ? 'var(--primary)'
+                    : 'var(--muted)',
+                  opacity: i <= creationPhase ? 1 : 0.3,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -239,93 +399,223 @@ export default function HomePage() {
 
   // Main Home Page Content
   return (
-    <div className="flex flex-col items-center justify-center max-w-3xl w-full m-auto p-8 relative">
-      {/*<div className="fixed top-16 right-8 z-50">*/}
-      {/*  {settings && hasDyadProKey(settings) ? (*/}
-      {/*    <ManageDyadProButton className="mt-0 w-auto h-9 px-3 text-base shadow-sm bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800" />*/}
-      {/*  ) : (*/}
-      {/*    <SetupDyadProButton />*/}
-      {/*  )}*/}
-      {/*</div>*/}
-      <ForceCloseDialog
-        isOpen={forceCloseDialogOpen}
-        onClose={() => setForceCloseDialogOpen(false)}
-        performanceData={forceCloseData.performanceData}
-        appVersion={forceCloseData.appVersion}
-        platform={forceCloseData.platform}
-        recentLogs={forceCloseData.recentLogs}
+    <div className="flex flex-col items-center justify-center w-full min-h-full relative overflow-hidden">
+      {/* ═══ Premium ambient background ═══ */}
+      {/* Primary orb — centered */}
+      <div
+        aria-hidden
+        className="home-orb home-orb--primary pointer-events-none absolute rounded-full"
+        style={{ width: "900px", height: "900px", top: "35%", left: "50%" }}
       />
-      <SetupBanner />
+      {/* Secondary accent orb — top-right, shifted hue */}
+      <div
+        aria-hidden
+        className="home-orb home-orb--accent pointer-events-none absolute rounded-full"
+        style={{ width: "600px", height: "600px", top: "10%", left: "70%" }}
+      />
+      {/* Tertiary soft orb — bottom-left */}
+      <div
+        aria-hidden
+        className="home-orb home-orb--soft pointer-events-none absolute rounded-full"
+        style={{ width: "500px", height: "500px", top: "65%", left: "20%" }}
+      />
 
-      <div className="w-full">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <ImportAppButton className="px-0 pb-0 flex-none" />
-        </div>
-        <HomeChatInput onSubmit={handleSubmit} />
+      {/* Subtle dot-grid overlay for depth */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{
+          backgroundImage: "radial-gradient(circle, var(--foreground) 0.4px, transparent 0.4px)",
+          backgroundSize: "24px 24px",
+          opacity: 0.03,
+        }}
+      />
 
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="flex flex-wrap gap-4 justify-center">
-            {randomPrompts.map((item, index) => (
-              <button
-                type="button"
-                key={index}
-                onClick={() =>
-                  setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
-                }
-                className="flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-200
-                           bg-white/50 backdrop-blur-sm
-                           transition-all duration-200
-                           hover:bg-white hover:shadow-md hover:border-gray-300
-                           active:scale-[0.98]
-                           dark:bg-gray-800/50 dark:border-gray-700
-                           dark:hover:bg-gray-800 dark:hover:border-gray-600"
-              >
-                <span className="text-gray-700 dark:text-gray-300">
-                  {item.icon}
-                </span>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
+      <style>{`
+        /* ── Ambient glow orbs ── */
+        .home-orb {
+          transform: translate(-50%, -50%);
+          filter: blur(100px);
+          z-index: 0;
+        }
+        .home-orb--primary {
+          background: radial-gradient(
+            circle,
+            color-mix(in oklch, var(--primary) 45%, transparent) 0%,
+            color-mix(in oklch, var(--primary) 20%, transparent) 40%,
+            transparent 70%
+          );
+          animation: home-orb-breathe 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .home-orb--accent {
+          background: radial-gradient(
+            circle,
+            color-mix(in oklch, var(--primary) 30%, oklch(0.7 0.15 280 / 0.4)) 0%,
+            color-mix(in oklch, var(--primary) 10%, transparent) 50%,
+            transparent 70%
+          );
+          animation: home-orb-breathe 8s cubic-bezier(0.4, 0, 0.2, 1) 1.5s infinite;
+        }
+        .home-orb--soft {
+          background: radial-gradient(
+            circle,
+            color-mix(in oklch, var(--primary) 25%, oklch(0.7 0.12 200 / 0.35)) 0%,
+            transparent 60%
+          );
+          animation: home-orb-breathe 7s cubic-bezier(0.4, 0, 0.2, 1) 3s infinite;
+        }
+        @keyframes home-orb-breathe {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.55; }
+          50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.85; }
+        }
 
-          <button
-            type="button"
-            onClick={() => setRandomPrompts(getRandomPrompts())}
-            className="self-center flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200
-                       bg-white/50 backdrop-blur-sm
-                       transition-all duration-200
-                       hover:bg-white hover:shadow-md hover:border-gray-300
-                       active:scale-[0.98]
-                       dark:bg-gray-800/50 dark:border-gray-700
-                       dark:hover:bg-gray-800 dark:hover:border-gray-600"
-          >
-            <svg
-              className="w-5 h-5 text-gray-700 dark:text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        /* ── Staggered fade-in for cards ── */
+        @keyframes home-card-in {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1); }
+        }
+        .home-card-enter {
+          opacity: 0;
+          animation: home-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* ── Glassmorphism inspiration card ── */
+        .home-inspiration-card {
+          backdrop-filter: blur(16px) saturate(1.4);
+          -webkit-backdrop-filter: blur(16px) saturate(1.4);
+          background: color-mix(in oklch, var(--primary) 6%, var(--background) 70%);
+          border: 1px solid color-mix(in oklch, var(--primary) 15%, transparent);
+          border-radius: 14px;
+          padding: 10px 18px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                      box-shadow 0.22s ease,
+                      border-color 0.22s ease,
+                      background 0.22s ease;
+        }
+        .home-inspiration-card:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 24px -4px color-mix(in oklch, var(--primary) 20%, transparent);
+          border-color: color-mix(in oklch, var(--primary) 35%, transparent);
+          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
+        }
+        .home-inspiration-card:active {
+          transform: scale(0.98);
+        }
+
+        /* ── "Más ideas" refresh button ── */
+        .home-refresh-btn {
+          backdrop-filter: blur(12px) saturate(1.3);
+          -webkit-backdrop-filter: blur(12px) saturate(1.3);
+          background: color-mix(in oklch, var(--primary) 5%, var(--background) 75%);
+          border: 1px solid color-mix(in oklch, var(--primary) 12%, transparent);
+          border-radius: 14px;
+          padding: 8px 20px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .home-refresh-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px -2px color-mix(in oklch, var(--primary) 15%, transparent);
+          border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
+        }
+        .home-refresh-btn:hover svg {
+          transform: rotate(180deg);
+        }
+        .home-refresh-btn svg {
+          transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .home-refresh-btn:active {
+          transform: scale(0.97);
+        }
+
+        /* ── Section label ── */
+        .home-section-label {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          opacity: 0.4;
+          margin-bottom: 2px;
+        }
+      `}</style>
+
+      <div className="relative z-10 w-full max-w-5xl flex flex-col items-center p-8">
+        <ForceCloseDialog
+          isOpen={forceCloseDialogOpen}
+          onClose={() => setForceCloseDialogOpen(false)}
+          performanceData={forceCloseData.performanceData}
+          appVersion={forceCloseData.appVersion}
+          platform={forceCloseData.platform}
+          recentLogs={forceCloseData.recentLogs}
+        />
+        <SetupBanner />
+
+        <div className="w-full">
+          <HomeChatInput onSubmit={handleSubmit} />
+
+          {/* ═══ Inspiration prompts ═══ */}
+          <div className="flex flex-col gap-5 mt-6">
+            <p className="home-section-label text-center text-foreground">Inspírate</p>
+            <div className="flex flex-wrap gap-3 justify-center max-w-3xl mx-auto">
+              {randomPrompts.map((item, index) => (
+                <button
+                  type="button"
+                  key={index}
+                  onClick={() =>
+                    setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
+                  }
+                  className="home-inspiration-card home-card-enter"
+                  style={{ animationDelay: `${0.06 + index * 0.07}s` }}
+                >
+                  <span className="text-foreground/60 flex-shrink-0">
+                    {item.icon}
+                  </span>
+                  <span className="text-[13px] font-medium text-foreground/75 whitespace-nowrap">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setRandomPrompts(getRandomPrompts())}
+              className="home-refresh-btn self-center home-card-enter"
+              style={{ animationDelay: "0.55s" }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Más ideas
-            </span>
-          </button>
+              <svg
+                className="w-4 h-4 text-foreground/50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span className="text-[13px] font-medium text-foreground/50">
+                Más ideas
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
-      {/*<PrivacyBanner />*/}
 
-      <ReleaseNotesDialog
-        isOpen={releaseNotesOpen}
-        onOpenChange={setReleaseNotesOpen}
-      />
+        <ReleaseNotesDialog
+          isOpen={releaseNotesOpen}
+          onOpenChange={setReleaseNotesOpen}
+        />
+      </div>
     </div>
   );
 }

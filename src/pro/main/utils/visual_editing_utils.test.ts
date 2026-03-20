@@ -189,7 +189,7 @@ function Component() {
       expect(result).toContain("New text");
     });
 
-    it("should not update text content when element has nested JSX", () => {
+    it("should update text content even when element has nested JSX", () => {
       const content = `
 function Component() {
   return <div>Old text <span>nested</span></div>;
@@ -207,7 +207,8 @@ function Component() {
       ]);
 
       const result = transformContent(content, changes);
-      expect(result).toContain("Old text");
+      expect(result).not.toContain("Old text");
+      expect(result).toContain("New text");
       expect(result).toContain("<span>nested</span>");
     });
 
@@ -515,14 +516,20 @@ function Component() {
       expect(result.hasStaticText).toBe(true);
     });
 
-    it("should not detect static text when element has nested JSX", () => {
+    it("should detect static text when element has nested JSX", () => {
       const content = `
 function Component() {
-  return <div>Text <span>nested</span></div>;
+  return (
+    <div>
+      Text 
+      <span>nested</span>
+    </div>
+  );
 }`;
 
-      const result = analyzeComponent(content, 3);
-      expect(result.hasStaticText).toBe(false);
+      const result = analyzeComponent(content, 4);
+      expect(result.hasStaticText).toBe(true);
+      expect(result.textContent).toBe("Text");
     });
 
     it("should not detect static text when empty", () => {

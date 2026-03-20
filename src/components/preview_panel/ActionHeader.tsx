@@ -1,19 +1,23 @@
 import { useAtom, useAtomValue } from "jotai";
-import { previewModeAtom, selectedAppIdAtom } from "../../atoms/appAtoms";
+import { previewModeAtom, selectedAppIdAtom, currentAppAtom } from "../../atoms/appAtoms";
 import { ipc } from "@/ipc/types";
+
 
 import {
   Eye,
   Code,
-  MoreVertical,
   Cog,
   Trash2,
   AlertTriangle,
   Globe,
   Shield,
   History,
+  GitBranch,
+  RefreshCw,
+  Hammer,
+  ChevronDown,
+  Database,
 } from "lucide-react";
-import { ChatActivityButton } from "@/components/chat/ChatActivity";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
 
@@ -23,6 +27,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -34,6 +40,9 @@ import { showError, showSuccess } from "@/lib/toast";
 import { useMutation } from "@tanstack/react-query";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
+import { cn } from "@/lib/utils";
+
+import { useVersions } from "@/hooks/useVersions";
 
 export type PreviewMode =
   | "preview"
@@ -42,28 +51,37 @@ export type PreviewMode =
   | "configure"
   | "publish"
   | "security"
-  | "versions";
+  | "versions"
+  | "git"
+  | "database";
 
-interface ActionHeaderProps {
-  versions?: any[];
-  versionsLoading?: boolean;
-}
+// Which top-level group a mode belongs to
+type MenuGroup = "preview" | "code" | "versions" | "configure";
+
+const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
+  preview: "preview",
+  code: "code",
+  problems: "code",
+  database: "code",
+  versions: "versions",
+  git: "versions",
+  publish: "versions",
+  security: "versions",
+  configure: "configure",
+};
 
 // Preview Header component with preview mode toggle
-export const ActionHeader = ({
-  versions = [],
-  versionsLoading = false,
-}: ActionHeaderProps) => {
+export const ActionHeader = () => {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const [isPreviewOpen, setIsPreviewOpen] = useAtom(isPreviewOpenAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
-  const versionsRef = useRef<HTMLButtonElement>(null);
-  const previewRef = useRef<HTMLButtonElement>(null);
-  const codeRef = useRef<HTMLButtonElement>(null);
-  const problemsRef = useRef<HTMLButtonElement>(null);
+  const { versions, loading: versionsLoading } = useVersions(selectedAppId);
+  const currentApp = useAtomValue(currentAppAtom);
+  const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
+  const previewGroupRef = useRef<HTMLButtonElement>(null);
+  const codeGroupRef = useRef<HTMLButtonElement>(null);
+  const versionsGroupRef = useRef<HTMLButtonElement>(null);
   const configureRef = useRef<HTMLButtonElement>(null);
-  const publishRef = useRef<HTMLButtonElement>(null);
-  const securityRef = useRef<HTMLButtonElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const { problemReport } = useCheckProblems(selectedAppId);
@@ -81,35 +99,38 @@ export const ActionHeader = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const selectPanel = (panel: PreviewMode) => {
-    if (previewMode === panel) {
-      setIsPreviewOpen(!isPreviewOpen);
-    } else {
-      setPreviewMode(panel);
-      setIsPreviewOpen(true);
-    }
-  };
+  const selectPanel = useCallback(
+    (panel: PreviewMode) => {
+      if (previewMode === panel) {
+        setIsPreviewOpen(!isPreviewOpen);
+      } else {
+        setPreviewMode(panel);
+        setIsPreviewOpen(true);
+      }
+    },
+    [previewMode, isPreviewOpen, setPreviewMode, setIsPreviewOpen],
+  );
+
+  const onRestart = useCallback(() => {
+    restartApp();
+  }, [restartApp]);
 
   const onCleanRestart = useCallback(() => {
     restartApp({ removeNodeModules: true });
   }, [restartApp]);
 
-  const useClearSessionData = () => {
-    return useMutation({
-      mutationFn: () => {
-        return ipc.system.clearSessionData();
-      },
-      onSuccess: async () => {
-        await refreshAppIframe();
-        showSuccess("Datos de vista previa borrados");
-      },
-      onError: (error) => {
-        showError(`Error al borrar los datos de vista previa: ${error}`);
-      },
-    });
-  };
-
-  const { mutate: clearSessionData } = useClearSessionData();
+  const { mutate: clearSessionData } = useMutation({
+    mutationFn: () => {
+      return ipc.system.clearSessionData();
+    },
+    onSuccess: async () => {
+      await refreshAppIframe();
+      showSuccess("Datos de vista previa borrados");
+    },
+    onError: (error) => {
+      showError(`Error al borrar los datos de vista previa: ${error}`);
+    },
+  });
 
   const onClearSessionData = useCallback(() => {
     clearSessionData();
@@ -127,32 +148,26 @@ export const ActionHeader = ({
 
   const displayCount = formatProblemCount(problemCount);
 
+  // Determine which group is active
+  const activeGroup = MODE_TO_GROUP[previewMode];
+
   // Update indicator position when mode changes
   useEffect(() => {
     const updateIndicator = () => {
       let targetRef: React.RefObject<HTMLButtonElement | null>;
 
-      switch (previewMode) {
-        case "versions":
-          targetRef = versionsRef;
-          break;
+      switch (activeGroup) {
         case "preview":
-          targetRef = previewRef;
+          targetRef = previewGroupRef;
           break;
         case "code":
-          targetRef = codeRef;
+          targetRef = codeGroupRef;
           break;
-        case "problems":
-          targetRef = problemsRef;
+        case "versions":
+          targetRef = versionsGroupRef;
           break;
         case "configure":
           targetRef = configureRef;
-          break;
-        case "publish":
-          targetRef = publishRef;
-          break;
-        case "security":
-          targetRef = securityRef;
           break;
         default:
           return;
@@ -174,50 +189,84 @@ export const ActionHeader = ({
 
     // Small delay to ensure DOM is updated
     const timeoutId = setTimeout(updateIndicator, 10);
-    return () => clearTimeout(timeoutId);
-  }, [previewMode, displayCount, isPreviewOpen, isCompact]);
 
-  const renderButton = (
-    mode: PreviewMode,
-    ref: React.RefObject<HTMLButtonElement | null>,
-    icon: React.ReactNode,
-    text: string,
-    testId: string,
-    badge?: React.ReactNode,
-  ) => {
-    const buttonContent = (
-      <button
-        data-testid={testId}
-        ref={ref}
-        className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 hover:bg-[var(--background)] flex-col"
-        onClick={() => selectPanel(mode)}
-      >
-        {icon}
-        <span>
-          {!isCompact && <span>{text}</span>}
-          {badge}
-        </span>
-      </button>
-    );
+    // Use ResizeObserver to catch any size changes of the buttons (e.g. text changing)
+    let resizeObserver: ResizeObserver | null = null;
+    const container = previewGroupRef.current?.parentElement;
 
-    if (isCompact) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
-          <TooltipContent>
-            <p>{text}</p>
-          </TooltipContent>
-        </Tooltip>
-      );
+    if (container) {
+      resizeObserver = new ResizeObserver(() => {
+        // Use requestAnimationFrame to avoid ResizeObserver loop limit exceeded errors
+        requestAnimationFrame(updateIndicator);
+      });
+
+      if (previewGroupRef.current) resizeObserver.observe(previewGroupRef.current);
+      if (codeGroupRef.current) resizeObserver.observe(codeGroupRef.current);
+      if (versionsGroupRef.current) resizeObserver.observe(versionsGroupRef.current);
+      if (configureRef.current) resizeObserver.observe(configureRef.current);
     }
 
-    return buttonContent;
-  };
+    return () => {
+      clearTimeout(timeoutId);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [activeGroup, displayCount, isPreviewOpen, isCompact, previewMode, versions?.length, versionsLoading]);
+
   const iconSize = 15;
+
+  // Dynamic label/icon for the "Código" group based on active mode
+  const getCodeGroupInfo = () => {
+    switch (previewMode) {
+      case "code":
+        return { icon: <Code size={iconSize} />, label: "Código" };
+      case "problems":
+        return {
+          icon: <AlertTriangle size={iconSize} />,
+          label: "Problemas",
+        };
+      case "database":
+        return { icon: <Database size={iconSize} />, label: "Base de datos" };
+      default:
+        return { icon: <Code size={iconSize} />, label: "Código" };
+    }
+  };
+
+  // Dynamic label/icon for the "Versión" group based on active mode
+  const getVersionGroupInfo = () => {
+    switch (previewMode) {
+      case "versions":
+        return {
+          icon: <History size={iconSize} />,
+          label: versionsLoading
+            ? "..."
+            : `Versión ${versions.length}`,
+        };
+      case "git":
+        return { icon: <GitBranch size={iconSize} />, label: "Git" };
+      case "publish":
+        return { icon: <Globe size={iconSize} />, label: "Publicar" };
+      case "security":
+        return { icon: <Shield size={iconSize} />, label: "Seguridad" };
+      default:
+        return {
+          icon: <History size={iconSize} />,
+          label: versionsLoading
+            ? "..."
+            : `Versión ${versions.length}`,
+        };
+    }
+  };
+
+  const codeGroupInfo = getCodeGroupInfo();
+  const versionGroupInfo = getVersionGroupInfo();
+
+  // Button style for the 3 main groups
+  const groupButtonClass =
+    "no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium z-10 hover:bg-[var(--background-lightest)] transition-colors";
 
   return (
     <TooltipProvider>
-      <div className="flex items-center justify-between px-1 py-2 mt-1 border-b border-border">
+      <div className="no-app-region-drag flex items-center justify-between px-1 py-2 mt-1 border-b border-border">
         <div className="relative flex rounded-md p-0.5 gap-0.5">
           <motion.div
             className="absolute top-0.5 bottom-0.5 bg-[var(--background-lightest)] shadow rounded-md"
@@ -233,101 +282,203 @@ export const ActionHeader = ({
               mass: 0.6,
             }}
           />
-          <button
-            ref={versionsRef}
-            data-testid="versions-button"
-            className="no-app-region-drag cursor-pointer relative flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-medium z-10 flex-col hover:bg-[var(--background)]"
-            onClick={() => selectPanel("versions")}
-          >
-            <History size={iconSize} />
-            <span>
-              {versionsLoading ? "..." : `Versión ${versions.length}`}
-            </span>
-          </button>
-          {renderButton(
-            "preview",
-            previewRef,
-            <Eye size={iconSize} />,
-            "Vista previa",
-            "preview-mode-button",
-          )}
-          {renderButton(
-            "code",
-            codeRef,
-            <Code size={iconSize} />,
-            "Código",
-            "code-mode-button",
-          )}
-          {renderButton(
-            "publish",
-            publishRef,
-            <Globe size={iconSize} />,
-            "Publicar",
-            "publish-mode-button",
-          )}
-          {renderButton(
-            "problems",
-            problemsRef,
-            <AlertTriangle size={iconSize} />,
-            "Problemas",
-            "problems-mode-button",
-            displayCount && (
-              <span className="ml-0.5 px-1 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
-                {displayCount}
-              </span>
-            ),
-          )}
-          {renderButton(
-            "security",
-            securityRef,
-            <Shield size={iconSize} />,
-            "Seguridad",
-            "security-mode-button",
-          )}
-          {renderButton(
-            "configure",
-            configureRef,
-            <Cog size={iconSize} />,
-            "Configurar",
-            "configure-mode-button",
-          )}
-        </div>
-        {/* Chat activity bell */}
-        <div className="flex items-center gap-1">
-          <ChatActivityButton />
+
+          {/* ─── Vista previa group ─── */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                data-testid="preview-more-options-button"
-                className="no-app-region-drag flex items-center justify-center p-1.5 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
-                title="Más opciones"
+                ref={previewGroupRef}
+                data-testid="preview-group-button"
+                className={groupButtonClass}
               >
-                <MoreVertical size={16} />
+                <Eye size={iconSize} />
+                {!isCompact && <span>Vista previa</span>}
+                <ChevronDown size={10} className="text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => selectPanel("preview")}
+                className={cn(
+                  previewMode === "preview" && "bg-accent",
+                )}
+              >
+                <Eye size={14} />
+                <span>Vista previa</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onRestart}>
+                <RefreshCw size={14} />
+                <div className="flex flex-col">
+                  <span>Reiniciar</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Reinicia el servidor de desarrollo
+                  </span>
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onCleanRestart}>
-                <Cog size={16} />
+                <Hammer size={14} />
                 <div className="flex flex-col">
                   <span>Reconstruir</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground">
                     Reinstala node_modules y reinicia
                   </span>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onClearSessionData}>
-                <Trash2 size={16} />
+                <Trash2 size={14} />
                 <div className="flex flex-col">
                   <span>Borrar caché</span>
-                  <span className="text-xs text-muted-foreground">
-                    Borra cookies, almacenamiento local y otra caché de la
-                    aplicación
+                  <span className="text-[10px] text-muted-foreground">
+                    Borra cookies y almacenamiento local
                   </span>
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* ─── Código group ─── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                ref={codeGroupRef}
+                data-testid="code-group-button"
+                className={groupButtonClass}
+              >
+                {codeGroupInfo.icon}
+                {!isCompact && <span>{codeGroupInfo.label}</span>}
+                {!isCompact && displayCount && (
+                  <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                    {displayCount}
+                  </span>
+                )}
+                <ChevronDown size={10} className="text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => selectPanel("code")}
+                className={cn(previewMode === "code" && "bg-accent")}
+              >
+                <Code size={14} />
+                <span>Código</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("problems")}
+                className={cn(
+                  previewMode === "problems" && "bg-accent",
+                )}
+              >
+                <AlertTriangle size={14} />
+                <div className="flex items-center gap-2">
+                  <span>Problemas</span>
+                  {displayCount && (
+                    <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                      {displayCount}
+                    </span>
+                  )}
+                </div>
+              </DropdownMenuItem>
+              {hasDatabase && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => selectPanel("database")}
+                    className={cn(previewMode === "database" && "bg-accent")}
+                  >
+                    <Database size={14} />
+                    <span>Base de datos</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* ─── Versión group ─── */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                ref={versionsGroupRef}
+                data-testid="versions-group-button"
+                className={groupButtonClass}
+              >
+                {versionGroupInfo.icon}
+                {!isCompact && <span>{versionGroupInfo.label}</span>}
+                <ChevronDown size={10} className="text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem
+                onClick={() => selectPanel("versions")}
+                className={cn(
+                  previewMode === "versions" && "bg-accent",
+                )}
+              >
+                <History size={14} />
+                <span>
+                  {versionsLoading
+                    ? "Versiones..."
+                    : `Versión ${versions.length}`}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => selectPanel("git")}
+                className={cn(previewMode === "git" && "bg-accent")}
+              >
+                <GitBranch size={14} />
+                <span>Git</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => selectPanel("publish")}
+                className={cn(
+                  previewMode === "publish" && "bg-accent",
+                )}
+              >
+                <Globe size={14} />
+                <span>Publicar</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => selectPanel("security")}
+                className={cn(
+                  previewMode === "security" && "bg-accent",
+                )}
+              >
+                <Shield size={14} />
+                <span>Seguridad</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* ─── Configurar (direct) ─── */}
+          {(() => {
+            const buttonContent = (
+              <button
+                ref={configureRef}
+                data-testid="configure-mode-button"
+                className={groupButtonClass}
+                onClick={() => selectPanel("configure")}
+              >
+                <Cog size={iconSize} />
+                {!isCompact && <span>Configurar</span>}
+              </button>
+            );
+
+            if (isCompact) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+                  <TooltipContent>
+                    <p>Configurar</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return buttonContent;
+          })()}
         </div>
+
       </div>
     </TooltipProvider>
   );

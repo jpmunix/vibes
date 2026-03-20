@@ -8,11 +8,14 @@ import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
 import { registerChatLogsHandlers } from "./handlers/chat_logs_handlers";
 import registerChatStreamHandlers from "./handlers/chat_stream_handlers";
+import { registerFirebaseHandlers } from "./handlers/firebase_handlers";
+import { registerBunnyHandlers } from "./handlers/bunny_handlers";
+import { registerPocketBaseHandlers } from "./handlers/pocketbase_handlers";
 //import { registerProHandlers } from "./handlers/pro_handlers";
 import { registerContextPathsHandlers } from "./handlers/context_paths_handlers";
 import { registerDebugHandlers } from "./handlers/debug_handlers";
 import { registerDependencyHandlers } from "./handlers/dependency_handlers";
-import { registerEmbeddingsHandlers } from "./handlers/embeddings_handlers_register";
+
 import { registerFreeAgentQuotaHandlers } from "./handlers/free_agent_quota_handlers";
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
 import { registerGithubHandlers } from "./handlers/github_handlers";
@@ -45,9 +48,19 @@ import { registerWindowHandlers } from "./handlers/window_handlers";
 import { registerDebateHandlers } from "./handlers/debate_handlers";
 import { registerDebateStreamHandlers } from "./handlers/debate_stream_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
+import { registerKnowledgeHandlers } from "./handlers/knowledge_handlers";
+import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
+import { registerDossierHandlers } from "./handlers/dossier_handlers";
+import { registerConsoleHandlers } from "./handlers/console_handlers";
+import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
+import { registerAuthHandlers } from "./handlers/auth_handlers";
+import { registerMigrationHandlers } from "./handlers/migration_handlers";
+import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
+  registerAuthHandlers();
+  registerMigrationHandlers();
   registerAppHandlers();
   registerChatHandlers();
   registerNoteHandlers();
@@ -65,6 +78,9 @@ export function registerIpcHandlers() {
   registerDebugHandlers();
   registerSupabaseHandlers();
   registerNeonHandlers();
+  registerFirebaseHandlers();
+  registerBunnyHandlers();
+  registerPocketBaseHandlers();
   registerLocalModelHandlers();
   registerTokenCountHandlers();
   registerWindowHandlers();
@@ -91,8 +107,16 @@ export function registerIpcHandlers() {
   registerFreeAgentQuotaHandlers();
   registerTokenStatsHandlers();
   registerChatLogsHandlers();
-  registerEmbeddingsHandlers();
+
   registerDebateHandlers();
   registerDebateStreamHandlers();
   registerBackupHandlers();
+  registerKnowledgeHandlers();
+  registerAiQueryLogHandlers();
+  registerDossierHandlers();
+  registerConsoleHandlers();
+  registerUpdateCheckerHandlers();
+
+  // OpenCode AI integration — diagnostic & test handlers
+  registerOpenCodeDiagnosticHandlers();
 }

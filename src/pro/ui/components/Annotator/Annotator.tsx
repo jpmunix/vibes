@@ -9,22 +9,41 @@ import { chatInputValueAtom } from "@/atoms/chatAtoms";
 type Point = [number, number];
 type Shape =
   | {
-      id: string;
-      type: "line";
-      points: Point[];
-      color: string;
-      size: number;
-      isComplete: boolean;
-    }
+    id: string;
+    type: "line";
+    points: Point[];
+    color: string;
+    size: number;
+    isComplete: boolean;
+  }
   | {
-      id: string;
-      type: "text";
-      x: number;
-      y: number;
-      text: string;
-      fontSize: number;
-      color: string;
-    };
+    id: string;
+    type: "rect";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  }
+  | {
+    id: string;
+    type: "text";
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    color: string;
+  }
+  | {
+    id: string;
+    type: "arrow";
+    points: [number, number, number, number];
+    color: string;
+    strokeWidth: number;
+    isComplete: boolean;
+  };
 
 // Custom Image Hook
 const useImage = (url: string) => {
@@ -50,8 +69,8 @@ export const Annotator = ({
   handleAnnotatorClick: () => void;
 }) => {
   const image = useImage(screenshotUrl);
-  const [tool, setTool] = useState<"select" | "draw" | "text">("draw");
-  const [color, setColor] = useState<string>("#7f22fe");
+  const [tool, setTool] = useState<"select" | "draw" | "rect" | "text" | "arrow">("draw");
+  const [color, setColor] = useState<string>("#ef4444");
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Shape[][]>([]);
@@ -113,48 +132,83 @@ export const Annotator = ({
     setHistoryStep(newHistory.length - 1);
   };
 
+  const getAnnotatedBlob = async (): Promise<Blob | null> => {
+    if (!stageRef.current) return null;
+
+    // Auto-submit any pending text inputs
+    textInputs.forEach((input) => {
+      if (input.value.trim()) {
+        const newShape: Shape = {
+          id: Date.now().toString(),
+          type: "text",
+          x: input.x + 32,
+          y: input.y + 8,
+          text: input.value,
+          fontSize: 24,
+          color: input.color,
+        };
+        setShapes((prev) => [...prev, newShape]);
+      }
+    });
+    setTextInputs([]);
+
+    // Wait a tick for state to update
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Export the stage as a blob
+    const uri = stageRef.current.toDataURL({ pixelRatio: 2 });
+    const response = await fetch(uri);
+    return await response.blob();
+  };
+
   const handleSubmit = async () => {
     if (!stageRef.current || !onSubmit) return;
 
     try {
-      // Auto-submit any pending text inputs
-      textInputs.forEach((input) => {
-        if (input.value.trim()) {
-          const newShape: Shape = {
-            id: Date.now().toString(),
-            type: "text",
-            x: input.x + 32,
-            y: input.y + 8,
-            text: input.value,
-            fontSize: 24,
-            color: input.color,
-          };
-          setShapes((prev) => [...prev, newShape]);
-        }
-      });
-      setTextInputs([]);
+      const blob = await getAnnotatedBlob();
+      if (!blob) return;
 
-      // Wait a tick for state to update
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Export the stage as a blob
-      const uri = stageRef.current.toDataURL({ pixelRatio: 2 });
-
-      // Convert data URL to blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      // Create a File from the blob
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const file = new File([blob], `annotated-screenshot-${timestamp}.png`, {
         type: "image/png",
       });
 
       onSubmit([file], "chat-context");
-      setChatInput("Please update the UI based on these screenshots");
       handleAnnotatorClick();
     } catch (error) {
       console.error("Failed to export annotated image:", error);
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+      const blob = await getAnnotatedBlob();
+      if (!blob) return;
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+    }
+  };
+
+  const handleSaveAsFile = async () => {
+    try {
+      const blob = await getAnnotatedBlob();
+      if (!blob) return;
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `screenshot-${timestamp}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to save file:", error);
     }
   };
 
@@ -251,6 +305,35 @@ export const Annotator = ({
       };
       setShapes([...shapes, newShape]);
       setSelectedId(null);
+    } else if (tool === "rect") {
+      isDrawing.current = true;
+      const id = Date.now().toString();
+      const newShape: Shape = {
+        id,
+        type: "rect",
+        x: adjustedPos.x,
+        y: adjustedPos.y,
+        width: 0,
+        height: 0,
+        color: color,
+        strokeWidth: 3,
+        isComplete: false,
+      };
+      setShapes([...shapes, newShape]);
+      setSelectedId(null);
+    } else if (tool === "arrow") {
+      isDrawing.current = true;
+      const id = Date.now().toString();
+      const newShape: Shape = {
+        id,
+        type: "arrow",
+        points: [adjustedPos.x, adjustedPos.y, adjustedPos.x, adjustedPos.y],
+        color: color,
+        strokeWidth: 3,
+        isComplete: false,
+      };
+      setShapes([...shapes, newShape]);
+      setSelectedId(null);
     } else if (tool === "text") {
       const newInput = {
         id: Date.now().toString(),
@@ -266,7 +349,8 @@ export const Annotator = ({
   };
 
   const handleMouseMove = (e: any) => {
-    if (tool !== "draw" || !isDrawing.current) return;
+    if (!isDrawing.current) return;
+    if (tool !== "draw" && tool !== "rect" && tool !== "arrow") return;
 
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
@@ -279,7 +363,8 @@ export const Annotator = ({
     };
 
     const lastShape = shapes[shapes.length - 1];
-    if (lastShape && lastShape.type === "line") {
+
+    if (tool === "draw" && lastShape && lastShape.type === "line") {
       // Append point
       const newPoints = [
         ...lastShape.points,
@@ -290,14 +375,29 @@ export const Annotator = ({
       // Update shapes without saving history yet (performance)
       const newShapes = shapes.slice(0, -1).concat(updatedShape);
       setShapes(newShapes);
+    } else if (tool === "rect" && lastShape && lastShape.type === "rect") {
+      const updatedShape = {
+        ...lastShape,
+        width: adjustedPoint.x - lastShape.x,
+        height: adjustedPoint.y - lastShape.y,
+      };
+      const newShapes = shapes.slice(0, -1).concat(updatedShape);
+      setShapes(newShapes);
+    } else if (tool === "arrow" && lastShape && lastShape.type === "arrow") {
+      const updatedShape = {
+        ...lastShape,
+        points: [lastShape.points[0], lastShape.points[1], adjustedPoint.x, adjustedPoint.y] as [number, number, number, number],
+      };
+      const newShapes = shapes.slice(0, -1).concat(updatedShape);
+      setShapes(newShapes);
     }
   };
 
   const handleMouseUp = () => {
-    if (tool === "draw" && isDrawing.current) {
+    if ((tool === "draw" || tool === "rect" || tool === "arrow") && isDrawing.current) {
       isDrawing.current = false;
       const lastShape = shapes[shapes.length - 1];
-      if (lastShape && lastShape.type === "line") {
+      if (lastShape && (lastShape.type === "line" || lastShape.type === "rect" || lastShape.type === "arrow")) {
         const completedShape = { ...lastShape, isComplete: true };
         const newShapes = shapes.slice(0, -1).concat(completedShape);
         setShapes(newShapes);
@@ -357,6 +457,8 @@ export const Annotator = ({
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSubmit={handleSubmit}
+        onCopyToClipboard={handleCopyToClipboard}
+        onSaveAsFile={handleSaveAsFile}
         onDeactivate={handleAnnotatorClick}
         hasSubmitHandler={!!onSubmit}
       />

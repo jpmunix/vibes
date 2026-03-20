@@ -1,7 +1,31 @@
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
+import { logAiQuery } from "./ai_query_logger";
 
 const logger = log.scope("openrouter_client");
+
+/**
+ * Check if an OpenRouter API key is available (supports both legacy single-key and multi-key system).
+ */
+export function hasOpenRouterApiKey(): boolean {
+  const settings = readSettings();
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+
+  // Check multi-key system first
+  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+    if (selectedKey?.key?.value?.trim()) {
+      return true;
+    }
+  }
+
+  // Fallback to legacy single-key
+  if (openRouterSettings?.apiKey?.value?.trim()) {
+    return true;
+  }
+
+  return false;
+}
 
 export interface OpenRouterMessage {
   role: "user" | "assistant" | "system";
@@ -81,7 +105,7 @@ export async function openRouterCompletion(
   const settings = readSettings();
 
   const {
-    model, // optional, will default to settings.appTitleGenerationModel or a fallback
+    model, // optional, will default to settings.standardModeModel or a fallback
     messages,
     temperature = 0.3,
     max_tokens,
@@ -91,7 +115,7 @@ export async function openRouterCompletion(
   } = options;
 
   const defaultModel =
-    settings.appTitleGenerationModel || "google/gemini-2.5-flash-lite";
+    settings.standardModeModel || "openai/gpt-4.1-nano";
   const finalModel = model || defaultModel;
 
   const body: any = {
@@ -119,5 +143,22 @@ export async function openRouterCompletion(
     signal,
   });
 
-  return await response.json();
+  const data = await response.json();
+
+  // Log the query
+  try {
+    void logAiQuery({
+      queryType: options.title || "generic-completion",
+      model: finalModel,
+      promptSnippet: messages[messages.length - 1]?.content?.slice(0, 100) || "",
+      payload: body,
+      response: data,
+      inputTokens: data?.usage?.prompt_tokens,
+      outputTokens: data?.usage?.completion_tokens,
+    }, settings.userId as string);
+  } catch (err) {
+    logger.error("Failed to initiate AI query logging", err);
+  }
+
+  return data;
 }

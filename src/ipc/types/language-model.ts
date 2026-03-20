@@ -32,6 +32,10 @@ export const LanguageModelSchema = z.object({
   temperature: z.number().optional(),
   dollarSigns: z.number().optional(),
   brainSigns: z.number().optional(),
+  pricingInput: z.string().optional(),
+  pricingOutput: z.string().optional(),
+  inputModalities: z.array(z.string()).optional(),
+  outputModalities: z.array(z.string()).optional(),
   type: z.enum(["custom", "local", "cloud"]).optional(),
 });
 
@@ -130,6 +134,12 @@ export const languageModelContracts = {
   deleteModel: defineContract({
     channel: "delete-custom-model",
     input: DeleteCustomModelParamsSchema,
+    output: z.void(),
+  }),
+
+  refreshOpenRouterModels: defineContract({
+    channel: "refresh-openrouter-models",
+    input: z.void(),
     output: z.void(),
   }),
 

@@ -10,17 +10,28 @@ import {
   stepCountIs,
   hasToolCall,
   ModelMessage,
-  type ToolExecutionOptions,
 } from "ai";
 import log from "electron-log";
 
-import { db } from "@/db";
-import { chats, messages } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
+import { logAiQuery } from "@/ipc/utils/ai_query_logger";
+import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { eq } from "drizzle-orm";
+import {
+  initMessageStatus,
+  updateMessageContent,
+  markCompleted,
+  markApprovedAndCompleted,
+  markCancelled,
+  markFailed,
+  saveAiMessagesJson,
+  saveCommitHash,
+} from "./message_persistence";
 
-import { isDyadProEnabled, isBasicAgentMode } from "@/lib/schemas";
+
 import { readSettings } from "@/main/settings";
-import { getDyadAppPath } from "@/paths/paths";
+import { getVibesAppPath } from "@/paths/paths";
 import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
@@ -41,29 +52,29 @@ import {
   deployAllFunctionsIfNeeded,
   commitAllChanges,
 } from "./processors/file_operations";
-import { mcpManager } from "@/ipc/utils/mcp_manager";
-import { mcpServers } from "@/db/schema";
-import { requireMcpToolConsent } from "@/ipc/utils/mcp_consent";
+import { getMcpTools } from "./mcp_tools";
 import { getAiMessagesJsonIfWithinLimit } from "@/ipc/utils/ai_messages_utils";
 
-import type { ChatStreamParams, ChatResponseEnd } from "@/ipc/types";
 import {
-  AgentContext,
+  FileEditToolName,
+  FILE_EDIT_TOOL_NAMES,
   parsePartialJson,
-  escapeXmlAttr,
-  escapeXmlContent,
+  type AgentContext,
+  type FileEditTracker,
   UserMessageContentPart,
-  FileEditTracker,
 } from "./tools/types";
+
+import type { ChatStreamParams, ChatResponseEnd } from "@/ipc/types";
 import { sendTelemetryEvent } from "@/ipc/utils/telemetry";
 import {
   prepareStepMessages,
   type InjectedMessage,
 } from "./prepare_step_utils";
 import { TOOL_DEFINITIONS } from "./tool_definitions";
-import { parseAiMessagesJson } from "@/ipc/utils/ai_messages_utils";
-import { parseMcpToolKey, sanitizeMcpName } from "@/ipc/utils/mcp_tool_utils";
+import { parseAiMessagesJson, stripImagePartsFromHistory } from "@/ipc/utils/ai_messages_utils";
 import { addIntegrationTool } from "./tools/add_integration";
+import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
+import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
 
 const logger = log.scope("local_agent_handler");
 
@@ -77,6 +88,7 @@ const logger = log.scope("local_agent_handler");
 interface ToolStreamingEntry {
   toolName: string;
   argsAccumulated: string;
+  pathTracked?: string;
 }
 const toolStreamingEntries = new Map<string, ToolStreamingEntry>();
 
@@ -113,13 +125,13 @@ export async function handleLocalAgentStream(
   {
     placeholderMessageId,
     systemPrompt,
-    dyadRequestId,
+    vibesRequestId,
     readOnly = false,
     messageOverride,
   }: {
     placeholderMessageId: number;
     systemPrompt: string;
-    dyadRequestId: string;
+    vibesRequestId: string;
     /**
      * If true, the agent operates in read-only mode (e.g., ask mode).
      * State-modifying tools are disabled, and no commits/deploys are made.
@@ -141,18 +153,19 @@ export async function handleLocalAgentStream(
 
   // Check Pro status or Basic Agent mode
   // Basic Agent mode allows non-Pro users with quota (quota check is done in chat_stream_handlers)
-  if (!isDyadProEnabled(settings) && !isBasicAgentMode(settings)) {
+  if (false) { // Pro eliminated
     safeSend(event.sender, "chat:response:error", {
       chatId: req.chatId,
       error:
-        "Agent v2 requires Dyad Pro. Please enable Dyad Pro in Settings → Pro.",
+        "Agent v2 requires Vibes Pro. Please enable Vibes Pro in Settings → Pro.",
     });
     return false;
   }
 
   // Get the chat and app
+  const db = getRemoteDb();
   const chat = await db.query.chats.findFirst({
-    where: eq(chats.id, req.chatId),
+    where: eq(remoteSchema.chats.id, req.chatId),
     with: {
       messages: {
         orderBy: (messages, { asc }) => [asc(messages.createdAt)],
@@ -165,16 +178,30 @@ export async function handleLocalAgentStream(
     throw new Error(`Chat not found: ${req.chatId}`);
   }
 
-  const appPath = getDyadAppPath(chat.app.path);
+  const appPath = getVibesAppPath(chat.app.path);
 
-  // Send initial message update
-  safeSend(event.sender, "chat:response:chunk", {
-    chatId: req.chatId,
-    messages: chat.messages,
-  });
+  // The frontend handles optimistic UI updates (showing the loader).
+  // We should NOT send `chat.messages` here because it doesn't contain the assistant placeholder yet,
+  // and sending it would overwrite the frontend's optimistic loader, causing it to disappear.
+
+  // Phase 2: Context & Recovery
+  // Link to previous assistant response for chain tracking
+  const assistantMessages = chat.messages.filter(
+    (m) => m.role === "assistant" && m.id !== placeholderMessageId,
+  );
+  const previousResponseId =
+    assistantMessages.length > 0
+      ? assistantMessages[assistantMessages.length - 1].id
+      : null;
+
+  // Initialize status as incomplete (non-blocking to prevent UI lag)
+  initMessageStatus(placeholderMessageId, previousResponseId);
 
   let fullResponse = "";
   let streamingPreview = ""; // Temporary preview for current tool, not persisted
+  let finalInputTokens: number | undefined;
+  let finalOutputTokens: number | undefined;
+  let finalCachedTokens: number | undefined;
 
   // Track pending user messages to inject after tool results
   const pendingUserMessages: UserMessageContentPart[][] = [];
@@ -182,87 +209,7 @@ export async function handleLocalAgentStream(
   const allInjectedMessages: InjectedMessage[] = [];
 
   try {
-    // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
-    // Auto-routing: if provider is "auto-router", analyze task and select best model
-    let selectedModel = settings.selectedModel;
-
-    // if (
-    //   settings.selectedModel.provider === "auto-router" &&
-    //   settings.selectedModel.name === "auto"
-    // ) {
-    //   try {
-    //     logger.info(
-    //       "Auto-routing enabled for local agent, analyzing task complexity...",
-    //     );
-
-    //     // Notify frontend that model selection is starting
-    //     safeSend(event.sender, "chat:model:selecting", {
-    //       chatId: req.chatId,
-    //     });
-
-    //     // Get all available models from enabled providers
-    //     const modelsByProviders = await getLanguageModelsByProviders();
-    //     const availableModels: Array<{
-    //       model: typeof settings.selectedModel;
-    //       dollarSigns?: number;
-    //       brainSigns?: number;
-    //       displayName: string;
-    //     }> = [];
-
-    //     for (const [providerId, models] of Object.entries(modelsByProviders)) {
-    //       // Skip auto-router provider itself
-    //       if (providerId === "auto-router") continue;
-
-    //       for (const model of models) {
-    //         availableModels.push({
-    //           model: {
-    //             provider: providerId,
-    //             name: model.apiName,
-    //             customModelId: model.id,
-    //           },
-    //           dollarSigns: model.dollarSigns,
-    //           brainSigns: model.brainSigns,
-    //           displayName: model.displayName,
-    //         });
-    //       }
-    //     }
-
-    //     if (availableModels.length === 0) {
-    //       logger.error(
-    //         "No models available for auto-routing. Please configure at least one AI provider.",
-    //       );
-    //       throw new Error(
-    //         "Auto-Router requires at least one AI provider to be configured. Please configure OpenRouter, OpenAI, Anthropic, or another provider in Settings.",
-    //       );
-    //     }
-
-    //     const attachmentCount = req.attachments?.length ?? 0;
-    //     const analysis = await analyzeAndRouteModel(
-    //       req.prompt,
-    //       availableModels,
-    //       settings,
-    //       attachmentCount,
-    //     );
-
-    //     selectedModel = analysis.recommendedModel;
-
-    //     logger.info(
-    //       `Auto-routed to ${selectedModel.provider}/${selectedModel.name} (complexity: ${analysis.complexity}, type: ${analysis.taskType}, reasoning: ${analysis.reasoning})`,
-    //     );
-
-    //     // Send model selection info to frontend
-    //     safeSend(event.sender, "chat:model:selected", {
-    //       chatId: req.chatId,
-    //       model: selectedModel,
-    //       complexity: analysis.complexity,
-    //       taskType: analysis.taskType,
-    //       reasoning: analysis.reasoning,
-    //     });
-    //   } catch (error) {
-    //     logger.error("Error during auto-routing:", error);
-    //     throw error; // Re-throw to show error to user
-    //   }
-    // }
+    const selectedModel = settings.selectedModel;
 
     // Get model client
     const { modelClient } = await getModelClient(selectedModel, settings);
@@ -276,12 +223,16 @@ export async function handleLocalAgentStream(
       chatId: chat.id,
       supabaseProjectId: chat.app.supabaseProjectId,
       supabaseOrganizationSlug: chat.app.supabaseOrganizationSlug,
+      firebaseProjectId: chat.app.firebaseProjectId,
+      bunnyConfig: (chat.app.bunnyConfig as AgentContext["bunnyConfig"]) ?? null,
+      pocketbaseConfig: (chat.app.pocketbaseConfig as AgentContext["pocketbaseConfig"]) ?? null,
       messageId: placeholderMessageId,
       isSharedModulesChanged: false,
       todos: [],
-      dyadRequestId,
+      vibesRequestId,
       fileEditTracker,
-      isBasicAgentMode: isBasicAgentMode(settings),
+      typecheckResults: [],
+      isBasicAgentMode: false,
       onXmlStream: (accumulatedXml: string) => {
         // Stream accumulated XML to UI without persisting
         streamingPreview = accumulatedXml;
@@ -326,7 +277,7 @@ export async function handleLocalAgentStream(
     // In read-only mode, only include read-only tools and skip MCP tools
     // (since we can't determine if MCP tools modify state)
     logger.log(
-      `[AGENT] Building tool set (readOnly: ${readOnly}, basicAgentMode: ${isBasicAgentMode(settings)})`,
+      `[AGENT] Building tool set (readOnly: ${readOnly}, basicAgentMode: ${false})`,
     );
     const agentTools = buildAgentToolSet(ctx, { readOnly });
     const mcpTools = readOnly ? {} : await getMcpTools(event, ctx);
@@ -341,10 +292,40 @@ export async function handleLocalAgentStream(
     const messageHistory: ModelMessage[] = messageOverride
       ? messageOverride
       : chat.messages
-          .filter((msg) => msg.content || msg.aiMessagesJson)
-          .flatMap((msg) => parseAiMessagesJson(msg));
+        .filter((msg) => msg.content || msg.aiMessagesJson)
+        .flatMap((msg) => {
+          const parsedMessages = parseAiMessagesJson(msg);
+
+          // Phase 3: Resume - Annotate incomplete messages to help model recover context
+          if (
+            (msg as any).status === "incomplete" &&
+            msg.role === "assistant"
+          ) {
+            const lastMsg = parsedMessages[parsedMessages.length - 1];
+            if (
+              lastMsg &&
+              lastMsg.role === "assistant"
+            ) {
+              if (typeof lastMsg.content === "string") {
+                lastMsg.content +=
+                  "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]";
+              } else if (Array.isArray(lastMsg.content)) {
+                (lastMsg.content as any[]).push({
+                  type: "text",
+                  text: "\n\n[System Note: The previous assistant response was interrupted. Please continue or complete the thought if relevant.]"
+                });
+              }
+            }
+          }
+          return parsedMessages;
+        });
+
+    // Strip image parts from historical user messages to prevent
+    // re-sending images from previous turns (causes 404 on non-vision models).
+    const cleanedHistory = stripImagePartsFromHistory(messageHistory);
+
     logger.log(
-      `[AGENT] Message history: ${messageHistory.length} messages (override: ${!!messageOverride})`,
+      `[AGENT] Message history: ${cleanedHistory.length} messages (override: ${!!messageOverride})`,
     );
 
     // Stream the response
@@ -354,15 +335,25 @@ export async function handleLocalAgentStream(
     logger.log(
       `[AGENT] System prompt length: ${systemPrompt.length} characters`,
     );
+    // Anti-continuation: wrap last user message to prevent the model from
+    // continuing/completing the user's text instead of responding as assistant.
+    const framedMessageHistory = cleanedHistory.map((m, i, arr) => {
+      if (i === arr.length - 1 && m.role === "user" && typeof m.content === "string") {
+        return { ...m, content: `<user_request>\n${m.content}\n</user_request>` };
+      }
+      return m;
+    });
+
+    const streamStartedAt = Date.now();
     const streamResult = streamText({
       model: modelClient.model,
       headers: getAiHeaders({
         builtinProviderId: modelClient.builtinProviderId,
       }),
       providerOptions: getProviderOptions({
-        dyadAppId: chat.app.id,
-        dyadRequestId,
-        dyadDisableFiles: true, // Local agent uses tools, not file injection
+        vibesAppId: chat.app.id,
+        vibesRequestId,
+        vibesDisableFiles: true, // Local agent uses tools, not file injection
         files: [],
         mentionedAppsCodebases: [],
         builtinProviderId: modelClient.builtinProviderId,
@@ -372,9 +363,9 @@ export async function handleLocalAgentStream(
       temperature: await getTemperature(settings.selectedModel),
       maxRetries: 2,
       system: systemPrompt,
-      messages: messageHistory,
+      messages: framedMessageHistory,
       tools: allTools,
-      stopWhen: [stepCountIs(25), hasToolCall(addIntegrationTool.name)], // Allow multiple tool call rounds, stop on add_integration
+      stopWhen: [stepCountIs(15), hasToolCall(addIntegrationTool.name)], // Allow multiple tool call rounds, stop on add_integration
       abortSignal: abortController.signal,
       // Inject pending user messages (e.g., images from web_crawl) between steps
       // We must re-inject all accumulated messages each step because the AI SDK
@@ -383,35 +374,79 @@ export async function handleLocalAgentStream(
       prepareStep: (options) =>
         prepareStepMessages(options, pendingUserMessages, allInjectedMessages),
       onFinish: async (response) => {
-        const totalTokens = response.usage?.totalTokens;
-        const inputTokens = response.usage?.inputTokens;
-        const cachedInputTokens = response.usage?.cachedInputTokens;
+        // IMPORTANT: response.totalUsage is the accumulated total across ALL steps
+        // (all API calls in a multi-step agent conversation). response.usage is
+        // only the last step's usage, which would massively undercount tokens.
+        const accumulated = response.totalUsage;
+        const lastStep = response.usage;
+        const totalTokens = accumulated?.totalTokens ?? lastStep?.totalTokens;
+        const inputTokens = accumulated?.inputTokens ?? lastStep?.inputTokens;
+        const outputTokens = accumulated?.outputTokens ?? lastStep?.outputTokens ?? (lastStep as any)?.completionTokens;
+        const cachedInputTokens = accumulated?.cachedInputTokens ?? lastStep?.cachedInputTokens;
+        const stepCount = response.steps?.length ?? 1;
         logger.log(
-          "Total tokens used:",
-          totalTokens,
-          "Input tokens:",
-          inputTokens,
-          "Cached input tokens:",
-          cachedInputTokens,
+          `Token usage (${stepCount} steps):`,
+          "Total:", totalTokens,
+          "Input:", inputTokens,
+          "Output:", outputTokens,
+          "Cached:", cachedInputTokens,
           "Cache hit ratio:",
           cachedInputTokens ? (cachedInputTokens ?? 0) / (inputTokens ?? 0) : 0,
         );
+
+        // Capture for UI badge (outer scope closure)
+        finalInputTokens = inputTokens;
+        finalCachedTokens = cachedInputTokens;
+
+        // Derive effective output tokens
+        let effectiveOutputTokens = outputTokens
+          || (totalTokens && inputTokens ? totalTokens - inputTokens : undefined);
+
+        // Only use text-based estimation as a last resort when we have NO data at all
+        if (!effectiveOutputTokens) {
+          effectiveOutputTokens = Math.ceil(fullResponse.length / 4);
+        }
+        finalOutputTokens = effectiveOutputTokens;
+
+        logger.log(
+          `[AGENT onFinish] Logging AI query with fullResponse length: ${fullResponse.length}, effectiveOutputTokens: ${effectiveOutputTokens}`,
+        );
+
+        try {
+          void logAiQuery({
+            queryType: "local-agent-stream",
+            model: selectedModel.name,
+            promptSnippet: req.prompt.slice(0, 100),
+            payload: {
+              system: systemPrompt.slice(0, 500),
+              messages: cleanedHistory,
+              tools: Object.keys(allTools),
+            },
+            response: {
+              fullResponse: fullResponse || "[empty at onFinish]",
+              text: response.text,
+              steps: response.steps?.length ?? 0,
+              finishReason: response.finishReason,
+            },
+            inputTokens: inputTokens,
+            outputTokens: effectiveOutputTokens,
+          }, settings.userId as string);
+        } catch (e) {
+          logger.error("Failed to log local agent AI query in onFinish", e);
+        }
+
         if (typeof totalTokens === "number") {
-          await db
-            .update(messages)
-            .set({ maxTokensUsed: totalTokens })
-            .where(eq(messages.id, placeholderMessageId))
-            .catch((err) => logger.error("Failed to save token count", err));
+          await markCompleted(placeholderMessageId, totalTokens);
 
           // Log token usage for verbose chat logs and token stats panel
           void logChatInfo(
             ctx.chatId,
             "token-usage",
-            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${response.usage.outputTokens ?? "?"})`,
+            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${effectiveOutputTokens ?? "?"})`,
             {
               totalTokens,
               inputTokens,
-              outputTokens: response.usage.outputTokens,
+              outputTokens: effectiveOutputTokens,
               model: selectedModel.name,
               cachedInputTokens,
               type: "local-agent",
@@ -419,33 +454,43 @@ export async function handleLocalAgentStream(
             placeholderMessageId,
           );
 
-          if (settings.enableTokenStats !== false) {
-            logTokenUsage({
-              chatId: ctx.chatId,
-              messageId: placeholderMessageId,
-              totalTokens,
-              promptTokens: inputTokens,
-              completionTokens: response.usage.outputTokens,
-              model: selectedModel.name,
-              timestamp: Date.now(),
-              appId: chat.app.id,
-              toolsUsed: Object.keys(allTools),
-            });
-          }
+          logTokenUsage({
+            chatId: ctx.chatId,
+            messageId: placeholderMessageId,
+            totalTokens,
+            promptTokens: inputTokens,
+            completionTokens: effectiveOutputTokens,
+            model: selectedModel.name,
+            timestamp: Date.now(),
+            appId: chat.app.id,
+            toolsUsed: Object.keys(allTools),
+          });
         }
       },
       onError: (error: any) => {
-        const errorMessage = error?.error?.message || JSON.stringify(error);
-        logger.error("Local agent stream error:", errorMessage);
+        // Extract the most detailed error message available
+        const nestedError = error?.error;
+        const errorMessage =
+          nestedError?.responseBody ??
+          nestedError?.message ??
+          (typeof nestedError === "string" ? nestedError : null) ??
+          JSON.stringify(error);
+        const statusCode = nestedError?.statusCode ?? nestedError?.status ?? "";
+        const fullErrorText = `AI error${statusCode ? ` (${statusCode})` : ""}: ${errorMessage}`;
+        logger.error("Local agent stream error:", fullErrorText);
+        logger.error("Local agent stream error (raw):", JSON.stringify(error, null, 2));
         safeSend(event.sender, "chat:response:error", {
           chatId: req.chatId,
-          error: `AI error: ${errorMessage}`,
+          error: fullErrorText,
         });
+        // Persist error text in DB so it survives reload
+        void updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${fullErrorText}`);
       },
     });
 
     // Process the stream
     let inThinkingBlock = false;
+    let hasStateModifyingToolCalls = false;
 
     for await (const part of streamResult.fullStream) {
       if (abortController.signal.aborted) {
@@ -481,6 +526,8 @@ export async function handleLocalAgentStream(
           break;
 
         case "reasoning-delta":
+          // Skip [REDACTED] from OpenRouter encrypted reasoning tokens
+          if (part.text === "[REDACTED]") break;
           if (!inThinkingBlock) {
             chunk = "<think>";
             inThinkingBlock = true;
@@ -509,7 +556,27 @@ export async function handleLocalAgentStream(
             const toolDef = findToolDefinition(entry.toolName);
             if (toolDef?.buildXml) {
               const argsPartial = parsePartialJson(entry.argsAccumulated);
-              const xml = toolDef.buildXml(argsPartial, false);
+
+              // Track file edit per path to show retry count in UI
+              if (FILE_EDIT_TOOL_NAMES.includes(entry.toolName as any)) {
+                const rawPath = argsPartial.path || argsPartial.file_path;
+                const path = typeof rawPath === "string" ? rawPath : undefined;
+                if (path && entry.pathTracked !== path) {
+                  entry.pathTracked = path;
+                  if (!ctx.fileEditTracker[path]) {
+                    ctx.fileEditTracker[path] = {
+                      write_file: 0,
+                      edit_file: 0,
+                      search_replace: 0,
+                      patch_file: 0,
+                      file_editor: 0,
+                    };
+                  }
+                  ctx.fileEditTracker[path][entry.toolName as FileEditToolName]++;
+                }
+              }
+
+              const xml = toolDef.buildXml(argsPartial, false, ctx);
               if (xml) {
                 ctx.onXmlStream(xml);
               }
@@ -525,7 +592,7 @@ export async function handleLocalAgentStream(
             const toolDef = findToolDefinition(entry.toolName);
             if (toolDef?.buildXml) {
               const argsPartial = parsePartialJson(entry.argsAccumulated);
-              const xml = toolDef.buildXml(argsPartial, true);
+              const xml = toolDef.buildXml(argsPartial, true, ctx);
               if (xml) {
                 ctx.onXmlComplete(xml);
               }
@@ -540,6 +607,9 @@ export async function handleLocalAgentStream(
           logger.log(
             `[AGENT] Tool call: ${part.toolName} (id: ${part.toolCallId})`,
           );
+          if (FILE_EDIT_TOOL_NAMES.includes(part.toolName as any) || part.toolName === "execute_sql" || part.toolName === "add_dependency") {
+            hasStateModifyingToolCalls = true;
+          }
           break;
 
         case "tool-result":
@@ -568,17 +638,97 @@ export async function handleLocalAgentStream(
       const response = await streamResult.response;
       const aiMessagesJson = getAiMessagesJsonIfWithinLimit(response.messages);
       if (aiMessagesJson) {
-        await db
-          .update(messages)
-          .set({ aiMessagesJson })
-          .where(eq(messages.id, placeholderMessageId));
+        await saveAiMessagesJson(placeholderMessageId, aiMessagesJson);
       }
     } catch (err) {
       logger.warn("Failed to save AI messages JSON:", err);
     }
 
-    // In read-only mode, skip deploys and commits
-    if (!readOnly) {
+    // If the model produced zero output, send an error instead of an empty bubble
+    if (!fullResponse.trim()) {
+      const zeroOutputError = "El modelo no generó ninguna respuesta. Esto suele ser un error temporal del proveedor. Intenta de nuevo o cambia de modelo.";
+      logger.error("[AGENT] Model produced no output — sending error to user");
+      // Persist error text in DB so it survives reload
+      await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${zeroOutputError}`);
+      await markFailed(placeholderMessageId);
+      safeSend(event.sender, "chat:response:error", {
+        chatId: req.chatId,
+        error: zeroOutputError,
+      });
+      return false;
+    }
+
+    // Check if the model failed to use any state-modifying tools when we expected it to
+    // But skip the warning if the response contains interactive content (e.g. integration prompts, user questions)
+    const INTERACTIVE_TAGS = ["vibes-add-integration", "vibes-ask-user"];
+    const hasInteractiveContent = INTERACTIVE_TAGS.some(tag => fullResponse.includes(`<${tag}`));
+    const isSummarize = req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) || req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
+
+    if (!readOnly && !hasStateModifyingToolCalls && !hasInteractiveContent && !isSummarize) {
+      // It's possible the user just asked a question, but if it looks like there should be changes, warn the user.
+      const noOpWarning = `\n<vibes-output type="warning" message="Sin cambios detectados">El modelo respondió a tu solicitud pero no modificó ningún archivo. Si esperabas cambios de código, intenta reformular tu petición o usar un modelo más avanzado.</vibes-output>\n`;
+      fullResponse += noOpWarning;
+      await updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
+    }
+
+    // Emit typecheck summary badge if any file edits were type-checked
+    if (ctx.typecheckResults.length > 0) {
+      // Track only the final status for each file, but count how many times it was checked
+      const fileToLastResult = new Map<string, { status: "ok" | "error"; errors: string[]; editCount: number }>();
+
+      for (const entry of ctx.typecheckResults) {
+        if (!fileToLastResult.has(entry.file)) {
+          fileToLastResult.set(entry.file, { status: entry.status, errors: [...entry.errors], editCount: 1 });
+        } else {
+          const current = fileToLastResult.get(entry.file)!;
+          current.status = entry.status;
+          current.errors = [...entry.errors];
+          current.editCount++;
+        }
+      }
+
+      const hasErrors = Array.from(fileToLastResult.values()).some(g => g.status === "error");
+      const lines = Array.from(fileToLastResult.entries()).map(([file, g]) => {
+        const countStr = g.editCount > 1 ? ` (${g.editCount} pasadas)` : "";
+        if (g.status === "ok") {
+          return `OK:${file}${countStr}`;
+        }
+        const errDetail = g.errors.join("\n").trim();
+        return `ERR:${file}${countStr}\n${errDetail}`;
+      });
+
+      const summaryXml = `<vibes-typecheck-summary has-errors="${hasErrors}">${lines.join("\n")}</vibes-typecheck-summary>`;
+      fullResponse += "\n" + summaryXml + "\n";
+      updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
+    }
+
+    // Emit token usage badge
+    if (finalInputTokens || finalOutputTokens) {
+      const outTk = finalOutputTokens || Math.ceil(fullResponse.length / 4);
+      const inTk = finalInputTokens || 0;
+      const cachedTk = finalCachedTokens || 0;
+
+      // Look up pricing from cached OpenRouter model data
+      let priceIn = "";
+      let priceOut = "";
+      try {
+        const { fetchOpenRouterModels } = await import("@/ipc/utils/openrouter_models_service");
+        const models = await fetchOpenRouterModels();
+        const modelData = models.find(m => m.name === selectedModel.name);
+        priceIn = modelData?.pricingInput || "";
+        priceOut = modelData?.pricingOutput || "";
+      } catch { /* pricing unavailable — non-OpenRouter or cache miss */ }
+
+      const tokenXml = `<vibes-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+      fullResponse += tokenXml + "\n";
+      updateResponseInDb(placeholderMessageId, fullResponse);
+      sendResponseChunk(event, req.chatId, chat, fullResponse);
+    }
+
+    // In read-only mode, skip deploys and commits. Also skip if no state-modifying tools were called.
+    if (!readOnly && hasStateModifyingToolCalls) {
       // Deploy all Supabase functions if shared modules changed
       await deployAllFunctionsIfNeeded(ctx);
 
@@ -586,18 +736,27 @@ export async function handleLocalAgentStream(
       const commitResult = await commitAllChanges(ctx, ctx.chatSummary);
 
       if (commitResult.commitHash) {
-        await db
-          .update(messages)
-          .set({ commitHash: commitResult.commitHash })
-          .where(eq(messages.id, placeholderMessageId));
+        await saveCommitHash(placeholderMessageId, commitResult.commitHash);
       }
     }
 
-    // Mark as approved (auto-approve for local-agent)
-    await db
-      .update(messages)
-      .set({ approvalState: "approved" })
-      .where(eq(messages.id, placeholderMessageId));
+    // Mark as approved and completed (safety net if onFinish didn't catch it)
+    await markApprovedAndCompleted(placeholderMessageId);
+
+    // Persist response duration and send final chunk with durationMs included
+    const durationMs = Date.now() - streamStartedAt;
+    await getRemoteDb()
+      .update(remoteSchema.messages)
+      .set({ durationMs })
+      .where(eq(remoteSchema.messages.id, placeholderMessageId))
+      .catch((err) => logger.error("Failed to save durationMs", err));
+
+    // Include durationMs in the in-memory message so the final chunk carries it
+    const lastMsg = chat.messages[chat.messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant") {
+      (lastMsg as any).durationMs = durationMs;
+    }
+    sendResponseChunk(event, req.chatId, chat, fullResponse);
 
     // Send telemetry for files with multiple edit tool types
     for (const [filePath, counts] of Object.entries(fileEditTracker)) {
@@ -609,6 +768,14 @@ export async function handleLocalAgentStream(
         });
       }
     }
+
+    // Fire-and-forget: auto-extract knowledge from this interaction
+    void autoExtractKnowledge(
+      chat.app.id,
+      settings.userId as string,
+      req.prompt,
+      fullResponse,
+    );
 
     // Send completion
     safeSend(event.sender, "chat:response:end", {
@@ -626,30 +793,28 @@ export async function handleLocalAgentStream(
     if (abortController.signal.aborted) {
       // Handle cancellation
       if (fullResponse) {
-        await db
-          .update(messages)
-          .set({ content: `${fullResponse}\n\n[Response cancelled by user]` })
-          .where(eq(messages.id, placeholderMessageId));
+        await markCancelled(placeholderMessageId, fullResponse);
       }
       return false; // Cancelled - don't consume quota
     }
 
     logger.error("Local agent error:", error);
+    const catchErrorText = `Error: ${error}`;
     safeSend(event.sender, "chat:response:error", {
       chatId: req.chatId,
-      error: `Error: ${error}`,
+      error: catchErrorText,
     });
+
+    // Persist error text in DB and mark as failed
+    await updateMessageContent(placeholderMessageId, `${PERSISTED_ERROR_PREFIX}${catchErrorText}`);
+    await markFailed(placeholderMessageId);
+
     return false; // Error - don't consume quota
   }
 }
 
-async function updateResponseInDb(messageId: number, content: string) {
-  await db
-    .update(messages)
-    .set({ content })
-    .where(eq(messages.id, messageId))
-    .catch((err) => logger.error("Failed to update message", err));
-}
+// Delegate to centralized persistence
+const updateResponseInDb = updateMessageContent;
 
 function sendResponseChunk(
   event: IpcMainInvokeEvent,
@@ -668,82 +833,4 @@ function sendResponseChunk(
     chatId,
     messages: currentMessages,
   });
-}
-
-async function getMcpTools(
-  event: IpcMainInvokeEvent,
-  ctx: AgentContext,
-): Promise<ToolSet> {
-  const mcpToolSet: ToolSet = {};
-
-  try {
-    const servers = await db
-      .select()
-      .from(mcpServers)
-      .where(eq(mcpServers.enabled, true as any));
-
-    for (const s of servers) {
-      const client = await mcpManager.getClient(s.id);
-      const toolSet = await client.tools();
-
-      for (const [name, mcpTool] of Object.entries(toolSet)) {
-        const key = `${sanitizeMcpName(s.name || "")}__${sanitizeMcpName(name)}`;
-
-        mcpToolSet[key] = {
-          description: mcpTool.description,
-          inputSchema: mcpTool.inputSchema,
-          execute: async (args: unknown, execCtx: ToolExecutionOptions) => {
-            try {
-              const inputPreview =
-                typeof args === "string"
-                  ? args
-                  : Array.isArray(args)
-                    ? args.join(" ")
-                    : JSON.stringify(args).slice(0, 500);
-
-              const ok = await requireMcpToolConsent(event, {
-                serverId: s.id,
-                serverName: s.name,
-                toolName: name,
-                toolDescription: mcpTool.description,
-                inputPreview,
-              });
-
-              if (!ok) throw new Error(`User declined running tool ${key}`);
-
-              // Emit XML for UI (MCP tools don't stream, so use onXmlComplete directly)
-              const { serverName, toolName } = parseMcpToolKey(key);
-              const content = JSON.stringify(args, null, 2);
-              ctx.onXmlComplete(
-                `<dyad-mcp-tool-call server="${serverName}" tool="${toolName}">\n${content}\n</dyad-mcp-tool-call>`,
-              );
-
-              const res = await mcpTool.execute(args, execCtx);
-              const resultStr =
-                typeof res === "string" ? res : JSON.stringify(res);
-
-              ctx.onXmlComplete(
-                `<dyad-mcp-tool-result server="${serverName}" tool="${toolName}">\n${resultStr}\n</dyad-mcp-tool-result>`,
-              );
-
-              return resultStr;
-            } catch (error) {
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              const errorStack =
-                error instanceof Error && error.stack ? error.stack : "";
-              ctx.onXmlComplete(
-                `<dyad-output type="error" message="MCP tool '${key}' failed: ${escapeXmlAttr(errorMessage)}">${escapeXmlContent(errorStack || errorMessage)}</dyad-output>`,
-              );
-              throw error;
-            }
-          },
-        };
-      }
-    }
-  } catch (e) {
-    logger.warn("Failed building MCP toolset for local-agent", e);
-  }
-
-  return mcpToolSet;
 }

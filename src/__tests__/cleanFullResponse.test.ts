@@ -47,7 +47,7 @@ AFTER TAG
     expect(result).toBe(expected);
   });
 
-  it("should handle other dyad tag types", () => {
+  it("should handle other vibes tag types", () => {
     const input = `<dyad-rename from="src/<old>.tsx" to="src/<new>.tsx"></dyad-rename>`;
     const expected = `<dyad-rename from="src/＜old＞.tsx" to="src/＜new＞.tsx"></dyad-rename>`;
 
@@ -63,7 +63,7 @@ AFTER TAG
     expect(result).toBe(expected);
   });
 
-  it("should not affect content outside dyad tags", () => {
+  it("should not affect content outside vibes tags", () => {
     const input = `Some text with <regular> HTML tags. <dyad-write path="test.tsx" description="With <nested> tags.">content</dyad-write> More <html> here.`;
     const expected = `Some text with <regular> HTML tags. <dyad-write path="test.tsx" description="With ＜nested＞ tags.">content</dyad-write> More <html> here.`;
 

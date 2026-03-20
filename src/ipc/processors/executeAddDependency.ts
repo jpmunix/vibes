@@ -19,7 +19,7 @@ export async function executeAddDependency({
   const packageStr = packages.join(" ");
 
   const { stdout, stderr } = await execPromise(
-    `(pnpm add ${packageStr}) || (npm install --legacy-peer-deps ${packageStr})`,
+    `npm install --legacy-peer-deps ${packageStr}`,
     {
       cwd: appPath,
     },
@@ -29,10 +29,10 @@ export async function executeAddDependency({
   // Update the message content with the installation results
   const updatedContent = message.content.replace(
     new RegExp(
-      `<dyad-add-dependency packages="${packages.join(" ")}">[^<]*</dyad-add-dependency>`,
+      `<vibes-add-dependency packages="${packages.join(" ")}">[^<]*</vibes-add-dependency>`,
       "g",
     ),
-    `<dyad-add-dependency packages="${packages.join(" ")}">${installResults}</dyad-add-dependency>`,
+    `<vibes-add-dependency packages="${packages.join(" ")}">${installResults}</vibes-add-dependency>`,
   );
 
   // Save the updated message back to the database

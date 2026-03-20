@@ -1,17 +1,10 @@
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI as createGoogle } from "@ai-sdk/google";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createXai } from "@ai-sdk/xai";
-import { createVertex as createGoogleVertex } from "@ai-sdk/google-vertex";
-import { createAzure } from "@ai-sdk/azure";
+// TODO: Switch back when reasoning_details encryption issue is fixed
+// import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModel } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
 import type {
   LargeLanguageModel,
   UserSettings,
-  VertexProviderSetting,
-  AzureProviderSetting,
 } from "../../lib/schemas";
 import { getEnvVar } from "./read_env";
 import log from "electron-log";
@@ -24,8 +17,8 @@ import {
 import { getLanguageModelProviders } from "../shared/language_model_helpers";
 import { LanguageModelProvider } from "@/ipc/types";
 import {
-  createDyadEngine,
-  type DyadEngineProvider,
+  createVibesEngine,
+  type VibesEngineProvider,
 } from "./llm_engine_provider";
 
 import { LM_STUDIO_BASE_URL } from "./lm_studio_utils";
@@ -33,10 +26,10 @@ import { createOllamaProvider } from "./ollama_provider";
 import { getOllamaApiUrl } from "../handlers/local_model_ollama_handler";
 import { createFallback } from "./fallback_ai_model";
 
-const dyadEngineUrl = process.env.DYAD_ENGINE_URL;
+const vibesEngineUrl = process.env.VIBES_ENGINE_URL;
 const disableRemoteEngine =
-  process.env.DYAD_DISABLE_REMOTE_ENGINE === "true" ||
-  process.env.DYAD_ENABLE_REMOTE_ENGINE === "false";
+  process.env.VIBES_DISABLE_REMOTE_ENGINE === "true" ||
+  process.env.VIBES_ENABLE_REMOTE_ENGINE === "false";
 
 const AUTO_MODELS = [
   {
@@ -74,7 +67,7 @@ export async function getModelClient(
 }> {
   const allProviders = await getLanguageModelProviders();
 
-  const dyadApiKey = settings.providerSettings?.auto?.apiKey?.value;
+  const vibesApiKey = settings.providerSettings?.auto?.apiKey?.value;
 
   // --- Handle specific provider ---
   const providerConfig = allProviders.find((p) => p.id === model.provider);
@@ -85,39 +78,38 @@ export async function getModelClient(
 
   if (disableRemoteEngine) {
     logger.warn(
-      "Remote Dyad engine disabled via env (DYAD_DISABLE_REMOTE_ENGINE=true or DYAD_ENABLE_REMOTE_ENGINE=false); using direct provider clients.",
+      "Remote Vibes engine disabled via env (VIBES_DISABLE_REMOTE_ENGINE=true or VIBES_ENABLE_REMOTE_ENGINE=false); using direct provider clients.",
     );
   }
 
-  // Handle Dyad Pro override
-  if (dyadApiKey && settings.enableDyadPro && !disableRemoteEngine) {
-    // Check if the selected provider supports Dyad Pro (has a gateway prefix) OR
+  // Handle Vibes Pro override
+  if (vibesApiKey && !disableRemoteEngine) {
+    // Check if the selected provider supports Vibes Pro (has a gateway prefix) OR
     // we're using local engine.
     // IMPORTANT: some providers like OpenAI have an empty string gateway prefix,
     // so we do a nullish and not a truthy check here.
-    if (providerConfig.gatewayPrefix != null || dyadEngineUrl) {
+    if (providerConfig.gatewayPrefix != null || vibesEngineUrl) {
       const enableSmartFilesContext = settings.enableProSmartFilesContextMode;
-      const provider = createDyadEngine({
-        apiKey: dyadApiKey,
-        baseURL: dyadEngineUrl ?? "https://engine.dyad.sh/v1",
-        dyadOptions: {
+      const provider = createVibesEngine({
+        apiKey: vibesApiKey,
+        baseURL: vibesEngineUrl ?? "https://engine.dyad.sh/v1",
+        vibesOptions: {
           enableLazyEdits:
             settings.selectedChatMode === "ask"
               ? false
               : settings.enableProLazyEditsMode &&
               settings.proLazyEditsMode !== "v2",
           enableSmartFilesContext,
-          enableWebSearch: settings.enableProWebSearch,
         },
         settings,
       });
 
       logger.info(
-        `\x1b[1;97;44m Using Dyad Pro API key for model: ${model.name} \x1b[0m`,
+        `\x1b[1;97;44m Using Vibes Pro API key for model: ${model.name} \x1b[0m`,
       );
 
       logger.info(
-        `\x1b[1;30;42m Using Dyad Pro engine: ${dyadEngineUrl ?? "<prod>"} \x1b[0m`,
+        `\x1b[1;30;42m Using Vibes Pro engine: ${vibesEngineUrl ?? "<prod>"} \x1b[0m`,
       );
 
       // Do not use free variant (for openrouter).
@@ -136,7 +128,7 @@ export async function getModelClient(
       };
     } else {
       logger.warn(
-        `Dyad Pro enabled, but provider ${model.provider} does not have a gateway prefix defined. Falling back to direct provider connection.`,
+        `Vibes Pro enabled, but provider ${model.provider} does not have a gateway prefix defined. Falling back to direct provider connection.`,
       );
       // Fall through to regular provider logic if gateway prefix is missing
     }
@@ -207,7 +199,7 @@ function getProModelClient({
 }: {
   model: LargeLanguageModel;
   settings: UserSettings;
-  provider: DyadEngineProvider;
+  provider: VibesEngineProvider;
   modelId: string;
 }): ModelClient {
   if (
@@ -281,86 +273,11 @@ function getRegularModelClient(
   const providerId = providerConfig.id;
   // Create client based on provider ID or type
   switch (providerId) {
-    case "openai": {
-      const provider = createOpenAI({ apiKey });
-      return {
-        modelClient: {
-          model: provider.responses(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "anthropic": {
-      const provider = createAnthropic({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "xai": {
-      const provider = createXai({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "google": {
-      const provider = createGoogle({ apiKey });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
-    case "vertex": {
-      // Vertex uses Google service account credentials with project/location
-      const vertexSettings = settings.providerSettings?.[
-        model.provider
-      ] as VertexProviderSetting;
-      const project = vertexSettings?.projectId;
-      const location = vertexSettings?.location;
-      const serviceAccountKey = vertexSettings?.serviceAccountKey?.value;
-
-      // Use a baseURL that does NOT pin to publishers/google so that
-      // full publisher model IDs (e.g. publishers/deepseek-ai/models/...) work.
-      const regionHost = `${location === "global" ? "" : `${location}-`}aiplatform.googleapis.com`;
-      const baseURL = `https://${regionHost}/v1/projects/${project}/locations/${location}`;
-      const provider = createGoogleVertex({
-        project,
-        location,
-        baseURL,
-        googleAuthOptions: serviceAccountKey
-          ? {
-            // Expecting the user to paste the full JSON of the service account key
-            credentials: JSON.parse(serviceAccountKey),
-          }
-          : undefined,
-      });
-      return {
-        modelClient: {
-          // For built-in Google models on Vertex, the path must include
-          // publishers/google/models/<model>. For partner MaaS models the
-          // full publisher path is already included.
-          model: provider(
-            model.name.includes("/")
-              ? model.name
-              : `publishers/google/models/${model.name}`,
-          ),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
     case "openrouter": {
+      // NOTE: Using createOpenAICompatible instead of createOpenRouter because
+      // the official SDK (@openrouter/ai-sdk-provider) prioritizes encrypted
+      // reasoning_details over plain text reasoning, causing [REDACTED] to appear.
+      // Switch back to createOpenRouter when this is fixed upstream.
       const provider = createOpenAICompatible({
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
@@ -374,67 +291,7 @@ function getRegularModelClient(
         backupModelClients: [],
       };
     }
-    case "azure": {
-      // Check if we're in e2e testing mode
-      const testAzureBaseUrl = getEnvVar("TEST_AZURE_BASE_URL");
 
-      if (testAzureBaseUrl) {
-        // Use fake server for e2e testing
-        logger.info(`Using test Azure base URL: ${testAzureBaseUrl}`);
-        const provider = createOpenAICompatible({
-          name: "azure-test",
-          baseURL: testAzureBaseUrl,
-          apiKey: "fake-api-key-for-testing",
-        });
-        return {
-          modelClient: {
-            model: provider(model.name),
-            builtinProviderId: providerId,
-          },
-          backupModelClients: [],
-        };
-      }
-
-      const azureSettings = settings.providerSettings?.azure as
-        | AzureProviderSetting
-        | undefined;
-      const azureApiKeyFromSettings = (
-        azureSettings?.apiKey?.value ?? ""
-      ).trim();
-      const azureResourceNameFromSettings = (
-        azureSettings?.resourceName ?? ""
-      ).trim();
-      const envResourceName = (getEnvVar("AZURE_RESOURCE_NAME") ?? "").trim();
-      const envAzureApiKey = (getEnvVar("AZURE_API_KEY") ?? "").trim();
-
-      const resourceName = azureResourceNameFromSettings || envResourceName;
-      const azureApiKey = azureApiKeyFromSettings || envAzureApiKey;
-
-      if (!resourceName) {
-        throw new Error(
-          "Azure OpenAI resource name is required. Provide it in Settings or set the AZURE_RESOURCE_NAME environment variable.",
-        );
-      }
-
-      if (!azureApiKey) {
-        throw new Error(
-          "Azure OpenAI API key is required. Provide it in Settings or set the AZURE_API_KEY environment variable.",
-        );
-      }
-
-      const provider = createAzure({
-        resourceName,
-        apiKey: azureApiKey,
-      });
-
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
     case "ollama": {
       const provider = createOllamaProvider({ baseURL: getOllamaApiUrl() });
       return {
@@ -459,21 +316,7 @@ function getRegularModelClient(
         backupModelClients: [],
       };
     }
-    case "bedrock": {
-      // AWS Bedrock supports API key authentication using AWS_BEARER_TOKEN_BEDROCK
-      // See: https://sdk.vercel.ai/providers/ai-sdk-providers/amazon-bedrock#api-key-authentication
-      const provider = createAmazonBedrock({
-        apiKey: apiKey,
-        region: getEnvVar("AWS_REGION") || "us-east-1",
-      });
-      return {
-        modelClient: {
-          model: provider(model.name),
-          builtinProviderId: providerId,
-        },
-        backupModelClients: [],
-      };
-    }
+
     default: {
       // Handle custom providers
       if (providerConfig.type === "custom") {

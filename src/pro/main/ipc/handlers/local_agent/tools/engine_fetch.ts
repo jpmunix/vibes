@@ -1,6 +1,6 @@
 /**
- * Shared utility for making fetch requests to the Dyad engine API.
- * Handles common headers including Authorization and X-Dyad-Request-Id.
+ * Shared utility for making fetch requests to the Vibes engine API.
+ * Handles common headers including Authorization and X-Vibes-Request-Id.
  */
 
 import { readSettings } from "@/main/settings";
@@ -12,8 +12,8 @@ import {
 } from "@/ipc/utils/openrouter";
 import { getEffectivePrompt } from "@/prompts";
 
-export const DYAD_ENGINE_URL =
-  process.env.DYAD_ENGINE_URL ?? "https://engine.dyad.sh/v1";
+export const VIBES_ENGINE_URL =
+  process.env.VIBES_ENGINE_URL ?? "https://engine.dyad.sh/v1";
 
 export interface EngineFetchOptions extends Omit<RequestInit, "headers"> {
   /** Additional headers to include */
@@ -48,7 +48,18 @@ function parseTurboFileEditBody(body: EngineFetchOptions["body"]) {
 }
 
 function getOpenRouterApiKey(settings: ReturnType<typeof readSettings>) {
-  const apiKey = settings.providerSettings?.openrouter?.apiKey?.value?.trim();
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+
+  // Check multi-key system first
+  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+    const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
+    if (selectedKey?.key?.value?.trim()) {
+      return selectedKey.key.value.trim();
+    }
+  }
+
+  // Fallback to legacy single-key
+  const apiKey = openRouterSettings?.apiKey?.value?.trim();
 
   if (!apiKey) {
     throw new Error("OpenRouter API key is required to run turbo file edits.");
@@ -115,12 +126,12 @@ async function fetchWithTimeout(
 }
 
 async function callTurboFileEditViaOpenRouter(
-  ctx: Pick<AgentContext, "dyadRequestId">,
+  ctx: Pick<AgentContext, "vibesRequestId">,
   options: EngineFetchOptions,
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.turboEditModel || "openai/gpt-4.1-mini";
+  const model = settings.proModeModel || "openai/gpt-5.1-codex-mini";
   const body = parseTurboFileEditBody(options.body);
 
   let data: any;
@@ -130,6 +141,7 @@ async function callTurboFileEditViaOpenRouter(
     try {
       data = await openRouterCompletion({
         model,
+        title: "turbo-edit",
         temperature: 0,
         messages: buildTurboEditMessages(body, settings),
         signal: controller.signal,
@@ -140,8 +152,7 @@ async function callTurboFileEditViaOpenRouter(
   } catch (error) {
     logger.error("OpenRouter turbo edit request timed out or failed", error);
     throw new Error(
-      `OpenRouter turbo file edit failed: ${
-        error instanceof Error ? error.message : String(error)
+      `OpenRouter turbo file edit failed: ${error instanceof Error ? error.message : String(error)
       }`,
     );
   }
@@ -163,17 +174,17 @@ async function callTurboFileEditViaOpenRouter(
 }
 
 /**
- * Fetch wrapper for Dyad engine API calls.
- * Automatically adds Authorization and X-Dyad-Request-Id headers.
+ * Fetch wrapper for Vibes engine API calls.
+ * Automatically adds Authorization and X-Vibes-Request-Id headers.
  *
  * @param ctx - The agent context containing the request ID
  * @param endpoint - The API endpoint path (e.g., "/tools/web-search")
  * @param options - Fetch options (method, body, additional headers, etc.)
  * @returns The fetch Response
- * @throws Error if Dyad Pro API key is not configured
+ * @throws Error if Vibes Pro API key is not configured
  */
 export async function engineFetch(
-  ctx: Pick<AgentContext, "dyadRequestId">,
+  ctx: Pick<AgentContext, "vibesRequestId">,
   endpoint: string,
   options: EngineFetchOptions = {},
 ): Promise<Response> {
@@ -186,17 +197,17 @@ export async function engineFetch(
   const apiKey = settings.providerSettings?.auto?.apiKey?.value;
 
   // if (!apiKey) {
-  //   throw new Error("Dyad Pro API key is required");
+  //   throw new Error("Vibes Pro API key is required");
   // }
 
   const { headers: extraHeaders, ...restOptions } = options;
 
-  return fetch(`${DYAD_ENGINE_URL}${endpoint}`, {
+  return fetch(`${VIBES_ENGINE_URL}${endpoint}`, {
     ...restOptions,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "X-Dyad-Request-Id": ctx.dyadRequestId,
+      "X-Vibes-Request-Id": ctx.vibesRequestId,
       ...extraHeaders,
     },
   });

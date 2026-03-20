@@ -18,17 +18,30 @@ import {
   isGitRebaseInProgress,
   getGitUncommittedFilesWithStatus,
   gitAddAll,
+  gitAdd,
+  gitReset,
+  gitResetFile,
   gitCommit,
+  gitDiffFile,
+  gitLogDetailed,
+  gitShowCommitDetail,
+  gitResolveMergeOurs,
+  gitResolveMergeTheirs,
+  gitGetMergeConflicts,
+  gitGetConflictFileDiff,
+  gitResolveFileOurs,
+  gitResolveFileTheirs,
+  gitRemoveIndexLock,
 } from "../utils/git_utils";
-import { getDyadAppPath } from "../../paths/paths";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and } from "drizzle-orm";
 import log from "electron-log";
 import { withLock } from "../utils/lock_utils";
 import { updateAppGithubRepo, ensureCleanWorkspace } from "./github_handlers";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 import { githubContracts, gitContracts } from "../types/github";
+import { getVibesAppPath } from "../../paths/paths";
 import type {
   GitBranchAppIdParams,
   CreateGitBranchParams,
@@ -36,16 +49,21 @@ import type {
   RenameGitBranchParams,
   UncommittedFile,
 } from "../types/github";
+import fs from "node:fs";
+import path from "node:path";
 
 const logger = log.scope("git_branch_handlers");
 
 async function handleAbortMerge(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitMergeAbort({ path: appPath });
 }
@@ -54,17 +72,20 @@ async function handleAbortMerge(
 async function handleFetchFromGithub(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitFetch({
     path: appPath,
@@ -77,7 +98,10 @@ async function handleFetchFromGithub(
 async function handleCreateBranch(
   event: IpcMainInvokeEvent,
   { appId, branch, from }: CreateGitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   // Validate branch name
   if (!branch || branch.length === 0 || branch.length > 255) {
     throw new Error("Branch name must be between 1 and 255 characters");
@@ -96,9 +120,9 @@ async function handleCreateBranch(
   ) {
     throw new Error("Invalid branch name");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitCreateBranch({
     path: appPath,
@@ -110,10 +134,13 @@ async function handleCreateBranch(
 async function handleDeleteBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   await gitDeleteBranch({
     path: appPath,
@@ -124,10 +151,13 @@ async function handleDeleteBranch(
 async function handleSwitchBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check for merge or rebase in progress before attempting to switch
   // This provides structured error codes instead of relying on string matching
@@ -165,7 +195,7 @@ async function handleSwitchBranch(
     ) {
       throw new Error(
         `Failed to switch branch: uncommitted changes detected. ` +
-          "Please commit or stash your changes manually and try again.",
+        "Please commit or stash your changes manually and try again.",
       );
     }
     throw checkoutError;
@@ -177,16 +207,20 @@ async function handleSwitchBranch(
     org: app.githubOrg || undefined,
     repo: app.githubRepo || "",
     branch,
+    userId: context.userId,
   });
 }
 
 async function handleRenameBranch(
   event: IpcMainInvokeEvent,
   { appId, oldBranch, newBranch }: RenameGitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check if we're renaming the current branch BEFORE renaming to avoid race conditions
   const currentBranch = await gitCurrentBranch({ path: appPath });
@@ -206,6 +240,7 @@ async function handleRenameBranch(
       org: app.githubOrg || undefined,
       repo: app.githubRepo || "",
       branch: newBranch,
+      userId: context.userId,
     });
   }
 }
@@ -221,10 +256,13 @@ class MergeConflictError extends Error {
 async function handleMergeBranch(
   event: IpcMainInvokeEvent,
   { appId, branch }: GitBranchParams,
+  context: HandlerContext,
 ): Promise<void> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   // Check if branch exists locally, if not, check if it's a remote branch
   const localBranches = await gitListBranches({ path: appPath });
@@ -270,7 +308,7 @@ async function handleMergeBranch(
     ) {
       throw new Error(
         `Failed to merge branch: uncommitted changes detected. ` +
-          "Please commit or stash your changes manually and try again.",
+        "Please commit or stash your changes manually and try again.",
       );
     }
 
@@ -282,10 +320,13 @@ async function handleMergeBranch(
 async function handleListLocalBranches(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<{ branches: string[]; current: string | null }> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const branches = await gitListBranches({ path: appPath });
   const current = await gitCurrentBranch({ path: appPath });
@@ -295,10 +336,13 @@ async function handleListLocalBranches(
 async function handleListRemoteBranches(
   event: IpcMainInvokeEvent,
   { appId, remote = "origin" }: { appId: number; remote?: string },
+  context: HandlerContext,
 ): Promise<string[]> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   const branches = await gitListRemoteBranches({ path: appPath, remote });
   return branches;
@@ -307,23 +351,41 @@ async function handleListRemoteBranches(
 async function handleGetUncommittedFiles(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<UncommittedFile[]> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return getGitUncommittedFilesWithStatus({ path: appPath });
 }
 
 async function handleCommitChanges(
   event: IpcMainInvokeEvent,
-  { appId, message }: { appId: number; message: string },
+  { appId, message, filesToStage }: { appId: number; message: string; filesToStage?: string[] },
+  context: HandlerContext,
 ): Promise<string> {
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) throw new Error("App not found");
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
 
   return withLock(appId, async () => {
+    // Safety: remove stale index.lock if it exists.
+    // We hold the JS lock, so if the file exists it's from a crashed git process.
+    const lockFile = path.join(appPath, ".git", "index.lock");
+    if (fs.existsSync(lockFile)) {
+      logger.warn(`Removing stale index.lock at ${lockFile}`);
+      try {
+        fs.unlinkSync(lockFile);
+      } catch (e) {
+        logger.error(`Failed to remove stale index.lock: ${e}`);
+      }
+    }
+
     // Check for merge or rebase in progress
     if (isGitMergeInProgress({ path: appPath })) {
       throw GitStateError(
@@ -339,8 +401,15 @@ async function handleCommitChanges(
       );
     }
 
-    // Stage all changes
-    await gitAddAll({ path: appPath });
+    // Selective staging: if filesToStage is provided, stage only those files
+    if (filesToStage && filesToStage.length > 0) {
+      for (const filepath of filesToStage) {
+        await gitAdd({ path: appPath, filepath });
+      }
+    } else {
+      // Stage all changes (default behavior)
+      await gitAddAll({ path: appPath });
+    }
 
     // Commit with the provided message
     const commitHash = await gitCommit({ path: appPath, message });
@@ -349,21 +418,90 @@ async function handleCommitChanges(
   });
 }
 
+// --- Git Stage/Unstage Handlers ---
+async function handleStageFile(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  await gitAdd({ path: appPath, filepath });
+}
+
+async function handleUnstageFile(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  await gitResetFile({ path: appPath, filepath });
+}
+
+async function handleStageAll(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  await gitAddAll({ path: appPath });
+}
+
+async function handleUnstageAll(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  await gitReset({ path: appPath });
+}
+
+async function handleGetFileDiff(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+): Promise<{ additions: number; deletions: number; diff: string }> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  return gitDiffFile({ path: appPath, filepath });
+}
+
 // --- GitHub Pull Handler ---
 async function handlePullFromGithub(
   event: IpcMainInvokeEvent,
   { appId }: GitBranchAppIdParams,
+  context: HandlerContext,
 ): Promise<void> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
   if (!accessToken) {
     throw new Error("Not authenticated with GitHub.");
   }
-  const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app || !app.githubOrg || !app.githubRepo) {
     throw new Error("App is not linked to a GitHub repo.");
   }
-  const appPath = getDyadAppPath(app.path);
+  const appPath = getVibesAppPath(app.path);
   const currentBranch = await gitCurrentBranch({ path: appPath });
 
   try {
@@ -397,6 +535,165 @@ async function handlePullFromGithub(
   }
 }
 
+// --- Git Commit History Handlers ---
+async function handleGetCommitHistory(
+  _event: IpcMainInvokeEvent,
+  { appId, limit = 50, offset = 0, branch }: { appId: number; limit?: number; offset?: number; branch?: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  // Check if it's a git repo
+  if (!fs.existsSync(path.join(appPath, ".git"))) {
+    return { commits: [], total: 0, hasMore: false };
+  }
+
+  return gitLogDetailed({ path: appPath, limit, offset, branch });
+}
+
+async function handleGetCommitDetail(
+  _event: IpcMainInvokeEvent,
+  { appId, commitHash }: { appId: number; commitHash: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitShowCommitDetail({ path: appPath, commitHash });
+}
+
+// --- Merge Conflict Resolution Handlers ---
+
+async function handleGetConflictFiles(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  const mergeInProgress = isGitMergeInProgress({ path: appPath });
+  let files: string[] = [];
+
+  if (mergeInProgress) {
+    try {
+      files = await gitGetMergeConflicts({ path: appPath });
+    } catch (e) {
+      logger.warn("Failed to get conflict files:", e);
+    }
+  }
+
+  return { files, mergeInProgress };
+}
+
+async function handleResolveMergeOurs(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitResolveMergeOurs({ path: appPath });
+}
+
+async function handleResolveMergeTheirs(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitResolveMergeTheirs({ path: appPath });
+}
+
+async function handleAbortMergeFromGit(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  await gitMergeAbort({ path: appPath });
+}
+
+async function handleGetConflictFileDiff(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitGetConflictFileDiff({ path: appPath, filepath });
+}
+
+async function handleResolveFileOurs(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitResolveFileOurs({ path: appPath, filepath });
+}
+
+async function handleResolveFileTheirs(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitResolveFileTheirs({ path: appPath, filepath });
+}
+
+async function handleRemoveIndexLock(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitRemoveIndexLock({ path: appPath });
+}
+
 // --- Registration ---
 export function registerGithubBranchHandlers() {
   createTypedHandler(githubContracts.mergeAbort, handleAbortMerge);
@@ -420,4 +717,20 @@ export function registerGithubBranchHandlers() {
     handleGetUncommittedFiles,
   );
   createTypedHandler(gitContracts.commitChanges, handleCommitChanges);
+  createTypedHandler(gitContracts.stageFile, handleStageFile);
+  createTypedHandler(gitContracts.unstageFile, handleUnstageFile);
+  createTypedHandler(gitContracts.stageAll, handleStageAll);
+  createTypedHandler(gitContracts.unstageAll, handleUnstageAll);
+  createTypedHandler(gitContracts.getFileDiff, handleGetFileDiff);
+  createTypedHandler(gitContracts.getCommitHistory, handleGetCommitHistory);
+  createTypedHandler(gitContracts.getCommitDetail, handleGetCommitDetail);
+  createTypedHandler(gitContracts.getConflictFiles, handleGetConflictFiles);
+  createTypedHandler(gitContracts.resolveMergeOurs, handleResolveMergeOurs);
+  createTypedHandler(gitContracts.resolveMergeTheirs, handleResolveMergeTheirs);
+  createTypedHandler(gitContracts.abortMerge, handleAbortMergeFromGit);
+  createTypedHandler(gitContracts.getConflictFileDiff, handleGetConflictFileDiff);
+  createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
+  createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
+  createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
 }
+

@@ -3,15 +3,15 @@ import fs from "fs/promises";
 import path from "path";
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
-import { getDyadAppPath } from "../../paths/paths";
-import { apps } from "@/db/schema";
-import { db } from "@/db";
-import { chats } from "@/db/schema";
+import { getVibesAppPath } from "../../paths/paths";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 
 import { ImportAppParams, ImportAppResult } from "@/ipc/types";
 import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitCommit, gitAdd, gitInit } from "../utils/git_utils";
+import { readSettings } from "../../main/settings";
 
 const logger = log.scope("import-handlers");
 const handle = createLoggedHandler(logger);
@@ -51,11 +51,18 @@ export function registerImportHandlers() {
       _,
       { appName, skipCopy }: { appName: string; skipCopy?: boolean },
     ) => {
-      // Only check filesystem if we're copying to dyad-apps
+      // Only check filesystem if we're copying to vibes-apps
       if (!skipCopy) {
-        const appPath = getDyadAppPath(appName);
+        const appPath = getVibesAppPath(appName);
         try {
           await fs.access(appPath);
+          // Folder exists in vibes-apps — check if it's already registered in the DB
+          const existingApp = await getRemoteDb().query.apps.findFirst({
+            where: eq(remoteSchema.apps.name, appName),
+          });
+          if (existingApp) {
+            return { exists: true, existingAppId: existingApp.id };
+          }
           return { exists: true };
         } catch {
           // Path doesn't exist, continue checking database
@@ -63,11 +70,14 @@ export function registerImportHandlers() {
       }
 
       // Check database
-      const existingApp = await db.query.apps.findFirst({
-        where: eq(apps.name, appName),
+      const existingApp = await getRemoteDb().query.apps.findFirst({
+        where: eq(remoteSchema.apps.name, appName),
       });
 
-      return { exists: !!existingApp };
+      return {
+        exists: !!existingApp,
+        existingAppId: existingApp?.id,
+      };
     },
   );
 
@@ -92,10 +102,10 @@ export function registerImportHandlers() {
       }
 
       // Determine the app path based on skipCopy
-      const appPath = skipCopy ? sourcePath : getDyadAppPath(appName);
+      const appPath = skipCopy ? sourcePath : getVibesAppPath(appName);
 
       if (!skipCopy) {
-        // Check if the app already exists in dyad-apps
+        // Check if the app already exists in vibes-apps
         const errorMessage = "An app with this name already exists";
         try {
           await fs.access(appPath);
@@ -105,7 +115,7 @@ export function registerImportHandlers() {
             throw error;
           }
         }
-        // Copy the app folder to the Dyad apps directory.
+        // Copy the app folder to the Vibes apps directory.
         // Why not use fs.cp? Because we want stable ordering for
         // tests.
         await copyDirectoryRecursive(sourcePath, appPath);
@@ -126,27 +136,34 @@ export function registerImportHandlers() {
         // Create initial commit
         await gitCommit({
           path: appPath,
-          message: "Init Dyad app",
+          message: "Init vibes app",
         });
       }
 
+      const userId = readSettings().userId;
+      if (!userId) throw new Error("Unauthorized");
       // Create a new app
       // Store the full absolute path when skipCopy is true, otherwise store appName
-      const [app] = await db
-        .insert(apps)
+      const [app] = await getRemoteDb()
+        .insert(remoteSchema.apps)
         .values({
+          userId,
           name: appName,
           path: skipCopy ? sourcePath : appName,
           installCommand: installCommand ?? null,
           startCommand: startCommand ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
 
       // Create an initial chat for this app
-      const [chat] = await db
-        .insert(chats)
+      const [chat] = await getRemoteDb()
+        .insert(remoteSchema.chats)
         .values({
+          userId,
           appId: app.id,
+          createdAt: new Date(),
         })
         .returning();
       return { appId: app.id, chatId: chat.id };

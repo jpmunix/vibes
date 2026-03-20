@@ -1,4 +1,4 @@
-import { Filter, X, Trash2 } from "lucide-react";
+import { Filter, X, Trash2, Download } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -9,11 +9,11 @@ import {
 interface ConsoleFiltersProps {
   levelFilter: "all" | "info" | "warn" | "error";
   typeFilter:
-    | "all"
-    | "server"
-    | "client"
-    | "edge-function"
-    | "network-requests";
+  | "all"
+  | "server"
+  | "client"
+  | "edge-function"
+  | "network-requests";
   sourceFilter: string;
   onLevelFilterChange: (value: "all" | "info" | "warn" | "error") => void;
   onTypeFilterChange: (
@@ -25,6 +25,7 @@ interface ConsoleFiltersProps {
   uniqueSources: string[];
   totalLogs: number;
   showFilters: boolean;
+  onExportLogs: () => void;
 }
 
 export const ConsoleFilters = ({
@@ -39,6 +40,7 @@ export const ConsoleFilters = ({
   uniqueSources,
   totalLogs,
   showFilters,
+  onExportLogs,
 }: ConsoleFiltersProps) => {
   const hasActiveFilters =
     levelFilter !== "all" || typeFilter !== "all" || sourceFilter !== "";
@@ -46,8 +48,8 @@ export const ConsoleFilters = ({
   if (!showFilters) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-950 border-b border-border p-2 flex flex-wrap gap-2 items-center animate-in fade-in slide-in-from-top-2 duration-300">
-      <Filter size={14} className="text-gray-500" />
+    <div className="bg-background border-b border-border p-2 flex flex-wrap gap-2 items-center animate-in fade-in slide-in-from-top-2 duration-300">
+      <Filter size={14} className="text-muted-foreground" />
 
       {/* Level filter */}
       <select
@@ -57,9 +59,9 @@ export const ConsoleFilters = ({
             e.target.value as "all" | "info" | "warn" | "error",
           )
         }
-        className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
       >
-        <option value="all">All Levels</option>
+        <option value="all">Todos los niveles</option>
         <option value="info">Info</option>
         <option value="warn">Warn</option>
         <option value="error">Error</option>
@@ -71,16 +73,16 @@ export const ConsoleFilters = ({
         onChange={(e) =>
           onTypeFilterChange(
             e.target.value as
-              | "all"
-              | "server"
-              | "client"
-              | "edge-function"
-              | "network-requests",
+            | "all"
+            | "server"
+            | "client"
+            | "edge-function"
+            | "network-requests",
           )
         }
-        className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
       >
-        <option value="all">All Types</option>
+        <option value="all">Todos los tipos</option>
         <option value="server">Server</option>
         <option value="client">Client</option>
         <option value="edge-function">Edge Function</option>
@@ -92,7 +94,7 @@ export const ConsoleFilters = ({
         <select
           value={sourceFilter}
           onChange={(e) => onSourceFilterChange(e.target.value)}
-          className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="text-xs px-2 py-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
         >
           <option value="">All Sources</option>
           {uniqueSources.map((source) => (
@@ -107,7 +109,7 @@ export const ConsoleFilters = ({
       {hasActiveFilters && (
         <button
           onClick={onClearFilters}
-          className="text-xs px-2 py-1 flex items-center gap-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="text-xs px-2 py-1 flex items-center gap-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
         >
           <X size={12} />
           Clear Filters
@@ -120,7 +122,7 @@ export const ConsoleFilters = ({
           <TooltipTrigger asChild>
             <button
               onClick={onClearLogs}
-              className="p-1 border border-border rounded bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
               data-testid="clear-logs-button"
             >
               <Trash2 size={14} />
@@ -130,7 +132,22 @@ export const ConsoleFilters = ({
         </Tooltip>
       </TooltipProvider>
 
-      <div className="ml-auto text-xs text-gray-500">{totalLogs} logs</div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onExportLogs}
+              className="p-1 border border-border rounded bg-transparent hover:bg-accent transition-colors"
+              title="Exportar logs"
+            >
+              <Download size={14} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Exportar logs a archivo</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <div className="ml-auto text-xs text-muted-foreground">{totalLogs} logs</div>
     </div>
   );
 };

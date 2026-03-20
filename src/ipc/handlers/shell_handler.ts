@@ -10,7 +10,7 @@ export function registerShellHandlers() {
     if (!url) {
       throw new Error("No URL provided.");
     }
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("mailto:")) {
       throw new Error("Attempted to open invalid or non-http URL: " + url);
     }
     await shell.openExternal(url);

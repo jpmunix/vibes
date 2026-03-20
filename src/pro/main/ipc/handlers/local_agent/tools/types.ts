@@ -31,6 +31,8 @@ export const FILE_EDIT_TOOL_NAMES = [
   "write_file",
   "edit_file",
   "search_replace",
+  "patch_file",
+  "file_editor",
 ] as const;
 export type FileEditToolName = (typeof FILE_EDIT_TOOL_NAMES)[number];
 export interface FileEditTracker {
@@ -38,7 +40,16 @@ export interface FileEditTracker {
     write_file: number;
     edit_file: number;
     search_replace: number;
+    patch_file: number;
+    file_editor: number;
   };
+}
+
+/** A single typecheck result for one file edit */
+export interface TypecheckEntry {
+  file: string;
+  status: "ok" | "error";
+  errors: string[];
 }
 
 export interface AgentContext {
@@ -48,15 +59,27 @@ export interface AgentContext {
   chatId: number;
   supabaseProjectId: string | null;
   supabaseOrganizationSlug: string | null;
+  firebaseProjectId: string | null;
+  bunnyConfig: {
+    databases: { name: string; databaseUrl: string; fullAccessToken: string; readOnlyToken: string }[];
+    storageZones: { name: string; hostname: string; username: string; password: string; readonlyPassword: string }[];
+  } | null;
+  pocketbaseConfig: {
+    url: string;
+    adminEmail: string;
+    adminPassword: string;
+  } | null;
   messageId: number;
   isSharedModulesChanged: boolean;
   chatSummary?: string;
   /** Turn-scoped todo list for agent task tracking */
   todos: Todo[];
-  /** Request ID for tracking requests to the Dyad engine */
-  dyadRequestId: string;
+  /** Request ID for tracking requests to the Vibes engine */
+  vibesRequestId: string;
   /** Tracks file edit tool usage per file for telemetry */
   fileEditTracker: FileEditTracker;
+  /** Accumulated typecheck results per file edit for summary badge */
+  typecheckResults: TypecheckEntry[];
   /**
    * If true, this is Basic Agent mode (free tier with quota).
    * Engine-dependent tools are disabled in this mode.
@@ -127,9 +150,37 @@ export type UserMessageContentPart =
   | { type: "image-url"; url: string };
 
 /**
- * Tool result can be a simple string or a structured result with content parts
+ * Structured error class for tool failures.
+ * When a tool throws ToolError, the catch in buildAgentToolSet will
+ * return it as a structured tool result (not re-throw), allowing
+ * the model to see the error and self-correct.
  */
-export type ToolResult = string;
+export class ToolError extends Error {
+  readonly retryable: boolean;
+  readonly hint?: string;
+
+  constructor(message: string, options: { retryable?: boolean; hint?: string } = {}) {
+    super(message);
+    this.name = "ToolError";
+    this.retryable = options.retryable ?? true;
+    this.hint = options.hint;
+  }
+}
+
+/**
+ * Structured tool result with metadata about success/failure.
+ */
+export interface StructuredToolResult {
+  content: string;
+  isError: boolean;
+  retryable?: boolean;
+  hint?: string;
+}
+
+/**
+ * Tool result can be a simple string or a structured result
+ */
+export type ToolResult = string | StructuredToolResult;
 
 // ============================================================================
 // Tool Definition Interface
@@ -170,5 +221,9 @@ export interface ToolDefinition<T = any> {
    * @param isComplete - True if this is the final call (include closing tags)
    * @returns The XML string, or undefined if not enough args yet
    */
-  buildXml?: (args: Partial<T>, isComplete: boolean) => string | undefined;
+  buildXml?: (
+    args: Partial<T>,
+    isComplete: boolean,
+    ctx?: AgentContext,
+  ) => string | undefined;
 }

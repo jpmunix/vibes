@@ -32,30 +32,27 @@ export function VercelIntegration() {
   }
 
   return (
-    <div className="space-y-8 p-6 rounded-2xl bg-muted/30 border border-border">
-      <div className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-card shadow-sm border border-border">
-            <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M24 22.525H0l12-21.05 12 21.05z" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              Vercel
-            </h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Tu cuenta está conectada a Vercel
-            </p>
-          </div>
+    <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <svg className="h-4 w-4 text-muted-foreground shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M24 22.525H0l12-21.05 12 21.05z" />
+          </svg>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            Vercel
+          </h3>
         </div>
-
+        <p className="text-sm text-muted-foreground mt-1">
+          Tu cuenta está conectada a Vercel
+        </p>
+      </div>
+      <div className="shrink-0">
         <Button
           onClick={handleDisconnectFromVercel}
           variant="ghost"
           size="sm"
           disabled={isDisconnecting}
-          className="rounded-xl h-10 px-4 font-bold text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+          className="rounded-lg h-auto px-4 py-1.5 font-bold text-sm bg-muted/50 border border-border hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 hover:border-red-200 dark:hover:border-red-900/30 transition-colors cursor-pointer"
         >
           {isDisconnecting ? "Desconectando..." : "Desconectar"}
         </Button>

@@ -24,7 +24,7 @@ export function AutoUpdateSwitch() {
             action: {
               label: "Reiniciar Vibes",
               onClick: () => {
-                ipc.system.restartDyad();
+                ipc.system.restartVibes();
               },
             },
           });

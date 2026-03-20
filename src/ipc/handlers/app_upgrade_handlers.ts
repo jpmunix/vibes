@@ -1,10 +1,10 @@
 import { createLoggedHandler } from "./safe_handle";
 import log from "electron-log";
 import { AppUpgrade } from "@/ipc/types";
-import { db } from "../../db";
-import { apps } from "../../db/schema";
-import { eq } from "drizzle-orm";
-import { getDyadAppPath } from "../../paths/paths";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { and, eq } from "drizzle-orm";
+import { getVibesAppPath } from "../../paths/paths";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -33,9 +33,10 @@ const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
   },
 ];
 
-async function getApp(appId: number) {
+async function getApp(appId: number, userId: string) {
+  const db = getRemoteDb();
   const app = await db.query.apps.findFirst({
-    where: eq(apps.id, appId),
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
   });
   if (!app) {
     throw new Error(`App with id ${appId} not found`);
@@ -65,7 +66,7 @@ function isComponentTaggerUpgradeNeeded(appPath: string): boolean {
 
   try {
     const viteConfigContent = fs.readFileSync(viteConfigPath, "utf-8");
-    return !viteConfigContent.includes("@dyad-sh/react-vite-component-tagger");
+    return !viteConfigContent.includes("@dyad-sh/react-vite-component-tagger") && !viteConfigContent.includes("@vibes/react-vite-component-tagger");
   } catch (e) {
     logger.error("Error reading vite config", e);
     return false;
@@ -113,7 +114,7 @@ async function applyComponentTagger(appPath: string) {
   // Add import statement if not present
   if (
     !content.includes(
-      "import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
     )
   ) {
     // Add it after the last import statement
@@ -128,17 +129,17 @@ async function applyComponentTagger(appPath: string) {
     lines.splice(
       lastImportIndex + 1,
       0,
-      "import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';",
+      "import vibesComponentTagger from '@dyad-sh/react-vite-component-tagger';",
     );
     content = lines.join("\n");
   }
 
   // Add plugin to plugins array
   if (content.includes("plugins: [")) {
-    if (!content.includes("dyadComponentTagger()")) {
+    if (!content.includes("vibesComponentTagger()")) {
       content = content.replace(
         "plugins: [",
-        "plugins: [dyadComponentTagger(), ",
+        "plugins: [vibesComponentTagger(), ",
       );
     }
   } else {
@@ -153,7 +154,7 @@ async function applyComponentTagger(appPath: string) {
   await new Promise<void>((resolve, reject) => {
     logger.info("Installing component-tagger dependency");
     const process = spawn(
-      "pnpm add -D @dyad-sh/react-vite-component-tagger || npm install --save-dev --legacy-peer-deps @dyad-sh/react-vite-component-tagger",
+      "npm install --save-dev --legacy-peer-deps @dyad-sh/react-vite-component-tagger",
       {
         cwd: appPath,
         shell: true,
@@ -207,7 +208,7 @@ async function applyCapacitor({
   // Install Capacitor dependencies
   await simpleSpawn({
     command:
-      "pnpm add @capacitor/core@7.4.4 @capacitor/cli@7.4.4 @capacitor/ios@7.4.4 @capacitor/android@7.4.4 || npm install @capacitor/core@7.4.4 @capacitor/cli@7.4.4 @capacitor/ios@7.4.4 @capacitor/android@7.4.4 --legacy-peer-deps",
+      "npm install @capacitor/core@7.4.4 @capacitor/cli@7.4.4 @capacitor/ios@7.4.4 @capacitor/android@7.4.4 --legacy-peer-deps",
     cwd: appPath,
     successMessage: "Capacitor dependencies installed successfully",
     errorPrefix: "Failed to install Capacitor dependencies",
@@ -245,7 +246,7 @@ async function applyCapacitor({
     );
     throw new Error(
       "Failed to commit Capacitor changes. Please commit them manually. Error: " +
-        err,
+      err,
     );
   }
 }
@@ -253,9 +254,10 @@ async function applyCapacitor({
 export function registerAppUpgradeHandlers() {
   handle(
     "get-app-upgrades",
-    async (_, { appId }: { appId: number }): Promise<AppUpgrade[]> => {
-      const app = await getApp(appId);
-      const appPath = getDyadAppPath(app.path);
+    async (_, { appId }: { appId: number }, context): Promise<AppUpgrade[]> => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const app = await getApp(appId, context.userId);
+      const appPath = getVibesAppPath(app.path);
 
       const upgradesWithStatus = availableUpgrades.map((upgrade) => {
         let isNeeded = false;
@@ -273,13 +275,14 @@ export function registerAppUpgradeHandlers() {
 
   handle(
     "execute-app-upgrade",
-    async (_, { appId, upgradeId }: { appId: number; upgradeId: string }) => {
+    async (_, { appId, upgradeId }: { appId: number; upgradeId: string }, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
       if (!upgradeId) {
         throw new Error("upgradeId is required");
       }
 
-      const app = await getApp(appId);
-      const appPath = getDyadAppPath(app.path);
+      const app = await getApp(appId, context.userId);
+      const appPath = getVibesAppPath(app.path);
 
       if (upgradeId === "component-tagger") {
         await applyComponentTagger(appPath);

@@ -20,7 +20,7 @@ export interface MessageConfig {
 }
 
 // Generic Message component
-export function Message({}: MessageConfig) {
+export function Message({ }: MessageConfig) {
   return "";
   // <div className="max-w-3xl mx-auto mt-4 py-2 px-1 border border-blue-500 rounded-lg bg-blue-50 text-center">
   //   <p className="text-sm text-blue-700">
@@ -51,28 +51,8 @@ export function Message({}: MessageConfig) {
 }
 
 // Predefined message configurations
-export const TURBO_EDITS_PROMO_MESSAGE: MessageConfig = {
-  spans: [
-    { type: "text", content: "¿Cansado de esperar a la IA?" },
-    {
-      type: "link",
-      content: " Consigue Vibes Pro",
-      url: "https://github.com/minube/vibes#ai",
-    },
-    { type: "text", content: " para ediciones más rápidas con Turbo Edits." },
-  ],
-};
+// Vibes Pro related messages removed.
 
-export const SMART_CONTEXT_PROMO_MESSAGE: MessageConfig = {
-  spans: [
-    { type: "text", content: "Ahorra hasta 3 veces en costes de IA con " },
-    {
-      type: "link",
-      content: "Smart Context de Vibes Pro",
-      url: "https://github.com/minube/vibes#ai",
-    },
-  ],
-};
 
 // Example of other message types you could easily add
 export const DIFFERENT_MODEL_TIP: MessageConfig = {
@@ -187,7 +167,7 @@ export const ROADMAP_TIP: MessageConfig = {
   ],
 };
 
-// Like Dyad? Star it on GitHub https://github.com/dyad-sh/dyad/
+// Like Vibes? Star it on GitHub https://github.com/<vibes-sh/dyad/
 export const GITHUB_TIP: MessageConfig = {
   spans: [
     {
@@ -197,14 +177,12 @@ export const GITHUB_TIP: MessageConfig = {
     {
       type: "link",
       content: "GitHub",
-      url: "https://github.com/dyad-sh/dyad",
+      url: "https://github.com/<vibes-sh/dyad",
     },
   ],
 };
 // Array of all available messages for rotation
 const ALL_MESSAGES = [
-  TURBO_EDITS_PROMO_MESSAGE,
-  SMART_CONTEXT_PROMO_MESSAGE,
   DIFFERENT_MODEL_TIP,
   REDDIT_TIP,
   REPORT_A_BUG_TIP,

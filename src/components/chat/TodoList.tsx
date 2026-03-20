@@ -60,7 +60,7 @@ export function TodoList({ todos }: TodoListProps) {
             <>
               <ListTodo className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <span className="text-sm">
-                {completed} of {total} To-dos Completed
+                {completed} de {total} tareas completadas
               </span>
             </>
           ) : inProgressTask ? (
@@ -91,9 +91,9 @@ export function TodoList({ todos }: TodoListProps) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-          ) : (
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </button>

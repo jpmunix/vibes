@@ -96,6 +96,29 @@ export function injectMessagesAtPositions<T>(
 }
 
 /**
+ * Detect whether a tool result represents an error.
+ * The AI SDK can store results in multiple formats:
+ * - Array of content parts: [{ type: "text", value: "Error: ..." }]
+ * - Raw string: "Error: ..."
+ * - Object with isError flag: { isError: true, ... }
+ */
+function isToolResultError(res: unknown): boolean {
+  if (typeof res === "object" && res !== null && (res as any).isError === true)
+    return true;
+  if (typeof res === "string" && res.startsWith("Error:")) return true;
+  // AI SDK format: array of content parts (most common path)
+  if (Array.isArray(res)) {
+    return res.some(
+      (part) =>
+        part?.type === "text" &&
+        typeof part.value === "string" &&
+        part.value.startsWith("Error:"),
+    );
+  }
+  return false;
+}
+
+/**
  * The complete prepareStep logic as a pure function.
  *
  * @param options - The step options containing messages and other properties
@@ -105,7 +128,7 @@ export function injectMessagesAtPositions<T>(
  */
 export function prepareStepMessages<
   TMessage extends ModelMessage,
-  T extends { messages: TMessage[]; [key: string]: unknown },
+  T extends { messages: TMessage[];[key: string]: unknown },
 >(
   options: T,
   pendingUserMessages: UserMessageContentPart[][],
@@ -120,17 +143,95 @@ export function prepareStepMessages<
     messages.length,
   );
 
-  // If no messages to inject, don't modify
-  if (allInjectedMessages.length === 0) {
+  let outputMessages: TMessage[] | undefined;
+
+  // 1. Handle user message injections
+  if (allInjectedMessages.length > 0) {
+    // injectMessagesAtPositions returns a new array
+    outputMessages = injectMessagesAtPositions(
+      messages,
+      allInjectedMessages,
+    ) as TMessage[];
+  }
+
+  // 2. Post-Error Tool Choice Logic & Smart Fallback
+  // Check if the last message in history was a failed tool result.
+  const lastHistoryMsg = messages[messages.length - 1];
+
+  let hasError = false;
+  let failedToolName: string | undefined;
+
+  if (
+    lastHistoryMsg &&
+    lastHistoryMsg.role === "tool" &&
+    Array.isArray(lastHistoryMsg.content)
+  ) {
+    const content = lastHistoryMsg.content as any[];
+    for (const part of content) {
+      if (part.type === "tool-result") {
+        const res = part.result;
+        if (isToolResultError(res)) {
+          hasError = true;
+          failedToolName = part.toolName || part.toolCallId;
+          break;
+        }
+      }
+    }
+  }
+
+  if (hasError) {
+    // If we haven't created a new array yet (no injections), copy original
+    if (!outputMessages) {
+      outputMessages = [...messages];
+    }
+
+    // Check for consecutive failures of the same tool to suggest fallback
+    let consecutiveFailures = 1;
+    if (failedToolName) {
+      // Look back for previous failures of the same tool
+      for (let i = messages.length - 2; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.role === "tool" && Array.isArray(msg.content)) {
+          const content = msg.content as any[];
+          const foundSameError = content.some(part =>
+            part.type === "tool-result" &&
+            (part.toolName === failedToolName || part.toolCallId === failedToolName) &&
+            isToolResultError(part.result)
+          );
+
+          if (foundSameError) {
+            consecutiveFailures++;
+          } else {
+            break;
+          }
+        } else if (msg.role === "user") {
+          break; // User message resets retry context
+        }
+      }
+    }
+
+    let instruction = "The previous tool execution failed. You MUST correct the parameters and retry immediately. Do not explain, just call the tool again.";
+
+    // Smart Fallback — trigger immediately on first failure for search_replace
+    if (consecutiveFailures >= 1) {
+      if (failedToolName?.includes("search_replace")) {
+        instruction += `\n\nSYSTEM DIRECTIVE: search_replace has failed ${consecutiveFailures} consecutive times. You MUST NOT use search_replace again for this file. Use read_file to check the current file content, then use write_file to rewrite the entire file. This is mandatory — do not attempt search_replace again.`;
+      } else if (failedToolName?.includes("edit_file")) {
+        instruction += `\n\nSYSTEM DIRECTIVE: edit_file has failed ${consecutiveFailures} consecutive times. You MUST switch to write_file to overwrite the file completely. This is mandatory.`;
+      }
+    }
+
+    // Append system instruction forcing retry
+    outputMessages.push({
+      role: "system",
+      content: instruction,
+    } as any);
+  }
+
+  // If no modifications (no injections AND no error), return undefined
+  if (!outputMessages) {
     return undefined;
   }
 
-  // Build the new messages array with injections
-  // Cast is safe because InjectedMessage["message"] is a valid ModelMessage
-  const newMessages = injectMessagesAtPositions(
-    messages,
-    allInjectedMessages,
-  ) as TMessage[];
-
-  return { messages: newMessages, ...rest };
+  return { messages: outputMessages, ...rest };
 }

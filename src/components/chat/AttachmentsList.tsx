@@ -1,5 +1,6 @@
 import { FileText, X, MessageSquare, Upload } from "lucide-react";
 import type { FileAttachment } from "@/ipc/types";
+import { useState, useEffect } from "react";
 
 interface AttachmentsListProps {
   attachments: FileAttachment[];
@@ -27,32 +28,7 @@ export function AttachmentsList({
               <MessageSquare size={12} className="text-green-600" />
             )}
             {attachment.file.type.startsWith("image/") ? (
-              <div className="relative group">
-                <img
-                  src={URL.createObjectURL(attachment.file)}
-                  alt={attachment.file.name}
-                  className="w-5 h-5 object-cover rounded"
-                  onLoad={(e) =>
-                    URL.revokeObjectURL((e.target as HTMLImageElement).src)
-                  }
-                  onError={(e) =>
-                    URL.revokeObjectURL((e.target as HTMLImageElement).src)
-                  }
-                />
-                <div className="absolute hidden group-hover:block top-6 left-0 z-10">
-                  <img
-                    src={URL.createObjectURL(attachment.file)}
-                    alt={attachment.file.name}
-                    className="max-w-[200px] max-h-[200px] object-contain bg-white p-1 rounded shadow-lg"
-                    onLoad={(e) =>
-                      URL.revokeObjectURL((e.target as HTMLImageElement).src)
-                    }
-                    onError={(e) =>
-                      URL.revokeObjectURL((e.target as HTMLImageElement).src)
-                    }
-                  />
-                </div>
-              </div>
+              <Thumbnail file={attachment.file} />
             ) : (
               <FileText size={12} />
             )}
@@ -67,6 +43,35 @@ export function AttachmentsList({
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function Thumbnail({ file }: { file: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  if (!url) return <div className="w-5 h-5 bg-muted-foreground/20 rounded animate-pulse" />;
+
+  return (
+    <div className="relative group/thumb">
+      <img
+        src={url}
+        alt={file.name}
+        className="w-5 h-5 object-cover rounded"
+      />
+      <div className="absolute hidden group-hover/thumb:block top-6 left-0 z-50">
+        <img
+          src={url}
+          alt={file.name}
+          className="max-w-[250px] max-h-[250px] object-contain bg-background border border-border p-1 rounded-lg shadow-xl"
+        />
+      </div>
     </div>
   );
 }

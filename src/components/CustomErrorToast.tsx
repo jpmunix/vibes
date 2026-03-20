@@ -46,7 +46,7 @@ export function CustomErrorToast({
                     e.stopPropagation();
                     handleCopy();
                   }}
-                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-all duration-150"
+                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-colors duration-150"
                   title="Copiar al portapapeles"
                 >
                   {copied ? (
@@ -60,7 +60,7 @@ export function CustomErrorToast({
                     e.stopPropagation();
                     handleClose();
                   }}
-                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-all duration-150"
+                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100/70 rounded-lg transition-colors duration-150"
                   title="Cerrar"
                 >
                   <X className="w-4 h-4" />

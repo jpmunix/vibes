@@ -270,13 +270,13 @@ export function GithubBranchManager({
       } catch (switchError: any) {
         showError(
           switchError?.message ||
-            `Failed to switch branch after aborting ${operationType}. Please try again.`,
+          `Failed to switch branch after aborting ${operationType}. Please try again.`,
         );
       }
     } catch (abortError: any) {
       showError(
         abortError?.message ||
-          `Failed to abort ongoing ${operationType} before switching branches.`,
+        `Failed to abort ongoing ${operationType} before switching branches.`,
       );
     } finally {
       setIsSwitching(false);
@@ -357,7 +357,7 @@ export function GithubBranchManager({
           setConflicts([]);
           showError(
             fetchError.message ||
-              "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
+            "Merge conflict detected, but failed to fetch conflicting files. Please try again.",
           );
         }
       } else {
@@ -453,16 +453,6 @@ export function GithubBranchManager({
                 className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
               />
               Refresh branches
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={handleGitPull}
-              disabled={isPulling}
-              data-testid="git-pull-button"
-            >
-              <GitPullRequestArrow
-                className={`mr-2 h-4 w-4 ${isPulling ? "animate-spin" : ""}`}
-              />
-              Git pull
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -692,10 +682,9 @@ export function GithubBranchManager({
                   Aborting…
                 </span>
               ) : (
-                `Abort ${
-                  abortConfirmation?.operationType === "merge"
-                    ? "Merge"
-                    : "Rebase"
+                `Abort ${abortConfirmation?.operationType === "merge"
+                  ? "Merge"
+                  : "Rebase"
                 } & Switch`
               )}
             </AlertDialogAction>
@@ -711,7 +700,7 @@ export function GithubBranchManager({
         </p>
       )}
 
-      <Card className="transition-all duration-200">
+      <Card className="transition-colors duration-200">
         <CardHeader
           className="p-2 cursor-pointer"
           onClick={() => setIsExpanded((prev) => !prev)}
@@ -736,9 +725,8 @@ export function GithubBranchManager({
           </div>
         </CardHeader>
         <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
-            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-          }`}
+          className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+            }`}
         >
           <CardContent className="space-y-4 pt-0">
             {/* Banner for native git requirement */}
@@ -780,7 +768,7 @@ export function GithubBranchManager({
                       <span
                         className={
                           branch === currentBranch
-                            ? "font-bold text-blue-600"
+                            ? "font-bold text-foreground"
                             : ""
                         }
                       >

@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -25,17 +26,17 @@ export default function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] overflow-y-auto pointer-events-none">
       <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
         {showOverlay && (
           <div
-            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity pointer-events-auto"
+            className="fixed inset-0 z-[100] bg-black/40 transition-opacity pointer-events-auto"
             onClick={onCancel}
           />
         )}
 
-        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg pointer-events-auto">
+        <div className="relative z-[101] transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-[opacity,transform] sm:my-8 sm:w-full sm:max-w-lg pointer-events-auto">
           <div className="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -83,6 +84,7 @@ export default function ConfirmationDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -36,12 +36,12 @@ let rememberedOrigin = null; // e.g. "http://localhost:5173"
 /* ---------- optional resources for HTML injection ---------------------- */
 
 let stacktraceJsContent = null;
-let dyadShimContent = null;
-let dyadComponentSelectorClientContent = null;
-let dyadScreenshotClientContent = null;
+let vibesShimContent = null;
+let vibesComponentSelectorClientContent = null;
+let vibesScreenshotClientContent = null;
 let htmlToImageContent = null;
-let dyadVisualEditorClientContent = null;
-let dyadLogsContent = null;
+let vibesVisualEditorClientContent = null;
+let vibesLogsContent = null;
 
 try {
   const htmlToImagePath = path.join(
@@ -80,98 +80,98 @@ try {
 }
 
 try {
-  const dyadShimPath = path.join(__dirname, "dyad-shim.js");
-  dyadShimContent = fs.readFileSync(dyadShimPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-shim.js loaded.");
+  const vibesShimPath = path.join(__dirname, "vibes-shim.js");
+  vibesShimContent = fs.readFileSync(vibesShimPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-shim.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-shim.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-shim.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadComponentSelectorClientPath = path.join(
+  const vibesComponentSelectorClientPath = path.join(
     __dirname,
-    "dyad-component-selector-client.js",
+    "vibes-component-selector-client.js",
   );
-  dyadComponentSelectorClientContent = fs.readFileSync(
-    dyadComponentSelectorClientPath,
+  vibesComponentSelectorClientContent = fs.readFileSync(
+    vibesComponentSelectorClientPath,
     "utf-8",
   );
   parentPort?.postMessage(
-    "[proxy-worker] dyad-component-selector-client.js loaded.",
+    "[proxy-worker] vibes-component-selector-client.js loaded.",
   );
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-component-selector-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-component-selector-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadScreenshotClientPath = path.join(
+  const vibesScreenshotClientPath = path.join(
     __dirname,
-    "dyad-screenshot-client.js",
+    "vibes-screenshot-client.js",
   );
-  dyadScreenshotClientContent = fs.readFileSync(
-    dyadScreenshotClientPath,
+  vibesScreenshotClientContent = fs.readFileSync(
+    vibesScreenshotClientPath,
     "utf-8",
   );
-  parentPort?.postMessage("[proxy-worker] dyad-screenshot-client.js loaded.");
+  parentPort?.postMessage("[proxy-worker] vibes-screenshot-client.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-screenshot-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-screenshot-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadVisualEditorClientPath = path.join(
+  const vibesVisualEditorClientPath = path.join(
     __dirname,
-    "dyad-visual-editor-client.js",
+    "vibes-visual-editor-client.js",
   );
-  dyadVisualEditorClientContent = fs.readFileSync(
-    dyadVisualEditorClientPath,
+  vibesVisualEditorClientContent = fs.readFileSync(
+    vibesVisualEditorClientPath,
     "utf-8",
   );
   parentPort?.postMessage(
-    "[proxy-worker] dyad-visual-editor-client.js loaded.",
+    "[proxy-worker] vibes-visual-editor-client.js loaded.",
   );
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-visual-editor-client.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-visual-editor-client.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadLogsPath = path.join(__dirname, "dyad_logs.js");
-  dyadLogsContent = fs.readFileSync(dyadLogsPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad_logs.js loaded.");
+  const vibesLogsPath = path.join(__dirname, "vibes_logs.js");
+  vibesLogsContent = fs.readFileSync(vibesLogsPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes_logs.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad_logs.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes_logs.js: ${error.message}`,
   );
 }
 
 // Load Service Worker files
-let dyadSwContent = null;
-let dyadSwRegisterContent = null;
+let vibesSwContent = null;
+let vibesSwRegisterContent = null;
 
 try {
-  const dyadSwPath = path.join(__dirname, "dyad-sw.js");
-  dyadSwContent = fs.readFileSync(dyadSwPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-sw.js loaded.");
+  const vibesSwPath = path.join(__dirname, "vibes-sw.js");
+  vibesSwContent = fs.readFileSync(vibesSwPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-sw.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-sw.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-sw.js: ${error.message}`,
   );
 }
 
 try {
-  const dyadSwRegisterPath = path.join(__dirname, "dyad-sw-register.js");
-  dyadSwRegisterContent = fs.readFileSync(dyadSwRegisterPath, "utf-8");
-  parentPort?.postMessage("[proxy-worker] dyad-sw-register.js loaded.");
+  const vibesSwRegisterPath = path.join(__dirname, "vibes-sw-register.js");
+  vibesSwRegisterContent = fs.readFileSync(vibesSwRegisterPath, "utf-8");
+  parentPort?.postMessage("[proxy-worker] vibes-sw-register.js loaded.");
 } catch (error) {
   parentPort?.postMessage(
-    `[proxy-worker] Failed to read dyad-sw-register.js: ${error.message}`,
+    `[proxy-worker] Failed to read vibes-sw-register.js: ${error.message}`,
   );
 }
 
@@ -184,8 +184,8 @@ function needsInjection(pathname) {
 
 function injectHTML(buf) {
   let txt = buf.toString("utf8");
-  // These are strings that were used since the first version of the dyad shim.
-  // If the dyad shim is used from legacy apps which came pre-baked with the shim
+  // These are strings that were used since the first version of the vibes shim.
+  // If the vibes shim is used from legacy apps which came pre-baked with the shim
   // as a vite plugin, then do not inject the shim twice to avoid weird behaviors.
   const legacyAppWithShim =
     txt.includes("window-error") && txt.includes("unhandled-rejection");
@@ -201,19 +201,19 @@ function injectHTML(buf) {
       );
     }
 
-    if (dyadShimContent) {
-      scripts.push(`<script>${dyadShimContent}</script>`);
+    if (vibesShimContent) {
+      scripts.push(`<script>${vibesShimContent}</script>`);
     } else {
       scripts.push(
-        '<script>console.warn("[proxy-worker] dyad shim was not injected.");</script>',
+        '<script>console.warn("[proxy-worker] vibes shim was not injected.");</script>',
       );
     }
   }
-  if (dyadComponentSelectorClientContent) {
-    scripts.push(`<script>${dyadComponentSelectorClientContent}</script>`);
+  if (vibesComponentSelectorClientContent) {
+    scripts.push(`<script>${vibesComponentSelectorClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad component selector client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes component selector client was not injected.");</script>',
     );
   }
   if (htmlToImageContent) {
@@ -229,32 +229,32 @@ function injectHTML(buf) {
       "[proxy-worker] WARNING: html-to-image not injected!",
     );
   }
-  if (dyadScreenshotClientContent) {
-    scripts.push(`<script>${dyadScreenshotClientContent}</script>`);
+  if (vibesScreenshotClientContent) {
+    scripts.push(`<script>${vibesScreenshotClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad screenshot client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes screenshot client was not injected.");</script>',
     );
   }
-  if (dyadVisualEditorClientContent) {
-    scripts.push(`<script>${dyadVisualEditorClientContent}</script>`);
+  if (vibesVisualEditorClientContent) {
+    scripts.push(`<script>${vibesVisualEditorClientContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad visual editor client was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes visual editor client was not injected.");</script>',
     );
   }
-  if (dyadLogsContent) {
-    scripts.push(`<script>${dyadLogsContent}</script>`);
+  if (vibesLogsContent) {
+    scripts.push(`<script>${vibesLogsContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad_logs.js was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes_logs.js was not injected.");</script>',
     );
   }
-  if (dyadSwRegisterContent) {
-    scripts.push(`<script>${dyadSwRegisterContent}</script>`);
+  if (vibesSwRegisterContent) {
+    scripts.push(`<script>${vibesSwRegisterContent}</script>`);
   } else {
     scripts.push(
-      '<script>console.warn("[proxy-worker] dyad-sw-register.js was not injected.");</script>',
+      '<script>console.warn("[proxy-worker] vibes-sw-register.js was not injected.");</script>',
     );
   }
   const allScripts = scripts.join("\n");
@@ -285,14 +285,14 @@ function buildTargetURL(clientReq) {
 
 const server = http.createServer((clientReq, clientRes) => {
   // Special handling for Service Worker file
-  if (clientReq.url === "/dyad-sw.js") {
-    if (dyadSwContent) {
+  if (clientReq.url === "/vibes-sw.js") {
+    if (vibesSwContent) {
       clientRes.writeHead(200, {
         "content-type": "application/javascript",
         "service-worker-allowed": "/",
         "cache-control": "no-cache",
       });
-      clientRes.end(dyadSwContent);
+      clientRes.end(vibesSwContent);
       return;
     } else {
       clientRes.writeHead(404, { "content-type": "text/plain" });
@@ -339,52 +339,104 @@ const server = http.createServer((clientReq, clientRes) => {
     headers,
   };
 
-  const upReq = lib.request(upOpts, (upRes) => {
-    const wantsInjection = needsInjection(target.pathname);
-    // Only inject when upstream indicates HTML content
-    const contentTypeHeader = upRes.headers["content-type"];
-    const contentType = Array.isArray(contentTypeHeader)
-      ? contentTypeHeader[0]
-      : contentTypeHeader || "";
-    const isHtml =
-      typeof contentType === "string" &&
-      contentType.toLowerCase().includes("text/html");
-    const inject = wantsInjection && isHtml;
+  const MAX_RETRIES = 20;
 
-    if (!inject) {
-      clientRes.writeHead(upRes.statusCode, upRes.headers);
-      return void upRes.pipe(clientRes);
-    }
-
-    const chunks = [];
-    upRes.on("data", (c) => chunks.push(c));
-    upRes.on("end", () => {
-      try {
-        const merged = Buffer.concat(chunks);
-        const patched = injectHTML(merged);
-
-        const hdrs = {
-          ...upRes.headers,
-          "content-length": Buffer.byteLength(patched),
-        };
-        // If we injected content, it's no longer encoded in the original way
-        delete hdrs["content-encoding"];
-        // Also, remove ETag as content has changed
-        delete hdrs["etag"];
-
-        clientRes.writeHead(upRes.statusCode, hdrs);
-        clientRes.end(patched);
-      } catch (e) {
-        clientRes.writeHead(500, { "content-type": "text/plain" });
-        clientRes.end("Injection failed: " + e.message);
+  const attemptRequest = (retriesLeft) => {
+    const upReq = lib.request(upOpts, (upRes) => {
+      // If we used any retries, notify parent so the iframe can be refreshed
+      const usedRetries = MAX_RETRIES - retriesLeft;
+      if (usedRetries > 0) {
+        parentPort?.postMessage("proxy-upstream-recovered");
       }
+
+      upRes.on("error", (err) => {
+        console.error("[proxy-worker] Upstream response error:", err.message);
+        clientRes.destroy();
+      });
+      const wantsInjection = needsInjection(target.pathname);
+      // Only inject when upstream indicates HTML content
+      const contentTypeHeader = upRes.headers["content-type"];
+      const contentType = Array.isArray(contentTypeHeader)
+        ? contentTypeHeader[0]
+        : contentTypeHeader || "";
+      const isHtml =
+        typeof contentType === "string" &&
+        contentType.toLowerCase().includes("text/html");
+      const inject = wantsInjection && isHtml;
+
+      if (!inject) {
+        clientRes.writeHead(upRes.statusCode, upRes.headers);
+        return void upRes.pipe(clientRes);
+      }
+
+      const chunks = [];
+      upRes.on("data", (c) => chunks.push(c));
+      upRes.on("end", () => {
+        if (clientRes.destroyed || clientRes.writableEnded) return;
+        try {
+          const merged = Buffer.concat(chunks);
+          const patched = injectHTML(merged);
+
+          const hdrs = {
+            ...upRes.headers,
+            "content-length": Buffer.byteLength(patched),
+          };
+          // If we injected content, it's no longer encoded in the original way
+          delete hdrs["content-encoding"];
+          // Also, remove ETag as content has changed
+          delete hdrs["etag"];
+
+          clientRes.writeHead(upRes.statusCode, hdrs);
+          clientRes.end(patched);
+        } catch (e) {
+          clientRes.writeHead(500, { "content-type": "text/plain" });
+          clientRes.end("Injection failed: " + e.message);
+        }
+      });
     });
+
+    const isGetOrHead = clientReq.method === "GET" || clientReq.method === "HEAD";
+
+    upReq.on("error", (e) => {
+      // If the connection was refused and it's a safe method (GET/HEAD), retry.
+      if (
+        e.code === "ECONNREFUSED" &&
+        retriesLeft > 0 &&
+        isGetOrHead
+      ) {
+        // Wait 250ms and try again
+        setTimeout(() => attemptRequest(retriesLeft - 1), 250);
+        return;
+      }
+
+      clientRes.writeHead(502, { "content-type": "text/plain" });
+      clientRes.end("Upstream error: " + e.message);
+    });
+
+    if (isGetOrHead) {
+      // For GET/HEAD, we don't pipe the client body (usually empty), just end the request.
+      upReq.end();
+    } else {
+      // For other methods (POST, etc), we must pipe the body.
+      // Retrying is not safe/easy here because the stream is consumed.
+      clientReq.pipe(upReq);
+    }
+  };
+
+  // Start with MAX_RETRIES retries (approx 5 seconds)
+  attemptRequest(MAX_RETRIES);
+
+  clientReq.on("error", (e) => {
+    console.error("[proxy-worker] Client request error:", e.message);
+    // There isn't a single upReq to destroy here if we are between retries, 
+    // but the closure mostly handles it or it will garbage collect.
   });
 
-  clientReq.pipe(upReq);
-  upReq.on("error", (e) => {
-    clientRes.writeHead(502, { "content-type": "text/plain" });
-    clientRes.end("Upstream error: " + e.message);
+  clientRes.on("error", (e) => {
+    console.error("[proxy-worker] Client response error:", e.message);
+    // Similar to above, if we are in a retry loop, the current upReq (if any)
+    // might need destroying, but we don't hold a reference to it outside attemptRequest.
+    // It's acceptable for this simple proxy.
   });
 });
 
@@ -417,12 +469,22 @@ server.on("upgrade", (req, socket, _head) => {
   upReq.on("upgrade", (upRes, upSocket, upHead) => {
     socket.write(
       "HTTP/1.1 101 Switching Protocols\r\n" +
-        Object.entries(upRes.headers)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join("\r\n") +
-        "\r\n\r\n",
+      Object.entries(upRes.headers)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\r\n") +
+      "\r\n\r\n",
     );
     if (upHead && upHead.length) socket.write(upHead);
+
+    socket.on("error", (err) => {
+      console.error("[proxy-worker] Client socket error:", err.message);
+      upSocket.destroy();
+    });
+
+    upSocket.on("error", (err) => {
+      console.error("[proxy-worker] Upstream socket error:", err.message);
+      socket.destroy();
+    });
 
     upSocket.pipe(socket).pipe(upSocket);
   });
@@ -431,10 +493,36 @@ server.on("upgrade", (req, socket, _head) => {
   upReq.end();
 });
 
-/* ----------------------------------------------------------------------- */
+/* ---------- listen with EADDRINUSE retry ------------------------------- */
+let currentPort = LISTEN_PORT;
+const MAX_LISTEN_RETRIES = 10;
+let listenAttempt = 0;
 
-server.listen(LISTEN_PORT, LISTEN_HOST, () => {
+function tryListen() {
+  server.listen(currentPort, LISTEN_HOST);
+}
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE" && listenAttempt < MAX_LISTEN_RETRIES) {
+    listenAttempt++;
+    const oldPort = currentPort;
+    currentPort = 50000 + Math.floor(Math.random() * 10000);
+    parentPort?.postMessage(
+      `[proxy-worker] Port ${oldPort} in use, retrying with ${currentPort} (attempt ${listenAttempt}/${MAX_LISTEN_RETRIES})`,
+    );
+    tryListen();
+  } else {
+    parentPort?.postMessage(
+      `[proxy-worker] Fatal server error: ${err.message}`,
+    );
+    throw err;
+  }
+});
+
+server.on("listening", () => {
   parentPort?.postMessage(
-    `proxy-server-start url=http://${LISTEN_HOST}:${LISTEN_PORT}`,
+    `proxy-server-start url=http://${LISTEN_HOST}:${currentPort}`,
   );
 });
+
+tryListen();

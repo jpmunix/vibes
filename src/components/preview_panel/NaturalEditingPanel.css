@@ -1,0 +1,476 @@
+/* NaturalEditingPanel.css — Side panel for visual editing */
+
+.natural-editing-panel {
+  position: relative;
+  height: 100%;
+  background: var(--background);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: slideInFromRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin;
+  flex-shrink: 0;
+}
+
+/* Resize handle */
+.nep-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 20;
+  transition: background 0.15s ease;
+}
+
+.nep-resize-handle:hover,
+.nep-resize-handle.dragging {
+  background: hsl(267, 96%, 56%);
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.nep-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  z-index: 10;
+}
+
+.nep-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nep-header-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nep-header-path {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nep-close-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nep-close-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+/* Element type badge */
+.nep-type-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nep-type-badge svg {
+  opacity: 0.7;
+}
+
+/* Section accordion */
+.nep-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.nep-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background 0.15s ease;
+}
+
+.nep-section-header:hover {
+  background: var(--accent);
+}
+
+.nep-section-header svg {
+  transition: transform 0.2s ease;
+}
+
+.nep-section-header[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.nep-section-content {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Control rows */
+.nep-control-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.nep-control-full {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Alignment buttons */
+.nep-align-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nep-align-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nep-align-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.nep-align-btn:hover {
+  background: var(--accent);
+}
+
+.nep-align-btn.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Shadow/display selector */
+.nep-select {
+  height: 32px;
+  font-size: 12px;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0 8px;
+}
+
+/* Opacity slider */
+.nep-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nep-slider {
+  flex: 1;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+}
+
+.nep-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  border: 2px solid var(--background);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.nep-slider-value {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  min-width: 35px;
+  text-align: right;
+}
+
+/* Dynamic warning */
+.nep-dynamic-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin: 8px 16px;
+  border-radius: 6px;
+  background: hsl(47, 100%, 95%);
+  border: 1px solid hsl(47, 100%, 75%);
+  font-size: 11px;
+  color: hsl(47, 80%, 30%);
+}
+
+/* Footer */
+.nep-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  background: var(--background);
+}
+
+.nep-prettier-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, hsl(267, 96%, 56%), hsl(280, 90%, 60%));
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 2px 8px hsla(267, 96%, 56%, 0.3);
+}
+
+.nep-prettier-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsla(267, 96%, 56%, 0.4);
+}
+
+.nep-prettier-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nep-prettier-btn .sparkle {
+  animation: sparkleFloat 1.5s ease-in-out infinite;
+}
+
+@keyframes sparkleFloat {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-2px) scale(1.15);
+  }
+}
+
+/* Dark mode adjustments */
+.dark .nep-dynamic-warn {
+  background: hsl(47, 40%, 15%);
+  border-color: hsl(47, 40%, 30%);
+  color: hsl(47, 90%, 80%);
+}
+
+/* Quick Edit Chat */
+.nep-quick-chat {
+  position: sticky;
+  bottom: 0;
+  background: var(--background);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  z-index: 10;
+}
+
+.nep-quick-chat-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nep-quick-chat-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.nep-quick-chat-subtitle {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.nep-quick-chat-content {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nep-quick-chat-error {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: hsl(0, 100%, 95%);
+  border: 1px solid hsl(0, 100%, 75%);
+  font-size: 11px;
+  color: hsl(0, 80%, 30%);
+}
+
+.dark .nep-quick-chat-error {
+  background: hsl(0, 40%, 15%);
+  border-color: hsl(0, 40%, 30%);
+  color: hsl(0, 90%, 80%);
+}
+
+.nep-quick-chat-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.nep-quick-chat-input {
+  width: 100%;
+  min-height: 36px;
+  max-height: 72px;
+  /* 3 lines approx */
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--background-lighter);
+  color: var(--foreground);
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow-y: auto;
+  transition: border-color 0.15s ease;
+}
+
+.nep-quick-chat-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.nep-quick-chat-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nep-quick-chat-button {
+  width: 100%;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.nep-quick-chat-button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.nep-quick-chat-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nep-quick-chat-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-align: center;
+}
+
+.nep-quick-chat-loader-icon {
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  color: var(--primary);
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

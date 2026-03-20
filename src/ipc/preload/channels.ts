@@ -15,13 +15,16 @@ import {
 
 import { agentContracts, agentEvents } from "../types/agent";
 import { appContracts } from "../types/app";
+import { bunnyContracts } from "../types/bunny";
+import { pocketbaseContracts } from "../types/pocketbase";
 import { backupContracts } from "../types/backup";
 import { capacitorContracts } from "../types/capacitor";
 import { chatContracts, chatStreamContract } from "../types/chat";
+import { firebaseContracts } from "../types/firebase";
 import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
 import { debateContracts, debateStreamContract } from "../types/debate";
-import { embeddingsContracts } from "../types/embeddings";
+
 import { freeAgentQuotaContracts } from "../types/free_agent_quota";
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
 import { helpContracts, helpStreamContract } from "../types/help";
@@ -45,6 +48,11 @@ import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
+import { knowledgeContracts } from "../types/knowledge";
+import { aiQueryLogContracts } from "../contracts/ai_query_logs";
+import { dossierContracts, dossierStreamContract } from "../types/dossier";
+import { authContracts } from "../types/auth";
+import { migrationContracts, migrationEvents } from "../types/migration";
 
 // =============================================================================
 // Invoke Channels (derived from all contracts)
@@ -53,11 +61,19 @@ import { visualEditingContracts } from "../types/visual-editing";
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
 const DEBATE_STREAM_CHANNELS = getStreamChannels(debateStreamContract);
+const DOSSIER_STREAM_CHANNELS = getStreamChannels(dossierStreamContract);
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
 const TEST_INVOKE_CHANNELS = [
   "test:simulateQuotaTimeElapsed",
   "test:set-node-mock",
+] as const;
+
+// OpenCode AI integration — diagnostic channels
+const OPENCODE_INVOKE_CHANNELS = [
+  "opencode:health-check",
+  "opencode:test-run",
+  "opencode:extract-env",
 ] as const;
 
 /**
@@ -78,6 +94,7 @@ export const VALID_INVOKE_CHANNELS = [
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
   DEBATE_STREAM_CHANNELS.invoke,
+  DOSSIER_STREAM_CHANNELS.invoke,
 
   // Integrations
   ...getInvokeChannels(githubContracts),
@@ -86,6 +103,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(vercelContracts),
   ...getInvokeChannels(supabaseContracts),
   ...getInvokeChannels(neonContracts),
+  ...getInvokeChannels(firebaseContracts),
 
   // Features
   ...getInvokeChannels(systemContracts),
@@ -105,11 +123,21 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(freeAgentQuotaContracts),
   ...getInvokeChannels(tokenStatsContracts),
   ...getInvokeChannels(chatLogsContracts),
-  ...getInvokeChannels(embeddingsContracts),
+
   ...getInvokeChannels(backupContracts),
+  ...getInvokeChannels(bunnyContracts),
+  ...getInvokeChannels(pocketbaseContracts),
+  ...getInvokeChannels(knowledgeContracts),
+  ...getInvokeChannels(aiQueryLogContracts),
+  ...getInvokeChannels(dossierContracts),
+  ...getInvokeChannels(authContracts),
+  ...getInvokeChannels(migrationContracts),
 
   // Test-only channels
   ...TEST_INVOKE_CHANNELS,
+
+  // Crush (ex-OpenCode) diagnostic channels
+  ...OPENCODE_INVOKE_CHANNELS,
 ] as const;
 
 // =============================================================================
@@ -125,6 +153,7 @@ export const VALID_RECEIVE_CHANNELS = [
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
   ...DEBATE_STREAM_CHANNELS.receive,
+  ...DOSSIER_STREAM_CHANNELS.receive,
 
   // Event channels
   ...getReceiveChannels(agentEvents),
@@ -132,10 +161,14 @@ export const VALID_RECEIVE_CHANNELS = [
   ...getReceiveChannels(mcpEvents),
   ...getReceiveChannels(systemEvents),
   ...getReceiveChannels(miscEvents),
+  ...getReceiveChannels(migrationEvents),
 
   // Additional chat events
   "chat:model:selected",
   "chat:model:selecting",
+
+  // Cross-window navigation
+  "navigate-to-route",
 ] as const;
 
 // =============================================================================

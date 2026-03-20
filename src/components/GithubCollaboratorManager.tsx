@@ -108,7 +108,7 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
   };
 
   return (
-    <Card className="transition-all duration-200">
+    <Card className="transition-colors duration-200">
       <CardHeader
         className="p-2 cursor-pointer"
         onClick={() => setIsExpanded((prev) => !prev)}
@@ -133,9 +133,8 @@ export function GithubCollaboratorManager({ appId }: CollaboratorManagerProps) {
         </div>
       </CardHeader>
       <div
-        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${
-          isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-        }`}
+        className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-in-out ${isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          }`}
       >
         <CardContent className="space-y-4">
           {/* Invite Form */}

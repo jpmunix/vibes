@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ToolDefinition, AgentContext, escapeXmlContent } from "./types";
-import { db } from "@/db";
-import { chats } from "@/db/schema";
+import { getRemoteDb } from "@/db/remote";
+import * as remoteSchema from "@/db/remote-schema";
 import { eq } from "drizzle-orm";
 import { getLogs } from "@/lib/log_store";
 import type { ConsoleEntry } from "@/ipc/types";
@@ -112,15 +112,15 @@ export const readLogsTool: ToolDefinition<z.infer<typeof readLogsSchema>> = {
 
     const summary = parts.join(" | ");
 
-    return `<dyad-read-logs ${filters.join(" ")}>
+    return `<vibes-read-logs ${filters.join(" ")}>
 ${summary}
-</dyad-read-logs>`;
+</vibes-read-logs>`;
   },
 
   execute: async (args, ctx: AgentContext) => {
     // Get the chat to find the appId
-    const chat = await db.query.chats.findFirst({
-      where: eq(chats.id, ctx.chatId),
+    const chat = await getRemoteDb().query.chats.findFirst({
+      where: eq(remoteSchema.chats.id, ctx.chatId),
       with: { app: true },
     });
 
@@ -185,7 +185,7 @@ ${summary}
 
     // Output the complete results in a single tag
     ctx.onXmlComplete(
-      `<dyad-read-logs ${filters.join(" ")} count="${filtered.length}">\n${summary}\n\n${escapeXmlContent(formattedLogs)}\n</dyad-read-logs>`,
+      `<vibes-read-logs ${filters.join(" ")} count="${filtered.length}">\n${summary}\n\n${escapeXmlContent(formattedLogs)}\n</vibes-read-logs>`,
     );
 
     return formattedLogs;

@@ -3,16 +3,22 @@ const path = require("path");
 
 /**
  * afterPack hook para Electron Forge
- * Copia las librerías nativas de Sharp, @xenova/transformers, better-sqlite3 y otros
+ * Copia las librerías nativas de Sharp, better-sqlite3 y otros
  * paquetes con dependencias nativas al bundle de macOS
  * para evitar errores de "Cannot find module" o "Library not loaded" en runtime
  */
 exports.default = async function afterPack(context) {
   const { electronPlatformName, appOutDir, arch } = context;
 
-  // Solo ejecutar para macOS
+  // Linux: fix executable permissions for dugite git binary
+  if (electronPlatformName === "linux") {
+    await fixLinuxGitPermissions(appOutDir);
+    return;
+  }
+
+  // Solo ejecutar para macOS (Sharp, @xenova, etc.)
   if (electronPlatformName !== "darwin") {
-    console.log(`[afterPack] Skipping Sharp copy for ${electronPlatformName}`);
+    console.log(`[afterPack] Skipping platform-specific fixes for ${electronPlatformName}`);
     return;
   }
 
@@ -31,27 +37,12 @@ exports.default = async function afterPack(context) {
     // Ruta de Sharp en node_modules dentro del bundle
     const sharpInBundle = path.join(asarUnpackedPath, "node_modules", "sharp");
 
-    // También verificar Sharp dentro de @xenova/transformers
-    const sharpInXenova = path.join(
-      asarUnpackedPath,
-      "node_modules",
-      "@xenova",
-      "transformers",
-      "node_modules",
-      "sharp",
-    );
+
 
     // Buscar Sharp en el sistema de archivos local (donde se hizo npm install)
     const localNodeModules = path.join(process.cwd(), "node_modules");
     const sharpLocalPaths = [
       path.join(localNodeModules, "sharp"),
-      path.join(
-        localNodeModules,
-        "@xenova",
-        "transformers",
-        "node_modules",
-        "sharp",
-      ),
       // También buscar en node_modules/@img si existen
       path.join(localNodeModules, "@img", `sharp-${sharpPlatform}`),
       path.join(localNodeModules, "@img", `sharp-libvips-${sharpPlatform}`),
@@ -132,7 +123,7 @@ exports.default = async function afterPack(context) {
     }
 
     // Copiar vendor/ a ambas ubicaciones de Sharp en el bundle
-    const targetPaths = [sharpInBundle, sharpInXenova].filter((p) =>
+    const targetPaths = [sharpInBundle].filter((p) =>
       fs.existsSync(p),
     );
 
@@ -171,14 +162,8 @@ exports.default = async function afterPack(context) {
 
     console.log("[afterPack] ✓ Sharp libraries copied successfully");
 
-    // Copiar @xenova/transformers completo
-    await copyTransformersPackage(asarUnpackedPath);
-
     // Copiar better-sqlite3 bindings
     await copySQLiteBindings(asarUnpackedPath);
-
-    // Copiar onnxruntime-node bindings
-    await copyOnnxRuntimeBindings(asarUnpackedPath);
 
     console.log("[afterPack] ✅ All native dependencies copied successfully");
   } catch (error) {
@@ -187,71 +172,6 @@ exports.default = async function afterPack(context) {
   }
 };
 
-/**
- * Copia @xenova/transformers y verifica que todos sus archivos estén disponibles
- */
-async function copyTransformersPackage(asarUnpackedPath) {
-  console.log("[afterPack] Checking @xenova/transformers...");
-
-  const transformersInBundle = path.join(
-    asarUnpackedPath,
-    "node_modules",
-    "@xenova",
-    "transformers",
-  );
-
-  if (!fs.existsSync(transformersInBundle)) {
-    console.warn(
-      "[afterPack] WARNING: @xenova/transformers not found in bundle",
-    );
-    return;
-  }
-
-  // Verificar que archivos críticos existan
-  const criticalFiles = ["package.json", "src/transformers.js"];
-
-  for (const file of criticalFiles) {
-    const filePath = path.join(transformersInBundle, file);
-    if (!fs.existsSync(filePath)) {
-      console.error(
-        `[afterPack] ERROR: Missing critical file in transformers: ${file}`,
-      );
-      throw new Error(`@xenova/transformers is incomplete: missing ${file}`);
-    }
-  }
-
-  // Verificar que node_modules de transformers estén presentes (incluyendo sharp)
-  const transformersNodeModules = path.join(
-    transformersInBundle,
-    "node_modules",
-  );
-  if (fs.existsSync(transformersNodeModules)) {
-    console.log("[afterPack] ✓ @xenova/transformers node_modules found");
-
-    // Listar subdependencias importantes
-    try {
-      const subdeps = fs.readdirSync(transformersNodeModules);
-      const important = subdeps.filter(
-        (d) => d === "sharp" || d === "onnxruntime-node" || d.startsWith("@"),
-      );
-      if (important.length > 0) {
-        console.log(
-          `[afterPack]   Found subdependencies: ${important.join(", ")}`,
-        );
-      }
-    } catch (err) {
-      console.warn(
-        `[afterPack]   Could not list transformers subdependencies: ${err.message}`,
-      );
-    }
-  } else {
-    console.warn(
-      "[afterPack] WARNING: @xenova/transformers/node_modules not found",
-    );
-  }
-
-  console.log("[afterPack] ✓ @xenova/transformers verified");
-}
 
 /**
  * Copia bindings nativos de better-sqlite3
@@ -300,54 +220,6 @@ async function copySQLiteBindings(asarUnpackedPath) {
 }
 
 /**
- * Copia bindings nativos de onnxruntime-node
- */
-async function copyOnnxRuntimeBindings(asarUnpackedPath) {
-  console.log("[afterPack] Checking onnxruntime-node...");
-
-  const onnxInBundle = path.join(
-    asarUnpackedPath,
-    "node_modules",
-    "onnxruntime-node",
-  );
-
-  if (!fs.existsSync(onnxInBundle)) {
-    console.log("[afterPack] ℹ️  onnxruntime-node not found (may not be used)");
-    return;
-  }
-
-  // Verificar bindings nativos
-  const binPath = path.join(onnxInBundle, "bin");
-
-  if (fs.existsSync(binPath)) {
-    try {
-      const files = fs.readdirSync(binPath);
-      const nativeFiles = files.filter(
-        (f) => f.endsWith(".node") || f.endsWith(".dylib") || f.endsWith(".so"),
-      );
-
-      if (nativeFiles.length > 0) {
-        console.log(
-          `[afterPack] ✓ onnxruntime-node bindings found: ${nativeFiles.join(", ")}`,
-        );
-      } else {
-        console.warn(
-          "[afterPack] WARNING: No native files found in onnxruntime-node/bin",
-        );
-      }
-    } catch (err) {
-      console.warn(
-        `[afterPack]   Could not verify onnxruntime bindings: ${err.message}`,
-      );
-    }
-  } else {
-    console.warn(
-      "[afterPack] WARNING: onnxruntime-node/bin directory not found",
-    );
-  }
-}
-
-/**
  * Copia recursivamente un directorio
  */
 function copyRecursiveSync(src, dest) {
@@ -369,3 +241,55 @@ function copyRecursiveSync(src, dest) {
     fs.copyFileSync(src, dest);
   }
 }
+
+/**
+ * Fixes executable permissions for the dugite git binary on Linux.
+ * When Electron Forge packages the app, binaries in extraResource
+ * can lose their executable bit. This restores chmod +x on all
+ * files under resources/git/bin/ and resources/git/libexec/.
+ */
+async function fixLinuxGitPermissions(appOutDir) {
+  console.log("[afterPack] Fixing git binary permissions for Linux...");
+
+  const gitResourceDir = path.join(appOutDir, "resources", "git");
+
+  if (!fs.existsSync(gitResourceDir)) {
+    console.warn(
+      `[afterPack] WARNING: Dugite git directory not found at ${gitResourceDir}`,
+    );
+    return;
+  }
+
+  // Directories that contain executables
+  const execDirs = ["bin", "libexec"];
+  let fixedCount = 0;
+
+  for (const dir of execDirs) {
+    const dirPath = path.join(gitResourceDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+
+    chmodRecursive(dirPath);
+    fixedCount++;
+  }
+
+  console.log(
+    `[afterPack] ✅ Fixed executable permissions in ${fixedCount} directories under resources/git/`,
+  );
+}
+
+/**
+ * Recursively sets 0o755 on all files in a directory.
+ */
+function chmodRecursive(dirPath) {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      fs.chmodSync(fullPath, 0o755);
+      chmodRecursive(fullPath);
+    } else if (entry.isFile()) {
+      fs.chmodSync(fullPath, 0o755);
+    }
+  }
+}
+

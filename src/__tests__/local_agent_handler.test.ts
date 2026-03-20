@@ -105,10 +105,23 @@ function buildTestSettings(
           apiKey: { value: "test-api-key" },
         },
       },
+      selectedChatMode: "local-agent" as const,
     };
   }
 
-  return baseSettings;
+  // When Pro is explicitly disabled, use "standard" chat mode to prevent
+  // isBasicAgentMode from bypassing the Pro guard
+  if (overrides.enableDyadPro === false) {
+    return {
+      ...baseSettings,
+      selectedChatMode: "standard" as const,
+    };
+  }
+
+  return {
+    ...baseSettings,
+    selectedChatMode: "local-agent" as const,
+  };
 }
 
 /**
@@ -144,6 +157,7 @@ vi.mock("electron-log", () => ({
     scope: () => ({
       log: vi.fn(),
       error: vi.fn(),
+      info: vi.fn(),
       warn: vi.fn(),
       debug: vi.fn(),
     }),
@@ -158,21 +172,19 @@ const dbOperations: {
 
 let mockChatData: ReturnType<typeof buildTestChat> | null = null;
 
-vi.mock("@/db", () => ({
-  db: {
+const { mockDb } = vi.hoisted(() => {
+  const mockDb = {
     query: {
       chats: {
-        findFirst: vi.fn(async () => mockChatData),
+        findFirst: vi.fn(async () => null as any),
+      },
+      apps: {
+        findFirst: vi.fn(async () => null as any),
       },
     },
     update: vi.fn(() => ({
       set: vi.fn((data: Record<string, unknown>) => ({
         where: vi.fn((condition: any) => {
-          dbOperations.updates.push({
-            table: "messages",
-            id: condition?.id ?? 0,
-            data,
-          });
           return Promise.resolve();
         }),
       })),
@@ -182,7 +194,20 @@ vi.mock("@/db", () => ({
         where: vi.fn(() => Promise.resolve([])),
       })),
     })),
-  },
+  };
+  return { mockDb };
+});
+
+vi.mock("@/db/remote", () => ({
+  getRemoteDb: vi.fn(() => mockDb),
+}));
+
+vi.mock("@/db/remote-schema", () => ({
+  chats: { id: "chats.id", title: "chats.title" },
+  messages: { id: "messages.id", createdAt: "messages.createdAt" },
+  apps: { id: "apps.id" },
+  mcpServers: { enabled: "mcpServers.enabled" },
+  mcpToolConsents: { serverId: "mcpToolConsents.serverId", toolName: "mcpToolConsents.toolName" },
 }));
 
 let mockSettings: ReturnType<typeof buildTestSettings> = buildTestSettings();
@@ -193,7 +218,8 @@ vi.mock("@/main/settings", () => ({
 }));
 
 vi.mock("@/paths/paths", () => ({
-  getDyadAppPath: vi.fn((appPath: string) => `/mock/apps/${appPath}`),
+  getVibesAppPath: vi.fn((appPath: string) => `/mock/apps/${appPath}`),
+  getUserDataPath: vi.fn(() => "/mock/user/data"),
 }));
 
 // Track IPC messages sent via safeSend
@@ -250,7 +276,7 @@ vi.mock("@/pro/main/ipc/handlers/local_agent/tool_definitions", () => ({
 vi.mock(
   "@/pro/main/ipc/handlers/local_agent/processors/file_operations",
   () => ({
-    deployAllFunctionsIfNeeded: vi.fn(async () => {}),
+    deployAllFunctionsIfNeeded: vi.fn(async () => { }),
     commitAllChanges: vi.fn(async () => ({ commitHash: "abc123" })),
   }),
 );
@@ -265,7 +291,7 @@ import { handleLocalAgentStream } from "@/pro/main/ipc/handlers/local_agent/loca
 // Tests
 // ============================================================================
 
-const dyadRequestId = "test-request-id";
+const vibesRequestId = "test-request-id";
 describe("handleLocalAgentStream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -274,10 +300,27 @@ describe("handleLocalAgentStream", () => {
     mockChatData = null;
     mockSettings = buildTestSettings();
     mockStreamResult = null;
+    // Wire up dynamic mock implementations
+    mockDb.query.chats.findFirst.mockImplementation(async () => mockChatData);
+    mockDb.query.apps.findFirst.mockImplementation(async () => mockChatData?.app);
+    // Wire up update tracking
+    mockDb.update.mockImplementation(() => ({
+      set: vi.fn((data: Record<string, unknown>) => ({
+        where: vi.fn((condition: any) => {
+          dbOperations.updates.push({
+            table: "messages",
+            id: condition?.id ?? 0,
+            data,
+          });
+          return Promise.resolve();
+        }),
+        catch: vi.fn().mockReturnThis(),
+      })),
+    }));
   });
 
   describe("Pro status validation", () => {
-    it("should send error when Dyad Pro is not enabled", async () => {
+    it("should send error when Vibes Pro is not enabled", async () => {
       // Arrange
       const { event, getMessagesByChannel } = createFakeEvent();
       mockSettings = buildTestSettings({ enableDyadPro: false });
@@ -290,7 +333,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -299,13 +342,14 @@ describe("handleLocalAgentStream", () => {
       expect(errorMessages).toHaveLength(1);
       expect(errorMessages[0].args[0]).toMatchObject({
         chatId: 1,
-        error: expect.stringContaining("Agent v2 requires Dyad Pro"),
+        error: expect.stringContaining("Agent v2 requires Vibes Pro"),
       });
     });
 
     it("should send error when API key is missing even if Pro is enabled", async () => {
       // Arrange
       const { event, getMessagesByChannel } = createFakeEvent();
+      mockChatData = buildTestChat();
       mockSettings = buildTestSettings({
         enableDyadPro: true,
         hasApiKey: false,
@@ -319,7 +363,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -345,7 +389,7 @@ describe("handleLocalAgentStream", () => {
           {
             placeholderMessageId: 10,
             systemPrompt: "You are helpful",
-            dyadRequestId,
+            vibesRequestId,
           },
         ),
       ).rejects.toThrow("Chat not found: 999");
@@ -366,7 +410,7 @@ describe("handleLocalAgentStream", () => {
           {
             placeholderMessageId: 10,
             systemPrompt: "You are helpful",
-            dyadRequestId,
+            vibesRequestId,
           },
         ),
       ).rejects.toThrow("Chat not found: 1");
@@ -394,7 +438,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -443,7 +487,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -480,7 +524,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -533,7 +577,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -577,7 +621,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -610,7 +654,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 
@@ -639,7 +683,7 @@ describe("handleLocalAgentStream", () => {
         {
           placeholderMessageId: 10,
           systemPrompt: "You are helpful",
-          dyadRequestId,
+          vibesRequestId,
         },
       );
 

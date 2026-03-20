@@ -1,8 +1,8 @@
 import log from "electron-log";
-import { db } from "../../db";
-import { mcpServers, mcpToolConsents } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
-import { createTypedHandler } from "./base";
+import { createTypedHandler, HandlerContext } from "./base";
 
 import { resolveConsent } from "../utils/mcp_consent";
 import { getStoredConsent } from "../utils/mcp_consent";
@@ -17,21 +17,29 @@ import {
 const logger = log.scope("mcp_handlers");
 
 // Helper to cast DB server to typed server
-function toMcpServer(dbServer: typeof mcpServers.$inferSelect): McpServer {
+function toMcpServer(dbServer: typeof remoteSchema.mcpServers.$inferSelect): McpServer {
   return {
     ...dbServer,
     transport: dbServer.transport as McpTransport,
+    args: dbServer.args as string[] | null,
+    envJson: dbServer.envJson as Record<string, string> | null,
+    headersJson: dbServer.headersJson as Record<string, string> | null,
+    enabled: !!dbServer.enabled,
   };
 }
 
 export function registerMcpHandlers() {
   // CRUD for MCP servers
-  createTypedHandler(mcpContracts.listServers, async () => {
-    const servers = await db.select().from(mcpServers);
+  createTypedHandler(mcpContracts.listServers, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const servers = await db.select().from(remoteSchema.mcpServers).where(eq(remoteSchema.mcpServers.userId, context.userId));
     return servers.map(toMcpServer);
   });
 
-  createTypedHandler(mcpContracts.createServer, async (_, params) => {
+  createTypedHandler(mcpContracts.createServer, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const {
       name,
       transport,
@@ -61,8 +69,9 @@ export function registerMcpHandlers() {
         : headersJson
       : null;
     const result = await db
-      .insert(mcpServers)
+      .insert(remoteSchema.mcpServers)
       .values({
+        userId: context.userId,
         name,
         transport,
         command: command || null,
@@ -70,14 +79,18 @@ export function registerMcpHandlers() {
         envJson: parsedEnvJson,
         headersJson: parsedHeadersJson,
         url: url || null,
-        enabled: !!enabled,
+        enabled: enabled ? 1 : 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
     return toMcpServer(result[0]);
   });
 
-  createTypedHandler(mcpContracts.updateServer, async (_, params) => {
-    const update: any = {};
+  createTypedHandler(mcpContracts.updateServer, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const update: any = { updatedAt: new Date() };
     if (params.name !== undefined) update.name = params.name;
     if (params.transport !== undefined) update.transport = params.transport;
     if (params.command !== undefined) update.command = params.command;
@@ -101,25 +114,27 @@ export function registerMcpHandlers() {
           : params.headersJson
         : null;
     if (params.url !== undefined) update.url = params.url;
-    if (params.enabled !== undefined) update.enabled = !!params.enabled;
+    if (params.enabled !== undefined) update.enabled = params.enabled ? 1 : 0;
 
     const result = await db
-      .update(mcpServers)
+      .update(remoteSchema.mcpServers)
       .set(update)
-      .where(eq(mcpServers.id, params.id))
+      .where(and(eq(remoteSchema.mcpServers.id, params.id), eq(remoteSchema.mcpServers.userId, context.userId)))
       .returning();
     // If server config changed, dispose cached client to be recreated on next use
     try {
       mcpManager.dispose(params.id);
-    } catch {}
+    } catch { }
     return toMcpServer(result[0]);
   });
 
-  createTypedHandler(mcpContracts.deleteServer, async (_, id) => {
+  createTypedHandler(mcpContracts.deleteServer, async (_, id, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     try {
       mcpManager.dispose(id);
-    } catch {}
-    await db.delete(mcpServers).where(eq(mcpServers.id, id));
+    } catch { }
+    await db.delete(remoteSchema.mcpServers).where(and(eq(remoteSchema.mcpServers.id, id), eq(remoteSchema.mcpServers.userId, context.userId)));
     return { success: true };
   });
 
@@ -145,32 +160,38 @@ export function registerMcpHandlers() {
   });
 
   // Consents
-  createTypedHandler(mcpContracts.getToolConsents, async () => {
-    const consents = await db.select().from(mcpToolConsents);
+  createTypedHandler(mcpContracts.getToolConsents, async (_, __, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const consents = await db.select().from(remoteSchema.mcpToolConsents).where(eq(remoteSchema.mcpToolConsents.userId, context.userId));
     return consents.map((c) => ({
       ...c,
       consent: c.consent as McpConsentValue,
     }));
   });
 
-  createTypedHandler(mcpContracts.setToolConsent, async (_, params) => {
+  createTypedHandler(mcpContracts.setToolConsent, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
     const existing = await db
       .select()
-      .from(mcpToolConsents)
+      .from(remoteSchema.mcpToolConsents)
       .where(
         and(
-          eq(mcpToolConsents.serverId, params.serverId),
-          eq(mcpToolConsents.toolName, params.toolName),
+          eq(remoteSchema.mcpToolConsents.serverId, params.serverId),
+          eq(remoteSchema.mcpToolConsents.toolName, params.toolName),
+          eq(remoteSchema.mcpToolConsents.userId, context.userId),
         ),
       );
     if (existing.length > 0) {
       const result = await db
-        .update(mcpToolConsents)
-        .set({ consent: params.consent })
+        .update(remoteSchema.mcpToolConsents)
+        .set({ consent: params.consent, updatedAt: new Date() })
         .where(
           and(
-            eq(mcpToolConsents.serverId, params.serverId),
-            eq(mcpToolConsents.toolName, params.toolName),
+            eq(remoteSchema.mcpToolConsents.serverId, params.serverId),
+            eq(remoteSchema.mcpToolConsents.toolName, params.toolName),
+            eq(remoteSchema.mcpToolConsents.userId, context.userId),
           ),
         )
         .returning();
@@ -180,11 +201,13 @@ export function registerMcpHandlers() {
       };
     } else {
       const result = await db
-        .insert(mcpToolConsents)
+        .insert(remoteSchema.mcpToolConsents)
         .values({
+          userId: context.userId,
           serverId: params.serverId,
           toolName: params.toolName,
           consent: params.consent,
+          updatedAt: new Date(),
         })
         .returning();
       return {

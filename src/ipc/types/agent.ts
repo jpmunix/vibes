@@ -52,6 +52,29 @@ export type AgentToolConsentResponseParams = z.infer<
 >;
 
 /**
+ * Schema for ask_user request payload (main → renderer).
+ */
+export const AskUserRequestSchema = z.object({
+  requestId: z.string(),
+  chatId: z.number(),
+  question: z.string(),
+  options: z.array(z.string()).nullable(),
+  context: z.string().nullable(),
+});
+
+export type AskUserRequestPayload = z.infer<typeof AskUserRequestSchema>;
+
+/**
+ * Schema for ask_user response params (renderer → main).
+ */
+export const AskUserResponseParamsSchema = z.object({
+  requestId: z.string(),
+  response: z.string(),
+});
+
+export type AskUserResponseParams = z.infer<typeof AskUserResponseParamsSchema>;
+
+/**
  * Schema for agent todo item.
  */
 export const AgentTodoSchema = z.object({
@@ -155,6 +178,12 @@ export const agentContracts = {
     input: AgentToolConsentResponseParamsSchema,
     output: z.void(),
   }),
+
+  respondToAskUser: defineContract({
+    channel: "agent-tool:ask-user-response",
+    input: AskUserResponseParamsSchema,
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================
@@ -168,6 +197,14 @@ export const agentEvents = {
   consentRequest: defineEvent({
     channel: "agent-tool:consent-request",
     payload: AgentToolConsentRequestSchema,
+  }),
+
+  /**
+   * Emitted when the agent needs user input via ask_user tool.
+   */
+  askUserRequest: defineEvent({
+    channel: "agent-tool:ask-user-request",
+    payload: AskUserRequestSchema,
   }),
 
   /**

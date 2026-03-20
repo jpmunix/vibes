@@ -1,12 +1,6 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SettingsModelSelector } from "../SettingsModelSelector";
 
 const SAME_AS_CHAT_VALUE = "__SAME_AS_CHAT__";
 
@@ -17,38 +11,35 @@ export function SummaryModelSelector() {
 
   const currentValue =
     settings?.summaryModel === "SAME_AS_CHAT" ||
-    !settings?.summaryModel ||
-    settings?.summaryModel === ""
+      !settings?.summaryModel ||
+      settings?.summaryModel === ""
       ? SAME_AS_CHAT_VALUE
       : settings?.summaryModel;
 
   const handleChange = async (value: string) => {
     if (value === SAME_AS_CHAT_VALUE) {
-      await updateSettings({ summaryModel: "SAME_AS_CHAT" });
+      await updateSettings({ summaryModel: "SAME_AS_CHAT" }, { showToast: true });
     } else {
-      await updateSettings({ summaryModel: value });
+      await updateSettings({ summaryModel: value }, { showToast: true });
     }
   };
 
   return (
-    <div className="space-y-3">
-      <Select
-        value={currentValue}
-        onValueChange={handleChange}
-        disabled={isLoading}
-      >
-        <SelectTrigger id="summaryModel">
-          <SelectValue placeholder="Selecciona un modelo" />
-        </SelectTrigger>
-        <SelectContent className="max-h-[300px]">
-          <SelectItem value={SAME_AS_CHAT_VALUE}>El mismo del chat</SelectItem>
-          {openRouterModels?.map((model) => (
-            <SelectItem key={model.apiName} value={model.apiName}>
-              {model.displayName}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <SettingsModelSelector
+      size="md"
+      selectedModel={currentValue}
+      onModelSelect={handleChange}
+      models={openRouterModels || []}
+      loading={isLoading}
+      placeholder="Selecciona un modelo"
+      specialOptions={[
+        {
+          value: SAME_AS_CHAT_VALUE,
+          label: "El mismo del chat",
+          description: "Sigue la selección principal del chat",
+        },
+      ]}
+    />
   );
 }
+

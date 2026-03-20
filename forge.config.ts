@@ -7,12 +7,31 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import MakerZIP from "@electron-forge/maker-zip";
 
-const ignore = (file: string) => {
+const ignore = (file: string): boolean => {
   if (!file || file === "/") return false;
+
+  // ─── SCAFFOLD: BLINDADO ───────────────────────────────────────────────
+  // Los scaffolds son las plantillas que se copian a cada app nueva.
+  // Se incluye TODO excepto node_modules y .git (regenerables).
+  // IMPORTANTE: este bloque va ANTES de cualquier regla de extensión
+  // para que nunca se filtren archivos críticos (.ts, .mts, etc.).
+  if (
+    file.startsWith("/scaffold") ||
+    file.startsWith("/scaffold-vue") ||
+    file.startsWith("/scaffold-astro") ||
+    file.startsWith("/scaffold-svelte")
+  ) {
+    if (
+      file.includes("/node_modules") ||
+      file.includes("/.git")
+    ) {
+      return true; // Ignorar: regenerable
+    }
+    return false; // Incluir: es parte de la plantilla
+  }
 
   if (
     file.includes("/node_modules/@img") ||
-    file.includes("/node_modules/@xenova") ||
     file.includes("/node_modules/sharp") ||
     file.includes("/node_modules/styled-jsx") ||
     file.includes("/node_modules/geist")
@@ -20,7 +39,11 @@ const ignore = (file: string) => {
     return false;
   }
 
-  if (file.includes("/node_modules/@xenova/transformers/node_modules")) {
+
+
+  // Ignore date-fns/fp (1500+ unused files, functional programming API)
+  // Prevents ENOTEMPTY race condition in electron-packager
+  if (file.includes("/node_modules/date-fns/fp")) {
     return true;
   }
 
@@ -30,7 +53,6 @@ const ignore = (file: string) => {
     "/node_modules",
     "/.vite",
     "/drizzle",
-    "/scaffold",
     "/worker",
     "/assets", // Asegúrate de incluir tus iconos/recursos aquí
     "/package.json",
@@ -46,6 +68,9 @@ const ignore = (file: string) => {
 
     return false; // Se queda en la app
   }
+
+  // Cualquier archivo fuera de las rutas permitidas se ignora
+  return true;
 };
 
 const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
@@ -56,7 +81,7 @@ const config: ForgeConfig = {
     windowsSign: isGitHubActions ? windowsSign : undefined,
     protocols: [
       {
-        name: "Dyad",
+        name: "Vibes",
         schemes: ["dyad"],
       },
     ],
@@ -68,7 +93,7 @@ const config: ForgeConfig = {
       // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
       // styled-jsx se desempaqueta para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
-        "{**/node_modules/@img/**/*,**/node_modules/@xenova/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/onnxruntime-node/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
+        "{**/node_modules/@img/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,
@@ -89,7 +114,7 @@ const config: ForgeConfig = {
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
-    extraModules: ["better-sqlite3", "onnxruntime-node", "sharp"],
+    extraModules: ["better-sqlite3", "sharp"],
     force: false,
   },
   makers: [
@@ -160,16 +185,8 @@ const config: ForgeConfig = {
           config: "vite.worker.config.mts",
           target: "main",
         },
-        {
-          entry: "workers/context/context_worker.ts",
-          config: "vite.context-worker.config.mts",
-          target: "main",
-        },
-        {
-          entry: "workers/embeddings/embeddings_worker.ts",
-          config: "vite.embeddings-worker.config.mts",
-          target: "main",
-        },
+
+
       ],
       renderer: [
         {
