@@ -394,6 +394,7 @@ export default function SettingsPage() {
     null,
   );
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  const [hasReleaseNotes, setHasReleaseNotes] = useState(false);
   const [agentPermissionsExpanded, setAgentPermissionsExpanded] = useState(false);
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
@@ -403,6 +404,15 @@ export default function SettingsPage() {
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
+
+  // Check if release notes file has content
+  useEffect(() => {
+    if (appVersion) {
+      ipc.system.doesReleaseNoteExist({ version: appVersion }).then((result) => {
+        setHasReleaseNotes(result.exists);
+      }).catch(() => setHasReleaseNotes(false));
+    }
+  }, [appVersion]);
 
   // Fuse.js search configuration
   const fuse = useMemo(
@@ -574,14 +584,16 @@ export default function SettingsPage() {
               >
                 Importar
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-                onClick={() => setReleaseNotesOpen(true)}
-              >
-                Novedades
-              </Button>
+              {hasReleaseNotes && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                  onClick={() => setReleaseNotesOpen(true)}
+                >
+                  Novedades
+                </Button>
+              )}
               <Button
                 onClick={() => setIsResetDialogOpen(true)}
                 disabled={isResetting}
@@ -647,10 +659,12 @@ export default function SettingsPage() {
             isHighlighted={highlightedSection === "general-settings"}
           />
 
-          <ReleaseNotesDialog
-            isOpen={releaseNotesOpen}
-            onOpenChange={setReleaseNotesOpen}
-          />
+          {hasReleaseNotes && (
+            <ReleaseNotesDialog
+              isOpen={releaseNotesOpen}
+              onOpenChange={setReleaseNotesOpen}
+            />
+          )}
 
           <ModelsAndConnectivity
             isHighlighted={highlightedSection === "models-connectivity"}

@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import vibesComponentTagger from "@vibes/react-vite-component-tagger";
+import vibesComponentTagger from "@dyad-sh/react-vite-component-tagger";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 

@@ -6,6 +6,7 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./remote-schema";
 import log from "electron-log";
+import { retryWithRateLimit } from "../ipc/utils/retryWithRateLimit";
 const logger = log.scope("remote-db");
 
 // Bunny Edge SQL credentials (hardcoded — private project)
@@ -32,30 +33,31 @@ export function getClient(): Client {
       url: BUNNY_DB_URL,
       authToken: BUNNY_DB_TOKEN,
       fetch: async (input: any, init: any) => {
-        try {
-          const url = typeof input === 'string' ? input : input.url;
-          const options = init || {};
+        return retryWithRateLimit(
+          async () => {
+            const url = typeof input === 'string' ? input : input.url;
+            const options = init || {};
 
-          // Merge from Request if input is an object
-          if (typeof input === 'object' && input !== null) {
-            if (!options.method && input.method) options.method = input.method;
-            if (!options.headers && input.headers) options.headers = input.headers;
-            if (!options.body && input.body) options.body = input.body;
-          }
+            // Merge from Request if input is an object
+            if (typeof input === 'object' && input !== null) {
+              if (!options.method && input.method) options.method = input.method;
+              if (!options.headers && input.headers) options.headers = input.headers;
+              if (!options.body && input.body) options.body = input.body;
+            }
 
-          const resp = await fetch(url, options);
-          if (resp.body && typeof (resp.body as any).cancel !== 'function') {
-            const body = resp.body as any;
-            body.cancel = async () => {
-              if (typeof body.destroy === 'function') body.destroy();
-              else if (typeof body.close === 'function') body.close();
-            };
-          }
-          return resp;
-        } catch (e) {
-          logger.error("Fetch error in libSQL client wrapper:", e);
-          throw e;
-        }
+            const resp = await fetch(url, options);
+            if (resp.body && typeof (resp.body as any).cancel !== 'function') {
+              const body = resp.body as any;
+              body.cancel = async () => {
+                if (typeof body.destroy === 'function') body.destroy();
+                else if (typeof body.close === 'function') body.close();
+              };
+            }
+            return resp;
+          },
+          "libSQL-fetch",
+          { maxRetries: 3, baseDelay: 1_000, maxDelay: 10_000 },
+        );
       },
     });
     logger.info("libSQL client created successfully");

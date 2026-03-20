@@ -42,7 +42,8 @@ export function ChatPanel({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [error, setError] = useState<string | null>(null);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(!!chatId);
+  // Start with loading=true to avoid flashing "Aún no hay mensajes" while chatId resolves
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { settings, updateSettings } = useSettings();
@@ -202,33 +203,53 @@ export function ChatPanel({
 
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {
-      // no-op when no chat
+      // No chat selected yet — keep skeleton visible while chatId resolves.
+      // Don't call setIsLoadingMessages(false) here so the skeleton stays.
       return;
     }
-    const chat = await ipc.chat.getChat(chatId);
-    setMessagesById((prev) => {
-      const next = new Map(prev);
-      next.set(chatId, chat.messages);
-      return next;
-    });
+    try {
+      const chat = await ipc.chat.getChat(chatId);
+      setMessagesById((prev) => {
+        const next = new Map(prev);
+        next.set(chatId, chat.messages);
+        return next;
+      });
 
-    // Scroll to bottom after messages load, then reveal.
-    // Use double-RAF to ensure Virtuoso has measured & painted all items,
-    // then one idle callback for late-rendering content (timestamps, avatars, etc.)
-    // Only AFTER that, remove the skeleton overlay so the user sees no jumps.
-    requestAnimationFrame(() => {
+      // Scroll to bottom after messages load, then reveal.
+      // Use double-RAF to ensure Virtuoso has measured & painted all items,
+      // then one idle callback for late-rendering content (timestamps, avatars, etc.)
+      // Only AFTER that, remove the skeleton overlay so the user sees no jumps.
       requestAnimationFrame(() => {
-        scrollToBottom("instant");
-        const idleCallback = typeof requestIdleCallback === 'function'
-          ? requestIdleCallback
-          : (cb: () => void) => setTimeout(cb, 200);
-        idleCallback(() => {
+        requestAnimationFrame(() => {
           scrollToBottom("instant");
-          // Reveal messages now that Virtuoso layout is stable
-          setIsLoadingMessages(false);
+          const idleCallback = typeof requestIdleCallback === 'function'
+            ? requestIdleCallback
+            : (cb: () => void) => setTimeout(cb, 200);
+          // Safety timeout: if requestIdleCallback doesn't fire within 2s, reveal anyway
+          let revealed = false;
+          const safetyTimer = setTimeout(() => {
+            if (!revealed) {
+              revealed = true;
+              scrollToBottom("instant");
+              setIsLoadingMessages(false);
+            }
+          }, 2000);
+          idleCallback(() => {
+            if (!revealed) {
+              revealed = true;
+              clearTimeout(safetyTimer);
+              scrollToBottom("instant");
+              // Reveal messages now that Virtuoso layout is stable
+              setIsLoadingMessages(false);
+            }
+          });
         });
       });
-    });
+    } catch (err) {
+      console.error("Error fetching chat messages:", err);
+      // On error, still clear loading so the UI isn't stuck on skeleton
+      setIsLoadingMessages(false);
+    }
   }, [chatId, setMessagesById]);
 
   useEffect(() => {
@@ -241,7 +262,7 @@ export function ChatPanel({
     if (chatId && !messagesById.has(chatId)) {
       setIsLoadingMessages(true);
     }
-  }, [chatId]);
+  }, [chatId, messagesById]);
 
   const messages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const isStreaming = chatId ? (isStreamingById.get(chatId) ?? false) : false;
