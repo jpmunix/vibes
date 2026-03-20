@@ -46,6 +46,13 @@ export function ChatPanel({
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const streamCountById = useAtomValue(chatStreamCountByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
+  
+  // Track streaming state in a ref so we can read it inside fetchChatMessages without causing re-renders
+  const isStreamingRef = useRef(false);
+  useEffect(() => {
+    isStreamingRef.current = chatId ? (isStreamingById.get(chatId) ?? false) : false;
+  }, [isStreamingById, chatId]);
+
   const { settings, updateSettings } = useSettings();
   const showFreeAgentQuotaBanner = false; // Pro always enabled after acquisition
 
@@ -210,6 +217,23 @@ export function ChatPanel({
     try {
       const chat = await ipc.chat.getChat(chatId);
       setMessagesById((prev) => {
+        // Protect against overwriting fresh local state with slightly stale DB state
+        if (chatId) {
+          const currentMessages = prev.get(chatId) ?? [];
+          
+          // If we are actively streaming right now, do not overwrite local messages
+          if (isStreamingRef.current) {
+            return prev;
+          }
+
+          // If we have optimistic messages (negative IDs) or we already have more messages
+          // than the DB has, it means our local UI is ahead of what was just fetched.
+          const hasOptimisticMessages = currentMessages.some(m => m.id < 0);
+          if (hasOptimisticMessages || currentMessages.length > chat.messages.length) {
+            return prev;
+          }
+        }
+
         const next = new Map(prev);
         next.set(chatId, chat.messages);
         return next;
