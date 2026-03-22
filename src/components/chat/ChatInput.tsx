@@ -85,10 +85,12 @@ export function ChatInput({
   chatId,
   autoStart,
   isPlanMode,
+  workspaceMode,
 }: {
   chatId?: number;
   autoStart?: boolean;
   isPlanMode?: boolean;
+  workspaceMode?: boolean;
 }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
@@ -504,6 +506,7 @@ export function ChatInput({
                 placeholder="Pídele a vibes que haga..."
                 excludeCurrentApp={true}
                 disableSendButton={disableSendButton}
+                compact={workspaceMode}
               />
 
               {/* Bottom controls bar */}

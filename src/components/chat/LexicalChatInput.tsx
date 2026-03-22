@@ -236,6 +236,8 @@ interface LexicalChatInputProps {
   disabled?: boolean;
   excludeCurrentApp: boolean;
   disableSendButton: boolean;
+  /** When true, start with 1-line height (max 8 lines) for a more compact appearance */
+  compact?: boolean;
 }
 
 function onError(error: Error) {
@@ -251,6 +253,7 @@ export function LexicalChatInput({
   placeholder = "Pídele a vibes que haga...",
   disabled = false,
   disableSendButton,
+  compact = false,
 }: LexicalChatInputProps) {
   const { apps } = useLoadApps();
   const { prompts } = usePrompts();
@@ -386,7 +389,11 @@ export function LexicalChatInput({
         <PlainTextPlugin
           contentEditable={
             <ContentEditable
-              className="flex-1 p-4 focus:outline-none overflow-y-auto min-h-[96px] max-h-[216px] resize-none"
+              className={`flex-1 p-4 focus:outline-none overflow-y-auto resize-none ${
+                compact
+                  ? "min-h-[38px] max-h-[192px]"
+                  : "min-h-[96px] max-h-[216px]"
+              }`}
               aria-placeholder={placeholder}
               placeholder={
                 <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none select-none">

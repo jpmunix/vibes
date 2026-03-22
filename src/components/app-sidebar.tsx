@@ -5,6 +5,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
+  Bot,
   CheckSquare,
   Home,
   Settings,
@@ -15,7 +16,6 @@ import {
   User as UserIcon,
   CloudUpload,
   Database,
-  MessagesSquare,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -62,9 +62,9 @@ const items = [
     icon: Home,
   },
   {
-    title: "Chats",
+    title: "Agente",
     to: "/workspace",
-    icon: MessagesSquare,
+    icon: Bot,
   },
   {
     title: "Notas",
@@ -450,7 +450,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                     onClick={() => {
                       if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
-                      } else if (item.title === "Chats") {
+                      } else if (item.title === "Agente") {
                         onTabChange("Workspace");
                       } else if (item.title === "Notas") {
                         onTabChange("Notas");

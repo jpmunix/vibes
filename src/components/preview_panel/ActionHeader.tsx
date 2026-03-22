@@ -17,6 +17,7 @@ import {
   Hammer,
   ChevronDown,
   Database,
+  Square,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -85,7 +86,7 @@ export const ActionHeader = () => {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const { problemReport } = useCheckProblems(selectedAppId);
-  const { restartApp, refreshAppIframe } = useRunApp();
+  const { restartApp, stopApp, refreshAppIframe } = useRunApp();
 
   const isCompact = windowWidth < 888;
 
@@ -118,6 +119,12 @@ export const ActionHeader = () => {
   const onCleanRestart = useCallback(() => {
     restartApp({ removeNodeModules: true });
   }, [restartApp]);
+
+  const onStop = useCallback(() => {
+    if (selectedAppId !== null) {
+      stopApp(selectedAppId);
+    }
+  }, [stopApp, selectedAppId]);
 
   const { mutate: clearSessionData } = useMutation({
     mutationFn: () => {
@@ -313,6 +320,15 @@ export const ActionHeader = () => {
                   <span>Reiniciar</span>
                   <span className="text-[10px] text-muted-foreground">
                     Reinicia el servidor de desarrollo
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onStop}>
+                <Square size={14} />
+                <div className="flex flex-col">
+                  <span>Detener servidor</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Detiene el servidor de desarrollo
                   </span>
                 </div>
               </DropdownMenuItem>

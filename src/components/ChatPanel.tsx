@@ -506,6 +506,7 @@ export function ChatPanel({
             chatId={chatId}
             autoStart={autoStart}
             isPlanMode={isPlanMode}
+            workspaceMode={workspaceMode}
           />
         </div>
       </div>

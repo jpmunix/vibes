@@ -35,6 +35,7 @@ import { askUserTool, clearPendingAskUsersForChat } from "./tools/ask_user";
 import { runCommandTool } from "./tools/run_command";
 import { startProcessTool, stopProcessTool, listProcessesTool } from "./tools/process_management";
 import { waitForHttpTool } from "./tools/wait_for_http";
+import { httpFetchTool } from "./tools/http_fetch";
 import type { LanguageModelV3ToolResultOutput } from "@ai-sdk/provider";
 import {
   type ToolDefinition,
@@ -60,6 +61,7 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   stopProcessTool,
   listProcessesTool,
   waitForHttpTool,
+  httpFetchTool,
   getSupabaseProjectInfoTool,
   getSupabaseTableSchemaTool,
   getFirebaseProjectInfoTool,
