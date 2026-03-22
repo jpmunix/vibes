@@ -15,6 +15,7 @@ import {
   User as UserIcon,
   CloudUpload,
   Database,
+  MessagesSquare,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -51,6 +52,7 @@ import { NotesList } from "./NotesList";
 import { SettingsList } from "./SettingsList";
 import { TodosList } from "./TodosList";
 import { DebatesList } from "./DebatesList";
+import { WorkspaceList } from "./WorkspaceList";
 
 // Menu items.
 const items = [
@@ -58,6 +60,11 @@ const items = [
     title: "Apps",
     to: "/",
     icon: Home,
+  },
+  {
+    title: "Chats",
+    to: "/workspace",
+    icon: MessagesSquare,
   },
   {
     title: "Notas",
@@ -84,6 +91,7 @@ const items = [
 // Hover state types
 type HoverState =
   | "start-hover:app"
+  | "start-hover:workspace"
   | "start-hover:notes"
   | "start-hover:todos"
   | "start-hover:settings"
@@ -149,6 +157,8 @@ export function AppSidebar() {
       setActiveTab("Biblioteca");
     } else if (routerState.location.pathname.startsWith("/debates")) {
       setActiveTab("Debates");
+    } else if (routerState.location.pathname.startsWith("/workspace")) {
+      setActiveTab("Workspace");
     }
   }, [
     isAppRoute,
@@ -378,6 +388,7 @@ export function AppSidebar() {
             state === "expanded" && "border-l border-border/30"
           )}>
             <AppList show={selectedItem === "Aplicaciones"} />
+            <WorkspaceList show={selectedItem === "Workspace"} />
             <NotesList show={selectedItem === "Notas"} />
             <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
@@ -439,6 +450,8 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                     onClick={() => {
                       if (item.title === "Apps") {
                         onTabChange("Aplicaciones");
+                      } else if (item.title === "Chats") {
+                        onTabChange("Workspace");
                       } else if (item.title === "Notas") {
                         onTabChange("Notas");
                       } else if (item.title === "Ajustes") {

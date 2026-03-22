@@ -30,6 +30,8 @@ interface ChatPanelProps {
   onTogglePreview: () => void;
   /** When true, don't reset plan mode to build on first load (used when opening a new app in plan mode) */
   preservePlanMode?: boolean;
+  /** When true, hide preview-related controls (workspace mode) */
+  workspaceMode?: boolean;
 }
 
 export function ChatPanel({
@@ -38,6 +40,7 @@ export function ChatPanel({
   isPreviewOpen,
   onTogglePreview,
   preservePlanMode,
+  workspaceMode,
 }: ChatPanelProps) {
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
@@ -402,6 +405,7 @@ export function ChatPanel({
           onTogglePreview={onTogglePreview}
           isLogsOpen={isLogsOpen}
           onToggleLogs={() => setIsLogsOpen(!isLogsOpen)}
+          workspaceMode={workspaceMode}
         />
         {chatId && (
           <Suspense fallback={null}>

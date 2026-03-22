@@ -17,7 +17,7 @@ import {
   PanelLeft,
   Maximize2,
   Minimize2,
-
+  Loader2,
 } from "lucide-react";
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -30,7 +30,7 @@ import {
 } from "../ui/tooltip";
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
-import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
@@ -70,6 +70,7 @@ interface ChatHeaderProps {
   onTogglePreview: () => void;
   isLogsOpen?: boolean;
   onToggleLogs?: () => void;
+  workspaceMode?: boolean;
 }
 
 export function ChatHeader({
@@ -77,6 +78,7 @@ export function ChatHeader({
   onTogglePreview,
   isLogsOpen = false,
   onToggleLogs,
+  workspaceMode,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
   const previewMode = useAtomValue(previewModeAtom);
@@ -86,6 +88,8 @@ export function ChatHeader({
   const { isStreaming } = useStreamChat();
   const { settings } = useSettings();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
+  const isStreamingById = useAtomValue(isStreamingByIdAtom);
+  const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
   const { handleSummarize } = useSummarizeInNewChat();
   const isAnyCheckoutVersionInProgress = useAtomValue(
     isAnyCheckoutVersionInProgressAtom,
@@ -281,12 +285,15 @@ export function ChatHeader({
       )}
 
       {/* Why is this pt-0.5? Because the loading bar is h-1 (it always takes space) and we want the vertical spacing to be consistent.*/}
+      {!workspaceMode && (
       <div className="@container flex items-center px-1 py-2 border-b border-border no-app-region-drag">
         <div className="flex items-center shrink-0">
-          <ExpandChatButton
-            isPreviewOpen={isPreviewOpen}
-            onTogglePreview={onTogglePreview}
-          />
+          {!workspaceMode && (
+            <ExpandChatButton
+              isPreviewOpen={isPreviewOpen}
+              onTogglePreview={onTogglePreview}
+            />
+          )}
           <Button
             onClick={handleNewChat}
             variant="ghost"
@@ -404,7 +411,11 @@ export function ChatHeader({
                     }
                     return (
                       <>
-                        <MessageSquare size={14} className="shrink-0" />
+                        {isStreaming ? (
+                          <Loader2 size={14} className="shrink-0 animate-spin text-primary" />
+                        ) : (
+                          <MessageSquare size={14} className="shrink-0" />
+                        )}
                         <span>
                           {currentChat?.title || "Chat"}
                         </span>
@@ -427,7 +438,10 @@ export function ChatHeader({
                     if (!a.isPlan && b.isPlan) return 1;
                     return 0;
                   })
-                  .map((chat) => (
+                  .map((chat) => {
+                    const chatStreaming = isStreamingById.get(chat.id) ?? false;
+                    const chatUnread = selectedChatId !== chat.id && recentStreamChatIds.has(chat.id);
+                    return (
                     <DropdownMenuItem
                       key={chat.id}
                       onClick={() => {
@@ -448,8 +462,16 @@ export function ChatHeader({
                         </>
                       ) : (
                         <>
-                          <MessageSquare size={14} className="mr-2 shrink-0" />
-                          <span className="flex-1">
+                          {chatStreaming ? (
+                            <Loader2 size={14} className="mr-2 shrink-0 animate-spin text-primary" />
+                          ) : chatUnread ? (
+                            <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            </span>
+                          ) : (
+                            <MessageSquare size={14} className="mr-2 shrink-0" />
+                          )}
+                          <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
                             {chat.title || `Chat ${chat.id}`}
                           </span>
                           <button
@@ -479,7 +501,8 @@ export function ChatHeader({
                         </>
                       )}
                     </DropdownMenuItem>
-                  ))
+                    );
+                  })
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -494,6 +517,7 @@ export function ChatHeader({
           />
         )}
       </div>
+      )}
 
       <ConfirmationDialog
         isOpen={isConfirmEmptyDialogOpen}

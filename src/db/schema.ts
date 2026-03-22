@@ -112,6 +112,8 @@ export const chats = sqliteTable("chats", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  // Timestamp of when the user last viewed this chat (null = never explicitly read)
+  lastReadAt: integer("last_read_at", { mode: "timestamp" }),
 });
 
 export const messages = sqliteTable("messages", {

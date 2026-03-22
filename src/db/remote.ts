@@ -170,7 +170,8 @@ export async function initializeRemoteSchema(): Promise<void> {
       initial_commit_hash TEXT,
       is_plan INTEGER DEFAULT 0,
       plan_data TEXT,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      last_read_at INTEGER
     )`,
 
     // Messages
@@ -434,5 +435,18 @@ export async function initializeRemoteSchema(): Promise<void> {
   } catch (error) {
     logger.error("Failed to initialize remote schema:", error);
     throw error;
+  }
+
+  // Retrocompatible migrations (ALTER TABLE fails if column already exists — expected)
+  const migrations = [
+    `ALTER TABLE chats ADD COLUMN last_read_at INTEGER`,
+  ];
+  for (const migration of migrations) {
+    try {
+      await client.execute(migration);
+      logger.info(`Migration applied: ${migration.slice(0, 60)}...`);
+    } catch {
+      // Column likely already exists — this is expected
+    }
   }
 }

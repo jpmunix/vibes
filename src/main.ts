@@ -394,7 +394,7 @@ const createWindow = () => {
   }
 
   const saveWindowState = () => {
-    if (!mainWindow) return;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     const isMaximized = mainWindow.isMaximized();
     const currentSettings = readSettings();
     const newState = {

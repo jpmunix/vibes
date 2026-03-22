@@ -101,6 +101,7 @@ export const chats = sqliteTable("chats", {
     isPlan: integer("is_plan").default(0),
     planData: text("plan_data", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    lastReadAt: integer("last_read_at", { mode: "timestamp" }),
 });
 
 // =============================================================================

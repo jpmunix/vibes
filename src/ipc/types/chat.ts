@@ -208,6 +208,7 @@ export const chatContracts = {
         title: z.string().nullable(),
         createdAt: z.date(),
         isPlan: z.boolean().optional(),
+        lastReadAt: z.date().nullable().optional(),
       }),
     ),
   }),
@@ -309,6 +310,12 @@ export const chatContracts = {
       content: z.string().nullable(),
       createdAt: z.union([z.date(), z.string()]).nullable(),
     }),
+  }),
+
+  markChatRead: defineContract({
+    channel: "mark-chat-read",
+    input: z.number(), // chatId
+    output: z.void(),
   }),
 } as const;
 

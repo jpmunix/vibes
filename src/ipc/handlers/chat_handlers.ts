@@ -107,6 +107,7 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          lastReadAt: true,
         },
         orderBy: [desc(remoteSchema.chats.createdAt)],
       })
@@ -118,12 +119,13 @@ export function registerChatHandlers() {
           createdAt: true,
           appId: true,
           isPlan: true,
+          lastReadAt: true,
         },
         orderBy: [desc(remoteSchema.chats.createdAt)],
       });
 
     const allChats = await query;
-    return allChats as ChatSummary[];
+    return allChats as unknown as ChatSummary[];
   });
 
   createTypedHandler(chatContracts.deleteChat, async (_, chatId, context) => {
@@ -609,6 +611,15 @@ export function registerChatHandlers() {
       }
     },
   );
+
+  // Mark a chat as read (update lastReadAt timestamp)
+  createTypedHandler(chatContracts.markChatRead, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.chats)
+      .set({ lastReadAt: new Date() })
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
 
   logger.debug("Registered chat IPC handlers");
 }

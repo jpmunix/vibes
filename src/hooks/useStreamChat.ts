@@ -316,10 +316,12 @@ export function useStreamChat({
 
               const notificationsEnabled =
                 settings?.enableChatCompletionNotifications === true;
+              const isViewingDifferentChat =
+                lookupChatId !== undefined && lookupChatId !== null && lookupChatId !== chatId;
               if (
                 notificationsEnabled &&
                 Notification.permission === "granted" &&
-                !document.hasFocus()
+                (!document.hasFocus() || isViewingDifferentChat)
               ) {
                 const app = queryClient.getQueryData<App | null>(
                   queryKeys.apps.detail({ appId: selectedAppId }),

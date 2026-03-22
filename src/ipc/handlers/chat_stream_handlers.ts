@@ -1505,7 +1505,7 @@ This conversation includes one or more image attachments. When the user uploads 
               );
 
               const fullErrorText = `${AI_STREAMING_ERROR_MESSAGE_PREFIX}${requestIdPrefix}${message}`;
-              event.sender.send("chat:response:error", {
+              safeSend(event.sender, "chat:response:error", {
                 chatId: req.chatId,
                 error: fullErrorText,
               });

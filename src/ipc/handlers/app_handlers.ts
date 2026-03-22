@@ -1000,17 +1000,24 @@ export function registerAppHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    const appPath = params.name;
-    const fullAppPath = getVibesAppPath(appPath);
-    if (fs.existsSync(fullAppPath)) {
-      throw new Error(`App already exists at: ${fullAppPath}`);
+    // Auto-resolve name collisions by appending -2, -3, etc.
+    let appPath = params.name;
+    let fullAppPath = getVibesAppPath(appPath);
+    let suffix = 1;
+    const baseName = params.name;
+    while (fs.existsSync(fullAppPath) || await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.name, appPath), eq(remoteSchema.apps.userId, context.userId)),
+    })) {
+      suffix++;
+      appPath = `${baseName}-${suffix}`;
+      fullAppPath = getVibesAppPath(appPath);
     }
     // Create a new app
     const [app] = await db
       .insert(remoteSchema.apps)
       .values({
         userId: context.userId,
-        name: params.name,
+        name: appPath,
         // Use the name as the path for now
         path: appPath,
         createdAt: new Date(),
@@ -1030,7 +1037,7 @@ export function registerAppHandlers() {
 
     await createFromTemplate({
       fullAppPath,
-      appName: params.name,
+      appName: appPath,
       forceDefaultScaffold: params.useDefaultScaffold,
     });
 
@@ -2575,7 +2582,7 @@ export function registerAppHandlers() {
       const data = await openRouterCompletion({
         model,
         title: "app-title-short",
-        temperature: 0.3,
+        temperature: 0.7,
         max_tokens: 30,
         messages: [
           {
