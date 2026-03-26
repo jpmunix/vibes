@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import logoSrc from "../../assets/icon/logo.png";
 
 interface LoginScreenProps {
-  onAuthSuccess: (needsMigration: boolean) => void;
+  onAuthSuccess: () => void;
 }
 
 export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
@@ -37,7 +37,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         localStorage.setItem("vibes_session_token", result.sessionToken);
         setUser(result.user as VibesUser);
         toast.success(`Bienvenido, ${result.user.displayName}`);
-        onAuthSuccess(result.needsMigration);
+        onAuthSuccess();
       } else {
         if (!displayName.trim()) {
           setError("El nombre es obligatorio");
@@ -63,7 +63,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         localStorage.setItem("vibes_session_token", result.sessionToken);
         setUser(result.user as VibesUser);
         toast.success("¡Cuenta creada correctamente!");
-        onAuthSuccess(result.needsMigration);
+        onAuthSuccess();
       }
     } catch (err: any) {
       setError(err.message || "Error desconocido");

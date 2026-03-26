@@ -4,8 +4,7 @@
  * Flow:
  * 1. Check localStorage for existing session → verify against remote DB
  * 2. If no session or invalid → show LoginScreen
- * 3. If session valid and migration pending → show MigrationScreen (TODO: Phase 3)
- * 4. If session valid and no migration → render children (the app)
+ * 3. If session valid → render children (the app)
  *
  * Logout anywhere in the app → clears session → AuthGate shows LoginScreen again.
  */
@@ -15,7 +14,6 @@ import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
 import { LoginScreen } from "./LoginScreen";
-import { MigrationScreen } from "./MigrationScreen";
 import { WindowsControls } from "./WindowsControls";
 
 // Apply the user's saved theme immediately (before ThemeProvider loads inside the app)
@@ -34,7 +32,7 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
     const [user, setUser] = useAtom(userAtom);
     const [isLoading, setIsLoading] = useAtom(authLoadingAtom);
-    const [needsMigration, setNeedsMigration] = useState(false);
+
 
     // Apply dark/light theme immediately (before ThemeProvider loads)
     useEffect(() => { applyEarlyTheme(); }, []);
@@ -60,7 +58,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 const result = await ipc.auth.verifySession({ userId, sessionToken });
                 if (result.valid && result.user) {
                     setUser(result.user as VibesUser);
-                    setNeedsMigration(result.needsMigration);
+
                 } else if (user) {
                     // If we have a local user but the token is invalid (e.g. logged in on another computer)
                     // we keep the local session as per user request for "trusted environment".
@@ -105,28 +103,13 @@ export function AuthGate({ children }: AuthGateProps) {
             <>
                 <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
                 <LoginScreen
-                    onAuthSuccess={(migration) => {
-                        setNeedsMigration(migration);
-                    }}
+                    onAuthSuccess={() => {}}
                 />
             </>
         );
     }
 
-    // Migration needed — show blocking migration screen
-    if (needsMigration) {
-        return (
-            <>
-                <WindowsControls className="absolute top-0 right-0 z-[100]" buttonClassName="h-11" />
-                <MigrationScreen
-                    userId={user.id}
-                    onComplete={() => setNeedsMigration(false)}
-                />
-            </>
-        );
-    }
-
-    // Authenticated and migrated — render application
+    // Authenticated — render application
     return <>{children}</>;
 }
 

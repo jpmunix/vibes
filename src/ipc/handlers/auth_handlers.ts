@@ -11,27 +11,13 @@ import { authContracts } from "../types/auth";
 import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import type { VibesUserDto } from "../types/auth";
-import fs from "node:fs";
-import path from "node:path";
-import { getUserDataPath } from "../../paths/paths";
 import { writeSettings } from "../../main/settings";
 import { forceSyncRemoteSettingsToLocal } from "./settings_handlers";
 
 const logger = log.scope("auth-handlers");
 const SALT_ROUNDS = 10;
 
-/**
- * Check if the user has a local SQLite database that needs migration
- */
-function hasLocalDatabase(): boolean {
-    try {
-        const userDataPath = getUserDataPath();
-        const dbPath = path.join(userDataPath, "sqlite.db");
-        return fs.existsSync(dbPath);
-    } catch {
-        return false;
-    }
-}
+
 
 /**
  * Convert a DB row to a VibesUserDto
@@ -77,7 +63,7 @@ export function registerAuthHandlers(): void {
         const userId = uuidv4();
         const sessionToken = uuidv4();
         const now = new Date();
-        const hasLocalDb = hasLocalDatabase();
+
 
         // Insert user
         await db.insert(remoteSchema.users).values({
@@ -89,7 +75,7 @@ export function registerAuthHandlers(): void {
             createdAt: now,
             lastLoginAt: now,
             sessionToken,
-            migrationStatus: hasLocalDb ? "pending" : "not_needed",
+            migrationStatus: "not_needed",
         });
 
         logger.info(`User registered successfully: ${userId}`);
@@ -110,7 +96,7 @@ export function registerAuthHandlers(): void {
         return {
             user,
             sessionToken,
-            needsMigration: hasLocalDb,
+            needsMigration: false,
         };
     });
 
@@ -154,9 +140,7 @@ export function registerAuthHandlers(): void {
             })
             .where(eq(remoteSchema.users.id, user.id));
 
-        const hasLocalDb = hasLocalDatabase();
-        const needsMigration =
-            hasLocalDb && user.migrationStatus !== "completed";
+
 
         logger.info(`Login successful: ${user.id}`);
 
@@ -171,7 +155,7 @@ export function registerAuthHandlers(): void {
         return {
             user: toUserDto(user),
             sessionToken,
-            needsMigration,
+            needsMigration: false,
         };
     });
 
@@ -199,9 +183,7 @@ export function registerAuthHandlers(): void {
             // This ensures they stay logged in across multiple devices as requested.
             const valid = true; // Still return valid for now
 
-            const hasLocalDb = hasLocalDatabase();
-            const needsMigration =
-                hasLocalDb && user.migrationStatus !== "completed";
+
 
             // Ensure settings are synced
             writeSettings({
@@ -215,7 +197,7 @@ export function registerAuthHandlers(): void {
             return {
                 valid: true,
                 user: toUserDto(user),
-                needsMigration,
+                needsMigration: false,
             };
         } catch (error) {
             logger.error("Session verification failed:", error);
