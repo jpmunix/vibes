@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { chats, messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { chats, messages } from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import fs from "node:fs";
 import { getVibesAppPath } from "../../paths/paths";
@@ -136,6 +136,7 @@ export async function processFullResponseActions(
   fileUploadsState.clear(chatId);
   logger.log("processFullResponseActions for chatId", chatId);
   // Get the app associated with the chat
+  const db = getRemoteDb();
   const chatWithApp = await db.query.chats.findFirst({
     where: eq(chats.id, chatId),
     with: {

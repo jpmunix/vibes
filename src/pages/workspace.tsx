@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { useSearch, useNavigate } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
@@ -15,15 +15,40 @@ import { ServerControlButton } from "@/components/ServerControlButton";
  */
 export default function WorkspacePage() {
   const search = useSearch({ from: "/workspace" });
+  const navigate = useNavigate();
   const appId = search.appId ? Number(search.appId) : null;
   const chatId = search.chatId ? Number(search.chatId) : null;
 
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const [appsList] = useAtom(appsListAtom);
+  const restoredRef = useRef(false);
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
+
+  // Restore last selection from DB when landing without params
+  useEffect(() => {
+    if (restoredRef.current) return;
+    if (appId || chatId) return; // Already have params, no need to restore
+
+    restoredRef.current = true;
+
+    ipc.misc.getPreference({ key: "sidebar.lastSelection" }).then((raw) => {
+      if (raw) {
+        try {
+          const sel = JSON.parse(raw) as { appId: number; chatId: number };
+          if (sel.appId && sel.chatId) {
+            navigate({
+              to: "/workspace",
+              search: { appId: sel.appId, chatId: sel.chatId },
+              replace: true,
+            });
+          }
+        } catch { /* ignore */ }
+      }
+    }).catch(() => { /* ignore */ });
+  }, [appId, chatId, navigate]);
 
   // Set atoms when search params change
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { db } from "../../db";
+import { getRemoteDb } from "../../db/remote";
 import { getVibesAppPath } from "../../paths/paths";
 import { CodebaseFile, extractCodebase } from "../../utils/codebase";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -16,7 +16,7 @@ export async function extractMentionedAppsCodebases(
   }
 
   // Get all apps
-  const allApps = await db.query.apps.findMany();
+  const allApps = await getRemoteDb().query.apps.findMany();
 
   const mentionedApps = allApps.filter(
     (app) =>

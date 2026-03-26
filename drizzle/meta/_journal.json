@@ -330,6 +330,13 @@
       "when": 1774167099471,
       "tag": "0046_young_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1774836100000,
+      "tag": "0047_add_user_preferences",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { versions, apps } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { versions, apps } from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { getVibesAppPath } from "../../paths/paths";
 import { neon } from "@neondatabase/serverless";
@@ -7,6 +7,7 @@ import { neon } from "@neondatabase/serverless";
 import log from "electron-log";
 import { getNeonClient } from "@/neon_admin/neon_management_client";
 import { getCurrentCommitHash } from "./git_utils";
+import { readSettings } from "@/main/settings";
 
 const logger = log.scope("neon_timestamp_utils");
 
@@ -47,7 +48,7 @@ export async function storeDbTimestampAtCurrentVersion({
     logger.info(`Storing DB timestamp for current version - app ${appId}`);
 
     // 1. Get the app to find the path
-    const app = await db.query.apps.findFirst({
+    const app = await getRemoteDb().query.apps.findFirst({
       where: eq(apps.id, appId),
     });
 
@@ -81,7 +82,7 @@ export async function storeDbTimestampAtCurrentVersion({
     logger.info(`Current timestamp from Neon: ${currentTimestamp}`);
 
     // 4. Check if a version with this commit hash already exists
-    const existingVersion = await db.query.versions.findFirst({
+    const existingVersion = await getRemoteDb().query.versions.findFirst({
       where: and(
         eq(versions.appId, appId),
         eq(versions.commitHash, currentCommitHash),
@@ -90,7 +91,7 @@ export async function storeDbTimestampAtCurrentVersion({
 
     if (existingVersion) {
       // Update existing version with the new timestamp
-      await db
+      await getRemoteDb()
         .update(versions)
         .set({
           neonDbTimestamp: currentTimestamp,
@@ -107,10 +108,13 @@ export async function storeDbTimestampAtCurrentVersion({
       );
     } else {
       // Create new version record
-      await db.insert(versions).values({
+      await getRemoteDb().insert(versions).values({
+        userId: readSettings().userId || "",
         appId,
         commitHash: currentCommitHash,
         neonDbTimestamp: currentTimestamp,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       logger.info(
         `Created new version record for commit ${currentCommitHash} with timestamp ${currentTimestamp}`,

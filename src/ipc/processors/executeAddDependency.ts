@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { messages } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { messages } from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import { Message } from "@/ipc/types";
 import { exec } from "node:child_process";
@@ -36,7 +36,7 @@ export async function executeAddDependency({
   );
 
   // Save the updated message back to the database
-  await db
+  await getRemoteDb()
     .update(messages)
     .set({ content: updatedContent })
     .where(eq(messages.id, message.id));

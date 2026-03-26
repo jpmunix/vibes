@@ -1,6 +1,6 @@
 import log from "electron-log";
-import { db } from "../../db";
-import { customThemes } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { customThemes } from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import { themesData, type Theme } from "../../shared/themes";
 
@@ -51,7 +51,7 @@ export async function getThemePromptById(
       return "";
     }
 
-    const customTheme = await db.query.customThemes.findFirst({
+    const customTheme = await getRemoteDb().query.customThemes.findFirst({
       where: eq(customThemes.id, numericId),
     });
 

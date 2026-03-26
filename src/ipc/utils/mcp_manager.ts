@@ -1,5 +1,5 @@
-import { db } from "../../db";
-import { mcpServers } from "../../db/schema";
+import { getRemoteDb } from "../../db/remote";
+import { mcpServers } from "../../db/remote-schema";
 import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { eq } from "drizzle-orm";
 
@@ -18,16 +18,16 @@ class McpManager {
   async getClient(serverId: number): Promise<MCPClient> {
     const existing = this.clients.get(serverId);
     if (existing) return existing;
-    const server = await db
+    const server = await getRemoteDb()
       .select()
       .from(mcpServers)
       .where(eq(mcpServers.id, serverId));
-    const s = server.find((x) => x.id === serverId);
+    const s = server.find((x: any) => x.id === serverId);
     if (!s) throw new Error(`MCP server not found: ${serverId}`);
     let transport: StdioClientTransport | StreamableHTTPClientTransport;
     if (s.transport === "stdio") {
-      const args = s.args ?? [];
-      const env = s.envJson ?? undefined;
+      const args = (s.args as string[]) ?? [];
+      const env = (s.envJson as Record<string, string>) ?? undefined;
       if (!s.command) throw new Error("MCP server command is required");
       transport = new StdioClientTransport({
         command: s.command,
@@ -36,7 +36,7 @@ class McpManager {
       });
     } else if (s.transport === "http") {
       if (!s.url) throw new Error("HTTP MCP requires url");
-      const headers = s.headersJson ?? {};
+      const headers = (s.headersJson as Record<string, string>) ?? {};
       transport = new StreamableHTTPClientTransport(new URL(s.url as string), {
         requestInit: {
           headers,

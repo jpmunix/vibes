@@ -5,8 +5,8 @@ import os from "os";
 import fs from "fs";
 import { readFile, writeFile, unlink, mkdir } from "fs/promises";
 import { themesData, type Theme } from "../../../../shared/themes";
-import { db } from "../../../../db";
-import { apps, customThemes } from "../../../../db/schema";
+import { getRemoteDb } from "../../../../db/remote";
+import { apps, customThemes } from "../../../../db/remote-schema";
 import { eq, sql } from "drizzle-orm";
 import { streamText, TextPart, ImagePart } from "ai";
 import { readSettings } from "../../../../main/settings";
@@ -289,12 +289,12 @@ export function registerThemesHandlers() {
       const { appId, themeId } = params;
       // Use raw SQL to properly set NULL when themeId is null (representing "no theme")
       if (!themeId) {
-        await db
+        await getRemoteDb()
           .update(apps)
           .set({ themeId: sql`NULL` })
           .where(eq(apps.id, appId));
       } else {
-        await db.update(apps).set({ themeId }).where(eq(apps.id, appId));
+        await getRemoteDb().update(apps).set({ themeId }).where(eq(apps.id, appId));
       }
     },
   );
@@ -303,7 +303,7 @@ export function registerThemesHandlers() {
   handle(
     "get-app-theme",
     async (_, params: GetAppThemeParams): Promise<string | null> => {
-      const app = await db.query.apps.findFirst({
+      const app = await getRemoteDb().query.apps.findFirst({
         where: eq(apps.id, params.appId),
         columns: { themeId: true },
       });
@@ -313,7 +313,7 @@ export function registerThemesHandlers() {
 
   // Get all custom themes
   handle("get-custom-themes", async (): Promise<CustomTheme[]> => {
-    const themes = await db.query.customThemes.findMany({
+    const themes = await getRemoteDb().query.customThemes.findMany({
       orderBy: (themes, { desc }) => [desc(themes.createdAt)],
     });
 
@@ -358,7 +358,7 @@ export function registerThemesHandlers() {
       }
 
       // Check for duplicate theme name (case-insensitive)
-      const existingTheme = await db.query.customThemes.findFirst({
+      const existingTheme = await getRemoteDb().query.customThemes.findFirst({
         where: sql`LOWER(${customThemes.name}) = LOWER(${trimmedName})`,
       });
 
@@ -368,12 +368,16 @@ export function registerThemesHandlers() {
         );
       }
 
-      const result = await db
+      const settings = readSettings();
+      const result = await getRemoteDb()
         .insert(customThemes)
         .values({
+          userId: settings.userId || "",
           name: trimmedName,
           description: trimmedDescription || null,
           prompt: trimmedPrompt,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
 
@@ -403,7 +407,7 @@ export function registerThemesHandlers() {
       };
 
       // Get the current theme to verify it exists
-      const currentTheme = await db.query.customThemes.findFirst({
+      const currentTheme = await getRemoteDb().query.customThemes.findFirst({
         where: eq(customThemes.id, params.id),
       });
 
@@ -422,7 +426,7 @@ export function registerThemesHandlers() {
         }
 
         // Check for duplicate theme name (case-insensitive), excluding current theme
-        const existingTheme = await db.query.customThemes.findFirst({
+        const existingTheme = await getRemoteDb().query.customThemes.findFirst({
           where: sql`LOWER(${customThemes.name}) = LOWER(${trimmedName}) AND ${customThemes.id} != ${params.id}`,
         });
 
@@ -456,7 +460,7 @@ export function registerThemesHandlers() {
         updateData.prompt = trimmedPrompt;
       }
 
-      const result = await db
+      const result = await getRemoteDb()
         .update(customThemes)
         .set(updateData)
         .where(eq(customThemes.id, params.id))
@@ -482,7 +486,7 @@ export function registerThemesHandlers() {
   handle(
     "delete-custom-theme",
     async (_, params: DeleteCustomThemeParams): Promise<void> => {
-      await db.delete(customThemes).where(eq(customThemes.id, params.id));
+      await getRemoteDb().delete(customThemes).where(eq(customThemes.id, params.id));
     },
   );
 
