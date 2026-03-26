@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog } from "electron";
+import { ipcMain, app, dialog, BrowserWindow } from "electron";
 import { getRemoteDb } from "../../db/remote";
 import { getDatabasePath, db } from "../../db";
 import * as remoteSchema from "../../db/remote-schema";
@@ -16,14 +16,14 @@ import { promises as fsPromises } from "node:fs";
 import net from "node:net";
 import { AppOutput } from "../types/misc";
 
-// Buffer for batching log updates to the renderer
+// Buffer for batching log updates to ALL renderer windows
 class LogBuffer {
   private buffers = new Map<number, AppOutput[]>();
   private timeouts = new Map<number, NodeJS.Timeout>();
   private readonly FLUSH_INTERVAL_MS = 200;
   private readonly MAX_BATCH_SIZE = 100;
 
-  add(appId: number, output: AppOutput, event: Electron.IpcMainInvokeEvent) {
+  add(appId: number, output: AppOutput) {
     if (!this.buffers.has(appId)) {
       this.buffers.set(appId, []);
     }
@@ -32,14 +32,14 @@ class LogBuffer {
     buffer.push(output);
 
     if (buffer.length >= this.MAX_BATCH_SIZE) {
-      this.flush(appId, event);
+      this.flush(appId);
     } else if (!this.timeouts.has(appId)) {
-      const timeout = setTimeout(() => this.flush(appId, event), this.FLUSH_INTERVAL_MS);
+      const timeout = setTimeout(() => this.flush(appId), this.FLUSH_INTERVAL_MS);
       this.timeouts.set(appId, timeout);
     }
   }
 
-  flush(appId: number, event: Electron.IpcMainInvokeEvent) {
+  flush(appId: number) {
     const buffer = this.buffers.get(appId);
     if (!buffer || buffer.length === 0) return;
 
@@ -53,10 +53,13 @@ class LogBuffer {
     const logs = [...buffer];
     this.buffers.set(appId, []);
 
-    safeSend(event.sender, "app:logs-batch", {
-      appId,
-      logs,
-    });
+    // Broadcast to ALL open windows so console windows also receive logs
+    const payload = { appId, logs };
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && win.webContents) {
+        safeSend(win.webContents, "app:logs-batch", payload);
+      }
+    }
   }
 }
 
@@ -477,7 +480,7 @@ function listenToProcess({
         message,
         appId,
         timestamp: Date.now(),
-      }, event);
+      });
 
       const urlMatch = message.match(/(https?:\/\/localhost:\d+\/?)/);
       if (urlMatch) {
@@ -508,7 +511,7 @@ function listenToProcess({
       message,
       appId,
       timestamp: Date.now(),
-    }, event);
+    });
   });
 
   // Handle process exit/close
@@ -518,6 +521,28 @@ function listenToProcess({
       `App ${appId} (PID: ${spawnedProcess.pid}) process closed with code ${code}, signal ${signal}.`,
     );
     removeAppIfCurrentProcess(appId, spawnedProcess);
+
+    // Add a log entry so the console window reflects the stop
+    const stopMessage = code === 0 || code === null
+      ? `[vibes] Servidor detenido${signal ? ` (señal: ${signal})` : ""}`
+      : `[vibes] Servidor detenido con código de salida ${code}${signal ? `, señal: ${signal}` : ""}`;
+    const stopEntry = {
+      level: (code === 0 || code === null ? "info" : "error") as "info" | "error",
+      type: "server" as const,
+      message: stopMessage,
+      timestamp: Date.now(),
+      appId,
+    };
+    addLog(stopEntry);
+    // Broadcast to all windows
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && win.webContents) {
+        safeSend(win.webContents, "app:logs-batch", {
+          appId,
+          logs: [{ type: "stderr" as const, message: stopMessage, appId, timestamp: Date.now() }],
+        });
+      }
+    }
 
     // Auto-recovery: if the process crashed with a missing module error,
     // delete node_modules and restart the app (which will re-run npm install).
@@ -1377,6 +1402,36 @@ export function registerAppHandlers() {
         throw new Error(`Failed to stop app ${appId}: ${error.message}`);
       }
     });
+  });
+
+  createTypedHandler(appContracts.getAppRunningStatus, async (_, params) => {
+    const { appId } = params;
+    const appInfo = runningApps.get(appId);
+
+    if (!appInfo) {
+      return { status: "stopped" as const };
+    }
+
+    // Check if the process is still alive
+    const proc = appInfo.process;
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      // Process has exited — check if it was an error
+      const isError = proc.exitCode !== null && proc.exitCode !== 0;
+      return { status: isError ? ("error" as const) : ("stopped" as const) };
+    }
+
+    // Process is alive. Check if the server is actually serving
+    // by looking for a stored proxy URL (set once the port is detected open)
+    const storedProxy = proxyUrlByApp.get(appId);
+    if (storedProxy) {
+      return {
+        status: "running" as const,
+        url: storedProxy.originalUrl,
+      };
+    }
+
+    // Process alive but no proxy yet → still starting up
+    return { status: "running" as const };
   });
 
   createTypedHandler(appContracts.restartApp, async (event, params, context) => {

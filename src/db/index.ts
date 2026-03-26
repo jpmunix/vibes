@@ -418,6 +418,37 @@ function ensureBunnyConfigColumn(sqlite: Database.Database): void {
   }
 }
 
+/**
+ * Ensure the user_preferences table exists.
+ * Creates it if missing so the preferences system works on first run.
+ */
+function ensureUserPreferencesTable(sqlite: Database.Database): void {
+  try {
+    const tableExists = sqlite
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='user_preferences'`)
+      .get();
+
+    if (!tableExists) {
+      logger.log("Creating user_preferences table");
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS \`user_preferences\` (
+          \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+          \`app_id\` integer NOT NULL DEFAULT 0,
+          \`key\` text NOT NULL,
+          \`value\` text NOT NULL,
+          \`updated_at\` integer DEFAULT (unixepoch()) NOT NULL
+        )
+      `);
+      sqlite.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS \`user_prefs_key_app_unique\`
+          ON \`user_preferences\` (\`key\`, \`app_id\`)
+      `);
+    }
+  } catch (error) {
+    logger.error("Error ensuring user_preferences table:", error);
+  }
+}
+
 // Database connection factory
 let _db: ReturnType<typeof drizzle> | null = null;
 let _dbInitializing = false;
@@ -496,6 +527,10 @@ export function initializeDatabase(): BetterSQLite3Database<typeof schema> & {
   }
 
   logger.log("Database initialized successfully");
+
+  // Ensure user_preferences table exists (no migration file for this yet)
+  ensureUserPreferencesTable(sqlite);
+
   return _db as any;
 }
 

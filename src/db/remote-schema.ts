@@ -482,6 +482,22 @@ export const dossiers = sqliteTable("dossiers", {
 });
 
 // =============================================================================
+// USER PREFERENCES (key/value store, multi-tenant, optionally per-app)
+// =============================================================================
+
+export const userPreferences = sqliteTable("user_preferences", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    // app_id = 0 means global (not tied to any app); otherwise references the app
+    appId: integer("app_id").notNull().default(0),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, memo } from "react";
+import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -21,6 +21,10 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+
+// --- Preference keys ---
+const PREF_EXPANDED_APPS = "sidebar.expandedApps";
+const PREF_LAST_SELECTION = "sidebar.lastSelection";
 
 // --- App chats sub-list (lazy loaded per app) ---
 interface AppChatsProps {
@@ -218,6 +222,65 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [selectedChatId] = useAtom(selectedChatIdAtom);
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const loadedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load expanded apps from DB on mount
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
+    ipc.misc.getPreference({ key: PREF_EXPANDED_APPS }).then((raw) => {
+      if (raw) {
+        try {
+          const ids = JSON.parse(raw) as number[];
+          setExpandedApps((prev) => {
+            const merged = new Set([...prev, ...ids]);
+            return merged;
+          });
+        } catch { /* ignore bad data */ }
+      }
+    }).catch(() => { /* ignore */ });
+  }, []);
+
+  // Debounced save of expandedApps to DB
+  useEffect(() => {
+    // Skip initial empty state before load
+    if (!loadedRef.current) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      ipc.misc.setPreference({
+        key: PREF_EXPANDED_APPS,
+        value: JSON.stringify([...expandedApps]),
+      }).catch(() => { /* ignore */ });
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [expandedApps]);
+
+  // Auto-expand the selected app's group
+  useEffect(() => {
+    if (selectedAppId != null && !expandedApps.has(selectedAppId)) {
+      setExpandedApps((prev) => {
+        const next = new Set(prev);
+        next.add(selectedAppId);
+        return next;
+      });
+    }
+  }, [selectedAppId]);
+
+  // Persist last selection to DB when navigating to a chat
+  useEffect(() => {
+    if (selectedAppId != null && selectedChatId != null) {
+      ipc.misc.setPreference({
+        key: PREF_LAST_SELECTION,
+        value: JSON.stringify({ appId: selectedAppId, chatId: selectedChatId }),
+      }).catch(() => { /* ignore */ });
+    }
+  }, [selectedAppId, selectedChatId]);
 
   const handleToggleApp = useCallback((appId: number) => {
     setExpandedApps((prev) => {

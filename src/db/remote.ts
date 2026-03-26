@@ -426,6 +426,17 @@ export async function initializeRemoteSchema(): Promise<void> {
       storage_path TEXT NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     )`,
+
+    // User preferences (key/value store, multi-tenant, optionally per-app)
+    `CREATE TABLE IF NOT EXISTS user_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      app_id INTEGER NOT NULL DEFAULT 0,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      UNIQUE(user_id, key, app_id)
+    )`,
   ];
 
   try {

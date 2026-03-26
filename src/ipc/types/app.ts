@@ -476,6 +476,15 @@ export const appContracts = {
     input: GetShellCompletionsParamsSchema,
     output: GetShellCompletionsResultSchema,
   }),
+
+  getAppRunningStatus: defineContract({
+    channel: "get-app-running-status",
+    input: AppIdParamsSchema,
+    output: z.object({
+      status: z.enum(["running", "stopped", "error"]),
+      url: z.string().optional(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

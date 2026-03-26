@@ -174,6 +174,35 @@ export const miscContracts = {
     }),
     output: z.void(),
   }),
+
+  // User preferences (key/value store)
+  getPreference: defineContract({
+    channel: "prefs:get",
+    input: z.object({
+      key: z.string(),
+      appId: z.number().optional(), // 0 or omitted = global
+    }),
+    output: z.string().nullable(),
+  }),
+
+  setPreference: defineContract({
+    channel: "prefs:set",
+    input: z.object({
+      key: z.string(),
+      value: z.string(),
+      appId: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
+  getPreferences: defineContract({
+    channel: "prefs:get-many",
+    input: z.object({
+      keys: z.array(z.string()),
+      appId: z.number().optional(),
+    }),
+    output: z.record(z.string(), z.string().nullable()),
+  }),
 } as const;
 
 export const AppLogsBatchSchema = z.object({

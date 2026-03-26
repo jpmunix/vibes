@@ -588,3 +588,22 @@ export const embeddingsCache = sqliteTable(
     ),
   ],
 );
+
+// --- User Preferences table ---
+// Key/value store for UI state and preferences (optionally per-app)
+export const userPreferences = sqliteTable(
+  "user_preferences",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    // app_id = 0 means global (not tied to any app); otherwise references the app
+    appId: integer("app_id").notNull().default(0),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    unique("user_prefs_key_app_unique").on(table.key, table.appId),
+  ],
+);

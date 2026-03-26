@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
-import { useChats } from "@/hooks/useChats";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { ExternalLink, MessagesSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useTheme } from "@/contexts/ThemeContext";
+import { MessagesSquare } from "lucide-react";
+import { ServerControlButton } from "@/components/ServerControlButton";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -23,7 +21,6 @@ export default function WorkspacePage() {
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const [appsList] = useAtom(appsListAtom);
-  const { theme, intensity } = useTheme();
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
@@ -71,24 +68,10 @@ export default function WorkspacePage() {
             {selectedApp?.name || "App"}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            if (appId) {
-              ipc.system.openChatWindow({
-                appId,
-                chatId: chatId ?? undefined,
-                theme,
-                themeIntensity: intensity,
-              });
-            }
-          }}
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Abrir completo
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Server control button */}
+          <ServerControlButton appId={appId} />
+        </div>
       </div>
 
       {/* Chat panel — no preview, no server */}

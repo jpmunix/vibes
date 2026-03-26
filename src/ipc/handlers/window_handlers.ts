@@ -23,6 +23,9 @@ const gitWindows = new Map<number, BrowserWindow>();
 // Track chat windows to avoid duplicates (P18 — dedicated chat+preview)
 const chatWindows = new Map<number, BrowserWindow>();
 
+// Track console viewer windows to avoid duplicates
+const consoleWindows = new Map<number, BrowserWindow>();
+
 // Temporary store for pending prompts+attachments passed to chat windows via IPC
 // Keyed by chatId — the chat window retrieves and clears this on mount
 const pendingChatPrompts = new Map<number, {
@@ -321,13 +324,82 @@ export function registerWindowHandlers() {
     return null;
   });
 
+  // Console viewer window — dedicated window for server logs
+  createTypedHandler(systemContracts.openConsoleWindow, async (event, { appId, theme, themeIntensity }) => {
+    // If a window for this appId already exists, focus it
+    const existing = consoleWindows.get(appId);
+    if (existing && !existing.isDestroyed()) {
+      existing.focus();
+      return;
+    }
+
+
+
+    // Fetch app name for the window title
+    let appName = "Console";
+    try {
+      const db = getRemoteDb();
+      const settings = readSettings();
+      if (settings.userId) {
+        const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, settings.userId)) });
+        if (app?.name) appName = app.name;
+      }
+    } catch (e) {
+      logger.warn(`Could not fetch app name for console window title: ${e}`);
+    }
+
+    const consoleWindow = new BrowserWindow({
+      width: 900,
+      height: 550,
+      minWidth: 500,
+      minHeight: 300,
+      // No parent — independent window with its own taskbar entry
+      skipTaskbar: false,
+      title: `${appName} — Consola`,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: {
+        x: 10,
+        y: 8,
+      },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=console&appId=${appId}${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      consoleWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      consoleWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    consoleWindows.set(appId, consoleWindow);
+
+    consoleWindow.on("closed", () => {
+      consoleWindows.delete(appId);
+    });
+
+    logger.info(`Opened console viewer window for app ${appId}`);
+  });
+
   // Cross-window navigation: focus the main window and tell it to navigate
   createTypedHandler(systemContracts.navigateMainWindow, async (_event, { route, search }) => {
-    // Find the main window — it's the one NOT tracked as chat/db/git
+    // Find the main window — it's the one NOT tracked as chat/db/git/console
     const trackedWindows = new Set<number>();
     for (const w of chatWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of databaseWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of gitWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of consoleWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
