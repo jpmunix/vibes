@@ -1,12 +1,12 @@
 import { shell } from "electron";
 import log from "electron-log";
-import { createLoggedHandler } from "./safe_handle";
+import { createTypedHandler } from "./base";
+import { systemContracts } from "../types/system";
 
 const logger = log.scope("shell_handlers");
-const handle = createLoggedHandler(logger);
 
 export function registerShellHandlers() {
-  handle("open-external-url", async (_event, url: string) => {
+  createTypedHandler(systemContracts.openExternalUrl, async (_event, url) => {
     if (!url) {
       throw new Error("No URL provided.");
     }
@@ -17,7 +17,7 @@ export function registerShellHandlers() {
     logger.debug("Opened external URL:", url);
   });
 
-  handle("show-item-in-folder", async (_event, fullPath: string) => {
+  createTypedHandler(systemContracts.showItemInFolder, async (_event, fullPath) => {
     // Validate that a path was provided
     if (!fullPath) {
       throw new Error("No file path provided.");

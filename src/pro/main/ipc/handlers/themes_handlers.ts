@@ -1,4 +1,5 @@
-import { createLoggedHandler } from "../../../../ipc/handlers/safe_handle";
+import { createTypedHandler } from "../../../../ipc/handlers/base";
+import { templateContracts } from "../../../../ipc/types/templates";
 import log from "electron-log";
 import path from "path";
 import os from "os";
@@ -30,7 +31,6 @@ import type {
 import { webCrawlResponseSchema } from "./local_agent/tools/web_crawl";
 
 const logger = log.scope("themes_handlers");
-const handle = createLoggedHandler(logger);
 
 // Shared model map for theme generation (used by both image and URL handlers)
 const THEME_GENERATION_MODEL_MAP: Record<
@@ -278,14 +278,12 @@ REQUIRED STRUCTURE
 
 export function registerThemesHandlers() {
   // Get built-in themes
-  handle("get-themes", async (): Promise<Theme[]> => {
+  createTypedHandler(templateContracts.getThemes, async () => {
     return themesData;
   });
 
   // Set app theme (built-in or custom theme ID)
-  handle(
-    "set-app-theme",
-    async (_, params: SetAppThemeParams): Promise<void> => {
+  createTypedHandler(templateContracts.setAppTheme, async (_, params) => {
       const { appId, themeId } = params;
       // Use raw SQL to properly set NULL when themeId is null (representing "no theme")
       if (!themeId) {
@@ -296,23 +294,19 @@ export function registerThemesHandlers() {
       } else {
         await getRemoteDb().update(apps).set({ themeId }).where(eq(apps.id, appId));
       }
-    },
-  );
+  });
 
   // Get app theme
-  handle(
-    "get-app-theme",
-    async (_, params: GetAppThemeParams): Promise<string | null> => {
+  createTypedHandler(templateContracts.getAppTheme, async (_, params) => {
       const app = await getRemoteDb().query.apps.findFirst({
         where: eq(apps.id, params.appId),
         columns: { themeId: true },
       });
       return app?.themeId ?? null;
-    },
-  );
+  });
 
   // Get all custom themes
-  handle("get-custom-themes", async (): Promise<CustomTheme[]> => {
+  createTypedHandler(templateContracts.getCustomThemes, async () => {
     const themes = await getRemoteDb().query.customThemes.findMany({
       orderBy: (themes, { desc }) => [desc(themes.createdAt)],
     });
@@ -328,9 +322,7 @@ export function registerThemesHandlers() {
   });
 
   // Create custom theme
-  handle(
-    "create-custom-theme",
-    async (_, params: CreateCustomThemeParams): Promise<CustomTheme> => {
+  createTypedHandler(templateContracts.createCustomTheme, async (_, params) => {
       // Validate and sanitize inputs
       const trimmedName = params.name.trim();
       const trimmedDescription = params.description?.trim();
@@ -390,13 +382,10 @@ export function registerThemesHandlers() {
         createdAt: theme.createdAt,
         updatedAt: theme.updatedAt,
       };
-    },
-  );
+  });
 
   // Update custom theme
-  handle(
-    "update-custom-theme",
-    async (_, params: UpdateCustomThemeParams): Promise<CustomTheme> => {
+  createTypedHandler(templateContracts.updateCustomTheme, async (_, params) => {
       const updateData: Partial<{
         name: string;
         description: string | null;
@@ -479,21 +468,15 @@ export function registerThemesHandlers() {
         createdAt: theme.createdAt,
         updatedAt: theme.updatedAt,
       };
-    },
-  );
+  });
 
   // Delete custom theme
-  handle(
-    "delete-custom-theme",
-    async (_, params: DeleteCustomThemeParams): Promise<void> => {
+  createTypedHandler(templateContracts.deleteCustomTheme, async (_, params) => {
       await getRemoteDb().delete(customThemes).where(eq(customThemes.id, params.id));
-    },
-  );
+  });
 
   // Save theme image to temp directory
-  handle(
-    "save-theme-image",
-    async (_, params: SaveThemeImageParams): Promise<SaveThemeImageResult> => {
+  createTypedHandler(templateContracts.saveThemeImage, async (_, params) => {
       const { data, filename } = params;
 
       // Validate base64 data
@@ -528,13 +511,10 @@ export function registerThemesHandlers() {
       await writeFile(filePath, buffer);
 
       return { path: filePath };
-    },
-  );
+  });
 
   // Cleanup theme images from temp directory
-  handle(
-    "cleanup-theme-images",
-    async (_, params: CleanupThemeImagesParams): Promise<void> => {
+  createTypedHandler(templateContracts.cleanupThemeImages, async (_, params) => {
       const { paths } = params;
 
       for (const filePath of paths) {
@@ -559,15 +539,9 @@ export function registerThemesHandlers() {
           }
         }
       }
-    },
-  );
+  });
 
-  handle(
-    "generate-theme-prompt",
-    async (
-      _,
-      params: GenerateThemePromptParams,
-    ): Promise<GenerateThemePromptResult> => {
+  createTypedHandler(templateContracts.generateThemePrompt, async (_, params) => {
       const settings = readSettings();
 
       // Return mock response in test mode
@@ -698,16 +672,10 @@ images: ${imagesPart}`;
             : "Failed to process images for theme generation. Please try with fewer or smaller images, or use manual mode.",
         );
       }
-    },
-  );
+  });
 
   // Generate theme prompt from website URL via web crawl
-  handle(
-    "generate-theme-from-url",
-    async (
-      _,
-      params: GenerateThemeFromUrlParams,
-    ): Promise<GenerateThemePromptResult> => {
+  createTypedHandler(templateContracts.generateThemeFromUrl, async (_, params) => {
       const settings = readSettings();
 
       // Return mock response in test mode

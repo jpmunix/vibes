@@ -30,13 +30,13 @@ import {
 import { extractCodebase } from "../../utils/codebase";
 import { getVibesAppPath } from "../../paths/paths";
 import { withLock } from "../utils/lock_utils";
-import { createLoggedHandler } from "./safe_handle";
+import { createTypedHandler } from "./base";
+import { proposalContracts } from "../types/proposals";
 import { ApproveProposalResult } from "@/ipc/types";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { readSettings } from "@/main/settings";
 
 const logger = log.scope("proposal_handlers");
-const handle = createLoggedHandler(logger);
 // Cache for codebase token counts
 interface CodebaseTokenCache {
   chatId: number;
@@ -432,7 +432,7 @@ const rejectProposalHandler = async (
 
 // Function to register proposal-related handlers
 export function registerProposalHandlers() {
-  handle("get-proposal", getProposalHandler);
-  handle("approve-proposal", approveProposalHandler);
-  handle("reject-proposal", rejectProposalHandler);
+  createTypedHandler(proposalContracts.getProposal, getProposalHandler);
+  createTypedHandler(proposalContracts.approveProposal, approveProposalHandler);
+  createTypedHandler(proposalContracts.rejectProposal, rejectProposalHandler);
 }

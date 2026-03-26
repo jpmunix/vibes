@@ -1,6 +1,6 @@
-import { createLoggedHandler } from "./safe_handle";
+import { createTypedHandler } from "./base";
+import { upgradeContracts, type AppUpgrade } from "../types/upgrade";
 import log from "electron-log";
-import { AppUpgrade } from "@/ipc/types";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
@@ -12,7 +12,6 @@ import { gitAddAll, gitCommit } from "../utils/git_utils";
 import { simpleSpawn } from "../utils/simpleSpawn";
 
 export const logger = log.scope("app_upgrade_handlers");
-const handle = createLoggedHandler(logger);
 
 const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
   {
@@ -252,9 +251,7 @@ async function applyCapacitor({
 }
 
 export function registerAppUpgradeHandlers() {
-  handle(
-    "get-app-upgrades",
-    async (_, { appId }: { appId: number }, context): Promise<AppUpgrade[]> => {
+  createTypedHandler(upgradeContracts.getAppUpgrades, async (_, { appId }, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const app = await getApp(appId, context.userId);
       const appPath = getVibesAppPath(app.path);
@@ -270,12 +267,9 @@ export function registerAppUpgradeHandlers() {
       });
 
       return upgradesWithStatus;
-    },
-  );
+  });
 
-  handle(
-    "execute-app-upgrade",
-    async (_, { appId, upgradeId }: { appId: number; upgradeId: string }, context) => {
+  createTypedHandler(upgradeContracts.executeAppUpgrade, async (_, { appId, upgradeId }, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       if (!upgradeId) {
         throw new Error("upgradeId is required");

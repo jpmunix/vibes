@@ -1,10 +1,6 @@
-import type {
-  LanguageModelProvider,
-  LanguageModel,
-  CreateCustomLanguageModelProviderParams,
-  CreateCustomLanguageModelParams,
-} from "@/ipc/types";
-import { createLoggedHandler } from "./safe_handle";
+import { createTypedHandler } from "./base";
+import type { HandlerContext } from "./base";
+import { languageModelContracts } from "../types/language-model";
 import log from "electron-log";
 import {
   CUSTOM_PROVIDER_PREFIX,
@@ -15,27 +11,15 @@ import {
 import { getRemoteDb } from "@/db/remote";
 import * as remoteSchema from "@/db/remote-schema";
 import { and, eq } from "drizzle-orm";
-import { IpcMainInvokeEvent } from "electron";
-import { HandlerContext } from "./base";
 
 const logger = log.scope("language_model_handlers");
-const handle = createLoggedHandler(logger);
 
 export function registerLanguageModelHandlers() {
-  handle(
-    "get-language-model-providers",
-    async (_event, _input, context: HandlerContext): Promise<LanguageModelProvider[]> => {
-      return getLanguageModelProviders(context.userId);
-    },
-  );
+  createTypedHandler(languageModelContracts.getProviders, async (_event, _input, context) => {
+    return getLanguageModelProviders(context.userId);
+  });
 
-  handle(
-    "create-custom-language-model-provider",
-    async (
-      event: IpcMainInvokeEvent,
-      params: CreateCustomLanguageModelProviderParams,
-      context: HandlerContext,
-    ): Promise<LanguageModelProvider> => {
+  createTypedHandler(languageModelContracts.createCustomProvider, async (_event, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const { id, name, apiBaseUrl, envVarName } = params;
@@ -82,18 +66,11 @@ export function registerLanguageModelHandlers() {
         name,
         apiBaseUrl,
         envVarName,
-        type: "custom",
+        type: "custom" as const,
       };
-    },
-  );
+  });
 
-  handle(
-    "create-custom-language-model",
-    async (
-      event: IpcMainInvokeEvent,
-      params: CreateCustomLanguageModelParams,
-      context: HandlerContext,
-    ): Promise<void> => {
+  createTypedHandler(languageModelContracts.createCustomModel, async (_event, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const {
@@ -136,15 +113,9 @@ export function registerLanguageModelHandlers() {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-    },
-  );
-  handle(
-    "edit-custom-language-model-provider",
-    async (
-      event: IpcMainInvokeEvent,
-      params: CreateCustomLanguageModelProviderParams,
-      context: HandlerContext,
-    ): Promise<LanguageModelProvider> => {
+  });
+
+  createTypedHandler(languageModelContracts.editCustomProvider, async (_event, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const { id, name, apiBaseUrl, envVarName } = params;
@@ -196,19 +167,11 @@ export function registerLanguageModelHandlers() {
       });
       logger.info(`Successfully updated provider`);
       return result;
-    },
-  );
+  });
 
-  handle(
-    "delete-custom-language-model",
-    async (
-      event: IpcMainInvokeEvent,
-      params: { modelId: string },
-      context: HandlerContext,
-    ): Promise<void> => {
+  createTypedHandler(languageModelContracts.deleteCustomModel, async (_event, apiName, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
-      const { modelId: apiName } = params;
 
       // Validation
       if (!apiName) {
@@ -234,16 +197,9 @@ export function registerLanguageModelHandlers() {
       await db
         .delete(remoteSchema.languageModels)
         .where(and(eq(remoteSchema.languageModels.apiName, apiName), eq(remoteSchema.languageModels.userId, context.userId!)));
-    },
-  );
+  });
 
-  handle(
-    "delete-custom-model",
-    async (
-      _event: IpcMainInvokeEvent,
-      params: { providerId: string; modelApiName: string },
-      context: HandlerContext,
-    ): Promise<void> => {
+  createTypedHandler(languageModelContracts.deleteModel, async (_event, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const { providerId, modelApiName } = params;
@@ -278,16 +234,9 @@ export function registerLanguageModelHandlers() {
         );
 
       logger.info(`Successfully deleted custom model(s) with apiName=${modelApiName} for provider=${providerId}`);
-    },
-  );
+  });
 
-  handle(
-    "delete-custom-language-model-provider",
-    async (
-      event: IpcMainInvokeEvent,
-      params: { providerId: string },
-      context: HandlerContext,
-    ): Promise<void> => {
+  createTypedHandler(languageModelContracts.deleteCustomProvider, async (_event, params, context) => {
       if (!context.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
       const { providerId } = params;
@@ -328,16 +277,9 @@ export function registerLanguageModelHandlers() {
           .where(and(eq(remoteSchema.languageModelProviders.id, providerId), eq(remoteSchema.languageModelProviders.userId, context.userId!)));
       });
       logger.info(`Successfully deleted provider with ID "${providerId}".`);
-    },
-  );
+  });
 
-  handle(
-    "get-language-models",
-    async (
-      event: IpcMainInvokeEvent,
-      params: { providerId: string },
-      context: HandlerContext,
-    ): Promise<LanguageModel[]> => {
+  createTypedHandler(languageModelContracts.getModels, async (_event, params, context) => {
       if (!params || typeof params.providerId !== "string") {
         throw new Error("Invalid parameters: providerId (string) is required.");
       }
@@ -350,19 +292,13 @@ export function registerLanguageModelHandlers() {
         throw new Error("Local models cannot be fetched");
       }
       return getLanguageModels({ providerId: params.providerId, userId: context.userId });
-    },
-  );
+  });
 
-  handle(
-    "get-language-models-by-providers",
-    async (_event, _input, context: HandlerContext): Promise<Record<string, LanguageModel[]>> => {
-      return getLanguageModelsByProviders(context.userId);
-    },
-  );
+  createTypedHandler(languageModelContracts.getModelsByProviders, async (_event, _input, context) => {
+    return getLanguageModelsByProviders(context.userId);
+  });
 
-  handle(
-    "refresh-openrouter-models",
-    async (_event, _input, _context: HandlerContext): Promise<void> => {
+  createTypedHandler(languageModelContracts.refreshOpenRouterModels, async () => {
       logger.info("Manual refresh of OpenRouter models requested");
       const { clearOpenRouterModelsCache, fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
       clearOpenRouterModelsCache();

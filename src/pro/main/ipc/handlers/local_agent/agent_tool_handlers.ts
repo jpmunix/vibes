@@ -11,20 +11,15 @@ import {
   type AgentToolName,
 } from "./tool_definitions";
 import { resolveAskUserResponse } from "./tools/ask_user";
-import { createLoggedHandler } from "@/ipc/handlers/safe_handle";
+import { createTypedHandler } from "@/ipc/handlers/base";
+import { agentContracts } from "@/ipc/types/agent";
 import log from "electron-log";
-import type {
-  AgentTool,
-  SetAgentToolConsentParams,
-  AgentToolConsentResponseParams,
-  AskUserResponseParams,
-} from "@/ipc/types";
 
 const logger = log.scope("agent_tool_handlers");
-const handle = createLoggedHandler(logger);
+
 export function registerAgentToolHandlers() {
   // Get list of available tools with their consent settings
-  handle("agent-tool:get-tools", async (): Promise<AgentTool[]> => {
+  createTypedHandler(agentContracts.getTools, async () => {
     const consents = getAllAgentToolConsents();
     return TOOL_DEFINITIONS.map((tool) => ({
       name: tool.name,
@@ -35,27 +30,17 @@ export function registerAgentToolHandlers() {
   });
 
   // Set consent for a single tool
-  handle(
-    "agent-tool:set-consent",
-    async (_event, params: SetAgentToolConsentParams) => {
-      setAgentToolConsent(params.toolName as AgentToolName, params.consent);
-      return { success: true };
-    },
-  );
+  createTypedHandler(agentContracts.setConsent, async (_event, params) => {
+    setAgentToolConsent(params.toolName as AgentToolName, params.consent);
+  });
 
   // Handle consent response from renderer
-  handle(
-    "agent-tool:consent-response",
-    async (_event, params: AgentToolConsentResponseParams) => {
-      resolveAgentToolConsent(params.requestId, params.decision);
-    },
-  );
+  createTypedHandler(agentContracts.respondToConsent, async (_event, params) => {
+    resolveAgentToolConsent(params.requestId, params.decision);
+  });
 
   // Handle ask_user response from renderer
-  handle(
-    "agent-tool:ask-user-response",
-    async (_event, params: AskUserResponseParams) => {
-      resolveAskUserResponse(params.requestId, params.response);
-    },
-  );
+  createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
+    resolveAskUserResponse(params.requestId, params.response);
+  });
 }

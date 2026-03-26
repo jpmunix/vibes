@@ -88,7 +88,7 @@ import {
   deploySupabaseFunction,
   getSupabaseProjectName,
 } from "../../supabase_admin/supabase_management_client";
-import { createLoggedHandler } from "./safe_handle";
+
 import { getLanguageModelProviders } from "../shared/language_model_helpers";
 import { startProxy } from "../utils/start_proxy_server";
 import { Worker } from "worker_threads";
@@ -124,7 +124,7 @@ import {
 } from "../utils/ripgrep_utils";
 
 const logger = log.scope("app_handlers");
-const handle = createLoggedHandler(logger);
+
 
 function sanitizeSnippetText(text: string) {
   return text.replace(/\s+/g, " ").trim();
@@ -2353,10 +2353,7 @@ export function registerAppHandlers() {
     return contentMatches;
   });
 
-  // search-app is not in app contracts - keep using handle
-  handle(
-    "search-app",
-    async (_, searchQuery: string): Promise<AppSearchResult[]> => {
+  createTypedHandler(appContracts.searchApps, async (_, searchQuery) => {
       const settings = readSettings();
       if (!settings.userId) throw new Error("Unauthorized");
       const db = getRemoteDb();
@@ -2453,13 +2450,7 @@ export function registerAppHandlers() {
     clearLogs(appId);
   });
 
-  // select-app-location is not in app contracts - keep using handle
-  handle(
-    "select-app-location",
-    async (
-      _,
-      { defaultPath }: { defaultPath?: string },
-    ): Promise<{ path: string | null; canceled: boolean }> => {
+  createTypedHandler(appContracts.selectAppLocation, async (_, { defaultPath }) => {
       const result = await dialog.showOpenDialog({
         properties: ["openDirectory", "createDirectory"],
         title: "Select a folder where this app will be stored",
