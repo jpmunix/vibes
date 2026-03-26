@@ -156,7 +156,7 @@ export async function onReady() {
   initializeDatabase();
 
   // Step 2: Ensure OpenCode CLI is installed
-  updateSplash(splash, 2, TOTAL_STEPS, "Verificando OpenCode...");
+  updateSplash(splash, 2, TOTAL_STEPS, "Comprobando dependencias...");
   const openCodeOk = await ensureOpenCodeInstalled();
   if (!openCodeOk) {
     logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
