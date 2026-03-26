@@ -4,8 +4,9 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 import { DeepLinkProvider } from "../contexts/DeepLinkContext";
 import { Toaster } from "sonner";
 import { TitleBar } from "./TitleBar";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -18,6 +19,11 @@ import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } f
 import type { ZoomLevel } from "@/lib/schemas";
 import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
+import { ipc } from "@/ipc/types";
+
+// Routes that can be restored on startup
+const RESTORABLE_ROUTES = ["/", "/workspace", "/notes", "/todos", "/debates"];
+const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
 
@@ -34,6 +40,45 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const setChatInput = useSetAtom(chatInputValueAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
   const setConsoleEntries = useSetAtom(appConsoleEntriesAtom);
+
+  const navigate = useNavigate();
+  const routerState = useRouterState();
+  const restoredRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore last view on startup
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    // Only restore if we're at the root (fresh app start)
+    if (routerState.location.pathname !== "/") return;
+
+    ipc.misc.getPreference({ key: PREF_LAST_VIEW }).then((raw) => {
+      if (raw && RESTORABLE_ROUTES.includes(raw) && raw !== "/") {
+        navigate({ to: raw as any, replace: true });
+      }
+    }).catch(() => { /* ignore */ });
+  }, []);
+
+  // Persist current view to DB on route change (debounced)
+  useEffect(() => {
+    const pathname = routerState.location.pathname;
+    // Only persist restorable routes
+    const base = RESTORABLE_ROUTES.find((r) =>
+      r === "/" ? pathname === "/" : pathname.startsWith(r),
+    );
+    if (!base) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      ipc.misc.setPreference({ key: PREF_LAST_VIEW, value: base }).catch(() => {});
+    }, 300);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [routerState.location.pathname]);
 
   useEffect(() => {
     const zoomLevel = settings?.zoomLevel ?? DEFAULT_ZOOM_LEVEL;
