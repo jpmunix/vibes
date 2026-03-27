@@ -10,6 +10,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { useSettings } from "@/hooks/useSettings";
 import { GitPanel } from "@/components/GitPanel";
+import { ipc } from "@/ipc/types";
+import { Toaster } from "sonner";
 
 import "@/styles/globals.css";
 
@@ -46,6 +48,13 @@ function GitWindowContent({ appId, commitHash }: GitWindowAppProps) {
         setSelectedAppId(appId);
     }, [appId, setSelectedAppId]);
 
+    // Set window title from app name
+    useEffect(() => {
+        ipc.app.getApp(appId).then((app) => {
+            if (app?.name) document.title = `${app.name} — Control de Git`;
+        }).catch(() => {});
+    }, [appId]);
+
     return (
         <TooltipProvider>
             <div className="h-screen w-screen overflow-hidden bg-background text-foreground">
@@ -53,6 +62,7 @@ function GitWindowContent({ appId, commitHash }: GitWindowAppProps) {
                     onClose={() => window.close()}
                     initialTab="history"
                     initialCommitHash={commitHash}
+                    isWindow
                 />
             </div>
         </TooltipProvider>
@@ -64,6 +74,7 @@ export function GitWindowApp({ appId, commitHash }: GitWindowAppProps) {
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
                 <GitWindowContent appId={appId} commitHash={commitHash} />
+                <Toaster richColors />
             </ThemeProvider>
         </QueryClientProvider>
     );

@@ -34,6 +34,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { WindowsControls } from "@/components/WindowsControls";
 
 // ── Inline Cell Editor ──
 function CellEditor({
@@ -147,7 +148,7 @@ function CellValue({ value }: { value: unknown }) {
 }
 
 // ── Main Component ──
-export function DatabasePanel() {
+export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
     const db = useDatabase();
     const selectedAppId = useAtomValue(selectedAppIdAtom);
     const [tableSearch, setTableSearch] = useState("");
@@ -251,7 +252,7 @@ export function DatabasePanel() {
         <TooltipProvider>
             <div className="flex flex-col h-full overflow-hidden">
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                <div className={cn("flex items-center justify-between px-3 py-2 border-b border-border shrink-0", isWindow && "app-region-drag")}>
                     <div className="flex items-center gap-2">
                         {db.dbType === "pocketbase" ? (
                             <img src={pocketbaseLogo} alt="PocketBase" className="h-[14px] w-[14px] object-contain" />
@@ -267,7 +268,7 @@ export function DatabasePanel() {
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 no-app-region-drag">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -300,7 +301,7 @@ export function DatabasePanel() {
                             </TooltipTrigger>
                             <TooltipContent>Actualizar</TooltipContent>
                         </Tooltip>
-                        {selectedAppId && (
+                        {selectedAppId && !isWindow && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
@@ -316,6 +317,9 @@ export function DatabasePanel() {
                                 </TooltipTrigger>
                                 <TooltipContent>Abrir en ventana</TooltipContent>
                             </Tooltip>
+                        )}
+                        {isWindow && (
+                            <WindowsControls className="ml-1 pr-0 pointer-events-auto no-app-region-drag" buttonClassName="h-8" />
                         )}
                     </div>
                 </div>

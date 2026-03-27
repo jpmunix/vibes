@@ -46,11 +46,14 @@ import {
 import { GitCommitHistory } from "@/components/GitCommitHistory";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
+import { WindowsControls } from "@/components/WindowsControls";
 
 interface GitPanelProps {
     onClose: () => void;
     initialTab?: "changes" | "history";
     initialCommitHash?: string;
+    /** When true, the header becomes a draggable title bar with WindowsControls */
+    isWindow?: boolean;
 }
 
 function getStatusIcon(status: string) {
@@ -275,7 +278,7 @@ function StagedFileRow({
     );
 }
 
-export function GitPanel({ onClose, initialTab, initialCommitHash }: GitPanelProps) {
+export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
     const appId = useAtomValue(selectedAppIdAtom);
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
     const {
@@ -468,12 +471,12 @@ export function GitPanel({ onClose, initialTab, initialCommitHash }: GitPanelPro
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+            <div className={cn("flex items-center justify-between px-4 py-2.5 border-b border-border", isWindow && "app-region-drag")}>
                 <div className="flex items-center gap-2">
                     <GitBranch size={16} className="text-primary" />
                     <h2 className="text-sm font-semibold">Control de Git</h2>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 no-app-region-drag">
                     {/* Current branch badge — click to switch */}
                     {currentBranch && (
                         <Popover open={showBranchPopover} onOpenChange={setShowBranchPopover}>
@@ -547,13 +550,17 @@ export function GitPanel({ onClose, initialTab, initialCommitHash }: GitPanelPro
                             REBASE
                         </span>
                     )}
-                    <button
-                        onClick={onClose}
-                        className="p-1 hover:bg-muted rounded-md transition-colors"
-                        aria-label="Cerrar panel Git"
-                    >
-                        <X size={16} />
-                    </button>
+                    {isWindow ? (
+                        <WindowsControls className="ml-2 pr-0 pointer-events-auto no-app-region-drag" buttonClassName="h-9" />
+                    ) : (
+                        <button
+                            onClick={onClose}
+                            className="p-1 hover:bg-muted rounded-md transition-colors"
+                            aria-label="Cerrar panel Git"
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
             </div>
 

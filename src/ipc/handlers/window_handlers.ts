@@ -79,20 +79,69 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const parentWindow = BrowserWindow.fromWebContents(event.sender);
+    // Fetch app name for the window title
+    let appName = "Base de datos";
+    try {
+      const db = getRemoteDb();
+      const settings = readSettings();
+      if (settings.userId) {
+        const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, settings.userId)) });
+        if (app?.name) appName = app.name;
+      }
+    } catch (e) {
+      logger.warn(`Could not fetch app name for database window title: ${e}`);
+    }
 
     const dbWindow = new BrowserWindow({
       width: 1000,
       height: 700,
       minWidth: 600,
       minHeight: 400,
-      parent: parentWindow ?? undefined,
-      title: "Base de datos",
+      // No parent — independent window with its own taskbar entry
+      skipTaskbar: false,
+      title: `${appName} — Base de datos`,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: {
+        x: 10,
+        y: 8,
+      },
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, "preload.js"),
       },
+    });
+
+    // Remove native menu bar entirely (File, Edit, View, etc.)
+    dbWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element (dev tools)
+    dbWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => {
+          dbWindow.webContents.inspectElement(params.x, params.y);
+        },
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts lost by removeMenu()
+    dbWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        dbWindow.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        dbWindow.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        dbWindow.webContents.toggleDevTools();
+      }
     });
 
     const queryParam = `?window=database&appId=${appId}`;
@@ -124,8 +173,6 @@ export function registerWindowHandlers() {
       return;
     }
 
-    const parentWindow = BrowserWindow.fromWebContents(event.sender);
-
     // Fetch app name for the window title
     let appName = "Git";
     try {
@@ -144,14 +191,51 @@ export function registerWindowHandlers() {
       height: 750,
       minWidth: 700,
       minHeight: 500,
-      parent: parentWindow ?? undefined,
+      // No parent — independent window with its own taskbar entry
+      skipTaskbar: false,
       title: `${appName} — Control de Git`,
       autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: {
+        x: 10,
+        y: 8,
+      },
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, "preload.js"),
       },
+    });
+
+    // Remove native menu bar entirely (File, Edit, View, etc.)
+    gitWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element (dev tools)
+    gitWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => {
+          gitWindow.webContents.inspectElement(params.x, params.y);
+        },
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts lost by removeMenu()
+    gitWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        gitWindow.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        gitWindow.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        gitWindow.webContents.toggleDevTools();
+      }
     });
 
     const commitParam = commitHash ? `&commitHash=${encodeURIComponent(commitHash)}` : "";

@@ -49,6 +49,7 @@ function DatabaseWindowContent({ appId }: { appId: number }) {
             .getApp(appId)
             .then((app) => {
                 setCurrentApp(app);
+                if (app?.name) document.title = `${app.name} — Base de datos`;
                 setLoading(false);
             })
             .catch(() => setLoading(false));
@@ -64,7 +65,7 @@ function DatabaseWindowContent({ appId }: { appId: number }) {
 
     return (
         <div className="h-screen bg-background text-foreground">
-            <DatabasePanel />
+            <DatabasePanel isWindow />
         </div>
     );
 }
@@ -79,3 +80,4 @@ export function DatabaseWindowApp({ appId }: { appId: number }) {
         </QueryClientProvider>
     );
 }
+
