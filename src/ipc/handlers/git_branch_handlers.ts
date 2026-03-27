@@ -401,18 +401,8 @@ async function handleCommitChanges(
       );
     }
 
-    // Selective staging: if filesToStage is provided, stage only those files
-    if (filesToStage && filesToStage.length > 0) {
-      for (const filepath of filesToStage) {
-        await gitAdd({ path: appPath, filepath });
-      }
-    } else {
-      // Stage all changes (default behavior)
-      await gitAddAll({ path: appPath });
-    }
-
-    // Try to generate a better commit message with AI if the provided message
-    // looks like a generic auto-generated one (e.g., "Actualizar 1 archivo")
+    // Try to generate a better commit message with AI BEFORE staging
+    // (gitDiffFile needs unstaged changes to produce a diff)
     let finalMessage = message;
     const isGenericMessage = /^(Actualizar|Añadir|Eliminar|Renombrar)\s+\d+\s+archivo/i.test(message)
       || message === "Actualizar archivos";
@@ -428,6 +418,16 @@ async function handleCommitChanges(
       } catch (e) {
         logger.warn("Failed to generate AI commit message, using original:", e);
       }
+    }
+
+    // Selective staging: if filesToStage is provided, stage only those files
+    if (filesToStage && filesToStage.length > 0) {
+      for (const filepath of filesToStage) {
+        await gitAdd({ path: appPath, filepath });
+      }
+    } else {
+      // Stage all changes (default behavior)
+      await gitAddAll({ path: appPath });
     }
 
     // Commit with the final message

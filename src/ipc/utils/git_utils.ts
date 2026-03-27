@@ -1583,13 +1583,13 @@ export async function gitDiff({
 /**
  * Get diff with stats for a specific file
  */
-export async function gitDiffFile({ path, filepath }: GitFileParams): Promise<{
+export async function gitDiffFile({ path, filepath, cached = false }: GitFileParams & { cached?: boolean }): Promise<{
   additions: number;
   deletions: number;
   diff: string;
 }> {
   // Get numstat for additions/deletions
-  const numstatArgs = ["diff", "--numstat", "--", filepath];
+  const numstatArgs = ["diff", ...(cached ? ["--cached"] : []), "--numstat", "--", filepath];
   const numstatResult = await execGit(numstatArgs, path);
 
   let additions = 0;
@@ -1604,7 +1604,7 @@ export async function gitDiffFile({ path, filepath }: GitFileParams): Promise<{
   }
 
   // Get actual diff
-  const diffArgs = ["diff", "--", filepath];
+  const diffArgs = ["diff", ...(cached ? ["--cached"] : []), "--", filepath];
   const diffResult = await execGit(diffArgs, path);
 
   return {

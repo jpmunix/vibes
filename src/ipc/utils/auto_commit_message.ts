@@ -63,10 +63,23 @@ export async function generateAutoCommitMessage({
         return `File: ${file.path} (eliminado)`;
       }
       try {
-        const { diff } = await gitDiffFile({
+        // Try unstaged diff first
+        let { diff } = await gitDiffFile({
           path: appPath,
           filepath: file.path,
         });
+        // If empty (already staged), try cached/staged diff
+        if (!diff || diff.trim().length === 0) {
+          const cachedResult = await gitDiffFile({
+            path: appPath,
+            filepath: file.path,
+            cached: true,
+          });
+          diff = cachedResult.diff;
+        }
+        if (!diff || diff.trim().length === 0) {
+          return `File: ${file.path} (${file.status})`;
+        }
         // Enough context for the AI to understand what changed
         return `File: ${file.path} (${file.status})\n${diff.slice(0, 1000)}`;
       } catch {
