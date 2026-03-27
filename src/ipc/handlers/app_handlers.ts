@@ -1,4 +1,4 @@
-import { app, dialog, BrowserWindow } from "electron";
+import { ipcMain, app, dialog, BrowserWindow } from "electron";
 import { getRemoteDb } from "../../db/remote";
 import { getDatabasePath, db } from "../../db";
 import * as remoteSchema from "../../db/remote-schema";
@@ -10,7 +10,7 @@ import { systemContracts } from "../types/system";
 import fs from "node:fs";
 import path from "node:path";
 import { getVibesAppPath, getUserDataPath } from "../../paths/paths";
-import { spawn } from "node:child_process";
+import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import log from "electron-log";
 
@@ -31,6 +31,8 @@ import { withLock } from "../utils/lock_utils";
 import { getFilesRecursively } from "../utils/file_utils";
 import {
   runningApps,
+  processCounter,
+  removeAppIfCurrentProcess,
   stopAppByInfo,
   removeDockerVolumesForApp,
 } from "../utils/process_manager";
@@ -242,37 +244,40 @@ export function registerAppHandlers() {
 
     // Get app files
     const appPath = getVibesAppPath(app.path);
-    let files: string[] = [];
 
-    try {
-      files = getFilesRecursively(appPath, appPath);
-      // Normalize the path to use forward slashes so file tree (UI)
-      // can parse it more consistently across platforms.
-      files = files.map((path) => normalizePath(path));
-    } catch (error) {
-      logger.error(`Error reading files for app ${appId}:`, error);
-      // Return app even if files couldn't be read
-    }
-
-    let supabaseProjectName: string | null = null;
+    // Performance: run file listing, Supabase project name, and Vercel slug
+    // in parallel instead of sequentially. The file listing is the slowest
+    // operation (recursive directory walk).
     const settings = readSettings();
-    // Check for multi-organization credentials or legacy single account
     const hasSupabaseCredentials =
       (app.supabaseOrganizationSlug &&
         settings.supabase?.organizations?.[app.supabaseOrganizationSlug]
           ?.accessToken?.value) ||
       settings.supabase?.accessToken?.value;
-    if (app.supabaseProjectId && hasSupabaseCredentials) {
-      supabaseProjectName = await getSupabaseProjectName(
-        app.supabaseParentProjectId || app.supabaseProjectId,
-        app.supabaseOrganizationSlug ?? undefined,
-      );
-    }
 
-    let vercelTeamSlug: string | null = null;
-    if (app.vercelTeamId) {
-      vercelTeamSlug = await getVercelTeamSlug(app.vercelTeamId);
-    }
+    const [files, supabaseProjectName, vercelTeamSlug] = await Promise.all([
+      // File listing — runs in a microtask to not block
+      (async () => {
+        try {
+          const rawFiles = getFilesRecursively(appPath, appPath);
+          return rawFiles.map((p) => normalizePath(p));
+        } catch (error) {
+          logger.error(`Error reading files for app ${appId}:`, error);
+          return [] as string[];
+        }
+      })(),
+      // Supabase project name (network call)
+      app.supabaseProjectId && hasSupabaseCredentials
+        ? getSupabaseProjectName(
+            app.supabaseParentProjectId || app.supabaseProjectId,
+            app.supabaseOrganizationSlug ?? undefined,
+          )
+        : Promise.resolve(null),
+      // Vercel team slug (network call)
+      app.vercelTeamId
+        ? getVercelTeamSlug(app.vercelTeamId)
+        : Promise.resolve(null),
+    ]);
 
     return {
       ...app,
@@ -291,15 +296,28 @@ export function registerAppHandlers() {
       where: eq(remoteSchema.apps.userId, context.userId),
       orderBy: [desc(remoteSchema.apps.createdAt)],
     });
-    const appsWithResolvedPath = allApps.map((app) => {
-      const resolvedPath = getVibesAppPath(app.path);
-      return {
-        ...app,
-        resolvedPath,
-        localPathExists: fs.existsSync(resolvedPath),
-        canClone: !!(app.githubOrg && app.githubRepo),
-      };
-    });
+
+    // Performance: resolve paths and check existence in parallel with
+    // non-blocking fs.promises.access instead of sync fs.existsSync.
+    // For 20+ apps this avoids 20 synchronous I/O calls blocking the event loop.
+    const appsWithResolvedPath = await Promise.all(
+      allApps.map(async (app) => {
+        const resolvedPath = getVibesAppPath(app.path);
+        let localPathExists = false;
+        try {
+          await fsPromises.access(resolvedPath);
+          localPathExists = true;
+        } catch {
+          // Path does not exist
+        }
+        return {
+          ...app,
+          resolvedPath,
+          localPathExists,
+          canClone: !!(app.githubOrg && app.githubRepo),
+        };
+      }),
+    );
     return {
       apps: appsWithResolvedPath,
     };
