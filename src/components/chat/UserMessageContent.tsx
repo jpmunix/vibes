@@ -68,7 +68,7 @@ function extractImagesFromAiMessages(aiMessagesJson: any): Array<{
  * If images are found in aiMessagesJson, they're shown as clickable thumbnails.
  * The raw attachment text section is stripped from the markdown display.
  */
-export function UserMessageContent({
+export const UserMessageContent = React.memo(function UserMessageContent({
     content,
     aiMessagesJson,
 }: UserMessageContentProps) {
@@ -214,4 +214,4 @@ export function UserMessageContent({
             )}
         </>
     );
-}
+});

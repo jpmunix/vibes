@@ -4,6 +4,9 @@ import { writeSettings, readSettings } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
+import log from "electron-log";
+
+const logger = log.scope("settings_handlers");
 
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
   const db = getRemoteDb();
@@ -27,7 +30,7 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
       return true;
     }
   } catch (error) {
-    console.error("Error force syncing remote user settings to local:", error);
+    logger.error("Error force syncing remote user settings to local:", error);
   }
   return false;
 }
@@ -49,11 +52,11 @@ export function registerSettingsHandlers() {
             const remoteSettings = JSON.parse(remoteRecord.settingsJson);
             return { ...localSettings, ...remoteSettings };
           } catch (e) {
-            console.error("Failed to parse remote settings JSON", e);
+            logger.error("Failed to parse remote settings JSON", e);
           }
         }
       } catch (error) {
-        console.error("Error fetching remote user settings:", error);
+        logger.error("Error fetching remote user settings:", error);
       }
     }
     return localSettings;
@@ -94,7 +97,7 @@ export function registerSettingsHandlers() {
           });
         }
       } catch (error) {
-        console.error("Error syncing settings to remote DB:", error);
+        logger.error("Error syncing settings to remote DB:", error);
       }
     }
     return updated;

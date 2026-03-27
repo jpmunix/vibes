@@ -1,8 +1,8 @@
 import log from "electron-log";
 
+
 import { createTestOnlyLoggedHandler } from "./safe_handle";
-import { createTestOnlyLoggedHandler } from "./safe_handle";
-// Redundant import removed
+
 import { handleNeonOAuthReturn } from "../../neon_admin/neon_return_handler";
 import {
   getNeonClient,
@@ -128,7 +128,7 @@ export function registerNeonHandlers() {
       }
 
       const neonClient = await getNeonClient();
-      console.log("PROJECT ID", appData.neonProjectId);
+      logger.info("PROJECT ID", appData.neonProjectId);
 
       // Get project info
       const projectResponse = await neonClient.getProject(

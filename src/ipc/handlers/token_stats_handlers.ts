@@ -3,6 +3,9 @@ import { tokenStatsContracts } from "../types/token_stats";
 import { getRemoteDb } from "../../db/remote";
 import { aiQueryLogs } from "../../db/remote-schema";
 import { eq, desc } from "drizzle-orm";
+import log from "electron-log";
+
+const logger = log.scope("token_stats_handlers");
 
 export function registerTokenStatsHandlers() {
   createTypedHandler(tokenStatsContracts.getTokenStats, async (_, __, context) => {
@@ -37,7 +40,7 @@ export function registerTokenStatsHandlers() {
         };
       });
     } catch (error) {
-      console.error("Error fetching token stats from remote DB:", error);
+      logger.error("Error fetching token stats from remote DB:", error);
       return [];
     }
   });

@@ -1,3 +1,4 @@
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 
@@ -13,12 +14,40 @@ interface StreamingLoadingAnimationProps {
 }
 
 /**
+ * Three pulsing dots – the core loading indicator.
+ * Clean, professional, and small enough to sit inline with text.
+ */
+function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: number; colorClass?: string }) {
+  return (
+    <div className="flex items-center" style={{ gap }}>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className={`rounded-full ${colorClass || "bg-primary"}`}
+          style={{ width: size, height: size }}
+          animate={{
+            scale: [1, 1.35, 1],
+            opacity: [0.4, 1, 0.4],
+          }}
+          transition={{
+            duration: 1.0,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.18,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
  * Professional streaming indicator.
  *
  * - **initial**: pulsing dots with label (shown when waiting for first content)
  * - **streaming**: compact inline dots with contextual label (shown while content is arriving)
  */
-export function StreamingLoadingAnimation({
+export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAnimation({
   variant,
   label,
   dotColorClass,
@@ -104,32 +133,4 @@ export function StreamingLoadingAnimation({
       </AnimatePresence>
     </div>
   );
-}
-
-/**
- * Three pulsing dots – the core loading indicator.
- * Clean, professional, and small enough to sit inline with text.
- */
-function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: number; colorClass?: string }) {
-  return (
-    <div className="flex items-center" style={{ gap }}>
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className={`rounded-full ${colorClass || "bg-primary"}`}
-          style={{ width: size, height: size }}
-          animate={{
-            scale: [1, 1.35, 1],
-            opacity: [0.4, 1, 0.4],
-          }}
-          transition={{
-            duration: 1.0,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.18,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+});

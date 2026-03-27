@@ -1,3 +1,4 @@
+import React from "react";
 import type { Message } from "@/ipc/types";
 import { ipc } from "@/ipc/types";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
@@ -600,4 +601,4 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   );
 };
 
-export default ChatMessage;
+export default React.memo(ChatMessage);

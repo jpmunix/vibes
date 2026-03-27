@@ -4,6 +4,9 @@ import { desc, eq, and } from "drizzle-orm";
 import { createTypedHandler, HandlerContext } from "./base";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { logAiQuery } from "../utils/ai_query_logger";
+import log from "electron-log";
+
+const logger = log.scope("ai_query_log_handlers");
 
 export function registerAiQueryLogHandlers() {
     createTypedHandler(aiQueryLogContracts.getAiQueryLogs, async (_, __, context) => {
@@ -24,7 +27,7 @@ export function registerAiQueryLogHandlers() {
                 .where(eq(aiQueryLogs.userId, context.userId))
                 .orderBy(desc(aiQueryLogs.id));
         } catch (error) {
-            console.error("Error fetching AI query logs:", error);
+            logger.error("Error fetching AI query logs:", error);
             return [];
         }
     });
@@ -40,7 +43,7 @@ export function registerAiQueryLogHandlers() {
                 .limit(1);
             return results[0] || null;
         } catch (error) {
-            console.error("Error fetching AI query log detail:", error);
+            logger.error("Error fetching AI query log detail:", error);
             return null;
         }
     });
@@ -51,7 +54,7 @@ export function registerAiQueryLogHandlers() {
         try {
             return await db.select().from(aiQueryLogs).where(eq(aiQueryLogs.userId, context.userId)).orderBy(desc(aiQueryLogs.id));
         } catch (error) {
-            console.error("Error fetching full logs:", error);
+            logger.error("Error fetching full logs:", error);
             return [];
         }
     });
@@ -76,7 +79,7 @@ export function registerAiQueryLogHandlers() {
         try {
             await db.delete(aiQueryLogs).where(eq(aiQueryLogs.userId, context.userId));
         } catch (error) {
-            console.error("Error clearing logs:", error);
+            logger.error("Error clearing logs:", error);
         }
     });
 }

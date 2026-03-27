@@ -16,7 +16,7 @@ export const registerSessionHandlers = () => {
     await defaultAppSession.clearStorageData({
       storages: ["cookies", "localstorage"],
     });
-    console.info(`[IPC] All session data cleared for default session`);
+    logger.info("All session data cleared for default session");
 
     // Clear custom cache data (like tsbuildinfo)
     try {

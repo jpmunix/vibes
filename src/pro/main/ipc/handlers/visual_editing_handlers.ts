@@ -30,6 +30,9 @@ import { getModelClient } from "../../../../ipc/utils/get_model_client";
 import { readSettings } from "../../../../main/settings";
 import { logAiQuery } from "../../../../ipc/utils/ai_query_logger";
 import { getEffectivePrompt } from "../../../../prompts";
+import log from "electron-log";
+
+const logger = log.scope("visual_editing_handlers");
 
 export function registerVisualEditingHandlers() {
   createTypedHandler(
@@ -64,7 +67,7 @@ export function registerVisualEditingHandlers() {
 
         // Group changes by file and line
         for (const change of changes) {
-          console.log('[visual-editing] Processing change:', {
+          logger.debug('[visual-editing] Processing change:', {
             componentId: change.componentId,
             file: change.relativePath,
             line: change.lineNumber,
@@ -77,8 +80,8 @@ export function registerVisualEditingHandlers() {
           const tailwindClasses = stylesToTailwind(change.styles);
           const changePrefixes = extractClassPrefixes(tailwindClasses);
 
-          console.log('[visual-editing] Generated Tailwind classes:', tailwindClasses);
-          console.log('[visual-editing] Class prefixes:', changePrefixes);
+          logger.debug('[visual-editing] Generated Tailwind classes:', tailwindClasses);
+          logger.debug('[visual-editing] Class prefixes:', changePrefixes);
 
           fileChanges.get(change.relativePath)!.set(change.lineNumber, {
             classes: tailwindClasses,
@@ -97,7 +100,7 @@ export function registerVisualEditingHandlers() {
           const content = await fsPromises.readFile(filePath, "utf-8");
           const transformedContent = transformContent(content, lineChanges);
 
-          console.log('[visual-editing] Content changed:', transformedContent !== content);
+          logger.debug('[visual-editing] Content changed:', transformedContent !== content);
 
           // Only write if content actually changed
           if (transformedContent !== content) {
@@ -161,7 +164,7 @@ export function registerVisualEditingHandlers() {
         const content = await fsPromises.readFile(fullPath, "utf-8");
         return analyzeComponent(content, line);
       } catch (error) {
-        console.error("Failed to analyze component:", error);
+        logger.error("Failed to analyze component:", error);
         return {
           isDynamic: false,
           hasStaticText: false,
@@ -213,7 +216,7 @@ export function registerVisualEditingHandlers() {
           });
         }
       } catch (error) {
-        console.error("Failed to replace icon:", error);
+        logger.error("Failed to replace icon:", error);
         throw error;
       }
     },
@@ -317,7 +320,7 @@ Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
 
           parsedResponse = JSON.parse(cleaned);
         } catch (parseError) {
-          console.error("Failed to parse AI response:", responseText);
+          logger.error("Failed to parse AI response:", responseText);
           return {
             error: "No pude entender la respuesta de la IA. Intenta ser más específico.",
           };
@@ -344,7 +347,7 @@ Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
             outputTokens: result.usage?.outputTokens,
           }, settings.userId as string);
         } catch (logError) {
-          console.error("Failed to log AI query:", logError);
+          logger.error("Failed to log AI query:", logError);
         }
 
         // Build the change object
@@ -362,7 +365,7 @@ Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
 
         return { change };
       } catch (error) {
-        console.error("Failed to process quick edit:", error);
+        logger.error("Failed to process quick edit:", error);
         return {
           error: error instanceof Error ? error.message : String(error),
         };

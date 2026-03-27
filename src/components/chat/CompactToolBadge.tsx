@@ -175,7 +175,7 @@ interface CompactToolBadgeProps {
  * - FINISHED: small icon badge (inline-flex) — click opens modal with original content
  * - ABORTED: small red icon badge
  */
-export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
+export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(({
     tag,
     state,
     detail,
@@ -233,7 +233,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = ({
             </Dialog>
         </>
     );
-};
+});
 
 /** Returns true if this tag should be rendered as a compact tool badge */
 export function isCompactableTag(tag: string): boolean {

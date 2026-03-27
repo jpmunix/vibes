@@ -15,6 +15,9 @@ import {
 } from "../utils/app_env_var_utils";
 import { createTypedHandler, HandlerContext } from "./base";
 import { miscContracts } from "../types/misc";
+import log from "electron-log";
+
+const logger = log.scope("app_env_vars_handlers");
 
 export function registerAppEnvVarsHandlers() {
   // Handler to get app environment variables
@@ -45,7 +48,7 @@ export function registerAppEnvVarsHandlers() {
 
       return envVars;
     } catch (error) {
-      console.error("Error getting app environment variables:", error);
+      logger.error("Error getting app environment variables:", error);
       throw new Error(
         `Failed to get environment variables: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
@@ -76,7 +79,7 @@ export function registerAppEnvVarsHandlers() {
         // Write to .env.local file
         await fs.promises.writeFile(envFilePath, content, "utf8");
       } catch (error) {
-        console.error("Error setting app environment variables:", error);
+        logger.error("Error setting app environment variables:", error);
         throw new Error(
           `Failed to set environment variables: ${error instanceof Error ? error.message : "Unknown error"}`,
         );

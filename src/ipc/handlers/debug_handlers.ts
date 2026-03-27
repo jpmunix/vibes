@@ -18,6 +18,8 @@ import { getVibesAppPath } from "../../paths/paths";
 import { LargeLanguageModel } from "@/lib/schemas";
 import { validateChatContext } from "../utils/context_paths_utils";
 
+const logger = log.scope("debug_handlers");
+
 // Shared function to get system debug info
 async function getSystemDebugInfo({
   linesOfLogs,
@@ -26,7 +28,7 @@ async function getSystemDebugInfo({
   linesOfLogs: number;
   level: "warn" | "info";
 }): Promise<SystemDebugInfo> {
-  console.log("Getting system debug info");
+  logger.info("Getting system debug info");
 
   // Get Node.js version
   let nodeVersion: string | null = null;
@@ -35,7 +37,7 @@ async function getSystemDebugInfo({
   try {
     nodeVersion = await runShellCommand("node --version");
   } catch (err) {
-    console.error("Failed to get Node.js version:", err);
+    logger.error("Failed to get Node.js version:", err);
   }
 
   try {
@@ -45,7 +47,7 @@ async function getSystemDebugInfo({
       nodePath = await runShellCommand("which node");
     }
   } catch (err) {
-    console.error("Failed to get node path:", err);
+    logger.error("Failed to get node path:", err);
   }
 
   // Get Vibes version from package.json
@@ -55,7 +57,7 @@ async function getSystemDebugInfo({
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
     vibesVersion = packageJson.version;
   } catch (err) {
-    console.error("Failed to read package.json:", err);
+    logger.error("Failed to read package.json:", err);
   }
 
   // Get telemetry info from settings
@@ -91,7 +93,7 @@ async function getSystemDebugInfo({
       logs = logLines.slice(-linesOfLogs).join("\n");
     }
   } catch (err) {
-    console.error("Failed to read log file:", err);
+    logger.error("Failed to read log file:", err);
     logs = `Error reading logs: ${err}`;
   }
 
@@ -112,7 +114,7 @@ async function getSystemDebugInfo({
 
 export function registerDebugHandlers() {
   createTypedHandler(systemContracts.getSystemDebugInfo, async () => {
-    console.log("IPC: get-system-debug-info called");
+    logger.info("IPC: get-system-debug-info called");
     return getSystemDebugInfo({
       linesOfLogs: 20,
       level: "warn",
@@ -120,7 +122,7 @@ export function registerDebugHandlers() {
   });
 
   createTypedHandler(miscContracts.getChatLogs, async (_, chatId, context) => {
-    console.log(`IPC: get-chat-logs called for chat ${chatId}`);
+    logger.info(`IPC: get-chat-logs called for chat ${chatId}`);
     if (!context.userId) throw new Error("Unauthorized");
 
     try {
@@ -182,12 +184,12 @@ export function registerDebugHandlers() {
         codebase,
       };
     } catch (error) {
-      console.error(`Error in get-chat-logs:`, error);
+      logger.error(`Error in get-chat-logs:`, error);
       throw error;
     }
   });
 
-  console.log("Registered debug IPC handlers");
+  logger.info("Registered debug IPC handlers");
 
   createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];

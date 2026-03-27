@@ -146,32 +146,28 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 3;
   const splash = createSplashWindow();
-  // Give the splash window time to render
-  await new Promise(resolve => setTimeout(resolve, 300));
+  // Give the splash window time to render (minimal delay)
+  await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Initialize database
-  updateSplash(splash, 1, TOTAL_STEPS, "Inicializando base de datos...");
-  initializeDatabase();
-
-  // Step 2: Ensure OpenCode CLI is installed
-  updateSplash(splash, 2, TOTAL_STEPS, "Comprobando dependencias...");
-  const openCodeOk = await ensureOpenCodeInstalled();
+  // Step 1: Initialize database + check OpenCode in PARALLEL (no dependency between them)
+  updateSplash(splash, 1, TOTAL_STEPS, "Inicializando...");
+  const [, openCodeOk] = await Promise.all([
+    Promise.resolve(initializeDatabase()), // sync but wrapped for Promise.all
+    ensureOpenCodeInstalled(),
+  ]);
   if (!openCodeOk) {
     logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
   }
 
-  // Step 3: Cleanup old data
-  updateSplash(splash, 3, TOTAL_STEPS, "Limpieza de datos...");
-  await cleanupOldAiMessagesJson();
-
-  // Step 4: Create main window
-  updateSplash(splash, 4, TOTAL_STEPS, "Preparando interfaz...");
+  // Step 2: Create main window (the critical path)
+  updateSplash(splash, 2, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
-  // Wait for main window content to fully load, then swap splash → main
+  // Step 3: Wait for main window content to fully load, then swap splash → main
+  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     await new Promise<void>(resolve => {
       mainWindow!.webContents.once("did-finish-load", resolve);
@@ -184,6 +180,9 @@ export async function onReady() {
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
+    // Cleanup old data in background (non-critical, doesn't block startup)
+    await cleanupOldAiMessagesJson();
+
     // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {
       await gitAddSafeDirectory(`${getVibesAppsBaseDirectory()}/*`);
