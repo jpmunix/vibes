@@ -42,6 +42,7 @@ import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
+import { getEffectivePrompt } from "@/prompts";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
 // createTypedHandler removed as it's now imported above with HandlerContext
 
@@ -1599,18 +1600,10 @@ async function handleGenerateCommitMessage(
     const diffs = await Promise.all(diffsPromises);
     const diffsContext = diffs.join("\n\n");
 
-    // Build prompt for AI
-    const prompt = `Generate a concise, clear commit message in Spanish for these git changes.
-The message should:
-- Be one line, under 72 characters
-- Start with a verb in infinitive (añadir, actualizar, corregir, eliminar, etc.)
-- Summarize the main change, not list every file
-- Be specific but brief
+    // Use the editable prompt from settings
+    const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
 
-Changes:
-${diffsContext}
-
-Return ONLY the commit message, nothing else.`;
+    const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
 
     // Call OpenRouter API
     const data = await openRouterCompletion({

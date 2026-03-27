@@ -8,6 +8,7 @@ import {
   gitAddAll,
   getGitUncommittedFiles,
 } from "@/ipc/utils/git_utils";
+import { generateAutoCommitMessage } from "@/ipc/utils/auto_commit_message";
 import { deployAllSupabaseFunctions } from "../../../../../../supabase_admin/supabase_utils";
 import { readSettings } from "../../../../../../main/settings";
 import type { AgentContext } from "../tools/types";
@@ -76,17 +77,25 @@ export async function commitAllChanges(
     const uncommittedFiles = await getGitUncommittedFiles({
       path: ctx.appPath,
     });
-    const message = chatSummary
-      ? `[vibes] ${chatSummary}`
-      : `[vibes] (${uncommittedFiles.length} files changed)`;
+
     let commitHash: string | undefined;
 
     if (uncommittedFiles.length > 0) {
+      const fallbackMessage = chatSummary
+        ? `[vibes] ${chatSummary}`
+        : `[vibes] (${uncommittedFiles.length} files changed)`;
+
+      const message = await generateAutoCommitMessage({
+        appPath: ctx.appPath,
+        writtenFiles: uncommittedFiles,
+        fallbackMessage,
+      });
+
       await gitAddAll({ path: ctx.appPath });
       try {
         commitHash = await gitCommit({
           path: ctx.appPath,
-          message: message,
+          message,
         });
       } catch (error) {
         logger.error(
@@ -104,3 +113,4 @@ export async function commitAllChanges(
     throw new Error(`Failed to commit changes: ${error}`);
   }
 }
+

@@ -1,6 +1,9 @@
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useGitPanel } from "@/hooks/useGitPanel";
+import { useLoadApp } from "@/hooks/useLoadApp";
+import { useSettings } from "@/hooks/useSettings";
+import { GitRemoteSetup } from "@/components/git_window/GitRemoteSetup";
 import { cn } from "@/lib/utils";
 import { useState, useCallback } from "react";
 import {
@@ -280,6 +283,10 @@ function StagedFileRow({
 
 export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
     const appId = useAtomValue(selectedAppIdAtom);
+    const { app, refreshApp } = useLoadApp(appId);
+    const { settings } = useSettings();
+    const hasGithubToken = !!settings?.githubAccessToken;
+    const hasRemote = !!(app?.githubOrg && app?.githubRepo);
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
     const {
         uncommittedFiles,
@@ -471,7 +478,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     return (
         <div className="h-full flex flex-col bg-background">
             {/* Header */}
-            <div className={cn("flex items-center justify-between px-4 py-2.5 border-b border-border", isWindow && "app-region-drag")}>
+            <div className={cn("flex items-center justify-between px-4 py-2.5 border-b border-border", isWindow && "app-region-drag bg-(--sidebar)")}>
                 <div className="flex items-center gap-2">
                     <GitBranch size={16} className="text-primary" />
                     <h2 className="text-sm font-semibold">Control de Git</h2>
@@ -1104,73 +1111,81 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                         </div>
                     )}
 
-                    {/* Sync Actions Bar — always visible */}
-                    <div className="border-t border-border p-3 space-y-2 bg-muted/30">
-                        {/* Push / Pull / Fetch row */}
-                        <div className="flex gap-1.5">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 h-8 text-xs font-medium"
-                                        onClick={handlePush}
-                                        disabled={isPushing || isPulling}
-                                    >
-                                        {isPushing ? (
-                                            <Loader2 size={13} className="animate-spin mr-1.5" />
-                                        ) : (
-                                            <Upload size={13} className="mr-1.5" />
-                                        )}
-                                        Push
-                                        {gitState?.ahead !== undefined && gitState.ahead > 0 && (
-                                            <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary font-medium">
-                                                {gitState.ahead}
-                                            </span>
-                                        )}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Enviar commits locales al remoto</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 h-8 text-xs font-medium"
-                                        onClick={handlePull}
-                                        disabled={isPulling || isPushing}
-                                    >
-                                        {isPulling ? (
-                                            <Loader2 size={13} className="animate-spin mr-1.5" />
-                                        ) : (
-                                            <Download size={13} className="mr-1.5" />
-                                        )}
-                                        Pull
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Traer y fusionar cambios del remoto</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 shrink-0"
-                                        onClick={handleFetch}
-                                        disabled={isFetching || isPulling}
-                                    >
-                                        {isFetching ? (
-                                            <Loader2 size={13} className="animate-spin" />
-                                        ) : (
-                                            <RefreshCw size={13} />
-                                        )}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Fetch — consultar cambios remotos sin fusionar</TooltipContent>
-                            </Tooltip>
+                    {/* Sync Actions Bar — show remote setup when no remote, otherwise push/pull/fetch */}
+                    {hasGithubToken && !hasRemote && appId ? (
+                        <GitRemoteSetup
+                            appId={appId}
+                            appName={app?.name || "app"}
+                            onLinked={() => refreshApp()}
+                        />
+                    ) : (
+                        <div className="border-t border-border p-3 space-y-2 bg-muted/30">
+                            {/* Push / Pull / Fetch row */}
+                            <div className="flex gap-1.5">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-medium"
+                                            onClick={handlePush}
+                                            disabled={isPushing || isPulling}
+                                        >
+                                            {isPushing ? (
+                                                <Loader2 size={13} className="animate-spin mr-1.5" />
+                                            ) : (
+                                                <Upload size={13} className="mr-1.5" />
+                                            )}
+                                            Push
+                                            {gitState?.ahead !== undefined && gitState.ahead > 0 && (
+                                                <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary font-medium">
+                                                    {gitState.ahead}
+                                                </span>
+                                            )}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Enviar commits locales al remoto</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-medium"
+                                            onClick={handlePull}
+                                            disabled={isPulling || isPushing}
+                                        >
+                                            {isPulling ? (
+                                                <Loader2 size={13} className="animate-spin mr-1.5" />
+                                            ) : (
+                                                <Download size={13} className="mr-1.5" />
+                                            )}
+                                            Pull
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Traer y fusionar cambios del remoto</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0"
+                                            onClick={handleFetch}
+                                            disabled={isFetching || isPulling}
+                                        >
+                                            {isFetching ? (
+                                                <Loader2 size={13} className="animate-spin" />
+                                            ) : (
+                                                <RefreshCw size={13} />
+                                            )}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Fetch — consultar cambios remotos sin fusionar</TooltipContent>
+                                </Tooltip>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Git Tools Section */}
                     <div className="border-t border-border">

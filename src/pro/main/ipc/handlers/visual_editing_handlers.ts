@@ -13,6 +13,7 @@ import {
   extractClassPrefixes,
 } from "../../../../utils/style-utils";
 import { gitAdd, gitCommit } from "../../../../ipc/utils/git_utils";
+import { generateAutoCommitMessage } from "../../../../ipc/utils/auto_commit_message";
 import { safeJoin } from "@/ipc/utils/path_utils";
 import {
   AnalyseComponentParams,
@@ -118,9 +119,15 @@ export function registerVisualEditingHandlers() {
             });
           }
 
+          const commitMsg = await generateAutoCommitMessage({
+            appPath,
+            writtenFiles: modifiedFiles,
+            fallbackMessage: `Visual editing: Updated ${modifiedFiles.length} file${modifiedFiles.length > 1 ? "s" : ""}`,
+          });
+
           await gitCommit({
             path: appPath,
-            message: `Visual editing: Updated ${modifiedFiles.length} file${modifiedFiles.length > 1 ? "s" : ""}`,
+            message: commitMsg,
           });
         }
       } catch (error) {
@@ -210,9 +217,15 @@ export function registerVisualEditingHandlers() {
           await fsPromises.writeFile(fullPath, newContent, "utf-8");
 
           await gitAdd({ path: appPath, filepath: filePath });
+          const commitMsg = await generateAutoCommitMessage({
+            appPath,
+            writtenFiles: [filePath],
+            fallbackMessage: `Visual editing: Changed icon to ${newIconName} in ${filePath}`,
+          });
+
           await gitCommit({
             path: appPath,
-            message: `Visual editing: Changed icon to ${newIconName} in ${filePath}`,
+            message: commitMsg,
           });
         }
       } catch (error) {

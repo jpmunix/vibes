@@ -252,7 +252,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
         <TooltipProvider>
             <div className="flex flex-col h-full overflow-hidden">
                 {/* ── Header ── */}
-                <div className={cn("flex items-center justify-between px-3 py-2 border-b border-border shrink-0", isWindow && "app-region-drag")}>
+                <div className={cn("flex items-center justify-between px-3 py-2 border-b border-border shrink-0", isWindow && "app-region-drag bg-(--sidebar)")}>
                     <div className="flex items-center gap-2">
                         {db.dbType === "pocketbase" ? (
                             <img src={pocketbaseLogo} alt="PocketBase" className="h-[14px] w-[14px] object-contain" />

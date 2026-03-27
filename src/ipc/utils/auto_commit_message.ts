@@ -1,0 +1,109 @@
+/**
+ * AI-powered commit message generator for auto-commits.
+ * Uses the "standard mode" model (lightweight) to create
+ * descriptive commit messages from file diffs.
+ */
+import log from "electron-log";
+import { readSettings } from "@/main/settings";
+import {
+  openRouterCompletion,
+  hasOpenRouterApiKey,
+} from "@/ipc/utils/openrouter";
+import { gitDiffFile } from "@/ipc/utils/git_utils";
+import { getEffectivePrompt } from "@/prompts";
+
+const logger = log.scope("auto_commit_message");
+
+/**
+ * Generate a descriptive commit message using AI (standard mode model).
+ *
+ * @param appPath - absolute path to the app's git repo
+ * @param writtenFiles - files that were written/modified
+ * @param deletedFiles - files that were deleted
+ * @param renamedFiles - files that were renamed (destination paths)
+ * @param fallbackMessage - message to use if AI generation fails
+ * @returns a short, descriptive commit message in Spanish
+ */
+export async function generateAutoCommitMessage({
+  appPath,
+  writtenFiles = [],
+  deletedFiles = [],
+  renamedFiles = [],
+  fallbackMessage,
+}: {
+  appPath: string;
+  writtenFiles?: string[];
+  deletedFiles?: string[];
+  renamedFiles?: string[];
+  fallbackMessage: string;
+}): Promise<string> {
+  try {
+    if (!hasOpenRouterApiKey()) {
+      return fallbackMessage;
+    }
+
+    const settings = readSettings();
+    const model = settings.standardModeModel || "openai/gpt-4.1-mini";
+
+    // Build a summary of changes with limited diffs
+    const allFiles = [
+      ...writtenFiles.map((f) => ({ path: f, status: "modified" as const })),
+      ...deletedFiles.map((f) => ({ path: f, status: "deleted" as const })),
+      ...renamedFiles.map((f) => ({ path: f, status: "renamed" as const })),
+    ];
+
+    if (allFiles.length === 0) {
+      return fallbackMessage;
+    }
+
+    // Get diffs for up to 5 files (quality over quantity)
+    const filesToAnalyze = allFiles.slice(0, 5);
+    const diffsPromises = filesToAnalyze.map(async (file) => {
+      if (file.status === "deleted") {
+        return `File: ${file.path} (eliminado)`;
+      }
+      try {
+        const { diff } = await gitDiffFile({
+          path: appPath,
+          filepath: file.path,
+        });
+        // Enough context for the AI to understand what changed
+        return `File: ${file.path} (${file.status})\n${diff.slice(0, 1000)}`;
+      } catch {
+        return `File: ${file.path} (${file.status})`;
+      }
+    });
+
+    const diffs = await Promise.all(diffsPromises);
+    const diffsContext = diffs.join("\n\n");
+
+    // Use the editable prompt from settings
+    const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+
+    const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
+
+    const data = await openRouterCompletion({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 80,
+      title: "Vibes - Auto Commit Message",
+    });
+
+    let generated =
+      data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
+
+    // Strip surrounding quotes if the model wrapped the message
+    generated = generated.replace(/^["'`]+|["'`]+$/g, "");
+
+    // Sanity check: if the generated message is too long or empty, use fallback
+    if (!generated || generated.length > 120) {
+      return fallbackMessage;
+    }
+
+    return generated;
+  } catch (error) {
+    logger.warn("Failed to generate AI commit message, using fallback:", error);
+    return fallbackMessage;
+  }
+}

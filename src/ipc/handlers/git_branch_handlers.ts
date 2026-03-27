@@ -411,8 +411,27 @@ async function handleCommitChanges(
       await gitAddAll({ path: appPath });
     }
 
-    // Commit with the provided message
-    const commitHash = await gitCommit({ path: appPath, message });
+    // Try to generate a better commit message with AI if the provided message
+    // looks like a generic auto-generated one (e.g., "Actualizar 1 archivo")
+    let finalMessage = message;
+    const isGenericMessage = /^(Actualizar|Añadir|Eliminar|Renombrar)\s+\d+\s+archivo/i.test(message)
+      || message === "Actualizar archivos";
+    if (isGenericMessage) {
+      try {
+        const { generateAutoCommitMessage } = await import("../utils/auto_commit_message");
+        const uncommittedFiles = await getGitUncommittedFilesWithStatus({ path: appPath });
+        finalMessage = await generateAutoCommitMessage({
+          appPath,
+          writtenFiles: uncommittedFiles.map(f => f.path),
+          fallbackMessage: message,
+        });
+      } catch (e) {
+        logger.warn("Failed to generate AI commit message, using original:", e);
+      }
+    }
+
+    // Commit with the final message
+    const commitHash = await gitCommit({ path: appPath, message: finalMessage });
 
     return commitHash;
   });

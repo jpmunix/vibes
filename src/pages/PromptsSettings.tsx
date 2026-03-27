@@ -16,6 +16,7 @@ import {
   Wand2,
   FileText,
   ClipboardList,
+  GitBranch,
 } from "lucide-react";
 
 import { useRef } from "react";
@@ -51,6 +52,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   debate_summary_system: <Lightbulb className="w-4 h-4" />,
   quick_edit_system: <Wand2 className="w-4 h-4" />,
   dossier_prompt: <FileText className="w-4 h-4" />,
+  auto_commit_message: <GitBranch className="w-4 h-4" />,
 };
 
 /** Legacy-agent-only prompts — hidden from UI but kept for backwards compat */

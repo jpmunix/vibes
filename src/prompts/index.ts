@@ -24,6 +24,7 @@ export type PromptId =
   | "debate_summary_system"
   | "quick_edit_system"
   | "dossier_prompt"
+  | "auto_commit_message"
   | "plan_mode_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
@@ -191,6 +192,32 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "- Cada sección debe ser exhaustiva y detallada",
     "- Formato: Markdown con encabezados jerárquicos",
   ].join("\n"),
+  auto_commit_message: [
+    "Genera un mensaje de commit ULTRA ESPECÍFICO en español basándote en el diff real.",
+    "",
+    "REGLAS ESTRICTAS:",
+    "- UNA línea, máximo 72 caracteres",
+    "- Empieza con verbo en infinitivo: cambiar, añadir, corregir, eliminar, mover, renombrar, etc.",
+    "- Describe EXACTAMENTE qué cambió leyendo el diff: qué propiedad, qué texto, qué componente, qué lógica",
+    "- PROHIBIDO usar palabras vagas: 'mejoras', 'correcciones', 'actualizaciones', 'cambios varios', 'optimizaciones'",
+    "- PROHIBIDO describir archivos: NO 'actualizar archivo X' ni 'modificar componente Y'",
+    "- El mensaje debe responder: '¿Qué se hizo EXACTAMENTE?' Si alguien lo lee sin ver el código, debe entender el cambio",
+    "",
+    "EJEMPLOS BUENOS:",
+    "- Cambiar título del editor de 'Notas' a 'BuildNotes'",
+    "- Añadir botón de exportar Markdown en la cabecera",
+    "- Corregir color del borde del sidebar en modo oscuro",
+    "- Eliminar validación duplicada del formulario de login",
+    "- Aumentar timeout de la API de 5s a 30s",
+    "",
+    "EJEMPLOS MALOS (NUNCA hagas esto):",
+    "- Actualizar editor Markdown con correcciones y mejoras ← VAGO",
+    "- Modificar componentes del panel ← NO DICE QUÉ",
+    "- Actualizar 3 archivos ← INÚTIL",
+    "- Mejorar la interfaz de usuario ← GENÉRICO",
+    "",
+    "Responde SOLO con el mensaje de commit, sin comillas, sin explicación.",
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -219,6 +246,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   debate_summary_system: "Resumen de Debate",
   quick_edit_system: "Quick Edit (Edición Visual Rápida)",
   dossier_prompt: "Prompt de Dossier (Tutorial + Memoria Técnica)",
+  auto_commit_message: "Mensaje de Commit Automático",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -248,4 +276,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   debate_summary_system: "Instrucciones para generar el resumen de un debate.",
   quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
   dossier_prompt: "Instrucciones para generar el dossier completo de la app: Tutorial Interactivo y Memoria Técnica profesional.",
+  auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
 };

@@ -29,6 +29,7 @@ import {
 } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { writeMigrationFile } from "../utils/file_utils";
+import { generateAutoCommitMessage } from "../utils/auto_commit_message";
 import {
   getWriteTags,
   getRenameTags,
@@ -611,30 +612,38 @@ export async function processFullResponseActions(
         await gitAdd({ path: appPath, filepath: file });
       }
 
-      // Create commit with details of all changes
-      const changes = [];
+      // Create commit with AI-generated descriptive message
+      const fallbackChanges = [];
       if (writtenFiles.length > 0)
-        changes.push(`wrote ${writtenFiles.length} file(s)`);
+        fallbackChanges.push(`wrote ${writtenFiles.length} file(s)`);
       if (renamedFiles.length > 0)
-        changes.push(`renamed ${renamedFiles.length} file(s)`);
+        fallbackChanges.push(`renamed ${renamedFiles.length} file(s)`);
       if (deletedFiles.length > 0)
-        changes.push(`deleted ${deletedFiles.length} file(s)`);
+        fallbackChanges.push(`deleted ${deletedFiles.length} file(s)`);
       if (addDependencyPackages.length > 0)
-        changes.push(
+        fallbackChanges.push(
           `added ${addDependencyPackages.join(", ")} package(s)`,
         );
       if (executeSqlQueries.length > 0)
-        changes.push(`executed ${executeSqlQueries.length} SQL queries`);
+        fallbackChanges.push(`executed ${executeSqlQueries.length} SQL queries`);
 
-      let message = chatSummary
-        ? `[vibes] ${chatSummary} - ${changes.join(", ")}`
-        : `[vibes] ${changes.join(", ")}`;
-      // Use chat summary, if provided, or default for commit message
+      const fallbackMessage = chatSummary
+        ? `[vibes] ${chatSummary}`
+        : `[vibes] ${fallbackChanges.join(", ")}`;
+
+      const message = await generateAutoCommitMessage({
+        appPath,
+        writtenFiles,
+        deletedFiles,
+        renamedFiles,
+        fallbackMessage,
+      });
+
       let commitHash = await gitCommit({
         path: appPath,
         message,
       });
-      logger.log(`Successfully committed changes: ${changes.join(", ")}`);
+      logger.log(`Successfully committed changes: ${fallbackChanges.join(", ")}`);
 
       // Check for any uncommitted changes after the commit
       uncommittedFiles = await getGitUncommittedFiles({ path: appPath });
