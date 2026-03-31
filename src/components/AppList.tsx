@@ -51,6 +51,7 @@ export function AppList({ show }: { show?: boolean }) {
   const [deleteAppId, setDeleteAppId] = useState<number | null>(null);
   const [deleteAppName, setDeleteAppName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
 
   // empty app dialog state
   const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
@@ -158,7 +159,7 @@ export function AppList({ show }: { show?: boolean }) {
 
     try {
       setIsDeleting(true);
-      await ipc.app.deleteApp({ appId: deleteAppId });
+      await ipc.app.deleteApp({ appId: deleteAppId, deleteFiles });
       setIsDeleteDialogOpen(false);
       await refreshApps();
       if (selectedAppId === deleteAppId) {
@@ -172,6 +173,7 @@ export function AppList({ show }: { show?: boolean }) {
       setIsDeleting(false);
       setDeleteAppId(null);
       setDeleteAppName("");
+      setDeleteFiles(false);
     }
   };
 
@@ -331,16 +333,31 @@ export function AppList({ show }: { show?: boolean }) {
         allApps={allApps}
       />
 
-      {/* Delete App Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* Close Folder Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) setDeleteFiles(false);
+      }}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>¿Borrar "{deleteAppName}"?</DialogTitle>
+            <DialogTitle>¿Cerrar "{deleteAppName}"?</DialogTitle>
             <DialogDescription className="text-xs">
-              Esta acción es irreversible. Todos los archivos de la aplicación
-              y el historial del chat se borrarán permanentemente.
+              La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
             </DialogDescription>
           </DialogHeader>
+          <div className="flex items-center space-x-2 py-2">
+            <input
+              type="checkbox"
+              id="delete-files-check"
+              checked={deleteFiles}
+              onChange={(e) => setDeleteFiles(e.target.checked)}
+              disabled={isDeleting}
+              className="rounded border-border"
+            />
+            <label htmlFor="delete-files-check" className="text-xs text-muted-foreground cursor-pointer">
+              También eliminar archivos del disco
+            </label>
+          </div>
           <DialogFooter className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"
@@ -351,7 +368,7 @@ export function AppList({ show }: { show?: boolean }) {
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant={deleteFiles ? "destructive" : "default"}
               onClick={handleConfirmDelete}
               disabled={isDeleting}
               className="flex items-center gap-1"
@@ -359,30 +376,13 @@ export function AppList({ show }: { show?: boolean }) {
             >
               {isDeleting ? (
                 <>
-                  <svg
-                    className="animate-spin h-3 w-3 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Borrando...
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Cerrando...
                 </>
+              ) : deleteFiles ? (
+                "Cerrar y eliminar archivos"
               ) : (
-                "Borrar aplicación"
+                "Cerrar carpeta"
               )}
             </Button>
           </DialogFooter>

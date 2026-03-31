@@ -23,7 +23,7 @@ import {
   Database,
   DatabaseZap,
   Copy,
-  Trash2,
+  FolderX,
   Star,
   Settings,
   Info,
@@ -87,6 +87,7 @@ export default function AppDetailsPage() {
   const { refreshApps } = useLoadApps();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isRenameConfirmDialogOpen, setIsRenameConfirmDialogOpen] =
     useState(false);
@@ -149,8 +150,9 @@ export default function AppDetailsPage() {
 
     try {
       setIsDeleting(true);
-      await ipc.app.deleteApp({ appId });
+      await ipc.app.deleteApp({ appId, deleteFiles });
       setIsDeleteDialogOpen(false);
+      setDeleteFiles(false);
       await refreshApps();
       navigate({ to: "/", search: {} });
     } catch (error) {
@@ -454,10 +456,10 @@ export default function AppDetailsPage() {
                 </button>
                 <button
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:bg-red-500/15 dark:hover:text-red-400 transition-colors cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-600 dark:hover:bg-amber-500/15 dark:hover:text-amber-400 transition-colors cursor-pointer"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Borrar aplicación
+                  <FolderX className="h-4 w-4" />
+                  Cerrar carpeta
                 </button>
               </div>
               {/* Collapsible Información y opciones section */}
@@ -1087,16 +1089,31 @@ export default function AppDetailsPage() {
               </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            {/* Close Folder Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+              setIsDeleteDialogOpen(open);
+              if (!open) setDeleteFiles(false);
+            }}>
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>¿Borrar "{selectedApp.name}"?</DialogTitle>
+                  <DialogTitle>¿Cerrar "{selectedApp.name}"?</DialogTitle>
                   <DialogDescription className="text-xs">
-                    Esta acción es irreversible. Todos los archivos de la aplicación
-                    y el historial del chat se borrarán permanentemente.
+                    La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
                   </DialogDescription>
                 </DialogHeader>
+                <div className="flex items-center space-x-2 py-2">
+                  <input
+                    type="checkbox"
+                    id="delete-files-detail-check"
+                    checked={deleteFiles}
+                    onChange={(e) => setDeleteFiles(e.target.checked)}
+                    disabled={isDeleting}
+                    className="rounded border-border"
+                  />
+                  <label htmlFor="delete-files-detail-check" className="text-xs text-muted-foreground cursor-pointer">
+                    También eliminar archivos del disco
+                  </label>
+                </div>
                 <DialogFooter className="flex justify-end gap-2 pt-2">
                   <Button
                     variant="outline"
@@ -1107,7 +1124,7 @@ export default function AppDetailsPage() {
                     Cancelar
                   </Button>
                   <Button
-                    variant="destructive"
+                    variant={deleteFiles ? "destructive" : "default"}
                     onClick={handleDeleteApp}
                     disabled={isDeleting}
                     className="flex items-center gap-1"
@@ -1115,30 +1132,13 @@ export default function AppDetailsPage() {
                   >
                     {isDeleting ? (
                       <>
-                        <svg
-                          className="animate-spin h-3 w-3 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Borrando...
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Cerrando...
                       </>
+                    ) : deleteFiles ? (
+                      "Cerrar y eliminar archivos"
                     ) : (
-                      "Borrar aplicación"
+                      "Cerrar carpeta"
                     )}
                   </Button>
                 </DialogFooter>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { createPortal } from "react-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -8,12 +9,14 @@ import {
   Loader2,
   Search,
   PlusCircle,
+  FolderOpen,
+  X,
 } from "lucide-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom, recentStreamChatIdsAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
-import { showError } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
 import {
@@ -21,6 +24,7 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar";
+
 
 // --- Preference keys ---
 const PREF_EXPANDED_APPS = "sidebar.expandedApps";
@@ -149,6 +153,7 @@ interface WorkspaceAppItemProps {
   onToggle: (appId: number) => void;
   onChatClick: (appId: number, chatId: number) => void;
   onNewChat: (appId: number) => void;
+  onCloseApp: (appId: number, appName: string) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -159,6 +164,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onToggle,
   onChatClick,
   onNewChat,
+  onCloseApp,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
@@ -200,6 +206,17 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
         >
           <PlusCircle size={14} />
         </button>
+        <button
+          type="button"
+          className="opacity-0 group-hover/app-row:opacity-100 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/60 hover:text-red-500 transition-all shrink-0 cursor-pointer"
+          title="Cerrar carpeta"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCloseApp(app.id, app.name);
+          }}
+        >
+          <X size={14} />
+        </button>
       </div>
 
       {/* Collapsible chats */}
@@ -217,13 +234,21 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 // --- Main WorkspaceList component ---
 export function WorkspaceList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
-  const { apps, loading, error } = useLoadApps();
-  const [selectedAppId] = useAtom(selectedAppIdAtom);
+  const { apps, loading, error, refreshApps } = useLoadApps();
+  const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId] = useAtom(selectedChatIdAtom);
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const loadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+
+  // Close app dialog state
+  const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [closeAppId, setCloseAppId] = useState<number | null>(null);
+  const [closeAppName, setCloseAppName] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
 
   // Load expanded apps from DB on mount
   useEffect(() => {
@@ -319,6 +344,82 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     [navigate],
   );
 
+  const handleOpenFolder = useCallback(async () => {
+    setIsOpeningFolder(true);
+    try {
+      let result: { path: string | null; name: string | null };
+      try {
+        result = await ipc.system.selectAppFolder();
+      } catch {
+        // Dialog failed or was dismissed — just reset
+        return;
+      }
+
+      if (!result.path || !result.name) {
+        // User cancelled the dialog
+        return;
+      }
+
+      const folderName = result.name;
+      const folderPath = result.path;
+
+      // Check if app already exists
+      const nameCheck = await ipc.import.checkAppName({ appName: folderName, skipCopy: true });
+      if (nameCheck.exists && nameCheck.existingAppId) {
+        // App already registered — navigate directly
+        setSelectedAppId(nameCheck.existingAppId);
+        const chatId = await ipc.chat.createChat(nameCheck.existingAppId);
+        navigate({ to: "/workspace", search: { appId: nameCheck.existingAppId, chatId } });
+        showSuccess(`"${folderName}" ya estaba registrada. Abierta directamente.`);
+        return;
+      }
+
+      // Import directly with skipCopy: true
+      const importResult = await ipc.import.importApp({
+        path: folderPath,
+        appName: folderName,
+        skipCopy: true,
+      });
+
+      setSelectedAppId(importResult.appId);
+      await refreshApps();
+
+      navigate({ to: "/workspace", search: { appId: importResult.appId, chatId: importResult.chatId } });
+
+      showSuccess(`Carpeta "${folderName}" abierta con éxito.`);
+    } catch (error) {
+      showError(`Error al abrir carpeta: ${(error as any).toString()}`);
+    } finally {
+      setIsOpeningFolder(false);
+    }
+  }, [navigate, refreshApps, setSelectedAppId]);
+
+  const handleCloseAppClick = useCallback((appId: number, appName: string) => {
+    setCloseAppId(appId);
+    setCloseAppName(appName);
+    setIsCloseDialogOpen(true);
+  }, []);
+
+  const handleConfirmClose = useCallback(async () => {
+    if (closeAppId === null) return;
+    try {
+      setIsClosing(true);
+      await ipc.app.deleteApp({ appId: closeAppId, deleteFiles });
+      setIsCloseDialogOpen(false);
+      await refreshApps();
+      if (selectedAppId === closeAppId) {
+        setSelectedAppId(null);
+      }
+    } catch (error) {
+      showError(`Error al cerrar: ${(error as any).toString()}`);
+    } finally {
+      setIsClosing(false);
+      setCloseAppId(null);
+      setCloseAppName("");
+      setDeleteFiles(false);
+    }
+  }, [closeAppId, deleteFiles, refreshApps, selectedAppId, setSelectedAppId]);
+
   // Filter apps by search
   const filteredApps = useMemo(() => {
     if (!searchQuery.trim()) return apps.filter((a) => a.localPathExists !== false);
@@ -351,6 +452,43 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           color: var(--muted-foreground);
           opacity: 0.5;
         }
+        .workspace-open-folder-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 7px 10px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--sidebar);
+          color: var(--sidebar-foreground);
+          font-size: 12.5px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .workspace-open-folder-btn:hover {
+          background: var(--sidebar-accent);
+          border-color: var(--border);
+          transform: translateY(-0.5px);
+          box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+        }
+        .workspace-open-folder-btn:active {
+          transform: scale(0.98);
+        }
+        .workspace-open-folder-btn svg {
+          opacity: 0.55;
+          flex-shrink: 0;
+          color: var(--primary);
+        }
+        .workspace-open-folder-btn:hover svg {
+          opacity: 0.85;
+        }
+        .workspace-open-folder-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
       `}</style>
 
       <SidebarGroup
@@ -360,6 +498,21 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         <SidebarGroupLabel>Chats</SidebarGroupLabel>
         <SidebarGroupContent>
           <div className="flex flex-col gap-1.5 px-2">
+            {/* Open folder button */}
+            <button
+              type="button"
+              className="workspace-open-folder-btn"
+              onClick={handleOpenFolder}
+              disabled={isOpeningFolder}
+            >
+              {isOpeningFolder ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <FolderOpen size={15} />
+              )}
+              <span>{isOpeningFolder ? "Abriendo..." : "Abrir carpeta"}</span>
+            </button>
+
             {/* Search */}
             <div className="relative">
               <Search
@@ -398,6 +551,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onToggle={handleToggleApp}
                     onChatClick={handleChatClick}
                     onNewChat={handleNewChat}
+                    onCloseApp={handleCloseAppClick}
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />
@@ -407,6 +561,71 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
+
+      {/* Close Folder Confirmation Dialog — portal to escape sidebar overflow */}
+      {isCloseDialogOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => { setIsCloseDialogOpen(false); setDeleteFiles(false); }}
+        >
+          <div className="fixed inset-0 bg-black/50" />
+          <div
+            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold mb-1">¿Cerrar "{closeAppName}"?</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
+            </p>
+            <div className="flex items-center space-x-2 mb-3">
+              <input
+                type="checkbox"
+                id="ws-delete-files-check"
+                checked={deleteFiles}
+                onChange={(e) => setDeleteFiles(e.target.checked)}
+                disabled={isClosing}
+                className="rounded border-border"
+              />
+              <label htmlFor="ws-delete-files-check" className="text-xs text-muted-foreground cursor-pointer">
+                También eliminar archivos del disco
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-sidebar-accent transition-colors"
+                onClick={() => { setIsCloseDialogOpen(false); setDeleteFiles(false); }}
+                disabled={isClosing}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1.5 text-xs rounded-md text-white transition-colors ${
+                  deleteFiles
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-primary hover:bg-primary/90"
+                }`}
+                onClick={handleConfirmClose}
+                disabled={isClosing}
+              >
+                {isClosing ? (
+                  <span className="flex items-center gap-1">
+                    <Loader2 size={12} className="animate-spin" />
+                    Cerrando...
+                  </span>
+                ) : deleteFiles ? (
+                  "Cerrar y eliminar archivos"
+                ) : (
+                  "Cerrar carpeta"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
+

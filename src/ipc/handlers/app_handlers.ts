@@ -715,7 +715,7 @@ export function registerAppHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
-    const { appId } = params;
+    const { appId, deleteFiles } = params;
     // Static server worker is NOT terminated here anymore
 
     return withLock(appId, async () => {
@@ -753,27 +753,31 @@ export function registerAppHandlers() {
         throw new Error(`Failed to delete app from database: ${error.message}`);
       }
 
-      // Delete app files with retry logic to handle race conditions
-      // (e.g. file watchers or dev servers releasing handles)
-      const appPath = getVibesAppPath(app.path);
-      const maxRetries = 3;
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          await fsPromises.rm(appPath, { recursive: true, force: true });
-          break; // Success, exit retry loop
-        } catch (error: any) {
-          if (attempt < maxRetries && (error.code === 'ENOTEMPTY' || error.code === 'EBUSY' || error.code === 'EPERM')) {
-            logger.warn(
-              `Attempt ${attempt}/${maxRetries} to delete app files failed (${error.code}). Retrying in ${attempt * 500}ms...`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
-          } else {
-            logger.error(`Error deleting app files for app ${appId}:`, error);
-            throw new Error(
-              `App deleted from database, but failed to delete app files. Please delete app files from ${appPath} manually.\n\nError: ${error.message}`,
-            );
+      // Only delete files if explicitly requested
+      if (deleteFiles) {
+        const appPath = getVibesAppPath(app.path);
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            await fsPromises.rm(appPath, { recursive: true, force: true });
+            break; // Success, exit retry loop
+          } catch (error: any) {
+            if (attempt < maxRetries && (error.code === 'ENOTEMPTY' || error.code === 'EBUSY' || error.code === 'EPERM')) {
+              logger.warn(
+                `Attempt ${attempt}/${maxRetries} to delete app files failed (${error.code}). Retrying in ${attempt * 500}ms...`,
+              );
+              await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+            } else {
+              logger.error(`Error deleting app files for app ${appId}:`, error);
+              // App is already removed from DB, so just warn
+              logger.warn(
+                `App deleted from database, but failed to delete app files at ${appPath}. Files remain on disk.`,
+              );
+            }
           }
         }
+      } else {
+        logger.log(`App ${appId} unlinked from Vibes (files preserved on disk).`);
       }
     });
   });

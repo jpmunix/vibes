@@ -74,6 +74,7 @@ export const CreateAppResultSchema = z.object({
  */
 export const DeleteAppParamsSchema = z.object({
   appId: z.number(),
+  deleteFiles: z.boolean().optional(),
 });
 
 /**

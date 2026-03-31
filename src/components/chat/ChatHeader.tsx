@@ -258,25 +258,8 @@ export function ChatHeader({
         </div>
       )}
 
-      {/* Show branch warning only for master branch (needs rename) */}
-      {showBranchWarning && (
-        <div className="flex flex-col @sm:flex-row items-center justify-between px-4 py-2 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
-          <div className="flex items-center gap-2 text-sm">
-            <GitBranch size={16} />
-            <span>
-              Estás en la rama: <strong>{currentBranchName}</strong>.
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRenameMasterToMain}
-            disabled={isRenamingBranch || branchInfoLoading}
-          >
-            {isRenamingBranch ? "Renombrando..." : "Renombrar master a main"}
-          </Button>
-        </div>
-      )}
+
+
 
       {/* Show uncommitted files banner when on a branch and there are uncommitted changes */}
       {/* Hide while streaming to avoid distracting the user */}
