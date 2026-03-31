@@ -333,6 +333,7 @@ export function registerDossierHandlers() {
                 // Stream the AI generation
                 let fullText = "";
                 let lastProgressUpdate = Date.now();
+                let lastMessageSent = "";
 
                 const stream = streamText({
                     model: modelClient.model,
@@ -371,7 +372,10 @@ export function registerDossierHandlers() {
                                 msg = "Generando Tutorial Interactivo...";
                             }
 
-                            sendChunk(sender, sessionId, msg, phase);
+                            if (msg !== lastMessageSent) {
+                                sendChunk(sender, sessionId, msg, phase);
+                                lastMessageSent = msg;
+                            }
                         }
                     }
                 }
