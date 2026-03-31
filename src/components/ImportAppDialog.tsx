@@ -65,7 +65,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
   const [repos, setRepos] = useState<GithubRepository[]>([]);
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState("");
-  const [importing, setImporting] = useState(false);
+  const [importingRepo, setImportingRepo] = useState<string | null>(null);
+  const importing = importingRepo !== null;
   const { settings, refreshSettings } = useSettings();
   const isAuthenticated = !!settings?.githubAccessToken;
   const { theme, intensity } = useTheme();
@@ -130,7 +131,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
     return match ? match[2] : null;
   };
   const handleImportFromUrl = async () => {
-    setImporting(true);
+    setImportingRepo("__url__");
     try {
       const match = extractRepoNameFromUrl(url);
       const repoName = match ? match[2] : "";
@@ -143,7 +144,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       });
       if ("error" in result) {
         showError(result.error);
-        setImporting(false);
+        setImportingRepo(null);
         return;
       }
       setSelectedAppId(result.app.id);
@@ -163,12 +164,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         "Error al importar el repositorio: " + (error as any).toString(),
       );
     } finally {
-      setImporting(false);
+      setImportingRepo(null);
     }
   };
 
   const handleSelectRepo = async (repo: GithubRepository) => {
-    setImporting(true);
+    setImportingRepo(repo.full_name);
 
     try {
       const appName = githubAppName.trim() || repo.name;
@@ -180,7 +181,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       });
       if ("error" in result) {
         showError(result.error);
-        setImporting(false);
+        setImportingRepo(null);
         return;
       }
       setSelectedAppId(result.app.id);
@@ -200,7 +201,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         "Error al importar el repositorio: " + (error as any).toString(),
       );
     } finally {
-      setImporting(false);
+      setImportingRepo(null);
     }
   };
 
@@ -647,7 +648,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           disabled={importing}
                           className="flex-shrink-0 text-xs"
                         >
-                          {importing ? (
+                          {importingRepo === repo.full_name ? (
                             <Loader2 className="animate-spin h-4 w-4" />
                           ) : (
                             "Importar"
