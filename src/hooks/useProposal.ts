@@ -12,12 +12,12 @@ export function useProposal(chatId?: number | undefined) {
   } = useQuery<ProposalResult | null, Error>({
     queryKey: queryKeys.proposals.detail({ chatId }),
     queryFn: async (): Promise<ProposalResult | null> => {
-      if (chatId === undefined) {
+      if (!chatId) {
         return null;
       }
       return ipc.proposal.getProposal({ chatId });
     },
-    enabled: chatId !== undefined,
+    enabled: !!chatId,
     meta: { showErrorToast: true },
   });
 
