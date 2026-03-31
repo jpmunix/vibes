@@ -7,6 +7,7 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
 import { useState } from "react";
 import type { ListedApp } from "@/ipc/types/app";
+import { LanguageBadge } from "./LanguageBadge";
 
 type AppItemProps = {
   app: ListedApp;
@@ -68,6 +69,7 @@ export function AppItem({
               >
                 {app.name}
               </span>
+              <LanguageBadge language={app.primaryLanguage} />
               {app.localPathExists === false && (
                 <AlertTriangle
                   size={11}
@@ -133,15 +135,17 @@ export function AppItem({
               }
             />
           </SidebarMenuAction>
-          <SidebarMenuAction
-            showOnHover
-            onClick={(e) => handleOpenChat(app.id, e)}
-            className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-primary cursor-pointer"
-            data-testid="open-chat-button"
-            title="Abrir en Chat"
-          >
-            <ExternalLink size={14} />
-          </SidebarMenuAction>
+          {(!app.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(app.primaryLanguage.toLowerCase())) && (
+            <SidebarMenuAction
+              showOnHover
+              onClick={(e) => handleOpenChat(app.id, e)}
+              className="transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 text-muted-foreground hover:text-primary cursor-pointer"
+              data-testid="open-chat-button"
+              title="Abrir en Chat"
+            >
+              <ExternalLink size={14} />
+            </SidebarMenuAction>
+          )}
         </div>
       </div>
     </SidebarMenuItem>

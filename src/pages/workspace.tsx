@@ -8,6 +8,7 @@ import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { MessagesSquare } from "lucide-react";
 import { ServerControlButton } from "@/components/ServerControlButton";
+import { LanguageBadge } from "@/components/LanguageBadge";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -92,10 +93,13 @@ export default function WorkspacePage() {
           <span className="text-sm font-medium truncate max-w-[300px]">
             {selectedApp?.name || "App"}
           </span>
+          <LanguageBadge language={selectedApp?.primaryLanguage} />
         </div>
         <div className="flex items-center gap-2">
-          {/* Server control button */}
-          <ServerControlButton appId={appId} />
+          {/* Server control button - only for Node projects */}
+          {(!selectedApp?.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage.toLowerCase())) && (
+            <ServerControlButton appId={appId} />
+          )}
         </div>
       </div>
 

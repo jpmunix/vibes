@@ -2,6 +2,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and, like, ne, gte, sql } from "drizzle-orm";
 import type { ChatSearchResult, ChatSummary } from "../../lib/schemas";
+import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
 import log from "electron-log";
 import { getVibesAppPath } from "../../paths/paths";
@@ -272,7 +273,7 @@ export function registerChatHandlers() {
       const settings = readSettings();
 
       const model =
-        settings.standardModeModel || "openai/gpt-4.1-mini";
+        settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
       try {
         let messageContent = prompt;
@@ -409,7 +410,7 @@ export function registerChatHandlers() {
     const settings = readSettings();
 
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     // Get today's start timestamp (midnight local time)
     const todayLocalMidnight = new Date();

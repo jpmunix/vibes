@@ -1,8 +1,9 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
+import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
-const DEFAULT_MODEL = "openai/gpt-4.1-mini";
+const DEFAULT_MODEL = DEFAULT_STANDARD_MODEL;
 
 /**
  * Single selector for "Modo Estándar" tasks.
@@ -44,7 +45,7 @@ export function StandardModeModelSelector() {
                 {
                     value: DEFAULT_MODEL,
                     label:
-                        defaultModelInList?.displayName || "GPT-4.1 Mini (recomendado)",
+                        defaultModelInList?.displayName || "Gemini 2.5 Flash Lite (recomendado)",
                     description: defaultModelInList ? undefined : "Modelo predeterminado",
                 },
             ]}

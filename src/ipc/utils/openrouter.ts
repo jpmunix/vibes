@@ -1,6 +1,7 @@
 import { readSettings } from "../../main/settings";
 import log from "electron-log";
 import { logAiQuery } from "./ai_query_logger";
+import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
 const logger = log.scope("openrouter_client");
 
@@ -115,7 +116,7 @@ export async function openRouterCompletion(
   } = options;
 
   const defaultModel =
-    settings.standardModeModel || "openai/gpt-4.1-nano";
+    settings.standardModeModel || DEFAULT_STANDARD_MODEL;
   const finalModel = model || defaultModel;
 
   const body: any = {

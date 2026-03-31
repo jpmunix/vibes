@@ -81,6 +81,8 @@ export const apps = sqliteTable("apps", {
     chatContext: text("chat_context", { mode: "json" }),
     isFavorite: integer("is_favorite").notNull().default(0),
     themeId: text("theme_id"),
+    primaryLanguage: text("primary_language"),
+    projectType: text("project_type"),
 });
 
 // =============================================================================

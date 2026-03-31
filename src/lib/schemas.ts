@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { isOpenAIOrAnthropicSetup } from "./providerUtils";
 
+/**
+ * Default fallback model for standard-mode tasks (titles, summaries, stack detection, etc.)
+ * Used when `settings.standardModeModel` is not configured.
+ */
+export const DEFAULT_STANDARD_MODEL = "google/gemini-2.5-flash-lite" as const;
+
 export const SecretSchema = z.object({
   value: z.string(),
   encryptionType: z.enum(["electron-safe-storage", "plaintext"]).optional(),

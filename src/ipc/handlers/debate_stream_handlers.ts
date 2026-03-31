@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
+import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 
 import log from "electron-log";
 import { readSettings } from "../../main/settings";
@@ -109,7 +110,7 @@ export function registerDebateStreamHandlers() {
         try {
           const settings = readSettings();
           const titleModel =
-            settings.standardModeModel || "openai/gpt-4.1-mini"; // Fast model
+            settings.standardModeModel || DEFAULT_STANDARD_MODEL; // Fast model
           const { getLanguageModelProviders, getLanguageModels } =
             await import("../shared/language_model_helpers");
           const allModels = await getLanguageModels({

@@ -30,7 +30,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import { createTypedHandler, HandlerContext } from "./base";
-import { GithubUser } from "../../lib/schemas";
+import { GithubUser, DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import {
   githubContracts,
   CloneRepoParams,
@@ -1553,7 +1553,7 @@ async function handleGenerateCommitMessage(
     const settings = readSettings();
 
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
     if (!app) {

@@ -6,6 +6,7 @@ import {
   type UserSettings,
   Secret,
   VertexProviderSetting,
+  DEFAULT_STANDARD_MODEL,
 } from "../lib/schemas";
 import { safeStorage } from "electron";
 import { v4 as uuidv4 } from "uuid";
@@ -24,7 +25,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   },
   providerSettings: {},
   // Unified model keys (v2) — two tiers replace the old 7 individual fields
-  standardModeModel: "openai/gpt-4.1-nano",
+  standardModeModel: DEFAULT_STANDARD_MODEL,
   proModeModel: "openai/gpt-5.1-codex-mini",
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
@@ -392,7 +393,7 @@ export function readSettings(): UserSettings {
       if (standardCandidate) {
         (migrated as any).standardModeModel = standardCandidate;
       } else {
-        (migrated as any).standardModeModel = "openai/gpt-4.1-nano";
+        (migrated as any).standardModeModel = DEFAULT_STANDARD_MODEL;
       }
 
       // Pick the best value for proModeModel from old fields

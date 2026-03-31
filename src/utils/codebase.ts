@@ -57,6 +57,7 @@ const ALLOWED_EXTENSIONS = [
 // ex: https://github.com/<vibes-sh/dyad/issues/727
 const EXCLUDED_DIRS = [
   "node_modules",
+  "vendor", // PHP/Composer dependencies
   ".git",
   "dist",
   "build",

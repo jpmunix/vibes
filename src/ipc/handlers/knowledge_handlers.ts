@@ -28,6 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     preference: "⚙️ Preferencias",
     rule: "🚫 Reglas",
     component: "🧩 Componentes",
+    "stack-rules": "🏗️ Stack Tecnológico",
 };
 
 // =============================================================================
@@ -173,9 +174,9 @@ async function buildKnowledgePrompt(appId: number, userId: string, userPrompt?: 
 
     if (entries.length === 0) return "";
 
-    // Always include ALL rules regardless of filtering
-    const rules = entries.filter((e) => e.category === "rule");
-    const nonRules = entries.filter((e) => e.category !== "rule");
+    // Always include ALL rules and stack-rules regardless of filtering
+    const rules = entries.filter((e) => e.category === "rule" || e.category === "stack-rules");
+    const nonRules = entries.filter((e) => e.category !== "rule" && e.category !== "stack-rules");
 
     let selectedNonRules = nonRules;
     const MAX_SEMANTIC_ENTRIES = 8;
@@ -457,7 +458,7 @@ Si detectas que una nueva regla CONTRADICE algo del conocimiento existente, incl
         }
 
         // Validate, normalize, and filter
-        const validCategories = ["convention", "pattern", "preference", "rule", "component"];
+        const validCategories = ["convention", "pattern", "preference", "rule", "component", "stack-rules"];
         const validDurabilities = ["permanent", "project-phase", "temporary"];
 
         const validated = parsed

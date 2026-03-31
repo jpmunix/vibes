@@ -104,6 +104,7 @@ import { logChatInfo, logChatError } from "../utils/chat_logger";
 
 import {
   isSupabaseConnected,
+  DEFAULT_STANDARD_MODEL,
 } from "@/lib/schemas";
 import { AI_STREAMING_ERROR_MESSAGE_PREFIX, PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { logAiQuery } from "@/ipc/utils/ai_query_logger";
@@ -587,7 +588,7 @@ ${componentSnippet}
         // regardless of what the user has selected for chat.
         if (isSummarizeIntent) {
           const summaryModelStr =
-            settings.standardModeModel || "openai/gpt-4.1-mini";
+            settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
           // standardModeModel is an OpenRouter model identifier (e.g. "openai/gpt-4.1-nano")
           // The provider is always "openrouter", the full string is the model name.
@@ -964,7 +965,7 @@ ${componentSnippet}
           );
         }
 
-        const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path));
+        const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path), updatedChat.app.id, currentUserId as string);
 
         // Get theme prompt for the app (null themeId means "no theme")
         const themePrompt = await getThemePromptById(updatedChat.app.themeId);

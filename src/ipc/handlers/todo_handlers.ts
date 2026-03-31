@@ -3,6 +3,7 @@ import { dialog } from "electron";
 import path from "path";
 import log from "electron-log";
 import { logChatInfo } from "../utils/chat_logger";
+import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { getVibesAppPath } from "../../paths/paths";
@@ -302,7 +303,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     try {
       const todoTitle = todo.content;
@@ -359,7 +360,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     const { getEffectivePrompt } = await import("../../prompts");
     const systemPrompt = getEffectivePrompt("todo_analysis", settings);
@@ -521,7 +522,7 @@ export function registerTodoHandlers() {
     const { readSettings } = await import("../../main/settings");
     const settings = readSettings();
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     const chatsContext = chat.messages
       .map((msg) => `${msg.role}: ${msg.content}`)

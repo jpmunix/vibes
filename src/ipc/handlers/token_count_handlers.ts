@@ -69,7 +69,7 @@ export function registerTokenCountHandlers() {
       const selectedMode = (req.chatMode || settings.selectedChatMode || "build") as any;
 
       let systemPrompt = constructSystemPrompt({
-        aiRules: await readAiRules(getVibesAppPath(chat.app.path)),
+        aiRules: await readAiRules(getVibesAppPath(chat.app.path), chat.app.id, context.userId),
         chatMode: selectedMode,
         themePrompt,
         chatLanguage: settings.chatLanguage || "es",

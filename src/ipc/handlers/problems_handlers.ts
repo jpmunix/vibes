@@ -9,6 +9,9 @@ import { miscContracts } from "../types/misc";
 
 const logger = log.scope("problems_handlers");
 
+/** Languages that support TSC problem checking */
+const TSC_COMPATIBLE_LANGUAGES = new Set(["javascript", "typescript", "unknown"]);
+
 export function registerProblemsHandlers() {
   createTypedHandler(miscContracts.checkProblems, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
@@ -21,6 +24,13 @@ export function registerProblemsHandlers() {
 
       if (!app) {
         throw new Error(`App not found: ${params.appId}`);
+      }
+
+      // Skip TSC for non-Node projects (e.g. PHP, Python, etc.)
+      const lang = app.primaryLanguage?.toLowerCase() || "unknown";
+      if (!TSC_COMPATIBLE_LANGUAGES.has(lang)) {
+        logger.info(`Skipping TSC check for non-Node app ${params.appId} (${lang})`);
+        return { problems: [] };
       }
 
       const appPath = getVibesAppPath(app.path);

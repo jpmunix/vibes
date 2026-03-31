@@ -431,6 +431,7 @@ export default function AppDetailsPage() {
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2">
+              {(!selectedApp.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage?.toLowerCase?.())) && (
               <Button
                 variant="outline"
                 onClick={() => {
@@ -446,6 +447,7 @@ export default function AppDetailsPage() {
                 <MessageCircle className="h-4 w-4" />
                 Abrir en Chat
               </Button>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleOpenCopyDialog}

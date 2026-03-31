@@ -11,6 +11,7 @@ import {
 } from "@/ipc/utils/openrouter";
 import { gitDiffFile } from "@/ipc/utils/git_utils";
 import { getEffectivePrompt } from "@/prompts";
+import { DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 
 const logger = log.scope("auto_commit_message");
 
@@ -43,7 +44,7 @@ export async function generateAutoCommitMessage({
     }
 
     const settings = readSettings();
-    const model = settings.standardModeModel || "openai/gpt-4.1-mini";
+    const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     // Build a summary of changes with limited diffs
     const allFiles = [

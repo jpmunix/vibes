@@ -11,6 +11,7 @@ export const KnowledgeCategorySchema = z.enum([
     "preference",
     "rule",
     "component",
+    "stack-rules",
 ]);
 export type KnowledgeCategory = z.infer<typeof KnowledgeCategorySchema>;
 

@@ -634,7 +634,61 @@ export const getSystemPromptForChatMode = ({
 ${postfix}`;
 };
 
-export const readAiRules = async (vibesAppPath: string) => {
+/**
+ * Generic AI rules used when KB stack-rules exist.
+ * The KB will inject specific project rules via buildKnowledgePrompt,
+ * so we only need a minimal placeholder here.
+ */
+const GENERIC_AI_RULES = `# Project Rules
+- Follow the project's existing code patterns and conventions.
+- Maintain consistent code style with the existing codebase.
+- Refer to the Knowledge Base context for specific technology and stack details.
+`;
+
+/**
+ * Read AI rules for a project. Priority:
+ * 1. If KB has stack-rules for this app → return GENERIC (KB injects specifics separately)
+ * 2. If AI_RULES.md exists on disk → return its content
+ * 3. Fallback → return DEFAULT_AI_RULES (React/TS template)
+ *
+ * @param vibesAppPath - Absolute path to the app's project folder
+ * @param appId - Optional app ID to check KB
+ * @param userId - Optional user ID to check KB
+ */
+export const readAiRules = async (
+  vibesAppPath: string,
+  appId?: number,
+  userId?: string,
+) => {
+  // 1. Check KB for stack-rules (if we have appId/userId)
+  if (appId && userId) {
+    try {
+      const { getRemoteDb } = await import("../db/remote");
+      const remoteSchema = await import("../db/remote-schema");
+      const { eq, and } = await import("drizzle-orm");
+      const db = getRemoteDb();
+      const stackEntry = await db.query.knowledgeEntries.findFirst({
+        where: and(
+          eq(remoteSchema.knowledgeEntries.appId, appId),
+          eq(remoteSchema.knowledgeEntries.userId, userId),
+          eq(remoteSchema.knowledgeEntries.category, "stack-rules"),
+          eq(remoteSchema.knowledgeEntries.enabled, 1),
+        ),
+        columns: { id: true },
+      });
+      if (stackEntry) {
+        logger.info(
+          `Using KB stack-rules for app ${appId}, skipping AI_RULES.md`,
+        );
+        return GENERIC_AI_RULES;
+      }
+    } catch (error) {
+      logger.warn(`Error checking KB for stack-rules: ${error}`);
+      // Fall through to file-based approach
+    }
+  }
+
+  // 2. Try reading AI_RULES.md from disk
   const aiRulesPath = path.join(vibesAppPath, "AI_RULES.md");
   try {
     const aiRules = await fs.promises.readFile(aiRulesPath, "utf8");

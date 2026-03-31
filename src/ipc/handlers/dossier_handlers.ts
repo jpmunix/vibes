@@ -260,6 +260,16 @@ export function registerDossierHandlers() {
                     chatContext,
                 });
 
+                // Limit massive codebases to prevent API rejections (3M chars is ~750k tokens max)
+                const MAX_CHARS = 3000000;
+                let finalOutput = formattedOutput;
+                let isTruncated = false;
+
+                if (finalOutput.length > MAX_CHARS) {
+                    finalOutput = finalOutput.substring(0, MAX_CHARS) + "\n\n...[AVISO: EL RESTO DEL CÓDIGO HA SIDO TRUNCADO POR LÍMITES DE PROCESAMIENTO DE IA]...";
+                    isTruncated = true;
+                }
+
                 if (abortController.signal.aborted) {
                     return { ok: true as const };
                 }
@@ -267,7 +277,7 @@ export function registerDossierHandlers() {
                 sendChunk(
                     sender,
                     sessionId,
-                    `Proyecto analizado. ${formattedOutput.length} caracteres de contexto extraídos.`,
+                    `Proyecto analizado. ${formattedOutput.length} caracteres ${isTruncated ? `(truncado a ${Math.floor(MAX_CHARS / 1000000)}M por límites)` : 'extraídos'}.`,
                     "analyzing",
                 );
 
@@ -314,7 +324,7 @@ export function registerDossierHandlers() {
                     `Nombre de la app: ${app.name}`,
                     "",
                     "=== CÓDIGO FUENTE DEL PROYECTO ===",
-                    formattedOutput,
+                    finalOutput,
                     "=== FIN DEL CÓDIGO FUENTE ===",
                     "",
                     "Genera los dos documentos siguiendo las instrucciones del sistema.",
@@ -468,7 +478,7 @@ export function registerDossierHandlers() {
                                     AccessKey: sz.password,
                                     'Content-Type': 'application/zip',
                                 },
-                                body: zipBuffer
+                                body: zipBuffer as any
                             });
 
                             if (!response.ok) {

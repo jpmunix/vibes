@@ -2,6 +2,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, and, gt } from "drizzle-orm";
 import log from "electron-log";
+import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import { createTypedHandler, HandlerContext } from "./base";
 import { debateContracts } from "../types/debate";
 import { openRouterCompletion } from "../utils/openrouter";
@@ -228,7 +229,7 @@ export function registerDebateHandlers() {
     }
 
     const settings = readSettings();
-    let model = settings.standardModeModel || "openai/gpt-4.1-mini";
+    let model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
     if (model === "SAME_AS_CHAT") {
       model = settings.selectedModel.name;
     }

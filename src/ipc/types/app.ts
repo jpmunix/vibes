@@ -30,11 +30,13 @@ export const AppBaseSchema = z.object({
   vercelTeamId: z.string().nullable(),
   installCommand: z.string().nullable(),
   startCommand: z.string().nullable(),
-  isFavorite: z.boolean(),
+  isFavorite: z.any(),
   firebaseProjectId: z.string().nullable().optional(),
   firebaseConfig: z.any().nullable().optional(),
   bunnyConfig: z.any().nullable().optional(),
   pocketbaseConfig: z.any().nullable().optional(),
+  primaryLanguage: z.string().nullable().optional(),
+  projectType: z.string().nullable().optional(),
 });
 
 /**

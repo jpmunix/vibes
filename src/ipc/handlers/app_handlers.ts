@@ -63,7 +63,7 @@ import {
 } from "@/supabase_admin/supabase_utils";
 import { getVercelTeamSlug } from "../utils/vercel_utils";
 import { storeDbTimestampAtCurrentVersion } from "../utils/neon_timestamp_utils";
-import { AppSearchResult } from "@/lib/schemas";
+import { AppSearchResult, DEFAULT_STANDARD_MODEL } from "@/lib/schemas";
 import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
@@ -318,6 +318,17 @@ export function registerAppHandlers() {
         };
       }),
     );
+
+    // Fire-and-forget: ensure every local app has stack-rules in the KB.
+    // Uses a per-session Set so each app is only checked once per launch.
+    // ensureKnowledgeBaseRules exits fast if the entry already exists.
+    const { ensureKnowledgeBaseRules } = await import("./knowledge_migration");
+    for (const app of appsWithResolvedPath) {
+      if (app.localPathExists && context.userId) {
+        void ensureKnowledgeBaseRules(app.id, app.resolvedPath, context.userId);
+      }
+    }
+
     return {
       apps: appsWithResolvedPath,
     };
@@ -1697,7 +1708,7 @@ export function registerAppHandlers() {
     }
 
     const model =
-      settings.standardModeModel || "openai/gpt-4.1-mini";
+      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
     logger.info(`[AppTitle] Generating short title with model: ${model}`);
     logger.info(`[AppTitle] Prompt: "${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}"`);
@@ -1753,7 +1764,7 @@ export function registerAppHandlers() {
       }
 
       const model =
-        settings.standardModeModel || "openai/gpt-4.1-mini";
+        settings.standardModeModel || DEFAULT_STANDARD_MODEL;
 
       logger.info(`[AppNamePro] Generating name for appId=${appId} with model: ${model}`);
 
