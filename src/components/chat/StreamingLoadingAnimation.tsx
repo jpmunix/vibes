@@ -54,7 +54,7 @@ function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: n
  * Shows how long the current phase has been processing.
  * Resets when resetKey changes (e.g., label changes from "Pensando" to "Leyendo archivo...").
  */
-function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey?: string }) {
+function ElapsedTimer({ delayMs = 3000, resetKey, showHints = false }: { delayMs?: number; resetKey?: string; showHints?: boolean }) {
   const [elapsed, setElapsed] = useState(0);
   const [visible, setVisible] = useState(false);
   const startRef = useRef(Date.now());
@@ -81,15 +81,40 @@ function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey
 
   if (!visible) return null;
 
+  // Contextual hint for long waits
+  let hint: string | null = null;
+  if (showHints) {
+    if (elapsed >= 60) {
+      hint = "Respuestas complejas pueden tardar más";
+    } else if (elapsed >= 25) {
+      hint = "El modelo sigue procesando...";
+    } else if (elapsed >= 10) {
+      hint = "Esperando respuesta del modelo...";
+    }
+  }
+
   return (
-    <motion.span
-      className="text-xs text-muted-foreground/50 tabular-nums"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-    >
-      {formatElapsed(elapsed)}
-    </motion.span>
+    <>
+      <motion.span
+        className="text-xs text-muted-foreground/50 tabular-nums"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
+        {formatElapsed(elapsed)}
+      </motion.span>
+      {hint && (
+        <motion.span
+          key={hint}
+          className="text-[10px] text-muted-foreground/40 italic"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {hint}
+        </motion.span>
+      )}
+    </>
   );
 }
 
@@ -147,7 +172,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
             </motion.span>
           )}
         </AnimatePresence>
-        <ElapsedTimer delayMs={3000} resetKey={label} />
+        <ElapsedTimer delayMs={3000} resetKey={label} showHints />
         <AnimatePresence mode="popLayout">
           {displayedExcerpt && (
             <motion.span
