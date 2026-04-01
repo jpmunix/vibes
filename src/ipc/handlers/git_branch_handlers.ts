@@ -434,9 +434,16 @@ async function handleCommitChanges(
     }
 
     // Commit with the final message
-    const commitHash = await gitCommit({ path: appPath, message: finalMessage });
-
-    return commitHash;
+    try {
+      const commitHash = await gitCommit({ path: appPath, message: finalMessage });
+      return commitHash;
+    } catch (e: any) {
+      if (e.message && e.message.includes("nothing to commit")) {
+        logger.log(`Skipped commit creation for app ${appId}: working tree clean.`);
+        return "";
+      }
+      throw e;
+    }
   });
 }
 

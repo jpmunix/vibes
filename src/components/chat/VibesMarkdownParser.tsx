@@ -44,6 +44,7 @@ import { FixAllErrorsButton } from "./FixAllErrorsButton";
 import { unescapeXmlAttr, unescapeXmlContent } from "../../../shared/xmlEscape";
 import { CompactToolBadge, shouldCompact, getToolDetail, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import { GroupedToolBadges, type BadgeItem } from "./GroupedToolBadges";
+import { LiveThinkingPanel } from "./LiveThinkingPanel";
 import {
   Dialog,
   DialogContent,
@@ -263,6 +264,19 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     let badgeGroup: BadgeItem[] = [];
     let groupIndex = 0;
 
+    // Find the last think tag index so we can keep it expanded during streaming
+    const THINK_TAGS = new Set(["think", "thought", "vibes-think"]);
+    let lastThinkIndex = -1;
+    if (isStreaming) {
+      for (let i = contentPieces.length - 1; i >= 0; i--) {
+        const p = contentPieces[i];
+        if (p.type === "custom-tag" && THINK_TAGS.has(p.tagInfo.tag)) {
+          lastThinkIndex = i;
+          break;
+        }
+      }
+    }
+
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0) {
         // Separate token-usage badges so they are always visible (never grouped/collapsed)
@@ -344,14 +358,25 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       } else {
         const { tag, attributes, inProgress } = piece.tagInfo;
         const state = getState({ isStreaming, inProgress });
+        const isThinkTag = THINK_TAGS.has(tag);
 
         if (shouldCompact(tag)) {
           const detail = getToolDetail(tag, attributes);
           const originalContent = renderModalContent(piece.tagInfo, { isStreaming });
           const badgeState: ToolBadgeState = state;
 
-          if (badgeState === "pending") {
-            // Pending state: skip — the streaming loader handles in-progress indication
+          // During streaming, keep the LAST think tag expanded as a LiveThinkingPanel
+          if (isThinkTag && isStreaming && index === lastThinkIndex && piece.tagInfo.content) {
+            flushBadgeGroup();
+            elements.push(
+              <LiveThinkingPanel
+                key={`live-think-${index}`}
+                content={piece.tagInfo.content}
+                isActive={inProgress}
+              />
+            );
+          } else if (badgeState === "pending") {
+            // Other pending tags: skip — the streaming loader handles in-progress indication
           } else {
             // Finished/aborted items accumulate as structured badge data
             badgeGroup.push({

@@ -131,13 +131,13 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
 
   if (variant === "initial") {
     return (
-      <div className="flex items-center gap-3 py-2">
-        <PulsingDots size={8} gap={6} colorClass={dotColorClass} />
+      <div className="flex items-center gap-2 py-1.5">
+        <PulsingDots size={6} gap={4} colorClass={dotColorClass} />
         <AnimatePresence mode="wait">
           {label && (
             <motion.span
               key={label}
-              className={`text-sm font-medium ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
+              className={`text-xs font-medium ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -152,7 +152,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
           {displayedExcerpt && (
             <motion.span
               key={displayedExcerpt}
-              className="text-sm italic text-muted-foreground/60 overflow-hidden text-ellipsis whitespace-nowrap flex-1"
+              className="text-xs italic text-muted-foreground/60 overflow-hidden text-ellipsis whitespace-nowrap flex-1"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}

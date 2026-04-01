@@ -1706,6 +1706,86 @@ This conversation includes one or more image attachments. When the user uploads 
             },
           );
 
+          // ── Handle cancellation gracefully ──────────────────────────────
+          if (abortController.signal.aborted) {
+            // Strip "Operación cancelada" and vibes tags to see if there's real content
+            const stripped = openCodeResponse
+              .replace(/Operación cancelada/g, "")
+              .replace(/<vibes-[^>]*>[^]*?<\/vibes-[^>]*>/g, "")
+              .replace(/<\/?think>/g, "")
+              .trim();
+            const hasMeaningfulContent = stripped.length > 20;
+
+            if (!hasMeaningfulContent) {
+              // No real content — clean up: delete the placeholder assistant message
+              // and the user message so the chat stays clean
+              logger.info(`[OpenCode] Cancelled with no content — removing placeholder ${placeholderAssistantMessage.id} and user message ${userMessageId}`);
+              await db
+                .delete(remoteSchema.messages)
+                .where(
+                  and(
+                    eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+                    eq(remoteSchema.messages.userId, currentUserId as string),
+                  ),
+                );
+              await db
+                .delete(remoteSchema.messages)
+                .where(
+                  and(
+                    eq(remoteSchema.messages.id, userMessageId),
+                    eq(remoteSchema.messages.userId, currentUserId as string),
+                  ),
+                );
+
+              // Fetch fresh messages and push to frontend so the empty bubble disappears
+              const freshChat = await db.query.chats.findFirst({
+                where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
+                with: {
+                  messages: { orderBy: (messages, { asc }) => [asc(messages.createdAt)] },
+                },
+              });
+              safeSend(event.sender, "chat:response:chunk", {
+                chatId: req.chatId,
+                messages: freshChat?.messages ?? [],
+              });
+              safeSend(event.sender, "chat:response:end", {
+                chatId: req.chatId,
+                updatedFiles: false,
+              } satisfies ChatResponseEnd);
+              return;
+            }
+
+            // Has partial content — save it with a "cancelled" visual indicator
+            fullResponse = openCodeResponse + "\n\n---\n*⏹ Respuesta cancelada por el usuario*\n";
+            const openCodeDurationMs = Date.now() - streamStartedAt;
+            await db
+              .update(remoteSchema.messages)
+              .set({
+                content: fullResponse,
+                durationMs: openCodeDurationMs,
+              })
+              .where(
+                and(
+                  eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+                  eq(remoteSchema.messages.userId, currentUserId as string),
+                ),
+              );
+
+            safeSend(event.sender, "chat:response:chunk", {
+              chatId: req.chatId,
+              messages: [
+                ...updatedChat.messages.slice(0, -1),
+                { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs },
+              ],
+            });
+            safeSend(event.sender, "chat:response:end", {
+              chatId: req.chatId,
+              updatedFiles: false,
+            } satisfies ChatResponseEnd);
+            return;
+          }
+
+          // ── Normal (non-cancelled) response ─────────────────────────────
           // Persist the response to the database
           fullResponse = openCodeResponse;
           const openCodeDurationMs = Date.now() - streamStartedAt;

@@ -575,17 +575,14 @@ export function ChatInput({
                                     }
                                     window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
                                   }
-                                  if (currentMessage?.sourceCommitHash) {
-                                    await revertVersion({
-                                      versionId: currentMessage.sourceCommitHash,
-                                      currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
-                                      silent: true,
-                                    });
-                                    const chat = await ipc.chat.getChat(chatId);
-                                    setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
-                                  } else {
-                                    showWarning("No source commit hash found for message. Need to manually undo code changes");
-                                  }
+                                  const targetHash = currentMessage?.sourceCommitHash || "NONE";
+                                  await revertVersion({
+                                    versionId: targetHash,
+                                    currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+                                    silent: true,
+                                  });
+                                  const chat = await ipc.chat.getChat(chatId);
+                                  setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
                                 } catch (error) {
                                   console.error("Error during undo:", error);
                                   showError("Failed to undo changes");

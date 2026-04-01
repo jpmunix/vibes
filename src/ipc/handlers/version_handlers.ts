@@ -180,33 +180,43 @@ export function registerVersionHandlers() {
         ref: branchRef,
       });
 
-      await gitCheckout({
-        path: appPath,
-        ref: branchRef,
-      });
-
-      if (app.neonProjectId && app.neonDevelopmentBranchId) {
-        // We are going to add a new commit on top, so let's store
-        // the current timestamp at the current version.
-        await storeDbTimestampAtCurrentVersion({
-          appId,
-        });
-      }
-
-      await gitStageToRevert({
-        path: appPath,
-        targetOid: previousVersionId,
-      });
-      const isClean = await isGitStatusClean({ path: appPath });
-      if (!isClean) {
-        // Ensure all changes are staged before committing
-        // This handles edge cases where gitStageToRevert may leave files unstaged
-        // (e.g., when isomorphic-git staging doesn't fully sync with native git)
-        await gitAddAll({ path: appPath });
-        await gitCommit({
+      if (previousVersionId && previousVersionId !== "NONE") {
+        await gitCheckout({
           path: appPath,
-          message: `Reverted all changes back to version ${previousVersionId}`,
+          ref: branchRef,
         });
+
+        if (app.neonProjectId && app.neonDevelopmentBranchId) {
+          // We are going to add a new commit on top, so let's store
+          // the current timestamp at the current version.
+          await storeDbTimestampAtCurrentVersion({
+            appId,
+          });
+        }
+
+        await gitStageToRevert({
+          path: appPath,
+          targetOid: previousVersionId,
+        });
+        const isClean = await isGitStatusClean({ path: appPath });
+        if (!isClean) {
+          // Ensure all changes are staged before committing
+          // This handles edge cases where gitStageToRevert may leave files unstaged
+          // (e.g., when isomorphic-git staging doesn't fully sync with native git)
+          await gitAddAll({ path: appPath });
+          try {
+            await gitCommit({
+              path: appPath,
+              message: `Reverted all changes back to version ${previousVersionId}`,
+            });
+          } catch (e: any) {
+            if (e.message && e.message.includes("nothing to commit")) {
+              logger.log(`Skipped commit during revert for app ${appId}: working tree clean.`);
+            } else {
+              throw e;
+            }
+          }
+        }
       }
 
       // Delete messages based on currentChatMessageId if provided, otherwise use commit hash lookup
