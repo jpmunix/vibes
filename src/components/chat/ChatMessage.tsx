@@ -335,16 +335,6 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     return null;
   }, [message.commitHash, message.role, liveVersions]);
 
-  // handle copy request id
-  const [copiedRequestId, setCopiedRequestId] = useState(false);
-  const copiedRequestIdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  useEffect(() => {
-    return () => {
-      if (copiedRequestIdTimeoutRef.current) {
-        clearTimeout(copiedRequestIdTimeoutRef.current);
-      }
-    };
-  }, []);
 
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
@@ -535,49 +525,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                 )}
               </div>
             )}
-            {message.requestId && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => {
-                        if (!message.requestId) return;
-                        navigator.clipboard
-                          .writeText(message.requestId)
-                          .then(() => {
-                            setCopiedRequestId(true);
-                            if (copiedRequestIdTimeoutRef.current) {
-                              clearTimeout(copiedRequestIdTimeoutRef.current);
-                            }
-                            copiedRequestIdTimeoutRef.current = setTimeout(
-                              () => setCopiedRequestId(false),
-                              2000,
-                            );
-                          })
-                          .catch(() => {
-                            // noop
-                          });
-                      }}
-                      className="flex items-center space-x-1 px-1 py-0.5 hover:bg-accent rounded cursor-pointer"
-                    >
-                      {copiedRequestId ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                      <span className="text-xs">
-                        {copiedRequestId ? "Copiado" : "ID de solicitud"}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {copiedRequestId
-                      ? "¡Copiado!"
-                      : `Copiar ID de solicitud: ${message.requestId.slice(0, 8)}...`}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+
             {message.totalTokens && (
               <TooltipProvider>
                 <Tooltip>
