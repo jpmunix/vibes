@@ -734,6 +734,7 @@ export default function AppDetailsPage() {
                 />
               )}
 
+              {/* Dossier button — hidden until feature is polished
               {appId && (
                 <Button
                   variant="outline"
@@ -762,6 +763,7 @@ export default function AppDetailsPage() {
                   onClose={() => setIsDossierModalOpen(false)}
                 />
               )}
+              */}
             </div>
 
             {/* Rename Dialog */}

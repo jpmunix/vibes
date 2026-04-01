@@ -62,6 +62,7 @@ const HIDDEN_PROMPTS = new Set<PromptId>([
   "build_system_postfix",
   "agent_mode_system",
   "turbo_edit_system",
+  "dossier_prompt",
 ]);
 
 export function PromptsSettings() {
