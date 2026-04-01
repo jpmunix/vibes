@@ -60,7 +60,7 @@ function GitWindowContent({ appId, commitHash }: GitWindowAppProps) {
             <div className="h-screen w-screen overflow-hidden bg-background text-foreground">
                 <GitPanel
                     onClose={() => window.close()}
-                    initialTab="history"
+                    initialTab={commitHash ? "history" : "changes"}
                     initialCommitHash={commitHash}
                     isWindow
                 />

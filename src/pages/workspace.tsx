@@ -9,6 +9,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { MessagesSquare } from "lucide-react";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
+import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -96,6 +97,7 @@ export default function WorkspacePage() {
           <LanguageBadge language={selectedApp?.primaryLanguage} />
         </div>
         <div className="flex items-center gap-2">
+          {appId && <AgentBranchSelector appId={appId} />}
           {/* Server control button - only for Node projects */}
           {(!selectedApp?.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage.toLowerCase())) && (
             <ServerControlButton appId={appId} />
