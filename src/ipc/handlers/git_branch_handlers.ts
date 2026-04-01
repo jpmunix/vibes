@@ -356,7 +356,10 @@ async function handleGetUncommittedFiles(
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
-  if (!app) throw new Error("App not found");
+  if (!app) {
+    // App may not be available yet during app switch — return empty gracefully
+    return [];
+  }
   const appPath = getVibesAppPath(app.path);
 
   return getGitUncommittedFilesWithStatus({ path: appPath });

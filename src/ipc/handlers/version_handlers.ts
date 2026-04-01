@@ -130,7 +130,9 @@ export function registerVersionHandlers() {
     });
 
     if (!app) {
-      throw new Error("App not found");
+      // App may have been deleted or not yet available (race during app switch).
+      // Return empty branch instead of throwing to avoid alarming error toasts.
+      return { branch: "" };
     }
 
     const appPath = getVibesAppPath(app.path);
