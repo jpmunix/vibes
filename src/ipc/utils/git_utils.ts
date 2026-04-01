@@ -2219,3 +2219,62 @@ export async function gitDiscardFile({
   );
 }
 
+/**
+ * Reset HEAD to a specific ref keeping all changes staged.
+ * Equivalent to: git reset --soft <ref>
+ * Used for squashing multiple commits into one.
+ */
+export async function gitResetSoft({
+  path,
+  ref,
+}: {
+  path: string;
+  ref: string;
+}): Promise<void> {
+  await execOrThrow(
+    ["reset", "--soft", ref],
+    path,
+    `Failed to soft reset to '${ref}'`,
+  );
+}
+
+/**
+ * Get the combined diff between two refs (e.g. origin/main..HEAD).
+ * Used to generate descriptive commit messages for squashed commits.
+ * Returns a truncated diff suitable for AI analysis.
+ */
+export async function gitDiffRange({
+  path,
+  from,
+  to = "HEAD",
+  maxBytes = 4000,
+}: {
+  path: string;
+  from: string;
+  to?: string;
+  maxBytes?: number;
+}): Promise<string> {
+  const result = await execGit(
+    ["diff", "--stat", "--no-color", `${from}..${to}`],
+    path,
+  );
+
+  if (result.exitCode !== 0) {
+    return "";
+  }
+
+  const stat = result.stdout.trim();
+
+  // Also get a limited patch diff for context
+  const patchResult = await execGit(
+    ["diff", "--no-color", `${from}..${to}`],
+    path,
+  );
+
+  const patch = patchResult.exitCode === 0 ? patchResult.stdout : "";
+
+  // Combine stat + truncated patch
+  const combined = `${stat}\n\n${patch}`;
+  return combined.slice(0, maxBytes);
+}
+

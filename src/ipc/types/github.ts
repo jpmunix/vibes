@@ -120,6 +120,7 @@ export const GitPreviewSchema = z.object({
   localCommits: z.array(GitCommitSchema),
   totalAdditions: z.number(),
   totalDeletions: z.number(),
+  suggestedSquashMessage: z.string().optional(),
 });
 
 export const LocalBranchesResultSchema = z.object({
@@ -355,6 +356,12 @@ export const githubContracts = {
   generateCommitMessage: defineContract({
     channel: "github:generate-commit-message",
     input: z.object({ appId: z.number() }),
+    output: z.object({ message: z.string() }),
+  }),
+
+  generateSquashMessage: defineContract({
+    channel: "github:generate-squash-message",
+    input: z.object({ appId: z.number(), aheadCount: z.number() }),
     output: z.object({ message: z.string() }),
   }),
 } as const;

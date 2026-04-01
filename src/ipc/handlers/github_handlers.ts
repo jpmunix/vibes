@@ -25,6 +25,10 @@ import {
   GitConflictError,
   gitDiffFile,
   gitLocalCommits,
+  gitResetSoft,
+  gitDiffRange,
+  getGitAheadCount,
+  withGitAuthor,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -919,6 +923,64 @@ async function handlePushToGithub(
     remoteUrl,
   });
 
+  // --- Smart Squash: silently squash ≥2 local commits into one before push ---
+  if (!force && !forceWithLease) {
+    try {
+      const aheadCount = await getGitAheadCount({ path: appPath, branch });
+      if (aheadCount >= 2) {
+        logger.info(
+          `[GitHub Handler] Squashing ${aheadCount} local commits before push`,
+        );
+
+        // Generate AI commit message from the combined diff
+        let squashMessage = commitMessage || `[vibes] Update (${aheadCount} changes)`;
+        try {
+          squashMessage = await generateSquashCommitMessage({
+            appPath,
+            branch,
+            aheadCount,
+            fallbackMessage: squashMessage,
+          });
+        } catch (err) {
+          logger.warn("[GitHub Handler] Failed to generate squash message, using fallback:", err);
+        }
+
+        // Squash: reset --soft to the common ancestor, then re-commit everything
+        await gitResetSoft({
+          path: appPath,
+          ref: `origin/${branch}`,
+        });
+        await gitAddAll({ path: appPath });
+        const args = await withGitAuthor(["commit", "-m", squashMessage]);
+        const { exec: execDugite } = await import("dugite");
+        const result = await execDugite(args, appPath);
+        if (result.exitCode !== 0) {
+          throw new Error(`Failed to create squash commit: ${result.stderr}`);
+        }
+
+        logger.info(
+          `[GitHub Handler] Successfully squashed ${aheadCount} commits: "${squashMessage.slice(0, 80)}"`,
+        );
+      }
+    } catch (squashError: any) {
+      // If squash fails (e.g. no remote branch yet), log and continue with normal push
+      if (
+        squashError?.message?.includes("unknown revision") ||
+        squashError?.message?.includes("bad revision") ||
+        squashError?.message?.includes("ambiguous argument")
+      ) {
+        logger.debug(
+          "[GitHub Handler] No remote branch to squash against (first push?), skipping squash",
+        );
+      } else {
+        logger.warn(
+          "[GitHub Handler] Squash failed, continuing with normal push:",
+          squashError,
+        );
+      }
+    }
+  }
+
   // Pull changes first (unless force push)
   if (!force && !forceWithLease) {
     try {
@@ -1526,11 +1588,27 @@ async function handleGetPreview(
       // Continue without local commits if there's an error
     }
 
+    // Generate suggested squash message if there are ≥2 local commits
+    let suggestedSquashMessage: string | undefined;
+    if (localCommits.length >= 2) {
+      try {
+        suggestedSquashMessage = await generateSquashCommitMessage({
+          appPath,
+          branch,
+          aheadCount: localCommits.length,
+          fallbackMessage: `Actualización (${localCommits.length} cambios)`,
+        });
+      } catch (err) {
+        logger.warn("[GitHub Handler] Failed to generate squash message for preview:", err);
+      }
+    }
+
     return {
       uncommittedFiles: filesWithDiffs,
       localCommits,
       totalAdditions,
       totalDeletions,
+      suggestedSquashMessage,
     };
   } catch (err: any) {
     logger.error("[GitHub Handler] Failed to get preview:", err);
@@ -1631,6 +1709,62 @@ async function handleGenerateCommitMessage(
   }
 }
 
+/**
+ * Generate an AI commit message for a squash operation.
+ * Uses the combined diff of all local commits vs remote to produce
+ * a descriptive, semantic commit message.
+ */
+async function generateSquashCommitMessage({
+  appPath,
+  branch,
+  aheadCount,
+  fallbackMessage,
+}: {
+  appPath: string;
+  branch: string;
+  aheadCount: number;
+  fallbackMessage: string;
+}): Promise<string> {
+  if (!hasOpenRouterApiKey()) {
+    return fallbackMessage;
+  }
+
+  const settings = readSettings();
+  const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+
+  // Get the combined diff between remote and local
+  const diffContext = await gitDiffRange({
+    path: appPath,
+    from: `origin/${branch}`,
+    to: "HEAD",
+    maxBytes: 3000,
+  });
+
+  if (!diffContext || diffContext.trim().length === 0) {
+    return fallbackMessage;
+  }
+
+  const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+  const prompt = `${systemPrompt}\n\nEsta es una actualización que consolida ${aheadCount} cambios en un solo commit.\n\nCambios:\n${diffContext}`;
+
+  const data = await openRouterCompletion({
+    model,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.3,
+    max_tokens: 100,
+    title: "Vibes - Squash Commit Message",
+  });
+
+  let generated = data.choices?.[0]?.message?.content?.trim() || fallbackMessage;
+  generated = generated.replace(/^["'`]+|["'`]+$/g, "");
+
+  if (!generated || generated.length > 120) {
+    return fallbackMessage;
+  }
+
+  return generated;
+}
+
 // --- Registration ---
 export function registerGithubHandlers() {
   createTypedHandler(githubContracts.startFlow, async (event, params) => {
@@ -1724,6 +1858,28 @@ export function registerGithubHandlers() {
     githubContracts.generateCommitMessage,
     async (event, params, context) => {
       return handleGenerateCommitMessage(event, params, context);
+    },
+  );
+
+  createTypedHandler(
+    githubContracts.generateSquashMessage,
+    async (event, params, context) => {
+      if (!context.userId) throw new Error("Unauthorized");
+      const db = getRemoteDb();
+      const app = await db.query.apps.findFirst({
+        where: and(eq(remoteSchema.apps.id, params.appId), eq(remoteSchema.apps.userId, context.userId)),
+      });
+      if (!app) throw new Error("App not found");
+      const appPath = getVibesAppPath(app.path);
+      const branch = await gitCurrentBranch({ path: appPath }) || "main";
+
+      const message = await generateSquashCommitMessage({
+        appPath,
+        branch,
+        aheadCount: params.aheadCount,
+        fallbackMessage: `Actualización (${params.aheadCount} cambios)`,
+      });
+      return { message };
     },
   );
 }

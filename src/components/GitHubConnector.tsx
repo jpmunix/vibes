@@ -104,10 +104,11 @@ function ConnectedGitHubConnector({
   const [rebaseInProgress, setRebaseInProgress] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
   const [isCommitMessageEdited, setIsCommitMessageEdited] = useState(false);
-  const [, setAheadCount] = useState<number>(0);
+  const [aheadCount, setAheadCount] = useState<number>(0);
   const lastAutoSyncedAppIdRef = useRef<number | null>(null);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
   const [isFixingError, setIsFixingError] = useState(false);
+  const lastAutoGenAheadRef = useRef<number | null>(null);
 
   // Smart error type detection
   const errorType = syncError
@@ -239,6 +240,33 @@ function ConnectedGitHubConnector({
     commitMessage,
     isCommitMessageEdited,
   ]);
+
+  // Auto-generate AI commit message when ≥2 local commits ahead (squash scenario)
+  useEffect(() => {
+    if (
+      aheadCount < 2 ||
+      isCommitMessageEdited ||
+      lastAutoGenAheadRef.current === aheadCount
+    ) {
+      return;
+    }
+    lastAutoGenAheadRef.current = aheadCount;
+    let cancelled = false;
+    (async () => {
+      setIsGeneratingMessage(true);
+      try {
+        const result = await ipc.github.generateSquashMessage({ appId, aheadCount });
+        if (!cancelled && !isCommitMessageEdited) {
+          setCommitMessage(result.message);
+        }
+      } catch {
+        // Silently fail — the simple file-count message is already set
+      } finally {
+        if (!cancelled) setIsGeneratingMessage(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [appId, aheadCount, isCommitMessageEdited]);
 
   const handleDisconnectRepo = async () => {
     setIsDisconnecting(true);

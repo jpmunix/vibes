@@ -241,7 +241,10 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     // Memoized item renderer for virtualized list
     const itemContent = useCallback(
       (index: number, message: Message) => {
-        const isLastMessage = index === messages.length - 1;
+        // When progressive loading is active, Virtuoso offsets indices by firstItemIndex.
+        // e.g. if firstItemIndex=16 and we show 6 messages, indices are 16–21.
+        // The last message index is firstItemIndex + messages.length - 1.
+        const isLastMessage = index === firstItemIndex + messages.length - 1;
         const messageKey = message.id;
 
         // Check if we should show auto-router card after this message
@@ -281,6 +284,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       },
       [
         messages.length,
+        firstItemIndex,
         isSelectingModel,
         autoRouterModelInfo,
         selectedChatId,
