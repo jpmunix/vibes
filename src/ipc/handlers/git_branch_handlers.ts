@@ -357,8 +357,8 @@ async function handleGetUncommittedFiles(
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
   if (!app) {
-    logger.error(`[getUncommittedFiles] App not found: appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
-    throw new Error(`App not found (appId=${appId}, userId=${context.userId ? 'present' : 'MISSING'})`);
+    logger.warn(`[getUncommittedFiles] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+    return [];
   }
   const appPath = getVibesAppPath(app.path);
 

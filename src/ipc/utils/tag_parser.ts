@@ -43,9 +43,9 @@ export function getWriteTags(fullResponse: string): {
 
       tags.push({ path: normalizePath(path), content, description });
     } else {
-      logger.warn(
+      logger.debug(
         "Found <vibes-write> tag without a valid 'path' attribute:",
-        match[0],
+        match[0].slice(0, 120),
       );
     }
   }

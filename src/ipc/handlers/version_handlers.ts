@@ -130,8 +130,10 @@ export function registerVersionHandlers() {
     });
 
     if (!app) {
-      logger.error(`[getCurrentBranch] App not found: appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
-      throw new Error(`App not found (appId=${appId}, userId=${context.userId ? 'present' : 'MISSING'})`);
+      // Transient: remote DB (Bunny Edge SQL) may lag during app switch.
+      // Log for monitoring, return empty — react-query will retry automatically.
+      logger.warn(`[getCurrentBranch] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+      return { branch: "" };
     }
 
     const appPath = getVibesAppPath(app.path);
