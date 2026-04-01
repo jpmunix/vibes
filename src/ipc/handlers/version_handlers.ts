@@ -130,9 +130,8 @@ export function registerVersionHandlers() {
     });
 
     if (!app) {
-      // App may have been deleted or not yet available (race during app switch).
-      // Return empty branch instead of throwing to avoid alarming error toasts.
-      return { branch: "" };
+      logger.error(`[getCurrentBranch] App not found: appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+      throw new Error(`App not found (appId=${appId}, userId=${context.userId ? 'present' : 'MISSING'})`);
     }
 
     const appPath = getVibesAppPath(app.path);

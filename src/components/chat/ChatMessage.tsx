@@ -389,7 +389,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   ) : (
                     <>
                       <div
-                        className={`prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
+                        className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
                         suppressHydrationWarning
                       >
                         <VibesMarkdownParser content={message.content} />
@@ -411,7 +411,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
               {/* === User messages === */}
               {isUser && !isSelectingModel && (
                 <div
-                  className="prose dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
+                  className="prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words"
                   suppressHydrationWarning
                 >
                   <UserMessageContent
