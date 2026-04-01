@@ -426,11 +426,30 @@ export async function handleOpenCodeStream(
     let totalReasoningTokens = 0;
     let totalCachedTokens = 0;
     let eventSubscription: any = null;
+    // Dedicated AbortController for the SSE stream — aborting this closes the
+    // underlying fetch connection immediately (the SDK SSE client respects `signal`).
+    const sseAbortController = new AbortController();
+
+    // Wire the user's abort signal to eagerly kill the SSE + tell OpenCode to stop.
+    // This runs AS SOON as the user clicks "Stop", not after processEvents finishes.
+    const onUserAbort = () => {
+        logger.info(`[OpenCode] ⛔ User abort detected — killing SSE stream and sending session.abort()`);
+        sseAbortController.abort();
+        // Fire-and-forget session.abort() so the server stops generating
+        client.session.abort({ path: { id: sessionId! }, query: { directory: projectDir } }).catch(() => {});
+    };
+    if (abortController.signal.aborted) {
+        // Already aborted before we even started
+        onUserAbort();
+    } else {
+        abortController.signal.addEventListener("abort", onUserAbort, { once: true });
+    }
 
     try {
         // Start global event subscription (captures ALL events across the server)
+        // Pass the SSE abort signal so the connection closes when we abort.
         logger.info("[OpenCode] Subscribing to global events...");
-        const eventsResult = await client.global.event();
+        const eventsResult = await client.global.event({ signal: sseAbortController.signal } as any);
         eventSubscription = eventsResult;
         logger.info("[OpenCode] Event subscription ready.");
 
@@ -578,12 +597,10 @@ export async function handleOpenCodeStream(
         // processEvents returns when session goes idle or the stream ends.
         await eventProcessingDone;
 
-        // If the stream was aborted (stop button), tell OpenCode to stop generating
+        // If the stream was aborted (stop button), session.abort() was already
+        // sent eagerly by the onUserAbort listener — just return partial text.
         if (abortController.signal.aborted) {
-            logger.info(`[OpenCode] Aborted for chat ${req.chatId} — sending abort to server`);
-            try {
-                await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
-            } catch { /* ignore */ }
+            logger.info(`[OpenCode] Aborted for chat ${req.chatId} — returning partial response`);
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
             return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
@@ -602,9 +619,7 @@ export async function handleOpenCodeStream(
     } catch (error: any) {
         if (abortController.signal.aborted) {
             logger.info(`[OpenCode] Aborted for chat ${req.chatId}`);
-            try {
-                await client.session.abort({ path: { id: sessionId }, query: { directory: projectDir } });
-            } catch { /* ignore */ }
+            // session.abort() already fired eagerly — no need to call again
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
             return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
@@ -619,6 +634,13 @@ export async function handleOpenCodeStream(
             reasoningTokens: totalReasoningTokens,
             cachedTokens: totalCachedTokens,
         };
+    } finally {
+        // Clean up the abort listener to avoid leaks
+        abortController.signal.removeEventListener("abort", onUserAbort);
+        // Ensure SSE is always closed when we exit
+        if (!sseAbortController.signal.aborted) {
+            sseAbortController.abort();
+        }
     }
 }
 
@@ -672,8 +694,9 @@ async function processEvents(
             const evt = rawEvt.payload || rawEvt;
             const props = evt.properties || {};
 
-            // Log EVERY event
-            logger.info(`[OpenCode] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
+            // Log events at debug level to avoid console spam — meaningful events
+            // (tools, steps, think blocks) have their own info-level logs below.
+            logger.debug(`[OpenCode] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
 
             // Session filtering
             const partProps = props.part || {};
@@ -697,15 +720,15 @@ async function processEvents(
 
                     // Skip parts not belonging to the assistant message
                     if (part.messageID && assistantMessageId && part.messageID !== assistantMessageId) {
-                        logger.info(`[OpenCode] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
+                        logger.debug(`[OpenCode] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
                         break;
                     }
                     if (!assistantMessageId && (part.type === "text" || part.type === "reasoning")) {
-                        logger.info(`[OpenCode] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
+                        logger.debug(`[OpenCode] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
                         break;
                     }
 
-                    logger.info(`[OpenCode] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
+                    logger.debug(`[OpenCode] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
 
                     switch (part.type) {
                         case "reasoning": {

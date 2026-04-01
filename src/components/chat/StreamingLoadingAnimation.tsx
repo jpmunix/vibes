@@ -13,6 +13,14 @@ interface StreamingLoadingAnimationProps {
   contentExcerpt?: string;
 }
 
+/** Format elapsed seconds into a compact readable string */
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+}
+
 /**
  * Three pulsing dots – the core loading indicator.
  * Clean, professional, and small enough to sit inline with text.
@@ -38,6 +46,50 @@ function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: n
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * Elapsed timer that appears after a short delay.
+ * Shows how long the current phase has been processing.
+ * Resets when resetKey changes (e.g., label changes from "Pensando" to "Leyendo archivo...").
+ */
+function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey?: string }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    // Reset everything when the phase changes
+    startRef.current = Date.now();
+    setElapsed(0);
+    setVisible(false);
+
+    // Show timer after delay
+    const showTimer = setTimeout(() => setVisible(true), delayMs);
+
+    // Update elapsed every second
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+
+    return () => {
+      clearTimeout(showTimer);
+      clearInterval(interval);
+    };
+  }, [delayMs, resetKey]);
+
+  if (!visible) return null;
+
+  return (
+    <motion.span
+      className="text-xs text-muted-foreground/50 tabular-nums"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      {formatElapsed(elapsed)}
+    </motion.span>
   );
 }
 
@@ -95,6 +147,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
             </motion.span>
           )}
         </AnimatePresence>
+        <ElapsedTimer delayMs={3000} resetKey={label} />
         <AnimatePresence mode="popLayout">
           {displayedExcerpt && (
             <motion.span
@@ -131,6 +184,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
           </motion.span>
         )}
       </AnimatePresence>
+      <ElapsedTimer delayMs={3000} resetKey={label} />
     </div>
   );
 });
