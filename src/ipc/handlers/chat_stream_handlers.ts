@@ -1717,41 +1717,49 @@ This conversation includes one or more image attachments. When the user uploads 
             const hasMeaningfulContent = stripped.length > 20;
 
             if (!hasMeaningfulContent) {
-              // No real content — clean up: delete the placeholder assistant message
-              // and the user message so the chat stays clean
+              // No real content — instantly update the frontend, then clean DB in background
               logger.info(`[OpenCode] Cancelled with no content — removing placeholder ${placeholderAssistantMessage.id} and user message ${userMessageId}`);
-              await db
-                .delete(remoteSchema.messages)
-                .where(
-                  and(
-                    eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
-                    eq(remoteSchema.messages.userId, currentUserId as string),
-                  ),
-                );
-              await db
-                .delete(remoteSchema.messages)
-                .where(
-                  and(
-                    eq(remoteSchema.messages.id, userMessageId),
-                    eq(remoteSchema.messages.userId, currentUserId as string),
-                  ),
-                );
 
-              // Fetch fresh messages and push to frontend so the empty bubble disappears
-              const freshChat = await db.query.chats.findFirst({
-                where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
-                with: {
-                  messages: { orderBy: (messages, { asc }) => [asc(messages.createdAt)] },
-                },
-              });
+              // Optimistically compute cleaned message list (remove user msg + assistant placeholder)
+              const cleanedMessages = (updatedChat.messages as any[]).filter(
+                (m: any) => m.id !== placeholderAssistantMessage.id && m.id !== userMessageId,
+              );
+
+              // Send to frontend IMMEDIATELY — no DB wait
               safeSend(event.sender, "chat:response:chunk", {
                 chatId: req.chatId,
-                messages: freshChat?.messages ?? [],
+                messages: cleanedMessages,
               });
               safeSend(event.sender, "chat:response:end", {
                 chatId: req.chatId,
                 updatedFiles: false,
+                restoredPrompt: req.prompt, // Restore the user's prompt to the input box
               } satisfies ChatResponseEnd);
+
+              // Fire-and-forget DB cleanup — doesn't block the UI
+              void (async () => {
+                try {
+                  await db
+                    .delete(remoteSchema.messages)
+                    .where(
+                      and(
+                        eq(remoteSchema.messages.id, placeholderAssistantMessage.id),
+                        eq(remoteSchema.messages.userId, currentUserId as string),
+                      ),
+                    );
+                  await db
+                    .delete(remoteSchema.messages)
+                    .where(
+                      and(
+                        eq(remoteSchema.messages.id, userMessageId),
+                        eq(remoteSchema.messages.userId, currentUserId as string),
+                      ),
+                    );
+                } catch (e) {
+                  logger.error("[OpenCode] Failed to clean up cancelled messages:", e);
+                }
+              })();
+
               return;
             }
 
@@ -1973,6 +1981,11 @@ This conversation includes one or more image attachments. When the user uploads 
                 );
               }
             }
+            // Notify frontend that stream is complete (cancelStream no longer does this)
+            safeSend(event.sender, "chat:response:end", {
+              chatId: req.chatId,
+              updatedFiles: false,
+            } satisfies ChatResponseEnd);
             return req.chatId;
           }
           throw streamError;
@@ -2065,6 +2078,15 @@ This conversation includes one or more image attachments. When the user uploads 
         }
       }
 
+      // If aborted and we fell through (no fullResponse to save),
+      // send the end event so the frontend cleans up streaming state.
+      if (abortController.signal.aborted) {
+        safeSend(event.sender, "chat:response:end", {
+          chatId: req.chatId,
+          updatedFiles: false,
+        } satisfies ChatResponseEnd);
+      }
+
       // Return the chat ID for backwards compatibility
       return req.chatId;
     } catch (error) {
@@ -2119,21 +2141,24 @@ This conversation includes one or more image attachments. When the user uploads 
     const abortController = activeStreams.get(chatId);
 
     if (abortController) {
-      // Abort the stream
+      // Abort the stream — the main chat:stream handler will detect the abort
+      // and handle cleanup (DB deletion, sending updated messages, and
+      // chat:response:end). We do NOT send chat:response:end here because
+      // that would remove the stream callbacks before the main handler
+      // can send the chat:response:chunk with cleaned-up messages.
       abortController.abort();
       activeStreams.delete(chatId);
       logger.log(`Aborted stream for chat ${chatId}`);
     } else {
       logger.warn(`No active stream found for chat ${chatId}`);
+      // No active stream — send end event directly since nobody else will
+      safeSend(event.sender, "chat:response:end", {
+        chatId,
+        updatedFiles: false,
+      } satisfies ChatResponseEnd);
     }
 
-    // Send the end event to the renderer
-    safeSend(event.sender, "chat:response:end", {
-      chatId,
-      updatedFiles: false,
-    } satisfies ChatResponseEnd);
-
-    // Also emit stream:end so cleanup listeners (e.g., pending agent consents) fire
+    // Always emit stream:end so cleanup listeners (e.g., pending agent consents) fire
     safeSend(event.sender, "chat:stream:end", { chatId });
 
     return true;

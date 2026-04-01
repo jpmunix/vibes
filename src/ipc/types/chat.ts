@@ -117,6 +117,8 @@ export const ChatResponseEndSchema = z.object({
   totalTokens: z.number().optional(),
   contextWindow: z.number().optional(),
   chatSummary: z.string().optional(),
+  /** When a cancel happens before content is generated, the user's prompt is sent back */
+  restoredPrompt: z.string().optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;

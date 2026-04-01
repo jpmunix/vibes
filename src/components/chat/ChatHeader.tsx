@@ -121,7 +121,9 @@ export function ChatHeader({
 
   const handleCheckoutMainBranch = async () => {
     if (!appId) return;
-    await checkoutVersion({ appId, versionId: "main" });
+    // Use the current branch instead of hardcoded "main"
+    const currentBranch = branchInfo?.branch || "main";
+    await checkoutVersion({ appId, versionId: currentBranch });
   };
 
   const handleRenameMasterToMain = async () => {

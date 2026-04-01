@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { useRunApp } from "@/hooks/useRunApp";
+import { useCurrentBranch } from "@/hooks/useCurrentBranch";
 
 interface VersionPaneProps {
   isVisible: boolean;
@@ -37,6 +38,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
     selectedVersionIdAtom,
   );
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
+  const { branchInfo } = useCurrentBranch(appId);
   const wasVisibleRef = useRef(false);
   const [cachedVersions, setCachedVersions] = useState<Version[]>([]);
 
@@ -50,11 +52,13 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
         }
       }
 
-      // Reset when closing
-      if (!isVisible && selectedVersionId) {
+      // Reset ONLY when the pane truly transitions from visible → hidden
+      // (not on every render that happens to have !isVisible)
+      if (!isVisible && wasVisibleRef.current && selectedVersionId) {
         setSelectedVersionId(null);
         if (appId) {
-          await checkoutVersion({ appId, versionId: "main" });
+          const currentBranch = branchInfo?.branch || "main";
+          await checkoutVersion({ appId, versionId: currentBranch });
           if (app?.neonProjectId) {
             await restartApp();
           }
@@ -64,6 +68,9 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
       wasVisibleRef.current = isVisible;
     }
     updatePaneState();
+    // NOTE: liveVersions is intentionally omitted to prevent re-runs
+    // when the version list updates (e.g., after a stream ends).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isVisible,
     selectedVersionId,
@@ -71,7 +78,6 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
     appId,
     checkoutVersion,
     refreshVersions,
-    liveVersions,
   ]);
 
   // Initial load of cached versions when live versions become available

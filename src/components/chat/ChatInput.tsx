@@ -18,7 +18,6 @@ import {
   SendHorizontalIcon,
   Lock,
   Undo,
-  RefreshCw,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -108,7 +107,7 @@ export function ChatInput({
   const messagesById = useAtomValue(chatMessagesByIdAtom);
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const [isUndoLoading, setIsUndoLoading] = useState(false);
-  const [isRetryLoading, setIsRetryLoading] = useState(false);
+
   const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
 
@@ -601,54 +600,7 @@ export function ChatInput({
                       </TooltipProvider>
                     )}
 
-                  {/* Retry button — circular, icon-only */}
-                  {!isStreaming && !!currentMessages.length && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            disabled={isRetryLoading}
-                            onClick={async () => {
-                              if (!chatId) return;
-                              setIsRetryLoading(true);
-                              try {
-                                const lastVersion = versions[0];
-                                const lastMsg = currentMessages[currentMessages.length - 1];
-                                let shouldRedo = true;
-                                if (lastVersion.oid === lastMsg.commitHash && lastMsg.role === "assistant") {
-                                  const prevAssistant = currentMessages[currentMessages.length - 3];
-                                  if (prevAssistant?.role === "assistant" && prevAssistant?.commitHash) {
-                                    await revertVersion({ versionId: prevAssistant.commitHash });
-                                    shouldRedo = false;
-                                  } else {
-                                    const chat = await ipc.chat.getChat(chatId);
-                                    if (chat.initialCommitHash) {
-                                      await revertVersion({ versionId: chat.initialCommitHash });
-                                    } else {
-                                      showWarning("No initial commit hash found for chat.");
-                                    }
-                                  }
-                                }
-                                const lastUserMsg = [...currentMessages].reverse().find(m => m.role === "user");
-                                if (!lastUserMsg) return;
-                                streamMessage({ prompt: lastUserMsg.content, chatId, redo: shouldRedo });
-                              } catch (error) {
-                                console.error("Error during retry:", error);
-                                showError("Failed to retry message");
-                              } finally {
-                                setIsRetryLoading(false);
-                              }
-                            }}
-                            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 cursor-pointer"
-                            title="Reintentar"
-                          >
-                            {isRetryLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Reintentar</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+
 
                   {isStreaming ? (
                     <button

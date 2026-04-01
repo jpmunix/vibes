@@ -28,9 +28,24 @@ export const LiveThinkingPanel: React.FC<LiveThinkingPanelProps> = React.memo(({
   }
 
   return (
-    <div className="mt-1 mb-1.5 rounded-md border border-purple-500/15 bg-purple-500/[0.03] overflow-hidden">
+    <div className="mt-1.5 mb-2 rounded-md border border-purple-500/15 bg-purple-500/[0.03] overflow-hidden">
+      <style>{`
+        .live-think-scroll::-webkit-scrollbar {
+          width: 3px;
+        }
+        .live-think-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .live-think-scroll::-webkit-scrollbar-thumb {
+          background: rgba(168, 85, 247, 0.2);
+          border-radius: 3px;
+        }
+        .live-think-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(168, 85, 247, 0.35);
+        }
+      `}</style>
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-2 py-1 border-b border-purple-500/10">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-purple-500/10">
         <Brain size={11} className={`text-purple-500 ${isActive ? "animate-pulse" : ""}`} />
         <span className="text-[10px] font-medium text-purple-400/80">
           {isActive ? "Pensando..." : "Pensamiento"}
@@ -39,7 +54,7 @@ export const LiveThinkingPanel: React.FC<LiveThinkingPanelProps> = React.memo(({
       {/* Content */}
       <div
         ref={scrollRef}
-        className="px-2 py-1.5 max-h-[100px] overflow-y-auto text-[11px] leading-relaxed text-muted-foreground/60 [&_p]:my-0.5 [&_ul]:my-0.5 [&_ol]:my-0.5 [&_li]:my-0 [&_code]:text-[10px] [&_pre]:my-1 [&_h1]:text-xs [&_h2]:text-xs [&_h3]:text-[11px]"
+        className="live-think-scroll px-3 py-2 max-h-[150px] overflow-y-auto text-[11px] leading-[1.6] text-muted-foreground/60 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_code]:text-[10px] [&_pre]:my-1.5 [&_h1]:text-xs [&_h2]:text-xs [&_h3]:text-[11px]"
       >
         <VanillaMarkdownParser content={content} />
       </div>

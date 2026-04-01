@@ -345,6 +345,14 @@ export function useStreamChat({
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
 
+              // If the backend sent back the user's prompt (cancel with no content),
+              // restore it to the input box so the user doesn't lose their message
+              if (response.restoredPrompt) {
+                window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", {
+                  detail: { prompt: response.restoredPrompt },
+                }));
+              }
+
               // Wrap all post-stream work in startTransition so it doesn't block input
               // These are ~10 invalidations/refreshes that would otherwise cause cascading re-renders
               startTransition(() => {

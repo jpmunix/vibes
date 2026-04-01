@@ -493,7 +493,12 @@ export function registerVersionHandlers() {
         app.neonDevelopmentBranchId &&
         app.neonPreviewBranchId
       ) {
-        if (gitRef === "main") {
+        // Detect whether we're returning to the current branch tip (not a detached commit)
+        const fullAppPath = getVibesAppPath(app.path);
+        const currentBranch = await gitCurrentBranch({ path: fullAppPath });
+        const isReturningToCurrentBranch = gitRef === "main" || gitRef === "master" || gitRef === currentBranch;
+
+        if (isReturningToCurrentBranch) {
           logger.info(
             `Switching Postgres to development branch for app ${appId}`,
           );
