@@ -11,6 +11,7 @@ import {
   PlusCircle,
   FolderOpen,
   X,
+  Trash2,
 } from "lucide-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -19,6 +20,8 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -34,12 +37,14 @@ const PREF_LAST_SELECTION = "sidebar.lastSelection";
 interface AppChatsProps {
   appId: number;
   onChatClick: (appId: number, chatId: number) => void;
+  onDeleteChat: (chatId: number, chatTitle: string) => void;
   selectedChatId: number | null;
 }
 
 const AppChats = memo(function AppChats({
   appId,
   onChatClick,
+  onDeleteChat,
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
@@ -97,36 +102,51 @@ const AppChats = memo(function AppChats({
             const unread = isChatUnread(chat.id);
             const streaming = isStreamingById.get(chat.id) ?? false;
             return (
-              <button
-                type="button"
+              <div
                 key={chat.id}
-                className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors cursor-pointer text-left w-full ${
-                  selectedChatId === chat.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-foreground/80 hover:bg-sidebar-accent/60"
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleChatClickAndMarkRead(appId, chat.id);
-                }}
+                className="group/chat-row flex items-center"
               >
-                <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                  {streaming ? (
-                    <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-                  ) : unread ? (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                  ) : null}
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
-                    <span className="text-[10px] text-muted-foreground/60 mt-0.5">
-                      {formatDistanceToNow(new Date(chat.createdAt), {
-                        addSuffix: false,
-                        locale: es,
-                      })}
-                    </span>
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors cursor-pointer text-left flex-1 min-w-0 ${
+                    selectedChatId === chat.id
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-foreground/80 hover:bg-sidebar-accent/60"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleChatClickAndMarkRead(appId, chat.id);
+                  }}
+                >
+                  <div className="flex items-center min-w-0 flex-1 gap-1.5">
+                    {streaming ? (
+                      <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+                    ) : unread ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
+                    ) : null}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
+                      <span className="text-[10px] text-muted-foreground/60 mt-0.5">
+                        {formatDistanceToNow(new Date(chat.createdAt), {
+                          addSuffix: false,
+                          locale: es,
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  className="opacity-0 group-hover/chat-row:opacity-100 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/60 hover:text-red-500 transition-all shrink-0 cursor-pointer"
+                  title="Eliminar chat"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteChat(chat.id, chat.title || "Nuevo chat");
+                  }}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             );
           })}
           {chats.length > 5 && (
@@ -152,6 +172,7 @@ interface WorkspaceAppItemProps {
   isExpanded: boolean;
   onToggle: (appId: number) => void;
   onChatClick: (appId: number, chatId: number) => void;
+  onDeleteChat: (chatId: number, chatTitle: string) => void;
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
   selectedChatId: number | null;
@@ -163,6 +184,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   isExpanded,
   onToggle,
   onChatClick,
+  onDeleteChat,
   onNewChat,
   onCloseApp,
   selectedChatId,
@@ -224,6 +246,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
         <AppChats
           appId={app.id}
           onChatClick={onChatClick}
+          onDeleteChat={onDeleteChat}
           selectedChatId={selectedChatId}
         />
       )}
@@ -237,6 +260,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId] = useAtom(selectedChatIdAtom);
+  const queryClient = useQueryClient();
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const loadedRef = useRef(false);
@@ -249,6 +273,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [closeAppName, setCloseAppName] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
+
+  // Delete chat dialog state
+  const [isDeleteChatDialogOpen, setIsDeleteChatDialogOpen] = useState(false);
+  const [deleteChatId, setDeleteChatId] = useState<number | null>(null);
+  const [deleteChatTitle, setDeleteChatTitle] = useState("");
 
   // Load expanded apps from DB on mount
   useEffect(() => {
@@ -400,6 +429,34 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     setIsCloseDialogOpen(true);
   }, []);
 
+  const handleDeleteChatClick = useCallback((chatId: number, chatTitle: string) => {
+    setDeleteChatId(chatId);
+    setDeleteChatTitle(chatTitle);
+    setIsDeleteChatDialogOpen(true);
+  }, []);
+
+  const handleConfirmDeleteChat = useCallback(async () => {
+    if (deleteChatId === null) return;
+    try {
+      await ipc.chat.deleteChat(deleteChatId);
+      // Invalidate all chat list queries so AppChats re-fetches immediately
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      showSuccess("Chat eliminado correctamente");
+
+      // If the deleted chat was selected, navigate away
+      if (selectedChatId === deleteChatId) {
+        // Navigate to workspace without chatId — will show empty state
+        navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
+      }
+    } catch (error) {
+      showError(`Error al eliminar el chat: ${(error as any).toString()}`);
+    } finally {
+      setIsDeleteChatDialogOpen(false);
+      setDeleteChatId(null);
+      setDeleteChatTitle("");
+    }
+  }, [deleteChatId, selectedChatId, selectedAppId, navigate]);
+
   const handleConfirmClose = useCallback(async () => {
     if (closeAppId === null) return;
     try {
@@ -550,6 +607,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     isExpanded={expandedApps.has(app.id)}
                     onToggle={handleToggleApp}
                     onChatClick={handleChatClick}
+                    onDeleteChat={handleDeleteChatClick}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
                     selectedChatId={selectedChatId}
@@ -625,7 +683,43 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         </div>,
         document.body
       )}
+      {/* Delete Chat Confirmation Dialog — portal to escape sidebar overflow */}
+      {isDeleteChatDialogOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setIsDeleteChatDialogOpen(false)}
+        >
+          <div className="fixed inset-0 bg-black/50" />
+          <div
+            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold mb-1">¿Eliminar chat?</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Se eliminará "{deleteChatTitle}" de forma permanente. Esta acción no se puede deshacer.
+              <br /><br />
+              <strong>Nota:</strong> Los cambios de código ya aceptados se mantendrán.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-sidebar-accent transition-colors"
+                onClick={() => setIsDeleteChatDialogOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                onClick={handleConfirmDeleteChat}
+              >
+                Eliminar chat
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
-

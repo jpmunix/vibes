@@ -1,6 +1,6 @@
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { desc, eq, and, gt, gte } from "drizzle-orm";
+import { desc, eq, and, gt, gte, lt, inArray } from "drizzle-orm";
 import type { GitCommit } from "../git_types";
 import fs from "node:fs";
 import path from "node:path";
@@ -172,15 +172,17 @@ export function registerVersionHandlers() {
       }
 
       const appPath = getVibesAppPath(app.path);
+      const branchRef = (await gitCurrentBranch({ path: appPath })) || app.githubBranch || "main";
+
       // Get the current commit hash before reverting
       const currentCommitHash = await getCurrentCommitHash({
         path: appPath,
-        ref: "main",
+        ref: branchRef,
       });
 
       await gitCheckout({
         path: appPath,
-        ref: "main",
+        ref: branchRef,
       });
 
       if (app.neonProjectId && app.neonDevelopmentBranchId) {
@@ -261,19 +263,41 @@ export function registerVersionHandlers() {
             undoneAssistantSummary = cleaned;
           }
 
+          // Get the last valid message before the deleted ones
+          const lastValidMessage = await db.query.messages.findFirst({
+            where: and(
+              eq(remoteSchema.messages.chatId, chatId),
+              lt(remoteSchema.messages.id, messageId),
+              eq(remoteSchema.messages.userId, userId),
+              inArray(remoteSchema.messages.role, ["user", "assistant"])
+            ),
+            orderBy: desc(remoteSchema.messages.id),
+          });
+
+          let lastValidSummary = "";
+          if (lastValidMessage?.content) {
+            let cleaned = lastValidMessage.content
+              .replace(/<think>[\s\S]*?<\/think>/g, "")
+              .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
+              .trim();
+            if (cleaned.length > 300) cleaned = cleaned.substring(0, 300) + "...";
+            lastValidSummary = `El chat continuará desde este último estado válido: [Rol previo: ${lastValidMessage.role}] "${cleaned}"`;
+          }
+
           const contextNote = [
-            `[CONTEXTO: El usuario deshizo su último mensaje y los cambios de código fueron revertidos]`,
-            undoneUserPrompt ? `Petición deshecha: "${undoneUserPrompt.substring(0, 300)}${undoneUserPrompt.length > 300 ? "..." : ""}"` : "",
-            undoneAssistantSummary ? `Resumen de lo que hizo la IA: ${undoneAssistantSummary}` : "",
-            `Los archivos fueron revertidos al estado anterior. Ten en cuenta este contexto al responder la siguiente petición del usuario.`,
-          ].filter(Boolean).join("\n");
+            `[CONTEXTO DEL SISTEMA INVISIBLE AL USUARIO: El usuario deshizo su último mensaje y los cambios de código fueron revertidos]`,
+            lastValidSummary,
+            undoneUserPrompt ? `Petición que fue deshecha (ignorala o tenla de advertencia): "${undoneUserPrompt.substring(0, 300)}${undoneUserPrompt.length > 300 ? "..." : ""}"` : "",
+            undoneAssistantSummary ? `Resumen de lo que habías respondido tú (ignoralo o úsalo para no repetir errores): ${undoneAssistantSummary}` : "",
+            `Los archivos fueron revertidos al estado previo. Ten en cuenta este contexto al generar tu siguiente respuesta.`,
+          ].filter(Boolean).join("\n\n");
 
           await db
             .insert(remoteSchema.messages)
             .values({
               userId,
               chatId,
-              role: "user",
+              role: "system",
               content: contextNote,
               createdAt: new Date(),
             });

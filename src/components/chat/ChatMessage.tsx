@@ -148,6 +148,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
+  const isSystem = message.role === "system";
+
+  // System messages are completely hidden from the user interface
+  // They only exist in the DB to provide context to the LLM
+  if (isSystem) return null;
 
   // Detect persisted errors (content starts with $$VIBES_ERROR$$)
   const persistedError = isAssistant && message.content?.startsWith(PERSISTED_ERROR_PREFIX)
@@ -343,7 +348,8 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     <div className="flex justify-center">
       <div className="mt-4 mb-4 w-full max-w-4xl mx-auto group">
         <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-          {/* Avatar */}
+          {/* Avatar (hidden for system messages) */}
+          {!isSystem && (
           <div className="flex-shrink-0 mt-1">
             {isUser ? (
               <SimpleAvatar
@@ -363,12 +369,15 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
               />
             )}
           </div>
+          )}
 
           {/* Message bubble */}
-          <div className={isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
+          <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             <div
               onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
-              className={`rounded-lg ${isAssistant
+              className={`rounded-lg ${isSystem
+                ? "px-4 py-2 bg-muted/30 border border-muted/50 text-xs text-muted-foreground w-fit max-w-[80%]"
+                : isAssistant
                 ? isErrorMessage
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
                   : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
@@ -377,14 +386,23 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
                 }`}
             >
+              {/* === System messages === */}
+              {isSystem && !isSelectingModel && (
+                <div
+                  className="prose prose-xs dark:prose-invert prose-p:my-1 prose-pre:my-0 max-w-none break-words text-center"
+                  suppressHydrationWarning
+                >
+                  <VibesMarkdownParser content={message.content} />
+                </div>
+              )}
               {/* === Assistant messages === */}
               {isAssistant && !isSelectingModel && (
                 <>
                   {isErrorMessage ? (
                     /* Error state: show translated error inline */
                     <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                      <AlertTriangle size={16} className="flex-shrink-0" />
-                      <span className="text-sm font-medium">{translateError(effectiveError!)}</span>
+                       <AlertTriangle size={16} className="flex-shrink-0" />
+                       <span className="text-sm font-medium">{translateError(effectiveError!)}</span>
                     </div>
                   ) : (
                     <>
@@ -392,17 +410,17 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
                         suppressHydrationWarning
                       >
-                        <VibesMarkdownParser content={message.content} />
+                         <VibesMarkdownParser content={message.content} />
                       </div>
                       {/* Streaming loader: visible while streaming, hidden on error */}
                       {isLastMessage && isStreaming && (
-                        <StreamingLoadingAnimation
-                          variant="initial"
-                          label={streamingInfo.label}
-                          dotColorClass={streamingInfo.dotColorClass}
-                          labelColorClass={streamingInfo.labelColorClass}
-                          contentExcerpt={streamingInfo.contentExcerpt}
-                        />
+                         <StreamingLoadingAnimation
+                            variant="initial"
+                            label={streamingInfo.label}
+                            dotColorClass={streamingInfo.dotColorClass}
+                            labelColorClass={streamingInfo.labelColorClass}
+                            contentExcerpt={streamingInfo.contentExcerpt}
+                         />
                       )}
                     </>
                   )}
@@ -478,6 +496,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   )}
 
                 </div>
+
               )}
             </div>
           </div>
