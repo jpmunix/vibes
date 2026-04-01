@@ -834,6 +834,25 @@ export async function gitClone({
   }
 }
 
+/**
+ * Check if the git repo has an 'origin' remote configured.
+ * Works for repos configured externally (e.g., via PHPStorm, CLI).
+ */
+export async function gitHasRemote({ path }: GitBaseParams): Promise<boolean> {
+  const settings = readSettings();
+  try {
+    if (settings.enableNativeGit) {
+      const result = await execGit(["remote", "get-url", "origin"], path);
+      return result.exitCode === 0 && !!result.stdout.trim();
+    } else {
+      const url = await git.getConfig({ fs, dir: path, path: "remote.origin.url" });
+      return !!url;
+    }
+  } catch {
+    return false;
+  }
+}
+
 export async function gitSetRemoteUrl({
   path,
   remoteUrl,

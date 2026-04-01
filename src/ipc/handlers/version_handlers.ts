@@ -221,6 +221,10 @@ export function registerVersionHandlers() {
           orderBy: desc(remoteSchema.messages.id),
         });
 
+        // Capture content of undone messages for context injection
+        const undoneUserMsg = messagesToDelete.find(m => m.role === "user");
+        const undoneAssistantMsg = messagesToDelete.find(m => m.role === "assistant");
+
         logger.log(
           `Deleting ${messagesToDelete.length} messages (id >= ${messageId}) from chat ${chatId}`,
         );
@@ -232,6 +236,49 @@ export function registerVersionHandlers() {
               and(eq(remoteSchema.messages.chatId, chatId), gte(remoteSchema.messages.id, messageId), eq(remoteSchema.messages.userId, userId)),
             );
         }
+
+        // Inject a context note so the agent retains awareness of what was undone
+        if (undoneUserMsg || undoneAssistantMsg) {
+          // Build a concise summary of what was tried
+          let undoneUserPrompt = undoneUserMsg?.content || "";
+          // Clean up attachment/component markers from the prompt
+          for (const marker of ["\n\nAttachments:\n", "\n\nSelected components:\n", "\n\nFile to upload to codebase:"]) {
+            const idx = undoneUserPrompt.indexOf(marker);
+            if (idx !== -1) undoneUserPrompt = undoneUserPrompt.substring(0, idx);
+          }
+          // Truncate assistant response to keep context compact
+          let undoneAssistantSummary = "";
+          if (undoneAssistantMsg?.content) {
+            // Strip thinking blocks and XML tags for a cleaner summary
+            let cleaned = undoneAssistantMsg.content
+              .replace(/<think>[\s\S]*?<\/think>/g, "")
+              .replace(/<vibes-[^>]*>[\s\S]*?<\/vibes-[^>]*>/g, "")
+              .replace(/<set_chat_summary[^>]*>[\s\S]*?<\/set_chat_summary>/g, "")
+              .replace(/<vibes-token-usage[^>]*>[\s\S]*?<\/vibes-token-usage>/g, "")
+              .replace(/<vibes-typecheck-summary[^>]*>[\s\S]*?<\/vibes-typecheck-summary>/g, "")
+              .trim();
+            if (cleaned.length > 500) cleaned = cleaned.substring(0, 500) + "...";
+            undoneAssistantSummary = cleaned;
+          }
+
+          const contextNote = [
+            `[CONTEXTO: El usuario deshizo su último mensaje y los cambios de código fueron revertidos]`,
+            undoneUserPrompt ? `Petición deshecha: "${undoneUserPrompt.substring(0, 300)}${undoneUserPrompt.length > 300 ? "..." : ""}"` : "",
+            undoneAssistantSummary ? `Resumen de lo que hizo la IA: ${undoneAssistantSummary}` : "",
+            `Los archivos fueron revertidos al estado anterior. Ten en cuenta este contexto al responder la siguiente petición del usuario.`,
+          ].filter(Boolean).join("\n");
+
+          await db
+            .insert(remoteSchema.messages)
+            .values({
+              userId,
+              chatId,
+              role: "user",
+              content: contextNote,
+              createdAt: new Date(),
+            });
+        }
+
         // Destroy OpenCode session — jumping to arbitrary version, too complex to partial-revert
         destroyOpenCodeSession(chatId);
       } else {

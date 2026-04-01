@@ -29,6 +29,7 @@ import {
   gitDiffRange,
   getGitAheadCount,
   withGitAuthor,
+  gitHasRemote,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -1141,6 +1142,7 @@ async function handleGetGitState(
   mergeInProgress: boolean;
   rebaseInProgress: boolean;
   ahead?: number;
+  hasRemote?: boolean;
 }> {
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
@@ -1163,7 +1165,15 @@ async function handleGetGitState(
     ahead = undefined;
   }
 
-  return { mergeInProgress, rebaseInProgress, ahead };
+  // Check if git repo actually has a remote configured (even if Vibes DB doesn't know about it)
+  let hasRemote: boolean | undefined = undefined;
+  try {
+    hasRemote = await gitHasRemote({ path: appPath });
+  } catch {
+    // best-effort
+  }
+
+  return { mergeInProgress, rebaseInProgress, ahead, hasRemote };
 }
 
 async function handleListCollaborators(

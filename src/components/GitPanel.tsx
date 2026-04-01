@@ -286,7 +286,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const { app, refreshApp } = useLoadApp(appId);
     const { settings } = useSettings();
     const hasGithubToken = !!settings?.githubAccessToken;
-    const hasRemote = !!(app?.githubOrg && app?.githubRepo);
+    const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
     const {
         uncommittedFiles,
