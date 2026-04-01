@@ -259,7 +259,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
-  const [selectedChatId] = useAtom(selectedChatIdAtom);
+  const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const queryClient = useQueryClient();
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
@@ -362,6 +362,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     async (appId: number) => {
       try {
         const chatId = await ipc.chat.createChat(appId);
+        // Invalidate chat list so sidebar updates immediately
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
         navigate({
           to: "/workspace",
           search: { appId, chatId },
@@ -370,7 +372,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         showError(`Error al crear chat: ${(error as any).toString()}`);
       }
     },
-    [navigate],
+    [navigate, queryClient],
   );
 
   const handleOpenFolder = useCallback(async () => {
@@ -443,8 +445,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       showSuccess("Chat eliminado correctamente");
 
-      // If the deleted chat was selected, navigate away
+      // If the deleted chat was selected, clear atom and navigate away
       if (selectedChatId === deleteChatId) {
+        setSelectedChatId(null);
         // Navigate to workspace without chatId — will show empty state
         navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
       }
