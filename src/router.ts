@@ -14,7 +14,6 @@ import { themesRoute } from "./routes/themes";
 import { todosRoute } from "./routes/todos";
 import { todoDetailRoute } from "./routes/todos_.$appId";
 import { todosIndexRoute } from "./routes/todos_.index";
-import { debatesRoute } from "./routes/debates";
 import { workspaceRoute } from "./routes/workspace";
 
 import { settingsIndexRoute } from "./routes/settings/index";
@@ -30,7 +29,6 @@ const routeTree = rootRoute.addChildren([
   notesRoute.addChildren([notesIndexRoute, noteDetailRoute]),
   todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
-  debatesRoute,
   workspaceRoute,
   settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, aiQueryLogsRoute]),
 ]);

@@ -63,6 +63,8 @@ const HIDDEN_PROMPTS = new Set<PromptId>([
   "agent_mode_system",
   "turbo_edit_system",
   "dossier_prompt",
+  "debate_chat_system",
+  "debate_summary_system",
 ]);
 
 export function PromptsSettings() {

@@ -51,7 +51,6 @@ import { LibraryList } from "./LibraryList";
 import { NotesList } from "./NotesList";
 import { SettingsList } from "./SettingsList";
 import { TodosList } from "./TodosList";
-import { DebatesList } from "./DebatesList";
 import { WorkspaceList } from "./WorkspaceList";
 
 // Menu items.
@@ -75,11 +74,6 @@ const items = [
     title: "Tareas",
     to: "/todos",
     icon: CheckSquare,
-  },
-  {
-    title: "Debates",
-    to: "/debates",
-    icon: MessageCircle,
   },
   {
     title: "Ajustes",
@@ -155,8 +149,6 @@ export function AppSidebar() {
       setActiveTab("Ajustes");
     } else if (isLibraryRoute) {
       setActiveTab("Biblioteca");
-    } else if (routerState.location.pathname.startsWith("/debates")) {
-      setActiveTab("Debates");
     } else if (routerState.location.pathname.startsWith("/workspace")) {
       setActiveTab("Workspace");
     }
@@ -393,7 +385,6 @@ export function AppSidebar() {
             <TodosList show={selectedItem === "Tareas"} />
             <SettingsList show={selectedItem === "Ajustes"} />
             <LibraryList show={selectedItem === "Biblioteca"} />
-            <DebatesList show={selectedItem === "Debates"} />
           </div>
         </div>
       </SidebarContent>
@@ -458,8 +449,6 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                         onTabChange("Ajustes");
                       } else if (item.title === "Biblioteca") {
                         onTabChange("Biblioteca");
-                      } else if (item.title === "Debates") {
-                        onTabChange("Debates");
                       }
                     }}
                   >

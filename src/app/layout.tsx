@@ -22,7 +22,7 @@ import { chatInputValueAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 
 // Routes that can be restored on startup
-const RESTORABLE_ROUTES = ["/", "/workspace", "/notes", "/todos", "/debates"];
+const RESTORABLE_ROUTES = ["/", "/workspace", "/notes", "/todos"];
 const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
