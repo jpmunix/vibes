@@ -46,7 +46,19 @@ export function registerNodeHandlers() {
     );
   }
 
+  // Cache node version check to avoid duplicate shell calls (React double-mount)
+  let cachedNodeStatus: { nodeVersion: string | null; nodeDownloadUrl: string } | null = null;
+  let cachedAt = 0;
+  const CACHE_TTL_MS = 60_000; // 60s
+
   createTypedHandler(systemContracts.getNodejsStatus, async () => {
+    // Return cached result if fresh
+    const now = Date.now();
+    if (cachedNodeStatus && (now - cachedAt) < CACHE_TTL_MS) {
+      logger.debug("nodejs-status: returning cached result");
+      return cachedNodeStatus;
+    }
+
     logger.log(
       "handling ipc: nodejs-status for platform:",
       platform(),
@@ -71,7 +83,9 @@ export function registerNodeHandlers() {
 
     // Run check for node version
     const nodeVersion = await runShellCommand("node --version");
-    return { nodeVersion, nodeDownloadUrl };
+    cachedNodeStatus = { nodeVersion, nodeDownloadUrl };
+    cachedAt = now;
+    return cachedNodeStatus;
   });
 
   createTypedHandler(systemContracts.reloadEnvPath, async () => {

@@ -151,17 +151,9 @@ export async function onReady() {
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Initialize database + check/update OpenCode in PARALLEL
+  // Step 1: Initialize database
   updateSplash(splash, 1, TOTAL_STEPS, "Inicializando...");
-  const [, openCodeResult] = await Promise.all([
-    Promise.resolve(initializeDatabase()), // sync but wrapped for Promise.all
-    ensureOpenCodeInstalled(),
-  ]);
-  if (!openCodeResult.ok) {
-    logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
-  } else if (openCodeResult.updated) {
-    logger.info(`OpenCode updated to v${openCodeResult.version}`);
-  }
+  initializeDatabase(); // sync, fast (~50ms)
 
   // Step 2: Create main window (the critical path)
   updateSplash(splash, 2, TOTAL_STEPS, "Preparando interfaz...");
@@ -182,6 +174,14 @@ export async function onReady() {
 
   // Non-blocking background tasks (don't need splash progress)
   setImmediate(async () => {
+    // Check/install OpenCode binary in background (was blocking splash for ~2.2s)
+    const openCodeResult = await ensureOpenCodeInstalled();
+    if (!openCodeResult.ok) {
+      logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
+    } else if (openCodeResult.updated) {
+      logger.info(`OpenCode updated to v${openCodeResult.version}`);
+    }
+
     // Cleanup old data in background (non-critical, doesn't block startup)
     await cleanupOldAiMessagesJson();
 

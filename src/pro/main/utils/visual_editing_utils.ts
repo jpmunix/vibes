@@ -1,19 +1,41 @@
-import { parse } from "@babel/parser";
-import * as recast from "recast";
 import log from "electron-log";
-
-// @babel/traverse needs special handling in CommonJS/Electron environment
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const traverse = require("@babel/traverse").default || require("@babel/traverse");
 
 const logger = log.scope("visual_editing_utils");
 
-// Log the location of the loaded babel parser to help diagnose path resolution issues
-try {
-  const parserPath = require.resolve("@babel/parser");
-  logger.info(`@babel/parser loaded from: ${parserPath}`);
-} catch (e) {
-  logger.warn("Could not resolve @babel/parser path");
+// Lazy-loaded AST dependencies — only imported when visual editing is actually used
+let _parse: typeof import("@babel/parser").parse | null = null;
+let _recast: typeof import("recast") | null = null;
+let _traverse: any = null;
+
+async function loadAstDeps() {
+  if (!_parse) {
+    const [babelParser, recast, traverseModule] = await Promise.all([
+      import("@babel/parser"),
+      import("recast"),
+      import("@babel/traverse"),
+    ]);
+    _parse = babelParser.parse;
+    _recast = recast;
+    _traverse = traverseModule.default || traverseModule;
+    logger.info("AST dependencies loaded (lazy)");
+  }
+  return { parse: _parse!, recast: _recast!, traverse: _traverse! };
+}
+
+// Synchronous versions for the exported functions (loaded on first call)
+let _syncLoaded = false;
+function ensureAstDepsSync() {
+  if (!_syncLoaded) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    _parse = require("@babel/parser").parse;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    _recast = require("recast");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const traverseModule = require("@babel/traverse");
+    _traverse = traverseModule.default || traverseModule;
+    _syncLoaded = true;
+  }
+  return { parse: _parse!, recast: _recast!, traverse: _traverse! };
 }
 
 interface ContentChange {
@@ -42,6 +64,7 @@ export function transformContent(
   changes: Map<number, ContentChange>,
 ): string {
   try {
+    const { parse, traverse, recast } = ensureAstDepsSync();
     // Parse with babel for compatibility with JSX/TypeScript
     const ast = parse(content, {
       sourceType: "module",
@@ -255,6 +278,7 @@ export function analyzeComponent(
   line: number,
 ): ComponentAnalysis {
   try {
+    const { parse, traverse } = ensureAstDepsSync();
     const ast = parse(content, {
       sourceType: "module",
       plugins: ["jsx", "typescript"],
@@ -441,6 +465,7 @@ export function replaceIconComponent(
   newIconName: string,
 ): string {
   try {
+    const { parse, traverse, recast } = ensureAstDepsSync();
     const ast = parse(content, {
       sourceType: "module",
       plugins: ["jsx", "typescript"],
