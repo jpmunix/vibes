@@ -45,8 +45,9 @@ const chatSessionMap = new Map<number, string>();
 
 /**
  * Revert the last message in the OpenCode session for a chat (undo/retry).
- * Uses session.revert() to tell OpenCode the last work was rolled back,
- * while preserving prior conversation context.
+ * Uses session.revert() first; if it fails, falls back to session.fork()
+ * which creates a new session branching from the target message — preserving
+ * all accumulated context instead of destroying the session.
  */
 export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
     const sessionId = chatSessionMap.get(chatId);
@@ -73,8 +74,38 @@ export async function revertLastOpenCodeMessage(chatId: number): Promise<void> {
             logger.warn(`[OpenCode] No assistant message found to revert in session ${sessionId}`);
         }
     } catch (error: any) {
-        logger.warn(`[OpenCode] session.revert failed for ${sessionId}: ${error.message} — dropping session`);
+        logger.warn(`[OpenCode] session.revert failed for ${sessionId}: ${error.message} — attempting fork fallback`);
+
+        // Fallback: fork the session at the last user message to preserve context
+        try {
+            const msgsResult = await clientInstance.session.messages({
+                path: { id: sessionId },
+                query: { limit: 6 },
+            });
+            const messages = msgsResult.data || [];
+            // Find the last user message (the point we want to branch from)
+            const lastUser = [...messages].reverse().find(
+                (m: any) => m.info?.role === "user"
+            );
+            if (lastUser?.info?.id) {
+                const forked = await clientInstance.session.fork({
+                    path: { id: sessionId },
+                    body: { messageID: lastUser.info.id },
+                } as any);
+                const newSessionId = forked.data?.id;
+                if (newSessionId) {
+                    chatSessionMap.set(chatId, newSessionId);
+                    logger.info(`[OpenCode] Forked session ${sessionId} → ${newSessionId} at message ${lastUser.info.id} (context preserved)`);
+                    return;
+                }
+            }
+        } catch (forkError: any) {
+            logger.warn(`[OpenCode] session.fork fallback also failed: ${forkError.message}`);
+        }
+
+        // Last resort: destroy session
         chatSessionMap.delete(chatId);
+        logger.warn(`[OpenCode] Dropped session ${sessionId} for chat ${chatId} (both revert and fork failed)`);
     }
 }
 
@@ -519,29 +550,33 @@ export async function handleOpenCodeStream(
                 }
             }
 
-            // Inject context instructions as noReply on first interaction
-            if (options.contextInstructions && options.contextInstructions.length > 0) {
-                const contextText = options.contextInstructions.join("\n\n---\n\n");
-                logger.info(`[OpenCode] Injecting ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
-                try {
-                    await client.session.prompt({
-                        path: { id: sessionId },
-                        query: { directory: projectDir },
-                        body: {
-                            noReply: true,
-                            parts: [{ type: "text", text: contextText }],
-                        },
-                    });
-                    logger.info(`[OpenCode] Context instructions injected successfully`);
-                } catch (ctxError: any) {
-                    logger.warn(`[OpenCode] Failed to inject context: ${ctxError.message}`);
-                    // Non-fatal — continue without context
-                }
-            }
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
             logger.error(errorMsg);
             return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
+        }
+    }
+
+    // Inject context instructions via agent.build.prompt (survives compaction)
+    // This replaces the old noReply hack which created a ghost message that got
+    // lost during context compaction. config.update() persists for the session.
+    if (options.contextInstructions && options.contextInstructions.length > 0) {
+        const contextText = options.contextInstructions.join("\n\n---\n\n");
+        logger.info(`[OpenCode] Setting agent.build.prompt with ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
+        try {
+            await client.config.update({
+                body: {
+                    agent: {
+                        build: {
+                            prompt: contextText,
+                        },
+                    },
+                } as any,
+            });
+            logger.info(`[OpenCode] Context instructions set via config.update`);
+        } catch (ctxError: any) {
+            logger.warn(`[OpenCode] Failed to set context via config.update: ${ctxError.message}`);
+            // Non-fatal — continue without context
         }
     }
 
