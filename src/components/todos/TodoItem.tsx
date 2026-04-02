@@ -5,7 +5,7 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bot } from "lucide-react";
+import { Bot, Paperclip } from "lucide-react";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
@@ -167,6 +167,13 @@ export function SortableTodoItem({
         )}
       </div>
 
+      {todo.attachments && todo.attachments.length > 0 && (
+        <div className="absolute bottom-3 right-8 opacity-50 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+          <Paperclip size={12} className="text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground font-medium">{todo.attachments.length}</span>
+        </div>
+      )}
+
       {todo.developmentSummary && (
         <div className="absolute bottom-3 right-3 opacity-40 group-hover:opacity-100 transition-opacity">
           <Bot size={14} className="text-primary" />
@@ -290,6 +297,13 @@ export function TodoItem({
           </div>
         )}
       </div>
+
+      {todo.attachments && todo.attachments.length > 0 && (
+        <div className="absolute bottom-3 right-8 opacity-50 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+          <Paperclip size={12} className="text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground font-medium">{todo.attachments.length}</span>
+        </div>
+      )}
 
       {todo.developmentSummary && (
         <div className="absolute bottom-3 right-3 opacity-40 group-hover:opacity-100 transition-opacity">

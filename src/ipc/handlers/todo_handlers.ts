@@ -7,7 +7,7 @@ import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { getVibesAppPath } from "../../paths/paths";
-import { todoContracts } from "../types/todo";
+import { todoContracts, todoAttachmentContracts } from "../types/todo";
 import { getCurrentCommitHash } from "../utils/git_utils";
 import { createTypedHandler } from "./base";
 import { openRouterCompletion } from "../utils/openrouter";
@@ -20,6 +20,7 @@ function mapTodo(todo: any) {
     ...todo,
     completed: !!todo.completed,
     checklist: Array.isArray(todo.checklist) ? todo.checklist : (typeof todo.checklist === "string" ? JSON.parse(todo.checklist) : []),
+    attachments: Array.isArray(todo.attachments) ? todo.attachments : (typeof todo.attachments === "string" ? JSON.parse(todo.attachments) : []),
   };
 }
 
@@ -566,6 +567,111 @@ export function registerTodoHandlers() {
     } catch (error) {
       logger.error("Error generating todo summary:", error);
       throw new Error("Error al generar el resumen de desarrollo");
+    }
+  });
+
+  // ─── Attachment Upload/Remove Handlers ───
+
+  createTypedHandler(todoAttachmentContracts.uploadFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const { todoId, fileName, data, contentType } = params;
+
+    // Verify todo belongs to user
+    const todo = await db.query.todos.findFirst({
+      where: and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId!)),
+    });
+    if (!todo) throw new Error("Todo not found");
+
+    // Build safe file name
+    const ext = fileName.includes(".") ? "." + fileName.split(".").pop() : "";
+    const baseName = fileName.replace(ext, "");
+    const safeName = baseName.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const uniqueFileName = `${safeName}-${Date.now()}${ext}`;
+    const uploadPath = `user_files/${context.userId}/${uniqueFileName}`;
+    const uploadUrl = `https://storage.bunnycdn.com/minube-vibes/${uploadPath}`;
+
+    // Upload to Bunny Storage
+    const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
+
+    let body: Buffer | string = data;
+    if (typeof data === "string" && data.includes(";base64,")) {
+      body = Buffer.from(data.split(";base64,")[1], "base64");
+    } else if (typeof data === "string") {
+      if (data.length > 0 && /^[A-Za-z0-9+/=]+$/.test(data)) {
+        try { body = Buffer.from(data, "base64"); } catch { body = data; }
+      }
+    }
+
+    const fetchBody: BodyInit = typeof body === "string" ? body : new Uint8Array(body as Buffer);
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "AccessKey": BUNNY_STORAGE_API_KEY,
+        "Content-Type": contentType || "application/octet-stream",
+      },
+      body: fetchBody,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`Bunny Storage upload failed: ${response.status}`, errorText);
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    const cdnUrl = `https://minube-vibes.b-cdn.net/${uploadPath}`;
+    logger.info(`Uploaded todo attachment. CDN URL: ${cdnUrl}`);
+
+    // Update attachments in DB
+    const existing: string[] = Array.isArray(todo.attachments)
+      ? todo.attachments as string[]
+      : typeof todo.attachments === "string"
+        ? JSON.parse(todo.attachments as string)
+        : [];
+    const newAttachments = [...existing, cdnUrl];
+
+    await db
+      .update(remoteSchema.todos)
+      .set({ attachments: JSON.stringify(newAttachments), updatedAt: new Date() })
+      .where(and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId!)));
+
+    return { url: cdnUrl };
+  });
+
+  createTypedHandler(todoAttachmentContracts.removeAttachment, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const { todoId, url } = params;
+
+    const todo = await db.query.todos.findFirst({
+      where: and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId!)),
+    });
+    if (!todo) throw new Error("Todo not found");
+
+    const existing: string[] = Array.isArray(todo.attachments)
+      ? todo.attachments as string[]
+      : typeof todo.attachments === "string"
+        ? JSON.parse(todo.attachments as string)
+        : [];
+    const newAttachments = existing.filter((u) => u !== url);
+
+    await db
+      .update(remoteSchema.todos)
+      .set({ attachments: JSON.stringify(newAttachments), updatedAt: new Date() })
+      .where(and(eq(remoteSchema.todos.id, todoId), eq(remoteSchema.todos.userId, context.userId!)));
+
+    // Try to delete from Bunny Storage (best effort)
+    try {
+      const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
+      const storagePath = url.replace("https://minube-vibes.b-cdn.net/", "");
+      const deleteUrl = `https://storage.bunnycdn.com/minube-vibes/${storagePath}`;
+      await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: { "AccessKey": BUNNY_STORAGE_API_KEY },
+      });
+      logger.info(`Deleted attachment from Bunny Storage: ${storagePath}`);
+    } catch (err) {
+      logger.warn("Failed to delete attachment from storage (best effort):", err);
     }
   });
 

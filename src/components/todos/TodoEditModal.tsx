@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Todo } from "@/ipc/types";
+import { ipc } from "@/ipc/types";
 import { useEffect, useState, useRef } from "react";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,11 @@ import {
   ChevronDown,
   ChevronRight,
   GripVertical,
+  Paperclip,
+  Upload,
+  X,
+  Image as ImageIcon,
+  File as FileIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
@@ -83,6 +89,10 @@ export function TodoEditModal({
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [newSubtaskContent, setNewSubtaskContent] = useState("");
   const subtaskInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -106,6 +116,7 @@ export function TodoEditModal({
       setIsSummaryExpanded(savedSummary !== null ? JSON.parse(savedSummary) : false);
       setIsDevelopExpanded(savedDevelop !== null ? JSON.parse(savedDevelop) : false);
       setIsSubtasksExpanded(savedSubtasks !== null ? JSON.parse(savedSubtasks) : true);
+      setAttachments(todo.attachments || []);
     }
   }, [todo?.id]);
 
@@ -279,6 +290,7 @@ export function TodoEditModal({
   if (!todo) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[95vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
@@ -450,6 +462,121 @@ export function TodoEditModal({
               )}
             </div>
 
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Adjuntos</label>
+                <div className="relative">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt,.md,.zip,.rar"
+                    onChange={async (e) => {
+                      if (!todo || !e.target.files?.length) return;
+                      setIsUploading(true);
+                      try {
+                        for (const file of Array.from(e.target.files)) {
+                          const reader = new FileReader();
+                          const base64 = await new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve((reader.result as string).split(",")[1]);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                          });
+                          const result = await ipc.todoAttachment.uploadFile({
+                            todoId: todo.id,
+                            fileName: file.name,
+                            data: base64,
+                            contentType: file.type,
+                          });
+                          setAttachments((prev) => [...prev, result.url]);
+                        }
+                      } catch (err) {
+                        console.error("Failed to upload file:", err);
+                      } finally {
+                        setIsUploading(false);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }
+                    }}
+                    disabled={isUploading}
+                    title="Subir archivo"
+                  />
+                  <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                    Subir archivo
+                  </Button>
+                </div>
+              </div>
+
+              {attachments.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {attachments.map((url, i) => {
+                    const fileName = decodeURIComponent(url.split("/").pop() || `Archivo ${i + 1}`);
+                    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url);
+                    return (
+                      <div key={url} className="flex items-center gap-3 p-2 border rounded-lg group relative bg-muted/20 hover:bg-muted/40 transition-colors">
+                        {isImage ? (
+                          <div
+                            className="w-10 h-10 rounded-md overflow-hidden bg-muted/50 shrink-0 cursor-zoom-in"
+                            onClick={() => setPreviewUrl(url)}
+                          >
+                            <img src={url} alt={fileName} className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-md bg-muted/50 flex items-center justify-center shrink-0">
+                            <FileIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0 text-sm font-medium truncate text-left">
+                          {isImage ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewUrl(url)}
+                              className="hover:underline text-left w-full truncate"
+                              title={fileName}
+                            >
+                              {fileName}
+                            </button>
+                          ) : (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline truncate block"
+                              title={fileName}
+                            >
+                              {fileName}
+                            </a>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={async () => {
+                            if (!todo) return;
+                            try {
+                              await ipc.todoAttachment.removeAttachment({ todoId: todo.id, url });
+                              setAttachments((prev) => prev.filter((u) => u !== url));
+                            } catch (err) {
+                              console.error("Failed to remove attachment:", err);
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic border border-dashed rounded-lg p-4 text-center">
+                  Sin archivos adjuntos
+                </div>
+              )}
+            </div>
+
+
 
             <div className="space-y-4">
               <button
@@ -568,6 +695,23 @@ export function TodoEditModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Image preview — separate Dialog (portal) so it's truly fullscreen */}
+    <Dialog open={!!previewUrl} onOpenChange={(open) => !open && setPreviewUrl(null)}>
+      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 border-none bg-black/40 backdrop-blur-md shadow-none overflow-hidden flex items-center justify-center [&>button]:bg-black/40 [&>button]:text-white [&>button]:rounded-full [&>button]:w-8 [&>button]:h-8 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:hover:bg-black/60 [&>button]:transition-all [&>button]:border [&>button]:border-white/10 [&>button]:right-4 [&>button]:top-4 [&>button_svg]:h-4 [&>button_svg]:w-4">
+        <div className="relative group/preview w-full h-full flex items-center justify-center p-4">
+          <img
+            src={previewUrl || ""}
+            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300"
+            alt="Preview"
+          />
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover/preview:opacity-100 transition-opacity bg-black/60 text-white px-4 py-2 rounded-full text-xs font-medium border border-white/20">
+            {decodeURIComponent(previewUrl?.split("/").pop() || "")}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
 

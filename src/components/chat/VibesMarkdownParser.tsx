@@ -1654,30 +1654,30 @@ function renderModalContent(
       return (
         <div className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-blue-500/10 rounded-lg p-3">
-              <div className="text-xs text-blue-400 mb-1">Input</div>
-              <div className="text-lg font-bold text-blue-300">{inp.toLocaleString()}</div>
-              {hasPricing && <div className="text-xs text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
+            <div className="bg-blue-100 dark:bg-blue-500/10 rounded-lg p-3">
+              <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Input</div>
+              <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{inp.toLocaleString()}</div>
+              {hasPricing && <div className="text-xs text-blue-500/70 dark:text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
             </div>
-            <div className="bg-amber-500/10 rounded-lg p-3">
-              <div className="text-xs text-amber-400 mb-1">Output</div>
-              <div className="text-lg font-bold text-amber-300">{out.toLocaleString()}</div>
-              {hasPricing && <div className="text-xs text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
+            <div className="bg-amber-100 dark:bg-amber-500/10 rounded-lg p-3">
+              <div className="text-xs text-amber-600 dark:text-amber-400 mb-1">Output</div>
+              <div className="text-lg font-bold text-amber-700 dark:text-amber-300">{out.toLocaleString()}</div>
+              {hasPricing && <div className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
             </div>
           </div>
           {cached > 0 && (
-            <div className="bg-emerald-500/10 rounded-lg p-3">
-              <div className="text-xs text-emerald-400 mb-1">Cached Input</div>
+            <div className="bg-emerald-100 dark:bg-emerald-500/10 rounded-lg p-3">
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Cached Input</div>
               <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-emerald-300">{cached.toLocaleString()}</span>
-                <span className="text-xs text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
+                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{cached.toLocaleString()}</span>
+                <span className="text-xs text-emerald-500/70 dark:text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
               </div>
-              {hasPricing && <div className="text-xs text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
+              {hasPricing && <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
             <span>Total: <strong className="text-foreground">{total.toLocaleString()} tokens</strong></span>
-            {hasPricing && <span>Coste: <strong className="text-yellow-400">{fmtCost(costTotal)}</strong></span>}
+            {hasPricing && <span>Coste: <strong className="text-amber-600 dark:text-yellow-400">{fmtCost(costTotal)}</strong></span>}
           </div>
           {hasPricing && (
             <div className="text-xs text-muted-foreground/60 text-center mt-3">

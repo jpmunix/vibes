@@ -265,6 +265,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [searchQuery, setSearchQuery] = useState("");
   const loadedRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedExpandedRef = useRef<string | null>(null);
+  const lastSavedSelectionRef = useRef<string | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
 
   // Close app dialog state
@@ -286,6 +288,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
     ipc.misc.getPreference({ key: PREF_EXPANDED_APPS }).then((raw) => {
       if (raw) {
+        // Initialize the ref so the save effect knows the DB value
+        lastSavedExpandedRef.current = raw;
         try {
           const ids = JSON.parse(raw) as number[];
           setExpandedApps((prev) => {
@@ -297,16 +301,21 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     }).catch(() => { /* ignore */ });
   }, []);
 
-  // Debounced save of expandedApps to DB
+  // Debounced save of expandedApps to DB (only if actually changed)
   useEffect(() => {
     // Skip initial empty state before load
     if (!loadedRef.current) return;
 
+    const serialized = JSON.stringify([...expandedApps].sort());
+    // Skip write if the value hasn't changed
+    if (serialized === lastSavedExpandedRef.current) return;
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      lastSavedExpandedRef.current = serialized;
       ipc.misc.setPreference({
         key: PREF_EXPANDED_APPS,
-        value: JSON.stringify([...expandedApps]),
+        value: serialized,
       }).catch(() => { /* ignore */ });
     }, 500);
 
@@ -326,12 +335,15 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     }
   }, [selectedAppId]);
 
-  // Persist last selection to DB when navigating to a chat
+  // Persist last selection to DB when navigating to a chat (only if changed)
   useEffect(() => {
     if (selectedAppId != null && selectedChatId != null) {
+      const serialized = JSON.stringify({ appId: selectedAppId, chatId: selectedChatId });
+      if (serialized === lastSavedSelectionRef.current) return;
+      lastSavedSelectionRef.current = serialized;
       ipc.misc.setPreference({
         key: PREF_LAST_SELECTION,
-        value: JSON.stringify({ appId: selectedAppId, chatId: selectedChatId }),
+        value: serialized,
       }).catch(() => { /* ignore */ });
     }
   }, [selectedAppId, selectedChatId]);

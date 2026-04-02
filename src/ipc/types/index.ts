@@ -54,7 +54,7 @@ export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 export { freeAgentQuotaContracts } from "./free_agent_quota";
 export { noteContracts } from "./note";
-export { todoContracts } from "./todo";
+export { todoContracts, todoAttachmentContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
 
@@ -72,7 +72,7 @@ export { settingsClient } from "./settings";
 export { appClient } from "./app";
 export { chatClient, chatStreamClient } from "./chat";
 export { noteClient } from "./note";
-export { todoClient } from "./todo";
+export { todoClient, todoAttachmentClient } from "./todo";
 export { agentClient, agentEventClient } from "./agent";
 export { githubClient, gitClient, githubEventClient } from "./github";
 export { mcpClient, mcpEventClient } from "./mcp";
@@ -343,6 +343,8 @@ export type {
   DevelopTodoResponse,
   CreateTodoSectionParams,
   UpdateTodoSectionParams,
+  UploadTodoFileParams,
+  RemoveTodoAttachmentParams,
 } from "./todo";
 
 // Debate types
@@ -429,7 +431,7 @@ import { settingsClient } from "./settings";
 import { supabaseClient } from "./supabase";
 import { systemClient, systemEventClient } from "./system";
 import { templateClient } from "./templates";
-import { todoClient } from "./todo";
+import { todoClient, todoAttachmentClient } from "./todo";
 import { tokenStatsClient } from "./token_stats";
 import { upgradeClient } from "./upgrade";
 import { vercelClient } from "./vercel";
@@ -470,6 +472,7 @@ export const ipc = {
   chat: chatClient,
   note: noteClient,
   todo: todoClient,
+  todoAttachment: todoAttachmentClient,
   agent: agentClient,
   debate: debateClient,
 

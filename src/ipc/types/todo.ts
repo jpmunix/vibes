@@ -42,6 +42,7 @@ export const TodoSchema = z.object({
     )
     .optional()
     .nullable(),
+  attachments: z.array(z.string()).optional().nullable(),
   createdAt: z.union([z.date(), z.string()]),
   updatedAt: z.union([z.date(), z.string()]),
 });
@@ -339,6 +340,42 @@ export const todoContracts = {
     output: z.string(), // summary
   }),
 } as const;
+
+// =============================================================================
+// Upload/Remove Attachment Contracts
+// =============================================================================
+
+export const UploadTodoFileParamsSchema = z.object({
+  todoId: z.number(),
+  fileName: z.string(),
+  data: z.string(), // base64
+  contentType: z.string(),
+});
+
+export type UploadTodoFileParams = z.infer<typeof UploadTodoFileParamsSchema>;
+
+export const RemoveTodoAttachmentParamsSchema = z.object({
+  todoId: z.number(),
+  url: z.string(),
+});
+
+export type RemoveTodoAttachmentParams = z.infer<typeof RemoveTodoAttachmentParamsSchema>;
+
+export const todoAttachmentContracts = {
+  uploadFile: defineContract({
+    channel: "todo:upload-file",
+    input: UploadTodoFileParamsSchema,
+    output: z.object({ url: z.string() }),
+  }),
+
+  removeAttachment: defineContract({
+    channel: "todo:remove-attachment",
+    input: RemoveTodoAttachmentParamsSchema,
+    output: z.void(),
+  }),
+} as const;
+
+export const todoAttachmentClient = createClient(todoAttachmentContracts);
 
 // =============================================================================
 // Todo Client

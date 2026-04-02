@@ -451,6 +451,7 @@ export async function initializeRemoteSchema(): Promise<void> {
   // Retrocompatible migrations (ALTER TABLE fails if column already exists — expected)
   const migrations = [
     `ALTER TABLE chats ADD COLUMN last_read_at INTEGER`,
+    `ALTER TABLE todos ADD COLUMN attachments TEXT`,
   ];
   for (const migration of migrations) {
     try {

@@ -105,13 +105,13 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "vibes-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
     "vibes-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta del usuario", color: "text-violet-500" },
-    "vibes-run-command": { icon: Terminal, label: "Comando", pendingLabel: "Ejecutando", color: "text-lime-500" },
+    "vibes-run-command": { icon: Terminal, label: "Comando", pendingLabel: "Ejecutando", color: "text-emerald-600 dark:text-lime-500" },
     "vibes-start-process": { icon: Play, label: "Proceso", pendingLabel: "Iniciando proceso", color: "text-green-500" },
     "vibes-stop-process": { icon: Square, label: "Detenido", pendingLabel: "Deteniendo proceso", color: "text-red-500" },
     "vibes-list-processes": { icon: List, label: "Procesos", pendingLabel: "Listando procesos", color: "text-slate-500" },
     "vibes-wait-http": { icon: Wifi, label: "HTTP Check", pendingLabel: "Esperando HTTP", color: "text-cyan-500" },
     "vibes-typecheck-summary": { icon: FileSearch, label: "TSC", color: "text-emerald-500" },
-    "vibes-token-usage": { icon: Coins, label: "Tokens", color: "text-yellow-500" },
+    "vibes-token-usage": { icon: Coins, label: "Tokens", color: "text-amber-600 dark:text-yellow-500" },
 };
 
 /** Map text-* color to its bg-* equivalent (static strings so Tailwind JIT doesn't purge them) */
@@ -129,8 +129,8 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-emerald-500": "bg-emerald-500",
     "text-violet-500": "bg-violet-500",
     "text-teal-500": "bg-teal-500",
-    "text-lime-500": "bg-lime-500",
-    "text-yellow-500": "bg-yellow-500",
+    "text-emerald-600 dark:text-lime-500": "bg-lime-500",
+    "text-amber-600 dark:text-yellow-500": "bg-yellow-500",
 };
 
 export function getBgColorClass(textColorClass: string): string | undefined {

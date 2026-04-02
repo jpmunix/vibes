@@ -1,188 +1,72 @@
+/**
+ * Token Count Handlers — Lightweight stub
+ *
+ * In agent mode, OpenCode manages its own context window and token usage.
+ * This handler now returns only the values that the ContextLimitBanner
+ * and MessagesList need: actualMaxTokens (from the last assistant message)
+ * and contextWindow (from token_utils). No codebase extraction.
+ */
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
-import {
-  constructSystemPrompt,
-  readAiRules,
-} from "../../prompts/system_prompt";
-import { getThemePromptById } from "../utils/theme_utils";
-import {
-  getSupabaseAvailableSystemPrompt,
-  SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT,
-} from "../../prompts/supabase_prompt";
-import { getVibesAppPath } from "../../paths/paths";
 import log from "electron-log";
-import { extractCodebase } from "../../utils/codebase";
-import {
-  getSupabaseContext,
-  getSupabaseClientCode,
-} from "../../supabase_admin/supabase_context";
 
-import { TokenCountParams, TokenCountResult } from "@/ipc/types";
-import { estimateTokens, getContextWindow } from "../utils/token_utils";
 import { createTypedHandler } from "./base";
 import { chatContracts } from "../types/chat";
-import { validateChatContext } from "../utils/context_paths_utils";
-import { readSettings } from "@/main/settings";
-import { extractMentionedAppsCodebases } from "../utils/mention_apps";
-import { parseAppMentions } from "@/shared/parse_mention_apps";
-
-
+import { estimateTokens, getContextWindow } from "../utils/token_utils";
 
 const logger = log.scope("token_count_handlers");
 
-
 export function registerTokenCountHandlers() {
-  createTypedHandler(chatContracts.countTokens, async (event, req, context) => {
-      if (!context.userId) throw new Error("Unauthorized");
-      const db = getRemoteDb();
-      const chat = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, context.userId)),
-        with: {
-          messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-          },
-          app: true,
+  createTypedHandler(chatContracts.countTokens, async (_event, req, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const chat = await db.query.chats.findFirst({
+      where: and(
+        eq(remoteSchema.chats.id, req.chatId),
+        eq(remoteSchema.chats.userId, context.userId),
+      ),
+      with: {
+        messages: {
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
         },
-      });
+      },
+    });
 
-      if (!chat) {
-        throw new Error(`Chat not found: ${req.chatId}`);
-      }
+    if (!chat) {
+      throw new Error(`Chat not found: ${req.chatId}`);
+    }
 
-      // Prepare message history for token counting
-      const messageHistory = chat.messages
-        .map((message) => message.content)
-        .join("");
-      const messageHistoryTokens = estimateTokens(messageHistory);
+    // Lightweight token estimates — no codebase extraction
+    const messageHistory = chat.messages.map((m) => m.content).join("");
+    const messageHistoryTokens = estimateTokens(messageHistory);
+    const inputTokens = estimateTokens(req.input);
 
-      // Count input tokens
-      const inputTokens = estimateTokens(req.input);
+    // In agent mode, context is managed by OpenCode — return a flat estimate
+    const systemPromptTokens = 500; // rough estimate for the injected instructions
+    const codebaseTokens = 0; // agent mode: OpenCode handles file context
+    const mentionedAppsTokens = 0;
 
-      const settings = readSettings();
+    const totalTokens =
+      messageHistoryTokens + inputTokens + systemPromptTokens;
 
-      // Parse app mentions from the input
-      const mentionedAppNames = parseAppMentions(req.input);
+    // actualMaxTokens comes from the last assistant message (set by the model response)
+    const lastAssistantMessage = [...chat.messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    const actualMaxTokens = lastAssistantMessage?.maxTokensUsed ?? null;
 
-      // Count system prompt tokens
-      const themePrompt = await getThemePromptById(chat.app?.themeId ?? null);
-      const selectedMode = (req.chatMode || settings.selectedChatMode || "build") as any;
+    return {
+      estimatedTotalTokens: totalTokens,
+      actualMaxTokens,
+      messageHistoryTokens,
+      codebaseTokens,
+      mentionedAppsTokens,
+      inputTokens,
+      systemPromptTokens,
+      contextWindow: await getContextWindow(),
+    };
+  });
 
-      let systemPrompt = constructSystemPrompt({
-        aiRules: await readAiRules(getVibesAppPath(chat.app.path), chat.app.id, context.userId),
-        chatMode: selectedMode,
-        themePrompt,
-        chatLanguage: settings.chatLanguage || "es",
-        settings,
-      });
-      let supabaseContext = "";
-
-      if (chat.app?.supabaseProjectId) {
-        const supabaseClientCode = await getSupabaseClientCode({
-          projectId: chat.app.supabaseProjectId,
-          organizationSlug: chat.app.supabaseOrganizationSlug ?? null,
-        });
-        systemPrompt +=
-          "\n\n" + getSupabaseAvailableSystemPrompt(supabaseClientCode);
-        supabaseContext = await getSupabaseContext({
-          supabaseProjectId: chat.app.supabaseProjectId,
-          organizationSlug: chat.app.supabaseOrganizationSlug ?? null,
-        });
-      } else if (
-        // Neon projects don't need Supabase.
-        !chat.app?.neonProjectId
-      ) {
-        systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
-      }
-
-      const systemPromptTokens = estimateTokens(systemPrompt + supabaseContext);
-
-      // Extract codebase information if app is associated with the chat
-      let codebaseInfo = "";
-      let codebaseTokens = 0;
-
-      if (chat.app) {
-        const appPath = getVibesAppPath(chat.app.path);
-
-        if (selectedMode === "local-agent") {
-          // Agent mode starts with no file context (uses tools to explore)
-          codebaseTokens = 200;
-        } else {
-          // Standard extraction for build mode and others
-          const { formattedOutput, files } = await extractCodebase({
-            appPath,
-            chatContext: validateChatContext(chat.app.chatContext),
-          });
-          codebaseInfo = formattedOutput;
-          if (
-            settings.enableProSmartFilesContextMode
-          ) {
-            codebaseTokens = estimateTokens(
-              files
-                // It doesn't need to be the exact format but it's just to get a token estimate
-                .map(
-                  (file) =>
-                    `<vibes-file=${file.path}>${file.content}</vibes-file>`,
-                )
-                .join("\n\n"),
-            );
-          } else {
-            codebaseTokens = estimateTokens(codebaseInfo);
-          }
-        }
-
-        logger.log(
-          `Extracted codebase information estimate from ${appPath}, tokens: ${codebaseTokens}`,
-        );
-      }
-
-      // Extract codebases for mentioned apps
-      const mentionedAppsCodebases = await extractMentionedAppsCodebases(
-        mentionedAppNames,
-        chat.app?.id, // Exclude current app
-      );
-
-      // Calculate tokens for mentioned apps
-      let mentionedAppsTokens = 0;
-      if (mentionedAppsCodebases.length > 0) {
-        const mentionedAppsContent = mentionedAppsCodebases
-          .map(
-            ({ appName, codebaseInfo }) =>
-              `\n\n=== Referenced App: ${appName} ===\n${codebaseInfo}`,
-          )
-          .join("");
-
-        mentionedAppsTokens = estimateTokens(mentionedAppsContent);
-
-        logger.log(
-          `Extracted ${mentionedAppsCodebases.length} mentioned app codebases, tokens: ${mentionedAppsTokens}`,
-        );
-      }
-
-      // Calculate total tokens
-      const totalTokens =
-        messageHistoryTokens +
-        inputTokens +
-        systemPromptTokens +
-        codebaseTokens +
-        mentionedAppsTokens;
-
-      // Find the last assistant message since totalTokens is only set on assistant messages
-      const lastAssistantMessage = [...chat.messages]
-        .reverse()
-        .find((m) => m.role === "assistant");
-      const actualMaxTokens = lastAssistantMessage?.maxTokensUsed ?? null;
-
-      return {
-        estimatedTotalTokens: totalTokens,
-        actualMaxTokens,
-        messageHistoryTokens,
-        codebaseTokens,
-        mentionedAppsTokens,
-        inputTokens,
-        systemPromptTokens,
-        contextWindow: await getContextWindow(),
-      };
-    },
-  );
+  logger.info("Registered token count handlers (lightweight — agent mode)");
 }

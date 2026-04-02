@@ -339,6 +339,7 @@ export const todos = sqliteTable("todos", {
     order: integer("order").notNull().default(0),
     developmentSummary: text("development_summary"),
     checklist: text("checklist"),
+    attachments: text("attachments"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });

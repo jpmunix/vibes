@@ -328,36 +328,18 @@ function VibesStartHeading() {
     <div className="flex flex-col items-center justify-center mb-10">
       <h1 className="relative text-6xl font-bold tracking-tight">
         <span
-          className="relative z-10 bg-clip-text text-transparent"
-          style={{
-            backgroundImage:
-              "linear-gradient(135deg, var(--foreground) 0%, color-mix(in oklch, var(--primary) 70%, var(--foreground)) 50%, var(--foreground) 100%)",
-          }}
+          className="relative z-10 text-foreground"
         >
           {text}
           <span
-            className="inline-block ml-0.5 bg-clip-text text-transparent"
+            className="inline-block ml-0.5 text-foreground"
             style={{
-              backgroundImage:
-                "linear-gradient(135deg, var(--foreground) 0%, color-mix(in oklch, var(--primary) 70%, var(--foreground)) 100%)",
               animation: "vibes-start-blink 1.1s step-end infinite",
             }}
           >
             |
           </span>
         </span>
-
-        {/* Vivid breathing glow */}
-        <span
-          aria-hidden
-          className="absolute inset-[-150%] -z-10 rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, color-mix(in srgb, var(--primary) 60%, transparent) 0%, color-mix(in srgb, var(--primary) 35%, transparent) 30%, color-mix(in srgb, var(--primary) 15%, transparent) 50%, transparent 70%)",
-            animation:
-              "vibes-start-breathe 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
-          }}
-        />
       </h1>
 
       {/* Subtle subtitle */}
@@ -376,24 +358,6 @@ function VibesStartHeading() {
         @keyframes vibes-start-blink {
           0%, 45% { opacity: 1; }
           50%, 100% { opacity: 0; }
-        }
-
-        @keyframes vibes-start-breathe {
-          0% {
-            transform: scale(0.9);
-            opacity: 0.5;
-            filter: blur(48px);
-          }
-          50% {
-            transform: scale(1.2);
-            opacity: 0.85;
-            filter: blur(72px);
-          }
-          100% {
-            transform: scale(0.9);
-            opacity: 0.5;
-            filter: blur(48px);
-          }
         }
 
         @keyframes vibes-subtitle-in {

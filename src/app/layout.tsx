@@ -14,12 +14,12 @@ import {
   previewModeAtom,
   selectedAppIdAtom,
 } from "@/atoms/appAtoms";
+import { chatInputValueAtom } from "@/atoms/chatAtoms";
+import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
+import { ipc } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import type { ZoomLevel } from "@/lib/schemas";
-import { selectedComponentsPreviewAtom } from "@/atoms/previewAtoms";
-import { chatInputValueAtom } from "@/atoms/chatAtoms";
-import { ipc } from "@/ipc/types";
 
 // Routes that can be restored on startup
 const RESTORABLE_ROUTES = ["/", "/workspace", "/notes", "/todos"];
@@ -44,25 +44,35 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const routerState = useRouterState();
   const restoredRef = useRef(false);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedRef = useRef(false); // true after initial DB read completes
+  const lastSavedViewRef = useRef<string | null>(null);
 
-  // Restore last view on startup
+  // Restore last view on startup from remote DB (Bunny Edge SQL).
+  // Also initializes lastSavedViewRef so the persist effect doesn't write redundantly.
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
 
-    // Only restore if we're at the root (fresh app start)
-    if (routerState.location.pathname !== "/") return;
-
     ipc.misc.getPreference({ key: PREF_LAST_VIEW }).then((raw) => {
+      // Initialize the ref with the DB value to prevent redundant writes
+      if (raw) lastSavedViewRef.current = raw;
+      initializedRef.current = true; // unblock persist effect
+
+      // Only restore if we're still at the root (hasn't navigated yet)
+      if (routerState.location.pathname !== "/") return;
       if (raw && RESTORABLE_ROUTES.includes(raw) && raw !== "/") {
         navigate({ to: raw as any, replace: true });
       }
-    }).catch(() => { /* ignore */ });
+    }).catch(() => {
+      initializedRef.current = true; // unblock even on error
+    });
   }, []);
 
-  // Persist current view to DB on route change (debounced)
+  // Persist current view to remote DB on route change (only if actually changed)
   useEffect(() => {
+    // Don't write until the initial DB read has completed (avoids race condition)
+    if (!initializedRef.current) return;
+
     const pathname = routerState.location.pathname;
     // Only persist restorable routes
     const base = RESTORABLE_ROUTES.find((r) =>
@@ -70,14 +80,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     );
     if (!base) return;
 
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      ipc.misc.setPreference({ key: PREF_LAST_VIEW, value: base }).catch(() => {});
-    }, 300);
+    // Skip write if the value hasn't changed
+    if (base === lastSavedViewRef.current) return;
+    lastSavedViewRef.current = base;
 
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
+    // Persist to remote DB preference (Bunny Edge SQL)
+    ipc.misc.setPreference({ key: PREF_LAST_VIEW, value: base }).catch(() => {});
   }, [routerState.location.pathname]);
 
   useEffect(() => {
