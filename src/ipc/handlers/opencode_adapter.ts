@@ -262,10 +262,14 @@ async function getOpenCodeClient(appPath: string) {
                 // Always-on context compaction (documented at opencode.ai/docs/configuration)
                 // SDK 1.2.17 types don't declare this field yet, but the binary accepts it.
                 ...({ compaction: { auto: true, prune: true } } as any),
+                // Enable all built-in LSP servers (TypeScript, ESLint, etc.)
+                // OpenCode auto-detects languages from file extensions and starts
+                // the appropriate LSP server. Empty object = enable all.
+                // See: https://opencode.ai/docs/lsp
+                ...({ lsp: {} } as any),
                 // Disable features we don't need (reduces overhead)
                 autoupdate: false,
                 formatter: false,
-                lsp: false,
                 share: "disabled",
                 // Ignore heavy directories to prevent token drain
                 // (OpenCode's grep/glob use ripgrep which respects .gitignore,
@@ -1030,6 +1034,26 @@ async function processEvents(
                             }
                         }
                         sendUpdate();
+                    }
+                    break;
+                }
+
+                // OpenCode agent todo list updates — forward to renderer UI
+                case "todo.updated": {
+                    const todos = props.todos;
+                    if (Array.isArray(todos)) {
+                        const mapped = todos.map((t: any) => ({
+                            id: t.id || String(Math.random()),
+                            content: t.content || "",
+                            status: t.status === "completed" ? "completed"
+                                : t.status === "in_progress" ? "in_progress"
+                                : "pending",
+                        }));
+                        safeSend(event.sender, "agent-tool:todos-update", {
+                            chatId,
+                            todos: mapped,
+                        });
+                        logger.info(`[OpenCode] 📋 Todo update: ${mapped.length} items`);
                     }
                     break;
                 }
