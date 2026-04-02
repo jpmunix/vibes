@@ -352,15 +352,7 @@ export function ChatHeader({
                 <Eraser size={16} className="mr-2" />
                 Vaciar chat
               </DropdownMenuItem>
-              {onToggleLogs && settings?.enableAllStatsAndLogs && (
-                <DropdownMenuItem
-                  onClick={onToggleLogs}
-                  disabled={!selectedChatId}
-                >
-                  <FileText size={16} className="mr-2" />
-                  Logs
-                </DropdownMenuItem>
-              )}
+              {/* Logs — hidden: logging system retired */}
               {/* Knowledge Base — hidden: retired in agent mode */}
               <ChatPositionToggle />
             </DropdownMenuContent>

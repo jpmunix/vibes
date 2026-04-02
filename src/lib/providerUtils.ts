@@ -28,44 +28,7 @@ export function isProviderSetup(
     return false;
   }
 
-  // Auto-router is always setup if there's at least one other provider configured
-  if (provider === "auto-router") {
-    if (!settings) return false;
 
-    // Check if any other provider is configured (manually to avoid recursion)
-    const providers = [
-      "openai",
-      "anthropic",
-      "google",
-      "openrouter",
-      "xai",
-      "azure",
-      "vertex",
-      "bedrock",
-    ];
-
-    for (const p of providers) {
-      const providerSettings = settings.providerSettings[p];
-
-      // Check API key in settings or new keys array for OpenRouter
-      if (p === "openrouter") {
-        const orSettings = providerSettings as any;
-        if (orSettings?.keys?.length > 0 || orSettings?.apiKey?.value) {
-          return true;
-        }
-      } else if (providerSettings?.apiKey?.value) {
-        return true;
-      }
-
-      // Check env var
-      const envVar = PROVIDER_TO_ENV_VAR[p];
-      if (envVar && envVars[envVar]) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 
   const providerSettings = settings?.providerSettings[provider];
 

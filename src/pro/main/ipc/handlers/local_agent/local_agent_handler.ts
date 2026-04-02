@@ -36,11 +36,7 @@ import { getModelClient } from "@/ipc/utils/get_model_client";
 import { safeSend } from "@/ipc/utils/safe_sender";
 import { getMaxTokens, getTemperature } from "@/ipc/utils/token_utils";
 import { getProviderOptions, getAiHeaders } from "@/ipc/utils/provider_options";
-import { logChatInfo } from "@/ipc/utils/chat_logger";
-import { logTokenUsage } from "@/ipc/utils/token_stats_logger";
-// DESHABILITADO TEMPORALMENTE - Auto-router imports
-// import { analyzeAndRouteModel } from "@/ipc/utils/model_router";
-// import { getLanguageModelsByProviders } from "@/ipc/shared/language_model_helpers";
+
 
 import {
   AgentToolName,
@@ -438,33 +434,6 @@ export async function handleLocalAgentStream(
         if (typeof totalTokens === "number") {
           await markCompleted(placeholderMessageId, totalTokens);
 
-          // Log token usage for verbose chat logs and token stats panel
-          void logChatInfo(
-            ctx.chatId,
-            "token-usage",
-            `Total tokens: ${totalTokens} (input: ${inputTokens ?? "?"}, output: ${effectiveOutputTokens ?? "?"})`,
-            {
-              totalTokens,
-              inputTokens,
-              outputTokens: effectiveOutputTokens,
-              model: selectedModel.name,
-              cachedInputTokens,
-              type: "local-agent",
-            },
-            placeholderMessageId,
-          );
-
-          logTokenUsage({
-            chatId: ctx.chatId,
-            messageId: placeholderMessageId,
-            totalTokens,
-            promptTokens: inputTokens,
-            completionTokens: effectiveOutputTokens,
-            model: selectedModel.name,
-            timestamp: Date.now(),
-            appId: chat.app.id,
-            toolsUsed: Object.keys(allTools),
-          });
         }
       },
       onError: (error: any) => {

@@ -774,9 +774,7 @@ export default function SettingsPage() {
           </div>
 
 
-          <StatsSettings
-            isHighlighted={highlightedSection === "stats-settings"}
-          />
+          {/* StatsSettings — retired: logging system removed */}
         </div>
       </div>
 

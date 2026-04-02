@@ -17,7 +17,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },
-  { id: "stats-settings", label: "Estadísticas y Logs" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {
