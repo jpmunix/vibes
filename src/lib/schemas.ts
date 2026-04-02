@@ -426,6 +426,8 @@ export const UserSettingsSchema = z
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
+    // OpenCode binary auto-update tracking
+    lastOpenCodeUpdateCheck: z.string().optional(),
 
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),

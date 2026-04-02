@@ -57,20 +57,6 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
-  // OpenCode ignore patterns — written as .ignore to project dirs (ripgrep standard)
-  openCodeIgnorePatterns: [
-    "node_modules/",
-    ".vite/",
-    "dist/",
-    "build/",
-    ".next/",
-    ".nuxt/",
-    ".output/",
-    ".git/",
-    ".git",
-    "*.lock",
-    "*.log",
-  ],
 };
 
 const SETTINGS_FILE = "user-settings.json";

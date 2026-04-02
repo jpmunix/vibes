@@ -151,14 +151,16 @@ export async function onReady() {
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Initialize database + check OpenCode in PARALLEL (no dependency between them)
+  // Step 1: Initialize database + check/update OpenCode in PARALLEL
   updateSplash(splash, 1, TOTAL_STEPS, "Inicializando...");
-  const [, openCodeOk] = await Promise.all([
+  const [, openCodeResult] = await Promise.all([
     Promise.resolve(initializeDatabase()), // sync but wrapped for Promise.all
     ensureOpenCodeInstalled(),
   ]);
-  if (!openCodeOk) {
+  if (!openCodeResult.ok) {
     logger.warn("OpenCode installation failed — agent mode will not work until manually installed");
+  } else if (openCodeResult.updated) {
+    logger.info(`OpenCode updated to v${openCodeResult.version}`);
   }
 
   // Step 2: Create main window (the critical path)

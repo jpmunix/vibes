@@ -368,6 +368,20 @@ export const systemContracts = {
     }),
     output: z.void(),
   }),
+
+  // Version info for the settings popover
+  getVersionInfo: defineContract({
+    channel: "system:get-version-info",
+    input: z.void(),
+    output: z.object({
+      vibes: z.string(),
+      opencode: z.string().nullable(),
+      node: z.string(),
+      electron: z.string(),
+      platform: z.string(),
+      arch: z.string(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

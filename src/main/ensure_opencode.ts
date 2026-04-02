@@ -1,12 +1,12 @@
 /**
- * OpenCode Binary Auto-Installer
+ * OpenCode Binary Auto-Installer & Updater
  *
  * Checks if the `opencode` CLI is available in the system PATH.
  * If not, installs it to a user-local prefix (~/.local/share/vibes/opencode)
  * and adds the bin directory to PATH.
  *
- * This avoids permission issues with `npm install -g` (which needs root on
- * systems where npm's global prefix is /usr/lib/node_modules/).
+ * Also checks for updates every 36 hours and auto-updates if a new version
+ * is available.
  *
  * This is called during the splash screen startup sequence.
  */
@@ -18,10 +18,14 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import log from "electron-log";
 import { app } from "electron";
+import { readSettings, writeSettings } from "./settings";
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
 const logger = log.scope("ensure_opencode");
+
+/** How often we check for updates (36 hours in ms) */
+const UPDATE_CHECK_INTERVAL_MS = 36 * 60 * 60 * 1000;
 
 /**
  * Get the local install prefix for opencode.
@@ -73,6 +77,10 @@ function ensurePathDirs(): void {
         logger.warn("Could not scan NVM dirs:", e);
     }
 
+    // Also add node_modules/.bin from our prefix (npm --prefix puts binaries here)
+    const localBinDir = path.join(getOpenCodePrefix(), "node_modules", ".bin");
+    dirsToAdd.push(localBinDir);
+
     const currentPath = process.env.PATH || "";
     process.env.PATH = [...dirsToAdd, currentPath].join(":");
 }
@@ -91,25 +99,38 @@ async function isOpenCodeInstalled(): Promise<boolean> {
 }
 
 /**
- * Ensure OpenCode CLI is installed. If not, install it to a local prefix.
- *
- * @returns `true` if opencode is available (already existed or was installed),
- *          `false` if installation failed (non-fatal).
+ * Get the installed version of the opencode binary.
  */
-export async function ensureOpenCodeInstalled(): Promise<boolean> {
-    ensurePathDirs();
-
-    // Check if already installed (either globally or in our local prefix)
-    if (await isOpenCodeInstalled()) {
-        logger.info("opencode binary found in PATH ✓");
-        return true;
+async function getInstalledVersion(): Promise<string | null> {
+    try {
+        const { stdout } = await execAsync("opencode --version");
+        // Output format varies: "opencode v1.3.13" or just "1.3.13"
+        const match = stdout.trim().match(/(\d+\.\d+\.\d+)/);
+        return match ? match[1] : null;
+    } catch {
+        return null;
     }
+}
 
-    logger.info("opencode binary NOT found — installing to local prefix...");
+/**
+ * Get the latest published version from npm registry.
+ */
+async function getLatestNpmVersion(): Promise<string | null> {
+    try {
+        const { stdout } = await execAsync("npm view opencode-ai version", {
+            timeout: 15_000,
+        });
+        return stdout.trim();
+    } catch {
+        return null;
+    }
+}
 
+/**
+ * Run npm install to install or update opencode-ai.
+ */
+async function npmInstallOpenCode(): Promise<boolean> {
     const prefix = getOpenCodePrefix();
-
-    // Ensure prefix directory exists
     try {
         fs.mkdirSync(prefix, { recursive: true });
     } catch (e: any) {
@@ -118,45 +139,104 @@ export async function ensureOpenCodeInstalled(): Promise<boolean> {
     }
 
     try {
-        // Install to local prefix (no root required)
-        // --prefix installs the package under our user-writable directory
-        const cmd = `npm install --prefix ${JSON.stringify(prefix)} opencode-ai`;
+        const cmd = `npm install --prefix ${JSON.stringify(prefix)} opencode-ai@latest`;
         logger.info(`Running: ${cmd}`);
 
         const { stdout, stderr } = await execAsync(cmd, {
             env: { ...process.env },
-            timeout: 120_000, // 2 minute timeout
+            timeout: 120_000,
         });
 
         if (stdout) logger.info("npm stdout:", stdout.trim());
         if (stderr) logger.warn("npm stderr:", stderr.trim());
 
-        // npm --prefix puts the binary in <prefix>/node_modules/.bin/
-        // We need to symlink or add that path too
+        // Verify binary exists
         const localBinDir = path.join(prefix, "node_modules", ".bin");
         if (fs.existsSync(path.join(localBinDir, "opencode"))) {
-            // Add the local bin dir to PATH
             process.env.PATH = `${localBinDir}:${process.env.PATH}`;
-            logger.info(`opencode installed successfully at ${localBinDir} ✓`);
             return true;
         }
 
-        // Also check the standard prefix bin dir
         const prefixBinDir = getOpenCodeBinDir();
         if (fs.existsSync(path.join(prefixBinDir, "opencode"))) {
-            logger.info(`opencode installed successfully at ${prefixBinDir} ✓`);
             return true;
         }
 
         logger.error("opencode install command succeeded but binary not found");
-        // Log what's in the prefix for debugging
-        try {
-            const binContents = fs.existsSync(localBinDir) ? fs.readdirSync(localBinDir) : [];
-            logger.info(`Contents of ${localBinDir}: ${binContents.join(", ") || "(empty)"}`);
-        } catch { /* ignore */ }
         return false;
     } catch (error: any) {
         logger.error("Failed to install opencode:", error.message);
         return false;
     }
+}
+
+/**
+ * Check if an update check is needed (based on 36h interval).
+ */
+function shouldCheckForUpdate(): boolean {
+    const settings = readSettings();
+    const lastCheck = settings.lastOpenCodeUpdateCheck;
+    if (!lastCheck) return true;
+
+    const lastCheckTime = new Date(lastCheck as string).getTime();
+    return Date.now() - lastCheckTime > UPDATE_CHECK_INTERVAL_MS;
+}
+
+/**
+ * Ensure OpenCode CLI is installed and up-to-date.
+ *
+ * - If not installed → install
+ * - If installed but outdated (checked every 36h) → update
+ *
+ * @returns Object with installation status and version info
+ */
+export async function ensureOpenCodeInstalled(): Promise<{
+    ok: boolean;
+    version: string | null;
+    updated?: boolean;
+}> {
+    ensurePathDirs();
+
+    const installed = await isOpenCodeInstalled();
+
+    if (!installed) {
+        // Fresh install
+        logger.info("opencode binary NOT found — installing to local prefix...");
+        const success = await npmInstallOpenCode();
+        if (success) {
+            const version = await getInstalledVersion();
+            logger.info(`opencode installed successfully (v${version}) ✓`);
+            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+            return { ok: true, version, updated: true };
+        }
+        return { ok: false, version: null };
+    }
+
+    // Already installed — check for updates if interval elapsed
+    const currentVersion = await getInstalledVersion();
+    logger.info(`opencode binary found in PATH (v${currentVersion}) ✓`);
+
+    if (shouldCheckForUpdate()) {
+        logger.info("Checking for opencode updates...");
+        const latestVersion = await getLatestNpmVersion();
+
+        if (latestVersion && currentVersion && latestVersion !== currentVersion) {
+            logger.info(`opencode update available: v${currentVersion} → v${latestVersion}`);
+            const success = await npmInstallOpenCode();
+            if (success) {
+                const newVersion = await getInstalledVersion();
+                logger.info(`opencode updated to v${newVersion} ✓`);
+                writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+                return { ok: true, version: newVersion, updated: true };
+            }
+            // Update failed but old version still works
+            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+            return { ok: true, version: currentVersion };
+        } else {
+            logger.info(`opencode is up to date (v${currentVersion})`);
+            writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
+        }
+    }
+
+    return { ok: true, version: currentVersion };
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import {
   PrimaryColorPicker,
@@ -30,6 +30,7 @@ import {
   Database,
   Download,
   Upload,
+  Info,
 } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -62,6 +63,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 
 import Fuse from "fuse.js";
@@ -401,6 +407,23 @@ export default function SettingsPage() {
   const router = useRouter();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
 
+  // Version info for popover
+  const [versionInfo, setVersionInfo] = useState<{
+    vibes: string;
+    opencode: string | null;
+    node: string;
+    electron: string;
+    platform: string;
+    arch: string;
+  } | null>(null);
+
+  const fetchVersionInfo = useCallback(async () => {
+    try {
+      const info = await ipc.system.getVersionInfo();
+      setVersionInfo(info);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
@@ -566,8 +589,52 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Export/Import/Reset Buttons */}
+            {/* Export/Import/VersionInfo/Reset Buttons */}
             <div className="flex gap-2">
+              <Popover onOpenChange={(open) => { if (open) fetchVersionInfo(); }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                  >
+                    <Info className="h-4 w-4 mr-1" />
+                    {appVersion ? `v${appVersion}` : "Info"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-0">
+                  <div className="px-4 py-3 border-b border-border">
+                    <h4 className="text-sm font-bold">Información del sistema</h4>
+                  </div>
+                  {versionInfo ? (
+                    <div className="p-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Vibes</span>
+                        <span className="font-mono font-bold">v{versionInfo.vibes}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">OpenCode</span>
+                        <span className="font-mono font-bold">{versionInfo.opencode ? `v${versionInfo.opencode}` : "No instalado"}</span>
+                      </div>
+                      <div className="h-px bg-border my-2" />
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Node.js</span>
+                        <span className="font-mono text-xs">v{versionInfo.node}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Electron</span>
+                        <span className="font-mono text-xs">v{versionInfo.electron}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Plataforma</span>
+                        <span className="font-mono text-xs">{versionInfo.platform}/{versionInfo.arch}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground text-center">Cargando...</div>
+                  )}
+                </PopoverContent>
+              </Popover>
               <Button
                 variant="outline"
                 size="sm"

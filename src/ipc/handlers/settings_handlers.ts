@@ -66,17 +66,28 @@ export function registerSettingsHandlers() {
     writeSettings(settings);
     const updated = readSettings();
 
+    // Hot-update OpenCode server config if model or reasoning effort changed
+    if (settings.selectedModel || settings.standardModeModel || settings.reasoningEffort) {
+      try {
+        const { updateOpenCodeConfig } = await import("./opencode_adapter");
+        await updateOpenCodeConfig({
+          selectedModel: settings.selectedModel,
+          standardModeModel: settings.standardModeModel,
+          reasoningEffort: settings.reasoningEffort,
+        });
+      } catch (e: any) {
+        logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);
+      }
+    }
+
     if (context.userId) {
       const db = getRemoteDb();
       try {
         // --- SESSION DATA EXCLUSION ---
         // We strip session data before saving to the remote DB to keep it clean.
-        // This prevents stale/old session data from being synced to other devices
-        // and causing unexpected logouts.
         const { userId: _u, sessionToken: _s, ...syncableSettings } = updated;
         const settingsJson = JSON.stringify(syncableSettings);
 
-        // Find existing record to update or insert new one
         const existing = await db.query.userSettings.findFirst({
           where: eq(remoteSchema.userSettings.userId, context.userId),
         });

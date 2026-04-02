@@ -1101,6 +1101,29 @@ export function registerAppHandlers() {
     return { version: packageJson.version };
   });
 
+  createTypedHandler(systemContracts.getVersionInfo, async () => {
+    const packageJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+
+    // Get opencode binary version
+    let opencodeVersion: string | null = null;
+    try {
+      const { execSync } = require("child_process");
+      const out = execSync("opencode --version", { timeout: 5000, encoding: "utf-8" });
+      const match = out.trim().match(/(\d+\.\d+\.\d+)/);
+      opencodeVersion = match ? match[1] : out.trim();
+    } catch { /* not installed */ }
+
+    return {
+      vibes: packageJson.version,
+      opencode: opencodeVersion,
+      node: process.versions.node,
+      electron: process.versions.electron || "?",
+      platform: process.platform,
+      arch: process.arch,
+    };
+  });
+
   createTypedHandler(appContracts.renameBranch, async (_, params, context) => {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();

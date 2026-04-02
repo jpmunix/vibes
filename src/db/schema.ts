@@ -114,6 +114,8 @@ export const chats = sqliteTable("chats", {
     .default(sql`(unixepoch())`),
   // Timestamp of when the user last viewed this chat (null = never explicitly read)
   lastReadAt: integer("last_read_at", { mode: "timestamp" }),
+  // OpenCode session ID — persists the session mapping for context recovery across restarts
+  opencodeSessionId: text("opencode_session_id"),
 });
 
 export const messages = sqliteTable("messages", {
