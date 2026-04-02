@@ -987,7 +987,24 @@ export function WorkflowSettings({
           />
 
           {/* Git nativo — hardcoded to always enabled */}
-          {/* Auto-aprobar cambios — hardcoded to always enabled */}
+
+          <SettingItem
+            label="Auto-aprobar cambios"
+            description="Aprobará automáticamente los cambios de código sugeridos por la IA sin pedir confirmación."
+            onClick={() =>
+              updateSettings({
+                autoApproveChanges: !settings?.autoApproveChanges,
+              })
+            }
+            control={
+              <TogglePill
+                checked={!!settings?.autoApproveChanges}
+                onCheckedChange={(checked) =>
+                  updateSettings({ autoApproveChanges: checked })
+                }
+              />
+            }
+          />
 
           <SettingItem
             label="Expandir vista previa"
