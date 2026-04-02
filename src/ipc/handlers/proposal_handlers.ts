@@ -22,104 +22,13 @@ import {
 } from "../utils/tag_parser";
 import log from "electron-log";
 import { isServerFunction } from "../../supabase_admin/supabase_utils";
-import {
-  estimateMessagesTokens,
-  estimateTokens,
-  getContextWindow,
-} from "../utils/token_utils";
-import { extractCodebase } from "../../utils/codebase";
-import { getVibesAppPath } from "../../paths/paths";
 import { withLock } from "../utils/lock_utils";
 import { createTypedHandler } from "./base";
 import { proposalContracts } from "../types/proposals";
 import { ApproveProposalResult } from "@/ipc/types";
-import { validateChatContext } from "../utils/context_paths_utils";
 import { readSettings } from "@/main/settings";
 
 const logger = log.scope("proposal_handlers");
-// Cache for codebase token counts
-interface CodebaseTokenCache {
-  chatId: number;
-  messageId: number;
-  messageContent: string;
-  tokenCount: number;
-  timestamp: number;
-  chatContext: string;
-}
-
-// Cache expiration time (5 minutes)
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
-
-// In-memory cache for codebase token counts
-const codebaseTokenCache = new Map<number, CodebaseTokenCache>();
-
-// Function to clean up expired cache entries
-function cleanupExpiredCacheEntries() {
-  const now = Date.now();
-  let expiredCount = 0;
-
-  codebaseTokenCache.forEach((entry, key) => {
-    if (now - entry.timestamp > CACHE_EXPIRATION_MS) {
-      codebaseTokenCache.delete(key);
-      expiredCount++;
-    }
-  });
-
-  if (expiredCount > 0) {
-    logger.log(
-      `Cleaned up ${expiredCount} expired codebase token cache entries`,
-    );
-  }
-}
-
-// Function to get cached token count or calculate and cache it
-async function getCodebaseTokenCount(
-  chatId: number,
-  messageId: number,
-  messageContent: string,
-  appPath: string,
-  chatContext: unknown,
-): Promise<number> {
-  // Clean up expired cache entries first
-  cleanupExpiredCacheEntries();
-
-  const cacheEntry = codebaseTokenCache.get(chatId);
-  const now = Date.now();
-
-  // Check if cache is valid - same chat, message and content, and not expired
-  if (
-    cacheEntry &&
-    cacheEntry.messageId === messageId &&
-    cacheEntry.messageContent === messageContent &&
-    cacheEntry.chatContext === JSON.stringify(chatContext) &&
-    now - cacheEntry.timestamp < CACHE_EXPIRATION_MS
-  ) {
-    logger.log(`Using cached codebase token count for chatId: ${chatId}`);
-    return cacheEntry.tokenCount;
-  }
-
-  // Calculate and cache the token count
-  logger.log(`Calculating codebase token count for chatId: ${chatId}`);
-  const codebase = (
-    await extractCodebase({
-      appPath: getVibesAppPath(appPath),
-      chatContext: validateChatContext(chatContext),
-    })
-  ).formattedOutput;
-  const tokenCount = estimateTokens(codebase);
-
-  // Store in cache
-  codebaseTokenCache.set(chatId, {
-    chatId,
-    messageId,
-    messageContent,
-    tokenCount,
-    timestamp: now,
-    chatContext: JSON.stringify(chatContext),
-  });
-
-  return tokenCount;
-}
 
 const getProposalHandler = async (
   _event: IpcMainInvokeEvent,
@@ -274,46 +183,9 @@ const getProposalHandler = async (
         }
       }
 
-      // Get all chat messages to calculate token usage
-      const chat = await db.query.chats.findFirst({
-        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
-        with: {
-          app: true,
-          messages: {
-            orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-          },
-        },
-      });
-
-      if (latestAssistantMessage && chat) {
-        // Calculate total tokens from message history
-        const messagesTokenCount = estimateMessagesTokens(chat.messages);
-
-        // Use cached token count or calculate new one
-        const codebaseTokenCount = await getCodebaseTokenCount(
-          chatId,
-          latestAssistantMessage.id,
-          latestAssistantMessage.content || "",
-          chat.app.path,
-          chat.app.chatContext,
-        );
-
-        const totalTokens = messagesTokenCount + codebaseTokenCount;
-        const contextWindow = Math.min(await getContextWindow(), 100_000);
-        logger.log(
-          `Token usage: ${totalTokens}/${contextWindow} (${(totalTokens / contextWindow) * 100}%)`,
-        );
-
-        // If we're using more than 80% of the context window, suggest summarizing
-        if (totalTokens > contextWindow * 0.8 || chat.messages.length > 10) {
-          logger.log(
-            `Token usage is high (${totalTokens}/${contextWindow}) OR long chat history (${chat.messages.length} messages), suggesting summarize action`,
-          );
-          actions.push({
-            id: "summarize-in-new-chat",
-          });
-        }
-      }
+      // Token-based summarize suggestion removed — the action-proposal UI
+      // was already disabled (returns null). Keeping only the simple
+      // keep-going and action buttons.
       if (latestAssistantMessage) {
         actions.push({
           id: "keep-going",

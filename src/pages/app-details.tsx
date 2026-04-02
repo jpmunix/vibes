@@ -706,33 +706,7 @@ export default function AppDetailsPage() {
                 </div>
               </div>
 
-              {appId && (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsKnowledgeBaseModalOpen(true)}
-                  className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
-                >
-                  <div className="flex items-center gap-2">
-                    <ChevronRight className="h-4 w-4 text-gray-500" />
-                    <div className="flex flex-col items-start">
-                      <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                        Base de Conocimientos IA
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 text-left">
-                        Gestiona las reglas y convenciones que la IA ha aprendido
-                      </span>
-                    </div>
-                  </div>
-                  <Brain className="h-3.5 w-3.5 text-gray-400" />
-                </Button>
-              )}
-              {appId && (
-                <KnowledgeBaseModal
-                  appId={appId}
-                  isOpen={isKnowledgeBaseModalOpen}
-                  onClose={() => setIsKnowledgeBaseModalOpen(false)}
-                />
-              )}
+              {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
 
               {/* Dossier button — hidden until feature is polished
               {appId && (

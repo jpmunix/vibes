@@ -442,6 +442,83 @@ export async function handleOpenCodeStream(
                 logger.warn(`[OpenCode] Failed to persist sessionId: ${e.message}`);
             }
 
+            // Initialize project context — generates AGENTS.md with tech stack,
+            // build commands, and architecture. This is the key mechanism that gives
+            // the agent native project knowledge (equivalent to /init in OpenCode CLI).
+            // Only runs ONCE per project: if AGENTS.md already exists, skip it.
+            // Runs in BACKGROUND (fire-and-forget) to avoid blocking the first chat message.
+            // AGENTS.md will be ready for the next interaction.
+            {
+                const fs = await import("fs");
+                const pathModule = await import("path");
+                const agentsMdPaths = [
+                    pathModule.join(projectDir, "AGENTS.md"),
+                    pathModule.join(projectDir, ".opencode", "AGENTS.md"),
+                    pathModule.join(projectDir, "docs", "AGENTS.md"),
+                ];
+                const hasAgentsMd = agentsMdPaths.some(p => fs.existsSync(p));
+
+                if (!hasAgentsMd) {
+                    // Fire-and-forget: run init in a SEPARATE throwaway session
+                    // so it doesn't conflict with the user's prompt running in parallel.
+                    logger.info(`[OpenCode] No AGENTS.md found — launching background init for ${projectDir}...`);
+                    const initClient = client; // capture for closure
+
+                    // Use a detached promise — don't await
+                    (async () => {
+                        let initSessionId: string | undefined;
+                        try {
+                            const settings = readSettings();
+                            const model = settings.selectedModel;
+                            const initProviderID = mapProviderForOpenCode(model);
+
+                            // Create a dedicated session for init (separate from the user's chat)
+                            const initSession = await initClient.session.create({
+                                body: { title: "[init] Project analysis" },
+                                query: { directory: projectDir },
+                            });
+                            initSessionId = initSession.data?.id;
+                            if (!initSessionId) {
+                                logger.warn(`[OpenCode] Failed to create init session`);
+                                return;
+                            }
+
+                            // Create a seed message for the init API
+                            const seedMsg = await initClient.session.prompt({
+                                path: { id: initSessionId },
+                                query: { directory: projectDir },
+                                body: {
+                                    noReply: true,
+                                    parts: [{ type: "text", text: "Initializing project context..." }],
+                                },
+                            });
+                            const seedMessageID = seedMsg.data?.info?.id ?? "";
+
+                            logger.info(`[OpenCode] Background init running with model ${initProviderID}/${model.name}...`);
+                            const initResult = await initClient.session.init({
+                                path: { id: initSessionId },
+                                query: { directory: projectDir },
+                                body: {
+                                    providerID: initProviderID,
+                                    modelID: model.name,
+                                    messageID: seedMessageID,
+                                },
+                            });
+                            logger.info(`[OpenCode] Background init completed (result: ${JSON.stringify(initResult.data)})`);
+                        } catch (initError: any) {
+                            logger.warn(`[OpenCode] Background init failed (non-fatal): ${initError.message}`);
+                        } finally {
+                            // Clean up the throwaway session
+                            if (initSessionId) {
+                                initClient.session.delete({ path: { id: initSessionId } }).catch(() => {});
+                            }
+                        }
+                    })();
+                } else {
+                    logger.info(`[OpenCode] AGENTS.md already exists, skipping init`);
+                }
+            }
+
             // Inject context instructions as noReply on first interaction
             if (options.contextInstructions && options.contextInstructions.length > 0) {
                 const contextText = options.contextInstructions.join("\n\n---\n\n");

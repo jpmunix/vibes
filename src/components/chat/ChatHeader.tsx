@@ -361,13 +361,7 @@ export function ChatHeader({
                   Logs
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setIsKnowledgeBaseModalOpen(true)}
-              >
-                <Brain size={16} className="mr-2" />
-                Base de Conocimientos
-              </DropdownMenuItem>
+              {/* Knowledge Base — hidden: retired in agent mode */}
               <ChatPositionToggle />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -494,13 +488,7 @@ export function ChatHeader({
         </div>
 
 
-        {appId && (
-          <KnowledgeBaseModal
-            appId={appId}
-            isOpen={isKnowledgeBaseModalOpen}
-            onClose={() => setIsKnowledgeBaseModalOpen(false)}
-          />
-        )}
+        {/* KnowledgeBaseModal — hidden: retired in agent mode */}
       </div>
       )}
 

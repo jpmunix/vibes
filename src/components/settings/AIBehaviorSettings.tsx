@@ -156,33 +156,7 @@ export function AIBehaviorSettings({
 
         {/* Turnos de contexto — hidden: OpenCode manages context internally */}
 
-        {/* Búsqueda Semántica — pill showing model, click to select */}
-        <SettingRow
-          label="Búsqueda semántica"
-          description="Modelo de embeddings para indexar y buscar código por significado"
-          control={
-            <Select
-              value={selectedEmbeddingModel}
-              onValueChange={(value) => updateSettings({ embeddingsModel: value })}
-            >
-              <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100">
-                <SelectValue>{currentEmbeddingLabel}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {EMBEDDING_MODELS.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    <div className="flex flex-col">
-                      <span>{model.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {model.provider} · {model.dims} dims
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          }
-        />
+        {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
 
         {/* Model Categories Section — collapsible */}
         <div className="space-y-4">

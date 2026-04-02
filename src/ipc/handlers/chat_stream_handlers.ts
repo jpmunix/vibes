@@ -812,12 +812,24 @@ ${componentSnippet}
             }
             : validateChatContext(updatedChat.app.chatContext);
 
-        // Skip codebase extraction for summarize intent to save tokens
+        // Skip codebase extraction for summarize intent and OpenCode agent mode.
+        // OpenCode has its own tools (bash, file read) to explore files on-demand;
+        // injecting the entire codebase into the prompt is unnecessary and slow.
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
+        const isAgentMode = settings.selectedChatMode === "local-agent" ||
+          (settings.selectedChatMode as string) === "crush-agent";
 
-        if (!isSummarizeIntent) {
+        if (isSummarizeIntent) {
+          logger.log(
+            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
+          );
+        } else if (isAgentMode) {
+          logger.log(
+            `[OPENCODE MODE] Skipping codebase extraction — agent explores files via tools`,
+          );
+        } else {
           logger.log(
             `[BUILD MODE] Extracting codebase from ${appPath} with chatContext:`,
             chatContext,
@@ -830,10 +842,6 @@ ${componentSnippet}
           files = extracted.files;
           logger.log(
             `[BUILD MODE] Extracted ${files.length} files from codebase`,
-          );
-        } else {
-          logger.log(
-            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
           );
         }
 
@@ -855,150 +863,149 @@ ${componentSnippet}
           }
         }
 
-        // Parse app mentions from the prompt
-        const mentionedAppNames = parseAppMentions(req.prompt);
-
-        // Extract codebases for mentioned apps
-        const mentionedAppsCodebases = await extractMentionedAppsCodebases(
-          mentionedAppNames,
-          updatedChat.app.id, // Exclude current app
-        );
-        const willUseLocalAgentStream =
-          (settings.selectedChatMode === "local-agent" ||
-            settings.selectedChatMode === "ask") &&
-          !mentionedAppsCodebases.length;
-
-        const isDeepContextEnabled =
-          isEngineEnabled &&
-          settings.enableProSmartFilesContextMode &&
-          // Anything besides balanced will use deep context.
-          settings.proSmartContextOption !== "balanced" &&
-          mentionedAppsCodebases.length === 0;
-        logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
-
-        // Combine current app codebase with mentioned apps' codebases
+        // ── Build-mode preprocessing (skipped for OpenCode agent mode) ──────
+        // OpenCode manages its own context via AGENTS.md and built-in tools.
+        // These variables are only used by the build/ask mode branches below.
+        let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
+        let willUseLocalAgentStream = isAgentMode;
+        let isDeepContextEnabled = false;
         let otherAppsCodebaseInfo = "";
-        if (mentionedAppsCodebases.length > 0) {
-          const mentionedAppsSection = mentionedAppsCodebases
-            .map(
-              ({ appName, codebaseInfo }) =>
-                `\n\n=== Referenced App: ${appName} ===\n${codebaseInfo}`,
-            )
-            .join("");
+        let limitedMessageHistory: any[] = [];
+        let systemPrompt = "";
 
-          otherAppsCodebaseInfo = mentionedAppsSection;
+        if (!isAgentMode) {
+          // Parse app mentions from the prompt
+          const mentionedAppNames = parseAppMentions(req.prompt);
 
-          logger.log(
-            `Added ${mentionedAppsCodebases.length} mentioned app codebases`,
+          // Extract codebases for mentioned apps
+          mentionedAppsCodebases = await extractMentionedAppsCodebases(
+            mentionedAppNames,
+            updatedChat.app.id, // Exclude current app
           );
-        }
+          willUseLocalAgentStream =
+            (settings.selectedChatMode === "local-agent" ||
+              settings.selectedChatMode === "ask") &&
+            !mentionedAppsCodebases.length;
 
-        logger.log(`Extracted codebase information from ${appPath}`);
-        logger.log(
-          "codebaseInfo: length",
-          codebaseInfo.length,
-          "estimated tokens",
-          codebaseInfo.length / 4,
-        );
+          isDeepContextEnabled =
+            isEngineEnabled &&
+            settings.enableProSmartFilesContextMode &&
+            settings.proSmartContextOption !== "balanced" &&
+            mentionedAppsCodebases.length === 0;
+          logger.log(`isDeepContextEnabled: ${isDeepContextEnabled}`);
 
-        await logChatInfo(
-          req.chatId,
-          "context-building",
-          "Extracted codebase information",
-          {
-            appPath,
-            codebaseLength: codebaseInfo.length,
-            estimatedTokens: Math.round(codebaseInfo.length / 4),
-            mentionedApps: mentionedAppsCodebases.length,
-            isDeepContextEnabled,
-          },
-          placeholderAssistantMessage.id,
-        );
+          // Combine current app codebase with mentioned apps' codebases
+          if (mentionedAppsCodebases.length > 0) {
+            const mentionedAppsSection = mentionedAppsCodebases
+              .map(
+                ({ appName, codebaseInfo }) =>
+                  `\n\n=== Referenced App: ${appName} ===\n${codebaseInfo}`,
+              )
+              .join("");
 
-        // Prepare message history for the AI
-        const messageHistory = updatedChat.messages.map((message: any) => ({
-          role: message.role as "user" | "assistant" | "system",
-          content: message.content,
-          sourceCommitHash: message.sourceCommitHash,
-          commitHash: message.commitHash,
-        }));
+            otherAppsCodebaseInfo = mentionedAppsSection;
 
-        // For Vibes Pro + Deep Context, we set to 50 chat turns (+1)
-        // REDUCED from 201 to save tokens while maintaining good context
-        //
-        // Limit chat history based on maxChatTurnsInContext setting
-        // We add 1 because the current prompt counts as a turn.
-        const maxChatTurns = isDeepContextEnabled
-          ? 51
-          : (settings.maxChatTurnsInContext || MAX_CHAT_TURNS_IN_CONTEXT) + 1;
-
-        // If we need to limit the context, we take only the most recent turns
-        let limitedMessageHistory = messageHistory;
-        if (messageHistory.length > maxChatTurns * 2) {
-          // Each turn is a user + assistant pair
-          // Calculate how many messages to keep (maxChatTurns * 2)
-          let recentMessages = messageHistory
-            .filter((msg: any) => msg.role !== "system")
-            .slice(-maxChatTurns * 2);
-
-          // Ensure the first message is a user message
-          if (recentMessages.length > 0 && recentMessages[0].role !== "user") {
-            // Find the first user message
-            const firstUserIndex = recentMessages.findIndex(
-              (msg: any) => msg.role === "user",
+            logger.log(
+              `Added ${mentionedAppsCodebases.length} mentioned app codebases`,
             );
-            if (firstUserIndex > 0) {
-              // Drop assistant messages before the first user message
-              recentMessages = recentMessages.slice(firstUserIndex);
-            } else if (firstUserIndex === -1) {
-              logger.warn(
-                "No user messages found in recent history, set recent messages to empty",
-              );
-              recentMessages = [];
-            }
           }
 
-          limitedMessageHistory = [...recentMessages];
-
+          logger.log(`Extracted codebase information from ${appPath}`);
           logger.log(
-            `Limiting chat history from ${messageHistory.length} to ${limitedMessageHistory.length} messages (max ${maxChatTurns} turns)`,
+            "codebaseInfo: length",
+            codebaseInfo.length,
+            "estimated tokens",
+            codebaseInfo.length / 4,
           );
-        }
 
-        const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path), updatedChat.app.id, currentUserId as string);
+          await logChatInfo(
+            req.chatId,
+            "context-building",
+            "Extracted codebase information",
+            {
+              appPath,
+              codebaseLength: codebaseInfo.length,
+              estimatedTokens: Math.round(codebaseInfo.length / 4),
+              mentionedApps: mentionedAppsCodebases.length,
+              isDeepContextEnabled,
+            },
+            placeholderAssistantMessage.id,
+          );
 
-        // Get theme prompt for the app (null themeId means "no theme")
-        const themePrompt = await getThemePromptById(updatedChat.app.themeId);
-        logger.log(
-          `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
-        );
+          // Prepare message history for the AI
+          const messageHistory = updatedChat.messages.map((message: any) => ({
+            role: message.role as "user" | "assistant" | "system",
+            content: message.content,
+            sourceCommitHash: message.sourceCommitHash,
+            commitHash: message.commitHash,
+          }));
 
-        let systemPrompt = constructSystemPrompt({
-          aiRules,
-          chatMode: settings.selectedChatMode,
-          themePrompt,
-          basicAgentMode: false,
-          chatLanguage: settings.chatLanguage || "es",
-          settings,
-        });
+          const maxChatTurns = isDeepContextEnabled
+            ? 51
+            : (settings.maxChatTurnsInContext || MAX_CHAT_TURNS_IN_CONTEXT) + 1;
 
-        // Inject knowledge base prompt (auto-learned project rules)
-        const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, currentUserId as string, req.prompt);
-        if (knowledgePrompt) {
-          systemPrompt += "\n\n" + knowledgePrompt;
+          limitedMessageHistory = messageHistory;
+          if (messageHistory.length > maxChatTurns * 2) {
+            let recentMessages = messageHistory
+              .filter((msg: any) => msg.role !== "system")
+              .slice(-maxChatTurns * 2);
+
+            if (recentMessages.length > 0 && recentMessages[0].role !== "user") {
+              const firstUserIndex = recentMessages.findIndex(
+                (msg: any) => msg.role === "user",
+              );
+              if (firstUserIndex > 0) {
+                recentMessages = recentMessages.slice(firstUserIndex);
+              } else if (firstUserIndex === -1) {
+                logger.warn(
+                  "No user messages found in recent history, set recent messages to empty",
+                );
+                recentMessages = [];
+              }
+            }
+
+            limitedMessageHistory = [...recentMessages];
+
+            logger.log(
+              `Limiting chat history from ${messageHistory.length} to ${limitedMessageHistory.length} messages (max ${maxChatTurns} turns)`,
+            );
+          }
+
+          const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path), updatedChat.app.id, currentUserId as string);
+
+          // Get theme prompt for the app (null themeId means "no theme")
+          const themePrompt = await getThemePromptById(updatedChat.app.themeId);
           logger.log(
-            `Knowledge base injected for app ${updatedChat.app.id}: ${knowledgePrompt.length} chars`,
+            `Theme for app ${updatedChat.app.id}: ${updatedChat.app.themeId ?? "none"}, prompt length: ${themePrompt.length} chars`,
           );
-        }
 
-        // Add information about mentioned apps if any
-        if (otherAppsCodebaseInfo) {
-          const mentionedAppsList = mentionedAppsCodebases
-            .map(({ appName }) => appName)
-            .join(", ");
+          systemPrompt = constructSystemPrompt({
+            aiRules,
+            chatMode: settings.selectedChatMode,
+            themePrompt,
+            basicAgentMode: false,
+            chatLanguage: settings.chatLanguage || "es",
+            settings,
+          });
 
-          systemPrompt += `\n\n# Referenced Apps\nThe user has mentioned the following apps in their prompt: ${mentionedAppsList}. Their codebases have been included in the context for your reference. When referring to these apps, you can understand their structure and code to provide better assistance, however you should NOT edit the files in these referenced apps. The referenced apps are NOT part of the current app and are READ-ONLY.`;
-        }
+          // Inject knowledge base prompt (auto-learned project rules)
+          const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, currentUserId as string, req.prompt);
+          if (knowledgePrompt) {
+            systemPrompt += "\n\n" + knowledgePrompt;
+            logger.log(
+              `Knowledge base injected for app ${updatedChat.app.id}: ${knowledgePrompt.length} chars`,
+            );
+          }
+
+          // Add information about mentioned apps if any
+          if (otherAppsCodebaseInfo) {
+            const mentionedAppsList = mentionedAppsCodebases
+              .map(({ appName }) => appName)
+              .join(", ");
+
+            systemPrompt += `\n\n# Referenced Apps\nThe user has mentioned the following apps in their prompt: ${mentionedAppsList}. Their codebases have been included in the context for your reference. When referring to these apps, you can understand their structure and code to provide better assistance, however you should NOT edit the files in these referenced apps. The referenced apps are NOT part of the current app and are READ-ONLY.`;
+          }
+        } // end !isAgentMode
 
         const isSecurityReviewIntent =
           req.prompt.startsWith("/security-review");
@@ -1610,26 +1617,12 @@ This conversation includes one or more image attachments. When the user uploads 
         ) {
           logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
 
-          // Build context instructions for the OpenCode session
-          // These get injected as noReply on first interaction
+          // Context instructions for the OpenCode session.
+          // Only inject integration credentials and language — OpenCode
+          // handles all project knowledge natively via AGENTS.md.
           const contextInstructions: string[] = [];
 
-          // 1. Knowledge Base rules (filtered by relevance to user prompt)
-          try {
-            const knowledgePrompt = await buildKnowledgePrompt(
-              updatedChat.app.id,
-              currentUserId as string,
-              req.prompt,
-            );
-            if (knowledgePrompt) {
-              contextInstructions.push(knowledgePrompt);
-              logger.log(`[OPENCODE MODE] KB context: ${knowledgePrompt.length} chars`);
-            }
-          } catch (e) {
-            logger.warn("[OPENCODE MODE] KB prompt build failed:", e);
-          }
-
-          // 2. Language & Behavior instructions
+          // 1. Language & Behavior instructions
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
           contextInstructions.push(
