@@ -978,39 +978,8 @@ export function WorkflowSettings({
             control={<DefaultChatModeSelector />}
           />
 
-          <SettingItem
-            label="Git nativo"
-            description="Usa una implementación de Git integrada para mayor velocidad y menos dependencias externas."
-            onClick={() =>
-              updateSettings({ enableNativeGit: !settings?.enableNativeGit })
-            }
-            control={
-              <TogglePill
-                checked={!!settings?.enableNativeGit}
-                onCheckedChange={(checked) =>
-                  updateSettings({ enableNativeGit: checked })
-                }
-              />
-            }
-          />
-
-          <SettingItem
-            label="Auto-aprobar cambios"
-            description="Aprobará automáticamente los cambios de código sugeridos por la IA sin pedir confirmación."
-            onClick={() =>
-              updateSettings({
-                autoApproveChanges: !settings?.autoApproveChanges,
-              })
-            }
-            control={
-              <TogglePill
-                checked={!!settings?.autoApproveChanges}
-                onCheckedChange={(checked) =>
-                  updateSettings({ autoApproveChanges: checked })
-                }
-              />
-            }
-          />
+          {/* Git nativo — hardcoded to always enabled */}
+          {/* Auto-aprobar cambios — hardcoded to always enabled */}
 
           <SettingItem
             label="Expandir vista previa"
