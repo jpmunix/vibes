@@ -2,47 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Brain } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
-interface LiveThinkingPanelProps {
-  content: string;
-  /** Whether the think tag is still open (streaming) */
-  isActive?: boolean;
-}
-
-// Minimal, unstyled components for the thinking panel so it doesn't use the huge CodeHighlight
-const THINKING_COMPONENTS = {
-  a: ({ node, ...props }: any) => (
-    <a
-      {...props}
-      onClick={(e) => {
-        e.preventDefault();
-        window.open(props.href, "_blank");
-      }}
-      className="text-purple-400 hover:text-purple-300 underline"
-    />
-  ),
-  code: ({ node, inline, className, children, ...props }: any) => {
-    return (
-      <code className={`${className} bg-purple-500/10 px-1 py-0.5 rounded text-[10px] whitespace-pre-wrap font-mono`} {...props}>
-        {children}
-      </code>
-    );
-  },
-  pre: ({ node, children, ...props }: any) => {
-    return (
-      <pre className="bg-background/40 border border-purple-500/10 rounded overflow-x-auto p-2 text-[10px] my-1" {...props}>
-        {children}
-      </pre>
-    );
-  },
-  p: ({ children }: any) => <p className="my-1">{children}</p>,
-  ul: ({ children }: any) => <ul className="my-1 list-disc pl-4">{children}</ul>,
-  ol: ({ children }: any) => <ol className="my-1 list-decimal pl-4">{children}</ol>,
-  li: ({ children }: any) => <li className="my-0.5">{children}</li>,
-  h1: ({ children }: any) => <h1 className="text-xs font-bold my-1.5">{children}</h1>,
-  h2: ({ children }: any) => <h2 className="text-xs font-bold my-1.5">{children}</h2>,
-  h3: ({ children }: any) => <h3 className="text-[11px] font-bold my-1">{children}</h3>,
-};
+import { MARKDOWN_COMPONENTS } from "./VibesMarkdownParser";
 
 const REMARK_PLUGINS = [remarkGfm];
 
@@ -50,8 +10,17 @@ const REMARK_PLUGINS = [remarkGfm];
  * Shows thinking content live during streaming.
  * Stays expanded as the last visible think until a new one appears,
  * then collapses into the normal compact brain badge when streaming ends.
+ *
+ * Uses the shared MARKDOWN_COMPONENTS from VibesMarkdownParser for
+ * consistent inline code styling, links, etc. The panel's smaller
+ * visual scale is achieved via the container's text-xs class, not by
+ * redefining every markdown element.
  */
-export const LiveThinkingPanel: React.FC<LiveThinkingPanelProps> = React.memo(({ content, isActive }) => {
+export const LiveThinkingPanel: React.FC<{
+  content: string;
+  /** Whether the think tag is still open (streaming) */
+  isActive?: boolean;
+}> = React.memo(({ content, isActive }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom as new content arrives (only while actively streaming)
@@ -84,17 +53,17 @@ export const LiveThinkingPanel: React.FC<LiveThinkingPanelProps> = React.memo(({
       `}</style>
       {/* Header */}
       <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-purple-500/10">
-        <Brain size={11} className={`text-purple-500 ${isActive ? "animate-pulse" : ""}`} />
-        <span className="text-[10px] font-medium text-purple-400/80">
+        <Brain size={12} className={`text-purple-500 ${isActive ? "animate-pulse" : ""}`} />
+        <span className="text-xs font-medium text-purple-400/80">
           {isActive ? "Pensando..." : "Pensamiento"}
         </span>
       </div>
-      {/* Content */}
+      {/* Content — text-xs on the container scales everything down uniformly */}
       <div
         ref={scrollRef}
-        className="live-think-scroll px-3 py-2 max-h-[150px] overflow-y-auto text-[11px] leading-[1.6] text-muted-foreground/70"
+        className="live-think-scroll px-3 py-2 max-h-[150px] overflow-y-auto text-xs leading-relaxed text-muted-foreground/70 prose prose-xs dark:prose-invert max-w-none"
       >
-        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={THINKING_COMPONENTS}>
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
           {content}
         </ReactMarkdown>
       </div>

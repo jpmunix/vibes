@@ -72,7 +72,7 @@ export const VibesWrite: React.FC<VibesWriteProps> = ({
                 {fileName}
               </span>
               {retryCount && Number(retryCount) > 1 && (
-                <span className="text-[10px] text-muted-foreground ml-1 italic">
+                <span className="text-xs text-muted-foreground ml-1 italic">
                   (reintento {Number(retryCount) - 1})
                 </span>
               )}

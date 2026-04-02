@@ -1,15 +1,16 @@
-
 import { ipc } from "@/ipc/types";
 import { useEffect, useState } from "react";
+import { Minus, Square, Copy, X } from "lucide-react";
 
 interface WindowsControlsProps {
     className?: string;
     buttonClassName?: string;
 }
 
-export function WindowsControls({ className = "", buttonClassName = "h-11" }: WindowsControlsProps) {
+export function WindowsControls({ className = "", buttonClassName = "" }: WindowsControlsProps) {
 
     const [showWindowControls, setShowWindowControls] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {
         // Check if we're running on Windows/Linux
@@ -24,6 +25,21 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
         checkPlatform();
     }, []);
 
+    useEffect(() => {
+        if (!showWindowControls) return;
+
+        const checkMaximized = async () => {
+            try {
+                const max = await ipc.system.isWindowMaximized();
+                setIsMaximized(max);
+            } catch {}
+        };
+        
+        checkMaximized();
+        window.addEventListener('resize', checkMaximized);
+        return () => window.removeEventListener('resize', checkMaximized);
+    }, [showWindowControls]);
+
     if (!showWindowControls) return null;
 
     const minimizeWindow = () => {
@@ -32,40 +48,41 @@ export function WindowsControls({ className = "", buttonClassName = "h-11" }: Wi
 
     const maximizeWindow = () => {
         ipc.system.maximizeWindow();
+        setIsMaximized(!isMaximized);
     };
 
     const closeWindow = () => {
         ipc.system.closeWindow();
     };
 
+    const baseButtonStyle = "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-all cursor-pointer mx-0.5";
+
     return (
-        <div className={`flex items-center h-full no-app-region-drag ${className}`}>
+        <div className={`flex items-center h-full no-app-region-drag px-2 ${className}`}>
             <button
-                className={`w-11 flex items-center justify-center hover:bg-accent transition-colors cursor-pointer ${buttonClassName}`}
+                className={baseButtonStyle}
                 onClick={minimizeWindow}
                 aria-label="Minimize"
             >
-                <svg width="12" height="1" viewBox="0 0 12 1" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="12" height="1" className="fill-black dark:fill-white" />
-                </svg>
+                <Minus size={14} strokeWidth={1.5} />
             </button>
             <button
-                className={`w-11 flex items-center justify-center hover:bg-accent transition-colors cursor-pointer ${buttonClassName}`}
+                className={baseButtonStyle}
                 onClick={maximizeWindow}
-                aria-label="Maximize"
+                aria-label={isMaximized ? "Restore" : "Maximize"}
             >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" y="0.5" width="11" height="11" className="stroke-black dark:stroke-white" />
-                </svg>
+                {isMaximized ? (
+                    <Copy size={13} strokeWidth={1.5} className="mt-[2px]" />
+                ) : (
+                    <Square size={13} strokeWidth={1.5} />
+                )}
             </button>
             <button
-                className={`w-11 flex items-center justify-center hover:bg-red-500 transition-colors cursor-pointer group ${buttonClassName}`}
+                className={`${baseButtonStyle} hover:bg-red-500 hover:text-white group`}
                 onClick={closeWindow}
                 aria-label="Close"
             >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L11 11M1 11L11 1" strokeWidth="1.5" className="stroke-black dark:stroke-white group-hover:stroke-white group-hover:dark:stroke-white" />
-                </svg>
+                <X size={14} strokeWidth={1.5} />
             </button>
         </div>
     );

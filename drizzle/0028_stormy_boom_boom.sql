@@ -1,1 +1,0 @@
-ALTER TABLE `chats` ADD `todo_id` integer REFERENCES todos(id);

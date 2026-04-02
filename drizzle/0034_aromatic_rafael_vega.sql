@@ -1,1 +1,0 @@
-ALTER TABLE `todos` ADD `development_summary` text;

@@ -115,7 +115,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, is
                                     >
                                         <Icon size={13} className={group.color} />
                                         {group.items.length > 1 && (
-                                            <span className="text-[11px] text-muted-foreground font-medium">
+                                            <span className="text-xs text-muted-foreground font-medium">
                                                 ×{group.items.length}
                                             </span>
                                         )}

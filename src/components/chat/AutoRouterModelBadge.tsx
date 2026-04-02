@@ -88,7 +88,7 @@ export function AutoRouterModelBadge({
               <strong>Tipo:</strong> {taskTypeLabel}
             </div>
             {modelInfo.reasoning && (
-              <div className="mt-1 text-[10px] text-muted-foreground max-w-xs">
+              <div className="mt-1 text-xs text-muted-foreground max-w-xs">
                 {modelInfo.reasoning}
               </div>
             )}

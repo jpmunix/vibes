@@ -149,19 +149,19 @@ export function TokenBar({ chatId }: TokenBarProps) {
         <Button
           variant="ghost"
           size="xs"
-          className="h-7 px-2 text-[11px]"
+          className="h-7 px-2 text-xs"
           onClick={() => setShowLog((v) => !v)}
         >
           {showLog ? "Ocultar log" : "Ver log"}
         </Button>
         {result.actualMaxTokens && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Máx. usados: {result.actualMaxTokens.toLocaleString()}
           </span>
         )}
       </div>
       {showLog && (
-        <div className="rounded border p-2 bg-muted/40 space-y-1 text-[11px]">
+        <div className="rounded border p-2 bg-muted/40 space-y-1 text-xs">
           <div className="font-semibold text-xs">Log de tokens</div>
           <div>Historial: {messageHistoryTokens.toLocaleString()}</div>
           <div>Código base: {codebaseTokens.toLocaleString()}</div>
@@ -175,7 +175,7 @@ export function TokenBar({ chatId }: TokenBarProps) {
           )}
           {lastStat && (
             <div className="pt-1 border-t space-y-1">
-              <div className="font-semibold text-[11px]">Pasos recientes</div>
+              <div className="font-semibold text-xs">Pasos recientes</div>
               <ul className="list-disc ml-4 space-y-0.5">
                 <li>{`Modelo: ${lastStat.model ?? "desconocido"}`}</li>
                 {lastStat.filesSent?.length ? (

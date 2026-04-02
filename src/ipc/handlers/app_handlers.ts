@@ -1,6 +1,6 @@
 import { ipcMain, app, dialog, BrowserWindow } from "electron";
 import { getRemoteDb } from "../../db/remote";
-import { getDatabasePath, db } from "../../db";
+
 import * as remoteSchema from "../../db/remote-schema";
 import { desc, eq, like, and } from "drizzle-orm";
 import { createTypedHandler } from "./base";
@@ -1050,18 +1050,7 @@ export function registerAppHandlers() {
       }
     }
     logger.log("all running apps stopped.");
-    logger.log("deleting database...");
-    // 1. Drop the database by deleting the SQLite file
-    const dbPath = getDatabasePath();
-    if (fs.existsSync(dbPath)) {
-      // Close database connections first
-      if (db && (db as any).$client) {
-        (db as any).$client.close();
-      }
-      await fsPromises.unlink(dbPath);
-      logger.log(`Database file deleted: ${dbPath}`);
-    }
-    logger.log("database deleted.");
+
     logger.log("deleting settings...");
     // 2. Remove settings
     const userDataPath = getUserDataPath();

@@ -58,6 +58,12 @@ export function registerWindowHandlers() {
     }
   });
 
+  createTypedHandler(systemContracts.isWindowMaximized, async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return false;
+    return window.isMaximized();
+  });
+
   createTypedHandler(systemContracts.closeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window) {

@@ -66,7 +66,7 @@ export const VibesTypecheckSummary: React.FC<VibesTypecheckSummaryProps> = ({ ch
                             <span className="text-gray-500 ml-1">— sin errores</span>
                         )}
                         {entry.detail && (
-                            <pre className="text-red-400/80 mt-0.5 whitespace-pre-wrap break-all font-mono text-[11px] leading-tight">
+                            <pre className="text-red-400/80 mt-0.5 whitespace-pre-wrap break-all font-mono text-xs leading-tight">
                                 {entry.detail.trim()}
                             </pre>
                         )}

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
-  getVibesWriteTags,
-  getVibesRenameTags,
-  getVibesAddDependencyTags,
-  getVibesDeleteTags,
+  getWriteTags as getVibesWriteTags,
+  getRenameTags as getVibesRenameTags,
+  getAddDependencyTags as getVibesAddDependencyTags,
+  getDeleteTags as getVibesDeleteTags,
 } from "../ipc/utils/tag_parser";
 
 import { processFullResponseActions } from "../ipc/processors/response_processor";
@@ -13,7 +13,7 @@ import {
   hasUnclosedVibesWrite,
 } from "../ipc/handlers/chat_stream_handlers";
 import fs from "node:fs";
-import { db } from "../db";
+import { getRemoteDb } from "../db/remote";
 import { cleanFullResponse } from "../ipc/utils/cleanFullResponse";
 import { gitAdd, gitRemove, gitCommit } from "../ipc/utils/git_utils";
 
@@ -67,8 +67,8 @@ vi.mock("../paths/paths", () => ({
 }));
 
 // Mock db
-vi.mock("../db", () => ({
-  db: {
+vi.mock("../db/remote", () => {
+  const mockDb = {
     query: {
       chats: {
         findFirst: vi.fn(),
@@ -82,8 +82,9 @@ vi.mock("../db", () => ({
         where: vi.fn().mockResolvedValue(undefined),
       })),
     })),
-  },
-}));
+  };
+  return { getRemoteDb: () => mockDb };
+});
 
 describe("getVibesAddDependencyTags", () => {
   it("should return an empty array when no dyad-add-dependency tags are found", () => {
@@ -641,7 +642,8 @@ describe("processFullResponse", () => {
     vi.clearAllMocks();
 
     // Mock db query response
-    vi.mocked(db.query.chats.findFirst).mockResolvedValue({
+    const mockDb = getRemoteDb() as unknown as { query: any };
+    vi.mocked(mockDb.query.chats.findFirst).mockResolvedValue({
       id: 1,
       appId: 1,
       title: "Test Chat",
@@ -656,7 +658,7 @@ describe("processFullResponse", () => {
       messages: [],
     } as any);
 
-    vi.mocked(db.query.messages.findFirst).mockResolvedValue({
+    vi.mocked(mockDb.query.messages.findFirst).mockResolvedValue({
       id: 1,
       chatId: 1,
       role: "assistant",

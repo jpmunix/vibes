@@ -63,11 +63,11 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
           </div>
           {fileName && (
             <div className="flex items-center">
-              <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+              <span className="text-foreground font-medium text-sm">
                 {fileName}
               </span>
               {retryCount && Number(retryCount) > 1 && (
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">
+                <span className="text-xs text-muted-foreground ml-1 italic">
                   (reintento {Number(retryCount) - 1})
                 </span>
               )}
@@ -90,7 +90,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
@@ -101,12 +101,12 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
         </div>
       </div>
       {path && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+        <div className="text-xs text-muted-foreground font-medium mb-1">
           {path}
         </div>
       )}
       {description && (
-        <div className="text-sm text-gray-600 dark:text-gray-300">
+        <div className="text-sm text-muted-foreground">
           <span className="font-medium">Summary: </span>
           {description}
         </div>
@@ -124,7 +124,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
             <div className="space-y-3">
               {blocks.map((b, i) => (
                 <div key={i} className="border rounded-lg">
-                  <div className="flex items-center justify-between px-3 py-2 bg-(--background-lighter) rounded-t-lg text-[11px]">
+                  <div className="flex items-center justify-between px-3 py-2 bg-(--background-lighter) rounded-t-lg text-xs">
                     <div className="flex items-center gap-2">
                       <ArrowLeftRight size={14} />
                       <span className="font-medium">Change {i + 1}</span>
@@ -132,7 +132,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                     <div className="p-3 border-t md:border-r">
-                      <div className="text-[11px] mb-1 text-muted-foreground font-medium">
+                      <div className="text-xs mb-1 text-muted-foreground font-medium">
                         Search
                       </div>
                       <CodeHighlight className="language-typescript">
@@ -140,7 +140,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
                       </CodeHighlight>
                     </div>
                     <div className="p-3 border-t">
-                      <div className="text-[11px] mb-1 text-muted-foreground font-medium">
+                      <div className="text-xs mb-1 text-muted-foreground font-medium">
                         Replace
                       </div>
                       <CodeHighlight className="language-typescript">

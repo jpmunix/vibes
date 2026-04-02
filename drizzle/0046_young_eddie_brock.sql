@@ -1,1 +1,0 @@
-ALTER TABLE `chats` ADD `last_read_at` integer;

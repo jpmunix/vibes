@@ -131,13 +131,13 @@ export const CodeHighlight = memo(
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/30" />
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/30" />
               </div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/70">
+              <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground/70">
                 {language}
               </span>
             </div>
             {code && (
               <button
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/10"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer border border-transparent hover:border-primary/10"
                 onClick={handleCopy}
                 type="button"
               >
@@ -165,7 +165,7 @@ export const CodeHighlight = memo(
         </div>
       </div>
     ) : (
-      <code className={className} {...props}>
+      <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight`} {...props}>
         {children}
       </code>
     );

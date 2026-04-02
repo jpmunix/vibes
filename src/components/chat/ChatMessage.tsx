@@ -485,7 +485,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           <div key={i} className="inline-flex items-center gap-0.5 text-xs">
                             <Icon size={12} className={g.color} />
                             {g.count > 1 && (
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-xs text-muted-foreground">
                                 ×{g.count}
                               </span>
                             )}

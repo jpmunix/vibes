@@ -155,7 +155,7 @@ const customLink = ({
   />
 );
 
-const MARKDOWN_COMPONENTS = {
+export const MARKDOWN_COMPONENTS = {
   a: customLink,
   code: CodeHighlight,
 };

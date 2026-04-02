@@ -1,1 +1,0 @@
-ALTER TABLE `chats` ADD `plan_data` text;

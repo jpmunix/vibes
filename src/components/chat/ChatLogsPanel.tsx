@@ -43,7 +43,7 @@ export function ChatLogsPanel({ chatId, isOpen, onClose }: ChatLogsPanelProps) {
       return (
         <div className="flex items-center gap-1 w-[72px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
           <Bot className="text-blue-600 dark:text-blue-400" size={10} />
-          <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-tighter">
+          <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-tighter">
             Plan
           </span>
         </div>
@@ -53,7 +53,7 @@ export function ChatLogsPanel({ chatId, isOpen, onClose }: ChatLogsPanelProps) {
     return (
       <div className="flex items-center gap-1 w-[72px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800">
         <Brain className="text-purple-600 dark:text-purple-400" size={10} />
-        <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-tighter">
+        <span className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-tighter">
           Agente
         </span>
       </div>

@@ -106,7 +106,7 @@ function ElapsedTimer({ delayMs = 3000, resetKey, showHints = false }: { delayMs
       {hint && (
         <motion.span
           key={hint}
-          className="text-[10px] text-muted-foreground/40 italic"
+          className="text-xs text-muted-foreground/40 italic"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}

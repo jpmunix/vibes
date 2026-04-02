@@ -326,7 +326,7 @@ body[data-scroll-locked] .app-region-drag {
 }
 
 .prose code {
-  @apply bg-muted/50 text-foreground px-1 py-0.5 rounded font-mono text-sm;
+  @apply bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight;
 }
 
 .prose pre code {

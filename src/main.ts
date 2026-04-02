@@ -16,7 +16,7 @@ import { handleSupabaseOAuthReturn } from "./supabase_admin/supabase_return_hand
 import { handleProReturn } from "./main/pro";
 import { IS_TEST_BUILD } from "./ipc/utils/test_utils";
 
-import { getDatabasePath, initializeDatabase } from "./db";
+
 import { UserSettings } from "./lib/schemas";
 import { handleNeonOAuthReturn } from "./neon_admin/neon_return_handler";
 import { handleFirebaseOAuthReturn } from "./firebase_admin/firebase_return_handler";
@@ -146,22 +146,18 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 3;
+  const TOTAL_STEPS = 2;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
 
-  // Step 1: Initialize database
-  updateSplash(splash, 1, TOTAL_STEPS, "Inicializando...");
-  initializeDatabase(); // sync, fast (~50ms)
-
-  // Step 2: Create main window (the critical path)
-  updateSplash(splash, 2, TOTAL_STEPS, "Preparando interfaz...");
+  // Step 1: Create main window (the critical path)
+  updateSplash(splash, 1, TOTAL_STEPS, "Preparando interfaz...");
   createWindow();
   createApplicationMenu();
 
-  // Step 3: Wait for main window content to fully load, then swap splash → main
-  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
+  // Step 2: Wait for main window content to fully load, then swap splash → main
+  updateSplash(splash, 2, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     await new Promise<void>(resolve => {
       mainWindow!.webContents.once("did-finish-load", resolve);

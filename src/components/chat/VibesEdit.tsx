@@ -68,11 +68,11 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
           </div>
           {fileName && (
             <div className="flex items-center">
-              <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+              <span className="text-foreground font-medium text-sm">
                 {fileName}
               </span>
               {retryCount && Number(retryCount) > 1 && (
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1 italic">
+                <span className="text-xs text-muted-foreground ml-1 italic">
                   (reintento {Number(retryCount) - 1})
                 </span>
               )}
@@ -95,7 +95,7 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
@@ -106,12 +106,12 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
         </div>
       </div>
       {path && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+        <div className="text-xs text-muted-foreground font-medium mb-1">
           {path}
         </div>
       )}
       {description && (
-        <div className="text-sm text-gray-600 dark:text-gray-300">
+        <div className="text-sm text-muted-foreground">
           <span className="font-medium">Summary: </span>
           {description}
         </div>

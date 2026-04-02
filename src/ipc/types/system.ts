@@ -127,6 +127,12 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  isWindowMaximized: defineContract({
+    channel: "window:is-maximized",
+    input: z.void(),
+    output: z.boolean(),
+  }),
+
   closeWindow: defineContract({
     channel: "window:close",
     input: z.void(),

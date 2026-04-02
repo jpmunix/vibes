@@ -592,7 +592,7 @@ export function registerTodoHandlers() {
     const uploadUrl = `https://storage.bunnycdn.com/minube-vibes/${uploadPath}`;
 
     // Upload to Bunny Storage
-    const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
+    const BUNNY_STORAGE_API_KEY = process.env.BUNNY_STORAGE_API_KEY || "";
 
     let body: Buffer | string = data;
     if (typeof data === "string" && data.includes(";base64,")) {
@@ -662,7 +662,7 @@ export function registerTodoHandlers() {
 
     // Try to delete from Bunny Storage (best effort)
     try {
-      const BUNNY_STORAGE_API_KEY = "d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647";
+      const BUNNY_STORAGE_API_KEY = process.env.BUNNY_STORAGE_API_KEY || "";
       const storagePath = url.replace("https://minube-vibes.b-cdn.net/", "");
       const deleteUrl = `https://storage.bunnycdn.com/minube-vibes/${storagePath}`;
       await fetch(deleteUrl, {
