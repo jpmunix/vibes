@@ -1231,12 +1231,16 @@ function buildFinalResponse(
 ): string {
     let content = "";
 
+    // Collect raw text for fallback detection
+    let rawTextLength = 0;
+
     // Render timeline in chronological order
     for (const entry of timeline) {
         if (entry.type === "tool") {
             const tagContent = entry.error ? "[error]" : entry.output;
             content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
         } else {
+            rawTextLength += entry.text.length;
             content += cleanResponseText(entry.text);
         }
     }
@@ -1257,6 +1261,15 @@ function buildFinalResponse(
                 content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
             }
         }
+    }
+
+    // Fallback: if cleanResponseText stripped all visible text but the model DID
+    // produce text (e.g. only <think> blocks), show a brief indicator instead of
+    // rendering an empty bubble.
+    const trimmed = content.trim();
+    if (!trimmed && rawTextLength > 0) {
+        content = "*(El modelo procesó la solicitud internamente sin generar una respuesta visible.)*";
+        logger.info(`[OpenCode] buildFinalResponse: all ${rawTextLength} chars of text were internal reasoning — injected fallback`);
     }
 
     return content;
