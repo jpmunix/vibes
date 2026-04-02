@@ -169,9 +169,7 @@ async function getOpenCodeClient(appPath: string) {
                 // These extra fields are passed directly to the provider as model options
                 agent: {
                     build: {
-                        ...(settings.reasoningEffort && settings.reasoningEffort !== "none" ? {
-                            reasoningEffort: settings.reasoningEffort === "xhigh" ? "high" : settings.reasoningEffort,
-                        } : {}),
+                        reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: "low",
                     },
                     // Use the cheap/fast model for context compaction summaries

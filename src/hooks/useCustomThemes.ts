@@ -4,9 +4,6 @@ import type {
   CustomTheme,
   CreateCustomThemeParams,
   UpdateCustomThemeParams,
-  GenerateThemePromptParams,
-  GenerateThemePromptResult,
-  GenerateThemeFromUrlParams,
 } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -42,7 +39,6 @@ export function useCreateCustomTheme() {
       return ipc.template.createCustomTheme(params);
     },
     onSuccess: () => {
-      // Invalidate all custom theme queries using prefix matching
       queryClient.invalidateQueries({
         queryKey: queryKeys.customThemes.all,
       });
@@ -60,7 +56,6 @@ export function useUpdateCustomTheme() {
       return ipc.template.updateCustomTheme(params);
     },
     onSuccess: () => {
-      // Invalidate all custom theme queries using prefix matching
       queryClient.invalidateQueries({
         queryKey: queryKeys.customThemes.all,
       });
@@ -76,30 +71,9 @@ export function useDeleteCustomTheme() {
       await ipc.template.deleteCustomTheme({ id });
     },
     onSuccess: () => {
-      // Invalidate all custom theme queries using prefix matching
       queryClient.invalidateQueries({
         queryKey: queryKeys.customThemes.all,
       });
-    },
-  });
-}
-
-export function useGenerateThemePrompt() {
-  return useMutation({
-    mutationFn: async (
-      params: GenerateThemePromptParams,
-    ): Promise<GenerateThemePromptResult> => {
-      return ipc.template.generateThemePrompt(params);
-    },
-  });
-}
-
-export function useGenerateThemeFromUrl() {
-  return useMutation({
-    mutationFn: async (
-      params: GenerateThemeFromUrlParams,
-    ): Promise<GenerateThemePromptResult> => {
-      return ipc.template.generateThemeFromUrl(params);
     },
   });
 }

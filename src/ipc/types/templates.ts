@@ -5,9 +5,6 @@ import { defineContract, createClient } from "../contracts/core";
 // Template Schemas
 // =============================================================================
 
-// Import the shared Template type
-// Note: The actual Template type is defined in shared/templates.ts
-// We create a compatible Zod schema here
 export const TemplateSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -89,90 +86,6 @@ export type DeleteCustomThemeParams = z.infer<
   typeof DeleteCustomThemeParamsSchema
 >;
 
-// Theme generation types
-export const ThemeGenerationModeSchema = z.enum(["inspired", "high-fidelity"]);
-export type ThemeGenerationMode = z.infer<typeof ThemeGenerationModeSchema>;
-
-export const ThemeGenerationModelSchema = z.enum([
-  "gemini-3-pro",
-  "claude-opus-4.5",
-  "gpt-5.2",
-]);
-export type ThemeGenerationModel = z.infer<typeof ThemeGenerationModelSchema>;
-
-// Theme input source (images or URL)
-export const ThemeInputSourceSchema = z.enum(["images", "url"]);
-export type ThemeInputSource = z.infer<typeof ThemeInputSourceSchema>;
-
-// Crawl status for UI feedback
-export const CrawlStatusSchema = z.enum(["crawling", "complete", "error"]);
-export type CrawlStatus = z.infer<typeof CrawlStatusSchema>;
-
-export const GenerateThemePromptParamsSchema = z.object({
-  imagePaths: z.array(z.string()),
-  keywords: z.string(),
-  generationMode: ThemeGenerationModeSchema,
-  model: ThemeGenerationModelSchema,
-});
-
-export type GenerateThemePromptParams = z.infer<
-  typeof GenerateThemePromptParamsSchema
->;
-
-export const GenerateThemePromptResultSchema = z.object({
-  prompt: z.string(),
-});
-
-export type GenerateThemePromptResult = z.infer<
-  typeof GenerateThemePromptResultSchema
->;
-
-// URL-based theme generation params
-export const GenerateThemeFromUrlParamsSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .refine(
-      (url) => {
-        try {
-          const parsed = new URL(url);
-          return parsed.protocol === "http:" || parsed.protocol === "https:";
-        } catch {
-          return false;
-        }
-      },
-      { message: "Only HTTP and HTTPS URLs are supported" },
-    ),
-  keywords: z.string(),
-  generationMode: ThemeGenerationModeSchema,
-  model: ThemeGenerationModelSchema,
-});
-
-export type GenerateThemeFromUrlParams = z.infer<
-  typeof GenerateThemeFromUrlParamsSchema
->;
-
-export const SaveThemeImageParamsSchema = z.object({
-  data: z.string(),
-  filename: z.string(),
-});
-
-export type SaveThemeImageParams = z.infer<typeof SaveThemeImageParamsSchema>;
-
-export const SaveThemeImageResultSchema = z.object({
-  path: z.string(),
-});
-
-export type SaveThemeImageResult = z.infer<typeof SaveThemeImageResultSchema>;
-
-export const CleanupThemeImagesParamsSchema = z.object({
-  paths: z.array(z.string()),
-});
-
-export type CleanupThemeImagesParams = z.infer<
-  typeof CleanupThemeImagesParamsSchema
->;
-
 // =============================================================================
 // Template/Theme Contracts
 // =============================================================================
@@ -224,31 +137,6 @@ export const templateContracts = {
   deleteCustomTheme: defineContract({
     channel: "delete-custom-theme",
     input: DeleteCustomThemeParamsSchema,
-    output: z.void(),
-  }),
-
-  // Theme generation operations
-  generateThemePrompt: defineContract({
-    channel: "generate-theme-prompt",
-    input: GenerateThemePromptParamsSchema,
-    output: GenerateThemePromptResultSchema,
-  }),
-
-  generateThemeFromUrl: defineContract({
-    channel: "generate-theme-from-url",
-    input: GenerateThemeFromUrlParamsSchema,
-    output: GenerateThemePromptResultSchema,
-  }),
-
-  saveThemeImage: defineContract({
-    channel: "save-theme-image",
-    input: SaveThemeImageParamsSchema,
-    output: SaveThemeImageResultSchema,
-  }),
-
-  cleanupThemeImages: defineContract({
-    channel: "cleanup-theme-images",
-    input: CleanupThemeImagesParamsSchema,
     output: z.void(),
   }),
 } as const;

@@ -1,8 +1,9 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "./SettingsModelSelector";
+import { FALLBACK_STANDARD_MODEL } from "@/ipc/shared/language_model_constants";
 
-const DEFAULT_VALUE = "google/gemini-3-flash-preview";
+const DEFAULT_VALUE = FALLBACK_STANDARD_MODEL;
 
 export function DossierModelSelector() {
     const { settings, updateSettings } = useSettings();

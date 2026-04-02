@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 6; // Bumped: cap maxOutputTokens to 85% of contextWindow
+const CACHE_VERSION = 7; // Bumped: require tools + reasoning for all models
 
 const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -190,19 +190,19 @@ function isRelevantForCoding(model: OpenRouterModel): boolean {
     if (model.architecture.modality?.includes("->audio")) return false;
     if (model.architecture.modality?.includes("->video")) return false;
 
-    // Must have reasonable context (at least 4k)
-    if (model.context_length < 4000) return false;
+    // Must have reasonable context (at least 32k for agent work)
+    if (model.context_length < 32000) return false;
 
-    // Curated models always pass
+    // Curated models always pass (hand-picked, known to work well)
     if (CURATED_MODEL_IDS.has(model.id)) return true;
 
-    // For non-curated, prefer models that support tools (coding-friendly)
-    if (model.supported_parameters?.includes("tools")) return true;
+    // MUST support tool-calling — without tools the agent can't operate
+    if (!model.supported_parameters?.includes("tools")) return false;
 
-    // Allow models with large context even without tools
-    if (model.context_length >= 32000) return true;
+    // MUST support reasoning — baseline quality for coding
+    if (!model.supported_parameters?.includes("reasoning")) return false;
 
-    return false;
+    return true;
 }
 
 // =============================================================================

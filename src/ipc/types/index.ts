@@ -296,16 +296,6 @@ export type {
   CreateCustomThemeParams,
   UpdateCustomThemeParams,
   DeleteCustomThemeParams,
-  ThemeGenerationMode,
-  ThemeGenerationModel,
-  ThemeInputSource,
-  CrawlStatus,
-  GenerateThemePromptParams,
-  GenerateThemePromptResult,
-  GenerateThemeFromUrlParams,
-  SaveThemeImageParams,
-  SaveThemeImageResult,
-  CleanupThemeImagesParams,
 } from "./templates";
 
 // Proposal types

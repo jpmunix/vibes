@@ -118,7 +118,7 @@ export function registerDebateStreamHandlers() {
           });
 
           let bestModel = {
-            name: "google/gemini-2.5-flash-lite",
+            name: DEFAULT_STANDARD_MODEL,
             provider: "openrouter",
           }; // Fallback
 

@@ -13,20 +13,24 @@ import { v4 as uuidv4 } from "uuid";
 import log from "electron-log";
 import { DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { DEFAULT_THEME_ID } from "@/shared/themes";
-import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
+import {
+  DEFAULT_ENABLED_MODELS,
+  FALLBACK_PRO_MODEL,
+  FALLBACK_SELECTED_MODEL,
+} from "@/ipc/shared/language_model_constants";
 import { IS_TEST_BUILD } from "@/ipc/utils/test_utils";
 
 const logger = log.scope("settings");
 
 const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: {
-    name: "google/gemini-3-flash-preview",
+    name: FALLBACK_SELECTED_MODEL,
     provider: "openrouter",
   },
   providerSettings: {},
   // Unified model keys (v2) — two tiers replace the old 7 individual fields
   standardModeModel: DEFAULT_STANDARD_MODEL,
-  proModeModel: "openai/gpt-5.1-codex-mini",
+  proModeModel: FALLBACK_PRO_MODEL,
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
@@ -216,17 +220,17 @@ export function readSettings(): UserSettings {
 
       const migrated: Partial<UserSettings> = {};
       if (shouldMigrate(validatedSettings.appTitleGenerationModel))
-        (migrated as any).appTitleGenerationModel = "openai/gpt-4.1-nano";
+        (migrated as any).appTitleGenerationModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate(validatedSettings.debateModel))
-        (migrated as any).debateModel = "openai/gpt-5-mini";
+        (migrated as any).debateModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate(validatedSettings.summaryModel))
-        (migrated as any).summaryModel = "google/gemini-3-flash-preview";
+        (migrated as any).summaryModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate((validatedSettings as any).todoAnalysisModel))
-        (migrated as any).todoAnalysisModel = "google/gemini-3-flash-preview";
+        (migrated as any).todoAnalysisModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate((validatedSettings as any).knowledgeExtractionModel))
-        (migrated as any).knowledgeExtractionModel = "openai/gpt-5.1-codex-mini";
+        (migrated as any).knowledgeExtractionModel = FALLBACK_PRO_MODEL;
       if (shouldMigrate((validatedSettings as any).dossierModel))
-        (migrated as any).dossierModel = "google/gemini-3-flash-preview";
+        (migrated as any).dossierModel = DEFAULT_STANDARD_MODEL;
 
       // Mark migration as done and persist
       const migratedSettings = {
@@ -310,7 +314,7 @@ export function readSettings(): UserSettings {
       const currentModelName = validatedSettings.selectedModel?.name;
       if (currentModelName && !DEFAULT_ENABLED_MODELS.includes(currentModelName)) {
         migrated.selectedModel = {
-          name: "google/gemini-3-flash-preview",
+          name: FALLBACK_SELECTED_MODEL,
           provider: "openrouter",
         };
         logger.info(`[Migration v3] Migrated selectedModel from ${currentModelName} to gemini-3-flash-preview`);
@@ -401,7 +405,7 @@ export function readSettings(): UserSettings {
       if (proCandidate && proCandidate !== "SAME_AS_CHAT") {
         (migrated as any).proModeModel = proCandidate;
       } else {
-        (migrated as any).proModeModel = "openai/gpt-5.1-codex-mini";
+        (migrated as any).proModeModel = FALLBACK_PRO_MODEL;
       }
 
       const migratedSettings = {
@@ -467,6 +471,37 @@ export function readSettings(): UserSettings {
         writeSettings(migratedSettings);
       } catch (e) {
         logger.error("[Migration] Failed to persist v7 reasoning effort medium:", e);
+      }
+      return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v8 reasoning effort simplification ──
+    // Normalize legacy reasoning effort values to the 3 supported levels (low/medium/high).
+    // none → medium, minimal → medium, xhigh → high. Other values pass through.
+    if (!(validatedSettings as any)._migrations?.v8_reasoning_effort_simplify) {
+      const migrated: Partial<UserSettings> = {};
+      const currentEffort = (validatedSettings as any).reasoningEffort as string | undefined;
+
+      const EFFORT_MAP: Record<string, string> = {
+        "none": "medium",
+        "minimal": "medium",
+        "xhigh": "high",
+      };
+      if (currentEffort && EFFORT_MAP[currentEffort]) {
+        (migrated as any).reasoningEffort = EFFORT_MAP[currentEffort];
+      }
+
+      const migratedSettings = {
+        ...validatedSettings,
+        ...migrated,
+        _migrations: { ...((validatedSettings as any)._migrations || {}), v8_reasoning_effort_simplify: true },
+      };
+      logger.info("[Migration] Applied v8 reasoning effort simplification:", migrated);
+      cachedSettings = migratedSettings as UserSettings;
+      try {
+        writeSettings(migratedSettings);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v8 reasoning effort simplification:", e);
       }
       return migratedSettings as UserSettings;
     }

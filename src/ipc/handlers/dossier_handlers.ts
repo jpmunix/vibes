@@ -19,6 +19,7 @@ import { extractCodebase } from "../../utils/codebase";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getEffectivePrompt } from "../../prompts";
 import { getLanguageModels } from "../shared/language_model_helpers";
+import { FALLBACK_STANDARD_MODEL } from "../shared/language_model_constants";
 
 const logger = log.scope("dossier_handlers");
 
@@ -293,7 +294,7 @@ export function registerDossierHandlers() {
                 const dossierPrompt = getEffectivePrompt("dossier_prompt", settings);
 
                 // Resolve the AI model through OpenRouter
-                const dossierModelName = settings.proModeModel || "google/gemini-3-flash-preview";
+                const dossierModelName = settings.proModeModel || FALLBACK_STANDARD_MODEL;
                 let selectedModel = settings.selectedModel; // fallback to chat model
                 const userId = context.userId;
 

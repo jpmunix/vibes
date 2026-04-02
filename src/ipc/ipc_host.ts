@@ -19,7 +19,6 @@ import { registerDependencyHandlers } from "./handlers/dependency_handlers";
 import { registerFreeAgentQuotaHandlers } from "./handlers/free_agent_quota_handlers";
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
 import { registerGithubHandlers } from "./handlers/github_handlers";
-import { registerHelpBotHandlers } from "./handlers/help_bot_handlers";
 import { registerImportHandlers } from "./handlers/import_handlers";
 import { registerLanguageModelHandlers } from "./handlers/language_model_handlers";
 import { registerLocalModelHandlers } from "./handlers/local_model_handlers";
@@ -100,7 +99,6 @@ export function registerIpcHandlers() {
   registerThemesHandlers();
   registerPortalHandlers();
   registerPromptHandlers();
-  registerHelpBotHandlers();
   registerMcpHandlers();
   registerSecurityHandlers();
   registerVisualEditingHandlers();

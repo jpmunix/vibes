@@ -24,6 +24,21 @@ export const SONNET_4_5 = "claude-sonnet-4-5-20250929";
 export const GEMINI_3_FLASH = "gemini-3-flash-preview";
 export const GPT_5_MINI = "openai/gpt-5-mini";
 
+// ═══════════════════════════════════════════════════════════════════
+// CENTRALIZED MODEL DEFAULTS
+// All fallback model references across the app MUST use these constants.
+// To change a default, update ONLY here.
+// ═══════════════════════════════════════════════════════════════════
+
+/** Cheap/fast model for internal tasks: titles, summaries, compaction, todos, dossiers, debates */
+export const FALLBACK_STANDARD_MODEL = "google/gemini-2.5-flash-lite";
+
+/** Strong model for thinking tasks: turbo edits, knowledge extraction */
+export const FALLBACK_PRO_MODEL = "openai/gpt-5.1-codex-mini";
+
+/** Default model for the main chat selector */
+export const FALLBACK_SELECTED_MODEL = "google/gemini-3-flash-preview";
+
 export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
   // DESHABILITADO TEMPORALMENTE - Auto-router funciona mal
   // "auto-router": [
@@ -138,39 +153,6 @@ export const MODEL_OPTIONS: Record<string, ModelOption[]> = {
       temperature: 0,
       dollarSigns: 4,
       brainSigns: 3,
-    },
-    {
-      name: "openai/gpt-4.1",
-      displayName: "GPT 4.1",
-      description:
-        "El estándar de oro: código muy refinado y fiable, precio alto y velocidad constante.",
-      maxOutputTokens: 32_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 3,
-      brainSigns: 2,
-    },
-    {
-      name: "openai/gpt-4.1-mini",
-      displayName: "GPT 4.1 mini",
-      description:
-        "Eficiencia pura: ideal para scripts rápidos y tareas repetitivas, muy barato y veloz",
-      maxOutputTokens: 32_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 1,
-    },
-    {
-      name: "openai/gpt-4.1-nano",
-      displayName: "GPT 4.1 nano",
-      description:
-        'Instantáneo y casi gratuito; perfecto para "snippets" simples o autocompletado básico.',
-      maxOutputTokens: 32_000,
-      contextWindow: 1_000_000,
-      temperature: 0,
-      dollarSigns: 1,
-      brainSigns: 1,
     },
     {
       name: GPT_5_MINI,

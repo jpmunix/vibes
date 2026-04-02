@@ -1,8 +1,9 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "./SettingsModelSelector";
+import { FALLBACK_PRO_MODEL } from "@/ipc/shared/language_model_constants";
 
-const DEFAULT_VALUE = "openai/gpt-5.1-codex-mini";
+const DEFAULT_VALUE = FALLBACK_PRO_MODEL;
 
 export function KnowledgeModelSelector() {
     const { settings, updateSettings } = useSettings();
@@ -33,7 +34,7 @@ export function KnowledgeModelSelector() {
             specialOptions={[
                 {
                     value: DEFAULT_VALUE,
-                    label: defaultModelInList?.displayName || "GPT-4.1 Mini (recomendado)",
+                    label: defaultModelInList?.displayName || "Modelo recomendado",
                     description: defaultModelInList ? undefined : "Modelo predeterminado",
                 },
             ]}

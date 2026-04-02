@@ -11,6 +11,7 @@ import {
   type OpenRouterMessage,
 } from "@/ipc/utils/openrouter";
 import { getEffectivePrompt } from "@/prompts";
+import { FALLBACK_PRO_MODEL } from "@/ipc/shared/language_model_constants";
 
 export const VIBES_ENGINE_URL =
   process.env.VIBES_ENGINE_URL ?? "https://engine.dyad.sh/v1";
@@ -131,7 +132,7 @@ async function callTurboFileEditViaOpenRouter(
 ): Promise<Response> {
   const settings = readSettings();
   const apiKey = getOpenRouterApiKey(settings);
-  const model = settings.proModeModel || "openai/gpt-5.1-codex-mini";
+  const model = settings.proModeModel || FALLBACK_PRO_MODEL;
   const body = parseTurboFileEditBody(options.body);
 
   let data: any;

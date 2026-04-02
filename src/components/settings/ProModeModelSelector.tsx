@@ -1,8 +1,9 @@
 import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
+import { FALLBACK_STANDARD_MODEL } from "@/ipc/shared/language_model_constants";
 
-const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+const DEFAULT_MODEL = FALLBACK_STANDARD_MODEL;
 
 /**
  * Single selector for "Modo Pro" tasks.
