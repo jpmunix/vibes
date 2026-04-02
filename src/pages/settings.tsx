@@ -180,6 +180,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     sectionId: "ai-behavior",
   },
   {
+    id: "text-verbosity",
+    label: "Verbosidad",
+    description: "Controla cuánto detalle incluye el agente en sus respuestas",
+    keywords: ["verbosity", "verbosidad", "detalle", "conciso", "detallado"],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
+  {
     id: "max-chat-turns",
     label: "Turnos máximos de chat",
     description: "Número máximo de intercambios en una conversación",

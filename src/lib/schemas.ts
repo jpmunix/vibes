@@ -350,6 +350,7 @@ export const UserSettingsSchema = z
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
+    textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),

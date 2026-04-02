@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   aiQueryLogRotationThreshold: "200",
   windowState: undefined,
   reasoningEffort: "medium",
+  textVerbosity: "low",
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",

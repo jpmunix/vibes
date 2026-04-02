@@ -20,6 +20,7 @@ import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
 import type { ChatLanguage } from "@/lib/schemas";
 import { useState } from "react";
 import { ReasoningEffortSelector } from "../ReasoningEffortSelector";
+import { TextVerbositySelector } from "../TextVerbositySelector";
 
 // ─── Chat turns options ───
 const turnsOptions = [
@@ -151,6 +152,12 @@ export function AIBehaviorSettings({
           label="Esfuerzo de razonamiento"
           description="Controla cuánto análisis previo realiza el agente"
           control={<ReasoningEffortSelector variant="settings" />}
+        />
+
+        <SettingRow
+          label="Verbosidad"
+          description="Controla cuánto detalle incluye el agente en sus respuestas"
+          control={<TextVerbositySelector variant="settings" />}
         />
 
 

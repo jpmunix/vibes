@@ -130,6 +130,7 @@ export async function updateOpenCodeConfig(changes: {
     selectedModel?: { provider?: string; name: string };
     standardModeModel?: string;
     reasoningEffort?: string;
+    textVerbosity?: string;
 }): Promise<void> {
     if (!clientInstance) return; // server not started yet
 
@@ -143,9 +144,12 @@ export async function updateOpenCodeConfig(changes: {
         if (changes.standardModeModel) {
             body.small_model = `openrouter/${changes.standardModeModel}`;
         }
-        if (changes.reasoningEffort) {
+        if (changes.reasoningEffort || changes.textVerbosity) {
             body.agent = {
-                build: { reasoningEffort: changes.reasoningEffort },
+                build: {
+                    ...(changes.reasoningEffort ? { reasoningEffort: changes.reasoningEffort } : {}),
+                    ...(changes.textVerbosity ? { textVerbosity: changes.textVerbosity } : {}),
+                },
             };
         }
 
@@ -238,7 +242,7 @@ async function getOpenCodeClient(appPath: string) {
                 agent: {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
-                        textVerbosity: "low",
+                        textVerbosity: settings.textVerbosity || "low",
                     },
                     // Use the cheap/fast model for context compaction summaries
                     // so we don't burn expensive tokens on housekeeping
@@ -477,8 +481,8 @@ export async function handleOpenCodeStream(
             // build commands, and architecture. This is the key mechanism that gives
             // the agent native project knowledge (equivalent to /init in OpenCode CLI).
             // Only runs ONCE per project: if AGENTS.md already exists, skip it.
-            // Runs in BACKGROUND (fire-and-forget) to avoid blocking the first chat message.
-            // AGENTS.md will be ready for the next interaction.
+            // Runs SYNCHRONOUSLY so the agent has AGENTS.md before the first prompt.
+            // If the user already sent a message, the UI shows "Analizando tu proyecto...".
             {
                 const fs = await import("fs");
                 const pathModule = await import("path");
@@ -490,61 +494,35 @@ export async function handleOpenCodeStream(
                 const hasAgentsMd = agentsMdPaths.some(p => fs.existsSync(p));
 
                 if (!hasAgentsMd) {
-                    // Fire-and-forget: run init in a SEPARATE throwaway session
-                    // so it doesn't conflict with the user's prompt running in parallel.
-                    logger.info(`[OpenCode] No AGENTS.md found — launching background init for ${projectDir}...`);
-                    const initClient = client; // capture for closure
+                    logger.info(`[OpenCode] No AGENTS.md found — running init for ${projectDir}...`);
 
-                    // Use a detached promise — don't await
-                    (async () => {
-                        let initSessionId: string | undefined;
-                        try {
-                            const settings = readSettings();
-                            const model = settings.selectedModel;
-                            const initProviderID = mapProviderForOpenCode(model);
+                    // Send "analyzing" status to the frontend
+                    sendProgressUpdate(event, req.chatId, chatMessages,
+                        `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
 
-                            // Create a dedicated session for init (separate from the user's chat)
-                            const initSession = await initClient.session.create({
-                                body: { title: "[init] Project analysis" },
-                                query: { directory: projectDir },
-                            });
-                            initSessionId = initSession.data?.id;
-                            if (!initSessionId) {
-                                logger.warn(`[OpenCode] Failed to create init session`);
-                                return;
-                            }
+                    try {
+                        const settings = readSettings();
+                        const model = settings.selectedModel;
+                        const initProviderID = mapProviderForOpenCode(model);
 
-                            // Create a seed message for the init API
-                            const seedMsg = await initClient.session.prompt({
-                                path: { id: initSessionId },
-                                query: { directory: projectDir },
-                                body: {
-                                    noReply: true,
-                                    parts: [{ type: "text", text: "Initializing project context..." }],
-                                },
-                            });
-                            const seedMessageID = seedMsg.data?.info?.id ?? "";
+                        logger.info(`[OpenCode] Running init with model ${initProviderID}/${model.name}...`);
+                        const initResult = await client.session.init({
+                            path: { id: sessionId },
+                            query: { directory: projectDir },
+                            body: {
+                                providerID: initProviderID,
+                                modelID: model.name,
+                                messageID: "",
+                            },
+                        });
+                        logger.info(`[OpenCode] Init completed (result: ${JSON.stringify(initResult.data)})`);
+                    } catch (initError: any) {
+                        logger.warn(`[OpenCode] Init failed (non-fatal): ${initError.message}`);
+                        // Non-fatal — agent will work without AGENTS.md, just less context
+                    }
 
-                            logger.info(`[OpenCode] Background init running with model ${initProviderID}/${model.name}...`);
-                            const initResult = await initClient.session.init({
-                                path: { id: initSessionId },
-                                query: { directory: projectDir },
-                                body: {
-                                    providerID: initProviderID,
-                                    modelID: model.name,
-                                    messageID: seedMessageID,
-                                },
-                            });
-                            logger.info(`[OpenCode] Background init completed (result: ${JSON.stringify(initResult.data)})`);
-                        } catch (initError: any) {
-                            logger.warn(`[OpenCode] Background init failed (non-fatal): ${initError.message}`);
-                        } finally {
-                            // Clean up the throwaway session
-                            if (initSessionId) {
-                                initClient.session.delete({ path: { id: initSessionId } }).catch(() => {});
-                            }
-                        }
-                    })();
+                    // Clear the analyzing status from the UI
+                    sendChunk(event, req.chatId, chatMessages, "");
                 } else {
                     logger.info(`[OpenCode] AGENTS.md already exists, skipping init`);
                 }
