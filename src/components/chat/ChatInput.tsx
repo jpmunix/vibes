@@ -134,7 +134,7 @@ export function ChatInput({
 
 
   // Get todos for this chat
-  const agentTodosByChatId = useAtomValue(agentTodosByChatIdAtom);
+  const [agentTodosByChatId, setAgentTodosByChatId] = useAtom(agentTodosByChatIdAtom);
   const chatTodos = chatId ? (agentTodosByChatId.get(chatId) ?? []) : [];
   const { checkProblems } = useCheckProblems(appId);
   const { refreshAppIframe } = useRunApp();
@@ -575,10 +575,32 @@ export function ChatInput({
                                     window.dispatchEvent(new CustomEvent("vibes:restore-chat-input", { detail: { prompt, attachments: attachmentsToRestore } }));
                                   }
                                   const targetHash = currentMessage?.sourceCommitHash || "NONE";
-                                  await revertVersion({
-                                    versionId: targetHash,
-                                    currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
-                                    silent: true,
+                                  if (targetHash !== "NONE") {
+                                    // Normal undo: revert to the commit before this chat turn
+                                    await revertVersion({
+                                      versionId: targetHash,
+                                      currentChatMessageId: userMessage ? { chatId, messageId: userMessage.id } : undefined,
+                                      silent: true,
+                                    });
+                                  } else {
+                                    // Stream was stopped before any commit — discard uncommitted changes
+                                    try {
+                                      await ipc.git.discardAllChanges({ appId });
+                                    } catch { /* no uncommitted changes to discard */ }
+                                    // Still delete the messages from this turn
+                                    if (userMessage) {
+                                      await revertVersion({
+                                        versionId: "NONE",
+                                        currentChatMessageId: { chatId, messageId: userMessage.id },
+                                        silent: true,
+                                      });
+                                    }
+                                  }
+                                  // Clear agent todos for this chat
+                                  setAgentTodosByChatId((prev) => {
+                                    const next = new Map(prev);
+                                    next.delete(chatId);
+                                    return next;
                                   });
                                   const chat = await ipc.chat.getChat(chatId);
                                   setMessagesById((prev) => { const next = new Map(prev); next.set(chatId, chat.messages); return next; });
