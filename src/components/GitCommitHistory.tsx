@@ -23,6 +23,7 @@ import {
     ChevronDown,
     Eye,
     FolderTree,
+    Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,16 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { ipc } from "@/ipc/types";
+import { toast } from "sonner";
 
 function getFileStatusIcon(status: string) {
     switch (status) {
@@ -170,10 +181,13 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
         nextPage,
         prevPage,
         selectCommit,
+        refreshHistory,
     } = useCommitHistory(appId);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedFiles, setExpandedFiles] = useState(false);
+    const [isRevertDialogOpen, setIsRevertDialogOpen] = useState(false);
+    const [isReverting, setIsReverting] = useState(false);
     const listRef = useRef<HTMLDivElement>(null);
 
     // Filter commits by search
@@ -453,6 +467,20 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                             <Minus size={11} />{commitDetail.deletions}
                                         </span>
                                     </div>
+
+                                    {/* Revert button */}
+                                    <div className="pt-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs gap-1.5 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
+                                            onClick={() => setIsRevertDialogOpen(true)}
+                                            data-testid="revert-commit-button"
+                                        >
+                                            <Undo2 size={12} />
+                                            Revertir commit
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {/* Changed files */}
@@ -536,6 +564,88 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                     </div>
                 )}
             </div>
+
+            {/* Revert confirmation dialog */}
+            <Dialog
+                open={isRevertDialogOpen}
+                onOpenChange={(open) => {
+                    if (!open && isReverting) return;
+                    setIsRevertDialogOpen(open);
+                }}
+            >
+                <DialogContent className="sm:max-w-md" data-testid="revert-commit-dialog">
+                    <DialogHeader>
+                        <DialogTitle>Revertir commit</DialogTitle>
+                        <DialogDescription>
+                            Se creará un nuevo commit que deshace los cambios de{" "}
+                            <code className="font-mono bg-muted px-1 py-0.5 rounded text-xs">
+                                {commitDetail?.shortHash}
+                            </code>
+                            .{" "}
+                            El historial se mantiene intacto.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {commitDetail && (
+                        <div className="bg-muted/30 rounded-md p-3 space-y-1">
+                            <p className="text-xs font-medium truncate">{commitDetail.message}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                                {commitDetail.author} · {formatRelativeDate(commitDetail.date)} · {commitDetail.filesChanged} archivo{commitDetail.filesChanged !== 1 ? "s" : ""}
+                            </p>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsRevertDialogOpen(false)}
+                            disabled={isReverting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="default"
+                            className="bg-orange-600 hover:bg-orange-700 text-white"
+                            onClick={async () => {
+                                if (!appId || !commitDetail) return;
+                                setIsReverting(true);
+                                try {
+                                    const result = await ipc.git.revertCommit({
+                                        appId,
+                                        commitHash: commitDetail.hash,
+                                    });
+                                    if (result.success) {
+                                        toast.success(result.message);
+                                        setIsRevertDialogOpen(false);
+                                        selectCommit(null);
+                                        refreshHistory();
+                                    } else {
+                                        toast.error(result.message);
+                                    }
+                                } catch (err: any) {
+                                    toast.error(err.message || "Error al revertir commit");
+                                } finally {
+                                    setIsReverting(false);
+                                }
+                            }}
+                            disabled={isReverting}
+                            data-testid="confirm-revert-button"
+                        >
+                            {isReverting ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin mr-1.5" />
+                                    Revirtiendo...
+                                </>
+                            ) : (
+                                <>
+                                    <Undo2 size={14} className="mr-1.5" />
+                                    Revertir
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -2297,3 +2297,73 @@ export async function gitDiffRange({
   return combined.slice(0, maxBytes);
 }
 
+/**
+ * Discard ALL uncommitted changes in the working directory.
+ * Equivalent to: git checkout -- . && git clean -fd
+ * WARNING: This is destructive and cannot be undone.
+ */
+export async function gitDiscardAllChanges({
+  path,
+}: GitBaseParams): Promise<{ message: string }> {
+  // First reset the index (unstage everything)
+  await execOrThrow(["reset", "HEAD"], path, "Failed to reset index");
+
+  // Then discard all tracked file changes
+  await execOrThrow(
+    ["checkout", "--", "."],
+    path,
+    "Failed to discard tracked changes",
+  );
+
+  // Clean untracked files and directories
+  await execOrThrow(
+    ["clean", "-fd"],
+    path,
+    "Failed to clean untracked files",
+  );
+
+  return { message: "Todos los cambios descartados correctamente." };
+}
+
+/**
+ * Revert a specific commit by creating a new commit that undoes it.
+ * Equivalent to: git revert --no-edit <commitHash>
+ * Safe operation — doesn't rewrite history.
+ */
+export async function gitRevertCommit({
+  path,
+  commitHash,
+}: {
+  path: string;
+  commitHash: string;
+}): Promise<{ success: boolean; message: string }> {
+  // Validate commitHash to prevent injection
+  if (!/^[a-f0-9]{4,40}$/i.test(commitHash)) {
+    throw new Error("Invalid commit hash format");
+  }
+
+  const result = await execGit(
+    ["revert", "--no-edit", commitHash],
+    path,
+  );
+
+  if (result.exitCode !== 0) {
+    const stderr = result.stderr.toString();
+    // Check for merge conflicts during revert
+    if (stderr.includes("CONFLICT") || stderr.includes("conflict")) {
+      // Abort the revert to leave tree clean
+      await execGit(["revert", "--abort"], path);
+      return {
+        success: false,
+        message: "No se pudo revertir: el commit tiene conflictos. Resuélvelos manualmente.",
+      };
+    }
+    throw new Error(`Error al revertir commit: ${stderr}`);
+  }
+
+  return {
+    success: true,
+    message: `Commit ${commitHash.slice(0, 7)} revertido correctamente.`,
+  };
+}
+

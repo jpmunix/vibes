@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   ArrowRightLeft,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,8 @@ import {
   type UncommittedFile,
 } from "@/hooks/useUncommittedFiles";
 import { useCommitChanges } from "@/hooks/useCommitChanges";
+import { ipc } from "@/ipc/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface UncommittedFilesBannerProps {
@@ -89,6 +92,8 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
   const { commitChanges, isCommitting } = useCommitChanges();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [commitMessage, setCommitMessage] = useState("");
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const autoCommitTriggeredRef = useRef(false);
   const autoCommitFailCountRef = useRef(0);
 
@@ -158,6 +163,20 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
     setCommitMessage("");
   };
 
+  const handleDiscard = async () => {
+    if (!appId) return;
+    setIsDiscarding(true);
+    try {
+      const result = await ipc.git.discardAllChanges({ appId });
+      toast.success(result.message);
+      setIsDiscardDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Error al descartar cambios");
+    } finally {
+      setIsDiscarding(false);
+    }
+  };
+
   return (
     <>
       <div
@@ -172,14 +191,26 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
             confirmar.
           </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleOpenDialog}
-          data-testid="review-commit-button"
-        >
-          Revisar y confirmar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsDiscardDialogOpen(true)}
+            className="text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800"
+            data-testid="discard-changes-button"
+          >
+            <Undo2 size={14} className="mr-1.5" />
+            Descartar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenDialog}
+            data-testid="review-commit-button"
+          >
+            Revisar y confirmar
+          </Button>
+        </div>
       </div>
 
       <Dialog
@@ -272,6 +303,44 @@ export function UncommittedFilesBanner({ appId }: UncommittedFilesBannerProps) {
               data-testid="commit-button"
             >
               {isCommitting ? "Confirmando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discard confirmation dialog */}
+      <Dialog
+        open={isDiscardDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && isDiscarding) return;
+          setIsDiscardDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md" data-testid="discard-dialog">
+          <DialogHeader>
+            <DialogTitle>Descartar todos los cambios</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro? Se eliminarán <strong>{uncommittedFiles.length}</strong>{" "}
+              {uncommittedFiles.length === 1 ? "cambio" : "cambios"} sin confirmar.
+              Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDiscardDialogOpen(false)}
+              disabled={isDiscarding}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDiscard}
+              disabled={isDiscarding}
+              data-testid="confirm-discard-button"
+            >
+              {isDiscarding ? "Descartando..." : "Descartar cambios"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ChevronDown, ExternalLink, GitBranch, Play, RotateCcw, Square, Terminal } from "lucide-react";
+import { ChevronDown, ExternalLink, Play, RotateCcw, Square, Terminal } from "lucide-react";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
-import { useQuery } from "@tanstack/react-query";
+
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,22 +37,7 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
   const { runApp, stopApp, restartApp } = useRunApp();
   const { theme, intensity } = useTheme();
 
-  // Detect unpushed git changes
-  const { hasUncommittedFiles, uncommittedFiles } = useUncommittedFiles(appId);
-  const { data: gitState } = useQuery({
-    queryKey: ["git-state", appId],
-    queryFn: async () => {
-      try {
-        return await ipc.github.getGitState({ appId });
-      } catch {
-        return null;
-      }
-    },
-    enabled: appId !== null,
-    refetchInterval: 5000,
-  });
 
-  const hasUnpushedChanges = hasUncommittedFiles || (gitState?.ahead ?? 0) > 0;
 
   // Poll server status every 2 seconds
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -141,25 +126,7 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
     }
   }, [appUrl]);
 
-  const handleOpenGitWindow = useCallback(() => {
-    ipc.system.openGitWindow({
-      appId,
-      theme,
-      themeIntensity: intensity,
-    });
-  }, [appId, theme, intensity]);
 
-  // Build git button tooltip
-  const gitTooltip = (() => {
-    const parts: string[] = [];
-    if (hasUncommittedFiles) {
-      parts.push(`${uncommittedFiles.length} cambio${uncommittedFiles.length !== 1 ? "s" : ""} sin confirmar`);
-    }
-    if ((gitState?.ahead ?? 0) > 0) {
-      parts.push(`${gitState!.ahead} commit${gitState!.ahead !== 1 ? "s" : ""} sin subir`);
-    }
-    return parts.length > 0 ? parts.join(" · ") : "Abrir Git";
-  })();
 
   // Status indicator colors
   const statusColor = {
@@ -262,30 +229,6 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
           title="Abrir en navegador"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-        </button>
-      )}
-
-      {/* Git button — visible when there are unpushed changes */}
-      {hasUnpushedChanges && (
-        <button
-          id="git-changes-btn"
-          onClick={handleOpenGitWindow}
-          className={cn(
-            "relative p-1.5 rounded-md transition-all duration-200",
-            "text-muted-foreground hover:text-foreground",
-            "hover:bg-accent/50",
-          )}
-          title={gitTooltip}
-        >
-          <GitBranch className="h-3.5 w-3.5" />
-          {/* Change indicator dot */}
-          <span
-            className={cn(
-              "absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full",
-              "bg-orange-500 shadow-[0_0_4px_1px_rgba(249,115,22,0.4)]",
-              "animate-pulse",
-            )}
-          />
         </button>
       )}
     </div>

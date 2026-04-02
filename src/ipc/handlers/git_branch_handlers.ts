@@ -32,6 +32,8 @@ import {
   gitResolveFileOurs,
   gitResolveFileTheirs,
   gitRemoveIndexLock,
+  gitDiscardAllChanges,
+  gitRevertCommit,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
@@ -723,6 +725,38 @@ async function handleRemoveIndexLock(
   return gitRemoveIndexLock({ path: appPath });
 }
 
+async function handleDiscardAllChanges(
+  _event: IpcMainInvokeEvent,
+  { appId }: { appId: number },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return withLock(appId, async () => {
+    return gitDiscardAllChanges({ path: appPath });
+  });
+}
+
+async function handleRevertCommit(
+  _event: IpcMainInvokeEvent,
+  { appId, commitHash }: { appId: number; commitHash: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return withLock(appId, async () => {
+    return gitRevertCommit({ path: appPath, commitHash });
+  });
+}
+
 // --- Registration ---
 export function registerGithubBranchHandlers() {
   createTypedHandler(githubContracts.mergeAbort, handleAbortMerge);
@@ -761,5 +795,7 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
   createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
   createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
+  createTypedHandler(gitContracts.discardAllChanges, handleDiscardAllChanges);
+  createTypedHandler(gitContracts.revertCommit, handleRevertCommit);
 }
 

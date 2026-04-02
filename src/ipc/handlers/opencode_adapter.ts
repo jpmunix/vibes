@@ -221,10 +221,21 @@ async function getOpenCodeClient(appPath: string) {
     const modelID = model.name;
 
     try {
-        const opencode = await createOpencode({
-            hostname: "127.0.0.1",
-            port: 0, // auto-assign port
-            config: {
+        // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
+        // Electron's CWD (our project root) and writes config.json there, which
+        // triggers Vite page reloads that kill SSE streaming.
+        // Fix: temporarily change cwd before spawning, then restore it.
+        const { app } = require("electron");
+        const opencodeDataDir = path.join(app.getPath("userData"), "opencode-server");
+        const fs = require("fs");
+        if (!fs.existsSync(opencodeDataDir)) {
+            fs.mkdirSync(opencodeDataDir, { recursive: true });
+        }
+
+        const originalCwd = process.cwd();
+        process.chdir(opencodeDataDir);
+
+        const config = {
                 provider: {
                     [providerID]: {
                         ...(providerID === "openrouter" ? {
@@ -290,14 +301,25 @@ async function getOpenCodeClient(appPath: string) {
                         "*.log",
                     ],
                 },
-            },
-        });
+        };
+
+        let opencode: Awaited<ReturnType<typeof createOpencode>>;
+        try {
+            opencode = await createOpencode({
+                hostname: "127.0.0.1",
+                port: 0, // auto-assign port
+                config: config as any,
+            });
+        } finally {
+            // Always restore CWD, even if createOpencode fails
+            process.chdir(originalCwd);
+        }
 
         opencodeInstance = opencode;
         clientInstance = opencode.client;
         serverUrl = opencode.server.url;
 
-        logger.info(`[OpenCode] Server running at ${serverUrl}`);
+        logger.info(`[OpenCode] Server running at ${serverUrl} (config dir: ${opencodeDataDir})`);
         logger.info(`[OpenCode] Client ready. Model: ${providerID}/${modelID}`);
 
         return { client: opencode.client, opencode };

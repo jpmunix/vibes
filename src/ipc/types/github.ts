@@ -504,6 +504,18 @@ export const gitContracts = {
     input: z.object({ appId: z.number() }),
     output: z.object({ removed: z.boolean(), message: z.string() }),
   }),
+
+  discardAllChanges: defineContract({
+    channel: "git:discard-all-changes",
+    input: z.object({ appId: z.number() }),
+    output: z.object({ message: z.string() }),
+  }),
+
+  revertCommit: defineContract({
+    channel: "git:revert-commit",
+    input: z.object({ appId: z.number(), commitHash: z.string() }),
+    output: z.object({ success: z.boolean(), message: z.string() }),
+  }),
 } as const;
 
 // =============================================================================
