@@ -69,7 +69,7 @@ import {
 import { TOOL_DEFINITIONS } from "./tool_definitions";
 import { parseAiMessagesJson, stripImagePartsFromHistory } from "@/ipc/utils/ai_messages_utils";
 import { addIntegrationTool } from "./tools/add_integration";
-import { autoExtractKnowledge } from "@/ipc/handlers/knowledge_handlers";
+// Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
 
 const logger = log.scope("local_agent_handler");
@@ -738,13 +738,7 @@ export async function handleLocalAgentStream(
       }
     }
 
-    // Fire-and-forget: auto-extract knowledge from this interaction
-    void autoExtractKnowledge(
-      chat.app.id,
-      settings.userId as string,
-      req.prompt,
-      fullResponse,
-    );
+    // autoExtractKnowledge — REMOVED (replaced by OpenCode AGENTS.md)
 
     // Send completion
     safeSend(event.sender, "chat:response:end", {

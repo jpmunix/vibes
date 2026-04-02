@@ -53,7 +53,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
-import { KnowledgeBaseModal } from "../KnowledgeBaseModal";
+// KnowledgeBaseModal — REMOVED
 import { chatPositionAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
@@ -98,7 +98,7 @@ export function ChatHeader({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<{ id: number; title: string } | null>(null);
   const [chatToRename, setChatToRename] = useState<{ id: number; title: string } | null>(null);
-  const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
+
 
   const {
     branchInfo,
@@ -480,7 +480,7 @@ export function ChatHeader({
         </div>
 
 
-        {/* KnowledgeBaseModal — hidden: retired in agent mode */}
+
       </div>
       )}
 

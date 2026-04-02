@@ -319,15 +319,7 @@ export function registerAppHandlers() {
       }),
     );
 
-    // Fire-and-forget: ensure every local app has stack-rules in the KB.
-    // Uses a per-session Set so each app is only checked once per launch.
-    // ensureKnowledgeBaseRules exits fast if the entry already exists.
-    const { ensureKnowledgeBaseRules } = await import("./knowledge_migration");
-    for (const app of appsWithResolvedPath) {
-      if (app.localPathExists && context.userId) {
-        void ensureKnowledgeBaseRules(app.id, app.resolvedPath, context.userId);
-      }
-    }
+    // Knowledge Base migration — REMOVED (replaced by OpenCode AGENTS.md)
 
     return {
       apps: appsWithResolvedPath,

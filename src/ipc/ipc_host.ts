@@ -47,7 +47,7 @@ import { registerWindowHandlers } from "./handlers/window_handlers";
 // import { registerDebateHandlers } from "./handlers/debate_handlers";
 // import { registerDebateStreamHandlers } from "./handlers/debate_stream_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
-import { registerKnowledgeHandlers } from "./handlers/knowledge_handlers";
+// Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
 import { registerDossierHandlers } from "./handlers/dossier_handlers";
 import { registerConsoleHandlers } from "./handlers/console_handlers";
@@ -110,7 +110,7 @@ export function registerIpcHandlers() {
   // registerDebateHandlers();     // Feature hidden
   // registerDebateStreamHandlers(); // Feature hidden
   registerBackupHandlers();
-  registerKnowledgeHandlers();
+  // registerKnowledgeHandlers(); // KB removed — replaced by OpenCode AGENTS.md
   registerAiQueryLogHandlers();
   registerDossierHandlers();
   registerConsoleHandlers();

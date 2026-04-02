@@ -48,7 +48,7 @@ import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
-import { knowledgeContracts } from "../types/knowledge";
+// Knowledge Base — REMOVED
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { dossierContracts, dossierStreamContract } from "../types/dossier";
 import { authContracts } from "../types/auth";
@@ -127,7 +127,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(backupContracts),
   ...getInvokeChannels(bunnyContracts),
   ...getInvokeChannels(pocketbaseContracts),
-  ...getInvokeChannels(knowledgeContracts),
+  // knowledgeContracts — KB removed
   ...getInvokeChannels(aiQueryLogContracts),
   ...getInvokeChannels(dossierContracts),
   ...getInvokeChannels(authContracts),

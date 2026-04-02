@@ -22,7 +22,7 @@ import {
   constructSystemPrompt,
   readAiRules,
 } from "../../prompts/system_prompt";
-import { buildKnowledgePrompt, autoExtractKnowledge } from "./knowledge_handlers";
+// Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { getEffectivePrompt } from "../../prompts";
 import { getThemePromptById } from "../utils/theme_utils";
 import {
@@ -875,14 +875,7 @@ ${componentSnippet}
             settings,
           });
 
-          // Inject knowledge base prompt (auto-learned project rules)
-          const knowledgePrompt = await buildKnowledgePrompt(updatedChat.app.id, currentUserId as string, req.prompt);
-          if (knowledgePrompt) {
-            systemPrompt += "\n\n" + knowledgePrompt;
-            logger.log(
-              `Knowledge base injected for app ${updatedChat.app.id}: ${knowledgePrompt.length} chars`,
-            );
-          }
+          // Knowledge Base prompt — REMOVED (replaced by OpenCode AGENTS.md)
 
           // Add information about mentioned apps if any
           if (otherAppsCodebaseInfo) {
@@ -1896,13 +1889,7 @@ This conversation includes one or more image attachments. When the user uploads 
           })
           .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, currentUserId as string)));
 
-        // Fire-and-forget: auto-extract knowledge from this interaction
-        void autoExtractKnowledge(
-          updatedChat!.app.id,
-          currentUserId as string,
-          userPrompt,
-          fullResponse,
-        );
+        // autoExtractKnowledge — REMOVED (replaced by OpenCode AGENTS.md)
 
         const settings = readSettings();
         if (
