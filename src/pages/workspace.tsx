@@ -8,6 +8,7 @@ import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { MessagesSquare } from "lucide-react";
 import { ServerControlButton } from "@/components/ServerControlButton";
+import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 
@@ -102,6 +103,8 @@ export default function WorkspacePage() {
           {(!selectedApp?.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage.toLowerCase())) && (
             <ServerControlButton appId={appId} />
           )}
+          {/* Git button — always visible regardless of language */}
+          <GitChangesButton appId={appId} />
         </div>
       </div>
 

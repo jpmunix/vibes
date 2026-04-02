@@ -863,17 +863,33 @@ async function handlePushToGithub(
   // Get access token from settings
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
-  if (!accessToken) {
-    throw new Error("Not authenticated with GitHub.");
-  }
 
   // Get app info from DB
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
-  if (!app || !app.githubOrg || !app.githubRepo) {
-    throw new Error("App is not linked to a GitHub repo.");
+  if (!app) {
+    throw new Error("App not found.");
   }
   const appPath = getVibesAppPath(app.path);
-  const branch = app.githubBranch || "main";
+
+  // Determine if the repo is linked via Vibes DB or has a native git remote
+  const isLinkedInDb = !!(app.githubOrg && app.githubRepo);
+  let useNativeRemote = false;
+
+  if (!isLinkedInDb) {
+    // Check if the git repo itself has a remote configured
+    const hasRemote = await gitHasRemote({ path: appPath });
+    if (!hasRemote) {
+      throw new Error("App is not linked to a GitHub repo and has no git remote configured.");
+    }
+    if (!accessToken) {
+      throw new Error("Not authenticated with GitHub.");
+    }
+    useNativeRemote = true;
+  } else if (!accessToken) {
+    throw new Error("Not authenticated with GitHub.");
+  }
+
+  const branch = app.githubBranch || await gitCurrentBranch({ path: appPath }) || "main";
 
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
@@ -913,16 +929,42 @@ async function handlePushToGithub(
       }
     }
   }
+  // Set up remote URL with token for authenticated push
+  // For DB-linked repos: build URL from org/repo
+  // For native remotes: read existing URL and inject token temporarily
+  let originalRemoteUrl: string | undefined;
 
-  // Set up remote URL with token
-  const remoteUrl = IS_TEST_BUILD
-    ? `${GITHUB_GIT_BASE}/${app.githubOrg}/${app.githubRepo}.git`
-    : `https://${accessToken}:x-oauth-basic@github.com/${app.githubOrg}/${app.githubRepo}.git`;
-  // Set or update remote URL using git config
-  await gitSetRemoteUrl({
-    path: appPath,
-    remoteUrl,
-  });
+  if (isLinkedInDb) {
+    const remoteUrl = IS_TEST_BUILD
+      ? `${GITHUB_GIT_BASE}/${app.githubOrg}/${app.githubRepo}.git`
+      : `https://${accessToken}:x-oauth-basic@github.com/${app.githubOrg}/${app.githubRepo}.git`;
+    await gitSetRemoteUrl({
+      path: appPath,
+      remoteUrl,
+    });
+  } else if (useNativeRemote && accessToken) {
+    // Read existing remote URL and inject token for auth
+    try {
+      const { exec: execDugite } = await import("dugite");
+      const urlResult = await execDugite(["remote", "get-url", "origin"], appPath);
+      if (urlResult.exitCode === 0) {
+        originalRemoteUrl = urlResult.stdout.trim();
+        // Only inject if it's an HTTPS URL without existing auth
+        if (originalRemoteUrl.startsWith("https://") && !originalRemoteUrl.includes("@")) {
+          const authedUrl = originalRemoteUrl.replace(
+            "https://",
+            `https://${accessToken}:x-oauth-basic@`,
+          );
+          await gitSetRemoteUrl({ path: appPath, remoteUrl: authedUrl });
+        } else {
+          // Already has auth or is SSH — don't touch it
+          originalRemoteUrl = undefined;
+        }
+      }
+    } catch (err) {
+      logger.warn("[GitHub Handler] Failed to inject auth into native remote URL:", err);
+    }
+  }
 
   // --- Smart Squash: silently squash ≥2 local commits into one before push ---
   if (!force && !forceWithLease) {
@@ -1035,13 +1077,24 @@ async function handlePushToGithub(
   }
 
   // Push to GitHub
-  await gitPush({
-    path: appPath,
-    branch,
-    accessToken,
-    force,
-    forceWithLease,
-  });
+  try {
+    await gitPush({
+      path: appPath,
+      branch,
+      accessToken,
+      force,
+      forceWithLease,
+    });
+  } finally {
+    // Restore original remote URL if we injected auth temporarily
+    if (originalRemoteUrl) {
+      try {
+        await gitSetRemoteUrl({ path: appPath, remoteUrl: originalRemoteUrl });
+      } catch (restoreErr) {
+        logger.warn("[GitHub Handler] Failed to restore original remote URL:", restoreErr);
+      }
+    }
+  }
 }
 
 async function handleAbortRebase(

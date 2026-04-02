@@ -286,7 +286,6 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const { app, refreshApp } = useLoadApp(appId);
     const { settings } = useSettings();
     const hasGithubToken = !!settings?.githubAccessToken;
-    const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
     const {
         uncommittedFiles,
@@ -326,6 +325,9 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         switchBranch,
         isSwitchingBranch,
     } = useGitPanel(appId);
+
+    // Must be after useGitPanel so gitState is available
+    const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
 
     const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set());
     const [expandedFile, setExpandedFile] = useState<string | null>(null);
