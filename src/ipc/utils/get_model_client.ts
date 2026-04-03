@@ -278,10 +278,28 @@ function getRegularModelClient(
       // the official SDK (@openrouter/ai-sdk-provider) prioritizes encrypted
       // reasoning_details over plain text reasoning, causing [REDACTED] to appear.
       // Switch back to createOpenRouter when this is fixed upstream.
+      const webSearchEnabled = settings.enableWebSearch !== false;
       const provider = createOpenAICompatible({
         name: "openrouter",
         baseURL: "https://openrouter.ai/api/v1",
         apiKey,
+        // Inject OpenRouter server tools (e.g. web_search) into the request body.
+        // The SDK builds the standard `tools` array from AI SDK tool definitions;
+        // we merge our server tools alongside them so both coexist in one request.
+        transformRequestBody: webSearchEnabled
+          ? (body: Record<string, any>) => {
+              const serverTools: any[] = [
+                { type: "openrouter:web_search" },
+              ];
+              const existingTools = body.tools;
+              return {
+                ...body,
+                tools: existingTools
+                  ? [...existingTools, ...serverTools]
+                  : serverTools,
+              };
+            }
+          : undefined,
       });
       return {
         modelClient: {

@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AuxiliaryActionsMenuProps {
   onFileSelect: (
@@ -17,8 +19,10 @@ export function AuxiliaryActionsMenu({
   onFileSelect,
 }: AuxiliaryActionsMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supportsImages = useSelectedModelSupportsImages();
 
   const handleClick = () => {
+    if (!supportsImages) return;
     fileInputRef.current?.click();
   };
 
@@ -31,15 +35,29 @@ export function AuxiliaryActionsMenu({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="has-[>svg]:px-2 hover:bg-muted bg-primary/10 text-primary cursor-pointer rounded-xl"
-        data-testid="auxiliary-actions-menu"
-        onClick={handleClick}
-      >
-        <Plus size={20} />
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-block">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="has-[>svg]:px-2 hover:bg-muted bg-primary/10 text-primary cursor-pointer rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                data-testid="auxiliary-actions-menu"
+                onClick={handleClick}
+                disabled={!supportsImages}
+              >
+                <Plus size={20} />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!supportsImages && (
+            <TooltipContent>
+              <p>El modelo actual no soporta imágenes</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
       <input
         type="file"
         ref={fileInputRef}

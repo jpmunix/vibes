@@ -1,13 +1,14 @@
 import React from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 
 interface ModelItemContentProps {
     model: LanguageModel;
     showAutoRouterBadge?: boolean;
     isAutoRouter?: boolean;
     onInfoClick?: (model: LanguageModel) => void;
+    onRemoveClick?: (model: LanguageModel) => void;
 }
 
 export function ModelItemContent({
@@ -15,6 +16,7 @@ export function ModelItemContent({
     showAutoRouterBadge = false,
     isAutoRouter = false,
     onInfoClick,
+    onRemoveClick,
 }: ModelItemContentProps) {
 
     const formatTokens = (num: number | undefined) => {
@@ -44,27 +46,50 @@ export function ModelItemContent({
                 </span>
             </div>
 
-            {onInfoClick && (
+            {(onInfoClick || onRemoveClick) && (
                 <div
-                    className="flex items-center shrink-0"
+                    className="flex items-center shrink-0 z-10"
                     onPointerDown={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onPointerUp={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onMouseUp={(e) => {
                         e.stopPropagation();
                     }}
                     onClick={(e) => {
                         e.stopPropagation();
                     }}
                 >
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            onInfoClick(model);
-                        }}
-                        className="p-1 hover:bg-muted rounded text-muted-foreground/50 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                        title="Ver detalles"
-                    >
-                        <Info size={14} />
-                    </button>
+                    {onRemoveClick && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onRemoveClick(model);
+                            }}
+                            className="p-1 hover:bg-red-500/10 rounded text-muted-foreground/50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer mr-0.5"
+                            title="Eliminar de recientes"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                    {onInfoClick && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onInfoClick(model);
+                            }}
+                            className="p-1 hover:bg-muted rounded text-muted-foreground/50 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                            title="Ver detalles"
+                        >
+                            <Info size={14} />
+                        </button>
+                    )}
                 </div>
             )}
         </div>

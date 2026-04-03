@@ -427,6 +427,8 @@ export const UserSettingsSchema = z
     // Embeddings for semantic search
     embeddingsEnabled: z.boolean().optional(),
     embeddingsModel: z.string().optional(),
+    // OpenRouter web search (server tool) — model decides when to search
+    enableWebSearch: z.boolean().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 

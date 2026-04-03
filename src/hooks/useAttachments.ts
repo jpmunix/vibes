@@ -2,11 +2,14 @@ import React, { useRef, useState, useCallback } from "react";
 import type { FileAttachment } from "@/ipc/types";
 import { useAtom } from "jotai";
 import { attachmentsAtom } from "@/atoms/chatAtoms";
+import { showWarning } from "@/lib/toast";
+import { useSelectedModelSupportsImages } from "./useSelectedModelSupportsImages";
 
 export function useAttachments() {
   const [attachments, setAttachments] = useAtom(attachmentsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const supportsImages = useSelectedModelSupportsImages();
 
   const handleAttachmentClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -70,7 +73,16 @@ export function useAttachments() {
       setIsDraggingOver(false);
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const files = Array.from(e.dataTransfer.files);
+        let files = Array.from(e.dataTransfer.files);
+        
+        if (!supportsImages) {
+          const hasImages = files.some(f => f.type.startsWith("image/"));
+          if (hasImages) {
+             showWarning("El modelo actual no soporta imágenes");
+             files = files.filter(f => !f.type.startsWith("image/"));
+             if (files.length === 0) return;
+          }
+        }
         const fileAttachments: FileAttachment[] = files.map((file) => ({
           file,
           type: "chat-context" as const,
@@ -78,7 +90,7 @@ export function useAttachments() {
         setAttachments((attachments) => [...attachments, ...fileAttachments]);
       }
     },
-    [setAttachments],
+    [setAttachments, supportsImages],
   );
 
   const clearAttachments = useCallback(() => {
@@ -112,6 +124,11 @@ export function useAttachments() {
       if (imageItems.length > 0) {
         e.preventDefault(); // Prevent default paste behavior for images
 
+        if (!supportsImages) {
+          showWarning("El modelo actual no soporta imágenes");
+          return;
+        }
+
         const imageFiles: File[] = [];
         // Generate base timestamp once to avoid collisions
         const baseTimestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -140,7 +157,7 @@ export function useAttachments() {
         }
       }
     },
-    [addAttachments],
+    [addAttachments, supportsImages],
   );
 
   return {

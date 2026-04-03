@@ -170,6 +170,14 @@ export function createVibesEngine(
           }
         }
 
+        // Inject OpenRouter web_search server tool when enabled
+        if (options.settings.enableWebSearch !== false) {
+          const serverTools = [{ type: "openrouter:web_search" }];
+          parsedBody.tools = parsedBody.tools
+            ? [...parsedBody.tools, ...serverTools]
+            : serverTools;
+        }
+
         // Return modified request with files included and requestId in headers
         const modifiedInit = {
           ...init,

@@ -145,6 +145,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Configuración del flujo de trabajo",
     sectionId: "workflow-settings",
   },
+  {
+    id: "web-search",
+    label: "Búsqueda web",
+    description: "Permite al modelo buscar en internet cuando necesite información actualizada",
+    keywords: ["web", "search", "busqueda", "internet", "buscar", "openrouter", "online"],
+    section: "Configuración del flujo de trabajo",
+    sectionId: "workflow-settings",
+  },
   // Embeddings Settings (now inside Agente)
   {
     id: "embeddings",
@@ -1063,6 +1071,24 @@ export function WorkflowSettings({
                 checked={!!settings?.enableChatCompletionNotifications}
                 onCheckedChange={(checked) =>
                   updateSettings({ enableChatCompletionNotifications: checked })
+                }
+              />
+            }
+          />
+
+          <SettingItem
+            label="Búsqueda web"
+            description="Permite al modelo buscar en internet cuando necesite información actualizada. OpenRouter ejecuta la búsqueda automáticamente."
+            onClick={() =>
+              updateSettings({
+                enableWebSearch: !settings?.enableWebSearch,
+              })
+            }
+            control={
+              <TogglePill
+                checked={settings?.enableWebSearch !== false}
+                onCheckedChange={(checked) =>
+                  updateSettings({ enableWebSearch: checked })
                 }
               />
             }

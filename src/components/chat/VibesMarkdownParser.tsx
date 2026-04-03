@@ -1125,6 +1125,17 @@ function renderModalContent(
       else if (startLine) lineRangeText = `desde línea ${startLine}`;
       else if (endLine) lineRangeText = `hasta línea ${endLine}`;
 
+      const ext = path.split(".").pop()?.toLowerCase() || "";
+      let langClass = "language-typescript";
+      if (ext === "json") langClass = "language-json";
+      else if (ext === "md") langClass = "language-markdown";
+      else if (ext === "css") langClass = "language-css";
+      else if (ext === "html") langClass = "language-html";
+      else if (ext === "sh" || ext === "bash") langClass = "language-shell";
+      else if (ext === "sql") langClass = "language-sql";
+      else if (ext === "yml" || ext === "yaml") langClass = "language-yaml";
+      else if (ext === "xml") langClass = "language-xml";
+
       return (
         <div className="space-y-2">
           {path && (
@@ -1134,7 +1145,9 @@ function renderModalContent(
             </div>
           )}
           {content && (
-            <div className="text-sm text-muted-foreground">{content}</div>
+            <div className="text-xs overflow-hidden">
+              <CodeHighlight className={langClass}>{content}</CodeHighlight>
+            </div>
           )}
         </div>
       );

@@ -59,6 +59,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
+  // Web search — enabled by default so the model can search when needed
+  enableWebSearch: true,
 };
 
 const SETTINGS_FILE = "user-settings.json";
