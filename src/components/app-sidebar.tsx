@@ -281,6 +281,7 @@ export function AppSidebar() {
             </div>
             <div className="flex items-center flex-col gap-1 mb-4">
               <OpenRouterCreditsButton />
+              {/* Docs button hidden for now
               <button
                 className="no-app-region-drag sidebar-util-btn"
                 title="Documentación"
@@ -291,6 +292,7 @@ export function AppSidebar() {
                   Docs
                 </span>
               </button>
+              */}
 
               {/* User Avatar */}
               {user && (
