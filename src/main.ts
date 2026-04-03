@@ -94,7 +94,7 @@ if (fs.existsSync(gitDir)) {
 
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("vibes", process.execPath, [
+    app.setAsDefaultProtocolClient("dyad", process.execPath, [
       path.resolve(process.argv[1]),
     ]);
     app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3", process.execPath, [
@@ -102,7 +102,7 @@ if (process.defaultApp) {
     ]);
   }
 } else {
-  app.setAsDefaultProtocolClient("vibes");
+  app.setAsDefaultProtocolClient("dyad");
   app.setAsDefaultProtocolClient("com.googleusercontent.apps.772397727909-7qjcbdkgt45ld7q91ijqdp4m8s0rngm3");
 }
 

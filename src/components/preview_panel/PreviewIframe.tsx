@@ -1896,13 +1896,14 @@ function parseComponentSelection(data: any): ComponentSelection | null {
   const component = data.component;
   if (
     !component ||
-    typeof component.id !== "string" ||
-    typeof component.name !== "string"
+    typeof component.id !== "string"
   ) {
     return null;
   }
 
-  const { id, name, runtimeId } = component;
+  const id = component.id;
+  const name = typeof component.name === "string" ? component.name : "Element";
+  const runtimeId = component.runtimeId;
 
   // The id is expected to be in the format "filepath:line:column"
   const parts = id.split(":");

@@ -18,7 +18,7 @@ const availableUpgrades: Omit<AppUpgrade, "isNeeded">[] = [
     id: "component-tagger",
     title: "Habilitar edición de componentes seleccionados",
     description:
-      "Instala el complemento de etiquetado de componentes de Vibes Vite y sus dependencias.",
+      "Instala el complemento de etiquetado de componentes para permitir la selección visual.",
     manualUpgradeUrl:
       "https://github.com/minube/vibes/upgrades/select-component",
   },
@@ -50,7 +50,20 @@ function isViteApp(appPath: string): boolean {
   return fs.existsSync(viteConfigPathTs) || fs.existsSync(viteConfigPathJs);
 }
 
-function isComponentTaggerUpgradeNeeded(appPath: string): boolean {
+function isNextApp(appPath: string): boolean {
+  return !!findNextConfigPath(appPath);
+}
+
+function findNextConfigPath(appPath: string): string | null {
+  const candidates = ["next.config.ts", "next.config.mjs", "next.config.js"];
+  for (const name of candidates) {
+    const full = path.join(appPath, name);
+    if (fs.existsSync(full)) return full;
+  }
+  return null;
+}
+
+function isViteComponentTaggerNeeded(appPath: string): boolean {
   const viteConfigPathJs = path.join(appPath, "vite.config.js");
   const viteConfigPathTs = path.join(appPath, "vite.config.ts");
 
@@ -70,6 +83,25 @@ function isComponentTaggerUpgradeNeeded(appPath: string): boolean {
     logger.error("Error reading vite config", e);
     return false;
   }
+}
+
+function isNextComponentTaggerNeeded(appPath: string): boolean {
+  const configPath = findNextConfigPath(appPath);
+  if (!configPath) return false;
+
+  try {
+    const content = fs.readFileSync(configPath, "utf-8");
+    return !content.includes("@dyad-sh/nextjs-webpack-component-tagger") && !content.includes("@vibes/nextjs-webpack-component-tagger");
+  } catch (e) {
+    logger.error("Error reading next config", e);
+    return false;
+  }
+}
+
+function isComponentTaggerUpgradeNeeded(appPath: string): boolean {
+  if (isViteApp(appPath)) return isViteComponentTaggerNeeded(appPath);
+  if (isNextApp(appPath)) return isNextComponentTaggerNeeded(appPath);
+  return false;
 }
 
 function isCapacitorUpgradeNeeded(appPath: string): boolean {
@@ -96,6 +128,14 @@ function isCapacitorUpgradeNeeded(appPath: string): boolean {
 }
 
 async function applyComponentTagger(appPath: string) {
+  if (isNextApp(appPath)) {
+    await applyNextComponentTagger(appPath);
+  } else {
+    await applyViteComponentTagger(appPath);
+  }
+}
+
+async function applyViteComponentTagger(appPath: string) {
   const viteConfigPathJs = path.join(appPath, "vite.config.js");
   const viteConfigPathTs = path.join(appPath, "vite.config.ts");
 
@@ -150,10 +190,134 @@ async function applyComponentTagger(appPath: string) {
   await fs.promises.writeFile(viteConfigPath, content);
 
   // Install the dependency
+  await installDependency(appPath, "@dyad-sh/react-vite-component-tagger");
+
+  // Commit changes
+  await commitTaggerChanges(appPath);
+}
+
+async function applyNextComponentTagger(appPath: string) {
+  const configPath = findNextConfigPath(appPath);
+  if (!configPath) {
+    throw new Error("Could not find next.config.js, next.config.mjs, or next.config.ts");
+  }
+
+  let content = await fs.promises.readFile(configPath, "utf-8");
+
+  // ── 1. Detect existing config shape ──────────────────────────────────
+  // Next.js configs come in many flavours. We handle the most common ones:
+  //   • export default { ... }           (mjs/ts)
+  //   • const nextConfig = { ... }; export default nextConfig;
+  //   • module.exports = { ... }         (cjs)
+  //
+  // We need to inject a webpack function inside the config object.
+
+  const taggerAlreadyPresent =
+    content.includes("@dyad-sh/nextjs-webpack-component-tagger") ||
+    content.includes("@vibes/nextjs-webpack-component-tagger");
+
+  if (taggerAlreadyPresent) {
+    logger.info("[nextjs-tagger] Component tagger already present in next config, skipping.");
+    return;
+  }
+
+  // The webpack loader config snippet to inject
+  const webpackSnippet = `
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.module.rules.push({
+        test: /\\.(jsx|tsx)$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: require.resolve('@dyad-sh/nextjs-webpack-component-tagger'),
+          },
+        ],
+      });
+    }
+    return config;
+  },`;
+
+  let modified = false;
+
+  // Strategy 1: Config has an existing `webpack:` or `webpack(` — warn and skip (manual needed)
+  if (content.match(/webpack\s*[:(/]/)) {
+    logger.warn(
+      "[nextjs-tagger] Existing webpack config detected. Appending vibes tagger rule.",
+    );
+    // Try to inject inside existing webpack function by finding "return config"
+    const returnConfigRegex = /(return\s+config\s*;?)/;
+    if (returnConfigRegex.test(content)) {
+      const ruleSnippet = `
+    // [vibes] Component tagger for visual editing
+    if (dev) {
+      config.module.rules.push({
+        test: /\\.(jsx|tsx)$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: require.resolve('@dyad-sh/nextjs-webpack-component-tagger'),
+          },
+        ],
+      });
+    }
+    `;
+      content = content.replace(returnConfigRegex, ruleSnippet + "\n    $1");
+      modified = true;
+    } else {
+      throw new Error(
+        "Could not inject tagger into existing webpack config. Manual installation required.",
+      );
+    }
+  }
+
+  // Strategy 2: No webpack config exists — inject into the config object
+  if (!modified) {
+    // Try to find the config object opening
+    // Pattern A: `export default { ... }` or `export default defineConfig({ ... })`
+    // Pattern B: `const nextConfig = { ... }`
+    // Pattern C: `module.exports = { ... }`
+    const configObjectPatterns = [
+      // export default { → insert after the opening brace
+      /(export\s+default\s+)\{/,
+      // const nextConfig = { → insert after the opening brace
+      /(const\s+\w+\s*=\s*)\{/,
+      // module.exports = { → insert after the opening brace
+      /(module\.exports\s*=\s*)\{/,
+    ];
+
+    for (const pattern of configObjectPatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        const fullMatch = match[0];
+        content = content.replace(fullMatch, fullMatch + webpackSnippet);
+        modified = true;
+        break;
+      }
+    }
+  }
+
+  if (!modified) {
+    throw new Error(
+      "Could not detect next.config structure. Manual installation required.",
+    );
+  }
+
+  await fs.promises.writeFile(configPath, content);
+  logger.info(`[nextjs-tagger] Injected webpack loader into ${path.basename(configPath)}`);
+
+  // Install the dependency
+  await installDependency(appPath, "@dyad-sh/nextjs-webpack-component-tagger");
+
+  // Commit changes
+  await commitTaggerChanges(appPath);
+}
+
+async function installDependency(appPath: string, packageName: string) {
   await new Promise<void>((resolve, reject) => {
-    logger.info("Installing component-tagger dependency");
-    const process = spawn(
-      "npm install --save-dev --legacy-peer-deps @dyad-sh/react-vite-component-tagger",
+    logger.info(`Installing ${packageName}`);
+    const proc = spawn(
+      `npm install --save-dev --legacy-peer-deps ${packageName}`,
       {
         cwd: appPath,
         shell: true,
@@ -161,26 +325,27 @@ async function applyComponentTagger(appPath: string) {
       },
     );
 
-    process.stdout?.on("data", (data) => logger.info(data.toString()));
-    process.stderr?.on("data", (data) => logger.error(data.toString()));
+    proc.stdout?.on("data", (data) => logger.info(data.toString()));
+    proc.stderr?.on("data", (data) => logger.error(data.toString()));
 
-    process.on("close", (code) => {
+    proc.on("close", (code) => {
       if (code === 0) {
-        logger.info("component-tagger dependency installed successfully");
+        logger.info(`${packageName} installed successfully`);
         resolve();
       } else {
-        logger.error(`Failed to install dependency, exit code ${code}`);
-        reject(new Error("Failed to install dependency"));
+        logger.error(`Failed to install ${packageName}, exit code ${code}`);
+        reject(new Error(`Failed to install ${packageName}`));
       }
     });
 
-    process.on("error", (err) => {
-      logger.error("Failed to spawn pnpm", err);
+    proc.on("error", (err) => {
+      logger.error(`Failed to spawn npm for ${packageName}`, err);
       reject(err);
     });
   });
+}
 
-  // Commit changes
+async function commitTaggerChanges(appPath: string) {
   try {
     logger.info("Staging and committing changes");
     await gitAddAll({ path: appPath });

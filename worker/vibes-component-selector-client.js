@@ -109,8 +109,8 @@
     });
     css(hoverLabel, { background: "#7f22fe" });
     while (hoverLabel.firstChild) hoverLabel.removeChild(hoverLabel.firstChild);
-    const name = el.dataset.vibesName || "<unknown>";
-    const file = (el.dataset.vibesId || "").split(":")[0];
+    const name = el.dataset.dyadName || el.dataset.vibesName || "<unknown>";
+    const file = (el.dataset.dyadId || el.dataset.vibesId || "").split(":")[0];
     const nameEl = document.createElement("div");
     nameEl.textContent = name;
     hoverLabel.appendChild(nameEl);
@@ -195,7 +195,7 @@
     // Remove all overlays with the same componentId
     const indicesToRemove = [];
     overlays.forEach((item, index) => {
-      if (item.el.dataset.vibesId === componentId) {
+      if (item.el.dataset.dyadId === componentId || item.el.dataset.vibesId === componentId) {
         indicesToRemove.push(index);
       }
     });
@@ -209,7 +209,7 @@
 
     if (
       highlightedElement &&
-      highlightedElement.dataset.vibesId === componentId
+      (highlightedElement.dataset.dyadId || highlightedElement.dataset.vibesId) === componentId
     ) {
       highlightedElement = null;
     }
@@ -294,8 +294,8 @@
     label.appendChild(editLine);
 
     // Add component name and file
-    const name = el.dataset.vibesName || "<unknown>";
-    const file = (el.dataset.vibesId || "").split(":")[0];
+    const name = el.dataset.dyadName || el.dataset.vibesName || "<unknown>";
+    const file = (el.dataset.dyadId || el.dataset.vibesId || "").split(":")[0];
     const nameEl = document.createElement("div");
     nameEl.textContent = name;
     label.appendChild(nameEl);
@@ -327,7 +327,7 @@
     }
 
     let el = e.target;
-    while (el && !el.dataset.vibesId) el = el.parentElement;
+    while (el && !el.dataset.dyadId && !el.dataset.vibesId) el = el.parentElement;
 
     const hoveredItem = overlays.find((item) => item.el === el);
 
@@ -397,7 +397,7 @@
     e.preventDefault();
     e.stopPropagation();
 
-    const clickedComponentId = state.element.dataset.vibesId;
+    const clickedComponentId = state.element.dataset.dyadId || state.element.dataset.vibesId;
     const selectedItem = overlays.find((item) => item.el === state.element);
 
     // If clicking on the currently highlighted component, deselect it
@@ -449,8 +449,8 @@
     }
 
     // Assign a unique runtime ID to this element if it doesn't have one
-    if (!state.element.dataset.vibesRuntimeId) {
-      state.element.dataset.vibesRuntimeId = `vibes-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!state.element.dataset.dyadRuntimeId && !state.element.dataset.vibesRuntimeId) {
+      state.element.dataset.dyadRuntimeId = `dyad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
     const rect = state.element.getBoundingClientRect();
@@ -459,8 +459,8 @@
         type: "vibes-component-selected",
         component: {
           id: clickedComponentId,
-          name: state.element.dataset.vibesName,
-          runtimeId: state.element.dataset.vibesRuntimeId,
+          name: state.element.dataset.dyadName || state.element.dataset.vibesName,
+          runtimeId: state.element.dataset.dyadRuntimeId || state.element.dataset.vibesRuntimeId,
         },
         coordinates: {
           top: rect.top,
@@ -534,6 +534,14 @@
     if (e.data.type === "activate-vibes-visual-editing") {
       activate();
     }
+    if (e.data.type === "ping-vibes-component-selector") {
+      if (document.body && document.body.querySelector("[data-dyad-id], [data-vibes-id]")) {
+        window.parent.postMessage(
+          { type: "vibes-component-selector-initialized" },
+          "*"
+        );
+      }
+    }
     if (e.data.type === "deactivate-vibes-visual-editing") {
       deactivate();
       clearOverlays();
@@ -586,7 +594,7 @@
     let timeoutId = null;
 
     function checkForTaggedElements() {
-      if (document.body.querySelector("[data-vibes-id]")) {
+      if (document.body.querySelector("[data-dyad-id], [data-vibes-id]")) {
         // Clean up observer and timeout
         if (observer) {
           observer.disconnect();
@@ -632,8 +640,9 @@
             for (const node of mutation.addedNodes) {
               if (node.nodeType === Node.ELEMENT_NODE) {
                 if (
+                  node.hasAttribute("data-dyad-id") ||
                   node.hasAttribute("data-vibes-id") ||
-                  node.querySelector("[data-vibes-id]")
+                  node.querySelector("[data-dyad-id], [data-vibes-id]")
                 ) {
                   return true;
                 }
@@ -652,7 +661,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-vibes-id"],
+        attributeFilter: ["data-dyad-id", "data-vibes-id"],
       });
 
       // Set a timeout to give up after INIT_TIMEOUT_MS
@@ -662,7 +671,7 @@
           observer = null;
         }
         // Only warn if we never found tagged elements
-        if (!document.body.querySelector("[data-vibes-id]")) {
+        if (!document.body.querySelector("[data-dyad-id], [data-vibes-id]")) {
           console.warn(
             "Dyad component selector not initialized because no DOM elements were tagged",
           );
