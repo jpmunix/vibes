@@ -1256,11 +1256,12 @@ function buildLiveContent(
     // Active tool indicator (pending tools shown as vibes tags with pending state)
     const activeEdits = Array.from(toolsActive.values()).filter(
         t => (t.status === "running" || t.status === "pending") &&
-            (t.tool === "edit" || t.tool === "write" || t.tool === "read")
+            (t.tool === "edit" || t.tool === "write" || t.tool === "read" || t.tool === "webfetch" || t.tool === "websearch")
     );
     for (const t of activeEdits) {
         const tag = mapToolToVibesTag(t.tool);
-        content += `<${tag} path="${escapeAttr(t.detail || "...")}">`;  // unclosed = pending
+        const attrName = tag === "vibes-web-crawl" ? "url" : "path";
+        content += `<${tag} ${attrName}="${escapeAttr(t.detail || "...")}">`;  // unclosed = pending
     }
 
     return content;

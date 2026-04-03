@@ -84,7 +84,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-code-search-result": { icon: Code, label: "Resultado", color: "text-green-500" },
     "vibes-list-files": { icon: FolderOpen, label: "Listado", pendingLabel: "Listando", color: "text-slate-500" },
 
-    "vibes-web-crawl": { icon: Globe, label: "Crawl", pendingLabel: "Crawleando", color: "text-blue-500" },
+    "vibes-web-crawl": { icon: Globe, label: "Búsqueda web", pendingLabel: "Buscando web", color: "text-blue-500" },
     "vibes-add-dependency": { icon: Package, label: "Dependencia", pendingLabel: "Instalando", color: "text-purple-500" },
     "vibes-add-integration": { icon: Wrench, label: "Integración", pendingLabel: "Integrando", color: "text-purple-500" },
     "vibes-execute-sql": { icon: Database, label: "SQL", pendingLabel: "Ejecutando SQL", color: "text-orange-500" },
@@ -282,6 +282,8 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes.query ? `"${attributes.query}"` : undefined;
         case "vibes-code-search":
             return attributes.query ? `"${attributes.query}"` : undefined;
+        case "vibes-web-crawl":
+            return attributes.url || attributes.query ? (attributes.url || `"${attributes.query}"`) : undefined;
 
         case "vibes-add-dependency":
             return attributes.packages || undefined;

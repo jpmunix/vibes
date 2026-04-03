@@ -585,7 +585,10 @@ function renderCustomTag(
       return (
         <VibesWebCrawl
           node={{
-            properties: {},
+            properties: {
+              url: attributes.url || attributes.query || "",
+              state: getState({ isStreaming, inProgress }),
+            },
           }}
         >
           {content}
