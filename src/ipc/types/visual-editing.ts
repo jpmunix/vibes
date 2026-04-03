@@ -156,7 +156,8 @@ export const visualEditingContracts = {
       currentTextContent: z.string().optional(),
     }),
     output: z.object({
-      change: VisualEditingChangeSchema.optional(),
+      success: z.boolean(),
+      summary: z.string().optional(),
       error: z.string().optional(),
     }),
   }),

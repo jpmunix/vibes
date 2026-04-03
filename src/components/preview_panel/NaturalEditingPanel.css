@@ -331,11 +331,12 @@
 /* Quick Edit Chat */
 .nep-quick-chat {
   position: sticky;
-  bottom: 0;
+  bottom: -1px;
   background: var(--background);
   border-top: 1px solid var(--border);
   margin-top: auto;
   z-index: 10;
+  padding-bottom: 1px;
 }
 
 .nep-quick-chat-header {
@@ -406,12 +407,22 @@
   line-height: 1.5;
   resize: none;
   overflow-y: auto;
+  scrollbar-width: none;
   transition: border-color 0.15s ease;
+}
+
+.nep-quick-chat-input::-webkit-scrollbar {
+  display: none;
 }
 
 .nep-quick-chat-input:focus {
   outline: none;
   border-color: var(--primary);
+}
+
+.nep-quick-chat-input--expanded {
+  min-height: 200px;
+  max-height: none;
 }
 
 .nep-quick-chat-input:disabled {
@@ -446,30 +457,90 @@
 }
 
 .nep-quick-chat-loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px 16px;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  text-align: center;
+  padding: 12px 0;
 }
 
-.nep-quick-chat-loader-icon {
-  width: 24px;
-  height: 24px;
-  animation: spin 1s linear infinite;
+.nep-quick-chat-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nep-quick-chat-phase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  opacity: 0.4;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+
+.nep-quick-chat-phase.active {
+  opacity: 1;
+  color: var(--foreground);
+}
+
+.nep-quick-chat-phase.done {
+  opacity: 0.7;
   color: var(--primary);
-  margin: 0 auto;
+}
+
+.nep-quick-chat-phase-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.nep-quick-chat-phase-dot {
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nep-quick-chat-phase-dot::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+}
+
+/* Success banner */
+.nep-quick-chat-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: hsl(142, 40%, 15%);
+  border: 1px solid hsl(142, 40%, 30%);
+  font-size: 12px;
+  line-height: 1.4;
+  color: hsl(142, 80%, 75%);
+  animation: fadeInUp 0.3s ease;
+}
+
+.nep-quick-chat-success svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes spin {
   from {
     transform: rotate(0deg);
   }
-
   to {
     transform: rotate(360deg);
   }

@@ -14,6 +14,8 @@ import {
     Wand2,
     Pencil,
     Loader2,
+    Minimize2,
+    Check,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -975,7 +977,6 @@ export function NaturalEditingPanel({
                     }
                 }}
                 appId={appId}
-                sendStyleModification={sendStyleModification}
             />
         </div>
     );
@@ -987,7 +988,6 @@ interface QuickEditChatProps {
     currentTextContent: string;
     onChangeApplied: () => void;
     appId: number | null;
-    sendStyleModification: (styles: Record<string, any>) => void;
 }
 
 function QuickEditChat({
@@ -996,19 +996,41 @@ function QuickEditChat({
     currentTextContent,
     onChangeApplied,
     appId,
-    sendStyleModification,
 }: QuickEditChatProps) {
     const [prompt, setPrompt] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const setPendingChanges = useSetAtom(pendingVisualChangesAtom);
+    const [successSummary, setSuccessSummary] = useState<string | null>(null);
+    const [processingPhase, setProcessingPhase] = useState(0);
+
+    // Processing phase labels
+    const PHASES = [
+        "Pensando...",
+        "Leyendo el archivo...",
+        "Analizando el componente...",
+        "Aplicando cambios...",
+    ];
 
     // Reset state when component changes
     useEffect(() => {
         setIsProcessing(false);
         setError(null);
         setPrompt("");
+        setIsExpanded(false);
+        setSuccessSummary(null);
+        setProcessingPhase(0);
     }, [selectedComponent?.id]);
+
+    // Cycle through processing phases
+    useEffect(() => {
+        if (!isProcessing) return;
+        setProcessingPhase(0);
+        const interval = setInterval(() => {
+            setProcessingPhase((prev) => Math.min(prev + 1, PHASES.length - 1));
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [isProcessing]);
 
     // Auto-clear error after 5 seconds
     useEffect(() => {
@@ -1018,11 +1040,21 @@ function QuickEditChat({
         }
     }, [error]);
 
+    // Auto-clear success after 8 seconds
+    useEffect(() => {
+        if (successSummary) {
+            const timer = setTimeout(() => setSuccessSummary(null), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [successSummary]);
+
     const handleSubmit = async () => {
         if (!prompt.trim() || !selectedComponent || !appId || isProcessing) return;
 
         setIsProcessing(true);
+        setIsExpanded(true);
         setError(null);
+        setSuccessSummary(null);
 
         try {
             const result = await ipc.visualEditing.quickEdit({
@@ -1038,48 +1070,13 @@ function QuickEditChat({
 
             if (result.error) {
                 setError(result.error);
-            } else if (result.change) {
-                // Check if the AI actually made any changes
-                const hasStyleChanges = result.change.styles && Object.keys(result.change.styles).length > 0;
-                const hasTextChanges = result.change.textContent !== undefined;
-                
-                if (!hasStyleChanges && !hasTextChanges) {
-                    // AI couldnt interpret the request
-                    setError("No entendí esa solicitud. Intenta con algo más específico sobre estilos (ej: hazlo rojo, más grande, borde negro)");
-                    return;
-                }
-                
-                // Apply changes visually to iframe immediately
-                if (result.change.textContent !== undefined) {
-                    window.postMessage(
-                        {
-                            type: "preview-vibes-text-content",
-                            data: {
-                                componentId: selectedComponent.id,
-                                runtimeId: selectedComponent.runtimeId,
-                                text: result.change.textContent,
-                            },
-                        },
-                        "*",
-                    );
-                }
-
-
-
-                // Apply style changes using sendStyleModification for live updates
-                if (hasStyleChanges) {
-                    console.log("[QuickEdit] Estilos recibidos de IA:", result.change.styles);
-                    console.log("[QuickEdit] Llamando sendStyleModification...");
-                    sendStyleModification(result.change.styles);
-                    console.log("[QuickEdit] sendStyleModification llamado");
-                }
-
-
-
-
-                // Notify parent and clear
+            } else if (result.success) {
+                // Show the agent's summary
+                setSuccessSummary(result.summary || "Cambio aplicado correctamente");
                 onChangeApplied();
                 setPrompt("");
+            } else {
+                setError("No se pudo aplicar el cambio. Intenta ser más específico.");
             }
         } catch (err) {
             console.error("Quick edit error:", err);
@@ -1097,10 +1094,24 @@ function QuickEditChat({
     };
 
     return (
-        <div className="nep-quick-chat">
+        <div className={`nep-quick-chat${isExpanded ? " nep-quick-chat--expanded" : ""}`}>
             <div className="nep-quick-chat-header">
-                <span className="nep-quick-chat-title">Explica lo que quieres cambiar</span>
-                <span className="nep-quick-chat-subtitle">Para cambios pequeños al elemento seleccionado</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span className="nep-quick-chat-title">Explica lo que quieres cambiar</span>
+                    {isExpanded && (
+                        <button
+                            className="nep-close-btn"
+                            onClick={() => setIsExpanded(false)}
+                            aria-label="Minimizar"
+                            style={{ width: 24, height: 24 }}
+                        >
+                            <Minimize2 size={14} />
+                        </button>
+                    )}
+                </div>
+                {!isExpanded && (
+                    <span className="nep-quick-chat-subtitle">Para cambios pequeños al elemento seleccionado</span>
+                )}
             </div>
             <div className="nep-quick-chat-content">
                 {error && (
@@ -1109,20 +1120,43 @@ function QuickEditChat({
                     </div>
                 )}
 
+                {successSummary && (
+                    <div className="nep-quick-chat-success">
+                        <Check size={14} />
+                        <span>{successSummary}</span>
+                    </div>
+                )}
+
                 {isProcessing ? (
                     <div className="nep-quick-chat-loader">
-                        <Loader2 className="nep-quick-chat-loader-icon" />
-                        <span>Procesando tu petición...</span>
+                        <div className="nep-quick-chat-phases">
+                            {PHASES.map((phase, i) => (
+                                <div
+                                    key={phase}
+                                    className={`nep-quick-chat-phase${i === processingPhase ? " active" : ""}${i < processingPhase ? " done" : ""}`}
+                                >
+                                    {i < processingPhase ? (
+                                        <Check size={12} />
+                                    ) : i === processingPhase ? (
+                                        <Loader2 size={12} className="nep-quick-chat-phase-spinner" />
+                                    ) : (
+                                        <span className="nep-quick-chat-phase-dot" />
+                                    )}
+                                    <span>{phase}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <div className="nep-quick-chat-input-container">
                         <textarea
-                            className="nep-quick-chat-input"
-                            placeholder="Ej: cambia esto a negro, hazlo más grande..."
+                            className={`nep-quick-chat-input${isExpanded ? " nep-quick-chat-input--expanded" : ""}`}
+                            placeholder="Describe el cambio que necesitas..."
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             onKeyDown={handleKeyDown}
-                        rows={1}
+                            onFocus={() => setIsExpanded(true)}
+                            rows={isExpanded ? 4 : 1}
                         ></textarea>
                         <button
                             className="nep-quick-chat-button"

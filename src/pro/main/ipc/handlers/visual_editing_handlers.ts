@@ -26,11 +26,6 @@ import {
   replaceIconComponent,
 } from "../../utils/visual_editing_utils";
 import { normalizePath } from "../../../../../shared/normalizePath";
-import { generateText } from "ai";
-import { getModelClient } from "../../../../ipc/utils/get_model_client";
-import { readSettings } from "../../../../main/settings";
-import { logAiQuery } from "../../../../ipc/utils/ai_query_logger";
-import { getEffectivePrompt } from "../../../../prompts";
 import log from "electron-log";
 
 const logger = log.scope("visual_editing_handlers");
@@ -240,146 +235,41 @@ export function registerVisualEditingHandlers() {
     async (_event, params, context) => {
       const {
         appId,
-        componentId,
         componentName,
         relativePath,
         lineNumber,
         prompt,
-        currentStyles,
-        currentTextContent,
       } = params;
 
       try {
-        // Get settings to access the selected model
-        const settings = await readSettings();
-        const selectedModel = settings.selectedModel;
-
-        if (!selectedModel) {
-          return {
-            error: "No hay modelo de IA seleccionado",
-          };
+        // Resolve the app path
+        const db = (await import("../../../../db/remote")).getRemoteDb();
+        const remoteSchema = await import("../../../../db/remote-schema");
+        const { eq } = await import("drizzle-orm");
+        const app = await db.query.apps.findFirst({
+          where: eq(remoteSchema.apps.id, appId),
+        });
+        if (!app) {
+          return { success: false, error: "App not found" };
         }
+        const { getVibesAppPath } = await import("../../../../paths/paths");
+        const appPath = getVibesAppPath(app.path);
 
-        // Get base prompt from settings
-        const basePrompt = getEffectivePrompt("quick_edit_system", settings);
-
-        // Build system prompt for style/content modifications
-        const systemPrompt = `${basePrompt}
-
-El usuario está editando un componente llamado "${componentName}".
-
-El componente actual tiene estos estilos: ${JSON.stringify(currentStyles || {})}
-${currentTextContent ? `
-Contenido de texto actual: "${currentTextContent}"` : ""}
-
-El JSON debe tener esta estructura:
-{
-  "textContent": "nuevo texto" (opcional, solo si el usuario quiere cambiar el texto),
-  "styles": {
-    "backgroundColor": "color o clase" (opcional),
-    "text": {
-      "color": "color o clase" (opcional),
-      "fontSize": "tamaño o clase" (opcional),
-      "fontWeight": "peso" (opcional)
-    } (opcional),
-    "border": {
-      "width": "ancho" (opcional),
-      "color": "color o clase" (opcional),
-      "radius": "radio o clase" (opcional)
-    } (opcional),
-    "padding": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional),
-    "margin": { "left": "px", "right": "px", "top": "px", "bottom": "px" } (opcional)
-  }
-}
-
-Ejemplos con Tailwind detectado:
-- "cambia esto a negro" → { "styles": { "text": { "color": "text-black" } } }
-- "hazlo verde" → { "styles": { "text": { "color": "text-green-600" } } }
-- "fondo azul" → { "styles": { "backgroundColor": "bg-blue-500" } }
-- "hazlo más grande" → { "styles": { "text": { "fontSize": "text-lg" } } }
-
-Ejemplos sin Tailwind:
-- "cambia esto a negro" → { "styles": { "text": { "color": "#000000" } } }
-- "hazlo verde" → { "styles": { "text": { "color": "#22c55e" } } }
-- "fondo azul" → { "styles": { "backgroundColor": "#3b82f6" } }
-- "hazlo más grande" → { "styles": { "text": { "fontSize": "20px" } } }
-
-Si no puedes interpretar la solicitud, responde con un JSON vacío: {}`;
-
-        // Get AI model client
-        const { modelClient } = await getModelClient(selectedModel, settings);
-
-        // Generate response
-        const result = await generateText({
-          model: modelClient.model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.3, // Lower temperature for more consistent JSON output
+        // Delegate to the OpenCode visual-edit subagent
+        const { handleVisualQuickEdit } = await import("../../../../ipc/handlers/opencode_adapter");
+        const result = await handleVisualQuickEdit({
+          appPath,
+          componentFile: relativePath,
+          componentLine: lineNumber,
+          componentName,
+          prompt,
         });
 
-        const responseText = result.text.trim();
-
-        // Try to parse the JSON response
-        let parsedResponse: any;
-        try {
-          // Remove markdown code blocks if present
-          const cleaned = responseText
-            .replace(/^```json\s*/i, "")
-            .replace(/^```\s*/i, "")
-            .replace(/\s*```$/i, "")
-            .trim();
-
-          parsedResponse = JSON.parse(cleaned);
-        } catch (parseError) {
-          logger.error("Failed to parse AI response:", responseText);
-          return {
-            error: "No pude entender la respuesta de la IA. Intenta ser más específico.",
-          };
-        }
-
-        // Log AI query for analytics
-        try {
-          void logAiQuery({
-            queryType: "visual-editing-quick-edit",
-            model: selectedModel.name,
-            promptSnippet: prompt.slice(0, 100),
-            payload: {
-              system: systemPrompt,
-              prompt,
-              componentName,
-              currentStyles,
-              currentTextContent,
-            },
-            response: {
-              text: responseText,
-              parsed: parsedResponse,
-            },
-            inputTokens: result.usage?.inputTokens,
-            outputTokens: result.usage?.outputTokens,
-          }, settings.userId as string);
-        } catch (logError) {
-          logger.error("Failed to log AI query:", logError);
-        }
-
-        // Build the change object
-        const change: any = {
-          componentId,
-          componentName,
-          relativePath,
-          lineNumber,
-          styles: parsedResponse.styles || {},
-        };
-
-        if (parsedResponse.textContent !== undefined) {
-          change.textContent = parsedResponse.textContent;
-        }
-
-        return { change };
+        return result;
       } catch (error) {
         logger.error("Failed to process quick edit:", error);
         return {
+          success: false,
           error: error instanceof Error ? error.message : String(error),
         };
       }

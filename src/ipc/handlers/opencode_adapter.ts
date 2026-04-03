@@ -43,6 +43,9 @@ let serverUrl: string | null = null;
 // Map chatId → opencode sessionId
 const chatSessionMap = new Map<number, string>();
 
+// Map appPath → visual-edit session ID (persistent per app)
+const visualEditSessionMap = new Map<string, string>();
+
 /**
  * Revert the last message in the OpenCode session for a chat (undo/retry).
  * Uses session.revert() first; if it fails, falls back to session.fork()
@@ -161,6 +164,252 @@ export async function updateOpenCodeConfig(changes: {
 }
 
 /**
+ * Run a quick visual edit via the hidden "visual-edit" OpenCode subagent.
+ * Uses a persistent session per app — the agent accumulates context across
+ * edits and OpenCode's auto-compaction + prune handles context overflow.
+ *
+ * The agent edits the file directly → Vite HMR picks up the change.
+ * No chat is created in the user's UI.
+ */
+export async function handleVisualQuickEdit(params: {
+    appPath: string;
+    componentFile: string;   // e.g. "src/pages/Login.tsx"
+    componentLine: number;   // e.g. 148
+    componentName: string;   // e.g. "Input"
+    prompt: string;          // e.g. "añade el típico ojo"
+    onStatus?: (status: string) => void; // optional status callback
+}): Promise<{ success: boolean; summary?: string; error?: string }> {
+    const { appPath, componentFile, componentLine, componentName, prompt, onStatus } = params;
+
+    let client: ReturnType<typeof createOpencodeClient>;
+    try {
+        const result = await getOpenCodeClient(appPath);
+        client = result.client;
+    } catch (error: any) {
+        logger.error(`[VisualEdit] Failed to get OpenCode client: ${error.message}`);
+        return { success: false, error: `Error al conectar con OpenCode: ${error.message}` };
+    }
+
+    // Reuse existing session for this app, or create a new one
+    let sessionId = visualEditSessionMap.get(appPath);
+    if (!sessionId) {
+        try {
+            onStatus?.("Preparando el agente...");
+            const session = await client.session.create({
+                body: { title: `Visual Edit` },
+                query: { directory: appPath },
+            });
+            if (!session.data?.id) {
+                throw new Error("Session creation returned no data");
+            }
+            sessionId = session.data.id;
+            visualEditSessionMap.set(appPath, sessionId);
+            logger.info(`[VisualEdit] Created persistent session ${sessionId} for ${appPath}`);
+        } catch (error: any) {
+            logger.error(`[VisualEdit] Failed to create session: ${error.message}`);
+            return { success: false, error: `Error al crear sesión: ${error.message}` };
+        }
+    } else {
+        logger.info(`[VisualEdit] Reusing session ${sessionId} for ${appPath}`);
+    }
+
+    try {
+        // Subscribe to SSE events to track progress
+        const sseAbortController = new AbortController();
+        const eventsResult = await client.global.event({ signal: sseAbortController.signal } as any);
+
+        let agentText = "";
+        let completed = false;
+        let eventCount = 0;
+        let filesEdited: string[] = [];
+
+        // Process events in background — mirrors processEvents() logic exactly
+        const eventDone = (async () => {
+            try {
+                for await (const rawEvt of eventsResult.stream) {
+                    eventCount++;
+                    const evt = (rawEvt as any).payload || rawEvt;
+                    const props = evt.properties || {};
+                    const eventType = evt.type || "";
+
+                    // Session filtering — skip events that belong to a DIFFERENT session
+                    // (but keep events that have no sessionID, like session.idle)
+                    const partProps = props.part || {};
+                    if (partProps.sessionID && partProps.sessionID !== sessionId) continue;
+                    if (props.sessionID && props.sessionID !== sessionId) continue;
+
+                    // Log every event for debugging
+                    logger.info(`[VisualEdit] #${eventCount} ${eventType}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}`);
+
+                    switch (eventType) {
+                        case "message.part.updated": {
+                            const part = props.part;
+                            if (!part) break;
+
+                            // Track text output from the agent
+                            if (part.type === "text" && part.text) {
+                                agentText = part.text;
+                                logger.info(`[VisualEdit] 📝 Text: ${part.text.substring(0, 100)}...`);
+                            }
+
+                            // Track tool activity for status feedback
+                            if (part.type === "tool") {
+                                const toolState = part.state;
+                                const toolName = part.tool || "unknown";
+                                const status = toolState?.status || "unknown";
+                                const input = toolState?.input || part.input || {};
+                                const detail = input.file_path || input.path || input.filePath
+                                    || input.command || "";
+
+                                logger.info(`[VisualEdit] 🔧 Tool ${toolName}: ${status}${detail ? ` (${detail})` : ""}`);
+
+                                if (status === "running" || status === "pending") {
+                                    if (toolName === "read" || toolName === "glob" || toolName === "grep") {
+                                        onStatus?.(`Leyendo ${detail || componentFile}...`);
+                                    } else if (toolName === "edit" || toolName === "write") {
+                                        onStatus?.("Aplicando cambios...");
+                                    }
+                                }
+                            }
+                            break;
+                        }
+
+                        case "message.updated": {
+                            const delta = props.delta;
+                            if (typeof delta === "string" && delta.length > 0) {
+                                // Text delta — accumulate
+                                agentText += delta;
+                            }
+                            break;
+                        }
+
+                        case "file.edited": {
+                            const file = props.file;
+                            if (file) {
+                                filesEdited.push(file);
+                                logger.info(`[VisualEdit] 📂 File edited: ${file}`);
+                                onStatus?.(`Editado: ${path.basename(file)}`);
+                            }
+                            break;
+                        }
+
+                        case "session.idle": {
+                            logger.info(`[VisualEdit] ✅ Session idle — complete. Total events: ${eventCount}, files edited: ${filesEdited.length}`);
+                            completed = true;
+                            return; // Exit the for-await loop
+                        }
+
+                        case "session.status": {
+                            const status = props.status || props.session?.status;
+                            logger.info(`[VisualEdit] Session status: ${JSON.stringify(status)}`);
+                            if (status?.type === "idle") {
+                                completed = true;
+                                return;
+                            }
+                            break;
+                        }
+
+                        case "permission.asked": {
+                            const reqId = props.id || props.requestID;
+                            if (!reqId) break;
+                            // Auto-approve all permissions
+                            try {
+                                await client.postSessionIdPermissionsPermissionId({
+                                    path: { id: sessionId, permissionID: reqId },
+                                    body: { response: "always" }
+                                });
+                                logger.info(`[VisualEdit] Auto-approved permission: ${props.type}`);
+                            } catch (e: any) {
+                                logger.error(`[VisualEdit] Permission error: ${e.message}`);
+                            }
+                            break;
+                        }
+
+                        // Ignore known noise events
+                        case "server.connected":
+                        case "session.updated":
+                        case "file.watcher.updated":
+                            break;
+
+                        default:
+                            if (eventCount <= 30) {
+                                logger.info(`[VisualEdit] Unhandled: ${eventType}`);
+                            }
+                            break;
+                    }
+                }
+            } catch (err: any) {
+                if (!sseAbortController.signal.aborted) {
+                    logger.warn(`[VisualEdit] SSE stream error: ${err.message}`);
+                }
+            }
+        })();
+
+        // Build the prompt with component context
+        const settings = readSettings();
+        const model = settings.selectedModel;
+        const providerID = mapProviderForOpenCode(model);
+
+        const agentPrompt = [
+            `Edita el componente "${componentName}" en el archivo "${componentFile}" (línea ${componentLine}).`,
+            ``,
+            `Petición del usuario: ${prompt}`,
+            ``,
+            `IMPORTANTE: Lee el archivo primero para entender el contexto. Haz solo el cambio pedido.`,
+        ].join("\n");
+
+        onStatus?.(`Editando ${componentName}...`);
+
+        // Send the prompt to the visual-edit subagent
+        await client.session.promptAsync({
+            path: { id: sessionId },
+            query: { directory: appPath },
+            body: {
+                model: {
+                    providerID,
+                    modelID: model.name,
+                },
+                parts: [{ type: "text", text: `@visual-edit ${agentPrompt}` }],
+            },
+        });
+
+        logger.info(`[VisualEdit] Prompt sent to visual-edit agent (model: ${providerID}/${model.name})`);
+
+        // Wait for completion with timeout (120s for slower models)
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 120_000));
+        await Promise.race([eventDone, timeout]);
+
+        // Clean up SSE
+        sseAbortController.abort();
+
+        if (!completed) {
+            logger.warn(`[VisualEdit] Timed out after 120s. Events received: ${eventCount}`);
+            // Try to abort the session so it doesn't keep running
+            try { await client.session.abort({ path: { id: sessionId }, query: { directory: appPath } }); } catch {}
+            return { success: false, error: "Tiempo de espera agotado. Verifica los logs para más detalle." };
+        }
+
+        // Extract summary from agent's text response
+        const summary = agentText.trim() || "Cambio aplicado";
+        logger.info(`[VisualEdit] ✅ Completed. Summary: ${summary.substring(0, 200)}`);
+
+        return {
+            success: filesEdited.length > 0 || agentText.length > 0,
+            summary,
+        };
+
+    } catch (error: any) {
+        logger.error(`[VisualEdit] Error: ${error.message}`);
+        // Invalidate session only on connection/protocol errors, not on model errors
+        if (error.message?.includes("session") || error.message?.includes("connect")) {
+            visualEditSessionMap.delete(appPath);
+            logger.info(`[VisualEdit] Invalidated session for ${appPath} due to connection error`);
+        }
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Get or create the OpenCode server + client singleton.
  * The server runs on localhost and the client communicates via HTTP.
  */
@@ -254,6 +503,33 @@ async function getOpenCodeClient(appPath: string) {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
+                    },
+                    // Hidden subagent for quick visual edits from the NaturalEditingPanel.
+                    // Invoked programmatically — never shown in the UI.
+                    "visual-edit": {
+                        description: "Realiza ediciones visuales puntuales a componentes React/JSX. Solo edita el archivo indicado.",
+                        mode: "subagent",
+                        hidden: true,
+                        temperature: 0.1,
+                        steps: 5,
+                        permission: {
+                            edit: "allow",
+                            bash: { "*": "deny" },
+                            webfetch: "deny",
+                        },
+                        prompt: [
+                            "Eres un agente de edición visual rápida para componentes React/JSX.",
+                            "Tu ÚNICA tarea es hacer cambios pequeños y precisos al componente indicado.",
+                            "",
+                            "REGLAS ESTRICTAS:",
+                            "- Lee el archivo indicado y modifica SOLO las líneas relevantes del componente",
+                            "- Usa las clases/estilos existentes del proyecto (Tailwind, CSS modules, inline styles, etc.)",
+                            "- NO crees archivos nuevos",
+                            "- NO ejecutes comandos bash",
+                            "- NO hagas cambios fuera del componente especificado",
+                            "- Responde con un resumen de 1 línea de lo que cambiaste, en el mismo idioma del usuario",
+                            "- Si instalas una dependencia nueva (como un icono), añádela al import existente",
+                        ].join("\n"),
                     },
                     // Use the cheap/fast model for context compaction summaries
                     // so we don't burn expensive tokens on housekeeping
