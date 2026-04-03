@@ -690,7 +690,8 @@ export async function handleLocalAgentStream(
         priceOut = modelData?.pricingOutput || "";
       } catch { /* pricing unavailable — non-OpenRouter or cache miss */ }
 
-      const tokenXml = `<vibes-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+      const webSearchCount = (fullResponse.match(/<vibes-web-crawl\b/g) || []).length;
+      const tokenXml = `<vibes-token-usage input="${inTk}" output="${outTk}" cached="${cachedTk}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
       fullResponse += tokenXml + "\n";
       updateResponseInDb(placeholderMessageId, fullResponse);
       sendResponseChunk(event, req.chatId, chat, fullResponse);

@@ -1650,16 +1650,18 @@ function renderModalContent(
       const inp = parseInt(attributes.input || "0", 10);
       const out = parseInt(attributes.output || "0", 10);
       const cached = parseInt(attributes.cached || "0", 10);
+      const webSearches = parseInt(attributes["web-searches"] || "0", 10);
       const total = inp + out;
       const priceIn = parseFloat(attributes["price-input"] || "0");
       const priceOut = parseFloat(attributes["price-output"] || "0");
-      const hasPricing = priceIn > 0 || priceOut > 0;
+      const hasPricing = priceIn > 0 || priceOut > 0 || webSearches > 0;
 
       // OpenRouter prices are $/token — cached input is typically 50% of input price
       const costInput = (inp - cached) * priceIn;
       const costCached = cached * priceIn * 0.5;
       const costOutput = out * priceOut;
-      const costTotal = costInput + costCached + costOutput;
+      const costWebSearches = webSearches * 0.02; // Exa search cost is $0.02
+      const costTotal = costInput + costCached + costOutput + costWebSearches;
 
       const fmtCost = (c: number) => {
         if (c < 0.001) return `$${c.toFixed(6)}`;
@@ -1689,6 +1691,13 @@ function renderModalContent(
                 <span className="text-xs text-emerald-500/70 dark:text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
               </div>
               {hasPricing && <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
+            </div>
+          )}
+          {webSearches > 0 && (
+            <div className="bg-fuchsia-100 dark:bg-fuchsia-500/10 rounded-lg p-3">
+              <div className="text-xs text-fuchsia-600 dark:text-fuchsia-400 mb-1">Búsquedas Web</div>
+              <div className="text-lg font-bold text-fuchsia-700 dark:text-fuchsia-300">{webSearches.toLocaleString()}</div>
+              {hasPricing && <div className="text-xs text-fuchsia-500/70 dark:text-fuchsia-400/70 mt-1">{fmtCost(costWebSearches)} ($0.02 por búsqueda)</div>}
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">

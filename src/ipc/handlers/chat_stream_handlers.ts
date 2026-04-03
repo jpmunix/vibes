@@ -1685,7 +1685,9 @@ This conversation includes one or more image attachments. When the user uploads 
               priceOut = modelData?.pricingOutput || "";
             } catch { /* pricing unavailable */ }
 
-            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+            // Count web searches to calculate correct cost (each search via OpenCode webfetch tool)
+            const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
+            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
 
             // Log token usage for verbose chat logs and ChatLogsPanel

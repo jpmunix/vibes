@@ -317,15 +317,17 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             const inp = parseInt(attributes.input || "0", 10);
             const out = parseInt(attributes.output || "0", 10);
             const cached = parseInt(attributes.cached || "0", 10);
+            const webSearches = parseInt(attributes["web-searches"] || "0", 10);
 
             const priceIn = parseFloat(attributes["price-input"] || "0");
             const priceOut = parseFloat(attributes["price-output"] || "0");
 
-            if (priceIn > 0 || priceOut > 0) {
+            if (priceIn > 0 || priceOut > 0 || webSearches > 0) {
                 const costInput = (inp - cached) * priceIn;
                 const costCached = cached * priceIn * 0.5;
                 const costOutput = out * priceOut;
-                const costTotal = costInput + costCached + costOutput;
+                const costWebSearches = webSearches * 0.02;
+                const costTotal = costInput + costCached + costOutput + costWebSearches;
                 return formatPriceCost(costTotal);
             }
 
