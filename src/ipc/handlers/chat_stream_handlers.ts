@@ -1499,9 +1499,15 @@ This conversation includes one or more image attachments. When the user uploads 
               logger.log(`[SmartMode] Classified: "${intent}" → mode "${resolvedChatMode}" for chat ${req.chatId}`);
 
               // Notify frontend so the response badge shows the classified mode
+              // When intent is "context", show the icon of the resolved mode (previous turn's intent)
+              const modeToIntent: Record<string, string> = { agent: "build", ask: "ask", plan: "plan" };
+              const displayIntent = intent === "context"
+                ? (modeToIntent[resolvedChatMode] || "build")
+                : intent;
+
               safeSend(event.sender, "chat:smart-mode-intent", {
                 chatId: req.chatId,
-                intent: smartModeIntent,
+                intent: displayIntent,
                 resolvedMode: resolvedChatMode,
               });
             } else {

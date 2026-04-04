@@ -115,8 +115,26 @@ export async function classifyUserIntent(
             body: JSON.stringify({
                 model: CLASSIFIER_MODEL,
                 messages,
-                max_tokens: 5,
+                max_tokens: 40,
                 temperature: 0,
+                response_format: {
+                    type: "json_schema",
+                    json_schema: {
+                        name: "intent_classification",
+                        strict: true,
+                        schema: {
+                            type: "object",
+                            properties: {
+                                intent: {
+                                    type: "string",
+                                    enum: ["ask", "plan", "build", "context"],
+                                },
+                            },
+                            required: ["intent"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
             }),
             signal: controller.signal,
         });
@@ -129,13 +147,23 @@ export async function classifyUserIntent(
         }
 
         const data = await response.json();
-        const raw = (data.choices?.[0]?.message?.content || "").trim().toLowerCase();
+        const raw = (data.choices?.[0]?.message?.content || "").trim();
 
-        // Extract first word and validate
-        const firstWord = raw.split(/[\s.,;!?]+/)[0] as SmartModeIntent;
-        if (VALID_INTENTS.includes(firstWord)) {
-            logger.info(`[SmartMode] Classified: "${firstWord}" (raw: "${raw}")`);
-            return firstWord;
+        // Parse structured JSON response
+        try {
+            const parsed = JSON.parse(raw);
+            const intent = parsed.intent?.toLowerCase() as SmartModeIntent;
+            if (VALID_INTENTS.includes(intent)) {
+                logger.info(`[SmartMode] Classified: "${intent}"`);
+                return intent;
+            }
+        } catch {
+            // Fallback: try extracting first word if JSON parse fails
+            const firstWord = raw.toLowerCase().split(/[\s.,;!?]+/)[0] as SmartModeIntent;
+            if (VALID_INTENTS.includes(firstWord)) {
+                logger.info(`[SmartMode] Classified (fallback): "${firstWord}"`);
+                return firstWord;
+            }
         }
 
         logger.warn(`[SmartMode] Invalid classifier response: "${raw}" — defaulting to "${DEFAULT_INTENT}"`);
