@@ -128,7 +128,7 @@ export const messages = sqliteTable("messages", {
     maxTokensUsed: integer("max_tokens_used"),
     model: text("model"),
     aiMessagesJson: text("ai_messages_json"),
-    usingFreeAgentModeQuota: integer("using_free_agent_mode_quota"),
+
     previousResponseId: integer("previous_response_id"),
     status: text("status").default("completed"),
     durationMs: integer("duration_ms"),

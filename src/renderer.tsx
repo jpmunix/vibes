@@ -11,7 +11,7 @@ import {
   QueryClientProvider,
   MutationCache,
 } from "@tanstack/react-query";
-import { showError, showMcpConsentToast } from "./lib/toast";
+import { showError } from "./lib/toast";
 import { ipc } from "./ipc/types";
 import { useSetAtom } from "jotai";
 import {
@@ -122,22 +122,6 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = ipc.events.mcp.onConsentRequest((payload) => {
-      showMcpConsentToast({
-        serverName: payload.serverName,
-        toolName: payload.toolName,
-        toolDescription: payload.toolDescription,
-        inputPreview: payload.inputPreview,
-        onDecision: (d) =>
-          ipc.mcp.respondToConsent({
-            requestId: payload.requestId,
-            decision: d,
-          }),
-      });
-    });
-    return () => unsubscribe();
-  }, []);
 
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);

@@ -30,7 +30,6 @@ import {
   startPerformanceMonitoring,
   stopPerformanceMonitoring,
 } from "./utils/performance_monitor";
-import { cleanupOldAiMessagesJson } from "./pro/main/ipc/handlers/local_agent/ai_messages_cleanup";
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
@@ -177,9 +176,6 @@ export async function onReady() {
     } else if (openCodeResult.updated) {
       logger.info(`OpenCode updated to v${openCodeResult.version}`);
     }
-
-    // Cleanup old data in background (non-critical, doesn't block startup)
-    await cleanupOldAiMessagesJson();
 
     // Add vibes-apps directory to git safe.directory (required for Windows).
     if (settings.enableNativeGit) {

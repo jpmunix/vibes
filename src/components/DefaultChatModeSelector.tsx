@@ -16,10 +16,7 @@ export function DefaultChatModeSelector() {
     return null;
   }
 
-  const effectiveDefault = getEffectiveDefaultChatMode(
-    settings,
-    envVars,
-  );
+  const effectiveDefault = getEffectiveDefaultChatMode(settings);
 
   const handleDefaultChatModeChange = (value: ChatMode) => {
     updateSettings({ defaultChatMode: value });
@@ -32,7 +29,7 @@ export function DefaultChatModeSelector() {
       case "ask":
         return "Preguntar";
       case "build":
-      case "local-agent":
+      case "agent":
       default:
         return "Agente";
     }
@@ -47,7 +44,7 @@ export function DefaultChatModeSelector() {
         <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
       </SelectTrigger>
       <SelectContent align="end">
-        <SelectItem value="local-agent">
+        <SelectItem value="agent">
           <div className="flex flex-col items-start">
             <span className="font-medium">Agente</span>
             <span className="text-xs text-muted-foreground">

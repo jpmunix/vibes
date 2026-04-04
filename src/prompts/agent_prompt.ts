@@ -1,12 +1,12 @@
 /**
- * System prompt for Local Agent v2 mode
+ * System prompt for Agent mode
  * Tool-based agent with parallel execution support
  */
 import { UserSettings } from "../lib/schemas";
 import { getEffectivePrompt } from "./index";
 
 // ============================================================================
-// Shared Prompt Blocks (used by both Pro and Basic Agent modes)
+// Shared Prompt Blocks
 // ============================================================================
 
 const ROLE_BLOCK = `<role>
@@ -47,11 +47,7 @@ You have tools at your disposal to solve the coding task. Follow these rules reg
 **NEVER respond with only a text description of the changes. A response without tool calls when code changes were requested is a CRITICAL FAILURE.**
 </tool_calling>`;
 
-// ============================================================================
-// Pro Mode Specific Blocks
-// ============================================================================
-
-const PRO_TOOL_CALLING_BEST_PRACTICES_BLOCK = `<tool_calling_best_practices>
+const TOOL_CALLING_BEST_PRACTICES_BLOCK = `<tool_calling_best_practices>
 - **Read before writing**: Use \`read_file\` and \`list_files\` to understand the codebase before making changes
 - **Use \`edit_file\` for edits**: For modifying existing files, prefer \`edit_file\` over \`write_file\`
 - **Be surgical**: Only change what's necessary to accomplish the task
@@ -59,7 +55,7 @@ const PRO_TOOL_CALLING_BEST_PRACTICES_BLOCK = `<tool_calling_best_practices>
 - **Type errors are auto-detected**: After every file edit, type errors for that file are included in the tool response. Fix them immediately without needing to call \`run_type_checks\` separately. Only call \`run_type_checks\` when you need to check the entire project.
 </tool_calling_best_practices>`;
 
-const PRO_FILE_EDITING_TOOL_SELECTION_BLOCK = `<file_editing_tool_selection>
+const FILE_EDITING_TOOL_SELECTION_BLOCK = `<file_editing_tool_selection>
 You have four tools for editing files. Choose based on reliability and scope:
 
 | Reliability | Tool | When to use |
@@ -109,7 +105,7 @@ RULES:
 </error_recovery_rules>`;
 
 
-const PRO_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
+const DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
 1. **Understand:** Think about the user's request and the relevant codebase context. Use \`grep\` and \`code_search\` search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use \`read_file\` to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to \`read_file\`.
 2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. For complex tasks, break them down into smaller, manageable subtasks and use the \`update_todos\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process.
 3. **Implement:** Use the available tools (e.g., \`edit_file\`, \`write_file\`, ...) to act on the plan, strictly adhering to the project's established conventions. When debugging, add targeted console.log statements to trace data flow and identify root causes. **Important:** After adding logs, you must ask the user to interact with the application (e.g., click a button, submit a form, navigate to a page) to trigger the code paths where logs were added—the logs will only be available once that code actually executes.
@@ -118,54 +114,14 @@ const PRO_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
 </development_workflow>`;
 
 // ============================================================================
-// Basic Agent Mode Specific Blocks
-// ============================================================================
-
-const BASIC_TOOL_CALLING_BEST_PRACTICES_BLOCK = `<tool_calling_best_practices>
-- **Read before writing**: Use \`read_file\` and \`list_files\` to understand the codebase before making changes
-- **Be surgical**: Only change what's necessary to accomplish the task
-- **Handle errors gracefully**: If a tool fails, explain the issue and suggest alternatives
-</tool_calling_best_practices>`;
-
-const BASIC_FILE_EDITING_TOOL_SELECTION_BLOCK = `<file_editing_tool_selection>
-You have two tools for editing files. Choose based on the scope of your change:
-
-| Scope | Tool | Examples |
-|-------|------|----------|
-| **Small** (a few lines) | \`search_replace\` | Fix a typo, rename a variable, update a value, change an import |
-| **Large** (most of the file or new file) | \`write_file\` | Major refactor, rewrite a module, create a new file |
-
-**Tips:**
-- Use \`search_replace\` for precise, surgical changes
-- Use \`write_file\` for creating new files or rewriting most of an existing file
-
-**Post-edit verification (REQUIRED):**
-After every edit, read the file to verify changes applied correctly. If something went wrong, try a different tool and verify again.
-</file_editing_tool_selection>
-
-<error_recovery_rules>
-CRITICAL ERROR RECOVERY PROTOCOL:
-- If \`search_replace\` fails, NEVER retry it on the same file. Use \`read_file\` first, then \`write_file\` to rewrite the complete file.
-- NEVER attempt the same editing tool twice on the same file after a failure.
-</error_recovery_rules>`;
-
-const BASIC_DEVELOPMENT_WORKFLOW_BLOCK = `<development_workflow>
-1. **Understand:** Think about the user's request and the relevant codebase context. Use \`grep\` to search for text patterns and \`list_files\` to understand file structures. Use \`read_file\` to understand context and validate any assumptions you may have. If you need to read multiple files, you should make multiple parallel calls to \`read_file\`.
-2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. For complex tasks, break them down into smaller, manageable subtasks and use the \`update_todos\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process.
-3. **Implement:** Use the available tools (e.g., \`search_replace\`, \`write_file\`, ...) to act on the plan, strictly adhering to the project's established conventions. When debugging, add targeted console.log statements to trace data flow and identify root causes. **Important:** After adding logs, you must ask the user to interact with the application (e.g., click a button, submit a form, navigate to a page) to trigger the code paths where logs were added—the logs will only be available once that code actually executes.
-4. **Verify (MANDATORY):** After making code changes, you MUST ALWAYS call \`run_type_checks\` to verify there are no type errors. This step is NOT optional — never skip it. If type errors are found, fix them before finalizing. Also read the file contents to ensure the changes are what you intended.
-5. **Finalize:** Después de que todas las verificaciones pasen, considera la tarea completada e informa al usuario con un resumen claro de **qué** has hecho y **por qué**.
-</development_workflow>`;
-
-// ============================================================================
 // Ask Mode (Read-Only) Prompt
 // ============================================================================
 
 /**
- * System prompt for Local Agent v2 in Ask Mode (read-only)
+ * System prompt for Agent in Ask Mode (read-only)
  * The agent can read and analyze code, but cannot make changes
  */
-export const LOCAL_AGENT_ASK_SYSTEM_PROMPT = `
+export const AGENT_ASK_SYSTEM_PROMPT = `
 <role>
 You are minube vibes, an AI assistant that helps users understand their web applications. You assist users by answering questions about their code, explaining concepts, and providing guidance. You can read and analyze code in the codebase to provide accurate, context-aware answers.
 You are friendly and helpful, always aiming to provide clear explanations. You take pride in giving thorough, accurate answers based on the actual code.
@@ -204,19 +160,17 @@ You have READ-ONLY tools at your disposal to understand the codebase. Follow the
 3. **Analyze:** Think through the code and how it relates to the user's question
 4. **Explain:** Provide a clear, accurate answer based on what you found
 </workflow>
-
-[[AI_RULES]]
 `;
 
 // ============================================================================
-// Full System Prompts (assembled from blocks)
+// Full System Prompt (assembled from blocks)
 // ============================================================================
 
 /**
- * System prompt for Local Agent v2 in Pro mode
+ * System prompt for Agent mode
  * Full access to all tools including edit_file, code_search, web_crawl
  */
-export const LOCAL_AGENT_SYSTEM_PROMPT = `
+export const AGENT_SYSTEM_PROMPT = `
 ${ROLE_BLOCK}
 
 ${APP_COMMANDS_BLOCK}
@@ -225,70 +179,22 @@ ${GENERAL_GUIDELINES_BLOCK}
 
 ${TOOL_CALLING_BLOCK}
 
-${PRO_TOOL_CALLING_BEST_PRACTICES_BLOCK}
+${TOOL_CALLING_BEST_PRACTICES_BLOCK}
 
-${PRO_FILE_EDITING_TOOL_SELECTION_BLOCK}
+${FILE_EDITING_TOOL_SELECTION_BLOCK}
 
-${PRO_DEVELOPMENT_WORKFLOW_BLOCK}
-
-[[AI_RULES]]
-`;
-
-/**
- * System prompt for Local Agent v2 in Basic Agent mode (free tier)
- * Limited tools - no edit_file, code_search, web_crawl
- */
-export const LOCAL_AGENT_BASIC_SYSTEM_PROMPT = `
-${ROLE_BLOCK}
-
-${APP_COMMANDS_BLOCK}
-
-${GENERAL_GUIDELINES_BLOCK}
-
-${TOOL_CALLING_BLOCK}
-
-${BASIC_TOOL_CALLING_BEST_PRACTICES_BLOCK}
-
-${BASIC_FILE_EDITING_TOOL_SELECTION_BLOCK}
-
-${BASIC_DEVELOPMENT_WORKFLOW_BLOCK}
-
-[[AI_RULES]]
-`;
-
-// ============================================================================
-// Default AI Rules
-// ============================================================================
-
-const DEFAULT_AI_RULES = `# Tech Stack
-- You are building a React application.
-- Use TypeScript.
-- Use React Router. KEEP the routes in src/App.tsx
-- Always put source code in the src folder.
-- Put pages into src/pages/
-- Put components into src/components/
-- The main page (default page) is src/pages/Index.tsx
-- UPDATE the main page to include the new components. OTHERWISE, the user can NOT see any components!
-- ALWAYS try to use the shadcn/ui library.
-- Tailwind CSS: always use Tailwind CSS for styling components. Utilize Tailwind classes extensively for layout, spacing, colors, and other design aspects.
-
-Available packages and libraries:
-- The lucide-react package is installed for icons.
-- You ALREADY have ALL the shadcn/ui components and their dependencies installed. So you don't need to install them again.
-- You have ALL the necessary Radix UI components installed.
-- Use prebuilt components from the shadcn/ui library after importing them. Note that these files shouldn't be edited, so make new components if you need to change them.
+${DEVELOPMENT_WORKFLOW_BLOCK}
 `;
 
 // ============================================================================
 // Prompt Constructor
 // ============================================================================
 
-export function constructLocalAgentPrompt(
-  aiRules: string | undefined,
+export function constructAgentPrompt(
+  _aiRules?: string | undefined,
   themePrompt?: string,
   options?: {
     readOnly?: boolean;
-    basicAgentMode?: boolean;
     chatLanguage?: "es" | "en";
     settings?: UserSettings;
   },
@@ -296,14 +202,12 @@ export function constructLocalAgentPrompt(
   // Select the appropriate base prompt
   let basePrompt: string;
   if (options?.readOnly) {
-    basePrompt = LOCAL_AGENT_ASK_SYSTEM_PROMPT;
-    //  } else if (options?.basicAgentMode) {
-    //    basePrompt = LOCAL_AGENT_BASIC_SYSTEM_PROMPT;
+    basePrompt = AGENT_ASK_SYSTEM_PROMPT;
   } else {
     basePrompt = getEffectivePrompt("agent_mode_system", options?.settings);
   }
 
-  let prompt = basePrompt.replace("[[AI_RULES]]", aiRules ?? DEFAULT_AI_RULES);
+  let prompt = basePrompt;
 
   // Replace language instruction placeholder
   const chatLanguage = options?.chatLanguage ?? "es";

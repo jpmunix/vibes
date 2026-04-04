@@ -4,7 +4,6 @@ import {
     plansByChatIdAtom,
     planCollapsedByChatIdAtom,
     planLoadingByChatIdAtom,
-    planInputValueByChatIdAtom,
     type Plan,
     type PlanStage,
     type PlanTask,
@@ -24,7 +23,6 @@ import {
     Loader2,
     ListChecks,
     Rocket,
-    Send,
     CheckSquare,
     Square,
     CheckCircle,
@@ -200,7 +198,7 @@ function PlanTaskItem({
     return (
         <div
             className={cn(
-                "group flex items-start gap-3 py-2.5 px-3 rounded-md transition-colors",
+                "group flex items-start gap-2.5 py-1.5 px-2.5 rounded-md transition-colors",
                 "hover:bg-muted/40",
                 task.checked && "opacity-70",
             )}
@@ -209,15 +207,15 @@ function PlanTaskItem({
             <button
                 onClick={onToggle}
                 disabled={readOnly || task.isDeveloped}
-                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default"
+                className="mt-px shrink-0 text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default"
                 title={task.isDeveloped ? "Desarrollado" : task.checked ? "Desmarcar" : "Marcar"}
             >
                 {task.isDeveloped ? (
-                    <CheckCircle className="h-4 w-4 text-primary" />
+                    <CheckCircle className="h-3.5 w-3.5 text-primary" />
                 ) : task.checked ? (
-                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <CheckSquare className="h-3.5 w-3.5 text-primary" />
                 ) : (
-                    <Square className="h-4 w-4" />
+                    <Square className="h-3.5 w-3.5" />
                 )}
             </button>
 
@@ -232,19 +230,19 @@ function PlanTaskItem({
                             if (e.key === "Enter") confirmEdit();
                             if (e.key === "Escape") cancelEdit();
                         }}
-                        className="flex-1 bg-transparent border-b border-primary text-sm outline-none py-0.5"
+                        className="flex-1 bg-transparent border-b border-primary text-xs-sm outline-none py-0.5"
                     />
                     <button onClick={confirmEdit} className="text-primary hover:text-primary/80">
-                        <Check className="h-3.5 w-3.5" />
+                        <Check className="h-3 w-3" />
                     </button>
                     <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground">
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3 w-3" />
                     </button>
                 </div>
             ) : (
                 <span
                     className={cn(
-                        "flex-1 text-sm leading-relaxed",
+                        "flex-1 text-xs-sm leading-relaxed",
                         (task.checked || task.isDeveloped) && "text-muted-foreground",
                         task.isDeveloped && "line-through opacity-70",
                     )}
@@ -261,14 +259,14 @@ function PlanTaskItem({
                         className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
                         title="Editar tarea"
                     >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-3 w-3" />
                     </button>
                     <button
                         onClick={onDelete}
                         className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                         title="Eliminar tarea"
                     >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                     </button>
                 </div>
             )}
@@ -318,9 +316,9 @@ function PlanStageSection({
     const checkedCount = stage.tasks.filter((t) => t.checked).length;
 
     return (
-        <div className="mb-8">
+        <div className="mb-3">
             {/* Stage header */}
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-0.5">
                 {editingTitle && !readOnly ? (
                     <div className="flex-1 flex items-center gap-1">
                         <input
@@ -337,13 +335,13 @@ function PlanStageSection({
                                     setEditingTitle(false);
                                 }
                             }}
-                            className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none"
+                            className="flex-1 bg-transparent border-b border-primary text-xs-sm font-medium outline-none"
                         />
                     </div>
                 ) : (
                     <h4
                         className={cn(
-                            "text-sm font-semibold text-foreground",
+                            "text-xs-sm font-medium text-foreground",
                             !readOnly && "cursor-pointer hover:text-primary transition-colors",
                         )}
                         onClick={() => {
@@ -356,7 +354,7 @@ function PlanStageSection({
                         {stage.title}
                     </h4>
                 )}
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground/70">
                     {checkedCount}/{stage.tasks.length}
                 </span>
                 {!readOnly && (
@@ -365,20 +363,20 @@ function PlanStageSection({
                         className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Eliminar etapa"
                     >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3 w-3" />
                     </button>
                 )}
             </div>
 
             {/* Summary */}
             {stage.summary && (
-                <p className="text-xs text-muted-foreground mb-1.5 pl-1">
+                <p className="text-xs text-muted-foreground/80 mb-1 pl-1 leading-relaxed">
                     {stage.summary}
                 </p>
             )}
 
             {/* Tasks */}
-            <div className="pl-1">
+            <div className="pl-0.5">
                 {stage.tasks.map((task) => (
                     <PlanTaskItem
                         key={task.id}
@@ -401,10 +399,6 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     const setPlans = useSetAtom(plansByChatIdAtom);
     const collapsedMap = useAtomValue(planCollapsedByChatIdAtom);
     const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
-    const loadingMap = useAtomValue(planLoadingByChatIdAtom);
-    const setLoading = useSetAtom(planLoadingByChatIdAtom);
-    const planInputMap = useAtomValue(planInputValueByChatIdAtom);
-    const setPlanInput = useSetAtom(planInputValueByChatIdAtom);
 
     const { settings, updateSettings } = useSettings();
     const { streamMessage } = useStreamChat();
@@ -427,8 +421,6 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
     if (!chatId) return null;
 
     const collapsed = collapsedMap.get(chatId) ?? true;
-    const loading = loadingMap.get(chatId) ?? false;
-    const planInput = planInputMap.get(chatId) ?? "";
 
     // Don't render if no plan exists
     if (!plan) return null;
@@ -509,9 +501,8 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
 
         const developPrompt = `Implementa las siguientes tareas del plan:\n\n${planText}\n\nComienza a desarrollar cada tarea listada. Genera el código necesario.`;
 
-        // Switch to development mode
-        const devMode = settings?.defaultChatMode === "local-agent" ? "local-agent" : "build";
-        updateSettings({ selectedChatMode: devMode });
+        // Switch to agent mode for development
+        updateSettings({ selectedChatMode: "agent" });
 
         // Collapse panel
         updateMapAtom(setCollapsed, chatId, true);
@@ -523,66 +514,50 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
         });
     };
 
-    const handlePlanInputSubmit = () => {
-        if (!planInput.trim() || !chatId || loading) return;
 
-        const modificationPrompt = `El usuario tiene el siguiente plan activo:\n\n${planToPromptText(plan, false)}\n\nEl usuario solicita el siguiente cambio al plan:\n${planInput}\n\nActualiza el plan completo con el cambio solicitado. Responde SOLO con el plan actualizado en el formato estructurado (# Objetivo, ## Etapa, - [ ] tarea).`;
-
-        updateMapAtom(setLoading, chatId, true);
-        updateMapAtom(setPlanInput, chatId, "");
-
-        // Switch to plan mode so usePlanSync captures the response
-        updateSettings({ selectedChatMode: "plan" });
-
-        // Send to AI for plan update
-        streamMessage({
-            prompt: modificationPrompt,
-            chatId,
-        });
-    };
 
     return (
         <div
             className={cn(
-                "flex flex-col overflow-hidden border-t border-border/80 bg-muted/40 transition-[max-height] duration-300 mb-2",
-                collapsed ? "max-h-28" : "max-h-[70vh]",
+                "flex flex-col overflow-hidden border-t border-border/60 bg-muted/20 transition-[max-height] duration-300 mb-1",
+                collapsed ? "max-h-20" : "max-h-[60vh]",
             )}
         >
             {/* Header bar (always visible) */}
-            <div className="w-full flex items-center justify-between px-6 py-6 bg-primary/5 border-b border-primary/10 transition-colors">
+            <div className="w-full flex items-center justify-between px-4 py-2 bg-primary/[0.03] border-b border-primary/8 transition-colors">
                 <button
                     onClick={() => updateMapAtom(setCollapsed, chatId, !collapsed)}
-                    className="flex-1 flex items-center gap-3 cursor-pointer text-left"
+                    className="flex-1 flex items-center gap-2 cursor-pointer text-left min-w-0"
                 >
-                    <ListChecks className="h-5 w-5 text-primary" />
-                    <span className="text-base font-bold text-foreground tracking-tight">
-                        Plan de Desarrollo
+                    <ListChecks className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs-sm font-semibold text-foreground">
+                        Plan
                     </span>
                     {plan.objective && (
-                        <span className="text-sm text-muted-foreground truncate max-w-[300px] border-l border-primary/20 pl-3 ml-1">
+                        <span className="text-xs text-muted-foreground truncate max-w-[250px] border-l border-border/50 pl-2 ml-0.5">
                             {plan.objective}
                         </span>
                     )}
-                    <span className="text-sm font-medium text-primary bg-primary/10 px-2.5 py-0.5 rounded-full ml-2">
+                    <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-px rounded-full ml-1.5 shrink-0">
                         {completedTasks}/{totalTasks}
                     </span>
                     {allCompleted && (
-                        <span className="text-sm font-semibold text-primary flex items-center gap-1.5 ml-2">
-                            <CheckCircle className="h-4 w-4" />
+                        <span className="text-xs font-medium text-primary flex items-center gap-1 ml-1.5 shrink-0">
+                            <CheckCircle className="h-3.5 w-3.5" />
                             Completado
                         </span>
                     )}
-                    <div className="ml-2">
+                    <div className="ml-1">
                         {collapsed ? (
-                            <ChevronUp className="h-4 w-4 text-primary/40" />
+                            <ChevronUp className="h-3.5 w-3.5 text-muted-foreground/40" />
                         ) : (
-                            <ChevronDown className="h-4 w-4 text-primary/40" />
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/40" />
                         )}
                     </div>
                 </button>
 
                 {!effectiveReadOnly && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
                         <Button
                             size="sm"
                             disabled={isStreaming}
@@ -591,16 +566,16 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                                 handleDevelop(hasChecked && !allChecked);
                             }}
                             className={cn(
-                                "text-xs h-9 px-4 gap-2 text-white transition-all shadow-sm hover:shadow-md",
+                                "text-xs h-7 px-3 gap-1.5 text-white transition-all",
                                 isStreaming && "opacity-50 cursor-not-allowed",
                                 "bg-primary hover:bg-primary/90"
                             )}
                         >
-                            <Rocket className="h-4 w-4" />
+                            <Rocket className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">
                                 {hasChecked && !allChecked
-                                    ? `Desarrollar selección (${selectedTasks})`
-                                    : "Desarrollar Plan Completo"}
+                                    ? `Desarrollar (${selectedTasks})`
+                                    : "Desarrollar"}
                             </span>
                         </Button>
                     </div>
@@ -611,7 +586,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
             {!collapsed && (
                 <div className="flex flex-col overflow-hidden min-h-0 flex-1">
                     {/* Scrollable plan stages */}
-                    <div className="flex-1 overflow-y-auto px-6 pt-8 pb-4">
+                    <div className="flex-1 overflow-y-auto px-4 pt-3 pb-2">
                         {plan.stages.map((stage) => (
                             <PlanStageSection
                                 key={stage.id}
@@ -623,58 +598,22 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                         ))}
                     </div>
 
-                    {/* Action bar (hidden when read-only or all tasks completed) */}
+                    {/* Action bar — compact toggle all */}
                     {!effectiveReadOnly && (
-                        <div className="border-t border-border/50 px-6 py-6 space-y-4 bg-muted/20">
-                            {/* Toggle all */}
-                            <div className="flex items-center justify-between">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={toggleAll}
-                                    className="text-xs h-9 px-3 gap-2 hover:bg-primary/10 hover:text-primary transition-colors"
-                                >
-                                    {allChecked ? (
-                                        <Square className="h-4 w-4" />
-                                    ) : (
-                                        <CheckSquare className="h-4 w-4" />
-                                    )}
-                                    {allChecked ? "Desmarcar todo" : "Marcar todo"}
-                                </Button>
-                            </div>
-
-                            {/* Plan modification input - Styled like main chat input */}
-                            <div className="relative group">
-                                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-primary/10 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-300" />
-                                <div className="relative flex items-center gap-2 bg-background border border-border/50 rounded-xl px-4 py-2 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-                                    <input
-                                        value={planInput}
-                                        onChange={(e) => updateMapAtom(setPlanInput, chatId, e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handlePlanInputSubmit();
-                                            }
-                                        }}
-                                        placeholder="Pulir el plan o pedir cambios..."
-                                        className="flex-1 text-sm bg-transparent outline-none disabled:opacity-50"
-                                        disabled={loading}
-                                    />
-                                    <Button
-                                        size="icon"
-                                        variant="primary"
-                                        onClick={handlePlanInputSubmit}
-                                        disabled={!planInput.trim() || loading}
-                                        className="h-8 w-8 rounded-lg"
-                                    >
-                                        {loading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Send className="h-4 w-4" />
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
+                        <div className="border-t border-border/40 px-4 py-2 bg-muted/10">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={toggleAll}
+                                className="text-xs h-6 px-2 gap-1.5 hover:bg-primary/10 hover:text-primary transition-colors"
+                            >
+                                {allChecked ? (
+                                    <Square className="h-3.5 w-3.5" />
+                                ) : (
+                                    <CheckSquare className="h-3.5 w-3.5" />
+                                )}
+                                {allChecked ? "Desmarcar todo" : "Marcar todo"}
+                            </Button>
                         </div>
                     )}
                 </div>

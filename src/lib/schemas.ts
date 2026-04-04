@@ -186,7 +186,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["local-agent", "plan", "ask"]);
+export const ChatModeSchema = z.enum(["agent", "plan", "ask"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -244,8 +244,6 @@ export const FirebaseSchema = z.object({
 export type Firebase = z.infer<typeof FirebaseSchema>;
 
 export const ExperimentsSchema = z.object({
-  // Deprecated
-  enableLocalAgent: z.boolean().describe("DEPRECATED").optional(),
   enableSupabaseIntegration: z.boolean().describe("DEPRECATED").optional(),
   enableFileEditing: z.boolean().describe("DEPRECATED").optional(),
 });
@@ -378,15 +376,15 @@ export const UserSettingsSchema = z
     openCodeIgnorePatterns: z.array(z.string()).optional(),
     selectedChatMode: z.preprocess(
       (val) => {
-        // Migrate deprecated mode values before validation
-        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
+        // Migrate all legacy mode values to "agent"
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent") return "agent";
         return val;
       },
       ChatModeSchema.optional(),
     ),
     defaultChatMode: z.preprocess(
       (val) => {
-        if (val === "crush-agent" || val === "build" || val === "agent" || val === "legacy-agent") return "local-agent";
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent") return "agent";
         return val;
       },
       ChatModeSchema.optional(),
@@ -414,7 +412,7 @@ export const UserSettingsSchema = z
         systemCpuPercent: z.number().optional(),
       })
       .optional(),
-    hideLocalAgentNewChatToast: z.boolean().optional(),
+
     chatLanguage: ChatLanguageSchema.optional(),
 
     themeIntensity: z.number().optional(),
@@ -455,33 +453,17 @@ export const UserSettingsSchema = z
  */
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 
-// isVibesProEnabled / hasVibesProKey removed — always Pro after acquisition
-
 /**
- * Gets the effective default chat mode based on settings and pro status.
- * Migration: deprecated modes map to their replacements.
- * - "build" / "agent" / "crush-agent" → "local-agent" (OpenCode)
- * - Default: "local-agent" (OpenCode)
+ * Gets the effective default chat mode.
+ * The schema preprocessor already migrates legacy values, so this is straightforward.
  */
 export function getEffectiveDefaultChatMode(
   settings: UserSettings,
-  _envVars: Record<string, string | undefined>,
-  _freeAgentQuotaAvailable?: boolean,
 ): ChatMode {
-  if (settings.defaultChatMode) {
-    const mode = settings.defaultChatMode as string;
-    // Deprecated modes → "local-agent" (OpenCode)
-    if (mode === "build" || mode === "agent" || mode === "crush-agent") {
-      return "local-agent";
-    }
-    return settings.defaultChatMode;
-  }
-
-  // Default to "local-agent" (Agente — OpenCode)
-  return "local-agent";
+  return settings.defaultChatMode ?? "agent";
 }
 
-// isBasicAgentMode removed — legacy-agent eliminated, always Pro
+
 
 export function isSupabaseConnected(settings: UserSettings | null): boolean {
   if (!settings) {

@@ -15,7 +15,7 @@
  *               → message.part.updated (text deltas, tool states)
  *               → file.edited
  *               → session.status (busy/idle)
- *     └─ chat_stream_handlers.ts — routes "local-agent" mode here (Agente)
+ *     └─ chat_stream_handlers.ts — routes "agent" mode here (Agente)
  */
 
 import log from "electron-log";
@@ -688,7 +688,9 @@ export async function handleOpenCodeStream(
         placeholderMessageId: number;
         appPath: string;
         chatMessages: any[];
-        /** Context instructions to inject via noReply on first interaction */
+        /** OpenCode agent to use: "build" (full), "plan" (restricted), "explore" (read-only) */
+        agentId?: "build" | "plan" | "explore";
+        /** Context instructions to inject via config.update */
         contextInstructions?: string[];
         /** Processed attachment file paths (images/text saved to temp dir) */
         attachmentPaths?: string[];
@@ -700,17 +702,23 @@ export async function handleOpenCodeStream(
 ): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
 
+    // Resolve the full project directory path — this is CRITICAL for OpenCode
+    const projectDir = getVibesAppPath(appPath);
+
+    // Determine agent mode for contextual logging prefix
+    const agentMode = options.agentId || "build";
+    const modeLabel = agentMode.charAt(0).toUpperCase() + agentMode.slice(1); // "Build", "Plan", "Explore"
+    const LP = `[OpenCode:${modeLabel}]`; // Log Prefix — used throughout this function
+
     // Inject integration env vars into the process so OpenCode's bash can use them
     if (options.integrationEnvVars) {
         for (const [key, value] of Object.entries(options.integrationEnvVars)) {
             process.env[key] = value;
         }
-        logger.info(`[OpenCode] Injected ${Object.keys(options.integrationEnvVars).length} integration env vars: ${Object.keys(options.integrationEnvVars).join(', ')}`);
+        logger.info(`${LP} Injected ${Object.keys(options.integrationEnvVars).length} integration env vars: ${Object.keys(options.integrationEnvVars).join(', ')}`);
     }
 
-    // Resolve the full project directory path — this is CRITICAL for OpenCode
-    const projectDir = getVibesAppPath(appPath);
-    logger.info(`[OpenCode] Starting stream for chat ${req.chatId}, project: ${projectDir}`);
+    logger.info(`${LP} Starting stream for chat ${req.chatId}, project: ${projectDir}`);
 
 
     let client: ReturnType<typeof createOpencodeClient>;
@@ -719,7 +727,7 @@ export async function handleOpenCodeStream(
         client = result.client;
     } catch (error: any) {
         const errorMsg = `❌ Error al iniciar OpenCode: ${error.message}`;
-        logger.error(errorMsg);
+        logger.error(`${LP} ${errorMsg}`);
         return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
     }
 
@@ -743,14 +751,14 @@ export async function handleOpenCodeStream(
                     if (sessionCheck.data?.id) {
                         sessionId = chatRecord.opencodeSessionId;
                         chatSessionMap.set(req.chatId, sessionId);
-                        logger.info(`[OpenCode] Restored session ${sessionId} from DB for chat ${req.chatId}`);
+                        logger.info(`${LP} Restored session ${sessionId} from DB for chat ${req.chatId}`);
                     }
                 } catch {
-                    logger.info(`[OpenCode] Session ${chatRecord.opencodeSessionId} no longer valid, creating new one`);
+                    logger.info(`${LP} Session ${chatRecord.opencodeSessionId} no longer valid, creating new one`);
                 }
             }
         } catch (e: any) {
-            logger.warn(`[OpenCode] Failed to restore session from DB: ${e.message}`);
+            logger.warn(`${LP} Failed to restore session from DB: ${e.message}`);
         }
     }
 
@@ -760,13 +768,13 @@ export async function handleOpenCodeStream(
                 body: { title: `Chat ${req.chatId}` },
                 query: { directory: projectDir },
             });
-            logger.info(`[OpenCode] Session create response: ${JSON.stringify(session)}`);
+            logger.info(`${LP} Session create response: ${JSON.stringify(session)}`);
             if (!session.data?.id) {
                 throw new Error(`Session creation returned no data: ${JSON.stringify(session)}`);
             }
             sessionId = session.data.id;
             chatSessionMap.set(req.chatId, sessionId);
-            logger.info(`[OpenCode] Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`);
+            logger.info(`${LP} Created session ${sessionId} for chat ${req.chatId} in ${projectDir}`);
 
             // Persist to DB for recovery across restarts
             try {
@@ -774,9 +782,9 @@ export async function handleOpenCodeStream(
                 await db.update(remoteSchema.chats)
                     .set({ opencodeSessionId: sessionId })
                     .where(eq(remoteSchema.chats.id, req.chatId));
-                logger.info(`[OpenCode] Persisted sessionId ${sessionId} to DB for chat ${req.chatId}`);
+                logger.info(`${LP} Persisted sessionId ${sessionId} to DB for chat ${req.chatId}`);
             } catch (e: any) {
-                logger.warn(`[OpenCode] Failed to persist sessionId: ${e.message}`);
+                logger.warn(`${LP} Failed to persist sessionId: ${e.message}`);
             }
 
             // Initialize project context — generates AGENTS.md with tech stack,
@@ -788,51 +796,76 @@ export async function handleOpenCodeStream(
             {
                 const fs = await import("fs");
                 const pathModule = await import("path");
-                const agentsMdPaths = [
-                    pathModule.join(projectDir, "AGENTS.md"),
-                    pathModule.join(projectDir, ".opencode", "AGENTS.md"),
-                    pathModule.join(projectDir, "docs", "AGENTS.md"),
-                ];
-                const hasAgentsMd = agentsMdPaths.some(p => fs.existsSync(p));
 
-                if (!hasAgentsMd) {
-                    logger.info(`[OpenCode] No AGENTS.md found — running init for ${projectDir}...`);
+                // Pre-check: does the project directory actually exist?
+                if (!fs.existsSync(projectDir)) {
+                    logger.warn(`${LP} ⚠️ Project directory does NOT exist: ${projectDir} — skipping init`);
+                } else {
+                    const agentsMdPaths = [
+                        pathModule.join(projectDir, "AGENTS.md"),
+                        pathModule.join(projectDir, ".opencode", "AGENTS.md"),
+                        pathModule.join(projectDir, "docs", "AGENTS.md"),
+                    ];
+                    const hasAgentsMd = agentsMdPaths.some(p => fs.existsSync(p));
 
-                    // Send "analyzing" status to the frontend
-                    sendProgressUpdate(event, req.chatId, chatMessages,
-                        `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
+                    if (!hasAgentsMd) {
+                        logger.info(`${LP} No AGENTS.md found — running init for ${projectDir}...`);
 
-                    try {
-                        const settings = readSettings();
-                        const model = settings.selectedModel;
-                        const initProviderID = mapProviderForOpenCode(model);
+                        // Send "analyzing" status to the frontend
+                        sendProgressUpdate(event, req.chatId, chatMessages,
+                            `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
 
-                        logger.info(`[OpenCode] Running init with model ${initProviderID}/${model.name}...`);
-                        const initResult = await client.session.init({
-                            path: { id: sessionId },
-                            query: { directory: projectDir },
-                            body: {
+                        try {
+                            const settings = readSettings();
+                            const model = settings.selectedModel;
+                            const initProviderID = mapProviderForOpenCode(model);
+
+                            // Build init body — messageID is required by the SDK type but
+                            // some server versions reject empty strings. Use a sentinel value.
+                            const initBody: { providerID: string; modelID: string; messageID: string } = {
                                 providerID: initProviderID,
                                 modelID: model.name,
-                                messageID: "",
-                            },
-                        });
-                        logger.info(`[OpenCode] Init completed (result: ${JSON.stringify(initResult.data)})`);
-                    } catch (initError: any) {
-                        logger.warn(`[OpenCode] Init failed (non-fatal): ${initError.message}`);
-                        // Non-fatal — agent will work without AGENTS.md, just less context
-                    }
+                                messageID: "init",
+                            };
 
-                    // Clear the analyzing status from the UI
-                    sendChunk(event, req.chatId, chatMessages, "");
-                } else {
-                    logger.info(`[OpenCode] AGENTS.md already exists, skipping init`);
+                            logger.info(`${LP} 🔧 Running init with model ${initProviderID}/${model.name} | dir=${projectDir}`);
+                            const initResult = await client.session.init({
+                                path: { id: sessionId },
+                                query: { directory: projectDir },
+                                body: initBody,
+                            });
+                            logger.info(`${LP} ✅ Init completed (result: ${JSON.stringify(initResult.data)})`);
+
+                            // Verify AGENTS.md was actually created
+                            const createdAgentsMd = agentsMdPaths.find(p => fs.existsSync(p));
+                            if (createdAgentsMd) {
+                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdAgentsMd}`);
+                            } else {
+                                logger.warn(`${LP} ⚠️ Init returned success but AGENTS.md not found on disk (server may write it lazily)`);
+                            }
+                        } catch (initError: any) {
+                            // Log the FULL error for debugging — not just the message
+                            logger.warn(`${LP} ❌ Init failed (non-fatal): ${initError.message}`);
+                            logger.warn(`${LP}    Full error:`, JSON.stringify({
+                                status: initError.status || initError.statusCode,
+                                body: initError.body || initError.response?.body,
+                                data: initError.data,
+                                stack: initError.stack?.split('\n').slice(0, 3).join(' → '),
+                            }));
+                            // Non-fatal — agent will work without AGENTS.md, just less context
+                        }
+
+                        // Clear the analyzing status from the UI
+                        sendChunk(event, req.chatId, chatMessages, "");
+                    } else {
+                        logger.info(`${LP} AGENTS.md already exists, skipping init`);
+                    }
                 }
             }
 
         } catch (error: any) {
             const errorMsg = `❌ Error al crear sesión: ${error.message}`;
-            logger.error(errorMsg);
+            logger.error(`${LP} ${errorMsg}`);
             return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
         }
     }
@@ -842,7 +875,7 @@ export async function handleOpenCodeStream(
     // lost during context compaction. config.update() persists for the session.
     if (options.contextInstructions && options.contextInstructions.length > 0) {
         const contextText = options.contextInstructions.join("\n\n---\n\n");
-        logger.info(`[OpenCode] Setting agent.build.prompt with ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
+        logger.info(`${LP} Setting agent.build.prompt with ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
         try {
             await client.config.update({
                 body: {
@@ -853,9 +886,9 @@ export async function handleOpenCodeStream(
                     },
                 } as any,
             });
-            logger.info(`[OpenCode] Context instructions set via config.update`);
+            logger.info(`${LP} Context instructions set via config.update`);
         } catch (ctxError: any) {
-            logger.warn(`[OpenCode] Failed to set context via config.update: ${ctxError.message}`);
+            logger.warn(`${LP} Failed to set context via config.update: ${ctxError.message}`);
             // Non-fatal — continue without context
         }
     }
@@ -881,7 +914,7 @@ export async function handleOpenCodeStream(
     // Wire the user's abort signal to eagerly kill the SSE + tell OpenCode to stop.
     // This runs AS SOON as the user clicks "Stop", not after processEvents finishes.
     const onUserAbort = () => {
-        logger.info(`[OpenCode] ⛔ User abort detected — killing SSE stream and sending session.abort()`);
+        logger.info(`${LP} ⛔ User abort detected — killing SSE stream and sending session.abort()`);
         sseAbortController.abort();
         // Fire-and-forget session.abort() so the server stops generating
         client.session.abort({ path: { id: sessionId! }, query: { directory: projectDir } }).catch(() => {});
@@ -896,10 +929,10 @@ export async function handleOpenCodeStream(
     try {
         // Start global event subscription (captures ALL events across the server)
         // Pass the SSE abort signal so the connection closes when we abort.
-        logger.info("[OpenCode] Subscribing to global events...");
+        logger.info(`${LP} Subscribing to global events...`);
         const eventsResult = await client.global.event({ signal: sseAbortController.signal } as any);
         eventSubscription = eventsResult;
-        logger.info("[OpenCode] Event subscription ready.");
+        logger.info(`${LP} Event subscription ready.`);
 
         // Process events in background
         const eventProcessingDone = processEvents(
@@ -932,7 +965,7 @@ export async function handleOpenCodeStream(
                         });
                     }
 
-                    logger.info(`[OpenCode] Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}${output ? ` [${output.length}ch output]` : ""}`);
+                    logger.info(`${LP} 🔨 Tool ${tool}: ${status}${detail ? ` (${detail})` : ""}${output ? ` [${output.length}ch output]` : ""}`);
                 },
                 onStepStart: () => {
                     stepCount++;
@@ -949,7 +982,7 @@ export async function handleOpenCodeStream(
                     const alreadyTracked = filesEdited.some(f => path.basename(f) === basename);
                     if (!alreadyTracked) {
                         filesEdited.push(file);
-                        logger.info(`[OpenCode] 📂 File edited: ${file}`);
+                        logger.info(`${LP} 📂 File edited: ${file}`);
                     }
                 },
                 getTimeline: () => timeline,
@@ -965,21 +998,23 @@ export async function handleOpenCodeStream(
         const model = settings.selectedModel;
         const providerID = mapProviderForOpenCode(model);
 
-        logger.info(`[OpenCode] Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
-        logger.info(`[OpenCode] Project directory: ${projectDir}`);
-        logger.info(`[OpenCode] Prompt: "${req.prompt.substring(0, 100)}..."`);
+        logger.info(`${LP} Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
+        logger.info(`${LP} Project directory: ${projectDir}`);
+        logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
 
         // Build prompt parts: text + optional file attachments
         // On the very first message of a brand new app (no prior assistant messages),
         // inject a build-mode instruction so the agent directly implements instead of
-        // proposing a plan. This is NOT tied to session creation — sessions get recreated
-        // after undo/revert, but chatMessages persists in the database.
+        // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
         let promptText = req.prompt;
-        // Ignore the placeholder message ID which is already pushed to chatMessages for this very request
-        const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
-        if (!hasAssistantMessages) {
-            promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
-            logger.info(`[OpenCode] 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
+        const effectiveAgent = options.agentId || "build";
+        if (effectiveAgent === "build") {
+            // Ignore the placeholder message ID which is already pushed to chatMessages for this very request
+            const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
+            if (!hasAssistantMessages) {
+                promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
+                logger.info(`${LP} 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
+            }
         }
         const promptParts: any[] = [{ type: "text", text: promptText }];
 
@@ -998,7 +1033,7 @@ export async function handleOpenCodeStream(
                         filename: att.name,
                         url: att.data, // already a data URL
                     });
-                    logger.info(`[OpenCode] Attached image: ${att.name}`);
+                    logger.info(`${LP} Attached image: ${att.name}`);
                 }
                 // upload-to-codebase → copy to project and mention in prompt
                 else if (att.attachmentType === "upload-to-codebase") {
@@ -1007,9 +1042,9 @@ export async function handleOpenCodeStream(
                     try {
                         fs.copyFileSync(attPath, destPath);
                         promptParts[0].text += `\n\n[Archivo subido al proyecto: ${att.name}]`;
-                        logger.info(`[OpenCode] Uploaded to codebase: ${att.name}`);
+                        logger.info(`${LP} Uploaded to codebase: ${att.name}`);
                     } catch (e: any) {
-                        logger.warn(`[OpenCode] Failed to copy attachment: ${e.message}`);
+                        logger.warn(`${LP} Failed to copy attachment: ${e.message}`);
                     }
                 }
                 // Text files → inline content in prompt
@@ -1018,7 +1053,7 @@ export async function handleOpenCodeStream(
                         const fs = require("fs");
                         const content = fs.readFileSync(attPath, "utf-8");
                         promptParts[0].text += `\n\nAdjunto (${att.name}):\n\`\`\`\n${content}\n\`\`\``;
-                        logger.info(`[OpenCode] Inlined text attachment: ${att.name}`);
+                        logger.info(`${LP} Inlined text attachment: ${att.name}`);
                     } catch {
                         promptParts[0].text += `\n\nAdjunto: ${att.name} (${att.type})`;
                     }
@@ -1035,11 +1070,12 @@ export async function handleOpenCodeStream(
                     providerID,
                     modelID: model.name,
                 },
+                agent: effectiveAgent !== "build" ? effectiveAgent : undefined,
                 parts: promptParts,
             },
         });
 
-        logger.info(`[OpenCode] Prompt sent (async). Waiting for events...`);
+        logger.info(`${LP} Prompt sent (async). Waiting for events...`);
 
         // Wait for the event stream to signal completion.
         // processEvents returns when session goes idle or the stream ends.
@@ -1048,31 +1084,31 @@ export async function handleOpenCodeStream(
         // If the stream was aborted (stop button), session.abort() was already
         // sent eagerly by the onUserAbort listener — just return partial text.
         if (abortController.signal.aborted) {
-            logger.info(`[OpenCode] Aborted for chat ${req.chatId} — returning partial response`);
+            logger.info(`${LP} Aborted for chat ${req.chatId} — returning partial response`);
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
             return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
 
         const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         const totalTools = timeline.filter(e => e.type === "tool").length;
-        logger.info(`[OpenCode] Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
+        logger.info(`${LP} ✅ Response complete. Text: ${totalText.length}ch, files edited: ${filesEdited.length}, tools: ${totalTools}`);
 
         // Send final response with all content
         const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        logger.info(`[OpenCode] Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}`);
+        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}`);
         return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
-            logger.info(`[OpenCode] Aborted for chat ${req.chatId}`);
+            logger.info(`${LP} Aborted for chat ${req.chatId}`);
             // session.abort() already fired eagerly — no need to call again
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
             return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
         }
 
-        logger.error("[OpenCode] Stream error:", error.message);
+        logger.error(`${LP} Stream error:`, error.message);
         const errText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
         return {
             fullResponse: errText || `❌ Error: ${error.message}`,
@@ -1144,7 +1180,7 @@ async function processEvents(
 
             // Log events at debug level to avoid console spam — meaningful events
             // (tools, steps, think blocks) have their own info-level logs below.
-            logger.debug(`[OpenCode] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
+            logger.debug(`[OC:Event] #${eventCount} ${evt.type}${props.part ? ` part.type=${props.part.type}` : ""}${props.info ? ` role=${props.info.role}` : ""}${props.delta != null ? ` delta=${String(props.delta).length}ch` : ""}${props.field ? ` field=${props.field}` : ""}`);
 
             // Session filtering
             const partProps = props.part || {};
@@ -1157,7 +1193,7 @@ async function processEvents(
                     const info = props.info;
                     if (info && info.role === "assistant") {
                         assistantMessageId = info.id;
-                        logger.info(`[OpenCode] 📬 Assistant message ID: ${assistantMessageId}`);
+                        logger.info(`[OC:Event] 📬 Assistant message ID: ${assistantMessageId}`);
                     }
                     break;
                 }
@@ -1168,15 +1204,15 @@ async function processEvents(
 
                     // Skip parts not belonging to the assistant message
                     if (part.messageID && assistantMessageId && part.messageID !== assistantMessageId) {
-                        logger.debug(`[OpenCode] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
+                        logger.debug(`[OC:Event] ⏭️ Skip part (msgID=${part.messageID} != assistant=${assistantMessageId})`);
                         break;
                     }
                     if (!assistantMessageId && (part.type === "text" || part.type === "reasoning")) {
-                        logger.debug(`[OpenCode] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
+                        logger.debug(`[OC:Event] ⏭️ Skip early ${part.type} (no assistant ID yet)`);
                         break;
                     }
 
-                    logger.debug(`[OpenCode] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
+                    logger.debug(`[OC:Event] 📦 PART type=${part.type} text=${part.text ? `${part.text.length}ch` : "null"}`);
 
                     switch (part.type) {
                         case "reasoning": {
@@ -1196,11 +1232,11 @@ async function processEvents(
                                 reasoningCharCount = 0;
                                 reasoningBuffer = "";
                                 callbacks.onTextDelta(`\n</think>\n\n`);
-                                logger.info(`[OpenCode] 🧠 CLOSED </think> — text part started`);
+                                logger.info(`[OC:Event] 🧠 CLOSED </think> — text part started`);
                                 sendUpdate();
                             } else if (reasoningBuffer.length > 0) {
                                 // If we were accumulating reasoning but never hit the threshold, discard buffer
-                                logger.info(`[OpenCode] ⏭️ Discarded tiny reasoning buffer (${reasoningBuffer.length}ch)`);
+                                logger.info(`[OC:Event] ⏭️ Discarded tiny reasoning buffer (${reasoningBuffer.length}ch)`);
                                 reasoningBuffer = "";
                                 reasoningCharCount = 0;
                             }
@@ -1218,7 +1254,7 @@ async function processEvents(
                                 // new Pensamiento badge — we just need a fresh text entry.
                                 isCurrentlyReasoning = false;
                                 thinkNeedsReopen = true;
-                                logger.info(`[OpenCode] 🧠 PAUSED </think> — tool event`);
+                                logger.info(`[OC:Event] 🧠 PAUSED </think> — tool event`);
                             }
 
                             const toolState = part.state;
@@ -1243,7 +1279,7 @@ async function processEvents(
 
                         case "step-start":
                             callbacks.onStepStart();
-                            logger.info(`[OpenCode] Step started`);
+                            logger.info(`[OC:Event] Step started`);
                             sendUpdate();
                             break;
 
@@ -1253,7 +1289,7 @@ async function processEvents(
                             // Think only closes when a "text" part starts (above).
                             if (!isCurrentlyReasoning && reasoningBuffer.length > 0) {
                                 // Discard tiny reasoning if never opened
-                                logger.info(`[OpenCode] ⏭️ Discarded tiny reasoning buffer on step finish (${reasoningBuffer.length}ch)`);
+                                logger.info(`[OC:Event] ⏭️ Discarded tiny reasoning buffer on step finish (${reasoningBuffer.length}ch)`);
                                 reasoningBuffer = "";
                                 reasoningCharCount = 0;
                             }
@@ -1265,7 +1301,7 @@ async function processEvents(
                                 const stepCacheRead = part.tokens?.cacheRead || part.tokens?.cache_read || 0;
                                 const stepCacheCreation = part.tokens?.cacheCreation || part.tokens?.cache_creation || 0;
                                 callbacks.onStepTokens(stepIn, stepOut, stepReasoning, stepCacheRead + stepCacheCreation);
-                                logger.info(`[OpenCode] Step finished (tokens: in=${stepIn}, out=${stepOut}, reasoning=${stepReasoning}, cacheRead=${stepCacheRead}, cacheCreation=${stepCacheCreation}, raw=${JSON.stringify(part.tokens)})`);
+                                logger.info(`[OC:Event] Step finished (tokens: in=${stepIn}, out=${stepOut}, reasoning=${stepReasoning}, cacheRead=${stepCacheRead}, cacheCreation=${stepCacheCreation}, raw=${JSON.stringify(part.tokens)})`);
                             }
                             break;
                     }
@@ -1294,7 +1330,7 @@ async function processEvents(
                             thinkNeedsReopen = false;
                             isCurrentlyReasoning = true;
                             callbacks.onTextDelta(`\n<think>\n${cleanDelta}`);
-                            logger.info(`[OpenCode] 🧠 REOPENED <think> after tool`);
+                            logger.info(`[OC:Event] 🧠 REOPENED <think> after tool`);
                         } else if (!isCurrentlyReasoning) {
                             // Buffer the reasoning until it's comfortably over 20 chars
                             // This prevents emitting empty `<think>` tags for short 10-char blobs or "[REDACTED]"
@@ -1302,7 +1338,7 @@ async function processEvents(
                             if (reasoningBuffer.length > 20) {
                                 isCurrentlyReasoning = true;
                                 callbacks.onTextDelta(`\n<think>\n${reasoningBuffer}`);
-                                logger.info(`[OpenCode] 🧠 OPENED <think> (buffered ${reasoningBuffer.length}ch)`);
+                                logger.info(`[OC:Event] 🧠 OPENED <think> (buffered ${reasoningBuffer.length}ch)`);
                                 reasoningBuffer = "";
                             }
                         } else {
@@ -1351,7 +1387,7 @@ async function processEvents(
                             chatId,
                             todos: mapped,
                         });
-                        logger.info(`[OpenCode] 📋 Todo update: ${mapped.length} items`);
+                        logger.info(`[OC:Event] 📋 Todo update: ${mapped.length} items`);
                     }
                     break;
                 }
@@ -1359,9 +1395,9 @@ async function processEvents(
                 case "session.status": {
                     const status = props.status;
                     if (status?.type === "idle") {
-                        logger.info("[OpenCode] Session idle — response complete");
+                        logger.info("[OC:Event] Session idle — response complete");
                     } else if (status?.type === "busy") {
-                        logger.info("[OpenCode] Session busy...");
+                        logger.info("[OC:Event] Session busy...");
                     }
                     break;
                 }
@@ -1371,9 +1407,9 @@ async function processEvents(
                     if (isCurrentlyReasoning) {
                         isCurrentlyReasoning = false;
                         callbacks.onTextDelta(`\n</think>\n\n`);
-                        logger.info(`[OpenCode] 🧠 CLOSED </think> — session idle`);
+                        logger.info(`[OC:Event] 🧠 CLOSED </think> — session idle`);
                     }
-                    logger.info(`[OpenCode] Session idle event received. Total events: ${eventCount}`);
+                    logger.info(`[OC:Event] Session idle event received. Total events: ${eventCount}`);
                     return;
                 }
 
@@ -1396,24 +1432,24 @@ async function processEvents(
                                 path: { id: sessionId, permissionID: reqId },
                                 body: { response: "always" }
                             });
-                            logger.info(`[OpenCode] Auto-approved permission: always for ${permName}`);
+                            logger.info(`[OC:Event] Auto-approved permission: always for ${permName}`);
                         }
                     } catch (e: any) {
-                        logger.error(`[OpenCode] Error al auto-responder permiso: ${e.message}`);
+                        logger.error(`[OC:Event] Error al auto-responder permiso: ${e.message}`);
                     }
                     break;
                 }
 
                 default:
                     if (eventCount <= 20) {
-                        logger.info(`[OpenCode] Unhandled event type: ${evt.type}`);
+                        logger.info(`[OC:Event] Unhandled event type: ${evt.type}`);
                     }
                     break;
             }
         }
     } catch (error: any) {
         if (!abortController.signal.aborted) {
-            logger.error("[OpenCode] Event stream error:", error.message);
+            logger.error("[OC:Event] Event stream error:", error.message);
         }
     }
 
@@ -1421,7 +1457,7 @@ async function processEvents(
     if (isCurrentlyReasoning) {
         isCurrentlyReasoning = false;
         callbacks.onTextDelta(`\n</think>\n\n`);
-        logger.info(`[OpenCode] 🧠 CLOSED </think> — stream ended`);
+        logger.info(`[OC:Event] 🧠 CLOSED </think> — stream ended`);
     }
 }
 

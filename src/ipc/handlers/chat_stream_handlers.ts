@@ -20,9 +20,7 @@ import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { SmartContextMode } from "../../lib/schemas";
 import {
   constructSystemPrompt,
-  readAiRules,
 } from "../../prompts/system_prompt";
-// Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { getEffectivePrompt } from "../../prompts";
 import { getThemePromptById } from "../utils/theme_utils";
 import {
@@ -70,10 +68,7 @@ import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
-// Migrated to remoteSchema.mcpServers
-import { requireMcpToolConsent } from "../utils/mcp_consent";
 
-import { handleLocalAgentStream } from "../../pro/main/ipc/handlers/local_agent/local_agent_handler";
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
 
 import { safeSend } from "../utils/safe_sender";
@@ -94,7 +89,6 @@ import { extractMentionedAppsCodebases } from "../utils/mention_apps";
 import { parseAppMentions } from "@/shared/parse_mention_apps";
 // Migrated to remoteSchema.prompts
 import { replacePromptReference } from "../utils/replacePromptReference";
-import { mcpManager } from "../utils/mcp_manager";
 import z from "zod";
 import { logTokenUsage } from "../utils/token_stats_logger";
 import { logChatInfo, logChatError } from "../utils/chat_logger";
@@ -705,20 +699,24 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        const isAgentMode = settings.selectedChatMode === "local-agent" ||
-          (settings.selectedChatMode as string) === "crush-agent";
+        // All active modes (agent, ask, plan) use the OpenCode agent stream
+        // which explores files on-demand via tools — no upfront codebase extraction needed.
+        const isAgentMode = settings.selectedChatMode === "agent" ||
+          settings.selectedChatMode === "ask" ||
+          settings.selectedChatMode === "plan" ||
+          (settings.selectedChatMode as unknown as string) === "crush-agent";
 
         if (isSummarizeIntent) {
           logger.log(
-            `[BUILD MODE] Skipping codebase extraction for summarize intent`,
+            `[CODEBASE] Skipping codebase extraction for summarize intent`,
           );
         } else if (isAgentMode) {
           logger.log(
-            `[OPENCODE MODE] Skipping codebase extraction — agent explores files via tools`,
+            `[CODEBASE] Skipping codebase extraction — agent explores files via tools`,
           );
         } else {
           logger.log(
-            `[BUILD MODE] Extracting codebase from ${appPath} with chatContext:`,
+            `[CODEBASE] Extracting codebase from ${appPath} with chatContext:`,
             chatContext,
           );
           const extracted = await extractCodebase({
@@ -728,7 +726,7 @@ ${componentSnippet}
           codebaseInfo = extracted.formattedOutput;
           files = extracted.files;
           logger.log(
-            `[BUILD MODE] Extracted ${files.length} files from codebase`,
+            `[CODEBASE] Extracted ${files.length} files from codebase`,
           );
         }
 
@@ -754,7 +752,7 @@ ${componentSnippet}
         // OpenCode manages its own context via AGENTS.md and built-in tools.
         // These variables are only used by the build/ask mode branches below.
         let mentionedAppsCodebases: Awaited<ReturnType<typeof extractMentionedAppsCodebases>> = [];
-        let willUseLocalAgentStream = isAgentMode;
+        let willUseAgentStream = isAgentMode;
         let isDeepContextEnabled = false;
         let otherAppsCodebaseInfo = "";
         let limitedMessageHistory: any[] = [];
@@ -769,8 +767,8 @@ ${componentSnippet}
             mentionedAppNames,
             updatedChat.app.id, // Exclude current app
           );
-          willUseLocalAgentStream =
-            (settings.selectedChatMode === "local-agent" ||
+          willUseAgentStream =
+            (settings.selectedChatMode === "agent" ||
               settings.selectedChatMode === "ask") &&
             !mentionedAppsCodebases.length;
 
@@ -858,8 +856,6 @@ ${componentSnippet}
             );
           }
 
-          const aiRules = await readAiRules(getVibesAppPath(updatedChat.app.path), updatedChat.app.id, currentUserId as string);
-
           // Get theme prompt for the app (null themeId means "no theme")
           const themePrompt = await getThemePromptById(updatedChat.app.themeId);
           logger.log(
@@ -867,10 +863,8 @@ ${componentSnippet}
           );
 
           systemPrompt = constructSystemPrompt({
-            aiRules,
             chatMode: settings.selectedChatMode,
             themePrompt,
-            basicAgentMode: false,
             chatLanguage: settings.chatLanguage || "es",
             settings,
           });
@@ -922,7 +916,7 @@ ${componentSnippet}
             getSupabaseAvailableSystemPrompt(supabaseClientCode) +
             "\n\n" +
             // For local agent, we will explicitly fetch the database context when needed.
-            (settings.selectedChatMode === "local-agent"
+            (settings.selectedChatMode === "agent"
               ? ""
               : await getSupabaseContext({
                 supabaseProjectId: updatedChat.app.supabaseProjectId,
@@ -933,7 +927,7 @@ ${componentSnippet}
           // Neon projects don't need Supabase.
           !updatedChat.app?.neonProjectId &&
           // In local agent mode, we will suggest supabase as part of the add-integration tool
-          settings.selectedChatMode !== "local-agent" &&
+          settings.selectedChatMode !== "agent" &&
           // If in security review mode, we don't need to mention supabase is available.
           !isSecurityReviewIntent
         ) {
@@ -946,7 +940,7 @@ ${componentSnippet}
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
           !isSecurityReviewIntent &&
-          settings.selectedChatMode !== "local-agent"
+          settings.selectedChatMode !== "agent"
         ) {
           systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -957,7 +951,7 @@ ${componentSnippet}
           systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
           !isSecurityReviewIntent &&
-          settings.selectedChatMode !== "local-agent"
+          settings.selectedChatMode !== "agent"
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -987,7 +981,7 @@ ${componentSnippet}
         // Usually, AI models will want to use the image as reference to generate code (e.g. UI mockups) anyways, so
         // it's not that critical to include the image analysis instructions.
         if (hasUploadedAttachments) {
-          if (willUseLocalAgentStream) {
+          if (willUseAgentStream) {
             systemPrompt += `
 
 When files are attached to this conversation, upload them to the codebase using the \`write_file\` tool.
@@ -1451,51 +1445,22 @@ This conversation includes one or more image attachments. When the user uploads 
           return fullResponse;
         };
 
-        // Handle pro ask mode: use local-agent in read-only mode
-        // This gives pro users access to code reading tools while in ask mode
-        // Skip for summarize intent — summaries don't need tools, just simpleStreamText.
-        if (
-          !isSummarizeIntent &&
-          settings.selectedChatMode === "ask" &&
-          !mentionedAppsCodebases.length
-        ) {
-          // Reconstruct system prompt for local-agent read-only mode
-          const readOnlySystemPrompt = constructSystemPrompt({
-            aiRules,
-            chatMode: "local-agent",
-            themePrompt,
-            readOnly: true,
-            chatLanguage: settings.chatLanguage || "es",
-            settings,
-          });
+        // ── Unified OpenCode pipeline for all three modes ────────────────
+        // agent → "build" (full access, all tools)
+        // plan  → "plan"  (restricted: file edits & bash require permission)
+        // ask   → "explore" (read-only, no file modifications)
+        const agentIdMap: Record<string, "build" | "plan" | "explore"> = {
+          agent: "build",
+          "crush-agent": "build",
+          plan: "plan",
+          ask: "explore",
+        };
+        const currentChatMode = (settings.selectedChatMode || "agent") as "agent" | "ask" | "plan";
+        const agentId = agentIdMap[currentChatMode] || "build";
 
-          await handleLocalAgentStream(event, req, abortController, {
-            placeholderMessageId: placeholderAssistantMessage.id,
-            // Note: this is using the read-only system prompt rather than the
-            // regular system prompt which gets overrides for special intents
-            // like summarize chat, security review, etc.
-            //
-            // This is OK because those intents should always happen in a new chat
-            // and new chats will default to non-ask modes.
-            systemPrompt: readOnlySystemPrompt,
-            vibesRequestId: vibesRequestId ?? "[no-request-id]",
-            readOnly: true,
-            messageOverride: isSummarizeIntent ? chatMessages : undefined,
-          });
-          return;
-        }
-
-        // Handle local-agent mode (Agente) — delegates to OpenCode AI SDK
-        // Also handles deprecated "crush-agent" mode for backwards compatibility
-        // Skip OpenCode for summarize intent: OpenCode doesn't understand chat-id
-        // references, so we let it fall through to simpleStreamText which uses
-        // the user's configured model directly (no agent needed for summaries).
-        if (
-          !isSummarizeIntent &&
-          (settings.selectedChatMode === "local-agent" ||
-            (settings.selectedChatMode as string) === "crush-agent")
-        ) {
-          logger.log(`[OPENCODE MODE] Starting OpenCode agent for chat ${req.chatId}`);
+        if (!isSummarizeIntent && !mentionedAppsCodebases.length) {
+          const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode
@@ -1520,9 +1485,9 @@ This conversation includes one or more image attachments. When the user uploads 
                 organizationSlug: updatedChat.app.supabaseOrganizationSlug ?? null,
               });
               contextInstructions.push(getSupabaseAvailableSystemPrompt(supabaseClientCode));
-              logger.log("[OPENCODE MODE] Supabase context injected");
+              logger.log("[OPENCODE] Supabase context injected");
             } catch (e) {
-              logger.warn("[OPENCODE MODE] Supabase prompt failed:", e);
+              logger.warn("[OPENCODE] Supabase prompt failed:", e);
             }
           }
 
@@ -1530,28 +1495,28 @@ This conversation includes one or more image attachments. When the user uploads 
           const ocBunnyConfig = updatedChat.app?.bunnyConfig as BunnyConfig | null;
           if (ocBunnyConfig && (ocBunnyConfig.databases?.length > 0 || ocBunnyConfig.storageZones?.length > 0)) {
             contextInstructions.push(getBunnyAvailableSystemPrompt(ocBunnyConfig));
-            logger.log("[OPENCODE MODE] Bunny context injected");
+            logger.log("[OPENCODE] Bunny context injected");
           }
 
           // PocketBase
           const ocPocketbaseConfig = updatedChat.app?.pocketbaseConfig as any;
           if (ocPocketbaseConfig?.url && ocPocketbaseConfig.adminEmail) {
             contextInstructions.push(getPocketBaseAvailableSystemPrompt(ocPocketbaseConfig));
-            logger.log("[OPENCODE MODE] PocketBase context injected");
+            logger.log("[OPENCODE] PocketBase context injected");
           }
 
           // 4. Build integration env vars — accessible via bash in OpenCode
           const integrationEnvVars: Record<string, string> = {};
 
           // Bunny DB
-          if (ocBunnyConfig?.databases?.length > 0) {
+          if (ocBunnyConfig?.databases && ocBunnyConfig.databases.length > 0) {
             const db0 = ocBunnyConfig.databases[0];
             integrationEnvVars.BUNNY_DB_URL = db0.databaseUrl;
             integrationEnvVars.BUNNY_DB_TOKEN = db0.fullAccessToken;
             if (db0.readOnlyToken) integrationEnvVars.BUNNY_DB_READONLY_TOKEN = db0.readOnlyToken;
           }
           // Bunny Storage
-          if (ocBunnyConfig?.storageZones?.length > 0) {
+          if (ocBunnyConfig?.storageZones && ocBunnyConfig.storageZones.length > 0) {
             const sz0 = ocBunnyConfig.storageZones[0];
             integrationEnvVars.BUNNY_STORAGE_HOSTNAME = sz0.hostname;
             integrationEnvVars.BUNNY_STORAGE_USERNAME = sz0.username;
@@ -1572,6 +1537,7 @@ This conversation includes one or more image attachments. When the user uploads 
               placeholderMessageId: placeholderAssistantMessage.id,
               appPath: updatedChat.app.path,
               chatMessages: updatedChat.messages,
+              agentId,
               contextInstructions,
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
@@ -1723,7 +1689,6 @@ This conversation includes one or more image attachments. When the user uploads 
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
-              totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
             })
             .where(
               and(
@@ -1745,14 +1710,14 @@ This conversation includes one or more image attachments. When the user uploads 
           // (OpenCode writes files directly, so we just need to notify the frontend)
           const responseEnd: ChatResponseEnd = {
             chatId: req.chatId,
-            updatedFiles: success,
+            updatedFiles: !!success,
             totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 
           // Log telemetry
           sendTelemetryEvent("chat:stream:end", {
-            chatMode: "opencode-agent",
+            chatMode: `opencode-${agentId}`,
             model: settings.selectedModel.name,
             responseLength: fullResponse.length,
             success,
@@ -1762,202 +1727,10 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // NOTE: legacy-agent / build / agent modes removed.
-        // The preprocessor in schemas.ts migrates them to local-agent.
-
-        // When calling streamText, the messages need to be properly formatted for mixed content
-        const { fullStream } = await simpleStreamText({
-          chatMessages,
-          modelClient,
-          files: files,
-        });
-
-        // Process the stream as before
-        try {
-          const result = await processStreamChunks({
-            fullStream,
-            fullResponse,
-            abortController,
-            chatId: req.chatId,
-            processResponseChunkUpdate,
-          });
-          fullResponse = result.fullResponse;
-
-
-
-          if (
-            !abortController.signal.aborted &&
-            settings.selectedChatMode !== "ask" &&
-            hasUnclosedVibesWrite(fullResponse)
-          ) {
-            let continuationAttempts = 0;
-            while (
-              hasUnclosedVibesWrite(fullResponse) &&
-              continuationAttempts < 2 &&
-              !abortController.signal.aborted
-            ) {
-              logger.warn(
-                `Received unclosed vibes-write tag, attempting to continue, attempt #${continuationAttempts + 1}`,
-              );
-              continuationAttempts++;
-
-              const { fullStream: contStream } = await simpleStreamText({
-                // Build messages: replay history then pre-fill assistant with current partial.
-                chatMessages: [
-                  ...chatMessages,
-                  { role: "assistant", content: fullResponse },
-                ],
-                modelClient,
-                files: files,
-              });
-              for await (const part of contStream) {
-                // If the stream was aborted, exit early
-                if (abortController.signal.aborted) {
-                  logger.log(`Stream for chat ${req.chatId} was aborted`);
-                  break;
-                }
-                if (part.type !== "text-delta") continue; // ignore reasoning for continuation
-                fullResponse += part.text;
-                fullResponse = cleanFullResponse(fullResponse);
-                fullResponse = await processResponseChunkUpdate({
-                  fullResponse,
-                });
-              }
-            }
-          }
-          const addDependencies = getAddDependencyTags(fullResponse);
-
-        } catch (streamError) {
-          // Check if this was an abort error
-          if (abortController.signal.aborted) {
-            const chatId = req.chatId;
-            const partialResponse = partialResponses.get(req.chatId);
-            // If we have a partial response, save it to the database
-            if (partialResponse) {
-              try {
-                // Update the placeholder assistant message with the partial content and cancellation note
-                await db
-                  .update(remoteSchema.messages)
-                  .set({
-                    content: `${partialResponse}
-
-[Response cancelled by user]`,
-                  })
-                  .where(eq(remoteSchema.messages.id, placeholderAssistantMessage.id));
-
-                logger.log(
-                  `Updated cancelled response for placeholder message ${placeholderAssistantMessage.id} in chat ${chatId}`,
-                );
-                partialResponses.delete(req.chatId);
-              } catch (error) {
-                logger.error(
-                  `Error saving partial response for chat ${chatId}:`,
-                  error,
-                );
-              }
-            }
-            // Notify frontend that stream is complete (cancelStream no longer does this)
-            safeSend(event.sender, "chat:response:end", {
-              chatId: req.chatId,
-              updatedFiles: false,
-            } satisfies ChatResponseEnd);
-            return req.chatId;
-          }
-          throw streamError;
-        }
+        // Fallback: summarize intent with mentioned apps falls through to here
+        // (rare case — most paths return before this point)
+        return req.chatId;
       }
-
-      // Only save the response and process it if we weren't aborted
-      if (!abortController.signal.aborted && fullResponse) {
-        // Scrape from: <vibes-chat-summary>Renaming profile file</<vibes-chat-title>
-        const chatTitle = fullResponse.match(
-          /<vibes-chat-summary>(.*?)<\/vibes-chat-summary>/,
-        );
-        if (chatTitle) {
-          await db
-            .update(remoteSchema.chats)
-            .set({ title: chatTitle[1].trim() })
-            .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string), isNull(remoteSchema.chats.title)));
-        }
-        const chatSummary = chatTitle?.[1];
-
-        // Update the placeholder assistant message with the full response
-        await db
-          .update(remoteSchema.messages)
-          .set({
-            content: fullResponse,
-            model: selectedModel?.name ?? placeholderAssistantMessage.model,
-            durationMs: Date.now() - streamStartedAt,
-          })
-          .where(and(eq(remoteSchema.messages.id, placeholderAssistantMessage.id), eq(remoteSchema.messages.userId, currentUserId as string)));
-
-        // autoExtractKnowledge — REMOVED (replaced by OpenCode AGENTS.md)
-
-        const settings = readSettings();
-        if (
-          settings.autoApproveChanges &&
-          settings.selectedChatMode !== "ask"
-        ) {
-          // NOTE: This applies to generic/fallback generation. Build mode itself is deprecated,
-          // but if we ever get here, processFullResponseActions handles the vibes-* tags.
-          const status = await processFullResponseActions(
-            fullResponse,
-            req.chatId,
-            {
-              chatSummary,
-              messageId: placeholderAssistantMessage.id,
-            }, // Use placeholder ID
-          );
-
-          const chat = await db.query.chats.findFirst({
-            where: and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)),
-            with: {
-              messages: {
-                orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-              },
-            },
-          });
-
-          safeSend(event.sender, "chat:response:chunk", {
-            chatId: req.chatId,
-            messages: chat!.messages,
-          });
-
-          if (status.error) {
-            safeSend(event.sender, "chat:response:error", {
-              chatId: req.chatId,
-              error: `Sorry, there was an error applying the AI's changes: ${status.error}`,
-            });
-          }
-
-          // Signal that the stream has completed
-          safeSend(event.sender, "chat:response:end", {
-            chatId: req.chatId,
-            updatedFiles: status.updatedFiles ?? false,
-            extraFiles: status.extraFiles,
-            extraFilesError: status.extraFilesError,
-            chatSummary,
-          } satisfies ChatResponseEnd);
-        } else {
-          safeSend(event.sender, "chat:response:end", {
-            chatId: req.chatId,
-            updatedFiles: false,
-            chatSummary,
-          } satisfies ChatResponseEnd);
-        }
-      }
-
-      // If aborted and we fell through (no fullResponse to save),
-      // send the end event so the frontend cleans up streaming state.
-      if (abortController.signal.aborted) {
-        safeSend(event.sender, "chat:response:end", {
-          chatId: req.chatId,
-          updatedFiles: false,
-        } satisfies ChatResponseEnd);
-      }
-
-      // Return the chat ID for backwards compatibility
-      return req.chatId;
     } catch (error) {
       logger.error("Error calling LLM:", error);
       const catchErrorText = `Sorry, there was an error processing your request: ${error}`;
@@ -2254,238 +2027,3 @@ ${otherAppsCodebaseInfo}
 `;
 }
 
-/**
- * Helper function to try MCP-based file ranking
- * Moved outside getMcpTools to be accessible from other functions
- */
-async function tryMcpRankFiles({
-  prompt,
-  files,
-  maxResults,
-  userId,
-}: {
-  prompt: string;
-  files: CodebaseFile[];
-  maxResults: number;
-  userId: string;
-}): Promise<CodebaseFile[] | null> {
-  try {
-    const db = getRemoteDb();
-    const servers = await db
-      .select()
-      .from(remoteSchema.mcpServers)
-      .where(and(eq(remoteSchema.mcpServers.enabled, true as any), eq(remoteSchema.mcpServers.userId, userId)));
-    if (!servers.length) return null;
-    const server = servers[0];
-    const client = await mcpManager.getClient(server.id);
-    const tools = await client.tools();
-    const rankTool = tools["rank_files"];
-    if (!rankTool) return null;
-    const payload = {
-      query: prompt,
-      maxResults,
-    };
-    const result = await rankTool.execute(payload, {} as any);
-    // Accept JSON array or newline-delimited paths
-    let paths: string[] = [];
-    if (Array.isArray(result)) {
-      paths = result as string[];
-    } else if (typeof result === "string") {
-      try {
-        const parsed = JSON.parse(result as string);
-        if (Array.isArray(parsed)) {
-          paths = parsed;
-        } else {
-          paths = String(result)
-            .split("\n")
-            .map((p: string) => p.trim())
-            .filter(Boolean);
-        }
-      } catch {
-        paths = String(result)
-          .split("\n")
-          .map((p: string) => p.trim())
-          .filter(Boolean);
-      }
-    }
-    if (!paths.length) return null;
-    const selected = [];
-    const set = new Set(paths);
-    for (const f of files) {
-      if (set.has(f.path)) {
-        selected.push(f);
-      }
-    }
-    if (selected.length === 0) return null;
-    return selected.slice(0, maxResults);
-  } catch (error) {
-    logger.warn("MCP rank_files failed, falling back to local ranking", error);
-    return null;
-  }
-}
-
-async function getMcpTools(
-  event: IpcMainInvokeEvent,
-  req: ChatStreamParams,
-  userId: string,
-): Promise<ToolSet> {
-  const mcpToolSet: ToolSet = {};
-  try {
-    const db = getRemoteDb();
-    const servers = await db
-      .select()
-      .from(remoteSchema.mcpServers)
-      .where(and(eq(remoteSchema.mcpServers.enabled, true as any), eq(remoteSchema.mcpServers.userId, userId)));
-    for (const s of servers) {
-      const client = await mcpManager.getClient(s.id);
-      const toolSet = await client.tools();
-      for (const [name, mcpTool] of Object.entries(toolSet) as [string, any][]) {
-        const key = `${String(s.name || "").replace(/[^a-zA-Z0-9_-]/g, "-")}__${String(name).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-        mcpToolSet[key] = {
-          description: mcpTool.description,
-          inputSchema: mcpTool.inputSchema,
-          execute: async (args: unknown, execCtx: ToolExecutionOptions) => {
-            const inputPreview =
-              typeof args === "string"
-                ? args
-                : Array.isArray(args)
-                  ? args.join(" ")
-                  : JSON.stringify(args).slice(0, 500);
-            const ok = await requireMcpToolConsent(event, {
-              serverId: s.id,
-              serverName: s.name,
-              toolName: name,
-              toolDescription: mcpTool.description,
-              inputPreview,
-            });
-
-            if (!ok) throw new Error(`User declined running tool ${key}`);
-
-            await logChatInfo(
-              req.chatId,
-              "tool-execution",
-              `Executing MCP tool: ${name}`,
-              {
-                serverName: s.name,
-                toolName: name,
-                inputPreview,
-              },
-            );
-
-            const res = await mcpTool.execute(args, execCtx);
-
-            return typeof res === "string" ? res : JSON.stringify(res);
-          },
-        };
-      }
-    }
-  } catch (e) {
-    logger.warn("Failed building MCP toolset", e);
-  }
-  return mcpToolSet;
-}
-
-/**
- * Generate a compact micro-summary of the project's src/ structure.
- * Produces a one-line summary like:
- *   [Project: 142 files in src/ | 8 pages, 34 components, 12 hooks, 6 lib]
- * ~20-50 tokens, gives the LLM "spatial awareness" without noise.
- */
-function generateProjectMicroSummary(appPath: string): string {
-  try {
-    const srcPath = path.join(appPath, "src");
-    if (!fs.existsSync(srcPath)) {
-      return "[Project: no src/ directory found]";
-    }
-
-    // Count files by well-known category folders
-    const categories: Record<string, number> = {};
-    let totalFiles = 0;
-
-    const countFiles = (dir: string, depth = 0) => {
-      if (depth > 4) return; // Cap recursion
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(dir, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      for (const entry of entries) {
-        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
-        if (entry.isDirectory()) {
-          countFiles(path.join(dir, entry.name), depth + 1);
-        } else if (entry.isFile()) {
-          totalFiles++;
-        }
-      }
-    };
-
-    // Map well-known folder names to categories
-    const knownFolders: Record<string, string> = {
-      pages: "pages",
-      components: "components",
-      hooks: "hooks",
-      lib: "lib",
-      utils: "utils",
-      styles: "styles",
-      assets: "assets",
-      types: "types",
-      api: "api",
-      services: "services",
-    };
-
-    // Count files in each known folder
-    let categorizedFiles = 0;
-    let srcEntries: fs.Dirent[];
-    try {
-      srcEntries = fs.readdirSync(srcPath, { withFileTypes: true });
-    } catch {
-      return "[Project: could not read src/]";
-    }
-
-    for (const entry of srcEntries) {
-      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-      const categoryName = knownFolders[entry.name.toLowerCase()] || null;
-      if (categoryName) {
-        let count = 0;
-        const countDir = (dir: string, depth = 0) => {
-          if (depth > 3) return;
-          let items: fs.Dirent[];
-          try {
-            items = fs.readdirSync(dir, { withFileTypes: true });
-          } catch {
-            return;
-          }
-          for (const item of items) {
-            if (item.name.startsWith(".")) continue;
-            if (item.isFile()) count++;
-            else if (item.isDirectory()) countDir(path.join(dir, item.name), depth + 1);
-          }
-        };
-        countDir(path.join(srcPath, entry.name));
-        if (count > 0) {
-          categories[categoryName] = count;
-          categorizedFiles += count;
-        }
-      }
-    }
-
-    // Count total files in src/
-    countFiles(srcPath);
-
-    const uncategorized = totalFiles - categorizedFiles;
-    const parts: string[] = [];
-    for (const [name, count] of Object.entries(categories)) {
-      parts.push(`${count} ${name}`);
-    }
-    if (uncategorized > 0) {
-      parts.push(`${uncategorized} other`);
-    }
-
-    const breakdown = parts.length > 0 ? ` | ${parts.join(", ")}` : "";
-    return `[Project: ${totalFiles} files in src/${breakdown}]`;
-  } catch (err) {
-    logger.warn("Failed to generate project micro-summary:", err);
-    return "[Project: unknown structure]";
-  }
-}

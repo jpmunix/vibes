@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { chatMessagesByIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
+import { isStreamingByIdAtom, chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 import {
     plansByChatIdAtom,
     planLoadingByChatIdAtom,
@@ -24,25 +24,25 @@ function updateMapAtom<K, V>(
 
 /**
  * Hook that watches chat messages and parses plan responses when in plan mode.
- * When the AI finishes streaming in plan mode, the response is parsed into a plan,
- * saved to the database, and the chat messages are cleared (plan generation is silent).
+ * When the AI finishes streaming in plan mode, the response is parsed into a plan
+ * and saved to the database. Chat messages are preserved (visible to the user).
  *
  * Plans are persisted in the database (chats.planData column) and loaded on demand.
  */
 export function usePlanSync(chatId?: number) {
     const messagesById = useAtomValue(chatMessagesByIdAtom);
-    const setMessagesById = useSetAtom(chatMessagesByIdAtom);
     const isStreamingById = useAtomValue(isStreamingByIdAtom);
     const plans = useAtomValue(plansByChatIdAtom);
     const setPlans = useSetAtom(plansByChatIdAtom);
     const setLoading = useSetAtom(planLoadingByChatIdAtom);
     const setCollapsed = useSetAtom(planCollapsedByChatIdAtom);
-    const { settings, updateSettings } = useSettings();
+    const { settings } = useSettings();
 
     const prevStreamingRef = useRef(false);
     const loadedChatIdsRef = useRef<Set<number>>(new Set());
 
-    // Effect 1: When streaming ends in plan mode, parse the plan, save to DB, clear chat
+    // Effect 1: When streaming ends in plan mode, parse the plan and save to DB
+    // Messages are preserved — no cleanup.
     useEffect(() => {
         if (!chatId) return;
 
@@ -68,42 +68,21 @@ export function usePlanSync(chatId?: number) {
         // Try to parse the response into a plan
         const parsed = parsePlanFromText(lastAssistantMsg.content);
         if (parsed) {
-            // Save plan to in-memory atom (panel stays collapsed — user decides when to open)
+            // Save plan to in-memory atom
             updateMapAtom(setPlans, chatId, parsed);
             updateMapAtom(setLoading, chatId, false);
 
             // Auto-expand the plan panel with a slight delay to ensure the "unfold" animation plays
-            // (The panel mounts collapsed first, then expands)
             setTimeout(() => {
                 updateMapAtom(setCollapsed, chatId, false);
             }, 150);
 
-            // Save plan to database (persistent, independent of chat messages)
+            // Save plan to database (persistent)
             ipc.chat.savePlanData({ chatId, planData: parsed }).then(() => {
                 window.dispatchEvent(new Event("plan-chat-db-update"));
             }).catch((err: any) =>
                 console.error("Failed to save plan data:", err)
             );
-
-            // Clear chat messages (plan generation is silent)
-            ipc.chat.deleteMessages(chatId).then(() => {
-                // Clear from atom too
-                setMessagesById((prev) => {
-                    const next = new Map(prev);
-                    next.set(chatId, []);
-                    return next;
-                });
-            }).catch((err: any) =>
-                console.error("Failed to clear chat messages:", err)
-            );
-
-            // Switch back to the user's default chat mode now that the plan is ready
-            const defaultMode = settings?.defaultChatMode || "build";
-            if (defaultMode !== "plan") {
-                updateSettings({ selectedChatMode: defaultMode });
-            } else {
-                updateSettings({ selectedChatMode: "build" });
-            }
 
             // Notify user via system notification if window is not focused
             if (
@@ -123,12 +102,9 @@ export function usePlanSync(chatId?: number) {
         isStreamingById,
         messagesById,
         settings?.selectedChatMode,
-        settings?.defaultChatMode,
         settings?.enableChatCompletionNotifications,
-        updateSettings,
         setPlans,
         setLoading,
-        setMessagesById,
         setCollapsed,
     ]);
 

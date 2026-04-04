@@ -188,7 +188,7 @@ export function ChatInput({
 
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
   const disableSendButton =
-    settings?.selectedChatMode !== "local-agent" &&
+    settings?.selectedChatMode !== "agent" &&
     settings?.selectedChatMode !== "ask" &&
     lastMessage?.role === "assistant" &&
     !lastMessage.approvalState &&
@@ -256,28 +256,6 @@ export function ChatInput({
     setInputValue("");
 
     let currentChatId = chatId;
-
-    // P18: When in plan mode, we start a fresh chat for new user requests.
-    // This keeps the planning chat focused on the plan itself, while the
-    // actual implementation or follow-up starts in a new thread.
-    if (isPlanMode && appId && currentMessages.length > 0) {
-      try {
-        currentChatId = await ipc.chat.createChat(appId);
-        setChatIdAtom(currentChatId);
-        // Navigate the router so useSearch hook picks up the new ID
-        navigate({ to: "/chat", search: { id: currentChatId }, replace: true });
-
-        // Also switch out of plan mode so the new chat's implementation is visible
-        const defaultMode = settings.defaultChatMode || "build";
-        const resetTo = defaultMode === "plan" ? "build" : defaultMode;
-        updateSettings({ selectedChatMode: resetTo });
-      } catch (err) {
-        console.error("Failed to create new chat for plan implementation:", err);
-        showError("No se pudo crear el nuevo chat");
-        // Fallback to current chat if creation fails
-        currentChatId = chatId;
-      }
-    }
 
     // Use all selected components for multi-component editing
     const componentsToSend =
@@ -386,7 +364,7 @@ export function ChatInput({
       {/* Display loading or error state for proposal */}
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&
-        settings.selectedChatMode !== "local-agent" &&
+        settings.selectedChatMode !== "agent" &&
         !isPlanMode && (
           <div className="p-4 text-sm text-muted-foreground">
             Cargando propuesta...
@@ -449,7 +427,7 @@ export function ChatInput({
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&
                 !isPlanMode &&
-                settings.selectedChatMode !== "local-agent" && (
+                settings.selectedChatMode !== "agent" && (
                   <ChatInputActions
                     proposal={proposal}
                     onApprove={handleApprove}

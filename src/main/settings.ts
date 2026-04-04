@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
-  selectedChatMode: "local-agent",
+  selectedChatMode: "smart",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
   selectedThemeId: DEFAULT_THEME_ID,
   isRunning: false,

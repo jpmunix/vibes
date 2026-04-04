@@ -11,17 +11,14 @@ import { ChatHeader } from "./chat/ChatHeader";
 import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
-import { FreeAgentQuotaBanner } from "./chat/FreeAgentQuotaBanner";
+
 const ChatLogsPanel = React.lazy(() =>
   import("./chat/ChatLogsPanel").then((m) => ({ default: m.ChatLogsPanel }))
 );
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
-const PlanPanel = React.lazy(() =>
-  import("./chat/PlanPanel").then((m) => ({ default: m.PlanPanel }))
-);
-import { usePlanSync } from "@/hooks/usePlanSync";
+
 
 interface ChatPanelProps {
   chatId?: number;
@@ -57,10 +54,9 @@ export function ChatPanel({
   }, [isStreamingById, chatId]);
 
   const { settings, updateSettings } = useSettings();
-  const showFreeAgentQuotaBanner = false; // Pro always enabled after acquisition
 
-  // Sync plan state from chat messages (in plan mode)
-  usePlanSync(chatId);
+
+
 
   // When entering a chat that is NOT actively streaming, reset "plan" mode
   // to the user's default. Plan mode is only forced on the Home screen for
@@ -88,8 +84,8 @@ export function ChatPanel({
       const isStreaming = isStreamingById.get(chatId) ?? false;
       if (!isStreaming) {
         hasResetModeRef.current = chatId;
-        const defaultMode = settings.defaultChatMode || "build";
-        const resetTo = defaultMode === "plan" ? "build" : defaultMode;
+        const defaultMode = settings.defaultChatMode || "agent";
+        const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
         updateSettings({ selectedChatMode: resetTo });
       }
     }
@@ -433,50 +429,37 @@ export function ChatPanel({
               }
             }}
           >
-            {!isPlanMode ? (
-              <>
-                {/* Always mount MessagesList so Virtuoso can measure items
-                    while the skeleton is still visible on top */}
-                <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
-                  <MessagesList
-                    messages={progressiveMessages}
-                    messagesEndRef={messagesEndRef}
-                    ref={messagesContainerRef}
-                    onScrollerRef={handleScrollerRef}
-                    distanceFromBottomRef={distanceFromBottomRef}
-                    isUserScrolling={isUserScrolling}
-                    hasMoreMessages={hasMoreMessages}
-                    onLoadMore={handleLoadMore}
-                    firstItemIndex={messages.length > visibleCount ? messages.length - visibleCount : 0}
-                    onAtBottomStateChange={(atBottom) => {
-                      if (!settings?.isTestMode) {
-                        setShowScrollButton(!atBottom);
-                      }
-                    }}
-                  />
-                </div>
-                {/* Skeleton overlay — covers MessagesList while it renders */}
-                {isLoadingMessages && (
-                  <div className="absolute inset-0 z-10 bg-background">
-                    <ChatMessagesSkeleton />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in duration-300">
-                {chatId && isStreamingById.get(chatId) ? (
-                  <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-sm font-medium">
-                      Diseñando el plan...
-                    </p>
-                  </div>
-                ) : null}
+            <>
+              {/* Always mount MessagesList so Virtuoso can measure items
+                  while the skeleton is still visible on top */}
+              <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
+                <MessagesList
+                  messages={progressiveMessages}
+                  messagesEndRef={messagesEndRef}
+                  ref={messagesContainerRef}
+                  onScrollerRef={handleScrollerRef}
+                  distanceFromBottomRef={distanceFromBottomRef}
+                  isUserScrolling={isUserScrolling}
+                  hasMoreMessages={hasMoreMessages}
+                  onLoadMore={handleLoadMore}
+                  firstItemIndex={messages.length > visibleCount ? messages.length - visibleCount : 0}
+                  onAtBottomStateChange={(atBottom) => {
+                    if (!settings?.isTestMode) {
+                      setShowScrollButton(!atBottom);
+                    }
+                  }}
+                />
               </div>
-            )}
+              {/* Skeleton overlay — covers MessagesList while it renders */}
+              {isLoadingMessages && (
+                <div className="absolute inset-0 z-10 bg-background">
+                  <ChatMessagesSkeleton />
+                </div>
+              )}
+            </>
 
             {/* Scroll to bottom button */}
-            {showScrollButton && !isPlanMode && (
+            {showScrollButton && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
                 <Button
                   onClick={handleScrollButtonClick}
@@ -492,16 +475,8 @@ export function ChatPanel({
           </div>
 
           <ChatError error={error} onDismiss={() => setError(null)} />
-          {showFreeAgentQuotaBanner && (
-            <FreeAgentQuotaBanner
-              onSwitchToBuildMode={() =>
-                updateSettings({ selectedChatMode: "build" })
-              }
-            />
-          )}
-          <Suspense fallback={null}>
-            <PlanPanel chatId={chatId} />
-          </Suspense>
+
+
           <ChatInput
             chatId={chatId}
             autoStart={autoStart}

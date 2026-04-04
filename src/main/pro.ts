@@ -17,7 +17,7 @@ export function handleProReturn({ apiKey }: { apiKey: string }) {
       },
     },
     // Switch to local-agent mode and auto model for a good default experience
-    selectedChatMode: "local-agent",
+    selectedChatMode: "agent",
     selectedModel: {
       name: "auto",
       provider: "auto",

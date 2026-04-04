@@ -203,7 +203,7 @@ function getProModelClient({
   modelId: string;
 }): ModelClient {
   if (
-    settings.selectedChatMode === "local-agent" &&
+    settings.selectedChatMode === "agent" &&
     model.provider === "auto" &&
     model.name === "auto"
   ) {
@@ -225,7 +225,7 @@ function getProModelClient({
     };
   }
   if (
-    settings.selectedChatMode === "local-agent" &&
+    settings.selectedChatMode === "agent" &&
     model.provider === "openai"
   ) {
     return {

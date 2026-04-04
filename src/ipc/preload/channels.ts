@@ -25,7 +25,7 @@ import { chatLogsContracts } from "../types/chat_logs";
 import { contextContracts } from "../types/context";
 import { debateContracts, debateStreamContract } from "../types/debate";
 
-import { freeAgentQuotaContracts } from "../types/free_agent_quota";
+
 import { gitContracts, githubContracts, githubEvents } from "../types/github";
 import { helpContracts, helpStreamContract } from "../types/help";
 import { importContracts } from "../types/import";
@@ -48,7 +48,7 @@ import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
-// Knowledge Base — REMOVED
+
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { dossierContracts, dossierStreamContract } from "../types/dossier";
 import { authContracts } from "../types/auth";
@@ -120,7 +120,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(visualEditingContracts),
   ...getInvokeChannels(securityContracts),
   ...getInvokeChannels(miscContracts),
-  ...getInvokeChannels(freeAgentQuotaContracts),
+
   ...getInvokeChannels(tokenStatsContracts),
   ...getInvokeChannels(chatLogsContracts),
 

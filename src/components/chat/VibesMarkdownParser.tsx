@@ -27,8 +27,7 @@ import { isStreamingByIdAtom, selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { VibesProblemSummary } from "./VibesProblemSummary";
-import { VibesMcpToolCall } from "./VibesMcpToolCall";
-import { VibesMcpToolResult } from "./VibesMcpToolResult";
+
 
 import { VibesWebCrawl } from "./VibesWebCrawl";
 import { VibesCodeSearchResult } from "./VibesCodeSearchResult";
@@ -112,8 +111,7 @@ const VIBES_CUSTOM_TAGS = [
   "think",
   "thought",
   "vibes-command",
-  "vibes-mcp-tool-call",
-  "vibes-mcp-tool-result",
+
   "vibes-list-files",
   "vibes-database-schema",
   "vibes-supabase-table-schema",
@@ -813,33 +811,6 @@ function renderCustomTag(
         </VibesCodebaseContext>
       );
 
-    case "vibes-mcp-tool-call":
-      return (
-        <VibesMcpToolCall
-          node={{
-            properties: {
-              serverName: attributes.server || "",
-              toolName: attributes.tool || "",
-            },
-          }}
-        >
-          {content}
-        </VibesMcpToolCall>
-      );
-
-    case "vibes-mcp-tool-result":
-      return (
-        <VibesMcpToolResult
-          node={{
-            properties: {
-              serverName: attributes.server || "",
-              toolName: attributes.tool || "",
-            },
-          }}
-        >
-          {content}
-        </VibesMcpToolResult>
-      );
 
     case "vibes-output":
       return (
@@ -1417,68 +1388,6 @@ function renderModalContent(
     }
 
     // === MCP tool call ===
-    case "vibes-mcp-tool-call": {
-      const serverName = attributes.server || "";
-      const toolName = attributes.tool || "";
-      let prettyJson = content;
-      try {
-        prettyJson = JSON.stringify(JSON.parse(content), null, 2);
-      } catch { /* use raw */ }
-
-      return (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            {serverName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-zinc-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-zinc-700">
-                {serverName}
-              </span>
-            )}
-            {toolName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground border border-border">
-                {toolName}
-              </span>
-            )}
-          </div>
-          {content && (
-            <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-json">{prettyJson}</CodeHighlight>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // === MCP tool result ===
-    case "vibes-mcp-tool-result": {
-      const serverName = attributes.server || "";
-      const toolName = attributes.tool || "";
-      let prettyJson = content;
-      try {
-        prettyJson = JSON.stringify(JSON.parse(content), null, 2);
-      } catch { /* use raw */ }
-
-      return (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            {serverName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-zinc-700">
-                {serverName}
-              </span>
-            )}
-            {toolName && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground border border-border">
-                {toolName}
-              </span>
-            )}
-          </div>
-          {content && (
-            <div className="text-xs overflow-hidden">
-              <CodeHighlight className="language-json">{prettyJson}</CodeHighlight>
-            </div>
-          )}
-        </div>
-      );
-    }
 
     // === Database schema ===
     case "vibes-database-schema":

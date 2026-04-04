@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSettings } from "@/hooks/useSettings";
-import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
+
 import type { ChatMode } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { detectIsMac } from "@/hooks/useChatModeToggle";
@@ -19,13 +19,7 @@ export function ChatModeSelector() {
   const { settings, updateSettings } = useSettings();
   const routerState = useRouterState();
 
-  // Migrate deprecated modes to their replacements
-  const rawMode = settings?.selectedChatMode || "local-agent";
-  const selectedMode: ChatMode =
-    rawMode === "build" || rawMode === "agent" || rawMode === "crush-agent"
-      ? "local-agent"
-      : (rawMode as ChatMode);
-  const { } = useFreeAgentQuota();
+  const selectedMode: ChatMode = settings?.selectedChatMode || "agent";
 
   const handleModeChange = (value: string) => {
     const newMode = value as ChatMode;
@@ -38,7 +32,7 @@ export function ChatModeSelector() {
         return "Planificar";
       case "ask":
         return "Preguntar";
-      case "local-agent":
+      case "agent":
       default:
         return "Agente";
     }
@@ -51,7 +45,7 @@ export function ChatModeSelector() {
         data-testid="chat-mode-selector"
         className={cn(
           "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors cursor-pointer",
-          selectedMode === "local-agent"
+          selectedMode === "agent"
             ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
             : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20",
         )}
@@ -60,7 +54,7 @@ export function ChatModeSelector() {
         <SelectValue>{getModeDisplayName(selectedMode)}</SelectValue>
       </MiniSelectTrigger>
       <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-        <SelectItem value="local-agent">
+        <SelectItem value="agent">
           <div className="flex flex-col items-start">
             <span className="font-medium">Agente</span>
             <span className="text-xs text-muted-foreground">

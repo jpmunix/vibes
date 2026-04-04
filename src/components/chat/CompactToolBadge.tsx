@@ -98,8 +98,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-bunny-db-info": { icon: Database, label: "Bunny DB", pendingLabel: "Cargando Bunny DB", color: "text-orange-500" },
     "vibes-bunny-storage-info": { icon: FolderOpen, label: "Bunny Storage", pendingLabel: "Cargando Storage", color: "text-orange-500" },
     "vibes-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
-    "vibes-mcp-tool-call": { icon: Wrench, label: "Herramienta", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
-    "vibes-mcp-tool-result": { icon: Wrench, label: "Resultado", color: "text-purple-500" },
+
     "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "vibes-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },

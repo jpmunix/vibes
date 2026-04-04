@@ -1,7 +1,6 @@
 import React from "react";
 import {
   useAgentTools,
-  type AgentToolName,
   type AgentTool,
 } from "@/hooks/useAgentTools";
 import { Loader2 } from "lucide-react";
@@ -192,7 +191,7 @@ export function AgentToolsSettings() {
   const { tools, isLoading, setConsent } = useAgentTools();
 
   const handleConsentChange = (
-    toolName: AgentToolName,
+    toolName: string,
     consent: AgentToolConsent,
   ) => {
     setConsent({ toolName, consent });
@@ -216,7 +215,7 @@ export function AgentToolsSettings() {
           name={tool.name}
           consent={tool.consent}
           onConsentChange={(consent) =>
-            handleConsentChange(tool.name as AgentToolName, consent)
+            handleConsentChange(tool.name, consent)
           }
         />
       ))}

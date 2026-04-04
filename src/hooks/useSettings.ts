@@ -36,11 +36,8 @@ export function useSettings() {
         ipc.misc.getEnvVars(),
       ]);
       processSettingsForTelemetry(userSettings);
-      const isPro = true; // Always Pro after acquisition
-      posthog.people.set({ isPro });
       if (!isInitialLoad && appVersion) {
         posthog.capture("app:initial-load", {
-          isPro,
           appVersion,
         });
         isInitialLoad = true;
@@ -67,7 +64,7 @@ export function useSettings() {
       const updatedSettings = await ipc.settings.setUserSettings(newSettings);
       setSettingsAtom(updatedSettings);
       processSettingsForTelemetry(updatedSettings);
-      posthog.people.set({ isPro: true });
+
 
       setError(null);
       if (options?.showToast) {

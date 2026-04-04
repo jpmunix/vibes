@@ -274,7 +274,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const { routes: availableRoutes } = useParseRouter(selectedAppId);
   const { restartApp } = useRunApp();
   const { settings, updateSettings } = useSettings();
-  const isProMode = true; // Pro features are now available for everyone
 
   // Preserved URL state (persists across HMR-induced remounts)
   const [preservedUrls, setPreservedUrls] = useAtom(previewCurrentUrlAtom);
@@ -583,11 +582,11 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   useEffect(() => {
     if (iframeRef.current?.contentWindow && isComponentSelectorInitialized) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "vibes-pro-mode", enabled: isProMode },
+        { type: "vibes-pro-mode", enabled: true },
         "*",
       );
     }
-  }, [isProMode, isComponentSelectorInitialized]);
+  }, [true, isComponentSelectorInitialized]);
 
   // Use refs to avoid re-creating the event listener on every state change
   const navigationHistoryRef = useRef(navigationHistory);
@@ -709,7 +708,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
       if (event.data?.type === "vibes-component-selector-initialized") {
         setIsComponentSelectorInitialized(true);
         iframeRef.current?.contentWindow?.postMessage(
-          { type: "vibes-pro-mode", enabled: isProMode },
+          { type: "vibes-pro-mode", enabled: true },
           "*",
         );
         return;
@@ -733,7 +732,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         if (!component) return;
 
         // Store the coordinates
-        if (event.data.coordinates && isProMode) {
+        if (event.data.coordinates && true) {
           setCurrentComponentCoordinates(event.data.coordinates);
         }
 
@@ -753,7 +752,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           return [...prev, component];
         });
 
-        if (isProMode) {
+        if (true) {
           // Remove previous component's overlay if it exists and close panel if switching
           let shouldClosePanel = false;
           setVisualEditingSelectedComponent((prev) => {
@@ -850,7 +849,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         ipc.system
           .takeScreenshot({ rect: captureRect })
           .then((dataUrl) => {
-            if (isProMode) {
+            if (true) {
               setScreenshotDataUrl(dataUrl);
               setAnnotatorMode(true);
             } else {
@@ -881,7 +880,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
 
       if (event.data?.type === "vibes-screenshot-response") {
         if (event.data.success && event.data.dataUrl) {
-          if (isProMode) {
+          if (true) {
             setScreenshotDataUrl(event.data.dataUrl);
             setAnnotatorMode(true);
           } else {

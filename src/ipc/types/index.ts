@@ -52,7 +52,7 @@ export { upgradeContracts } from "./upgrade";
 export { visualEditingContracts } from "./visual-editing";
 export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
-export { freeAgentQuotaContracts } from "./free_agent_quota";
+
 export { noteContracts } from "./note";
 export { todoContracts, todoAttachmentContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
@@ -100,7 +100,7 @@ export { chatLogsClient } from "./chat_logs";
 export { debateClient, debateStreamClient } from "./debate";
 export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
-export { freeAgentQuotaClient } from "./free_agent_quota";
+
 export { knowledgeClient } from "./knowledge";
 export { aiQueryLogClient } from "./ai_query_logs";
 export { dossierClient, dossierStreamClient } from "./dossier";
@@ -326,8 +326,7 @@ export type { SecurityReviewResult } from "./security";
 // Misc types
 export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
 
-// Free agent quota types
-export type { FreeAgentQuotaStatus } from "./free_agent_quota";
+
 
 // Note types
 export type { Note, NoteSummary, UpdateNoteParams } from "./note";
@@ -415,7 +414,7 @@ import { chatClient, chatStreamClient } from "./chat";
 import { chatLogsClient } from "./chat_logs";
 import { contextClient } from "./context";
 
-import { freeAgentQuotaClient } from "./free_agent_quota";
+
 import { gitClient, githubClient, githubEventClient } from "./github";
 import { helpClient, helpStreamClient } from "./help";
 import { importClient } from "./import";
@@ -508,7 +507,7 @@ export const ipc = {
   visualEditing: visualEditingClient,
   security: securityClient,
   misc: miscClient,
-  freeAgentQuota: freeAgentQuotaClient,
+
   tokenStats: tokenStatsClient,
   chatLogs: chatLogsClient,
 

@@ -1,18 +1,13 @@
 import { UserSettings } from "@/lib/schemas";
 import {
   THINKING_PROMPT,
-  BUILD_SYSTEM_PREFIX,
-  BUILD_SYSTEM_POSTFIX,
-  AGENT_MODE_SYSTEM_PROMPT,
   PLAN_MODE_SYSTEM_PROMPT,
 } from "./system_prompt";
-import { LOCAL_AGENT_SYSTEM_PROMPT } from "./local_agent_prompt";
+import { AGENT_SYSTEM_PROMPT } from "./agent_prompt";
 import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "./summarize_chat_system_prompt";
 
 export type PromptId =
   | "thinking_prompt"
-  | "build_system_prefix"
-  | "build_system_postfix"
   | "summarize_chat_system"
   | "turbo_edit_system"
   | "app_title_short"
@@ -29,10 +24,8 @@ export type PromptId =
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
-  build_system_prefix: BUILD_SYSTEM_PREFIX,
-  build_system_postfix: BUILD_SYSTEM_POSTFIX,
   summarize_chat_system: SUMMARIZE_CHAT_SYSTEM_PROMPT,
-  agent_mode_system: LOCAL_AGENT_SYSTEM_PROMPT,
+  agent_mode_system: AGENT_SYSTEM_PROMPT,
   plan_mode_system: PLAN_MODE_SYSTEM_PROMPT,
   turbo_edit_system: [
     "You are a precise code-editing assistant.",
@@ -232,8 +225,6 @@ export function getEffectivePrompt(
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
   thinking_prompt: "Thinking Process (Razonamiento)",
-  build_system_prefix: "Build System Prefix (Rol Principal)",
-  build_system_postfix: "Build System Postfix (Formato y Reglas)",
   summarize_chat_system: "Resumen de Chat",
   agent_mode_system: "Modo Agente (Desarrollo y Análisis)",
   plan_mode_system: "Modo Planificación (Sistema)",
@@ -252,10 +243,6 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   thinking_prompt:
     "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
-  build_system_prefix:
-    "Define la personalidad y el rol básico de Vibes en modo construcción.",
-  build_system_postfix:
-    "Reglas críticas sobre el formato de salida y etiquetas <vibes-write>.",
   summarize_chat_system:
     "Instrucciones para generar el resumen técnico de la conversación.",
   agent_mode_system:

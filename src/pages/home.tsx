@@ -24,7 +24,6 @@ import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 import type { FileAttachment } from "@/ipc/types";
 import { NEON_TEMPLATE_IDS } from "@/shared/templates";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
-import { useFreeAgentQuota } from "@/hooks/useFreeAgentQuota";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 // Adding an export for attachments
@@ -39,7 +38,6 @@ export default function HomePage() {
   const setSelectedAppId = useSetAtom(selectedAppIdAtom);
   const { refreshApps } = useLoadApps();
   const { settings, updateSettings, envVars } = useSettings();
-  const { isQuotaExceeded, isLoading: isQuotaLoading } = useFreeAgentQuota();
 
   const setIsPreviewOpen = useSetAtom(isPreviewOpenAtom);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,16 +137,12 @@ export default function HomePage() {
     // Wait for settings to load
     if (settings && envVars && !hasAppliedDefaultChatMode.current) {
       hasAppliedDefaultChatMode.current = true;
-      const effectiveDefault = getEffectiveDefaultChatMode(
-        settings,
-        envVars,
-        !isQuotaExceeded,
-      );
+      const effectiveDefault = getEffectiveDefaultChatMode(settings);
       if (settings.selectedChatMode !== effectiveDefault) {
         updateSettings({ selectedChatMode: effectiveDefault });
       }
     }
-  }, [settings, envVars, isQuotaExceeded, updateSettings]);
+  }, [settings, envVars, updateSettings]);
 
   const handleSubmit = async (options?: HomeSubmitOptions) => {
     const attachments = options?.attachments || [];
@@ -230,7 +224,7 @@ export default function HomePage() {
         appId: result.app.id,
         chatId: result.chatId,
         prompt,
-        chatMode: settings?.selectedChatMode || "build",
+        chatMode: settings?.selectedChatMode || "agent",
         attachments: convertedAttachments,
         theme,
         themeIntensity: intensity,

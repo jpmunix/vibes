@@ -372,9 +372,7 @@ export function useStreamChat({
                 }
                 queryClient.invalidateQueries({ queryKey: ["proposal", chatId] });
                 refetchUserBudget();
-                queryClient.invalidateQueries({
-                  queryKey: queryKeys.freeAgentQuota.status,
-                });
+
                 queryClient.invalidateQueries({
                   queryKey: queryKeys.proposals.detail({ chatId }),
                 });
@@ -415,11 +413,7 @@ export function useStreamChat({
                 return next;
               });
 
-              // Invalidate free agent quota to update the UI after error
-              // (the server may have refunded the quota)
-              queryClient.invalidateQueries({
-                queryKey: queryKeys.freeAgentQuota.status,
-              });
+
 
 
               // Keep the same as above

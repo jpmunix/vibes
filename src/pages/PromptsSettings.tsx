@@ -38,8 +38,6 @@ import { toast } from "sonner";
 
 const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   thinking_prompt: <Sparkles className="w-4 h-4" />,
-  build_system_prefix: <MessageSquare className="w-4 h-4" />,
-  build_system_postfix: <Terminal className="w-4 h-4" />,
   summarize_chat_system: <Lightbulb className="w-4 h-4" />,
   agent_mode_system: <Search className="w-4 h-4" />,
   plan_mode_system: <ClipboardList className="w-4 h-4" />,
@@ -55,11 +53,9 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   auto_commit_message: <GitBranch className="w-4 h-4" />,
 };
 
-/** Legacy-agent-only prompts — hidden from UI but kept for backwards compat */
+/** Internal prompts — hidden from UI but kept for backwards compat */
 const HIDDEN_PROMPTS = new Set<PromptId>([
   "thinking_prompt",
-  "build_system_prefix",
-  "build_system_postfix",
   "agent_mode_system",
   "turbo_edit_system",
   "dossier_prompt",
