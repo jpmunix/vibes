@@ -360,6 +360,31 @@ export function registerAppHandlers() {
     }
   });
 
+  createTypedHandler(appContracts.openAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, filePath } = params;
+    const appRecord = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!appRecord) throw new Error("App not found");
+
+    const appPath = getVibesAppPath(appRecord.path);
+    const fullPath = path.join(appPath, filePath);
+
+    if (!fullPath.startsWith(appPath)) throw new Error("Invalid file path");
+    if (!fs.existsSync(fullPath)) throw new Error("File not found");
+
+    const { shell } = await import("electron");
+    const result = await shell.openPath(fullPath);
+    if (result) {
+      throw new Error(`No se pudo abrir el archivo: ${result}`);
+    }
+    logger.debug("Opened app file with system default:", fullPath);
+  });
+
   // Do NOT use typed handler for this, it contains sensitive information.
   ipcMain.handle("get-env-vars", async () => {
     const envVars: Record<string, string | undefined> = {};

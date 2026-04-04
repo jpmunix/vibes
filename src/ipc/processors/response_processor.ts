@@ -49,6 +49,44 @@ import { FileUploadsState } from "../utils/file_uploads_state";
 const readFile = fs.promises.readFile;
 const logger = log.scope("response_processor");
 
+/**
+ * Sanitize a file path extracted from AI-generated tags.
+ * OpenCode sometimes produces absolute paths (e.g. /home/user/GitRepo/project/src/file.ts)
+ * that escape the vibes app sandbox. This function converts them to relative paths:
+ * 1. If the absolute path contains the app base, extract the relative portion.
+ * 2. Otherwise, use only the basename to at least avoid the safety error.
+ * Relative paths pass through unchanged.
+ */
+function sanitizeFilePath(filePath: string, appPath: string): string {
+  if (!path.isAbsolute(filePath)) return filePath;
+
+  // Try to find the relative portion — the absolute path might point
+  // to the same project just via a different base (e.g. /home/user/GitRepo/project vs /home/user/vibes-apps/project)
+  const resolvedApp = path.resolve(appPath);
+  const resolvedFile = path.resolve(filePath);
+
+  // Case 1: the path IS inside the app dir (just absolute form)
+  if (resolvedFile.startsWith(resolvedApp + path.sep)) {
+    return path.relative(resolvedApp, resolvedFile);
+  }
+
+  // Case 2: same project name, different base — extract from project root onwards
+  // e.g. /home/user/GitRepo/trellito/docs/plan.md → docs/plan.md
+  const appDirName = path.basename(resolvedApp);
+  const segments = resolvedFile.split(path.sep);
+  const projectIdx = segments.indexOf(appDirName);
+  if (projectIdx !== -1 && projectIdx < segments.length - 1) {
+    const relativePortion = segments.slice(projectIdx + 1).join(path.sep);
+    logger.warn(`[sanitizeFilePath] Converted absolute path "${filePath}" → "${relativePortion}"`);
+    return relativePortion;
+  }
+
+  // Case 3: completely unrelated absolute path — use basename as last resort
+  const fallback = path.basename(filePath);
+  logger.warn(`[sanitizeFilePath] Absolute path "${filePath}" fully escapes app dir — using basename "${fallback}"`);
+  return fallback;
+}
+
 interface Output {
   message: string;
   error: unknown;
@@ -180,13 +218,21 @@ export async function processFullResponseActions(
 
   try {
     // Extract all tags
-    const writeTags = getWriteTags(fullResponse);
-    const renameTags = getRenameTags(fullResponse);
-    const deletePaths = getDeleteTags(fullResponse);
+    const rawWriteTags = getWriteTags(fullResponse);
+    const rawRenameTags = getRenameTags(fullResponse);
+    const rawDeletePaths = getDeleteTags(fullResponse);
     const addDependencyPackages = getAddDependencyTags(fullResponse);
     const executeSqlQueries = chatWithApp.app.supabaseProjectId
       ? getExecuteSqlTags(fullResponse)
       : [];
+
+    // Sanitize all file paths — OpenCode may produce absolute paths that escape the app directory
+    const writeTags = rawWriteTags.map(t => ({ ...t, path: sanitizeFilePath(t.path, appPath) }));
+    const renameTags = rawRenameTags.map(t => ({
+      from: sanitizeFilePath(t.from, appPath),
+      to: sanitizeFilePath(t.to, appPath),
+    }));
+    const deletePaths = rawDeletePaths.map(p => sanitizeFilePath(p, appPath));
 
     const message = await db.query.messages.findFirst({
       where: and(
@@ -385,7 +431,8 @@ export async function processFullResponseActions(
     }
 
     // Process all search-replace edits
-    const searchReplaceTags = getSearchReplaceTags(fullResponse);
+    const rawSearchReplaceTags = getSearchReplaceTags(fullResponse);
+    const searchReplaceTags = rawSearchReplaceTags.map(t => ({ ...t, path: sanitizeFilePath(t.path, appPath) }));
     // Group tags by file path
     const srTagsByFile = new Map<
       string,

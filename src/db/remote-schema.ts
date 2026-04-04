@@ -132,6 +132,7 @@ export const messages = sqliteTable("messages", {
     previousResponseId: integer("previous_response_id"),
     status: text("status").default("completed"),
     durationMs: integer("duration_ms"),
+    smartModeIntent: text("smart_mode_intent"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

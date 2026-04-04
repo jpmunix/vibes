@@ -214,8 +214,8 @@ export const constructSystemPrompt = ({
   // Replace language instruction placeholder
   const languageInstruction =
     chatLanguage === "es"
-      ? "Debes responder SIEMPRE en español, independientemente del idioma en el que el usuario escriba. Todas tus respuestas, explicaciones y mensajes deben estar completamente en español."
-      : "You MUST respond ALWAYS in English, regardless of the language the user writes in. All your responses, explanations and messages must be completely in English.";
+      ? "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español. No uses inglés bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías."
+      : "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English. Do not use other languages under any circumstances except for code names, variables or technologies.";
   systemPrompt = systemPrompt.replace(
     "[[LANGUAGE_INSTRUCTION]]",
     languageInstruction,

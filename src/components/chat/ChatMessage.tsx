@@ -497,8 +497,8 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           />
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
-                            {smartModeIntent ? (
-                              <SmartModeIcon intent={smartModeIntent.intent} />
+                            {(message.smartModeIntent || smartModeIntent) ? (
+                              <SmartModeIcon intent={message.smartModeIntent || smartModeIntent?.intent || "build"} />
                             ) : (
                               <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             )}

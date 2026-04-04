@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, type ReactNode } from "react";
+import React, { useState, useEffect, memo, useCallback, type ReactNode } from "react";
 import ShikiHighlighter, {
   isInlineCode,
   createHighlighterCore,
@@ -6,7 +6,12 @@ import ShikiHighlighter, {
 } from "react-shiki/core";
 import type { Element as HastElement } from "hast";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, FileCode2, X, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { ipc } from "@/ipc/types";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import github from "@shikijs/themes/github-light-default";
 import githubDark from "@shikijs/themes/github-dark-default";
 
@@ -97,6 +102,249 @@ function useHighlighter(language?: string) {
   return langReady ? highlighter : undefined;
 }
 
+// ── File path detection ─────────────────────────────────────────────────────
+// Known file extensions that indicate inline code is a file reference
+const FILE_EXTENSIONS = new Set([
+  "ts", "tsx", "js", "jsx", "mjs", "cjs",
+  "css", "scss", "less", "sass",
+  "html", "htm", "vue", "svelte", "astro",
+  "json", "yaml", "yml", "toml",
+  "md", "mdx", "txt", "csv",
+  "py", "rb", "go", "rs", "java", "kt", "swift",
+  "sql", "graphql", "gql",
+  "sh", "bash", "zsh",
+  "xml", "svg",
+  "env", "gitignore", "dockerignore", "dockerfile",
+  "prisma", "proto",
+]);
+
+// Extension → language mapping for syntax highlighting
+const EXT_TO_LANG: Record<string, string> = {
+  ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx", mjs: "javascript", cjs: "javascript",
+  css: "css", scss: "scss", less: "less", sass: "sass",
+  html: "html", htm: "html", vue: "vue", svelte: "html", astro: "html",
+  json: "json", yaml: "markdown", yml: "markdown", toml: "markdown",
+  md: "markdown", mdx: "markdown", txt: "markdown",
+  py: "python", rb: "markdown", go: "markdown", rs: "markdown", java: "java",
+  sql: "sql", graphql: "graphql", gql: "graphql",
+  sh: "shell", bash: "shell", zsh: "shell",
+  xml: "html", svg: "html",
+  env: "shell", prisma: "markdown",
+};
+
+function isFilePath(text: string): boolean {
+  // Must have an extension or contain a path separator
+  const trimmed = text.trim();
+  if (trimmed.includes(" ") || trimmed.length > 120) return false;
+
+  // Check for known file extension
+  const ext = trimmed.split(".").pop()?.toLowerCase();
+  if (ext && FILE_EXTENSIONS.has(ext)) return true;
+
+  // Files like Dockerfile, Makefile, etc. (has path separator)
+  if (trimmed.includes("/") && !trimmed.startsWith("http")) return true;
+
+  return false;
+}
+
+function getLanguageFromPath(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  return EXT_TO_LANG[ext] || "markdown";
+}
+
+// ── File Viewer Modal ───────────────────────────────────────────────────────
+const MARKDOWN_EXTENSIONS = new Set(["md", "mdx"]);
+
+function FileViewerModal({
+  filePath,
+  onClose,
+}: {
+  filePath: string;
+  onClose: () => void;
+}) {
+  const appId = useAtomValue(selectedAppIdAtom);
+  const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { isDarkMode } = useTheme();
+  const fileName = filePath.split("/").pop() || filePath;
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  const isMarkdown = MARKDOWN_EXTENSIONS.has(ext);
+  const lang = getLanguageFromPath(filePath);
+  const highlighter = useHighlighter(isMarkdown ? undefined : lang);
+  const [copied, setCopied] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    if (!appId) {
+      setError("No hay app seleccionada");
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const fileContent = await ipc.app.readAppFile({ appId, filePath });
+        if (!cancelled) {
+          setContent(fileContent);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || "No se pudo leer el archivo");
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [appId, filePath]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  const handleCopy = useCallback(() => {
+    if (content) {
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [content]);
+
+  const handleOpenWithSystem = useCallback(async () => {
+    if (!appId) return;
+    try {
+      await ipc.app.openAppFile({ appId, filePath });
+    } catch (err: any) {
+      console.error("Error opening file with system:", err);
+    }
+  }, [appId, filePath]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className={`relative flex flex-col bg-background border border-border/60 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 transition-all ${
+          isMaximized
+            ? "w-full h-full rounded-none"
+            : "w-[92vw] max-w-6xl max-h-[85vh] rounded-2xl"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/40 bg-muted/30">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FileCode2 size={16} className="text-primary flex-shrink-0" />
+            <span className="text-sm font-medium truncate" title={filePath}>
+              {filePath}
+            </span>
+            {ext && (
+              <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">
+                {ext}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+              onClick={handleOpenWithSystem}
+              type="button"
+              title="Abrir con la aplicación predeterminada del sistema"
+            >
+              <ExternalLink size={12} />
+              <span>Abrir</span>
+            </button>
+            {content && (
+              <button
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                onClick={handleCopy}
+                type="button"
+              >
+                {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                <span>{copied ? "Copiado" : "Copiar"}</span>
+              </button>
+            )}
+            <button
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+              onClick={() => setIsMaximized((v) => !v)}
+              type="button"
+              title={isMaximized ? "Restaurar" : "Maximizar"}
+            >
+              {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            <button
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+              onClick={onClose}
+              type="button"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto">
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="ml-3 text-sm text-muted-foreground">Leyendo archivo…</span>
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+              {error}
+            </div>
+          )}
+          {content !== null && !loading && isMarkdown && (
+            <div className="px-8 py-6 prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </ReactMarkdown>
+            </div>
+          )}
+          {content !== null && !loading && !isMarkdown && (
+            <div className="[&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:!rounded-none [&_pre]:px-6 [&_pre]:py-4 text-sm">
+              {highlighter ? (
+                <ShikiHighlighter
+                  highlighter={highlighter}
+                  language={lang}
+                  theme={isDarkMode ? "github-dark-default" : "github-light-default"}
+                  delay={100}
+                >
+                  {content}
+                </ShikiHighlighter>
+              ) : (
+                <pre className="px-6 py-4 whitespace-pre-wrap">
+                  <code>{content}</code>
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer — line count */}
+        {content !== null && !loading && (
+          <div className="flex items-center justify-between px-5 py-2 border-t border-border/40 bg-muted/20 text-[11px] text-muted-foreground/60">
+            <span>{content.split("\n").length} líneas</span>
+            <span>{(new Blob([content]).size / 1024).toFixed(1)} KB</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
+
 interface CodeHighlightProps {
   className?: string | undefined;
   children?: ReactNode | undefined;
@@ -110,6 +358,8 @@ export const CodeHighlight = memo(
     const isInline = node ? isInlineCode(node) : false;
     //handle copying code to clipboard with transition effect
     const [copied, setCopied] = useState(false);
+    const [viewingFile, setViewingFile] = useState<string | null>(null);
+
     const handleCopy = () => {
       navigator.clipboard.writeText(code);
       setCopied(true);
@@ -118,6 +368,9 @@ export const CodeHighlight = memo(
 
     const { isDarkMode } = useTheme();
     const highlighter = useHighlighter(language);
+
+    // For inline code, check if it looks like a file path
+    const filePathDetected = isInline && isFilePath(code);
 
     return !isInline ? (
       <div
@@ -165,9 +418,28 @@ export const CodeHighlight = memo(
         </div>
       </div>
     ) : (
-      <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight`} {...props}>
-        {children}
-      </code>
+      <>
+        {filePathDetected ? (
+          <code
+            className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
+            onClick={() => setViewingFile(code)}
+            title={`Ver archivo: ${code}`}
+            {...props}
+          >
+            {children}
+          </code>
+        ) : (
+          <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight`} {...props}>
+            {children}
+          </code>
+        )}
+        {viewingFile && (
+          <FileViewerModal
+            filePath={viewingFile}
+            onClose={() => setViewingFile(null)}
+          />
+        )}
+      </>
     );
   },
   (prevProps, nextProps) => {

@@ -17,8 +17,13 @@ import { getEffectivePrompt } from "@/prompts/index";
 const logger = log.scope("smart-mode");
 
 // ── Constants ────────────────────────────────────────────────────────────────
-export const CLASSIFIER_MODEL = "google/gemma-3-12b-it";
-const CLASSIFIER_TIMEOUT_MS = 3_000;
+const CLASSIFIER_MODELS = [
+    "google/gemini-2.5-flash-lite",
+    "openai/gpt-5.4-nano",
+    "google/gemma-3-4b-it",
+] as const;
+export const CLASSIFIER_MODEL = CLASSIFIER_MODELS[0];
+const CLASSIFIER_TIMEOUT_MS = 5_000;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type SmartModeIntent = "ask" | "plan" | "build" | "context";
@@ -106,67 +111,18 @@ export async function classifyUserIntent(
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), CLASSIFIER_TIMEOUT_MS);
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: CLASSIFIER_MODEL,
-                messages,
-                max_tokens: 40,
-                temperature: 0,
-                response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                        name: "intent_classification",
-                        strict: true,
-                        schema: {
-                            type: "object",
-                            properties: {
-                                intent: {
-                                    type: "string",
-                                    enum: ["ask", "plan", "build", "context"],
-                                },
-                            },
-                            required: ["intent"],
-                            additionalProperties: false,
-                        },
-                    },
-                },
-            }),
-            signal: controller.signal,
-        });
+        // Try models in order until one succeeds
+        let intent: SmartModeIntent | null = null;
+        for (const model of CLASSIFIER_MODELS) {
+            intent = await tryClassify(messages, model, apiKey, controller.signal);
+            if (intent) break;
+        }
 
         clearTimeout(timeout);
 
-        if (!response.ok) {
-            logger.warn(`[SmartMode] Classifier HTTP ${response.status}: ${response.statusText}`);
-            return DEFAULT_INTENT;
-        }
+        if (intent) return intent;
 
-        const data = await response.json();
-        const raw = (data.choices?.[0]?.message?.content || "").trim();
-
-        // Parse structured JSON response
-        try {
-            const parsed = JSON.parse(raw);
-            const intent = parsed.intent?.toLowerCase() as SmartModeIntent;
-            if (VALID_INTENTS.includes(intent)) {
-                logger.info(`[SmartMode] Classified: "${intent}"`);
-                return intent;
-            }
-        } catch {
-            // Fallback: try extracting first word if JSON parse fails
-            const firstWord = raw.toLowerCase().split(/[\s.,;!?]+/)[0] as SmartModeIntent;
-            if (VALID_INTENTS.includes(firstWord)) {
-                logger.info(`[SmartMode] Classified (fallback): "${firstWord}"`);
-                return firstWord;
-            }
-        }
-
-        logger.warn(`[SmartMode] Invalid classifier response: "${raw}" — defaulting to "${DEFAULT_INTENT}"`);
+        logger.warn(`[SmartMode] All ${CLASSIFIER_MODELS.length} models failed — defaulting to "${DEFAULT_INTENT}"`);
         return DEFAULT_INTENT;
     } catch (error: any) {
         if (error.name === "AbortError") {
@@ -175,5 +131,102 @@ export async function classifyUserIntent(
             logger.warn(`[SmartMode] Classifier error: ${error.message} — defaulting to "${DEFAULT_INTENT}"`);
         }
         return DEFAULT_INTENT;
+    }
+}
+
+/** Try a single classification request. Returns null on failure (caller should retry). */
+async function tryClassify(
+    messages: { role: string; content: string }[],
+    model: string,
+    apiKey: string,
+    signal: AbortSignal,
+    useStructuredOutput = true,
+): Promise<SmartModeIntent | null> {
+    try {
+        const body: Record<string, any> = {
+            model,
+            messages,
+            max_tokens: useStructuredOutput ? 20 : 5,
+            temperature: 0,
+        };
+
+        if (useStructuredOutput) {
+            body.response_format = {
+                type: "json_schema",
+                json_schema: {
+                    name: "intent_classification",
+                    strict: true,
+                    schema: {
+                        type: "object",
+                        properties: {
+                            intent: {
+                                type: "string",
+                                enum: ["ask", "plan", "build", "context"],
+                            },
+                        },
+                        required: ["intent"],
+                        additionalProperties: false,
+                    },
+                },
+            };
+        }
+
+        logger.info(`[SmartMode] Trying ${model} (structured=${useStructuredOutput})...`);
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify(body),
+            signal,
+        });
+
+        if (response.status === 429) {
+            logger.warn(`[SmartMode] ${model} → 429 rate limited`);
+            return null;
+        }
+
+        if (response.status === 400 && useStructuredOutput) {
+            // Model doesn't support structured outputs — retry without it
+            const errBody = await response.text();
+            logger.warn(`[SmartMode] ${model} → 400 (structured output not supported): ${errBody.slice(0, 200)}`);
+            return tryClassify(messages, model, apiKey, signal, false);
+        }
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            logger.warn(`[SmartMode] ${model} → HTTP ${response.status}: ${errBody.slice(0, 300)}`);
+            return null;
+        }
+
+        const data = await response.json();
+        const raw = (data.choices?.[0]?.message?.content || "").trim();
+        logger.info(`[SmartMode] ${model} raw response: "${raw}"`);
+
+        // Parse structured JSON response
+        try {
+            const parsed = JSON.parse(raw);
+            const intent = parsed.intent?.toLowerCase() as SmartModeIntent;
+            if (VALID_INTENTS.includes(intent)) {
+                logger.info(`[SmartMode] Classified via ${model}: "${intent}"`);
+                return intent;
+            }
+        } catch {
+            // Fallback: try extracting first word (plain text response)
+            const firstWord = raw.toLowerCase().split(/[\s.,;!?"{}:]+/)[0] as SmartModeIntent;
+            if (VALID_INTENTS.includes(firstWord)) {
+                logger.info(`[SmartMode] Classified via ${model} (text): "${firstWord}"`);
+                return firstWord;
+            }
+        }
+
+        logger.warn(`[SmartMode] ${model} → invalid response: "${raw}"`);
+        return null;
+    } catch (error: any) {
+        if (error.name === "AbortError") throw error;
+        logger.warn(`[SmartMode] ${model} → error: ${error.message}`);
+        return null;
     }
 }

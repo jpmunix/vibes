@@ -26,4 +26,17 @@ export function registerShellHandlers() {
     shell.showItemInFolder(fullPath);
     logger.debug("Showed item in folder:", fullPath);
   });
+
+  createTypedHandler(systemContracts.openFilePath, async (_event, fullPath) => {
+    if (!fullPath) {
+      throw new Error("No file path provided.");
+    }
+
+    const result = await shell.openPath(fullPath);
+    if (result) {
+      // shell.openPath returns an empty string on success, or an error message
+      throw new Error(`No se pudo abrir el archivo: ${result}`);
+    }
+    logger.debug("Opened file with system default:", fullPath);
+  });
 }

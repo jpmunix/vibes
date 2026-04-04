@@ -239,33 +239,15 @@ export function ChatPanel({
       });
 
       // Scroll to bottom after messages load, then reveal.
-      // Use double-RAF to ensure Virtuoso has measured & painted all items,
-      // then one idle callback for late-rendering content (timestamps, avatars, etc.)
-      // Only AFTER that, remove the skeleton overlay so the user sees no jumps.
+      // Use double-RAF so Virtuoso measures & paints all items first.
+      // The skeleton overlay hides the instant jump from the user.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           scrollToBottom("instant");
-          const idleCallback = typeof requestIdleCallback === 'function'
-            ? requestIdleCallback
-            : (cb: () => void) => setTimeout(cb, 200);
-          // Safety timeout: if requestIdleCallback doesn't fire within 2s, reveal anyway
-          let revealed = false;
-          const safetyTimer = setTimeout(() => {
-            if (!revealed) {
-              revealed = true;
-              scrollToBottom("instant");
-              setIsLoadingMessages(false);
-            }
-          }, 2000);
-          idleCallback(() => {
-            if (!revealed) {
-              revealed = true;
-              clearTimeout(safetyTimer);
-              scrollToBottom("instant");
-              // Reveal messages now that Virtuoso layout is stable
-              setIsLoadingMessages(false);
-            }
-          });
+          // Small delay to let layout settle, then reveal
+          setTimeout(() => {
+            setIsLoadingMessages(false);
+          }, 80);
         });
       });
     } catch (err) {
@@ -292,21 +274,30 @@ export function ChatPanel({
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,
   // load more in chunks when scrolling up. Prevents render storms on long chats.
-  const INITIAL_VISIBLE = 6;
-  const LOAD_MORE_COUNT = 6;
+  const INITIAL_VISIBLE = 10;
+  const LOAD_MORE_COUNT = 10;
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const prevMessageCountRef = useRef(0);
 
   // Reset visible count when chat changes
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE);
+    prevMessageCountRef.current = 0;
   }, [chatId]);
 
-  // Expand visible count when streaming adds new messages
+  // Auto-expand visibleCount when messages are appended at the end (user sends,
+  // assistant placeholder added, streaming content). This prevents the progressive
+  // slice from shifting and causing a visual jump upward.
   useEffect(() => {
-    if (isStreaming && messages.length <= visibleCount + 1) {
-      setVisibleCount(messages.length);
+    const prevCount = prevMessageCountRef.current;
+    prevMessageCountRef.current = messages.length;
+
+    if (prevCount > 0 && messages.length > prevCount) {
+      // Messages were appended — expand visible window by the delta
+      const delta = messages.length - prevCount;
+      setVisibleCount((prev) => prev + delta);
     }
-  }, [isStreaming, messages.length]);
+  }, [messages.length]);
 
   const progressiveMessages = useMemo(() => {
     if (messages.length <= visibleCount) return messages;
@@ -370,7 +361,7 @@ export function ChatPanel({
       distanceFromBottomRef.current <= 280
     ) {
       requestAnimationFrame(() => {
-        scrollToBottom("instant");
+        scrollToBottom("smooth");
       });
     }
   }, [messages, isUserScrolling, isStreaming, settings?.isTestMode]);

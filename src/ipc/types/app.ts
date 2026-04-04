@@ -399,6 +399,12 @@ export const appContracts = {
     output: z.string(),
   }),
 
+  openAppFile: defineContract({
+    channel: "open-app-file",
+    input: ReadAppFileParamsSchema,
+    output: z.void(),
+  }),
+
   respondToAppInput: defineContract({
     channel: "respond-to-app-input",
     input: RespondToAppInputParamsSchema,

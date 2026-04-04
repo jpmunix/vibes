@@ -187,14 +187,7 @@ export function ChatInput({
   useChatModeToggle();
 
   const lastMessage = (chatId ? (messagesById.get(chatId) ?? []) : []).at(-1);
-  const disableSendButton =
-    settings?.selectedChatMode !== "agent" &&
-    settings?.selectedChatMode !== "ask" &&
-    lastMessage?.role === "assistant" &&
-    !lastMessage.approvalState &&
-    !!proposal &&
-    proposal.type === "code-proposal" &&
-    messageId === lastMessage.id;
+  const disableSendButton = false;
 
   const { userBudget } = useUserBudgetInfo();
 
@@ -365,6 +358,7 @@ export function ChatInput({
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&
         settings.selectedChatMode !== "agent" &&
+        settings.selectedChatMode !== "smart" &&
         !isPlanMode && (
           <div className="p-4 text-sm text-muted-foreground">
             Cargando propuesta...
@@ -427,7 +421,8 @@ export function ChatInput({
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&
                 !isPlanMode &&
-                settings.selectedChatMode !== "agent" && (
+                settings.selectedChatMode !== "agent" &&
+                settings.selectedChatMode !== "smart" && (
                   <ChatInputActions
                     proposal={proposal}
                     onApprove={handleApprove}

@@ -1462,6 +1462,7 @@ This conversation includes one or more image attachments. When the user uploads 
         };
         let resolvedChatMode: string = (settings.selectedChatMode || "agent");
         let smartModeIntent: string | null = null;
+        let smartModeDisplayIntent: string | null = null;
 
         // ── Smart Mode: auto-classify intent before routing ──
         if (resolvedChatMode === "smart") {
@@ -1469,11 +1470,35 @@ This conversation includes one or more image attachments. When the user uploads 
             const { classifyUserIntent, getOpenRouterApiKey } = await import("../utils/smart_mode_classifier");
             const apiKey = getOpenRouterApiKey();
             if (apiKey) {
-              // Extract last 4 messages (≈2 rounds) for context
-              const recentMsgs = (updatedChat.messages as any[])
-                .filter((m: any) => m.content && m.role !== "system")
-                .slice(-4)
-                .map((m: any) => ({ role: m.role as string, content: m.content as string }));
+              // Extract clean conversational context: last 2 user + 2 assistant messages,
+              // stripping all vibes tags, thinking blocks, and tool output to keep only
+              // the actual human↔AI interaction. This gives the classifier much better signal.
+              const stripVibesTags = (text: string) =>
+                text
+                  .replace(/<vibes-think>[\s\S]*?<\/vibes-think>/g, "")
+                  .replace(/<vibes-[a-z-]+[\s\S]*?>[\s\S]*?<\/vibes-[a-z-]+>/g, "")
+                  .replace(/<vibes-[a-z-]+[\s\S]*?\/>/g, "")
+                  .replace(/```[\s\S]*?```/g, "[código]") // collapse code blocks to save tokens
+                  .replace(/\n{3,}/g, "\n\n")
+                  .trim();
+
+              const allMsgs = (updatedChat.messages as any[])
+                .filter((m: any) => m.content && (m.role === "user" || m.role === "assistant"));
+
+              // Pick last 2 user and last 2 assistant messages, interleaved chronologically
+              const lastUserMsgs = allMsgs.filter((m: any) => m.role === "user").slice(-2);
+              const lastAssistantMsgs = allMsgs.filter((m: any) => m.role === "assistant").slice(-2);
+              const contextMsgs = [...lastUserMsgs, ...lastAssistantMsgs]
+                .sort((a: any, b: any) => (a.createdAt > b.createdAt ? 1 : -1));
+
+              const recentMsgs = contextMsgs
+                .map((m: any) => {
+                  const cleaned = stripVibesTags(m.content as string);
+                  // Truncate very long messages to keep classifier prompt manageable
+                  const truncated = cleaned.length > 500 ? cleaned.slice(0, 500) + "…" : cleaned;
+                  return truncated ? { role: m.role as string, content: truncated } : null;
+                })
+                .filter(Boolean) as { role: string; content: string }[];
 
               const intent = await classifyUserIntent(req.prompt, recentMsgs, apiKey);
               smartModeIntent = intent;
@@ -1504,6 +1529,7 @@ This conversation includes one or more image attachments. When the user uploads 
               const displayIntent = intent === "context"
                 ? (modeToIntent[resolvedChatMode] || "build")
                 : intent;
+              smartModeDisplayIntent = displayIntent;
 
               safeSend(event.sender, "chat:smart-mode-intent", {
                 chatId: req.chatId,
@@ -1518,6 +1544,12 @@ This conversation includes one or more image attachments. When the user uploads 
             logger.warn(`[SmartMode] Classification failed: ${err.message} — falling back to agent mode`);
             resolvedChatMode = "agent";
           }
+        }
+
+        // For manually selected modes, also persist the intent for icon history
+        if (!smartModeDisplayIntent) {
+          const modeToIntentMap: Record<string, string> = { agent: "build", ask: "ask", plan: "plan" };
+          smartModeDisplayIntent = modeToIntentMap[resolvedChatMode] || "build";
         }
 
         const agentId = agentIdMap[resolvedChatMode] || "build";
@@ -1535,8 +1567,9 @@ This conversation includes one or more image attachments. When the user uploads 
           // 1. Language & Behavior instructions
           const chatLang = settings.chatLanguage || "es";
           const langMap: Record<string, string> = { es: "español", en: "English" };
+          const langName = langMap[chatLang] || chatLang;
           contextInstructions.push(
-            `Responde siempre en ${langMap[chatLang] || chatLang}.\n` +
+            `ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en ${langName}. Piensa en ${langName}, razona en ${langName} y redacta TODAS tus respuestas completamente en ${langName}. No uses otro idioma bajo ninguna circunstancia excepto en nombres de código, variables o tecnologías.\n` +
             `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
           );
 
@@ -1754,6 +1787,7 @@ This conversation includes one or more image attachments. When the user uploads 
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
+              ...(smartModeDisplayIntent ? { smartModeIntent: smartModeDisplayIntent } : {}),
             })
             .where(
               and(
