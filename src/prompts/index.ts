@@ -20,6 +20,7 @@ export type PromptId =
   | "quick_edit_system"
   | "dossier_prompt"
   | "auto_commit_message"
+  | "smart_mode_classifier"
   | "plan_mode_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
@@ -211,6 +212,16 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "Responde SOLO con el mensaje de commit, sin comillas, sin explicación.",
   ].join("\n"),
+  smart_mode_classifier: [
+    'Clasifica el prompt del usuario en una sola palabra: "ask", "plan", "build" o "context".',
+    "",
+    "- ask: Preguntas directas, dudas teóricas o búsqueda de información general.",
+    "- plan: Solicitud de pasos, metodologías, cronogramas, arquitecturas o estrategias.",
+    "- build: Petición de código, creación de archivos, desarrollo técnico o implementación directa.",
+    "- context: Confirmaciones (ok, vale, sí), agradecimientos, saludos o frases de seguimiento cortas que no piden una acción nueva.",
+    "",
+    "Respuesta estrictamente limitada a una palabra de la lista. Sin puntuación.",
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -238,6 +249,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   quick_edit_system: "Quick Edit (Edición Visual Rápida)",
   dossier_prompt: "Prompt de Dossier (Tutorial + Memoria Técnica)",
   auto_commit_message: "Mensaje de Commit Automático",
+  smart_mode_classifier: "Clasificador Inteligente (Smart Mode)",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -264,4 +276,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
   dossier_prompt: "Instrucciones para generar el dossier completo de la app: Tutorial Interactivo y Memoria Técnica profesional.",
   auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
+  smart_mode_classifier: "Prompt del sistema enviado al modelo clasificador en Modo Inteligente. Define las categorías (ask, plan, build, context) y sus criterios.",
 };

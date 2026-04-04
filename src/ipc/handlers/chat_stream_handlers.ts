@@ -119,6 +119,9 @@ const activeStreams = new Map<number, AbortController>();
 // Track partial responses for cancelled streams
 const partialResponses = new Map<number, string>();
 
+// Smart Mode: remember last classified mode per chat so "context" intents reuse it
+const lastSmartModeForChat = new Map<number, string>();
+
 // Directory for storing temporary files
 const TEMP_DIR = path.join(os.tmpdir(), "vibes-attachments");
 
@@ -699,9 +702,10 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        // All active modes (agent, ask, plan) use the OpenCode agent stream
+        // All active modes (agent, ask, plan, smart) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
         const isAgentMode = settings.selectedChatMode === "agent" ||
+          settings.selectedChatMode === "smart" ||
           settings.selectedChatMode === "ask" ||
           settings.selectedChatMode === "plan" ||
           (settings.selectedChatMode as unknown as string) === "crush-agent";
@@ -863,7 +867,7 @@ ${componentSnippet}
           );
 
           systemPrompt = constructSystemPrompt({
-            chatMode: settings.selectedChatMode,
+            chatMode: (resolvedChatMode || "agent") as "ask" | "agent" | "plan",
             themePrompt,
             chatLanguage: settings.chatLanguage || "es",
             settings,
@@ -1445,22 +1449,77 @@ This conversation includes one or more image attachments. When the user uploads 
           return fullResponse;
         };
 
-        // ── Unified OpenCode pipeline for all three modes ────────────────
+        // ── Unified OpenCode pipeline for all modes ─────────────────────
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
+        // smart → auto-classified before reaching this map
         const agentIdMap: Record<string, "build" | "plan" | "explore"> = {
           agent: "build",
           "crush-agent": "build",
           plan: "plan",
           ask: "explore",
         };
-        const currentChatMode = (settings.selectedChatMode || "agent") as "agent" | "ask" | "plan";
-        const agentId = agentIdMap[currentChatMode] || "build";
+        let resolvedChatMode: string = (settings.selectedChatMode || "agent");
+        let smartModeIntent: string | null = null;
+
+        // ── Smart Mode: auto-classify intent before routing ──
+        if (resolvedChatMode === "smart") {
+          try {
+            const { classifyUserIntent, getOpenRouterApiKey } = await import("../utils/smart_mode_classifier");
+            const apiKey = getOpenRouterApiKey();
+            if (apiKey) {
+              // Extract last 4 messages (≈2 rounds) for context
+              const recentMsgs = (updatedChat.messages as any[])
+                .filter((m: any) => m.content && m.role !== "system")
+                .slice(-4)
+                .map((m: any) => ({ role: m.role as string, content: m.content as string }));
+
+              const intent = await classifyUserIntent(req.prompt, recentMsgs, apiKey);
+              smartModeIntent = intent;
+
+              // Map intent → traditional chat mode
+              const intentToMode: Record<string, string> = {
+                ask: "ask",
+                plan: "plan",
+                build: "agent",
+                context: "agent",
+              };
+
+              if (intent === "context") {
+                // Use the same mode as previous turn
+                resolvedChatMode = lastSmartModeForChat.get(req.chatId) || "agent";
+              } else {
+                resolvedChatMode = intentToMode[intent] || "agent";
+              }
+
+              // Remember for future "context" lookups
+              lastSmartModeForChat.set(req.chatId, resolvedChatMode);
+
+              logger.log(`[SmartMode] Classified: "${intent}" → mode "${resolvedChatMode}" for chat ${req.chatId}`);
+
+              // Notify frontend so the response badge shows the classified mode
+              safeSend(event.sender, "chat:smart-mode-intent", {
+                chatId: req.chatId,
+                intent: smartModeIntent,
+                resolvedMode: resolvedChatMode,
+              });
+            } else {
+              logger.warn("[SmartMode] No OpenRouter API key available — falling back to agent mode");
+              resolvedChatMode = "agent";
+            }
+          } catch (err: any) {
+            logger.warn(`[SmartMode] Classification failed: ${err.message} — falling back to agent mode`);
+            resolvedChatMode = "agent";
+          }
+        }
+
+        const agentId = agentIdMap[resolvedChatMode] || "build";
 
         if (!isSummarizeIntent && !mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode}${smartModeIntent ? ` → smart:${smartModeIntent}` : ''})`);
+
 
           // Context instructions for the OpenCode session.
           // Only inject integration credentials and language — OpenCode

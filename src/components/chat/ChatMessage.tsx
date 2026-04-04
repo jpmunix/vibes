@@ -25,6 +25,10 @@ import {
   ChevronUp,
   Sparkles,
   User as UserIcon,
+  Wrench,
+  ListChecks,
+  HelpCircle,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -46,6 +50,8 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
   chatErrorByIdAtom,
+  smartModeIntentByChatIdAtom,
+  type SmartModeIntentInfo,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -126,6 +132,30 @@ const formatDurationMs = (ms: number): string => {
   const seconds = totalSeconds % 60;
   return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 };
+/** Map smart mode classified intent → Lucide icon + color */
+const SMART_MODE_CONFIG: Record<string, { icon: LucideIcon; color: string; label: string }> = {
+  build: { icon: Wrench, color: "text-blue-500", label: "Build" },
+  plan: { icon: ListChecks, color: "text-amber-500", label: "Plan" },
+  ask: { icon: HelpCircle, color: "text-green-500", label: "Ask" },
+  context: { icon: MessageCircle, color: "text-muted-foreground", label: "Context" },
+};
+
+function SmartModeIcon({ intent }: { intent: string }) {
+  const cfg = SMART_MODE_CONFIG[intent] || { icon: Sparkles, color: "text-muted-foreground", label: "Smart" };
+  const Icon = cfg.icon;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center">
+          <Icon size={14} className={`flex-shrink-0 ${cfg.color}`} />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        Modo: {cfg.label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
@@ -145,6 +175,12 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const userAtomValue = useAtomValue(userAtom);
 
   const activeUser = user || userAtomValue;
+
+  // Smart mode intent for this chat
+  const smartModeIntentById = useAtomValue(smartModeIntentByChatIdAtom);
+  const smartModeIntent: SmartModeIntentInfo | undefined = selectedChatId
+    ? smartModeIntentById.get(selectedChatId)
+    : undefined;
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -461,7 +497,11 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           />
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
-                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                            {smartModeIntent ? (
+                              <SmartModeIcon intent={smartModeIntent.intent} />
+                            ) : (
+                              <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                            )}
                             <span>{message.model}</span>
                           </div>
                         )}

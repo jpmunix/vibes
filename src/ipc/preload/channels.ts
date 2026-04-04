@@ -166,6 +166,7 @@ export const VALID_RECEIVE_CHANNELS = [
   // Additional chat events
   "chat:model:selected",
   "chat:model:selecting",
+  "chat:smart-mode-intent",
 
   // Cross-window navigation
   "navigate-to-route",
