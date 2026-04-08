@@ -52,7 +52,6 @@ const ignore = (file: string): boolean => {
   const allowedPaths = [
     "/node_modules",
     "/.vite",
-    "/drizzle",
     "/worker",
     "/assets", // Asegúrate de incluir tus iconos/recursos aquí
     "/package.json",
@@ -101,7 +100,7 @@ const config: ForgeConfig = {
       //   "node_modules/better-sqlite3",
       "node_modules/dugite/git",
       "node_modules/@vscode",
-      "drizzle", //   "node_modules/@huggingface",
+      //   "node_modules/@huggingface",
       //   "node_modules/sharp",
       //   "node_modules/color",
       //   "node_modules/color-string",
