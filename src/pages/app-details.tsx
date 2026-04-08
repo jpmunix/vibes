@@ -658,9 +658,9 @@ export default function AppDetailsPage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Github className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.githubOrg && selectedApp.githubRepo ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    <div className={`h-3.5 w-3.5 transition-all duration-200 ${selectedApp.bunnyConfig ? 'bg-primary' : 'bg-foreground opacity-40'}`} style={{ WebkitMaskImage: `url(${bunnyLogo})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskImage: `url(${bunnyLogo})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
-                    <div className={`h-3.5 w-3.5 transition-all duration-200 ${selectedApp.pocketbaseConfig ? 'bg-primary' : 'bg-foreground opacity-40'}`} style={{ WebkitMaskImage: `url(${pocketbaseLogo})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskImage: `url(${pocketbaseLogo})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
-                    <div className={`h-3.5 w-3.5 transition-all duration-200 ${selectedApp.supabaseProjectId ? 'bg-primary' : 'bg-foreground opacity-40'}`} style={{ WebkitMaskImage: `url(${supabaseLogo})`, WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskImage: `url(${supabaseLogo})`, maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center' }} />
+                    <img src={bunnyLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.bunnyConfig ? 'opacity-90' : 'opacity-30'}`} />
+                    <img src={pocketbaseLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.pocketbaseConfig ? 'opacity-90' : 'opacity-30'}`} />
+                    <img src={supabaseLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.supabaseProjectId ? 'opacity-90' : 'opacity-30'}`} />
                     {/* Firebase hidden - not mature yet */}
                     {/* <Flame className="h-3.5 w-3.5 text-gray-400" /> */}
                     {/* <Smartphone className="h-3.5 w-3.5 text-gray-400" /> */}
