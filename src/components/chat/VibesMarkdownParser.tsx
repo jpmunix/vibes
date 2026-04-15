@@ -111,6 +111,8 @@ const VIBES_CUSTOM_TAGS = [
   "think",
   "thought",
   "vibes-command",
+  "vibes-mcp-tool-call",
+  "vibes-mcp-tool-result",
 
   "vibes-list-files",
   "vibes-database-schema",
@@ -1432,6 +1434,25 @@ function renderModalContent(
           <div className="text-sm font-medium">{title}</div>
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-muted/20 p-3 rounded">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // === MCP Tools ===
+    case "vibes-mcp-tool-call": {
+      const toolName = attributes.tool || attributes.server || "MCP Tool";
+      return (
+        <div className="space-y-2">
+          {toolName && (
+            <div className="text-sm font-medium text-purple-400">
+              {toolName}
+            </div>
+          )}
+          {content && (
+            <div className="text-xs font-mono whitespace-pre-wrap max-h-[70vh] overflow-y-auto bg-muted/20 p-3 rounded border border-purple-500/20">
               {content}
             </div>
           )}

@@ -14,6 +14,7 @@ import { registerPocketBaseHandlers } from "./handlers/pocketbase_handlers";
 import { registerContextPathsHandlers } from "./handlers/context_paths_handlers";
 import { registerDebugHandlers } from "./handlers/debug_handlers";
 import { registerDependencyHandlers } from "./handlers/dependency_handlers";
+import { registerMcpHandlers } from "./handlers/mcp_handlers";
 
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
 import { registerGithubHandlers } from "./handlers/github_handlers";
@@ -66,6 +67,7 @@ export function registerIpcHandlers() {
   registerSettingsHandlers();
   registerShellHandlers();
   registerDependencyHandlers();
+  registerMcpHandlers();
   registerGithubHandlers();
   registerGithubBranchHandlers();
   registerVercelHandlers();

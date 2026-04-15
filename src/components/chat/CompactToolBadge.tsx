@@ -27,6 +27,7 @@ import {
     AlertTriangle,
     FileSearch,
     Coins,
+    Blocks,
     type LucideIcon,
 } from "lucide-react";
 import {
@@ -98,6 +99,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-bunny-db-info": { icon: Database, label: "Bunny DB", pendingLabel: "Cargando Bunny DB", color: "text-orange-500" },
     "vibes-bunny-storage-info": { icon: FolderOpen, label: "Bunny Storage", pendingLabel: "Cargando Storage", color: "text-orange-500" },
     "vibes-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
+    "vibes-mcp-tool-call": { icon: Blocks, label: "MCP", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
 
     "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
     "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
@@ -302,6 +304,8 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             return attributes.cmd || undefined;
         case "vibes-stop-process":
             return attributes["process-id"] || undefined;
+        case "vibes-mcp-tool-call":
+            return attributes.tool || attributes.server || undefined;
         case "vibes-wait-http":
             return attributes.url || undefined;
         case "vibes-pocketbase-info":

@@ -17,6 +17,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 
   { id: "workflow-settings", label: "Flujo de trabajo" },
   { id: "integrations", label: "Integraciones" },
+  { id: "tools-mcp", label: "Herramientas MCP" },
 ];
 
 export function SettingsList({ show }: { show: boolean }) {

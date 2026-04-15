@@ -28,7 +28,8 @@ import type { ChatStreamParams } from "@/ipc/types";
 import * as path from "node:path";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { McpServer } from "../types/mcp";
 
 const logger = log.scope("opencode_adapter");
 
@@ -161,6 +162,44 @@ export async function updateOpenCodeConfig(changes: {
     } catch (error: any) {
         logger.warn(`[OpenCode] config.update() failed: ${error.message}`);
     }
+}
+
+/**
+ * Hot update OpenCode MCP servers config without restarting
+ */
+export async function updateOpenCodeMcpConfig(servers: McpServer[]): Promise<void> {
+    if (!clientInstance) return;
+    try {
+        const mcpConfig = buildMcpConfig(servers);
+        if (mcpConfig) {
+            await clientInstance.config.update({ body: { mcp: mcpConfig } as any });
+            logger.info(`[OpenCode] MCP config updated in-place`);
+        }
+    } catch (error: any) {
+        logger.warn(`[OpenCode] config.update(mcp) failed: ${error.message}`);
+    }
+}
+
+function buildMcpConfig(servers: McpServer[]) {
+    if (!servers || servers.length === 0) return undefined;
+    return Object.fromEntries(
+        servers.map(s => [
+            s.name.replace(/[^a-zA-Z0-9_-]/g, ""),
+            s.transport === "stdio"
+                ? {
+                      type: "local" as const,
+                      command: [s.command!, ...(s.args ?? [])],
+                      enabled: true,
+                      environment: s.envJson ?? {},
+                  }
+                : {
+                      type: "remote" as const,
+                      url: s.url!,
+                      enabled: true,
+                      headers: { ...(s.headersJson ?? {}), ...(s.envJson ?? {}) },
+                  }
+        ])
+    );
 }
 
 /**
@@ -483,6 +522,27 @@ async function getOpenCodeClient(appPath: string) {
 
         const originalCwd = process.cwd();
         process.chdir(opencodeDataDir);
+        
+        // Load MCP servers
+        const { getRemoteDb } = await import("../../db/remote");
+        const db = getRemoteDb();
+        const settingsRecord = await db.query.userSettings.findFirst();
+        let enabledServers: any[] = [];
+        if (settingsRecord?.userId) {
+            enabledServers = await db.query.mcpServers.findMany({
+                where: and(
+                    eq(remoteSchema.mcpServers.userId, settingsRecord.userId),
+                    eq(remoteSchema.mcpServers.enabled, 1)
+                ),
+            });
+            // Parse arguments just in case
+            enabledServers = enabledServers.map(s => ({
+                ...s,
+                args: s.args ? typeof s.args === "string" ? JSON.parse(s.args) : s.args : null,
+                envJson: s.envJson ? typeof s.envJson === "string" ? JSON.parse(s.envJson) : s.envJson : null,
+                headersJson: s.headersJson ? typeof s.headersJson === "string" ? JSON.parse(s.headersJson) : s.headersJson : null,
+            }));
+        }
 
         const config = {
                 provider: {
@@ -577,6 +637,7 @@ async function getOpenCodeClient(appPath: string) {
                         "*.log",
                     ],
                 },
+                mcp: buildMcpConfig(enabledServers) || {},
         };
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
@@ -1483,7 +1544,7 @@ function mapToolToVibesTag(tool: string): string {
         websearch: "vibes-web-crawl",
         lsp: "vibes-status",
     };
-    return map[tool] || "vibes-status";
+    return map[tool] || "vibes-mcp-tool-call";
 }
 
 function buildVibesTag(tool: string, detail: string, content: string): string {
@@ -1509,8 +1570,10 @@ function buildVibesTag(tool: string, detail: string, content: string): string {
         case "vibes-patch":
             return `<vibes-patch path="${escapeAttr(detail)}">${content}</vibes-patch>`;
         case "vibes-status":
-        default:
             return `<vibes-status title="${escapeAttr(detail)}">${content}</vibes-status>`;
+        case "vibes-mcp-tool-call":
+        default:
+            return `<vibes-mcp-tool-call tool="${escapeAttr(tool)}">${content}</vibes-mcp-tool-call>`;
     }
 }
 

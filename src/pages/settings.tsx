@@ -31,6 +31,7 @@ import {
   Download,
   Upload,
   Info,
+  Server,
 } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -45,6 +46,7 @@ import { Label } from "@/components/ui/label";
 import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
+import { McpServersSettings } from "@/components/settings/McpServersSettings";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -253,7 +255,6 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "OpenRouter",
     sectionId: "models-connectivity",
   },
-  // Integrations
   {
     id: "github",
     label: "GitHub",
@@ -302,6 +303,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
   //   section: "Integraciones",
   //   sectionId: "integrations",
   // },
+  {
+    id: "mcp-servers",
+    label: "Servidores MCP",
+    description: "Gestionar servidores Model Context Protocol para ampliar las herramientas del agente",
+    keywords: ["mcp", "tools", "herramientas", "servidor", "protocolo", "context", "plugin"],
+    section: "Herramientas MCP",
+    sectionId: "tools-mcp",
+  },
   // Agent Permissions
   {
     id: "agent-permissions",
@@ -787,6 +796,21 @@ export default function SettingsPage() {
               {/* Firebase hidden - not mature yet */}
               {/* <FirebaseIntegration /> */}
             </div>
+          </div>
+
+          {/* MCP Tools Section */}
+          <div
+            id="tools-mcp"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "tools-mcp"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+              <Server className="h-6 w-6 text-primary" />
+              Herramientas MCP
+            </h2>
+            <McpServersSettings />
           </div>
 
 
