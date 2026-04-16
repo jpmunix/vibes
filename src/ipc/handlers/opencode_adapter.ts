@@ -626,11 +626,11 @@ async function getOpenCodeClient(appPath: string) {
                 // Always-on context compaction (documented at opencode.ai/docs/configuration)
                 // SDK 1.2.17 types don't declare this field yet, but the binary accepts it.
                 ...({ compaction: { auto: true, prune: true } } as any),
-                // Enable all built-in LSP servers (TypeScript, ESLint, etc.)
-                // OpenCode auto-detects languages from file extensions and starts
-                // the appropriate LSP server. Empty object = enable all.
-                // See: https://opencode.ai/docs/lsp
-                ...({ lsp: {} } as any),
+                // LSP servers (TypeScript, ESLint, etc.): when enabled, diagnostics are sent
+                // after each file write so the agent can auto-fix TS errors inline.
+                // When disabled, the agent should run tsc/eslint manually at the end.
+                // Controlled via Settings → Agente → "Diagnósticos LSP por archivo".
+                ...((settings.enableOpenCodeLsp !== false ? { lsp: {} } : { lsp: false }) as any),
                 // Disable features we don't need (reduces overhead)
                 autoupdate: false,
                 formatter: false,
@@ -1253,6 +1253,9 @@ async function processEvents(
     let assistantMessageId: string | null = null;
     let reasoningCharCount = 0;
     let reasoningBuffer = ""; // Buffer early reasoning chars
+    // Guard: file.edited events fired by the watcher BEFORE the agent's first step
+    // are ambient sync events (not real agent edits). Only collect them after step-start.
+    let agentHasStartedStep = false;
 
     try {
         for await (const rawEvt of stream) {
@@ -1362,6 +1365,7 @@ async function processEvents(
                         }
 
                         case "step-start":
+                            agentHasStartedStep = true;
                             callbacks.onStepStart();
                             logger.info(`[OC:Event] Step started`);
                             sendUpdate();
@@ -1437,6 +1441,11 @@ async function processEvents(
                 }
 
                 case "file.edited": {
+                    if (!agentHasStartedStep) {
+                        // Watcher sync event — the agent hasn't started yet, ignore
+                        logger.info(`[OC:Event] 🚫 Skipping premature file.edited (watcher sync): ${props.file}`);
+                        break;
+                    }
                     callbacks.onFileEdited(props.file);
                     sendUpdate();
                     break;

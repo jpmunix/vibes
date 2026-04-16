@@ -428,6 +428,9 @@ export const UserSettingsSchema = z
     embeddingsModel: z.string().optional(),
     // OpenRouter web search (server tool) — model decides when to search
     enableWebSearch: z.boolean().optional(),
+    // OpenCode LSP: when true, language servers send diagnostics after each file write
+    // (auto-corrects TS errors inline). When false, the agent must run tsc manually.
+    enableOpenCodeLsp: z.boolean().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 

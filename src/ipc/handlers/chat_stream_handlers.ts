@@ -1487,8 +1487,19 @@ This conversation includes one or more image attachments. When the user uploads 
             `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
           );
 
+          // 2. LSP disabled — instruct the agent to verify TypeScript manually
+          if (settings.enableOpenCodeLsp === false) {
+            contextInstructions.push(
+              `IMPORTANTE: El servidor LSP está desactivado en esta sesión, lo que significa que NO recibirás diagnósticos de TypeScript automáticamente tras cada escritura de archivo.\n` +
+              `DEBES hacer lo siguiente una vez que hayas terminado de escribir todos los archivos de la tarea:\n` +
+              `1. Ejecuta \`npx tsc --noEmit\` (o el equivalente del proyecto) en el directorio raíz del proyecto usando la herramienta bash.\n` +
+              `2. Si hay errores, corrígelos y vuelve a ejecutar hasta que no haya errores.\n` +
+              `3. Solo entonces considera la tarea completada.\n` +
+              `No omitas este paso aunque creas que el código es correcto — es obligatorio cuando LSP está desactivado.`
+            );
+          }
 
-          // 3. Integration prompts — inject credentials and instructions
+
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
             try {

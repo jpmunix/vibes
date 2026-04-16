@@ -74,7 +74,7 @@ export function ChatPanel({
 
   useEffect(() => {
     if (!chatId || !settings) return;
-    // Only reset once per chatId
+    // Only process once per chatId
     if (hasResetModeRef.current === chatId) return;
     // Don't reset plan mode if explicitly preserved (new app window in plan mode)
     if (preservePlanModeRef.current) return;
@@ -83,11 +83,16 @@ export function ChatPanel({
     if (settings.selectedChatMode === "plan" && currentMessages.length > 0) {
       const isStreaming = isStreamingById.get(chatId) ?? false;
       if (!isStreaming) {
+        // Plan mode was carried over from a previous session into an existing chat — reset it
         hasResetModeRef.current = chatId;
         const defaultMode = settings.defaultChatMode || "agent";
         const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
         updateSettings({ selectedChatMode: resetTo });
       }
+    } else if (settings.selectedChatMode !== "plan") {
+      // User entered the chat in agent/build mode — mark as processed so that if they
+      // manually switch to plan later, this effect won't fire and revert it.
+      hasResetModeRef.current = chatId;
     }
   }, [chatId, settings, isStreamingById, updateSettings, messagesById]);
 
@@ -203,8 +208,15 @@ export function ChatPanel({
 
   useEffect(() => {
     const streamCount = chatId ? (streamCountById.get(chatId) ?? 0) : 0;
-    console.log("streamCount - scrolling to bottom", streamCount);
-    scrollToBottom();
+    if (streamCount === 0) return;
+    // Double-RAF: wait for Virtuoso to measure and paint the new message items
+    // before scrolling, otherwise the smooth scroll fires when messagesEndRef
+    // is still at the old position (top of the last long AI message).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    });
   }, [chatId, chatId ? (streamCountById.get(chatId) ?? 0) : 0]);
 
   const fetchChatMessages = useCallback(async () => {

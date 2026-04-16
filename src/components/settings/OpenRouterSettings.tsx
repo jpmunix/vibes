@@ -38,6 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { showError, showSuccess } from "@/lib/toast";
 import { ModelsSection } from "./ModelsSection";
+import { AddModelDialog } from "./AddModelDialog";
 import { cn } from "@/lib/utils";
 
 export function OpenRouterSettings({

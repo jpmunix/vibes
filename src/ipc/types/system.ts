@@ -292,6 +292,13 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Restart OpenCode server (applies config changes like LSP without quitting the app)
+  restartOpenCodeServer: defineContract({
+    channel: "system:restart-opencode-server",
+    input: z.void(),
+    output: z.void(),
+  }),
+
   // OpenRouter credits
   getOpenRouterCredits: defineContract({
     channel: "system:get-openrouter-credits",

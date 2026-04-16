@@ -51,7 +51,7 @@ interface CachedModelsFile {
     cacheVersion?: number;
 }
 
-const CACHE_VERSION = 7; // Bumped: require tools + reasoning for all models
+const CACHE_VERSION = 9; // Bumped: expose supportedParameters in LanguageModel
 
 const CACHE_TTL_MS = 1 * 24 * 60 * 60 * 1000; // 1 day
 const CACHE_FILENAME = "openrouter-models-cache.json";
@@ -171,6 +171,7 @@ function transformModel(model: OpenRouterModel): ModelOption {
         pricingOutput: model.pricing?.completion != null ? model.pricing.completion : undefined,
         inputModalities: model.architecture?.input_modalities || undefined,
         outputModalities: model.architecture?.output_modalities || undefined,
+        supportedParameters: model.supported_parameters || undefined,
     };
 }
 
@@ -196,12 +197,12 @@ function isRelevantForCoding(model: OpenRouterModel): boolean {
     // Curated models always pass (hand-picked, known to work well)
     if (CURATED_MODEL_IDS.has(model.id)) return true;
 
-    // MUST support tool-calling — without tools the agent can't operate
+    // MUST support tool-calling — without tools the agent can’t operate
     if (!model.supported_parameters?.includes("tools")) return false;
 
-    // MUST support reasoning — baseline quality for coding
-    if (!model.supported_parameters?.includes("reasoning")) return false;
-
+    // Reasoning is desirable but not mandatory — non-reasoning models
+    // with tool support are still valid choices and shown in the
+    // “Modelos sin razonamiento” panel in settings.
     return true;
 }
 

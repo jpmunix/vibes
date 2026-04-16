@@ -37,6 +37,8 @@ export const LanguageModelSchema = z.object({
   inputModalities: z.array(z.string()).optional(),
   outputModalities: z.array(z.string()).optional(),
   type: z.enum(["custom", "local", "cloud"]).optional(),
+  /** Raw supported_parameters from OpenRouter (e.g. ["reasoning", "tools", "temperature"]) */
+  supportedParameters: z.array(z.string()).optional(),
 });
 
 export type LanguageModel = z.infer<typeof LanguageModelSchema>;

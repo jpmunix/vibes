@@ -68,6 +68,7 @@ import { generateCuteAppName } from "../../lib/utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
+import { shutdownOpenCode } from "./opencode_adapter";
 
 const logger = log.scope("app_handlers");
 
@@ -77,6 +78,11 @@ export function registerAppHandlers() {
   createTypedHandler(systemContracts.restartVibes, async () => {
     app.relaunch();
     app.quit();
+  });
+
+  createTypedHandler(systemContracts.restartOpenCodeServer, async () => {
+    await shutdownOpenCode();
+    logger.info("[OpenCode] Server shutdown by user (config change). Will reinit on next chat.");
   });
 
   createTypedHandler(appContracts.createApp, async (_, params, context) => {

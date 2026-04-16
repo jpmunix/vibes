@@ -62,6 +62,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   embeddingsModel: "openai/text-embedding-3-small",
   // Web search — enabled by default so the model can search when needed
   enableWebSearch: true,
+  // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)
+  enableOpenCodeLsp: true,
 };
 
 const SETTINGS_FILE = "user-settings.json";
