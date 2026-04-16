@@ -7,8 +7,7 @@ import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ProModeModelSelector } from "./ProModeModelSelector";
 import { ChevronRight } from "lucide-react";
 import { AgentToolsSettings } from "./AgentToolsSettings";
-import { useState, useRef } from "react";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 import {
   Select,
@@ -69,14 +68,6 @@ function SettingRow({
   );
 }
 
-// ─── Steps presets ───
-const PRESET_STEPS = [20, 30, 50, 70] as const;
-const stepsOptions = [
-  { value: 20, label: "Ligero"   },
-  { value: 30, label: "Estándar" },
-  { value: 50, label: "Pro"      },
-  { value: 70, label: "Experto"  },
-] as const;
 
 export function AIBehaviorSettings({
   isHighlighted,
@@ -86,41 +77,6 @@ export function AIBehaviorSettings({
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
   const [modelsExpanded, setModelsExpanded] = useState(false);
-
-  // ─── Agent steps state ───
-  const savedSteps = settings?.agentMaxSteps ?? 20;
-  const [customMode, setCustomMode] = useState(
-    () => !(PRESET_STEPS as readonly number[]).includes(savedSteps),
-  );
-  const [customInput, setCustomInput] = useState(() => String(savedSteps));
-  const stepsInputRef = useRef<HTMLInputElement>(null);
-
-  const currentSteps = settings?.agentMaxSteps ?? 20;
-
-  const handlePresetClick = (value: number) => {
-    setCustomMode(false);
-    updateSettings({ agentMaxSteps: value });
-  };
-
-  const handleCustomClick = () => {
-    setCustomMode(true);
-    setCustomInput(String(currentSteps));
-    setTimeout(() => stepsInputRef.current?.focus(), 50);
-  };
-
-  const handleCustomInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    setCustomInput(raw);
-    const num = parseInt(raw, 10);
-    if (!isNaN(num) && num >= 20 && num <= 100) {
-      updateSettings({ agentMaxSteps: num });
-    }
-  };
-
-  const pillBase = "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer";
-  const pillActive = "bg-primary text-primary-foreground shadow-sm";
-  const pillInactive = "text-muted-foreground hover:text-primary hover:bg-primary/10";
-
 
   // ─── Current values ───
 
@@ -244,56 +200,6 @@ export function AIBehaviorSettings({
           )}
         </div>
 
-        <SettingRow
-          label="Pasos del agente"
-          description={
-            <>
-              Limita el máximo de lecturas, ediciones y comandos por petición. Un menor número de pasos mejora la velocidad de respuesta.
-              <br />
-              <span className="text-[13px] opacity-75 inline-block mt-1">
-                Referencia: Ligero (20) · Estándar (30) · Pro (50) · Experto (70)
-              </span>
-            </>
-          }
-          control={
-            <div className="flex flex-col items-end gap-2">
-              <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
-                {stepsOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => handlePresetClick(opt.value)}
-                    className={cn(
-                      pillBase,
-                      !customMode && currentSteps === opt.value ? pillActive : pillInactive,
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                <button
-                  onClick={handleCustomClick}
-                  className={cn(pillBase, customMode ? pillActive : pillInactive)}
-                >
-                  Custom
-                </button>
-              </div>
-              {customMode && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Pasos:</span>
-                  <Input
-                    ref={stepsInputRef}
-                    type="text"
-                    inputMode="numeric"
-                    value={customInput}
-                    onChange={handleCustomInput}
-                    placeholder="20–100"
-                    className="h-8 w-20 text-sm text-center font-mono"
-                  />
-                </div>
-              )}
-            </div>
-          }
-        />
 
       </div>
     </div>

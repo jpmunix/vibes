@@ -57,7 +57,6 @@ const DEFAULT_SETTINGS: UserSettings = {
   reasoningEffort: "medium",
   textVerbosity: "low",
   thinkingBudget: "medium",
-  agentMaxSteps: 30,
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",

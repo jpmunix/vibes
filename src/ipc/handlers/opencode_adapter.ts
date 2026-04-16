@@ -563,8 +563,6 @@ async function getOpenCodeClient(appPath: string) {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
-                        // Limit agentic iterations — prevents runaway tool-call loops on simple tasks
-                        ...(settings.agentMaxSteps ? { steps: settings.agentMaxSteps } : {}),
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -573,7 +571,6 @@ async function getOpenCodeClient(appPath: string) {
                         mode: "subagent",
                         hidden: true,
                         temperature: 0.1,
-                        steps: 5,
                         permission: {
                             edit: "allow",
                             bash: { "*": "deny" },
@@ -598,7 +595,6 @@ async function getOpenCodeClient(appPath: string) {
                     "mockup": {
                         description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
                         mode: "primary",
-                        steps: settings.agentMaxSteps || 15,
                         reasoningEffort: "none",
                         tools: {
                             write: true,

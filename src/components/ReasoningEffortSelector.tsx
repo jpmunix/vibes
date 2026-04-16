@@ -43,58 +43,16 @@ const reasoningOptions: OptionInfo[] = [
     },
 ];
 
-interface StepPreset {
-    id: string;
-    label: string;
-    steps: number;
-}
-
-const stepPresets: StepPreset[] = [
-    { id: "ligero", label: "Ligero", steps: 20 },
-    { id: "estandar", label: "Estándar", steps: 30 },
-    { id: "pro", label: "Pro", steps: 50 },
-    { id: "experto", label: "Experto", steps: 70 },
-];
-
-function getPresetForSteps(steps: number | undefined): string {
-    if (!steps) return "estandar";
-    const match = stepPresets.find((p) => p.steps === steps);
-    if (match) return match.id;
-    // Find closest
-    const closest = stepPresets.reduce((prev, curr) =>
-        Math.abs(curr.steps - steps) < Math.abs(prev.steps - steps) ? curr : prev
-    );
-    return closest.id;
-}
-
 export const ReasoningEffortSelector: React.FC<ReasoningEffortSelectorProps> = ({ variant = "default" }) => {
     const { settings, updateSettings } = useSettings();
 
     const currentReasoning = settings?.reasoningEffort || defaultReasoningValue;
-    const currentSteps = settings?.agentMaxSteps;
-    const [localPreset, setLocalPreset] = useState(() => getPresetForSteps(currentSteps));
-
-    // Sync local preset when settings change externally
-    useEffect(() => {
-        setLocalPreset(getPresetForSteps(currentSteps));
-    }, [currentSteps]);
 
     const currentReasoningOption =
         reasoningOptions.find((opt) => opt.value === currentReasoning) || reasoningOptions[1];
 
-    const currentPresetObj = stepPresets.find((p) => p.id === localPreset) || stepPresets[1];
-    const isCustomSteps = currentSteps != null && !stepPresets.some((p) => p.steps === currentSteps);
-
     const handleReasoningChange = (value: string) => {
         updateSettings({ reasoningEffort: value as "low" | "medium" | "high" });
-    };
-
-    const handleStepPresetChange = (presetId: string) => {
-        setLocalPreset(presetId);
-        const preset = stepPresets.find((p) => p.id === presetId);
-        if (preset) {
-            updateSettings({ agentMaxSteps: preset.steps });
-        }
     };
 
     if (variant === "compact") {
@@ -106,73 +64,33 @@ export const ReasoningEffortSelector: React.FC<ReasoningEffortSelectorProps> = (
                         id="reasoning-effort-compact"
                     >
                         <span className="font-medium">{currentReasoningOption.label}</span>
-                        <span className="text-muted-foreground/40">·</span>
-                        <span className="font-medium">{isCustomSteps ? `Custom` : currentPresetObj.label}</span>
                         <svg width="10" height="10" viewBox="0 0 10 10" className="ml-0.5 text-muted-foreground opacity-60">
                             <path d="M2.5 3.5L5 6.5L7.5 3.5" stroke="currentColor" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </button>
                 </PopoverTrigger>
                 <PopoverContent
-                    className="w-[340px] p-0"
+                    className="w-[180px] p-2"
                     align="start"
                     side="top"
                     sideOffset={8}
                 >
-                    <div className="flex divide-x divide-border">
-                        {/* Left: Reasoning effort */}
-                        <div className="flex-1 p-2">
-                            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1.5">
-                                Razonamiento
-                            </div>
-                            {reasoningOptions.map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => handleReasoningChange(option.value)}
-                                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                                        currentReasoning === option.value
-                                            ? "bg-primary/10 text-primary font-medium"
-                                            : "hover:bg-muted/50 text-foreground"
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
-                        {/* Right: Step presets */}
-                        <div className="flex-1 p-2">
-                            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1.5">
-                                Autonomía
-                            </div>
-                            {stepPresets.map((preset) => (
-                                <button
-                                    key={preset.id}
-                                    onClick={() => handleStepPresetChange(preset.id)}
-                                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
-                                        localPreset === preset.id && !isCustomSteps
-                                            ? "bg-primary/10 text-primary font-medium"
-                                            : "hover:bg-muted/50 text-foreground"
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span>{preset.label}</span>
-                                        <span className="text-[10px] text-muted-foreground">{preset.steps}</span>
-                                    </div>
-                                </button>
-                            ))}
-                            {isCustomSteps && (
-                                <button
-                                    disabled
-                                    className="w-full text-left px-2 py-1.5 rounded-md text-sm bg-primary/10 text-primary font-medium cursor-default"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span>Custom</span>
-                                        <span className="text-[10px] text-primary/70">{currentSteps}</span>
-                                    </div>
-                                </button>
-                            )}
-                        </div>
+                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pb-1.5">
+                        Razonamiento
                     </div>
+                    {reasoningOptions.map((option) => (
+                        <button
+                            key={option.value}
+                            onClick={() => handleReasoningChange(option.value)}
+                            className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
+                                currentReasoning === option.value
+                                    ? "bg-primary/10 text-primary font-medium"
+                                    : "hover:bg-muted/50 text-foreground"
+                            }`}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
                 </PopoverContent>
             </Popover>
         );

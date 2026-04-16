@@ -347,7 +347,7 @@ export const UserSettingsSchema = z
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
-    agentMaxSteps: z.number().int().min(3).max(80).optional(),
+    agentMaxSteps: z.number().optional(), // retained for migration compat — no longer used
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
