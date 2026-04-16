@@ -104,6 +104,8 @@ export const chats = sqliteTable("chats", {
     planData: text("plan_data", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     lastReadAt: integer("last_read_at", { mode: "timestamp" }),
+    isRead: integer("is_read").notNull().default(1),
+    isArchived: integer("is_archived").notNull().default(0),
     opencodeSessionId: text("opencode_session_id"),
 });
 

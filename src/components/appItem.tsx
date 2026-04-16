@@ -65,7 +65,7 @@ export function AppItem({
           <div className="flex flex-col w-full relative overflow-hidden">
             <div className="flex items-center gap-1.5 overflow-hidden">
               <span
-                className={`truncate text-[13px] leading-tight ${selectedAppId === app.id ? "font-semibold" : "font-medium"}`}
+                className={`truncate text-[15px] leading-tight ${selectedAppId === app.id ? "font-semibold" : "font-medium"}`}
               >
                 {app.name}
               </span>
@@ -79,14 +79,14 @@ export function AppItem({
               )}
             </div>
             <span
-              className={`text-[10.5px] leading-tight mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "text-primary/60" : "text-muted-foreground/60"}`}
+              className={`text-[12.5px] leading-tight mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "text-primary/60" : "text-muted-foreground/60"}`}
             >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
                 locale: es,
               })}
               {app.localPathExists === false && (
-                <span className="text-[9.5px] text-red-400/80 font-medium whitespace-nowrap">
+                <span className="text-[11.5px] text-red-400/80 font-medium whitespace-nowrap">
                   • Sin archivos locales
                 </span>
               )}

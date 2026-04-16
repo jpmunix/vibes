@@ -319,6 +319,37 @@ export const chatContracts = {
     input: z.number(), // chatId
     output: z.void(),
   }),
+
+  markChatUnread: defineContract({
+    channel: "mark-chat-unread",
+    input: z.number(), // chatId
+    output: z.void(),
+  }),
+
+  renameChat: defineContract({
+    channel: "rename-chat",
+    input: z.object({ chatId: z.number(), title: z.string() }),
+    output: z.void(),
+  }),
+
+  archiveChat: defineContract({
+    channel: "archive-chat",
+    input: z.object({ chatId: z.number(), archived: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getArchivedChats: defineContract({
+    channel: "get-archived-chats",
+    input: z.number(), // appId
+    output: z.array(
+      z.object({
+        id: z.number(),
+        appId: z.number(),
+        title: z.string().nullable(),
+        createdAt: z.date(),
+      }),
+    ),
+  }),
 } as const;
 
 // =============================================================================

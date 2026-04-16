@@ -345,6 +345,11 @@ export function useStreamChat({
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
 
+              // Persist unread state to DB when response arrives on a chat the user isn't viewing
+              if (isViewingDifferentChat) {
+                ipc.chat.markChatUnread(chatId).catch(() => {});
+              }
+
               // If the backend sent back the user's prompt (cancel with no content),
               // restore it to the input box so the user doesn't lose their message
               if (response.restoredPrompt) {

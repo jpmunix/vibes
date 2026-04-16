@@ -185,7 +185,7 @@ export function NotesList({ show }: { show?: boolean }) {
                             {note.title}
                           </span>
                           <span
-                            className={`text-xs ${currentNoteId === note.id
+                            className={`text-[14px] ${currentNoteId === note.id
                               ? "text-primary/70"
                               : "text-muted-foreground"
                               }`}

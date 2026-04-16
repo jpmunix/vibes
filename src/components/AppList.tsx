@@ -191,7 +191,7 @@ export function AppList({ show }: { show?: boolean }) {
           border: 1px solid var(--border);
           background: var(--sidebar);
           color: var(--sidebar-foreground);
-          font-size: 12.5px;
+          font-size: 14.5px;
           font-weight: 500;
           cursor: pointer;
           transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
@@ -215,7 +215,7 @@ export function AppList({ show }: { show?: boolean }) {
         }
 
         .sidebar-section-label {
-          font-size: 10px;
+          font-size: 12.5px;
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;

@@ -41,7 +41,7 @@ export function OpenRouterCreditsButton() {
             ) : (
               <DollarSign size={19} />
             )}
-            <span className="text-[9.5px] font-bold leading-none mt-0.5 opacity-70">
+            <span className="text-[12.5px] font-bold leading-none mt-0.5 opacity-70">
               {isLoading ? "..." : formattedBalance}
             </span>
           </button>

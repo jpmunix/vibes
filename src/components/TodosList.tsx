@@ -66,7 +66,7 @@ export function TodosList({ show }: { show?: boolean }) {
                                                     {app.name}
                                                 </span>
                                                 <span
-                                                    className={`text-xs ${currentAppId === app.id
+                                                    className={`text-[14px] ${currentAppId === app.id
                                                             ? "text-primary/70"
                                                             : "text-muted-foreground"
                                                         }`}

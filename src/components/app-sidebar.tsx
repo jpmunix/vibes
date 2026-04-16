@@ -200,8 +200,8 @@ export function AppSidebar() {
           align-items: center;
           justify-content: center;
           gap: 3px;
-          width: 48px;
-          height: 48px;
+          width: 68px;
+          height: 68px;
           border-radius: 14px;
           cursor: pointer;
           border: none;
@@ -212,6 +212,7 @@ export function AppSidebar() {
         }
         .sidebar-icon-btn:hover {
           background: var(--sidebar-accent);
+          transform: scale(1.04);
         }
         .sidebar-icon-btn--active {
           background: var(--sidebar-accent);
@@ -224,10 +225,10 @@ export function AppSidebar() {
           color: var(--primary);
         }
         .sidebar-icon-label {
-          font-size: 10px;
-          font-weight: 500;
+          font-size: 13px;
+          font-weight: 600;
           line-height: 1;
-          opacity: 0.8;
+          opacity: 0.85;
         }
 
         /* Bottom utility button */
@@ -237,8 +238,8 @@ export function AppSidebar() {
           align-items: center;
           justify-content: center;
           gap: 2px;
-          width: 48px;
-          height: 48px;
+          width: 68px;
+          height: 68px;
           border-radius: 14px;
           border: none;
           background: transparent;
@@ -434,8 +435,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
-                  size="sm"
-                  className="font-medium w-14"
+                  className="font-medium w-auto h-auto"
                 >
                   <Link
                     to={item.to}
@@ -454,7 +454,7 @@ function AppIcons({ onTabChange }: { onTabChange: (tab: string) => void }) {
                       }
                     }}
                   >
-                    <item.icon className="h-[18px] w-[18px]" />
+                    <item.icon className="h-[26px] w-[26px]" />
                     <span className="sidebar-icon-label">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>

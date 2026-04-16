@@ -9,9 +9,15 @@ import {
   Loader2,
   Search,
   PlusCircle,
+  Plus,
   FolderOpen,
   X,
   Trash2,
+  MoreVertical,
+  BellOff,
+  Pencil,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -38,6 +44,9 @@ interface AppChatsProps {
   appId: number;
   onChatClick: (appId: number, chatId: number) => void;
   onDeleteChat: (chatId: number, chatTitle: string) => void;
+  onRenameChat: (chatId: number, currentTitle: string) => void;
+  onArchiveChat: (chatId: number, chatTitle: string) => void;
+  onMarkUnread: (chatId: number) => void;
   selectedChatId: number | null;
 }
 
@@ -45,6 +54,9 @@ const AppChats = memo(function AppChats({
   appId,
   onChatClick,
   onDeleteChat,
+  onRenameChat,
+  onArchiveChat,
+  onMarkUnread,
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
@@ -72,6 +84,37 @@ const AppChats = memo(function AppChats({
     onChatClick(appId, chatId);
   }, [setRecentStreamChatIds, onChatClick]);
 
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const menuBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+
+  const handleRenameSubmit = useCallback(async (chatId: number) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    try {
+      await ipc.chat.renameChat({ chatId, title: trimmed });
+      setRenamingId(null);
+    } catch (e) {
+      showError(e);
+    }
+  }, [renameValue]);
+
+  const openMenu = useCallback((chatId: number) => {
+    const btn = menuBtnRefs.current.get(chatId);
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, left: rect.right + 8 });
+    setOpenMenuId(chatId);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setOpenMenuId(null);
+    setMenuPos(null);
+  }, []);
+
   const sortedChats = useMemo(() => {
     if (!chats) return [];
     return [...chats]
@@ -91,6 +134,7 @@ const AppChats = memo(function AppChats({
   }
 
   return (
+    <>
     <div className="pl-4 flex flex-col gap-0.5 py-1">
       {sortedChats.length === 0 ? (
         <div className="px-2 py-1.5 text-xs text-muted-foreground/50">
@@ -101,51 +145,95 @@ const AppChats = memo(function AppChats({
           {sortedChats.map((chat) => {
             const unread = isChatUnread(chat.id);
             const streaming = isStreamingById.get(chat.id) ?? false;
+            const isMenuOpen = openMenuId === chat.id;
+            const isRenaming = renamingId === chat.id;
             return (
               <div
                 key={chat.id}
-                className="group/chat-row flex items-center"
+                className={`group/chat-row relative flex items-center rounded-md transition-colors ${
+                  selectedChatId === chat.id
+                    ? "bg-primary/10"
+                    : "hover:bg-sidebar-accent/60"
+                }`}
               >
-                <button
-                  type="button"
-                  className={`flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors cursor-pointer text-left flex-1 min-w-0 ${
-                    selectedChatId === chat.id
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground/80 hover:bg-sidebar-accent/60"
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleChatClickAndMarkRead(appId, chat.id);
-                  }}
-                >
-                  <div className="flex items-center min-w-0 flex-1 gap-1.5">
-                    {streaming ? (
-                      <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-                    ) : unread ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
-                    ) : null}
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
-                      <span className="text-[10px] text-muted-foreground/60 mt-0.5">
-                        {formatDistanceToNow(new Date(chat.createdAt), {
-                          addSuffix: false,
-                          locale: es,
-                        })}
-                      </span>
+                {isRenaming ? (
+                  <form
+                    className="flex-1 px-2 py-1"
+                    onSubmit={(e) => { e.preventDefault(); handleRenameSubmit(chat.id); }}
+                  >
+                    <input
+                      ref={renameInputRef}
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={() => handleRenameSubmit(chat.id)}
+                      onKeyDown={(e) => { if (e.key === "Escape") setRenamingId(null); }}
+                      autoFocus
+                      className="w-full bg-sidebar-accent/60 border border-primary/30 rounded-md px-2 py-0.5 text-[13px] outline-none focus:border-primary"
+                    />
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className={`flex items-center gap-2 px-2 py-1.5 text-[14px] rounded-md cursor-pointer text-left w-full min-w-0 ${
+                      selectedChatId === chat.id
+                        ? "text-primary font-medium"
+                        : "text-foreground/80"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleChatClickAndMarkRead(appId, chat.id);
+                    }}
+                  >
+                    <div className="flex items-center min-w-0 flex-1 gap-1.5">
+                      {streaming ? (
+                        <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+                      ) : unread ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />
+                      ) : null}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
+                        <span className="text-[12px] text-muted-foreground/60 mt-0.5">
+                          {formatDistanceToNow(new Date(chat.createdAt), {
+                            addSuffix: false,
+                            locale: es,
+                          })}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="opacity-0 group-hover/chat-row:opacity-100 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/60 hover:text-red-500 transition-all shrink-0 cursor-pointer"
-                  title="Eliminar chat"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteChat(chat.id, chat.title || "Nuevo chat");
-                  }}
-                >
-                  <Trash2 size={12} />
-                </button>
+                  </button>
+                )}
+
+                {/* Gradient + quick actions + 3-dot menu */}
+                {!isRenaming && (
+                  <>
+                    <div className="absolute right-0 top-0 bottom-0 w-32 pointer-events-none opacity-0 group-hover/chat-row:opacity-100 transition-opacity z-10 rounded-r-md bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent" />
+                    {/* Archive quick action */}
+                    <button
+                      type="button"
+                      className="absolute right-9 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/chat-row:opacity-100 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+                      title="Archivar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onArchiveChat(chat.id, chat.title || "Nuevo chat");
+                      }}
+                    >
+                      <Archive size={16} />
+                    </button>
+                    {/* 3-dot menu */}
+                    <button
+                      ref={(el) => { if (el) menuBtnRefs.current.set(chat.id, el); else menuBtnRefs.current.delete(chat.id); }}
+                      type="button"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/chat-row:opacity-100 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+                      title="Opciones"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        isMenuOpen ? closeMenu() : openMenu(chat.id);
+                      }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </>
+                )}
               </div>
             );
           })}
@@ -163,6 +251,58 @@ const AppChats = memo(function AppChats({
         </>
       )}
     </div>
+
+    {/* Portal dropdown — rendered at body level to escape sidebar overflow */}
+    {openMenuId !== null && menuPos !== null && createPortal(
+      <>
+        <div className="fixed inset-0 z-[998]" onClick={closeMenu} />
+        <div
+          className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+          style={{ top: menuPos.top, left: menuPos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            onClick={() => { closeMenu(); onMarkUnread(openMenuId); }}
+          >
+            <BellOff size={14} className="text-muted-foreground shrink-0" />
+            Marcar como no leído
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            onClick={() => {
+              const chat = sortedChats.find(c => c.id === openMenuId);
+              closeMenu();
+              if (chat) {
+                setRenamingId(chat.id);
+                setRenameValue(chat.title || "");
+                setTimeout(() => renameInputRef.current?.focus(), 50);
+              }
+            }}
+          >
+            <Pencil size={14} className="text-muted-foreground shrink-0" />
+            Renombrar
+          </button>
+          <div className="border-t border-border mx-2 my-1" />
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            onClick={() => {
+              const chat = sortedChats.find(c => c.id === openMenuId);
+              closeMenu();
+              if (chat) onDeleteChat(chat.id, chat.title || "Nuevo chat");
+            }}
+          >
+            <Trash2 size={14} className="shrink-0" />
+            Eliminar
+          </button>
+        </div>
+      </>,
+      document.body
+    )}
+  </>
   );
 });
 
@@ -173,6 +313,9 @@ interface WorkspaceAppItemProps {
   onToggle: (appId: number) => void;
   onChatClick: (appId: number, chatId: number) => void;
   onDeleteChat: (chatId: number, chatTitle: string) => void;
+  onRenameChat: (chatId: number, currentTitle: string) => void;
+  onArchiveChat: (chatId: number, chatTitle: string) => void;
+  onMarkUnread: (chatId: number) => void;
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
   selectedChatId: number | null;
@@ -185,22 +328,81 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onToggle,
   onChatClick,
   onDeleteChat,
+  onRenameChat,
+  onArchiveChat,
+  onMarkUnread,
   onNewChat,
   onCloseApp,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
   const isActive = selectedAppId === app.id;
+  const queryClient = useQueryClient();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [archivePanelOpen, setArchivePanelOpen] = useState(false);
+  const [archivePanelPos, setArchivePanelPos] = useState<{ top: number; left: number } | null>(null);
+  const [archivedChats, setArchivedChats] = useState<Array<{ id: number; title: string | null; createdAt: Date }>>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
+
+  const openMenu = useCallback(() => {
+    const btn = menuBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, left: rect.right + 8 });
+    setMenuOpen(true);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMenuPos(null);
+  }, []);
+
+  const loadAndShowArchived = useCallback(async () => {
+    closeMenu();
+    const btn = menuBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setArchivePanelPos({ top: rect.bottom + 4, left: rect.right + 8 });
+    setArchivePanelOpen(true);
+    setLoadingArchived(true);
+    try {
+      const result = await ipc.chat.getArchivedChats(app.id);
+      setArchivedChats(result as any);
+    } catch (e) {
+      showError(e);
+    } finally {
+      setLoadingArchived(false);
+    }
+  }, [app.id, closeMenu]);
+
+  const handleUnarchive = useCallback(async (chatId: number) => {
+    setUnarchivingId(chatId);
+    try {
+      await ipc.chat.archiveChat({ chatId, archived: false });
+      setArchivedChats(prev => prev.filter(c => c.id !== chatId));
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+    } catch (e) {
+      showError(e);
+    } finally {
+      setUnarchivingId(null);
+    }
+  }, [queryClient]);
 
   return (
+    <>
     <div className="mb-0.5">
-      <div className="flex items-center group/app-row">
+      <div className={`group/app-row relative flex items-center rounded-lg transition-all duration-150 ${
+        isActive ? "bg-primary/8" : "hover:bg-sidebar-accent/60"
+      }`}>
         <button
           type="button"
-          className={`flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 rounded-lg transition-all duration-150 cursor-pointer text-left ${
-            isActive
-              ? "bg-primary/8 text-primary"
-              : "hover:bg-sidebar-accent/60"
+          className={`flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 cursor-pointer text-left ${
+            isActive ? "text-primary" : ""
           }`}
           onClick={() => onToggle(app.id)}
         >
@@ -209,35 +411,33 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           ) : (
             <ChevronRight size={13} className="text-muted-foreground/70 shrink-0" />
           )}
-          <span
-            className={`text-[12.5px] truncate flex-1 ${
-              isActive ? "font-semibold" : "font-medium"
-            }`}
-          >
+          <span className={`text-[15px] truncate flex-1 ${isActive ? "font-semibold" : "font-medium"}`}>
             {app.name}
           </span>
         </button>
+
+        {/* Gradient fade */}
+        <div className="absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/app-row:opacity-100 transition-opacity z-10 rounded-r-lg bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent" />
+
+        {/* 3-dot menu button */}
         <button
+          ref={menuBtnRef}
           type="button"
-          className="opacity-0 group-hover/app-row:opacity-100 p-1 rounded-md hover:bg-sidebar-accent/80 text-muted-foreground/60 hover:text-primary transition-all shrink-0 cursor-pointer"
-          title="Nuevo chat"
-          onClick={(e) => {
-            e.stopPropagation();
-            onNewChat(app.id);
-          }}
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/app-row:opacity-100 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+          title="Opciones"
+          onClick={(e) => { e.stopPropagation(); menuOpen ? closeMenu() : openMenu(); }}
         >
-          <PlusCircle size={14} />
+          <MoreVertical size={15} />
         </button>
+
+        {/* New chat (Plus) button */}
         <button
           type="button"
-          className="opacity-0 group-hover/app-row:opacity-100 p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/60 hover:text-red-500 transition-all shrink-0 cursor-pointer"
-          title="Cerrar carpeta"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCloseApp(app.id, app.name);
-          }}
+          className="absolute right-8 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/app-row:opacity-100 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer"
+          title="Nuevo chat"
+          onClick={(e) => { e.stopPropagation(); onNewChat(app.id); }}
         >
-          <X size={14} />
+          <Plus size={15} />
         </button>
       </div>
 
@@ -247,10 +447,149 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           appId={app.id}
           onChatClick={onChatClick}
           onDeleteChat={onDeleteChat}
+          onRenameChat={onRenameChat}
+          onArchiveChat={onArchiveChat}
+          onMarkUnread={onMarkUnread}
           selectedChatId={selectedChatId}
         />
       )}
     </div>
+
+    {/* App row ⋮ menu portal */}
+    {menuOpen && menuPos && createPortal(
+      <>
+        <div className="fixed inset-0 z-[998]" onClick={closeMenu} />
+        <div
+          className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+          style={{ top: menuPos.top, left: menuPos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            onClick={() => { closeMenu(); onNewChat(app.id); }}
+          >
+            <Plus size={14} className="text-muted-foreground shrink-0" />
+            Nuevo chat
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            onClick={loadAndShowArchived}
+          >
+            <Archive size={14} className="text-muted-foreground shrink-0" />
+            Ver archivados
+          </button>
+          <div className="border-t border-border mx-2 my-1" />
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
+          >
+            <X size={14} className="shrink-0" />
+            Cerrar carpeta
+          </button>
+        </div>
+      </>,
+      document.body
+    )}
+
+    {/* Archived chats panel — centered modal */}
+    {archivePanelOpen && createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm"
+          onClick={() => setArchivePanelOpen(false)}
+        />
+        <div
+          className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Panel header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-sidebar-accent/30">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <Archive size={15} className="text-primary" />
+              </div>
+              <div>
+                <span className="text-[14px] font-semibold block">Chats archivados</span>
+                <span className="text-[11px] text-muted-foreground/60">{app.name}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+              onClick={() => setArchivePanelOpen(false)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Panel content */}
+          <div className="max-h-[420px] overflow-y-auto">
+            {loadingArchived ? (
+              <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-[13px]">Cargando archivados...</span>
+              </div>
+            ) : archivedChats.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                  <Archive size={28} className="opacity-50" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[13px] font-medium text-muted-foreground/70">Sin chats archivados</p>
+                  <p className="text-[12px] mt-0.5 text-muted-foreground/40">Los chats archivados de {app.name} aparecerán aquí</p>
+                </div>
+              </div>
+            ) : (
+              <div className="py-2">
+                {archivedChats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
+                  >
+                    <div className="p-1.5 rounded-lg bg-muted/30 shrink-0">
+                      <Archive size={12} className="text-muted-foreground/50" />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[13.5px] truncate font-medium">{chat.title || "Sin título"}</span>
+                      <span className="text-[11.5px] text-muted-foreground/55 mt-0.5">
+                        Archivado · {formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true, locale: es })}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[12px] font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                      onClick={() => handleUnarchive(chat.id)}
+                      disabled={unarchivingId === chat.id}
+                    >
+                      {unarchivingId === chat.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <ArchiveRestore size={12} />
+                      }
+                      Restaurar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {archivedChats.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
+              <span className="text-[12px] text-muted-foreground/50">
+                {archivedChats.length} {archivedChats.length !== 1 ? 'chats archivados' : 'chat archivado'}
+              </span>
+              <span className="text-[11px] text-muted-foreground/35">Hover para restaurar</span>
+            </div>
+          )}
+        </div>
+      </>,
+      document.body
+    )}
+    </>
   );
 });
 
@@ -260,6 +599,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const { apps, loading, error, refreshApps } = useLoadApps();
   const [selectedAppId, setSelectedAppId] = useAtom(selectedAppIdAtom);
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
+  const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const queryClient = useQueryClient();
   const [expandedApps, setExpandedApps] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
@@ -449,6 +789,44 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     setIsDeleteChatDialogOpen(true);
   }, []);
 
+  const handleMarkUnread = useCallback(async (chatId: number) => {
+    // Add to Jotai atom immediately so the dot appears right away
+    setRecentStreamChatIds((prev) => {
+      const next = new Set(prev);
+      next.add(chatId);
+      return next;
+    });
+    try {
+      await ipc.chat.markChatUnread(chatId);
+    } catch (e) {
+      // Rollback atom on error
+      setRecentStreamChatIds((prev) => {
+        const next = new Set(prev);
+        next.delete(chatId);
+        return next;
+      });
+      showError(e);
+    }
+  }, [setRecentStreamChatIds]);
+
+  const handleArchiveChatClick = useCallback(async (chatId: number, chatTitle: string) => {
+    try {
+      await ipc.chat.archiveChat({ chatId, archived: true });
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      showSuccess(`"${chatTitle}" archivado`);
+      if (selectedChatId === chatId) {
+        setSelectedChatId(null);
+        navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
+      }
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient, selectedChatId, selectedAppId, navigate]);
+
+  const handleRenameChatClick = useCallback((_chatId: number, _currentTitle: string) => {
+    // Inline rename is handled inside AppChats — this is a no-op pass-through
+  }, []);
+
   const handleConfirmDeleteChat = useCallback(async () => {
     if (deleteChatId === null) return;
     try {
@@ -513,7 +891,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           border: 1px solid var(--border);
           background: var(--sidebar);
           color: var(--sidebar-foreground);
-          font-size: 12px;
+          font-size: 14.5px;
           outline: none;
           transition: border-color 0.18s ease;
         }
@@ -534,7 +912,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           border: 1px solid var(--border);
           background: var(--sidebar);
           color: var(--sidebar-foreground);
-          font-size: 12.5px;
+          font-size: 14.5px;
           font-weight: 500;
           cursor: pointer;
           transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
@@ -623,6 +1001,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onToggle={handleToggleApp}
                     onChatClick={handleChatClick}
                     onDeleteChat={handleDeleteChatClick}
+                    onRenameChat={handleRenameChatClick}
+                    onArchiveChat={handleArchiveChatClick}
+                    onMarkUnread={handleMarkUnread}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
                     selectedChatId={selectedChatId}

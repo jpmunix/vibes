@@ -1,5 +1,12 @@
 ## ✨ Novedades
 
+- **Gestión de chats en el sidebar**: cada chat tiene un botón de acción rápida para archivar y un menú `⋮` con opciones: marcar como no leído, renombrar y eliminar
+- **Sistema de archivado**: archiva chats directamente desde el sidebar; los chats archivados desaparecen de la lista principal sin borrarse
+- **Panel de archivados**: desde el menú de carpeta, "Ver archivados" abre un modal centrado con todos los chats archivados, fecha y botón para restaurarlos individualmente
+- **Renombrado inline**: al elegir "Renombrar", el título se edita directamente en el sidebar sin ventanas emergentes
+- **Marcar como no leído**: marca manualmente un chat para que muestre el puntito indicador, igual que cuando llega una respuesta nueva
+- **Restyle del sidebar**: hover con fondo completo en toda la fila (incluyendo zona de botones), gradiente de fundido más pronunciado, iconos más grandes y mejor espaciado
+- **Menú de carpeta `⋮`**: nuevo chat, ver archivados y cerrar carpeta — todo accesible desde el mismo menú contextual
 - Nueva opción en **Ajustes → Agente**: activa o desactiva los diagnósticos LSP por archivo
 - Cuando el LSP está desactivado, el agente ejecuta `tsc --noEmit` automáticamente al finalizar la tarea para verificar errores de TypeScript
 - Nuevo botón **"Reiniciar OpenCode"** que aparece en ajustes cuando cambias la configuración del servidor, para aplicarla sin salir de la app

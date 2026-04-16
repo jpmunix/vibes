@@ -453,6 +453,8 @@ export async function initializeRemoteSchema(): Promise<void> {
     `ALTER TABLE chats ADD COLUMN last_read_at INTEGER`,
     `ALTER TABLE todos ADD COLUMN attachments TEXT`,
     `ALTER TABLE messages ADD COLUMN smart_mode_intent TEXT`,
+    `ALTER TABLE chats ADD COLUMN is_read INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE chats ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`,
   ];
   for (const migration of migrations) {
     try {

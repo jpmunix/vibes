@@ -101,7 +101,11 @@ export function registerChatHandlers() {
     // If appId is provided, filter chats for that app
     const query = appId
       ? db.query.chats.findMany({
-        where: and(eq(remoteSchema.chats.appId, appId), eq(remoteSchema.chats.userId, context.userId)),
+        where: and(
+          eq(remoteSchema.chats.appId, appId),
+          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.isArchived, 0),
+        ),
         columns: {
           id: true,
           title: true,
@@ -113,7 +117,10 @@ export function registerChatHandlers() {
         orderBy: [desc(remoteSchema.chats.createdAt)],
       })
       : db.query.chats.findMany({
-        where: eq(remoteSchema.chats.userId, context.userId),
+        where: and(
+          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.isArchived, 0),
+        ),
         columns: {
           id: true,
           title: true,
@@ -618,8 +625,51 @@ export function registerChatHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
     await db.update(remoteSchema.chats)
-      .set({ lastReadAt: new Date() })
+      .set({ lastReadAt: new Date(), isRead: 1 })
       .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
+
+  // Mark a chat as unread
+  createTypedHandler(chatContracts.markChatUnread, async (_, chatId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.chats)
+      .set({ isRead: 0 })
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
+
+  // Rename a chat
+  createTypedHandler(chatContracts.renameChat, async (_, { chatId, title }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.chats)
+      .set({ title })
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
+
+  // Archive / unarchive a chat
+  createTypedHandler(chatContracts.archiveChat, async (_, { chatId, archived }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.chats)
+      .set({ isArchived: archived ? 1 : 0 })
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
+
+  // Get archived chats for an app
+  createTypedHandler(chatContracts.getArchivedChats, async (_, appId, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    const archived = await db.query.chats.findMany({
+      where: and(
+        eq(remoteSchema.chats.appId, appId),
+        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.isArchived, 1),
+      ),
+      columns: { id: true, title: true, createdAt: true, appId: true },
+      orderBy: [desc(remoteSchema.chats.createdAt)],
+    });
+    return archived as any;
   });
 
   logger.debug("Registered chat IPC handlers");
