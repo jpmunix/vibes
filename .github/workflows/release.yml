@@ -176,3 +176,18 @@ jobs:
                --fail --show-error
 
           echo "✅ Subido como ${VERSION}.zip a /minube-vibes/mac/"
+
+      - name: Update release.txt on BunnyCDN
+        if: success() && startsWith(matrix.os.id, 'macos')
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "🔖 Actualizando release.txt con versión: $VERSION"
+
+          echo -n "$VERSION" | curl --request PUT \
+               --url "https://storage.bunnycdn.com/minube-vibes/release.txt" \
+               --header "AccessKey: d77a3ad3-1def-4842-b4b2bda55195-7dd9-4647" \
+               --header "Content-Type: text/plain" \
+               --data-binary @- \
+               --fail --show-error
+
+          echo "✅ release.txt actualizado a ${VERSION}"
