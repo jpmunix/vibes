@@ -186,7 +186,7 @@ export type RuntimeMode = z.infer<typeof RuntimeModeSchema>;
 export const RuntimeMode2Schema = z.enum(["host", "docker"]);
 export type RuntimeMode2 = z.infer<typeof RuntimeMode2Schema>;
 
-export const ChatModeSchema = z.enum(["agent", "plan", "ask", "smart"]);
+export const ChatModeSchema = z.enum(["agent", "plan", "ask", "mockup"]);
 export type ChatMode = z.infer<typeof ChatModeSchema>;
 
 export const GitHubSecretsSchema = z.object({
@@ -347,6 +347,7 @@ export const UserSettingsSchema = z
     lastShownReleaseNotesVersion: z.string().optional(),
     maxChatTurnsInContext: z.number().optional(),
     thinkingBudget: z.enum(["low", "medium", "high"]).optional(),
+    agentMaxSteps: z.number().int().min(3).max(80).optional(),
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
@@ -375,16 +376,16 @@ export const UserSettingsSchema = z
     // Synced via Bunny DB so the user gets the same config on all devices.
     openCodeIgnorePatterns: z.array(z.string()).optional(),
     selectedChatMode: z.preprocess(
-      (val) => {
+    (val) => {
         // Migrate all legacy mode values to "agent"
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent") return "agent";
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart") return "agent";
         return val;
       },
       ChatModeSchema.optional(),
     ),
     defaultChatMode: z.preprocess(
       (val) => {
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent") return "agent";
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart") return "agent";
         return val;
       },
       ChatModeSchema.optional(),

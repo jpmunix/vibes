@@ -358,7 +358,7 @@ export function ChatInput({
       {isProposalLoading &&
         settings.selectedChatMode !== "ask" &&
         settings.selectedChatMode !== "agent" &&
-        settings.selectedChatMode !== "smart" &&
+        settings.selectedChatMode !== "mockup" &&
         !isPlanMode && (
           <div className="p-4 text-sm text-muted-foreground">
             Cargando propuesta...
@@ -422,7 +422,7 @@ export function ChatInput({
                 settings.selectedChatMode !== "ask" &&
                 !isPlanMode &&
                 settings.selectedChatMode !== "agent" &&
-                settings.selectedChatMode !== "smart" && (
+                settings.selectedChatMode !== "mockup" && (
                   <ChatInputActions
                     proposal={proposal}
                     onApprove={handleApprove}

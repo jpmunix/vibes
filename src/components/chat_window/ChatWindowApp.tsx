@@ -35,7 +35,6 @@ import {
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
-    smartModeIntentByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { ipc } from "../../ipc/types";
 import { useChats } from "@/hooks/useChats";
@@ -242,7 +241,6 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
     const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
     const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
-    const setSmartModeIntent = useSetAtom(smartModeIntentByChatIdAtom);
 
     useEffect(() => {
         // @ts-ignore
@@ -284,24 +282,6 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         return () => unsubscribe?.();
     }, [setAutoRouterModelInfo, setIsSelectingModelById]);
 
-    // Smart Mode intent classification
-    useEffect(() => {
-        // @ts-ignore
-        const unsubscribe = window.electron?.ipcRenderer?.on?.(
-            "chat:smart-mode-intent",
-            (payload: any) => {
-                setSmartModeIntent((prev) => {
-                    const next = new Map(prev);
-                    next.set(payload.chatId, {
-                        intent: payload.intent,
-                        resolvedMode: payload.resolvedMode,
-                    });
-                    return next;
-                });
-            },
-        );
-        return () => unsubscribe?.();
-    }, [setSmartModeIntent]);
 
     useEffect(() => {
         const unsubscribe = ipc.events.agent.onTodosUpdate((payload) => {
@@ -322,11 +302,6 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
                 return next;
             });
             setAutoRouterModelInfo((prev) => {
-                const next = new Map(prev);
-                next.delete(chatId);
-                return next;
-            });
-            setSmartModeIntent((prev) => {
                 const next = new Map(prev);
                 next.delete(chatId);
                 return next;

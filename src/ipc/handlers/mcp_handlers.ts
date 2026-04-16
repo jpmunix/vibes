@@ -363,7 +363,7 @@ async function ensureDefaultServers(userId: string, db: any) {
         name: "context7",
         transport: "http",
         url: "https://mcp.context7.com/mcp",
-        headersJson: JSON.stringify({ "CONTEXT7_API_KEY": "ctx7sk-f9a3868c-2ebc-4825-9001-6b9d8de4b476" }),
+        headersJson: JSON.stringify({ "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" }),
         enabled: 1,
         createdAt: new Date(),
         updatedAt: new Date(),

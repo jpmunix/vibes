@@ -28,6 +28,8 @@ export function DefaultChatModeSelector() {
         return "Planificar";
       case "ask":
         return "Preguntar";
+      case "mockup":
+        return "Turbo";
       case "build":
       case "agent":
       default:
@@ -49,6 +51,14 @@ export function DefaultChatModeSelector() {
             <span className="font-medium">Agente</span>
             <span className="text-xs text-muted-foreground">
               Desarrolla, edita y depura con acceso a herramientas
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem value="mockup">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Turbo</span>
+            <span className="text-xs text-muted-foreground">
+              Velocidad máxima para desarrollar y editar código al instante
             </span>
           </div>
         </SelectItem>

@@ -20,7 +20,6 @@ import {
   agentTodosByChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
-  smartModeIntentByChatIdAtom,
 } from "./atoms/chatAtoms";
 import { queryKeys } from "./lib/queryKeys";
 import { useUpdateChecker } from "./hooks/useUpdateChecker";
@@ -130,7 +129,6 @@ function App() {
   const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
   const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
   const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
-  const setSmartModeIntent = useSetAtom(smartModeIntentByChatIdAtom);
 
   // Auto-router model selection start
   useEffect(() => {
@@ -175,25 +173,6 @@ function App() {
     return () => unsubscribe?.();
   }, [setAutoRouterModelInfo, setIsSelectingModelById]);
 
-  // Smart Mode intent classification
-  useEffect(() => {
-    // @ts-ignore - using raw preload API for custom event
-    const unsubscribe = window.electron?.ipcRenderer?.on?.(
-      "chat:smart-mode-intent",
-      (payload: any) => {
-        setSmartModeIntent((prev) => {
-          const next = new Map(prev);
-          next.set(payload.chatId, {
-            intent: payload.intent,
-            resolvedMode: payload.resolvedMode,
-          });
-          return next;
-        });
-      },
-    );
-    return () => unsubscribe?.();
-  }, [setSmartModeIntent]);
-
   // Agent todos updates
   useEffect(() => {
     const unsubscribe = ipc.events.agent.onTodosUpdate((payload) => {
@@ -216,12 +195,6 @@ function App() {
       });
       // Also clear auto-router model info when a new stream starts
       setAutoRouterModelInfo((prev) => {
-        const next = new Map(prev);
-        next.delete(chatId);
-        return next;
-      });
-      // Clear smart mode intent for next classification
-      setSmartModeIntent((prev) => {
         const next = new Map(prev);
         next.delete(chatId);
         return next;

@@ -213,6 +213,14 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Agente",
     sectionId: "ai-behavior",
   },
+  {
+    id: "agent-max-steps",
+    label: "Pasos del agente (Orquestación)",
+    description: "Limita el número de iteraciones del agente por petición — menos pasos es más rápido",
+    keywords: ["pasos", "steps", "iteraciones", "ligero", "rapido", "orquestacion", "agent", "limite", "velocidad"],
+    section: "Agente",
+    sectionId: "ai-behavior",
+  },
 
   {
     id: "token-stats",

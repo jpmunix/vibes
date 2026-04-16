@@ -563,6 +563,8 @@ async function getOpenCodeClient(appPath: string) {
                     build: {
                         reasoningEffort: settings.reasoningEffort || "medium",
                         textVerbosity: settings.textVerbosity || "low",
+                        // Limit agentic iterations — prevents runaway tool-call loops on simple tasks
+                        ...(settings.agentMaxSteps ? { steps: settings.agentMaxSteps } : {}),
                     },
                     // Hidden subagent for quick visual edits from the NaturalEditingPanel.
                     // Invoked programmatically — never shown in the UI.
@@ -590,6 +592,25 @@ async function getOpenCodeClient(appPath: string) {
                             "- Responde con un resumen de 1 línea de lo que cambiaste, en el mismo idioma del usuario",
                             "- Si instalas una dependencia nueva (como un icono), añádela al import existente",
                         ].join("\n"),
+                    },
+                    // Custom primary agent: hyper-fast mockup mode (no bash, limited steps)
+                    // Defined as a real OpenCode custom agent per https://opencode.ai/docs/agents
+                    "mockup": {
+                        description: "Agente veloz para crear mockups y editar componentes visuales sin compilar ni verificar.",
+                        mode: "primary",
+                        steps: settings.agentMaxSteps || 15,
+                        reasoningEffort: "none",
+                        tools: {
+                            write: true,
+                            edit: true,
+                            bash: false,
+                        },
+                        permission: {
+                            edit: "allow",
+                            bash: "deny",
+                            webfetch: "deny",
+                        },
+                        prompt: "Eres un agente veloz focalizado en diseño y mockups visuales. Modifica y crea archivos directamente. Está PROHIBIDO usar la terminal o comandos bash. No compiles, no ejecutes nada. Responde en el mismo idioma del usuario.",
                     },
                     // Use the cheap/fast model for context compaction summaries
                     // so we don't burn expensive tokens on housekeeping
@@ -749,8 +770,8 @@ export async function handleOpenCodeStream(
         placeholderMessageId: number;
         appPath: string;
         chatMessages: any[];
-        /** OpenCode agent to use: "build" (full), "plan" (restricted), "explore" (read-only) */
-        agentId?: "build" | "plan" | "explore";
+        /** OpenCode agent to use: "build" (full), "plan" (restricted), "explore" (read-only), "mockup" (fast UI designer) */
+        agentId?: "build" | "plan" | "explore" | "mockup";
         /** Context instructions to inject via config.update */
         contextInstructions?: string[];
         /** Processed attachment file paths (images/text saved to temp dir) */
@@ -1069,7 +1090,13 @@ export async function handleOpenCodeStream(
         // proposing a plan. Only for the "build" agent — plan/explore have their own behavior.
         let promptText = req.prompt;
         const effectiveAgent = options.agentId || "build";
-        if (effectiveAgent === "build") {
+        const isMockupMode = effectiveAgent === "mockup";
+
+        if (isMockupMode) {
+            // Mockup mode uses the custom "mockup" primary agent defined in config
+            // (steps: 8, bash: false, write/edit: true)
+            logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
+        } else if (effectiveAgent === "build") {
             // Ignore the placeholder message ID which is already pushed to chatMessages for this very request
             const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
             if (!hasAssistantMessages) {
@@ -1472,6 +1499,13 @@ async function processEvents(
                     }
                     logger.info(`[OC:Event] Session idle event received. Total events: ${eventCount}`);
                     return;
+                }
+
+                // Session errors — log full details for debugging custom agents
+                case "session.error": {
+                    const errorMsg = props.error || props.message || JSON.stringify(props);
+                    logger.error(`[OC:Event] ❌ SESSION ERROR: ${errorMsg}`);
+                    break;
                 }
 
                 // Known events we can safely ignore

@@ -105,21 +105,25 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
                checked={server.enabled}
                onCheckedChange={(c) => onUpdate(server.id, c)}
              />
-             <McpServerDialog existingServer={server} />
-             <DeleteConfirmationDialog 
-                 itemName={server.name}
-                 itemType="servidor"
-                 onDelete={() => onDelete(server.id)}
-                 trigger={
-                     <Button 
-                       variant="ghost" 
-                       size="icon" 
-                       className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8 rounded-lg"
-                     >
-                       <Trash2 className="h-4 w-4" />
-                     </Button>
-                 }
-             />
+             {server.name !== "context7" && (
+               <>
+                 <McpServerDialog existingServer={server} />
+                 <DeleteConfirmationDialog 
+                     itemName={server.name}
+                     itemType="servidor"
+                     onDelete={() => onDelete(server.id)}
+                     trigger={
+                         <Button 
+                           variant="ghost" 
+                           size="icon" 
+                           className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8 rounded-lg"
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                     }
+                 />
+               </>
+             )}
           </div>
           <div className="text-muted-foreground/50 transition-transform">
              {expanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}

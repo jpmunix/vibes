@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
   enableGithubAutoCommit: true,
   enableChatCompletionNotifications: true,
-  selectedChatMode: "smart",
+  selectedChatMode: "agent",
   selectedTemplateId: DEFAULT_TEMPLATE_ID,
   selectedThemeId: DEFAULT_THEME_ID,
   isRunning: false,
@@ -56,6 +56,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   windowState: undefined,
   reasoningEffort: "medium",
   textVerbosity: "low",
+  thinkingBudget: "medium",
+  agentMaxSteps: 30,
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",

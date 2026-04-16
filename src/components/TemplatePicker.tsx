@@ -149,14 +149,11 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
         return (
             <Select value={currentValue} onValueChange={handleValueChange}>
                 <SelectTrigger
-                    className="flex items-center justify-between !h-6 w-fit min-w-[100px] px-2 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0.5 border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors cursor-pointer"
+                    className="flex items-center justify-center !h-6 w-fit px-1.5 py-0 text-xs-sm font-medium rounded-md shadow-none gap-0 border border-input bg-transparent hover:bg-muted/50 focus:bg-muted/50 transition-colors cursor-pointer"
                     id="template-picker-compact"
                 >
-                    <div className="flex items-center gap-1 whitespace-nowrap">
+                    <div className="flex items-center gap-0 whitespace-nowrap">
                         <FrameworkIcon id={currentTemplate.id} className="w-3.5 h-3.5" />
-                        <span className="font-medium">
-                            {currentTemplate.title.replace(" Template", "")}
-                        </span>
                         <div className="hidden">
                             <SelectValue />
                         </div>

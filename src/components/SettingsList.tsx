@@ -38,6 +38,12 @@ export function SettingsList({ show }: { show: boolean }) {
     const calculateActiveSection = () => {
       if (!scrollContainer) return;
 
+      const isAtBottom = Math.abs(scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight) <= 10;
+      if (isAtBottom && settingsSections.length > 0) {
+        setActiveSection(settingsSections[settingsSections.length - 1].id);
+        return;
+      }
+
       const containerRect = scrollContainer.getBoundingClientRect();
       const containerTop = containerRect.top;
       const targetLine = containerTop + containerRect.height * 0.25; // 25% from top of container

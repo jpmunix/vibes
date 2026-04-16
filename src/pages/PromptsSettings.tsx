@@ -17,7 +17,6 @@ import {
   FileText,
   ClipboardList,
   GitBranch,
-  BrainCircuit,
 } from "lucide-react";
 
 import { useRef } from "react";
@@ -52,7 +51,6 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   quick_edit_system: <Wand2 className="w-4 h-4" />,
   dossier_prompt: <FileText className="w-4 h-4" />,
   auto_commit_message: <GitBranch className="w-4 h-4" />,
-  smart_mode_classifier: <BrainCircuit className="w-4 h-4" />,
 };
 
 /** Internal prompts — hidden from UI but kept for backwards compat */

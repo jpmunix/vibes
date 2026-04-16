@@ -61,12 +61,3 @@ export const autoRouterModelInfoByChatIdAtom = atom<
 // Auto-router model selection loading state per chat
 export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
 
-// Smart Mode — classified intent per chat (set by backend, read by ChatMessage footer)
-export type SmartModeIntent = "ask" | "plan" | "build" | "context";
-export interface SmartModeIntentInfo {
-  intent: SmartModeIntent;
-  resolvedMode: "agent" | "plan" | "ask";
-}
-export const smartModeIntentByChatIdAtom = atom<
-  Map<number, SmartModeIntentInfo>
->(new Map());

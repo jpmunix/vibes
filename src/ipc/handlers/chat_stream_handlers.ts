@@ -702,12 +702,12 @@ ${componentSnippet}
         let codebaseInfo = "";
         let files: CodebaseFile[] = [];
 
-        // All active modes (agent, ask, plan, smart) use the OpenCode agent stream
+        // All active modes (agent, ask, plan) use the OpenCode agent stream
         // which explores files on-demand via tools — no upfront codebase extraction needed.
         const isAgentMode = settings.selectedChatMode === "agent" ||
-          settings.selectedChatMode === "smart" ||
           settings.selectedChatMode === "ask" ||
           settings.selectedChatMode === "plan" ||
+          settings.selectedChatMode === "mockup" ||
           (settings.selectedChatMode as unknown as string) === "crush-agent";
 
         if (isSummarizeIntent) {
@@ -773,7 +773,8 @@ ${componentSnippet}
           );
           willUseAgentStream =
             (settings.selectedChatMode === "agent" ||
-              settings.selectedChatMode === "ask") &&
+              settings.selectedChatMode === "ask" ||
+              settings.selectedChatMode === "mockup") &&
             !mentionedAppsCodebases.length;
 
           isDeepContextEnabled =
@@ -867,7 +868,7 @@ ${componentSnippet}
           );
 
           systemPrompt = constructSystemPrompt({
-            chatMode: (resolvedChatMode || "agent") as "ask" | "agent" | "plan",
+            chatMode: ((settings.selectedChatMode as string) || "agent") as "ask" | "agent" | "plan",
             themePrompt,
             chatLanguage: settings.chatLanguage || "es",
             settings,
@@ -920,7 +921,7 @@ ${componentSnippet}
             getSupabaseAvailableSystemPrompt(supabaseClientCode) +
             "\n\n" +
             // For local agent, we will explicitly fetch the database context when needed.
-            (settings.selectedChatMode === "agent"
+            (settings.selectedChatMode === "agent" || settings.selectedChatMode === "mockup"
               ? ""
               : await getSupabaseContext({
                 supabaseProjectId: updatedChat.app.supabaseProjectId,
@@ -932,6 +933,7 @@ ${componentSnippet}
           !updatedChat.app?.neonProjectId &&
           // In local agent mode, we will suggest supabase as part of the add-integration tool
           settings.selectedChatMode !== "agent" &&
+          settings.selectedChatMode !== "mockup" &&
           // If in security review mode, we don't need to mention supabase is available.
           !isSecurityReviewIntent
         ) {
@@ -944,7 +946,8 @@ ${componentSnippet}
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
           !isSecurityReviewIntent &&
-          settings.selectedChatMode !== "agent"
+          settings.selectedChatMode !== "agent" &&
+          settings.selectedChatMode !== "mockup"
         ) {
           systemPrompt += "\n\n" + BUNNY_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -955,7 +958,8 @@ ${componentSnippet}
           systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
           !isSecurityReviewIntent &&
-          settings.selectedChatMode !== "agent"
+          settings.selectedChatMode !== "agent" &&
+          settings.selectedChatMode !== "mockup"
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -1453,110 +1457,20 @@ This conversation includes one or more image attachments. When the user uploads 
         // agent → "build" (full access, all tools)
         // plan  → "plan"  (restricted: file edits & bash require permission)
         // ask   → "explore" (read-only, no file modifications)
-        // smart → auto-classified before reaching this map
-        const agentIdMap: Record<string, "build" | "plan" | "explore"> = {
+        const agentIdMap: Record<string, "build" | "plan" | "explore" | "mockup"> = {
           agent: "build",
           "crush-agent": "build",
           plan: "plan",
           ask: "explore",
+          mockup: "mockup",
         };
-        let resolvedChatMode: string = (settings.selectedChatMode || "agent");
-        let smartModeIntent: string | null = null;
-        let smartModeDisplayIntent: string | null = null;
-
-        // ── Smart Mode: auto-classify intent before routing ──
-        if (resolvedChatMode === "smart") {
-          try {
-            const { classifyUserIntent, getOpenRouterApiKey } = await import("../utils/smart_mode_classifier");
-            const apiKey = getOpenRouterApiKey();
-            if (apiKey) {
-              // Extract clean conversational context: last 2 user + 2 assistant messages,
-              // stripping all vibes tags, thinking blocks, and tool output to keep only
-              // the actual human↔AI interaction. This gives the classifier much better signal.
-              const stripVibesTags = (text: string) =>
-                text
-                  .replace(/<vibes-think>[\s\S]*?<\/vibes-think>/g, "")
-                  .replace(/<vibes-[a-z-]+[\s\S]*?>[\s\S]*?<\/vibes-[a-z-]+>/g, "")
-                  .replace(/<vibes-[a-z-]+[\s\S]*?\/>/g, "")
-                  .replace(/```[\s\S]*?```/g, "[código]") // collapse code blocks to save tokens
-                  .replace(/\n{3,}/g, "\n\n")
-                  .trim();
-
-              const allMsgs = (updatedChat.messages as any[])
-                .filter((m: any) => m.content && (m.role === "user" || m.role === "assistant"));
-
-              // Pick last 2 user and last 2 assistant messages, interleaved chronologically
-              const lastUserMsgs = allMsgs.filter((m: any) => m.role === "user").slice(-2);
-              const lastAssistantMsgs = allMsgs.filter((m: any) => m.role === "assistant").slice(-2);
-              const contextMsgs = [...lastUserMsgs, ...lastAssistantMsgs]
-                .sort((a: any, b: any) => (a.createdAt > b.createdAt ? 1 : -1));
-
-              const recentMsgs = contextMsgs
-                .map((m: any) => {
-                  const cleaned = stripVibesTags(m.content as string);
-                  // Truncate very long messages to keep classifier prompt manageable
-                  const truncated = cleaned.length > 500 ? cleaned.slice(0, 500) + "…" : cleaned;
-                  return truncated ? { role: m.role as string, content: truncated } : null;
-                })
-                .filter(Boolean) as { role: string; content: string }[];
-
-              const intent = await classifyUserIntent(req.prompt, recentMsgs, apiKey);
-              smartModeIntent = intent;
-
-              // Map intent → traditional chat mode
-              const intentToMode: Record<string, string> = {
-                ask: "ask",
-                plan: "plan",
-                build: "agent",
-                context: "agent",
-              };
-
-              if (intent === "context") {
-                // Use the same mode as previous turn
-                resolvedChatMode = lastSmartModeForChat.get(req.chatId) || "agent";
-              } else {
-                resolvedChatMode = intentToMode[intent] || "agent";
-              }
-
-              // Remember for future "context" lookups
-              lastSmartModeForChat.set(req.chatId, resolvedChatMode);
-
-              logger.log(`[SmartMode] Classified: "${intent}" → mode "${resolvedChatMode}" for chat ${req.chatId}`);
-
-              // Notify frontend so the response badge shows the classified mode
-              // When intent is "context", show the icon of the resolved mode (previous turn's intent)
-              const modeToIntent: Record<string, string> = { agent: "build", ask: "ask", plan: "plan" };
-              const displayIntent = intent === "context"
-                ? (modeToIntent[resolvedChatMode] || "build")
-                : intent;
-              smartModeDisplayIntent = displayIntent;
-
-              safeSend(event.sender, "chat:smart-mode-intent", {
-                chatId: req.chatId,
-                intent: displayIntent,
-                resolvedMode: resolvedChatMode,
-              });
-            } else {
-              logger.warn("[SmartMode] No OpenRouter API key available — falling back to agent mode");
-              resolvedChatMode = "agent";
-            }
-          } catch (err: any) {
-            logger.warn(`[SmartMode] Classification failed: ${err.message} — falling back to agent mode`);
-            resolvedChatMode = "agent";
-          }
-        }
-
-        // For manually selected modes, also persist the intent for icon history
-        if (!smartModeDisplayIntent) {
-          const modeToIntentMap: Record<string, string> = { agent: "build", ask: "ask", plan: "plan" };
-          smartModeDisplayIntent = modeToIntentMap[resolvedChatMode] || "build";
-        }
+        const resolvedChatMode: string = (settings.selectedChatMode || "agent");
 
         const agentId = agentIdMap[resolvedChatMode] || "build";
 
         if (!isSummarizeIntent && !mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
-          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode}${smartModeIntent ? ` → smart:${smartModeIntent}` : ''})`);
+          logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
 
 
           // Context instructions for the OpenCode session.
@@ -1787,7 +1701,6 @@ This conversation includes one or more image attachments. When the user uploads 
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
-              ...(smartModeDisplayIntent ? { smartModeIntent: smartModeDisplayIntent } : {}),
             })
             .where(
               and(

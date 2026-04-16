@@ -25,10 +25,6 @@ import {
   ChevronUp,
   Sparkles,
   User as UserIcon,
-  Wrench,
-  ListChecks,
-  HelpCircle,
-  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -50,8 +46,6 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
   chatErrorByIdAtom,
-  smartModeIntentByChatIdAtom,
-  type SmartModeIntentInfo,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -132,31 +126,6 @@ const formatDurationMs = (ms: number): string => {
   const seconds = totalSeconds % 60;
   return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 };
-/** Map smart mode classified intent → Lucide icon + color */
-const SMART_MODE_CONFIG: Record<string, { icon: LucideIcon; color: string; label: string }> = {
-  build: { icon: Wrench, color: "text-blue-500", label: "Build" },
-  plan: { icon: ListChecks, color: "text-amber-500", label: "Plan" },
-  ask: { icon: HelpCircle, color: "text-green-500", label: "Ask" },
-  context: { icon: MessageCircle, color: "text-muted-foreground", label: "Context" },
-};
-
-function SmartModeIcon({ intent }: { intent: string }) {
-  const cfg = SMART_MODE_CONFIG[intent] || { icon: Sparkles, color: "text-muted-foreground", label: "Smart" };
-  const Icon = cfg.icon;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="flex items-center">
-          <Icon size={14} className={`flex-shrink-0 ${cfg.color}`} />
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">
-        Modo: {cfg.label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
 const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -176,12 +145,6 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
   const activeUser = user || userAtomValue;
 
-  // Smart mode intent for this chat
-  const smartModeIntentById = useAtomValue(smartModeIntentByChatIdAtom);
-  const smartModeIntent: SmartModeIntentInfo | undefined = selectedChatId
-    ? smartModeIntentById.get(selectedChatId)
-    : undefined;
-
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
   const isSystem = message.role === "system";
@@ -200,10 +163,26 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
   // Is this an error message? (assistant, not streaming, error exists)
   const isErrorMessage = isAssistant && !isStreaming && !!effectiveError;
-  //handle copy chat
+  //handle copy chat (assistant)
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = useCallback(async () => {
     await copyMessageContent(message.content);
+  }, [copyMessageContent, message.content]);
+
+  // handle copy for user messages (strips attachment metadata)
+  const [userCopied, setUserCopied] = useState(false);
+  const handleCopyUserMessage = useCallback(async () => {
+    let text = message.content ?? "";
+    // Strip attachment / component / upload metadata
+    const attachmentMarker = text.indexOf("\n\nAttachments:\n");
+    if (attachmentMarker !== -1) text = text.substring(0, attachmentMarker);
+    const componentMarker = text.indexOf("\n\nSelected components:\n");
+    if (componentMarker !== -1) text = text.substring(0, componentMarker);
+    const uploadMarker = text.indexOf("\n\nFile to upload to codebase:");
+    if (uploadMarker !== -1) text = text.substring(0, uploadMarker);
+    await copyMessageContent(text.trim());
+    setUserCopied(true);
+    setTimeout(() => setUserCopied(false), 2000);
   }, [copyMessageContent, message.content]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
@@ -409,6 +388,30 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
           {/* Message bubble */}
           <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
+            {/* Wrapper relative only for user, so the copy button can float outside */}
+            <div className={isUser ? "relative" : ""}>
+            {isUser && !isSelectingModel && message.content && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleCopyUserMessage}
+                      className="absolute -left-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
+                      aria-label="Copiar mensaje"
+                    >
+                      {userCopied ? (
+                        <Check size={13} className="text-green-500" />
+                      ) : (
+                        <Copy size={13} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {userCopied ? "¡Copiado!" : "Copiar mensaje"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <div
               onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
               className={`rounded-lg ${isSystem
@@ -474,6 +477,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   />
                 </div>
               )}
+
               {(isAssistant && message.content) ? (
                 <div
                   onClick={() => setIsCollapsed(!isCollapsed)}
@@ -497,11 +501,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           />
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
-                            {(message.smartModeIntent || smartModeIntent) ? (
-                              <SmartModeIcon intent={message.smartModeIntent || smartModeIntent?.intent || "build"} />
-                            ) : (
-                              <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            )}
+                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             <span>{message.model}</span>
                           </div>
                         )}
@@ -539,6 +539,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
               )}
             </div>
+            </div>{/* end relative wrapper */}
           </div>
         </div>
         {/* Timestamp and commit info for assistant messages - only visible on hover */}
