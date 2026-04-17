@@ -1,7 +1,7 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
 import { forwardRef, useState, useCallback, useMemo, Suspense } from "react";
-import { Virtuoso } from "react-virtuoso";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import ChatMessage from "./ChatMessage";
 const SetupBanner = React.lazy(() =>
   import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
@@ -42,6 +42,7 @@ interface MessagesListProps {
   hasMoreMessages?: boolean;
   onLoadMore?: () => void;
   firstItemIndex?: number;
+  virtuosoRef?: React.RefObject<VirtuosoHandle | null>;
 }
 
 // Memoize ChatMessage at module level to prevent recreation on every render
@@ -138,6 +139,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       hasMoreMessages,
       onLoadMore,
       firstItemIndex = 0,
+      virtuosoRef,
     },
     ref,
   ) {
@@ -410,6 +412,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
         data-testid="messages-list"
       >
         <Virtuoso
+          ref={virtuosoRef}
+          alignToBottom
           data={messages}
           firstItemIndex={firstItemIndex}
           increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll
@@ -436,6 +440,10 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
             }
           }}
           followOutput={(isAtBottom) => {
+            // Always scroll to bottom if we are already there to handle new messages being sent
+            if (isAtBottom) {
+              return "smooth";
+            }
             // During streaming, auto-scroll smoothly but keep up
             if (isStreaming) {
               const distanceFromBottom = distanceFromBottomRef?.current ?? 0;

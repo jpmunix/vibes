@@ -7,6 +7,8 @@ import {
 } from "../atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 
+import { type ComponentProps } from "react";
+import { VirtuosoHandle } from "react-virtuoso";
 import { ChatHeader } from "./chat/ChatHeader";
 import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
@@ -99,6 +101,9 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // For Virtuoso control
+  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+
   // Scroll-related state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
@@ -124,7 +129,16 @@ export function ChatPanel({
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     isProgrammaticScrollRef.current = true;
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (virtuosoRef.current && !settings?.isTestMode) {
+      // Use Virtuoso's preferred method if we are using it
+      virtuosoRef.current.scrollToIndex({
+        index: "LAST",
+        align: "end",
+        behavior: behavior === "instant" ? "auto" : behavior,
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
     // Reset the flag after a short delay
     setTimeout(() => {
       isProgrammaticScrollRef.current = false;
@@ -478,6 +492,7 @@ export function ChatPanel({
                 <MessagesList
                   messages={progressiveMessages}
                   messagesEndRef={messagesEndRef}
+                  virtuosoRef={virtuosoRef}
                   ref={messagesContainerRef}
                   onScrollerRef={handleScrollerRef}
                   distanceFromBottomRef={distanceFromBottomRef}
