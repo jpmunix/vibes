@@ -1499,9 +1499,11 @@ This conversation includes one or more image attachments. When the user uploads 
             );
           }
 
-          // 3. Tool correction (mainly for Gemini hallucinating Aider/OpenAI specific tools)
+          // 3. Tool correction (mainly for Gemini hallucinating shell edits)
           contextInstructions.push(
-            `NOTAS DE ENTORNO: La herramienta para aplicar diffs unificados se llama exactamente "patch". NO uses herramientas inexistentes como "apply_patch".`
+            `NOTAS DE ENTORNO IMPORTANTES:\n` +
+            `1. Tienes HERRAMIENTAS JSON NATIVAS (tools) definidas en tu esquema para editar archivos. USAS ESTAS HERRAMIENTAS nativas.\n` +
+            `2. NUNCA uses la herramienta "bash" para intentar editar código ejecutando scripts en consola de "python" o comandos "sed" o redirecciones en la terminal. Usa siempre tus JSON tools disponibles en el esquema para cualquier edición.`
           );
 
           // Supabase

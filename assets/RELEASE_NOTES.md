@@ -1,5 +1,7 @@
 ## ✨ Novedades
 
+- **Gasto de la sesión**: se muestra el coste acumulado de cada chat en la barra superior del workspace, con formato claro y tooltip descriptivo
+- **Breadcrumb en el header**: el header del modo agente ahora muestra `App › Título del chat` con el nombre completo sin truncar
 - **Citar mensajes**: puedes citar cualquier mensaje del chat (tanto del usuario como de la IA) usando el botón de citar. La cita aparece como una pill encima del campo de texto y se envía como contexto al modelo
 - **Múltiples citas**: puedes añadir varias citas a la vez antes de enviar tu mensaje
 - **Copiar respuestas de la IA**: el botón de copiar en la burbuja de la IA copia solo el texto limpio, sin etiquetas internas de herramientas ni metadatos
@@ -16,6 +18,8 @@
 
 ## 🛠 Fixes
 
+- Corregido un error de validación al actualizar servidores MCP desde ajustes
+- Corrección del prompt de Gemini: se evita que alucine herramientas de shell como `apply_patch` o scripts de Python, forzando el uso exclusivo de las herramientas nativas del SDK
 - Eliminada la limitación de pasos del agente que provocaba cortes inesperados en la respuesta
 - Corregidos falsos eventos de edición de archivos al iniciar una sesión del agente
 - Mejorado el comportamiento del scroll al comenzar el streaming de respuestas largas

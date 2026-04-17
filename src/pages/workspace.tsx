@@ -1,16 +1,20 @@
 import { useEffect, useRef } from "react";
 import { useSearch, useNavigate } from "@tanstack/react-router";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { MessagesSquare } from "lucide-react";
+import { ChevronRight, MessagesSquare } from "lucide-react";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
+import { useChats } from "@/hooks/useChats";
+import { useSessionCost } from "@/hooks/useSessionCost";
+import { Coins } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -29,6 +33,13 @@ export default function WorkspacePage() {
 
   // Find the app name for the header
   const selectedApp = appId ? appsList.find((app) => app.id === appId) : null;
+
+  // Fetch chats to get the current chat title for the breadcrumb
+  const { chats } = useChats(appId ?? undefined);
+  const selectedChat = chats.find((c) => c.id === chatId);
+
+  // Session cost
+  const { totalCostUsd, hasPricing } = useSessionCost(chatId);
 
   // Restore last selection from DB when landing without params
   useEffect(() => {
@@ -90,22 +101,55 @@ export default function WorkspacePage() {
     <div className="flex flex-col h-full w-full">
       {/* Minimal header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-background/80 backdrop-blur-sm shrink-0">
-        <div className="flex items-center gap-2">
-          <MessagesSquare className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium truncate max-w-[300px]">
+        {/* Left: breadcrumb App / Chat */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-semibold text-foreground truncate shrink-0">
             {selectedApp?.name || "App"}
           </span>
+          {selectedChat?.title && (
+            <>
+              <ChevronRight size={13} className="shrink-0 text-muted-foreground/50" />
+              <span className="text-sm text-muted-foreground truncate">
+                {selectedChat.title}
+              </span>
+            </>
+          )}
           <LanguageBadge language={selectedApp?.primaryLanguage} />
         </div>
-        <div className="flex items-center gap-2">
-          {appId && <AgentBranchSelector appId={appId} />}
-          {/* Server control button - only for Node projects */}
-          {(!selectedApp?.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage.toLowerCase())) && (
-            <ServerControlButton appId={appId} />
-          )}
-          {/* Git button — always visible regardless of language */}
-          <GitChangesButton appId={appId} />
-        </div>
+
+        {/* Right: Branch | Server | Git | Cost */}
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            {appId && <AgentBranchSelector appId={appId} />}
+            {(!selectedApp?.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage.toLowerCase())) && (
+              <ServerControlButton appId={appId} />
+            )}
+            <GitChangesButton appId={appId} />
+
+            {/* Session cost — separated with a delicate divider */}
+            {hasPricing && (
+              <>
+                <div className="w-px h-4 bg-border/60 shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold
+                        bg-amber-500/10 text-amber-600 dark:text-yellow-400
+                        border border-amber-400/20 dark:border-yellow-500/20
+                        select-none cursor-default transition-all duration-300"
+                    >
+                      <Coins size={11} className="shrink-0 opacity-80" />
+                      <span className="tabular-nums tracking-tight">
+                        {formatWorkspaceCost(totalCostUsd)}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Gasto total de esta sesión</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+        </TooltipProvider>
       </div>
 
       {/* Chat panel — no preview, no server */}
@@ -122,3 +166,15 @@ export default function WorkspacePage() {
   );
 }
 
+/** Same formatting logic as ChatHeader's formatSessionCost. */
+function formatWorkspaceCost(usd: number): string {
+  if (usd === 0) return "$0,00";
+  if (usd < 0.00005) return "<$0,0001";
+  let raw: string;
+  if (usd < 1) {
+    raw = usd.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  } else {
+    raw = usd.toFixed(2);
+  }
+  return "$" + raw.replace(".", ",");
+}

@@ -56,7 +56,7 @@ export const McpServerUpdateSchema = z.object({
   name: z.string().optional(),
   transport: McpTransportEnum.optional(),
   command: z.string().optional(),
-  args: z.string().optional(),
+  args: z.union([z.array(z.string()), z.string()]).optional(),
   cwd: z.string().optional(),
   envJson: z.union([z.record(z.string(), z.string()), z.string()]).optional(),
   headersJson: z

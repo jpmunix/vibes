@@ -90,7 +90,7 @@ export function registerMcpHandlers() {
     if (params.name !== undefined) updateData.name = params.name;
     if (params.transport !== undefined) updateData.transport = params.transport;
     if (params.command !== undefined) updateData.command = params.command;
-    if (params.args !== undefined) updateData.args = params.args;
+    if (params.args !== undefined) updateData.args = params.args ? (typeof params.args === 'string' ? params.args : JSON.stringify(params.args)) : null;
     if (params.envJson !== undefined) updateData.envJson = params.envJson ? (typeof params.envJson === 'string' ? params.envJson : JSON.stringify(params.envJson)) : null;
     if (params.headersJson !== undefined) updateData.headersJson = params.headersJson ? (typeof params.headersJson === 'string' ? params.headersJson : JSON.stringify(params.headersJson)) : null;
     if (params.url !== undefined) updateData.url = params.url;

@@ -18,6 +18,7 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
+  Coins,
 } from "lucide-react";
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -56,6 +57,7 @@ import {
 // KnowledgeBaseModal — REMOVED
 import { chatPositionAtom } from "@/atoms/uiAtoms";
 import { useSettings } from "@/hooks/useSettings";
+import { useSessionCost } from "@/hooks/useSessionCost";
 import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
 import {
   Dialog,
@@ -359,6 +361,11 @@ export function ChatHeader({
           </DropdownMenu>
         </div>
 
+        {/* Session cost badge */}
+        <div className="flex-1 flex items-center justify-end pr-1">
+          <SessionCostBadge chatId={selectedChatId} />
+        </div>
+
         {/* Chat selector dropdown — adapts to chat title width */}
         <div className="mx-2">
           <DropdownMenu>
@@ -576,6 +583,66 @@ export function ChatHeader({
       </Dialog>
     </div>
   );
+}
+
+// ─── Session Cost Badge ───────────────────────────────────────────────────────
+
+function SessionCostBadge({ chatId }: { chatId: number | null }) {
+  const { totalCostUsd, hasPricing } = useSessionCost(chatId);
+
+  if (!hasPricing) return null;
+
+  // Format as "10,01" style (2 integer digits minimum, 2 decimal minimum, 4 max)
+  // We want e.g. $0.17 shown as $0,17 but using the EU comma format:
+  // Actually the user wants format like "10,01" (comma as decimal separator)
+  const formatted = formatSessionCost(totalCostUsd);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+            bg-amber-500/10 text-amber-600 dark:text-yellow-400
+            border border-amber-400/20 dark:border-yellow-500/20
+            transition-all duration-300 select-none cursor-default"
+          aria-label={`Gasto total de la sesión: ${formatted}`}
+        >
+          <Coins size={11} className="shrink-0 opacity-80" />
+          <span className="tabular-nums tracking-tight">{formatted}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        Gasto total de esta sesión de trabajo
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * Format a USD cost value with a comma as decimal separator.
+ * Examples: 0.0174 → "$0,0174", 1.2345 → "$1,23", 10.0073 → "$10,01"
+ *
+ * Rules:
+ * - Always show "$" prefix
+ * - Use comma as decimal separator (EU style as requested)
+ * - For values < $1: up to 4 significant decimals (strip trailing zeros)
+ * - For values >= $1: exactly 2 decimal places
+ */
+function formatSessionCost(usd: number): string {
+  if (usd === 0) return "$0,00";
+  if (usd < 0.00005) return "<$0,0001";
+
+  let raw: string;
+  if (usd < 1) {
+    // Up to 4 decimal places, strip trailing zeros
+    raw = usd.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  } else {
+    // 2 decimal places
+    raw = usd.toFixed(2);
+  }
+
+  // Replace dot with comma (EU style)
+  return "$" + raw.replace(".", ",");
 }
 
 function ChatPositionToggle() {
