@@ -413,7 +413,6 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       >
         <Virtuoso
           ref={virtuosoRef}
-          alignToBottom
           data={messages}
           firstItemIndex={firstItemIndex}
           increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll

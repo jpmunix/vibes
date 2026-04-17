@@ -18,7 +18,6 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
-  Coins,
 } from "lucide-react";
 import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAtom, useAtomValue } from "jotai";
@@ -47,6 +46,7 @@ import { useRenameBranch } from "@/hooks/useRenameBranch";
 import { isAnyCheckoutVersionInProgressAtom } from "@/store/appAtoms";
 import { LoadingBar } from "../ui/LoadingBar";
 import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
+import { GitChangesButton } from "@/components/GitChangesButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -361,8 +361,9 @@ export function ChatHeader({
           </DropdownMenu>
         </div>
 
-        {/* Session cost badge */}
-        <div className="flex-1 flex items-center justify-end pr-1">
+        {/* Session cost badge and Git changes */}
+        <div className="flex-1 flex items-center justify-end pr-1 gap-2">
+          {appId && <GitChangesButton appId={appId} />}
           <SessionCostBadge chatId={selectedChatId} />
         </div>
 
@@ -592,27 +593,27 @@ function SessionCostBadge({ chatId }: { chatId: number | null }) {
 
   if (!hasPricing) return null;
 
-  // Format as "10,01" style (2 integer digits minimum, 2 decimal minimum, 4 max)
-  // We want e.g. $0.17 shown as $0,17 but using the EU comma format:
-  // Actually the user wants format like "10,01" (comma as decimal separator)
-  const formatted = formatSessionCost(totalCostUsd);
+  // Short display: always 2 decimals (e.g. "$0,02")
+  const shortDisplay = "$" + totalCostUsd.toFixed(2).replace(".", ",");
+  // Full precision for tooltip (up to 4 decimals, strip trailing zeros)
+  const fullPrecision = formatSessionCost(totalCostUsd);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-            bg-amber-500/10 text-amber-600 dark:text-yellow-400
-            border border-amber-400/20 dark:border-yellow-500/20
-            transition-all duration-300 select-none cursor-default"
-          aria-label={`Gasto total de la sesión: ${formatted}`}
+          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium
+            bg-muted text-muted-foreground
+            border border-border
+            transition-all duration-200 select-none cursor-default"
+          aria-label={`Gasto de sesión: ${fullPrecision}`}
         >
-          <Coins size={11} className="shrink-0 opacity-80" />
-          <span className="tabular-nums tracking-tight">{formatted}</span>
+          <span className="tabular-nums tracking-tight">{shortDisplay}</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom">
-        Gasto total de esta sesión de trabajo
+      <TooltipContent side="bottom" className="text-center">
+        <div>Gasto en esta sesión</div>
+        <div className="font-semibold">{fullPrecision}</div>
       </TooltipContent>
     </Tooltip>
   );

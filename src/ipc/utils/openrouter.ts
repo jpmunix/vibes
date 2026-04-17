@@ -163,3 +163,108 @@ export async function openRouterCompletion(
 
   return data;
 }
+
+/**
+ * Streaming chat completion via OpenRouter (SSE) using Node.js https module.
+ * More reliable than fetch body streaming in Electron's main process.
+ * Returns an async generator that yields text deltas as they arrive.
+ */
+export async function* openRouterStreamCompletion(
+  options: OpenRouterCompletionOptions,
+): AsyncGenerator<string> {
+  const { default: https } = await import("node:https");
+
+  const settings = readSettings();
+  const openRouterSettings = settings.providerSettings?.openrouter as any;
+
+  let apiKey: string | undefined = openRouterSettings?.apiKey?.value;
+  if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
+    const selected = openRouterSettings.keys.find(
+      (k: any) => k.id === openRouterSettings.selectedKeyId,
+    );
+    if (selected) apiKey = selected.key.value;
+  }
+  apiKey = apiKey?.trim();
+  if (!apiKey) throw new Error("OpenRouter API key not found.");
+
+  const defaultModel = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+  const finalModel = options.model || defaultModel;
+
+  const body = JSON.stringify({
+    model: finalModel,
+    messages: options.messages,
+    temperature: options.temperature ?? 0.7,
+    ...(options.max_tokens !== undefined && { max_tokens: options.max_tokens }),
+    stream: true,
+  });
+
+  // Bridge Node.js stream → async generator via a tiny queue+resolver
+  const queue: string[] = [];
+  let resolveNext: (() => void) | null = null;
+  let streamDone = false;
+  let streamError: Error | null = null;
+  let sseBuffer = "";
+
+  function pushToken(token: string) {
+    queue.push(token);
+    resolveNext?.();
+    resolveNext = null;
+  }
+
+  function markDone(err?: Error) {
+    if (err) streamError = err;
+    streamDone = true;
+    resolveNext?.();
+    resolveNext = null;
+  }
+
+  const req = https.request(
+    {
+      hostname: "openrouter.ai",
+      path: "/api/v1/chat/completions",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        ...(options.title && { "X-Title": options.title }),
+        "Content-Length": Buffer.byteLength(body),
+      },
+    },
+    (res) => {
+      res.setEncoding("utf8");
+      res.on("data", (chunk: string) => {
+        sseBuffer += chunk;
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const data = trimmed.slice(5).trim();
+          if (data === "[DONE]") { markDone(); return; }
+          try {
+            const parsed = JSON.parse(data);
+            const delta: string | undefined = parsed.choices?.[0]?.delta?.content;
+            if (delta) pushToken(delta);
+          } catch { /* skip malformed */ }
+        }
+      });
+      res.on("end", () => markDone());
+      res.on("error", (err) => markDone(err));
+    },
+  );
+
+  req.on("error", (err) => markDone(err));
+  req.write(body);
+  req.end();
+
+  // Drain queue as tokens arrive
+  while (!streamDone || queue.length > 0) {
+    if (queue.length > 0) {
+      yield queue.shift()!;
+    } else if (!streamDone) {
+      await new Promise<void>((resolve) => { resolveNext = resolve; });
+    }
+  }
+
+  if (streamError) throw streamError;
+}

@@ -5,7 +5,7 @@ import { useLoadApp } from "@/hooks/useLoadApp";
 import { useSettings } from "@/hooks/useSettings";
 import { GitRemoteSetup } from "@/components/git_window/GitRemoteSetup";
 import { cn } from "@/lib/utils";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
     GitBranch,
     Plus,
@@ -32,10 +32,25 @@ import {
     ShieldCheck,
     ArrowDownToLine,
     Wrench,
-    Settings2,
+    Diff,
+    Eye,
+    FolderOpen,
+    Folder,
+    GripVertical,
+    List,
+    FolderTree,
+    GripHorizontal,
+    MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import {
     Tooltip,
     TooltipContent,
@@ -46,236 +61,364 @@ import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
 import { WindowsControls } from "@/components/WindowsControls";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
 interface GitPanelProps {
     onClose: () => void;
     initialTab?: "changes" | "history";
     initialCommitHash?: string;
-    /** When true, the header becomes a draggable title bar with WindowsControls */
     isWindow?: boolean;
 }
 
-function getStatusIcon(status: string) {
+// ─── Status helpers ────────────────────────────────────────────────────────────
+
+function getStatusIcon(status: string, size = 14) {
     switch (status) {
-        case "added":
-            return <FilePlus size={14} className="text-green-500" />;
-        case "modified":
-            return <FileEdit size={14} className="text-blue-500" />;
-        case "deleted":
-            return <FileX size={14} className="text-red-500" />;
-        case "renamed":
-            return <ArrowRightLeft size={14} className="text-yellow-500" />;
-        default:
-            return <FileText size={14} className="text-gray-500" />;
+        case "added":    return <FilePlus size={size} className="text-green-500 shrink-0" />;
+        case "modified": return <FileEdit size={size} className="text-blue-400 shrink-0" />;
+        case "deleted":  return <FileX size={size} className="text-red-500 shrink-0" />;
+        case "renamed":  return <ArrowRightLeft size={size} className="text-yellow-400 shrink-0" />;
+        default:         return <FileText size={size} className="text-muted-foreground shrink-0" />;
     }
 }
 
-function getStatusLabel(status: string) {
-    switch (status) {
-        case "added":
-            return "Añadido";
-        case "modified":
-            return "Modificado";
-        case "deleted":
-            return "Eliminado";
-        case "renamed":
-            return "Renombrado";
-        default:
-            return status;
-    }
+function getStatusLetter(status: string) {
+    return { added: "A", modified: "M", deleted: "D", renamed: "R" }[status] ?? "?";
 }
 
-function getStatusBadgeColor(status: string) {
-    switch (status) {
-        case "added":
-            return "bg-green-500/15 text-green-600 dark:text-green-400";
-        case "modified":
-            return "bg-blue-500/15 text-blue-600 dark:text-blue-400";
-        case "deleted":
-            return "bg-red-500/15 text-red-600 dark:text-red-400";
-        case "renamed":
-            return "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400";
-        default:
-            return "bg-gray-500/15 text-gray-600 dark:text-gray-400";
-    }
+function getStatusLetterClass(status: string) {
+    return {
+        added:    "text-green-500",
+        modified: "text-blue-400",
+        deleted:  "text-red-500",
+        renamed:  "text-yellow-400",
+    }[status] ?? "text-muted-foreground";
 }
 
-// Diff viewer for a single file
-function DiffViewer({ diff }: { diff: string }) {
-    if (!diff) {
+// ─── Build directory tree ──────────────────────────────────────────────────────
+
+type FileEntry = { path: string; status: string };
+
+interface TreeNode {
+    name: string;
+    fullPath: string;
+    file?: FileEntry;
+    children: Record<string, TreeNode>;
+}
+
+function buildTree(files: FileEntry[]): TreeNode {
+    const root: TreeNode = { name: "", fullPath: "", children: {} };
+    for (const file of files) {
+        const parts = file.path.split("/");
+        let cur = root;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = i === parts.length - 1;
+            if (!cur.children[part]) {
+                cur.children[part] = {
+                    name: part,
+                    fullPath: parts.slice(0, i + 1).join("/"),
+                    children: {},
+                };
+            }
+            if (isLast) {
+                cur.children[part].file = file;
+            }
+            cur = cur.children[part];
+        }
+    }
+    return root;
+}
+
+// ─── Flat file row (PHPStorm style) ───────────────────────────────────────────
+
+function FlatFileRow({
+    file,
+    selectedFile,
+    onSelectFile,
+    actionIcon,
+    onAction,
+    isActionLoading,
+}: {
+    file: FileEntry;
+    selectedFile: string | null;
+    onSelectFile: (path: string) => void;
+    actionIcon: React.ReactNode;
+    onAction: (path: string) => void;
+    isActionLoading: boolean;
+}) {
+    const parts = file.path.split("/");
+    const filename = parts.pop()!;
+    const dir = parts.join("/");
+    const isSelected = selectedFile === file.path;
+
+    return (
+        <div
+            className={cn(
+                "group flex items-center gap-2 py-1 px-2.5 cursor-pointer select-none transition-colors text-sm",
+                isSelected
+                    ? "bg-primary/10 border-l-[2px] border-primary"
+                    : "hover:bg-muted/40 border-l-[2px] border-transparent",
+            )}
+            onClick={() => onSelectFile(file.path)}
+        >
+            {getStatusIcon(file.status)}
+            <span className={cn("truncate", isSelected && "font-semibold")}>{filename}</span>
+            {dir && (
+                <span className="text-xs text-muted-foreground/50 shrink-0">{dir}</span>
+            )}
+            <span className={cn("text-xs font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(file.status))}>
+                {getStatusLetter(file.status)}
+            </span>
+            <button
+                onClick={(e) => { e.stopPropagation(); onAction(file.path); }}
+                disabled={isActionLoading}
+                className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer"
+            >
+                {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : actionIcon}
+            </button>
+        </div>
+    );
+}
+
+// ─── Tree node renderer ────────────────────────────────────────────────────────
+
+function TreeNodeRow({
+    node,
+    depth,
+    selectedFile,
+    onSelectFile,
+    expandedDirs,
+    toggleDir,
+    actionIcon,
+    onAction,
+    isActionLoading,
+    actionTooltip,
+}: {
+    node: TreeNode;
+    depth: number;
+    selectedFile: string | null;
+    onSelectFile: (path: string) => void;
+    expandedDirs: Set<string>;
+    toggleDir: (path: string) => void;
+    actionIcon: React.ReactNode;
+    onAction: (path: string) => void;
+    isActionLoading: boolean;
+    actionTooltip: string;
+}) {
+    const isDir = !node.file;
+    const isExpanded = expandedDirs.has(node.fullPath);
+    const isSelected = !isDir && selectedFile === node.file!.path;
+    const sortedChildren = Object.values(node.children).sort((a, b) => {
+        const aIsDir = !a.file;
+        const bIsDir = !b.file;
+        if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    return (
+        <>
+            <div
+                className={cn(
+                    "group flex items-center gap-1.5 py-1 pr-2.5 cursor-pointer select-none transition-colors text-sm",
+                    isDir ? "hover:bg-muted/40" : isSelected
+                        ? "bg-primary/10 border-l-[2px] border-primary"
+                        : "hover:bg-muted/40 border-l-[2px] border-transparent",
+                )}
+                style={{ paddingLeft: `${10 + depth * 16}px` }}
+                onClick={() => {
+                    if (isDir) toggleDir(node.fullPath);
+                    else onSelectFile(node.file!.path);
+                }}
+            >
+                {isDir ? (
+                    <>
+                        <ChevronRight
+                            size={14}
+                            className={cn("text-muted-foreground/60 shrink-0 transition-transform", isExpanded && "rotate-90")}
+                        />
+                        <Folder size={14} className="text-muted-foreground/60 shrink-0" />
+                        <span className="truncate text-muted-foreground font-medium">{node.name}</span>
+                    </>
+                ) : (
+                    <>
+                        {getStatusIcon(node.file!.status)}
+                        <span className={cn("truncate flex-1", isSelected && "font-semibold")}>{node.name}</span>
+                        <span className={cn("text-xs font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(node.file!.status))}>
+                            {getStatusLetter(node.file!.status)}
+                        </span>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onAction(node.file!.path); }}
+                            disabled={isActionLoading}
+                            className="opacity-0 group-hover:opacity-100 ml-1 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer"
+                        >
+                            {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : actionIcon}
+                        </button>
+                    </>
+                )}
+            </div>
+            {isDir && isExpanded && sortedChildren.map(child => (
+                <TreeNodeRow
+                    key={child.fullPath}
+                    node={child}
+                    depth={depth + 1}
+                    selectedFile={selectedFile}
+                    onSelectFile={onSelectFile}
+                    expandedDirs={expandedDirs}
+                    toggleDir={toggleDir}
+                    actionIcon={actionIcon}
+                    onAction={onAction}
+                    isActionLoading={isActionLoading}
+                    actionTooltip={actionTooltip}
+                />
+            ))}
+        </>
+    );
+}
+
+// ─── Diff / Full file viewer ───────────────────────────────────────────────────
+
+type ViewMode = "diff" | "full";
+
+function FileContentViewer({
+    diff,
+    fullContent,
+    filepath,
+    isLoading,
+    viewMode,
+    onSetViewMode,
+}: {
+    diff: string;
+    fullContent: string;
+    filepath: string | null;
+    isLoading: boolean;
+    viewMode: ViewMode;
+    onSetViewMode: (m: ViewMode) => void;
+}) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        scrollRef.current?.scrollTo(0, 0);
+    }, [filepath, viewMode]);
+
+    if (!filepath) {
         return (
-            <div className="p-3 text-xs text-muted-foreground italic">
-                No hay diferencias disponibles
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                <Diff size={36} className="opacity-15" />
+                <p className="text-sm">Selecciona un archivo para ver diferencias</p>
             </div>
         );
     }
 
-    const lines = diff.split("\n");
+    if (isLoading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <Loader2 size={18} className="animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
-    return (
-        <div className="overflow-x-auto max-h-64 border-t border-border">
-            <pre className="text-[11px] leading-[18px] font-mono">
+    const parts = filepath.split("/");
+    const fileName = parts.pop() || filepath;
+    const dirPath = parts.join("/");
+
+    const renderDiff = () => {
+        if (!diff) return (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
+                <Check size={24} className="text-green-500 opacity-50" />
+                <p className="text-sm italic">Sin diferencias disponibles</p>
+            </div>
+        );
+        const lines = diff.split("\n");
+        return (
+            <pre className="text-xs leading-5 font-mono min-w-max">
                 {lines.map((line, i) => {
-                    let bgColor = "";
-                    let textColor = "text-foreground";
-
+                    let bg = "";
+                    let fg = "text-foreground/80";
+                    let lineNumFg = "text-muted-foreground/30";
                     if (line.startsWith("+") && !line.startsWith("+++")) {
-                        bgColor = "bg-green-500/10";
-                        textColor = "text-green-700 dark:text-green-400";
+                        bg = "bg-[#0d4a1f]"; fg = "text-green-300"; lineNumFg = "text-green-700";
                     } else if (line.startsWith("-") && !line.startsWith("---")) {
-                        bgColor = "bg-red-500/10";
-                        textColor = "text-red-700 dark:text-red-400";
+                        bg = "bg-[#4a0d0d]"; fg = "text-red-300"; lineNumFg = "text-red-700";
                     } else if (line.startsWith("@@")) {
-                        bgColor = "bg-blue-500/10";
-                        textColor = "text-blue-600 dark:text-blue-400";
-                    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
-                        textColor = "text-muted-foreground";
+                        bg = "bg-blue-900/20"; fg = "text-blue-400"; lineNumFg = "text-blue-700";
+                    } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++")) {
+                        fg = "text-muted-foreground/50"; lineNumFg = "text-muted-foreground/15";
                     }
-
                     return (
-                        <div
-                            key={i}
-                            className={cn("px-3 py-0", bgColor, textColor)}
-                        >
-                            {line || " "}
+                        <div key={i} className={cn("flex min-h-[20px]", bg)}>
+                            <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none", lineNumFg, "text-[10px] leading-5")}>
+                                {i + 1}
+                            </span>
+                            <span className={cn("px-3 flex-1 whitespace-pre", fg)}>{line || " "}</span>
                         </div>
                     );
                 })}
             </pre>
-        </div>
-    );
-}
+        );
+    };
 
-// File row component
-function FileRow({
-    file,
-    onToggle,
-    isToggling,
-    onViewDiff,
-    isExpanded,
-}: {
-    file: { path: string; status: string };
-    onToggle: () => void;
-    isToggling: boolean;
-    onViewDiff: () => void;
-    isExpanded: boolean;
-}) {
-    const fileName = file.path.split("/").pop() || file.path;
-    const dirPath = file.path.includes("/")
-        ? file.path.substring(0, file.path.lastIndexOf("/"))
-        : "";
-
-    return (
-        <div className="group">
-            <div
-                className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 cursor-pointer transition-colors",
-                    isExpanded && "bg-muted/30",
-                )}
-                onClick={onViewDiff}
-            >
-                <ChevronRight
-                    size={12}
-                    className={cn(
-                        "text-muted-foreground transition-transform shrink-0",
-                        isExpanded && "rotate-90",
-                    )}
-                />
-                {getStatusIcon(file.status)}
-                <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                    <span className="text-xs font-medium truncate">{fileName}</span>
-                    {dirPath && (
-                        <span className="text-[10px] text-muted-foreground truncate">
-                            {dirPath}
+    const renderFull = () => {
+        if (!fullContent) return (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
+        );
+        const lines = fullContent.split("\n");
+        return (
+            <pre className="text-xs leading-5 font-mono min-w-max">
+                {lines.map((line, i) => (
+                    <div key={i} className="flex min-h-[20px]">
+                        <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-[10px] leading-5 text-muted-foreground/25">
+                            {i + 1}
                         </span>
-                    )}
-                </div>
-                <span
-                    className={cn(
-                        "text-[10px] font-medium px-1.5 py-0.5 rounded",
-                        getStatusBadgeColor(file.status),
-                    )}
-                >
-                    {getStatusLabel(file.status).charAt(0)}
-                </span>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggle();
-                            }}
-                            disabled={isToggling}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity"
-                        >
-                            {isToggling ? (
-                                <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                                <Plus size={12} />
-                            )}
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Stage archivo</TooltipContent>
-                </Tooltip>
-            </div>
-        </div>
-    );
-}
-
-// Staged file row
-function StagedFileRow({
-    file,
-    onUnstage,
-    isUnstaging,
-}: {
-    file: { path: string; status: string };
-    onUnstage: () => void;
-    isUnstaging: boolean;
-}) {
-    const fileName = file.path.split("/").pop() || file.path;
-    const dirPath = file.path.includes("/")
-        ? file.path.substring(0, file.path.lastIndexOf("/"))
-        : "";
+                        <span className="px-3 flex-1 whitespace-pre text-foreground/75">{line || " "}</span>
+                    </div>
+                ))}
+            </pre>
+        );
+    };
 
     return (
-        <div className="group flex items-center gap-2 px-3 py-1.5 hover:bg-muted/50 transition-colors">
-            <Check size={12} className="text-green-500 shrink-0" />
-            {getStatusIcon(file.status)}
-            <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                <span className="text-xs font-medium truncate">{fileName}</span>
-                {dirPath && (
-                    <span className="text-[10px] text-muted-foreground truncate">
-                        {dirPath}
-                    </span>
-                )}
-            </div>
-            <span
-                className={cn(
-                    "text-[10px] font-medium px-1.5 py-0.5 rounded",
-                    getStatusBadgeColor(file.status),
-                )}
-            >
-                {getStatusLabel(file.status).charAt(0)}
-            </span>
-            <Tooltip>
-                <TooltipTrigger asChild>
+        <div className="h-full flex flex-col min-h-0">
+            {/* Toolbar: breadcrumb + view mode toggle */}
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 shrink-0">
+                <FolderOpen size={12} className="text-muted-foreground/50 shrink-0" />
+                <span className="text-xs text-muted-foreground truncate min-w-0">
+                    {dirPath && <span className="text-muted-foreground/60">{dirPath}/</span>}
+                    <span className="text-white">{fileName}</span>
+                </span>
+                <div className="ml-auto flex items-center bg-muted rounded overflow-hidden shrink-0">
                     <button
-                        onClick={onUnstage}
-                        disabled={isUnstaging}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity"
-                    >
-                        {isUnstaging ? (
-                            <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                            <Minus size={12} />
+                        onClick={() => onSetViewMode("diff")}
+                        className={cn(
+                            "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                            viewMode === "diff" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                         )}
+                    >
+                        <Diff size={10} />
+                        Diff
                     </button>
-                </TooltipTrigger>
-                <TooltipContent>Unstage archivo</TooltipContent>
-            </Tooltip>
+                    <button
+                        onClick={() => onSetViewMode("full")}
+                        className={cn(
+                            "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
+                            viewMode === "full" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                        )}
+                    >
+                        <Eye size={10} />
+                        Completo
+                    </button>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div ref={scrollRef} className="flex-1 overflow-auto">
+                {viewMode === "diff" ? renderDiff() : renderFull()}
+            </div>
         </div>
     );
 }
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
     const appId = useAtomValue(selectedAppIdAtom);
@@ -283,6 +426,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const { settings } = useSettings();
     const hasGithubToken = !!settings?.githubAccessToken;
     const [activeTab, setActiveTab] = useState<"changes" | "history">(initialTab ?? "changes");
+
     const {
         uncommittedFiles,
         currentBranch,
@@ -322,165 +466,172 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         isSwitchingBranch,
     } = useGitPanel(appId);
 
-    // Must be after useGitPanel so gitState is available
     const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
 
-    const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set());
-    const [expandedFile, setExpandedFile] = useState<string | null>(null);
-    const [fileDiff, setFileDiff] = useState<string>("");
-    const [isLoadingDiff, setIsLoadingDiff] = useState(false);
-    const [showUnstaged, setShowUnstaged] = useState(true);
-    const [showStaged, setShowStaged] = useState(true);
 
-    // Conflict resolution state
+    // ── file selection & diff ──
+    const [selectedFile, setSelectedFile] = useState<string | null>(null);
+    const [fileDiff, setFileDiff] = useState<string>("");
+    const [fullContent, setFullContent] = useState<string>("");
+    const [isLoadingDiff, setIsLoadingDiff] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>("diff");
+
+    // ── tree state ──
+    const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+    const toggleDir = useCallback((p: string) => {
+        setExpandedDirs(prev => {
+            const next = new Set(prev);
+            next.has(p) ? next.delete(p) : next.add(p);
+            return next;
+        });
+    }, []);
+
+    // ── conflict state ──
     const [expandedConflictFile, setExpandedConflictFile] = useState<string | null>(null);
     const [conflictDiff, setConflictDiff] = useState<string>("");
     const [isLoadingConflictDiff, setIsLoadingConflictDiff] = useState(false);
     const [showConflicts, setShowConflicts] = useState(true);
 
-    // Git Tools section state
-    const [showGitTools, setShowGitTools] = useState(false);
+    // ── git tools ──
     const [isRemovingLock, setIsRemovingLock] = useState(false);
 
-    // Separate files into staged and unstaged
-    // Since git status --porcelain gives us both, we track staged state client-side
-    // based on user interactions
-    const unstagedFiles = uncommittedFiles.filter((f) => !stagedFiles.has(f.path));
-    const stagedFilesList = uncommittedFiles.filter((f) => stagedFiles.has(f.path));
+    // ── view type: flat list (default) or tree ──
+    const [viewType, setViewType] = useState<"flat" | "tree">("flat");
 
-    const handleStageFile = useCallback(
-        async (filepath: string) => {
-            try {
-                await stageFile(filepath);
-                setStagedFiles((prev) => new Set([...prev, filepath]));
-            } catch {
-                // Error handled by hook
+    const hasChanges = uncommittedFiles.length > 0;
+    const canCommit = commitMessage.trim().length > 0 && hasChanges;
+
+    // ── trees built from file arrays ──
+    const unstagedTree = useMemo(() => buildTree(uncommittedFiles), [uncommittedFiles]);
+
+    // Auto-expand all directories when switching to tree view
+    useEffect(() => {
+        if (viewType !== "tree") return;
+        const allDirs = new Set<string>();
+        for (const f of uncommittedFiles) {
+            const segments = f.path.split("/");
+            for (let i = 1; i < segments.length; i++) {
+                allDirs.add(segments.slice(0, i).join("/"));
             }
-        },
-        [stageFile],
-    );
-
-    const handleUnstageFile = useCallback(
-        async (filepath: string) => {
-            try {
-                await unstageFile(filepath);
-                setStagedFiles((prev) => {
-                    const next = new Set(prev);
-                    next.delete(filepath);
-                    return next;
-                });
-            } catch {
-                // Error handled by hook
-            }
-        },
-        [unstageFile],
-    );
-
-    const handleStageAll = useCallback(async () => {
-        try {
-            await stageAll();
-            setStagedFiles(new Set(uncommittedFiles.map((f) => f.path)));
-        } catch {
-            // Error handled by hook
         }
-    }, [stageAll, uncommittedFiles]);
+        setExpandedDirs(allDirs);
+    }, [viewType, uncommittedFiles.length]);
 
-    const handleUnstageAll = useCallback(async () => {
+    // ── select file → load diff + full content ──
+    const handleSelectFile = useCallback(async (filepath: string) => {
+        setSelectedFile(filepath);
+        setIsLoadingDiff(true);
+        setFileDiff("");
+        setFullContent("");
         try {
-            await unstageAll();
-            setStagedFiles(new Set());
+            const [diffResult, contentResult] = await Promise.all([
+                getFileDiff(filepath),
+                appId ? ipc.git.getFileContent({ appId, filepath }) : Promise.resolve({ content: "" }),
+            ]);
+            setFileDiff(diffResult?.diff ?? "");
+            setFullContent(contentResult?.content ?? "");
         } catch {
-            // Error handled by hook
+            setFileDiff("");
+            setFullContent("");
+        } finally {
+            setIsLoadingDiff(false);
         }
-    }, [unstageAll]);
+    }, [getFileDiff, appId]);
 
-    const handleViewDiff = useCallback(
-        async (filepath: string) => {
-            if (expandedFile === filepath) {
-                setExpandedFile(null);
-                return;
-            }
-            setExpandedFile(filepath);
-            setIsLoadingDiff(true);
-            try {
-                const result = await getFileDiff(filepath);
-                setFileDiff(result?.diff ?? "");
-            } catch {
-                setFileDiff("");
-            } finally {
-                setIsLoadingDiff(false);
-            }
-        },
-        [expandedFile, getFileDiff],
-    );
-
-    const handleViewConflictDiff = useCallback(
-        async (filepath: string) => {
-            if (expandedConflictFile === filepath) {
-                setExpandedConflictFile(null);
-                return;
-            }
-            setExpandedConflictFile(filepath);
-            setIsLoadingConflictDiff(true);
-            try {
-                const result = await getConflictFileDiff(filepath);
-                setConflictDiff(result?.diff ?? "");
-            } catch {
-                setConflictDiff("");
-            } finally {
-                setIsLoadingConflictDiff(false);
-            }
-        },
-        [expandedConflictFile, getConflictFileDiff],
-    );
+    const handleViewConflictDiff = useCallback(async (filepath: string) => {
+        if (expandedConflictFile === filepath) { setExpandedConflictFile(null); return; }
+        setExpandedConflictFile(filepath);
+        setIsLoadingConflictDiff(true);
+        try { const r = await getConflictFileDiff(filepath); setConflictDiff(r?.diff ?? ""); }
+        catch { setConflictDiff(""); }
+        finally { setIsLoadingConflictDiff(false); }
+    }, [expandedConflictFile, getConflictFileDiff]);
 
     const handleCommit = useCallback(async () => {
         if (!commitMessage.trim()) return;
-        const filesToStage =
-            stagedFilesList.length > 0
-                ? stagedFilesList.map((f) => f.path)
-                : undefined;
+        const filesToStage = uncommittedFiles.map(f => f.path);
         await commit({ message: commitMessage, filesToStage });
-        setStagedFiles(new Set());
-    }, [commitMessage, commit, stagedFilesList]);
+        setSelectedFile(null);
+        setFileDiff("");
+        setFullContent("");
+    }, [commitMessage, commit, uncommittedFiles]);
 
     const handleCommitAndPush = useCallback(async () => {
-        if (!commitMessage.trim()) return;
-        const filesToStage =
-            stagedFilesList.length > 0
-                ? stagedFilesList.map((f) => f.path)
-                : undefined;
-        await commit({ message: commitMessage, filesToStage });
-        setStagedFiles(new Set());
+        await handleCommit();
         await push({});
-    }, [commitMessage, commit, push, stagedFilesList]);
-
-    const handlePush = useCallback(async () => {
-        await push({});
-    }, [push]);
-
-    const handlePull = useCallback(async () => {
-        await pull();
-    }, [pull]);
-
-    const handleFetch = useCallback(async () => {
-        await fetch();
-    }, [fetch]);
-
-    const hasChanges = uncommittedFiles.length > 0;
-    const hasStagedFiles = stagedFilesList.length > 0;
-    const canCommit = commitMessage.trim().length > 0 && hasChanges;
+    }, [handleCommit, push]);
 
     return (
-        <div className="h-full flex flex-col bg-background">
-            {/* Header */}
-            <div className={cn("flex items-center justify-between px-4 py-2.5 border-b border-border", isWindow && "app-region-drag bg-(--sidebar)")}>
-                <div className="flex items-center gap-2">
-                    <GitBranch size={16} className="text-primary" />
-                    <h2 className="text-sm font-semibold">Control de Git</h2>
+        <div className="h-full flex flex-col bg-background" style={{ fontFamily: "var(--font-sans, inherit)", fontSize: "inherit" }}>
+
+            {/* ── Window title bar (drag region) ── */}
+            {isWindow && (
+                <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
+                    <div className="flex items-center gap-2 no-app-region-drag">
+                        <GitBranch size={14} className="text-primary" />
+                        <span className="text-sm font-semibold">Commit</span>
+                    </div>
+                    <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />
                 </div>
-                <div className="flex items-center gap-2 no-app-region-drag">
-                    {/* Current branch badge — click to switch */}
+            )}
+
+            {/* ── Sub-header: tabs + branch switcher ── */}
+            <div className="flex items-center border-b border-border shrink-0 bg-background">
+                {/* Tabs */}
+                <div className="flex">
+                    {(["changes", "history"] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                "relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer",
+                                activeTab === tab ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
+                            )}
+                        >
+                            {tab === "changes" ? <GitCommit size={15} /> : <History size={15} />}
+                            {tab === "changes" ? "Cambios" : "Historial"}
+                            {tab === "changes" && hasChanges && (
+                                <span className="text-[10px] px-1.5 py-0 rounded-full bg-primary/15 text-primary font-semibold">
+                                    {uncommittedFiles.length}
+                                </span>
+                            )}
+                            {activeTab === tab && (
+                                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t-full bg-primary" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Branch + merge/rebase badges + Pull icon + close */}
+                <div className="ml-auto flex items-center gap-1 pr-2">
+                    {gitState?.mergeInProgress && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500 font-semibold">MERGE</span>
+                    )}
+                    {gitState?.rebaseInProgress && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-semibold">REBASE</span>
+                    )}
+                    {/* Pull icon button - PHPStorm style */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer"
+                                onClick={() => pull()} disabled={isPulling || isPushing}>
+                                {isPulling ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Pull</TooltipContent>
+                    </Tooltip>
+                    {/* Push icon button - only visible when commits ahead */}
+                    {(gitState?.ahead ?? 0) > 0 && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer text-primary"
+                                    onClick={() => push({})} disabled={isPushing || isPulling}>
+                                    {isPushing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Push ({gitState?.ahead} commit{gitState?.ahead !== 1 ? "s" : ""})</TooltipContent>
+                        </Tooltip>
+                    )}
                     {currentBranch && appId && (
                         <BranchSwitcher
                             appId={appId}
@@ -492,765 +643,487 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             align="end"
                         />
                     )}
-                    {/* Merge/rebase warnings */}
-                    {gitState?.mergeInProgress && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 font-medium">
-                            MERGE
-                        </span>
-                    )}
-                    {gitState?.rebaseInProgress && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium">
-                            REBASE
-                        </span>
-                    )}
-                    {isWindow ? (
-                        <WindowsControls className="ml-2 pr-0 pointer-events-auto no-app-region-drag" buttonClassName="h-9" />
-                    ) : (
-                        <button
-                            onClick={onClose}
-                            className="p-1 hover:bg-muted rounded-md transition-colors"
-                            aria-label="Cerrar panel Git"
-                        >
-                            <X size={16} />
+                    
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer hover:bg-muted ml-1">
+                                <MoreVertical size={13} className="text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56" style={{ fontFamily: "var(--font-sans, inherit)" }}>
+                            <DropdownMenuLabel className="text-xs text-muted-foreground font-medium">Herramientas Git</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                                className="text-xs flex items-center gap-2 cursor-pointer"
+                                disabled={isRemovingLock || !appId}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    if (!appId) return;
+                                    setIsRemovingLock(true);
+                                    try {
+                                        const r = await ipc.git.removeIndexLock({ appId });
+                                        toast[r.removed ? "success" : "info"](r.removed ? "Lock eliminado" : "No hay lock activo");
+                                    } catch (err: any) { toast.error(err.message); }
+                                    finally { setIsRemovingLock(false); }
+                                }}
+                            >
+                                {isRemovingLock ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />}
+                                Eliminar lock file
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className={cn("text-xs flex items-center gap-2 cursor-pointer", gitState?.mergeInProgress && "text-amber-500 focus:text-amber-400")}
+                                disabled={isAbortingMerge}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    try { await abortMerge(); toast.success("Merge abortado"); }
+                                    catch (err: any) { toast.error(err.message); }
+                                }}
+                            >
+                                <Ban size={13} />
+                                Abortar merge
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className={cn("text-xs flex items-center gap-2 cursor-pointer", gitState?.rebaseInProgress && "text-orange-500 focus:text-orange-400")}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    if (!appId) return;
+                                    try { await ipc.github.rebaseAbort({ appId }); toast.success("Rebase abortado"); }
+                                    catch (err: any) { toast.error(err.message); }
+                                }}
+                            >
+                                <Ban size={13} />
+                                Abortar rebase
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {!isWindow && (
+                        <button onClick={onClose} className="p-1 hover:bg-muted rounded transition-colors ml-0.5">
+                            <X size={14} />
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex border-b border-border">
-                <button
-                    onClick={() => setActiveTab("changes")}
-                    className={cn(
-                        "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative",
-                        activeTab === "changes"
-                            ? "text-foreground"
-                            : "text-muted-foreground hover:text-foreground/80",
-                    )}
-                >
-                    <GitCommit size={13} />
-                    Cambios
-                    {hasChanges && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-                            {uncommittedFiles.length}
-                        </span>
-                    )}
-                    {activeTab === "changes" && (
-                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab("history")}
-                    className={cn(
-                        "flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors relative",
-                        activeTab === "history"
-                            ? "text-foreground"
-                            : "text-muted-foreground hover:text-foreground/80",
-                    )}
-                >
-                    <History size={13} />
-                    Historial
-                    {activeTab === "history" && (
-                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
-                    )}
-                </button>
-            </div>
-
-            {/* Tab Content */}
+            {/* ── Tab content ── */}
             {activeTab === "history" ? (
                 <div className="flex-1 overflow-hidden">
                     <GitCommitHistory initialCommitHash={initialCommitHash} />
                 </div>
             ) : (
-                <>
-                    {/* Changes Content */}
-
-                    {/* Merge Conflict Resolution Section */}
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                    {/* Merge conflict banner */}
                     {gitState?.mergeInProgress && (
-                        <div className="border-b border-amber-500/30 bg-amber-500/5">
-                            <div className="px-3 py-3 space-y-3">
-                                {/* Header */}
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-md bg-amber-500/15">
-                                        <GitMerge size={16} className="text-amber-600 dark:text-amber-400" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                                            Merge en progreso — Conflictos detectados
-                                        </p>
-                                        <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">
-                                            Resuelve por archivo con diff o aplica una estrategia global
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Per-file conflict resolution with diff */}
-                                {conflictFiles.length > 0 && (
-                                    <div className="bg-amber-500/8 border border-amber-500/20 rounded-md overflow-hidden">
-                                        {/* Conflict files header */}
-                                        <div
-                                            className="flex items-center justify-between px-2.5 py-1.5 cursor-pointer hover:bg-amber-500/10 transition-colors"
-                                            onClick={() => setShowConflicts(!showConflicts)}
-                                        >
-                                            <div className="flex items-center gap-1.5">
-                                                <ChevronDown
-                                                    size={12}
-                                                    className={cn(
-                                                        "text-amber-600 dark:text-amber-400 transition-transform",
-                                                        !showConflicts && "-rotate-90",
-                                                    )}
-                                                />
-                                                <AlertTriangle size={11} className="text-amber-500" />
-                                                <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                                                    Archivos en conflicto ({conflictFiles.length})
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Conflict file rows */}
-                                        {showConflicts && (
-                                            <div className="border-t border-amber-500/15">
-                                                {conflictFiles.map((file) => {
-                                                    const fileName = file.split("/").pop() || file;
-                                                    const dirPath = file.includes("/")
-                                                        ? file.substring(0, file.lastIndexOf("/"))
-                                                        : "";
-                                                    const isExpanded = expandedConflictFile === file;
-
-                                                    return (
-                                                        <div key={file}>
-                                                            {/* File row */}
-                                                            <div
-                                                                className={cn(
-                                                                    "group flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer hover:bg-amber-500/10 transition-colors",
-                                                                    isExpanded && "bg-amber-500/8",
-                                                                )}
-                                                                onClick={() => handleViewConflictDiff(file)}
-                                                            >
-                                                                <ChevronRight
-                                                                    size={11}
-                                                                    className={cn(
-                                                                        "text-amber-500/60 transition-transform shrink-0",
-                                                                        isExpanded && "rotate-90",
-                                                                    )}
-                                                                />
-                                                                <AlertTriangle size={11} className="text-amber-500 shrink-0" />
-                                                                <div className="flex-1 min-w-0 flex items-center gap-1">
-                                                                    <span className="text-[11px] font-medium text-amber-800 dark:text-amber-200 truncate">
-                                                                        {fileName}
-                                                                    </span>
-                                                                    {dirPath && (
-                                                                        <span className="text-[9px] text-amber-600/50 dark:text-amber-400/50 truncate">
-                                                                            {dirPath}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                {/* Per-file resolution buttons */}
-                                                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    resolveFileOurs(file);
-                                                                                }}
-                                                                                disabled={isResolvingFile || isResolvingMerge}
-                                                                                className="p-1 rounded hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
-                                                                            >
-                                                                                <ShieldCheck size={12} />
-                                                                            </button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top">Conservar mi versión (ours)</TooltipContent>
-                                                                    </Tooltip>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    resolveFileTheirs(file);
-                                                                                }}
-                                                                                disabled={isResolvingFile || isResolvingMerge}
-                                                                                className="p-1 rounded hover:bg-green-500/20 text-green-600 dark:text-green-400 transition-colors"
-                                                                            >
-                                                                                <ArrowDownToLine size={12} />
-                                                                            </button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top">Aceptar su versión (theirs)</TooltipContent>
-                                                                    </Tooltip>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Expanded diff viewer */}
-                                                            {isExpanded && (
-                                                                <div className="bg-background/50 border-t border-amber-500/10">
-                                                                    {isLoadingConflictDiff ? (
-                                                                        <div className="flex items-center justify-center py-4">
-                                                                            <Loader2
-                                                                                size={14}
-                                                                                className="animate-spin text-amber-500"
-                                                                            />
-                                                                        </div>
-                                                                    ) : conflictDiff ? (
-                                                                        <div className="overflow-x-auto max-h-72">
-                                                                            <pre className="text-[11px] leading-[18px] font-mono">
-                                                                                {conflictDiff.split("\n").map((line, i) => {
-                                                                                    let bgColor = "";
-                                                                                    let textColor = "text-foreground";
-
-                                                                                    // Conflict markers get special styling
-                                                                                    if (line.startsWith("<<<<<<<")) {
-                                                                                        bgColor = "bg-blue-500/15";
-                                                                                        textColor = "text-blue-600 dark:text-blue-400 font-semibold";
-                                                                                    } else if (line.startsWith("=======")) {
-                                                                                        bgColor = "bg-purple-500/15";
-                                                                                        textColor = "text-purple-600 dark:text-purple-400 font-semibold";
-                                                                                    } else if (line.startsWith(">>>>>>>")) {
-                                                                                        bgColor = "bg-orange-500/15";
-                                                                                        textColor = "text-orange-600 dark:text-orange-400 font-semibold";
-                                                                                    } else if (line.startsWith("+") && !line.startsWith("+++")) {
-                                                                                        bgColor = "bg-green-500/10";
-                                                                                        textColor = "text-green-700 dark:text-green-400";
-                                                                                    } else if (line.startsWith("-") && !line.startsWith("---")) {
-                                                                                        bgColor = "bg-red-500/10";
-                                                                                        textColor = "text-red-700 dark:text-red-400";
-                                                                                    } else if (line.startsWith("@@")) {
-                                                                                        bgColor = "bg-blue-500/10";
-                                                                                        textColor = "text-blue-600 dark:text-blue-400";
-                                                                                    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
-                                                                                        textColor = "text-muted-foreground";
-                                                                                    }
-
-                                                                                    return (
-                                                                                        <div
-                                                                                            key={i}
-                                                                                            className={cn("px-3 py-0", bgColor, textColor)}
-                                                                                        >
-                                                                                            {line || " "}
-                                                                                        </div>
-                                                                                    );
-                                                                                })}
-                                                                            </pre>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="p-3 text-xs text-muted-foreground italic">
-                                                                            No hay diferencias disponibles
-                                                                        </div>
-                                                                    )}
-                                                                    {/* Per-file action bar */}
-                                                                    <div className="flex items-center gap-1.5 px-2.5 py-2 border-t border-amber-500/10 bg-muted/30">
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="flex-1 h-7 text-[11px] font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                                                                            onClick={() => resolveFileOurs(file)}
-                                                                            disabled={isResolvingFile || isResolvingMerge}
-                                                                        >
-                                                                            {isResolvingFile ? (
-                                                                                <Loader2 size={11} className="animate-spin mr-1" />
-                                                                            ) : (
-                                                                                <ShieldCheck size={11} className="mr-1" />
-                                                                            )}
-                                                                            Mío (local)
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            className="flex-1 h-7 text-[11px] font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
-                                                                            onClick={() => resolveFileTheirs(file)}
-                                                                            disabled={isResolvingFile || isResolvingMerge}
-                                                                        >
-                                                                            {isResolvingFile ? (
-                                                                                <Loader2 size={11} className="animate-spin mr-1" />
-                                                                            ) : (
-                                                                                <ArrowDownToLine size={11} className="mr-1" />
-                                                                            )}
-                                                                            Suyo (remoto)
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Bulk action buttons */}
-                                <div className="flex flex-col gap-1.5">
-                                    <div className="flex gap-1.5">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 h-8 text-xs font-medium border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                                            onClick={() => resolveMergeOurs()}
-                                            disabled={isResolvingMerge || isAbortingMerge}
-                                        >
-                                            {isResolvingMerge ? (
-                                                <Loader2 size={13} className="animate-spin mr-1.5" />
-                                            ) : (
-                                                <ShieldCheck size={13} className="mr-1.5" />
-                                            )}
-                                            Conservar todos mis cambios
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 h-8 text-xs font-medium border-green-500/30 bg-green-500/5 hover:bg-green-500/10 text-green-700 dark:text-green-300"
-                                            onClick={() => resolveMergeTheirs()}
-                                            disabled={isResolvingMerge || isAbortingMerge}
-                                        >
-                                            {isResolvingMerge ? (
-                                                <Loader2 size={13} className="animate-spin mr-1.5" />
-                                            ) : (
-                                                <ArrowDownToLine size={13} className="mr-1.5" />
-                                            )}
-                                            Aceptar todos sus cambios
-                                        </Button>
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full h-7 text-[11px] text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-                                        onClick={() => abortMerge()}
-                                        disabled={isResolvingMerge || isAbortingMerge}
-                                    >
-                                        {isAbortingMerge ? (
-                                            <Loader2 size={12} className="animate-spin mr-1.5" />
-                                        ) : (
-                                            <Ban size={12} className="mr-1.5" />
-                                        )}
-                                        Cancelar merge
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex-1 overflow-y-auto">
-                        {isLoadingFiles ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="animate-spin text-muted-foreground" size={20} />
-                            </div>
-                        ) : !hasChanges ? (
-                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                <Check size={32} className="text-green-500 mb-2" />
-                                <p className="text-sm text-muted-foreground">
-                                    El árbol de trabajo está limpio
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    No hay cambios pendientes
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                {/* Unstaged Changes Section */}
-                                <div className="border-b border-border">
-                                    <div
-                                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                                        onClick={() => setShowUnstaged(!showUnstaged)}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <ChevronDown
-                                                size={14}
-                                                className={cn(
-                                                    "text-muted-foreground transition-transform",
-                                                    !showUnstaged && "-rotate-90",
-                                                )}
-                                            />
-                                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                                Cambios
-                                            </span>
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                                                {unstagedFiles.length}
-                                            </span>
-                                        </div>
-                                        {unstagedFiles.length > 0 && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleStageAll();
-                                                        }}
-                                                        disabled={isStaging}
-                                                        className="p-1 rounded hover:bg-muted transition-colors"
-                                                    >
-                                                        <Plus size={14} className="text-muted-foreground" />
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Stage todos los cambios</TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </div>
-                                    {showUnstaged && (
-                                        <div>
-                                            {unstagedFiles.map((file) => (
-                                                <div key={file.path}>
-                                                    <FileRow
-                                                        file={file}
-                                                        onToggle={() => handleStageFile(file.path)}
-                                                        isToggling={isStaging}
-                                                        onViewDiff={() => handleViewDiff(file.path)}
-                                                        isExpanded={expandedFile === file.path}
-                                                    />
-                                                    {expandedFile === file.path && (
-                                                        <div className="bg-muted/20">
-                                                            {isLoadingDiff ? (
-                                                                <div className="flex items-center justify-center py-4">
-                                                                    <Loader2
-                                                                        size={14}
-                                                                        className="animate-spin text-muted-foreground"
-                                                                    />
-                                                                </div>
-                                                            ) : (
-                                                                <DiffViewer diff={fileDiff} />
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {unstagedFiles.length === 0 && (
-                                                <div className="px-3 py-2 text-xs text-muted-foreground italic">
-                                                    Todos los archivos están staged
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Staged Changes Section */}
-                                <div className="border-b border-border">
-                                    <div
-                                        className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                                        onClick={() => setShowStaged(!showStaged)}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <ChevronDown
-                                                size={14}
-                                                className={cn(
-                                                    "text-muted-foreground transition-transform",
-                                                    !showStaged && "-rotate-90",
-                                                )}
-                                            />
-                                            <span className="text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
-                                                Staged
-                                            </span>
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
-                                                {stagedFilesList.length}
-                                            </span>
-                                        </div>
-                                        {stagedFilesList.length > 0 && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleUnstageAll();
-                                                        }}
-                                                        disabled={isUnstaging}
-                                                        className="p-1 rounded hover:bg-muted transition-colors"
-                                                    >
-                                                        <Minus size={14} className="text-muted-foreground" />
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Unstage todos</TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </div>
-                                    {showStaged && (
-                                        <div>
-                                            {stagedFilesList.map((file) => (
-                                                <StagedFileRow
-                                                    key={file.path}
-                                                    file={file}
-                                                    onUnstage={() => handleUnstageFile(file.path)}
-                                                    isUnstaging={isUnstaging}
-                                                />
-                                            ))}
-                                            {stagedFilesList.length === 0 && (
-                                                <div className="px-3 py-2 text-xs text-muted-foreground italic">
-                                                    Sin archivos staged — haz commit de todos o selecciona individualmente
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Commit Area (bottom) */}
-                    {hasChanges && (
-                        <div className="border-t border-border p-3 space-y-2 bg-background">
-                            {/* Commit message */}
-                            <div className="flex gap-1.5">
-                                <Input
-                                    value={commitMessage}
-                                    onChange={(e) => setCommitMessage(e.target.value)}
-                                    placeholder="Mensaje de commit..."
-                                    className={cn(
-                                        "h-8 text-xs flex-1",
-                                        !commitMessage.trim() &&
-                                        hasStagedFiles &&
-                                        "border-amber-500/50 focus-visible:ring-amber-500/50",
-                                    )}
-                                    disabled={isCommitting || isGeneratingMessage}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && canCommit) {
-                                            handleCommit();
-                                        }
-                                    }}
-                                />
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0"
-                                            onClick={generateCommitMessage}
-                                            disabled={isGeneratingMessage || !hasChanges}
-                                        >
-                                            {isGeneratingMessage ? (
-                                                <Loader2 size={14} className="animate-spin" />
-                                            ) : (
-                                                <Sparkles size={14} />
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Generar mensaje con IA</TooltipContent>
-                                </Tooltip>
-                            </div>
-
-                            {/* Commit action buttons */}
-                            <div className="flex gap-1.5">
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="flex-1 h-8 text-xs font-medium"
-                                    onClick={handleCommit}
-                                    disabled={!canCommit || isCommitting}
-                                >
-                                    {isCommitting ? (
-                                        <Loader2 size={14} className="animate-spin mr-1.5" />
-                                    ) : (
-                                        <Check size={14} className="mr-1.5" />
-                                    )}
-                                    Commit{hasStagedFiles ? ` (${stagedFilesList.length})` : ""}
-                                </Button>
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="flex-1 h-8 text-xs font-medium bg-green-600 hover:bg-green-700 text-white"
-                                    onClick={handleCommitAndPush}
-                                    disabled={!canCommit || isCommitting || isPushing}
-                                >
-                                    {isCommitting || isPushing ? (
-                                        <Loader2 size={14} className="animate-spin mr-1.5" />
-                                    ) : (
-                                        <Upload size={14} className="mr-1.5" />
-                                    )}
-                                    Commit & Push
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sync Actions Bar — show remote setup when no remote, otherwise push/pull/fetch */}
-                    {hasGithubToken && !hasRemote && appId ? (
-                        <GitRemoteSetup
-                            appId={appId}
-                            appName={app?.name || "app"}
-                            onLinked={() => refreshApp()}
+                        <MergeConflictSection
+                            conflictFiles={conflictFiles}
+                            showConflicts={showConflicts}
+                            setShowConflicts={setShowConflicts}
+                            expandedConflictFile={expandedConflictFile}
+                            handleViewConflictDiff={handleViewConflictDiff}
+                            conflictDiff={conflictDiff}
+                            isLoadingConflictDiff={isLoadingConflictDiff}
+                            resolveFileOurs={resolveFileOurs}
+                            resolveFileTheirs={resolveFileTheirs}
+                            resolveMergeOurs={resolveMergeOurs}
+                            resolveMergeTheirs={resolveMergeTheirs}
+                            abortMerge={abortMerge}
+                            isResolvingFile={isResolvingFile}
+                            isResolvingMerge={isResolvingMerge}
+                            isAbortingMerge={isAbortingMerge}
                         />
-                    ) : (
-                        <div className="border-t border-border p-3 space-y-2 bg-muted/30">
-                            {/* Push / Pull / Fetch row */}
-                            <div className="flex gap-1.5">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 h-8 text-xs font-medium"
-                                            onClick={handlePush}
-                                            disabled={isPushing || isPulling}
-                                        >
-                                            {isPushing ? (
-                                                <Loader2 size={13} className="animate-spin mr-1.5" />
-                                            ) : (
-                                                <Upload size={13} className="mr-1.5" />
-                                            )}
-                                            Push
-                                            {gitState?.ahead !== undefined && gitState.ahead > 0 && (
-                                                <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary font-medium">
-                                                    {gitState.ahead}
-                                                </span>
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Enviar commits locales al remoto</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 h-8 text-xs font-medium"
-                                            onClick={handlePull}
-                                            disabled={isPulling || isPushing}
-                                        >
-                                            {isPulling ? (
-                                                <Loader2 size={13} className="animate-spin mr-1.5" />
-                                            ) : (
-                                                <Download size={13} className="mr-1.5" />
-                                            )}
-                                            Pull
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Traer y fusionar cambios del remoto</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 shrink-0"
-                                            onClick={handleFetch}
-                                            disabled={isFetching || isPulling}
-                                        >
-                                            {isFetching ? (
-                                                <Loader2 size={13} className="animate-spin" />
-                                            ) : (
-                                                <RefreshCw size={13} />
-                                            )}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Fetch — consultar cambios remotos sin fusionar</TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </div>
                     )}
 
-                    {/* Git Tools Section */}
-                    <div className="border-t border-border">
-                        <div
-                            className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-                            onClick={() => setShowGitTools(!showGitTools)}
-                        >
-                            <ChevronDown
-                                size={14}
-                                className={cn(
-                                    "text-muted-foreground transition-transform",
-                                    !showGitTools && "-rotate-90",
-                                )}
+                    {/* Split panels */}
+                    <PanelGroup direction="horizontal" className="flex-1 min-h-0">
+
+                        {/* ── Left: file tree + commit area ── */}
+                        <Panel defaultSize={32} minSize={22} maxSize={55}>
+                            <PanelGroup direction="vertical" className="h-full">
+
+                                {/* ── Top: file list ── */}
+                                <Panel defaultSize={65} minSize={30}>
+                                    <div className="h-full flex flex-col overflow-hidden">
+
+                                    {/* File list */}
+                                    <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                                    {isLoadingFiles ? (
+                                        <div className="flex items-center justify-center py-10">
+                                            <Loader2 size={18} className="animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : !hasChanges ? (
+                                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-2">
+                                            <Check size={28} className="text-green-500 opacity-60" />
+                                            <p className="text-xs text-muted-foreground">Árbol de trabajo limpio</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* ── File list toolbar: count + view toggle ── */}
+                                            <div className="flex items-center px-2.5 py-1.5 gap-2 border-b border-border/40 shrink-0">
+                                                <span className="text-xs text-muted-foreground/60">
+                                                    {uncommittedFiles.length} archivo{uncommittedFiles.length !== 1 ? "s" : ""}
+                                                </span>
+                                                <div className="ml-auto flex items-center gap-1">
+                                                    {/* Flat / Tree toggle */}
+                                                    <div className="flex items-center bg-muted rounded overflow-hidden ml-0.5">
+                                                        {viewType === "flat" ? (
+                                                            <button className="p-1.5 bg-background text-foreground cursor-default">
+                                                                <List size={14} />
+                                                            </button>
+                                                        ) : (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button onClick={() => setViewType("flat")}
+                                                                        className="p-1.5 transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                        <List size={14} />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Vista plana</TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                        {viewType === "tree" ? (
+                                                            <button className="p-1.5 bg-background text-foreground cursor-default">
+                                                                <FolderTree size={14} />
+                                                            </button>
+                                                        ) : (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button onClick={() => setViewType("tree")}
+                                                                        className="p-1.5 transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+                                                                        <FolderTree size={14} />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Vista árbol</TooltipContent>
+                                                            </Tooltip>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* ── File list ── */}
+                                            <div className="pb-1">
+                                                {viewType === "flat" ? (
+                                                    uncommittedFiles
+                                                        .slice()
+                                                        .sort((a, b) => a.path.localeCompare(b.path))
+                                                        .map(file => (
+                                                            <FlatFileRow
+                                                                key={file.path}
+                                                                file={file}
+                                                                selectedFile={selectedFile}
+                                                                onSelectFile={handleSelectFile}
+                                                                actionIcon={null}
+                                                                onAction={() => {}}
+                                                                isActionLoading={false}
+                                                            />
+                                                        ))
+                                                ) : (
+                                                    Object.values(unstagedTree.children)
+                                                        .sort((a, b) => (!a.file ? -1 : !b.file ? 1 : 0) || a.name.localeCompare(b.name))
+                                                        .map(child => (
+                                                            <TreeNodeRow
+                                                                key={child.fullPath}
+                                                                node={child}
+                                                                depth={0}
+                                                                selectedFile={selectedFile}
+                                                                onSelectFile={handleSelectFile}
+                                                                expandedDirs={expandedDirs}
+                                                                toggleDir={toggleDir}
+                                                                actionIcon={null}
+                                                                onAction={() => {}}
+                                                                isActionLoading={false}
+                                                                actionTooltip=""
+                                                            />
+                                                        ))
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                    </div>
+                                    </div>
+                                </Panel>
+
+                                {/* ── Horizontal resize handle ── */}
+                                <PanelResizeHandle className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-row-resize">
+                                    <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
+                                        <GripHorizontal className="h-2.5 w-2.5 text-muted-foreground" />
+                                    </div>
+                                </PanelResizeHandle>
+
+                                {/* ── Bottom: commit area ── */}
+                                <Panel defaultSize={35} minSize={20} maxSize={65}>
+                                    <div className="flex flex-col h-full overflow-hidden">
+
+                                    {/* Commit area */}
+                                    <div className="border-t border-border p-2.5 flex flex-col h-full overflow-hidden">
+                                    {/* Commit message - fills available height, still manually resizable */}
+                                    <textarea
+                                        value={commitMessage}
+                                        onChange={(e) => setCommitMessage(e.target.value)}
+                                        placeholder="Mensaje de commit..."
+                                        className={cn(
+                                            "w-full flex-1 resize-none rounded border border-border bg-muted/20 px-2.5 py-2",
+                                            "text-sm leading-relaxed min-h-[60px]",
+                                            "focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40",
+                                            "placeholder:text-muted-foreground/40",
+                                        )}
+                                        disabled={isCommitting || isGeneratingMessage}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && canCommit) handleCommit();
+                                        }}
+                                    />
+
+                                    {/* Action row: Commit + Commit & Push + AI icon (right) */}
+                                    <div className="flex gap-2 items-center py-2.5 shrink-0">
+                                        <Button
+                                            size="sm"
+                                            variant="default"
+                                            className="h-8 text-sm gap-1.5 px-4 cursor-pointer"
+                                            onClick={handleCommit}
+                                            disabled={!canCommit || isCommitting}
+                                        >
+                                            {isCommitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                            Commit
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 text-sm gap-1.5 px-4 cursor-pointer"
+                                            onClick={handleCommitAndPush}
+                                            disabled={!canCommit || isCommitting || isPushing}
+                                        >
+                                            {(isCommitting || isPushing) ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                                            Commit & Push
+                                        </Button>
+                                        <div className="flex-1" />
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-purple-400 hover:text-purple-300 cursor-pointer"
+                                                    onClick={generateCommitMessage}
+                                                    disabled={isGeneratingMessage || !hasChanges}>
+                                                    {isGeneratingMessage ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Generar con IA</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+
+                                    {/* Remote setup if needed */}
+                                    {hasGithubToken && !hasRemote && appId && (
+                                        <GitRemoteSetup appId={appId} appName={app?.name || "app"} onLinked={() => refreshApp()} />
+                                    )}
+                                    </div>
+                                    </div>
+                                </Panel>
+
+                            </PanelGroup>
+                        </Panel>
+
+                        <PanelResizeHandle className="relative flex w-px h-full items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize">
+                            <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
+                                <GripVertical className="h-2.5 w-2.5 text-muted-foreground" />
+                            </div>
+                        </PanelResizeHandle>
+
+                        {/* ── Right: diff viewer ── */}
+                        <Panel defaultSize={68} minSize={30}>
+                            <FileContentViewer
+                                diff={fileDiff}
+                                fullContent={fullContent}
+                                filepath={selectedFile}
+                                isLoading={isLoadingDiff}
+                                viewMode={viewMode}
+                                onSetViewMode={setViewMode}
                             />
-                            <Wrench size={13} className="text-muted-foreground" />
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                Herramientas Git
+                        </Panel>
+                    </PanelGroup>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Shared small components ───────────────────────────────────────────────────
+
+function SectionHeader({
+    label,
+    count,
+    expanded,
+    onToggle,
+    alwaysExpanded,
+    action,
+    icon,
+    labelClass,
+}: {
+    label: string;
+    count: number;
+    expanded: boolean;
+    onToggle: () => void;
+    alwaysExpanded?: boolean;
+    action?: React.ReactNode;
+    icon?: React.ReactNode;
+    labelClass?: string;
+}) {
+    return (
+        <div
+            className="flex items-center gap-2 px-2.5 py-2 cursor-pointer hover:bg-muted/30 transition-colors select-none"
+            onClick={alwaysExpanded ? undefined : onToggle}
+        >
+            {!alwaysExpanded && (
+                <ChevronDown
+                    size={14}
+                    className={cn("text-muted-foreground/60 transition-transform", !expanded && "-rotate-90")}
+                />
+            )}
+            {icon}
+            <span className={cn("text-sm font-medium text-muted-foreground/70", labelClass)}>
+                {label}
+            </span>
+            {count > 0 && (
+                <span className="text-xs px-1.5 rounded-full bg-muted text-muted-foreground/60 font-semibold">
+                    {count}
+                </span>
+            )}
+            {action && <span className="ml-auto">{action}</span>}
+        </div>
+    );
+}
+
+function ToolButton({
+    icon,
+    label,
+    loading,
+    highlight,
+    onClick,
+}: {
+    icon: React.ReactNode;
+    label: string;
+    loading?: boolean;
+    highlight?: "amber" | "orange";
+    onClick: () => void;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            disabled={loading}
+            className={cn(
+                "w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted/60 transition-colors text-muted-foreground hover:text-foreground text-left cursor-pointer",
+                highlight === "amber" && "text-amber-500 hover:text-amber-400",
+                highlight === "orange" && "text-orange-500 hover:text-orange-400",
+            )}
+        >
+            {loading ? <Loader2 size={14} className="animate-spin shrink-0" /> : <span className="shrink-0">{icon}</span>}
+            {label}
+        </button>
+    );
+}
+
+// ─── Merge conflict section ────────────────────────────────────────────────────
+
+function MergeConflictSection({
+    conflictFiles, showConflicts, setShowConflicts, expandedConflictFile,
+    handleViewConflictDiff, conflictDiff, isLoadingConflictDiff,
+    resolveFileOurs, resolveFileTheirs, resolveMergeOurs, resolveMergeTheirs,
+    abortMerge, isResolvingFile, isResolvingMerge, isAbortingMerge,
+}: {
+    conflictFiles: string[];
+    showConflicts: boolean;
+    setShowConflicts: (v: boolean) => void;
+    expandedConflictFile: string | null;
+    handleViewConflictDiff: (f: string) => void;
+    conflictDiff: string;
+    isLoadingConflictDiff: boolean;
+    resolveFileOurs: (f: string) => void;
+    resolveFileTheirs: (f: string) => void;
+    resolveMergeOurs: () => void;
+    resolveMergeTheirs: () => void;
+    abortMerge: () => void;
+    isResolvingFile: boolean;
+    isResolvingMerge: boolean;
+    isAbortingMerge: boolean;
+}) {
+    return (
+        <div className="border-b border-amber-500/25 bg-amber-950/20 shrink-0">
+            <div className="px-3 py-2 space-y-2">
+                <div className="flex items-center gap-2">
+                    <GitMerge size={13} className="text-amber-500" />
+                    <span className="text-[10px] font-semibold text-amber-400">Merge en progreso</span>
+                </div>
+                {conflictFiles.length > 0 && (
+                    <div className="border border-amber-500/15 rounded overflow-hidden">
+                        <div className="flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-amber-500/10 transition-colors"
+                            onClick={() => setShowConflicts(!showConflicts)}>
+                            <ChevronDown size={11} className={cn("text-amber-500/60 transition-transform", !showConflicts && "-rotate-90")} />
+                            <AlertTriangle size={10} className="text-amber-500" />
+                            <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+                                Conflictos ({conflictFiles.length})
                             </span>
                         </div>
-                        {showGitTools && (
-                            <div className="px-3 pb-3 space-y-1.5">
-                                <p className="text-[10px] text-muted-foreground mb-2">
-                                    Herramientas de reparación para problemas comunes de Git.
-                                </p>
-
-                                {/* Remove index.lock */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full h-8 text-xs justify-start"
-                                    disabled={isRemovingLock}
-                                    onClick={async () => {
-                                        if (!appId) return;
-                                        setIsRemovingLock(true);
-                                        try {
-                                            const result = await ipc.git.removeIndexLock({ appId });
-                                            if (result.removed) {
-                                                toast.success("Lock eliminado correctamente");
-                                            } else {
-                                                toast.info("No hay ningún lock file activo");
-                                            }
-                                        } catch (err: any) {
-                                            toast.error(err.message || "Error al eliminar el lock");
-                                        } finally {
-                                            setIsRemovingLock(false);
-                                        }
-                                    }}
-                                >
-                                    {isRemovingLock ? (
-                                        <Loader2 size={13} className="animate-spin mr-2" />
-                                    ) : (
-                                        <Wrench size={13} className="mr-2" />
+                        {showConflicts && conflictFiles.map(file => {
+                            const isExpanded = expandedConflictFile === file;
+                            return (
+                                <div key={file}>
+                                    <div className={cn("group flex items-center gap-1.5 px-2.5 py-1 cursor-pointer hover:bg-amber-500/10 transition-colors", isExpanded && "bg-amber-500/8")}
+                                        onClick={() => handleViewConflictDiff(file)}>
+                                        <ChevronRight size={10} className={cn("text-amber-500/50 transition-transform shrink-0", isExpanded && "rotate-90")} />
+                                        <AlertTriangle size={10} className="text-amber-500 shrink-0" />
+                                        <span className="text-[10px] text-amber-200/80 truncate flex-1">{file.split("/").pop()}</span>
+                                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Tooltip><TooltipTrigger asChild>
+                                                <button onClick={e => { e.stopPropagation(); resolveFileOurs(file); }} disabled={isResolvingFile}
+                                                    className="p-0.5 rounded hover:bg-blue-500/20 text-blue-400">
+                                                    <ShieldCheck size={11} />
+                                                </button>
+                                            </TooltipTrigger><TooltipContent>Mío</TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild>
+                                                <button onClick={e => { e.stopPropagation(); resolveFileTheirs(file); }} disabled={isResolvingFile}
+                                                    className="p-0.5 rounded hover:bg-green-500/20 text-green-400">
+                                                    <ArrowDownToLine size={11} />
+                                                </button>
+                                            </TooltipTrigger><TooltipContent>Suyo</TooltipContent></Tooltip>
+                                        </div>
+                                    </div>
+                                    {isExpanded && (
+                                        <div className="border-t border-amber-500/10 overflow-x-auto max-h-48">
+                                            {isLoadingConflictDiff ? (
+                                                <div className="flex items-center justify-center py-4"><Loader2 size={14} className="animate-spin text-amber-500" /></div>
+                                            ) : (
+                                                <pre className="text-[10px] leading-[18px] font-mono">
+                                                    {conflictDiff.split("\n").map((line, i) => {
+                                                        let bg = "", fg = "text-foreground";
+                                                        if (line.startsWith("<<<<<<<")) { bg = "bg-blue-500/15"; fg = "text-blue-400 font-semibold"; }
+                                                        else if (line.startsWith("=======")) { bg = "bg-purple-500/15"; fg = "text-purple-400 font-semibold"; }
+                                                        else if (line.startsWith(">>>>>>>")) { bg = "bg-orange-500/15"; fg = "text-orange-400 font-semibold"; }
+                                                        else if (line.startsWith("+") && !line.startsWith("+++")) { bg = "bg-green-500/10"; fg = "text-green-400"; }
+                                                        else if (line.startsWith("-") && !line.startsWith("---")) { bg = "bg-red-500/10"; fg = "text-red-400"; }
+                                                        return <div key={i} className={cn("px-3", bg, fg)}>{line || " "}</div>;
+                                                    })}
+                                                </pre>
+                                            )}
+                                        </div>
                                     )}
-                                    Eliminar lock file (.git/index.lock)
-                                </Button>
-
-                                {/* Abort merge */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        "w-full h-8 text-xs justify-start",
-                                        gitState?.mergeInProgress && "border-amber-500/40 text-amber-700 dark:text-amber-300",
-                                    )}
-                                    disabled={isAbortingMerge}
-                                    onClick={async () => {
-                                        try {
-                                            await abortMerge();
-                                            toast.success("Merge abortado correctamente");
-                                        } catch (err: any) {
-                                            toast.error(err.message || "Error al abortar el merge");
-                                        }
-                                    }}
-                                >
-                                    {isAbortingMerge ? (
-                                        <Loader2 size={13} className="animate-spin mr-2" />
-                                    ) : (
-                                        <Ban size={13} className="mr-2" />
-                                    )}
-                                    Abortar merge
-                                    {gitState?.mergeInProgress && (
-                                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium">
-                                            activo
-                                        </span>
-                                    )}
-                                </Button>
-
-                                {/* Abort rebase */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        "w-full h-8 text-xs justify-start",
-                                        gitState?.rebaseInProgress && "border-orange-500/40 text-orange-700 dark:text-orange-300",
-                                    )}
-                                    disabled={false}
-                                    onClick={async () => {
-                                        if (!appId) return;
-                                        try {
-                                            await ipc.github.rebaseAbort({ appId });
-                                            toast.success("Rebase abortado correctamente");
-                                        } catch (err: any) {
-                                            toast.error(err.message || "Error al abortar el rebase");
-                                        }
-                                    }}
-                                >
-                                    <Ban size={13} className="mr-2" />
-                                    Abortar rebase
-                                    {gitState?.rebaseInProgress && (
-                                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium">
-                                            activo
-                                        </span>
-                                    )}
-                                </Button>
-                            </div>
-                        )}
+                                </div>
+                            );
+                        })}
                     </div>
-                </>
-            )}
+                )}
+                <div className="flex gap-1.5">
+                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] border-blue-500/25 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400"
+                        onClick={() => resolveMergeOurs()} disabled={isResolvingMerge || isAbortingMerge}>
+                        {isResolvingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <ShieldCheck size={11} className="mr-1" />}
+                        Conservar mío
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] border-green-500/25 bg-green-500/5 hover:bg-green-500/10 text-green-400"
+                        onClick={() => resolveMergeTheirs()} disabled={isResolvingMerge || isAbortingMerge}>
+                        {isResolvingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <ArrowDownToLine size={11} className="mr-1" />}
+                        Aceptar suyo
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 text-muted-foreground hover:text-red-400"
+                        onClick={() => abortMerge()} disabled={isResolvingMerge || isAbortingMerge}>
+                        {isAbortingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <Ban size={11} className="mr-1" />}
+                        Cancelar
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 }

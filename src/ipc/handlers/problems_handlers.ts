@@ -35,15 +35,21 @@ export function registerProblemsHandlers() {
 
       const appPath = getVibesAppPath(app.path);
 
-      // Call autofix with empty full response to just run TypeScript checking
-      const problemReport = await generateProblemReport({
-        fullResponse: "",
-        appPath,
-      });
+      try {
+        // Call autofix with empty full response to just run TypeScript checking
+        const problemReport = await generateProblemReport({
+          fullResponse: "",
+          appPath,
+        });
+        return problemReport;
+      } catch (tscError) {
+        // Just log the error and return empty problems. We don't want a TSC failure to break the whole agent/chat UI
+        logger.error(`Error generating problem report for app ${appPath}:`, tscError);
+        return { problems: [] };
+      }
 
-      return problemReport;
     } catch (error) {
-      logger.error("Error checking problems:", error);
+      logger.error("Error in checkProblems handler:", error);
       throw error;
     }
   });

@@ -84,12 +84,8 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
       >
         <div className="flex-1 min-w-0">
              <div className="flex items-center gap-2">
-                 <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                    {server.name.charAt(0).toUpperCase() + server.name.slice(1)}
-                   <span className={cn(
-                      "h-1.5 w-1.5 rounded-full ml-1",
-                      server.enabled ? "bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.3)]" : "bg-muted-foreground/30"
-                   )} />
                  </h3>
              </div>
              <p className="text-sm text-muted-foreground mt-1 truncate max-w-md font-mono">

@@ -13,7 +13,6 @@ import { LanguageBadge } from "@/components/LanguageBadge";
 import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 import { useChats } from "@/hooks/useChats";
 import { useSessionCost } from "@/hooks/useSessionCost";
-import { Coins } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
@@ -133,18 +132,20 @@ export default function WorkspacePage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold
-                        bg-amber-500/10 text-amber-600 dark:text-yellow-400
-                        border border-amber-400/20 dark:border-yellow-500/20
-                        select-none cursor-default transition-all duration-300"
+                      className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium
+                        bg-muted text-muted-foreground
+                        border border-border
+                        select-none cursor-default transition-all duration-200"
                     >
-                      <Coins size={11} className="shrink-0 opacity-80" />
                       <span className="tabular-nums tracking-tight">
-                        {formatWorkspaceCost(totalCostUsd)}
+                        {"$" + totalCostUsd.toFixed(2).replace(".", ",")}
                       </span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Gasto total de esta sesión</TooltipContent>
+                  <TooltipContent side="bottom" className="text-center">
+                    <div>Gasto en esta sesión</div>
+                    <div className="font-semibold">{formatWorkspaceCost(totalCostUsd)}</div>
+                  </TooltipContent>
                 </Tooltip>
               </>
             )}

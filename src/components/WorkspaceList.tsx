@@ -18,6 +18,7 @@ import {
   Pencil,
   Archive,
   ArchiveRestore,
+  GitBranch,
 } from "lucide-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -26,8 +27,9 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -144,7 +146,7 @@ const AppChats = memo(function AppChats({
 
   return (
     <>
-    <div className="pl-4 flex flex-col gap-0.5 py-1">
+    <div className="pl-7 flex flex-col gap-0.5 py-1">
       {sortedChats.length === 0 ? (
         <div className="px-2 py-1.5 text-xs text-muted-foreground/50">
           Sin chats
@@ -159,11 +161,7 @@ const AppChats = memo(function AppChats({
             return (
               <div
                 key={chat.id}
-                className={`group/chat-row relative flex items-center rounded-md transition-colors ${
-                  selectedChatId === chat.id
-                    ? "bg-primary/10"
-                    : "hover:bg-sidebar-accent/60"
-                }`}
+                className="group/chat-row relative flex items-center rounded-md transition-colors hover:bg-sidebar-accent/60"
               >
                 {isRenaming ? (
                   <form
@@ -324,6 +322,30 @@ const AppChats = memo(function AppChats({
   );
 });
 
+// --- App Git Dot Indicator ---
+const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) {
+  const { hasUncommittedFiles } = useUncommittedFiles(appId);
+  const { data: gitState } = useQuery({
+    queryKey: ["git-state", appId],
+    queryFn: async () => {
+      try {
+        return await ipc.github.getGitState({ appId });
+      } catch {
+        return null;
+      }
+    },
+    refetchInterval: 10000,
+  });
+
+  const hasUnpushedChanges = hasUncommittedFiles || (gitState?.ahead ?? 0) > 0;
+
+  if (!hasUnpushedChanges) return null;
+
+  return (
+    <GitBranch className="w-3.5 h-3.5 text-orange-500 animate-pulse shrink-0 ml-1.5" />
+  );
+});
+
 // --- Collapsible App Item ---
 interface WorkspaceAppItemProps {
   app: { id: number; name: string; createdAt: string };
@@ -432,6 +454,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <span className={`text-[15px] truncate flex-1 ${isActive ? "font-semibold" : "font-medium"}`}>
             {app.name}
           </span>
+          <SidebarGitDot appId={app.id} />
         </button>
 
         {/* Gradient fade */}

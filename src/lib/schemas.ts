@@ -297,6 +297,9 @@ export type SmartContextMode = z.infer<typeof SmartContextModeSchema>;
 export const AgentToolConsentSchema = z.enum(["ask", "always", "never"]);
 export type AgentToolConsent = z.infer<typeof AgentToolConsentSchema>;
 
+export const ChatRenderModeSchema = z.enum(["full", "zen"]);
+export type ChatRenderMode = z.infer<typeof ChatRenderModeSchema>;
+
 /**
  * Zod schema for user settings
  */
@@ -431,6 +434,8 @@ export const UserSettingsSchema = z
     // OpenCode LSP: when true, language servers send diagnostics after each file write
     // (auto-corrects TS errors inline). When false, the agent must run tsc manually.
     enableOpenCodeLsp: z.boolean().optional(),
+    // Chat render mode: "full" (all badges/modals/tools) or "zen" (minimal DOM, only prose + cost)
+    chatRenderMode: ChatRenderModeSchema.optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 

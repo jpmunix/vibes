@@ -17,7 +17,7 @@ import { registerDependencyHandlers } from "./handlers/dependency_handlers";
 import { registerMcpHandlers } from "./handlers/mcp_handlers";
 
 import { registerGithubBranchHandlers } from "./handlers/git_branch_handlers";
-import { registerGithubHandlers } from "./handlers/github_handlers";
+import { registerGithubHandlers, registerCommitMessageStreamHandler } from "./handlers/github_handlers";
 import { registerImportHandlers } from "./handlers/import_handlers";
 import { registerLanguageModelHandlers } from "./handlers/language_model_handlers";
 import { registerLocalModelHandlers } from "./handlers/local_model_handlers";
@@ -69,6 +69,7 @@ export function registerIpcHandlers() {
   registerDependencyHandlers();
   registerMcpHandlers();
   registerGithubHandlers();
+  registerCommitMessageStreamHandler();
   registerGithubBranchHandlers();
   registerVercelHandlers();
   registerNodeHandlers();

@@ -348,6 +348,13 @@ export function useStreamChat({
               // Persist unread state to DB when response arrives on a chat the user isn't viewing
               if (isViewingDifferentChat) {
                 ipc.chat.markChatUnread(chatId).catch(() => {});
+              } else {
+                setRecentStreamChatIds((prev) => {
+                  if (!prev.has(chatId)) return prev;
+                  const next = new Set(prev);
+                  next.delete(chatId);
+                  return next;
+                });
               }
 
               // If the backend sent back the user's prompt (cancel with no content),
@@ -402,6 +409,17 @@ export function useStreamChat({
 
               console.error(`[CHAT] Stream error for ${chatId}:`, errorMessage);
               updateMapAtom(setErrorById, chatId, errorMessage);
+
+              const isViewingDifferentChat =
+                lookupChatId !== undefined && lookupChatId !== null && lookupChatId !== chatId;
+              if (!isViewingDifferentChat) {
+                setRecentStreamChatIds((prev) => {
+                  if (!prev.has(chatId)) return prev;
+                  const next = new Set(prev);
+                  next.delete(chatId);
+                  return next;
+                });
+              }
 
               // Persist error text into the optimistic assistant message
               // so it survives reloads via the DB save on the backend

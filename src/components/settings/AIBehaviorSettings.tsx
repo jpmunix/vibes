@@ -178,6 +178,37 @@ export function AIBehaviorSettings({
           control={<TextVerbositySelector variant="settings" />}
         />
 
+        {/* Vista del chat: Completo / Zen */}
+        <SettingRow
+          label="Vista del chat"
+          description={
+            (settings?.chatRenderMode ?? "full") === "zen"
+              ? "Respuestas limpias mostrando solo lo esencial. Más ligero y rápido."
+              : "Muestra todos los pasos intermedios del agente con detalles expandibles."
+          }
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              {([
+                { value: "full" as const, label: "Completo" },
+                { value: "zen" as const, label: "Zen" },
+              ]).map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => updateSettings({ chatRenderMode: option.value })}
+                  className={cn(
+                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                    (settings?.chatRenderMode ?? "full") === option.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
+
 
         {/* Turnos de contexto — hidden: OpenCode manages context internally */}
 

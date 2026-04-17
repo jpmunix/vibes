@@ -208,19 +208,80 @@ export function useGitPanel(appId: number | null) {
         onError: (err: Error) => toast.error(`Error en fetch: ${err.message}`),
     });
 
-    // Generate commit message with AI
-    const generateCommitMessage = useCallback(async () => {
+    // Generate commit message with AI streaming
+    // Pattern: identical to ipc.debateStream.start() in DebatePanel.tsx
+    // 1. Register event listeners for token/done/error
+    // 2. Fire invoke() without await (fire-and-forget)
+    // 3. All data arrives via events, invoke resolves when stream ends
+    const generateCommitMessage = useCallback(() => {
         if (!appId) return;
         setIsGeneratingMessage(true);
-        try {
-            const result = await ipc.github.generateCommitMessage({ appId });
-            setCommitMessage(result.message);
-        } catch (err: any) {
-            toast.error(`Error generando mensaje: ${err.message}`);
-        } finally {
-            setIsGeneratingMessage(false);
-        }
-    }, [appId]);
+        setCommitMessage("");
+
+        let accumulated = "";
+        let displayed = "";
+        const renderQueue: string[] = [];
+        let renderInterval: NodeJS.Timeout | null = null;
+        let isDone = false;
+
+        const cleanupListeners = () => {
+            removeTokenListener?.();
+            removeDoneListener?.();
+            removeErrorListener?.();
+        };
+
+        // Smooth typewriter effect for bursting tokens
+        renderInterval = setInterval(() => {
+            if (renderQueue.length > 0) {
+                // Pull a few chars per tick to ensure we don't take forever but it stays smooth
+                const chars = renderQueue.splice(0, Math.max(1, Math.ceil(renderQueue.length / 15)));
+                displayed += chars.join("");
+                setCommitMessage(displayed);
+            } else if (isDone) {
+                if (renderInterval) clearInterval(renderInterval);
+                setIsGeneratingMessage(false);
+                cleanupListeners();
+            }
+        }, 15);
+
+        const removeTokenListener = window.electron.ipcRenderer.on(
+            "git:commit-message-token" as any,
+            (payload: any) => {
+                accumulated += payload.token;
+                for (const char of payload.token) {
+                    renderQueue.push(char);
+                }
+            },
+        );
+
+        const removeDoneListener = window.electron.ipcRenderer.on(
+            "git:commit-message-done" as any,
+            () => {
+                isDone = true; 
+            },
+        );
+
+        const removeErrorListener = window.electron.ipcRenderer.on(
+            "git:commit-message-error" as any,
+            (payload: any) => {
+                toast.error(`Error generando mensaje: ${payload.error}`);
+                setCommitMessage(accumulated); // show whatever we got
+                isDone = true;
+            },
+        );
+
+        // Fire-and-forget via the NEW dedicated streaming channel.
+        // This bypasses the typed client entirely — direct ipcRenderer.invoke,
+        // exactly like debateStreamClient.start() calls ipcRenderer.invoke().
+        const filesToPass = uncommittedFiles.map(f => ({ path: f.path, status: f.status }));
+        window.electron.ipcRenderer
+            .invoke("github:generate-commit-message-stream", { appId, files: filesToPass })
+            .catch((err: any) => {
+                toast.error(`Error generando mensaje: ${err.message}`);
+                setCommitMessage("");
+                isDone = true;
+            });
+    }, [appId, uncommittedFiles]);
 
     // Get file diff
     const getFileDiff = useCallback(

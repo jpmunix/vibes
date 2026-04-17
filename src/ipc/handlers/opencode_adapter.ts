@@ -196,7 +196,7 @@ function buildMcpConfig(servers: McpServer[]) {
                       type: "remote" as const,
                       url: s.url!,
                       enabled: true,
-                      headers: { ...(s.headersJson ?? {}), ...(s.envJson ?? {}) },
+                      headers: { ...s.headersJson, ...s.envJson },
                   }
         ])
     );
@@ -546,11 +546,9 @@ async function getOpenCodeClient(appPath: string) {
 
         const config = {
                 provider: {
-                    [providerID]: {
-                        ...(providerID === "openrouter" ? {
+                    [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
                         } : {}),
-                    },
                 },
                 model: `${providerID}/${modelID}`,
                 // Use the cheap/fast standard model for lightweight tasks (titles, summaries)

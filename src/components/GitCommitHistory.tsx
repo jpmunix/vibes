@@ -122,7 +122,7 @@ function getDateGroup(dateStr: string): string {
 // Diff viewer (reusable)
 function CommitDiffViewer({ diff }: { diff: string }) {
     if (!diff) return (
-        <div className="p-4 text-xs text-muted-foreground italic text-center">
+        <div className="p-4 text-sm text-muted-foreground italic text-center">
             No hay diferencias disponibles
         </div>
     );
@@ -131,33 +131,34 @@ function CommitDiffViewer({ diff }: { diff: string }) {
     const truncated = diff.split("\n").length > 500;
 
     return (
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto border-t border-border/50">
-            <pre className="text-[11px] leading-[18px] font-mono">
+        <div className="overflow-x-auto overflow-y-auto border-t border-border/50">
+            <pre className="text-xs leading-5 font-mono min-w-max">
                 {lines.map((line, i) => {
-                    let bgColor = "";
-                    let textColor = "text-foreground/80";
+                    let bg = "";
+                    let fg = "text-foreground/80";
+                    let lineNumFg = "text-muted-foreground/30";
 
                     if (line.startsWith("+") && !line.startsWith("+++")) {
-                        bgColor = "bg-green-500/8";
-                        textColor = "text-green-700 dark:text-green-400";
+                        bg = "bg-[#0d4a1f]"; fg = "text-green-300"; lineNumFg = "text-green-700";
                     } else if (line.startsWith("-") && !line.startsWith("---")) {
-                        bgColor = "bg-red-500/8";
-                        textColor = "text-red-700 dark:text-red-400";
+                        bg = "bg-[#4a0d0d]"; fg = "text-red-300"; lineNumFg = "text-red-700";
                     } else if (line.startsWith("@@")) {
-                        bgColor = "bg-blue-500/8";
-                        textColor = "text-blue-600 dark:text-blue-400";
-                    } else if (line.startsWith("diff ") || line.startsWith("index ")) {
-                        textColor = "text-muted-foreground/60";
+                        bg = "bg-blue-900/20"; fg = "text-blue-400"; lineNumFg = "text-blue-700";
+                    } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++")) {
+                        fg = "text-muted-foreground/50"; lineNumFg = "text-muted-foreground/15";
                     }
 
                     return (
-                        <div key={i} className={cn("px-3 py-0 min-h-[18px]", bgColor, textColor)}>
-                            {line || " "}
+                        <div key={i} className={cn("flex min-h-[20px]", bg)}>
+                            <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none", lineNumFg, "text-[10px] leading-5")}>
+                                {i + 1}
+                            </span>
+                            <span className={cn("px-3 flex-1 whitespace-pre", fg)}>{line || " "}</span>
                         </div>
                     );
                 })}
                 {truncated && (
-                    <div className="px-3 py-2 text-muted-foreground italic text-center border-t border-border/30">
+                    <div className="px-3 py-2 text-sm text-muted-foreground italic text-center border-t border-border/30">
                         ... ({diff.split("\n").length - 500} líneas más)
                     </div>
                 )}
@@ -283,7 +284,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                             </button>
                         )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {total.toLocaleString()} commits
                     </span>
                 </div>
@@ -303,7 +304,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                         <div key={group.label}>
                             {/* Date group header */}
                             <div className="sticky top-0 z-10 px-3 py-1.5 bg-muted border-b border-border/30">
-                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                     {group.label}
                                 </span>
                             </div>
@@ -332,13 +333,13 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium leading-snug truncate">
+                                            <p className="text-sm font-medium leading-snug truncate">
                                                 {commit.message}
                                             </p>
                                         </div>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0 ml-2">
+                                                <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-2">
                                                     {formatRelativeDate(commit.date)}
                                                 </span>
                                             </TooltipTrigger>
@@ -350,26 +351,26 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
 
                                     {/* Bottom row: author + stats */}
                                     <div className="flex items-center gap-2.5 mt-1 ml-4">
-                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
-                                            <User size={10} className="shrink-0" />
+                                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                                            <User size={11} className="shrink-0" />
                                             {commit.author}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground/60 font-mono">
+                                        <span className="text-xs text-muted-foreground/60 font-mono">
                                             {commit.shortHash}
                                         </span>
                                         {commit.filesChanged > 0 && (
-                                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                                <FileText size={10} />
+                                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                                <FileText size={11} />
                                                 {commit.filesChanged}
                                             </span>
                                         )}
                                         {commit.insertions > 0 && (
-                                            <span className="text-[10px] text-green-600 dark:text-green-400">
+                                            <span className="text-xs text-green-600 dark:text-green-400">
                                                 +{commit.insertions}
                                             </span>
                                         )}
                                         {commit.deletions > 0 && (
-                                            <span className="text-[10px] text-red-600 dark:text-red-400">
+                                            <span className="text-xs text-red-600 dark:text-red-400">
                                                 -{commit.deletions}
                                             </span>
                                         )}
@@ -392,7 +393,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                 <ChevronLeft size={12} />
                                 Anterior
                             </Button>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                                 {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, total)} de {total}
                             </span>
                             <Button
@@ -417,7 +418,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                 <Loader2 size={20} className="animate-spin text-muted-foreground" />
                             </div>
                         ) : commitDetail ? (
-                            <div>
+                            <div className="flex flex-col min-h-full">
                                 {/* Detail header */}
                                 <div className="px-4 py-3 border-b border-border/50 space-y-2">
                                     {/* Commit message */}
@@ -435,11 +436,11 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                     </div>
 
                                     {/* Meta row */}
-                                    <div className="flex flex-wrap items-center gap-2.5 text-[11px]">
+                                    <div className="flex flex-wrap items-center gap-2.5 text-xs">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <span className="flex items-center gap-1 text-muted-foreground">
-                                                    <Clock size={11} />
+                                                    <Clock size={12} />
                                                     {formatRelativeDate(commitDetail.date)}
                                                 </span>
                                             </TooltipTrigger>
@@ -449,7 +450,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <span className="flex items-center gap-1 font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded cursor-pointer select-all">
-                                                    <Hash size={11} />
+                                                    <Hash size={12} />
                                                     {commitDetail.shortHash}
                                                 </span>
                                             </TooltipTrigger>
@@ -457,14 +458,14 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                         </Tooltip>
 
                                         <span className="flex items-center gap-1 text-muted-foreground">
-                                            <FileText size={11} />
+                                            <FileText size={12} />
                                             {commitDetail.filesChanged} archivo{commitDetail.filesChanged !== 1 ? "s" : ""}
                                         </span>
                                         <span className="text-green-600 dark:text-green-400 flex items-center gap-0.5">
-                                            <Plus size={11} />{commitDetail.insertions}
+                                            <Plus size={12} />{commitDetail.insertions}
                                         </span>
                                         <span className="text-red-600 dark:text-red-400 flex items-center gap-0.5">
-                                            <Minus size={11} />{commitDetail.deletions}
+                                            <Minus size={12} />{commitDetail.deletions}
                                         </span>
                                     </div>
 
@@ -501,7 +502,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                                 Archivos cambiados
                                             </span>
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
                                                 {commitDetail.files.length}
                                             </span>
                                         </div>
@@ -523,13 +524,13 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                                         {getFileStatusIcon(file.status)}
                                                         <span className="text-xs truncate font-medium">{fileName}</span>
                                                         {dirPath && (
-                                                            <span className="text-[10px] text-muted-foreground truncate">
+                                                            <span className="text-xs text-muted-foreground truncate">
                                                                 {dirPath}
                                                             </span>
                                                         )}
                                                         <span
                                                             className={cn(
-                                                                "ml-auto text-[10px] font-medium shrink-0",
+                                                                "ml-auto text-xs font-medium shrink-0",
                                                                 getFileStatusColor(file.status),
                                                             )}
                                                         >
@@ -546,7 +547,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                 </div>
 
                                 {/* Diff */}
-                                <div>
+                                <div className="flex-1 flex flex-col min-h-0">
                                     <div className="px-4 py-2 flex items-center gap-2">
                                         <Eye size={14} className="text-muted-foreground" />
                                         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -589,7 +590,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                     {commitDetail && (
                         <div className="bg-muted/30 rounded-md p-3 space-y-1">
                             <p className="text-xs font-medium truncate">{commitDetail.message}</p>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 {commitDetail.author} · {formatRelativeDate(commitDetail.date)} · {commitDetail.filesChanged} archivo{commitDetail.filesChanged !== 1 ? "s" : ""}
                             </p>
                         </div>

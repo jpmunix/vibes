@@ -64,6 +64,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableWebSearch: true,
   // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)
   enableOpenCodeLsp: true,
+  // Chat render mode: "full" shows all badges/modals, "zen" shows only prose + cost
+  chatRenderMode: "zen",
 };
 
 const SETTINGS_FILE = "user-settings.json";
@@ -229,7 +231,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v1_model_defaults_applied: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v1_model_defaults_applied: true },
       };
       logger.info("[Migration] Applied v1 model defaults:", Object.keys(migrated));
       // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
@@ -281,7 +283,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v2_gemini31_pro_applied: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v2_gemini31_pro_applied: true },
       };
       logger.info("[Migration] Applied v2 gemini-3.1-pro swap:", Object.keys(migrated));
       // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
@@ -317,7 +319,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v3_curated_models_applied: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v3_curated_models_applied: true },
       };
       logger.info("[Migration] Applied v3 curated model list");
       // Set cache BEFORE write to prevent re-entrant readSettings() from re-triggering migration
@@ -365,7 +367,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v4_qwen_thinking_model: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v4_qwen_thinking_model: true },
       };
       logger.info("[Migration] Applied v4 qwen-plus:thinking swap:", Object.keys(migrated));
       cachedSettings = migratedSettings as UserSettings;
@@ -404,7 +406,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v5_unified_model_keys: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v5_unified_model_keys: true },
       };
       logger.info("[Migration] Applied v5 unified model keys:", migrated);
       cachedSettings = migratedSettings as UserSettings;
@@ -430,7 +432,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v6_reasoning_effort_high: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v6_reasoning_effort_high: true },
       };
       logger.info("[Migration] Applied v6 reasoning effort high:", migrated);
       cachedSettings = migratedSettings as UserSettings;
@@ -456,7 +458,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v7_reasoning_effort_medium: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v7_reasoning_effort_medium: true },
       };
       logger.info("[Migration] Applied v7 reasoning effort medium:", migrated);
       cachedSettings = migratedSettings as UserSettings;
@@ -487,7 +489,7 @@ export function readSettings(): UserSettings {
       const migratedSettings = {
         ...validatedSettings,
         ...migrated,
-        _migrations: { ...((validatedSettings as any)._migrations || {}), v8_reasoning_effort_simplify: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v8_reasoning_effort_simplify: true },
       };
       logger.info("[Migration] Applied v8 reasoning effort simplification:", migrated);
       cachedSettings = migratedSettings as UserSettings;

@@ -68,3 +68,11 @@ export const autoRouterModelInfoByChatIdAtom = atom<
 
 // Auto-router model selection loading state per chat
 export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
+
+// Chat render mode: true when "zen" mode is active (minimal DOM, no tool badges)
+// Derived from userSettingsAtom for cheap reads in hot rendering paths.
+import { userSettingsAtom } from "./appAtoms";
+export const isZenModeAtom = atom((get) => {
+  const settings = get(userSettingsAtom);
+  return settings?.chatRenderMode === "zen";
+});

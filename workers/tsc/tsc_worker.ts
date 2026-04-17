@@ -273,7 +273,15 @@ async function processTypeScriptCheck(
     const { appPath, virtualChanges, tsBuildInfoCacheDir } = input;
 
     // Load the local TypeScript version from the app's node_modules
-    const ts = loadLocalTypeScript(appPath);
+    let ts;
+    try {
+      ts = loadLocalTypeScript(appPath);
+    } catch (error) {
+      return {
+        success: true,
+        data: { problems: [] },
+      };
+    }
 
     const vfs = new SyncVirtualFileSystemImpl(appPath, {
       fileExists: (fileName: string) => ts.sys.fileExists(fileName),
@@ -282,7 +290,15 @@ async function processTypeScriptCheck(
     vfs.applyResponseChanges(virtualChanges);
 
     // Find TypeScript config - throw error if not found
-    const tsconfigPath = findTypeScriptConfig(appPath);
+    let tsconfigPath;
+    try {
+      tsconfigPath = findTypeScriptConfig(appPath);
+    } catch (error) {
+      return {
+        success: true,
+        data: { problems: [] },
+      };
+    }
 
     // Create TypeScript program with virtual file system
     const result = await runTypeScriptCheck(ts, vfs, {

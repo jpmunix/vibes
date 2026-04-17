@@ -515,6 +515,25 @@ async function handleGetFileDiff(
   return gitDiffFile({ path: appPath, filepath });
 }
 
+async function handleGetFileContent(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+): Promise<{ content: string }> {
+  if (!context.userId) throw new Error("Unauthorized");
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+  const fullPath = path.join(appPath, filepath);
+  try {
+    const content = fs.readFileSync(fullPath, "utf-8");
+    return { content };
+  } catch {
+    return { content: "" };
+  }
+}
+
 // --- GitHub Pull Handler ---
 async function handlePullFromGithub(
   event: IpcMainInvokeEvent,
@@ -525,24 +544,30 @@ async function handlePullFromGithub(
   const db = getRemoteDb();
   const settings = readSettings();
   const accessToken = settings.githubAccessToken?.value;
-  if (!accessToken) {
-    throw new Error("Not authenticated with GitHub.");
-  }
+
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
-  if (!app || !app.githubOrg || !app.githubRepo) {
-    throw new Error("App is not linked to a GitHub repo.");
-  }
+  if (!app) throw new Error("App not found");
+
   const appPath = getVibesAppPath(app.path);
   const currentBranch = await gitCurrentBranch({ path: appPath });
+
+  // If the app is not linked to GitHub, do a plain git pull using the existing remote
+  // (works with any remote: GitHub, GitLab, Gitea, etc.)
+  const isLinkedToGithub = !!(app.githubOrg && app.githubRepo);
 
   try {
     await gitPull({
       path: appPath,
       remote: "origin",
       branch: currentBranch || "main",
-      accessToken,
+      // Only pass the token when actually linked — avoids injecting credentials for non-GitHub remotes
+      accessToken: isLinkedToGithub && accessToken ? accessToken : undefined,
     });
   } catch (pullError: any) {
+    // If token is required but we don't have one, give a clear error
+    if (!accessToken && (pullError?.message || "").toLowerCase().includes("authentication")) {
+      throw new Error("Autenticación requerida. Conecta tu cuenta de GitHub en Ajustes.");
+    }
     // Check if it's a missing remote branch error
     const errorMessage = pullError?.message || "";
     const isMissingRemoteBranch =
@@ -554,7 +579,6 @@ async function handlePullFromGithub(
       errorMessage.includes("Cannot read properties of null");
 
     // If the remote branch doesn't exist yet, we can ignore this
-    // (e.g., user hasn't pushed the branch yet)
     if (!isMissingRemoteBranch) {
       throw pullError;
     } else {
@@ -797,5 +821,6 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
   createTypedHandler(gitContracts.discardAllChanges, handleDiscardAllChanges);
   createTypedHandler(gitContracts.revertCommit, handleRevertCommit);
+  createTypedHandler(gitContracts.getFileContent, handleGetFileContent);
 }
 

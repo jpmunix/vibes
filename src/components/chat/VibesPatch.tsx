@@ -23,7 +23,7 @@ function parsePatchContent(raw: string): PatchOperation[] {
     const markers = raw.match(/\[L\d+(?:-L?\d+)?\]/g) || [];
 
     for (let i = 0; i < markers.length; i++) {
-        const range = markers[i].replace(/[\[\]]/g, "");
+        const range = markers[i].replace(/[[\]]/g, "");
         const content = (parts[i + 1] || "").trim();
         ops.push({ range, content });
     }

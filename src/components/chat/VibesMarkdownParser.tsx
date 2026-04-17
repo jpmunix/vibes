@@ -23,7 +23,7 @@ import { VibesCodebaseContext } from "./VibesCodebaseContext";
 import { VibesThink } from "./VibesThink";
 import { CodeHighlight } from "./CodeHighlight";
 import { useAtomValue } from "jotai";
-import { isStreamingByIdAtom, selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom } from "@/atoms/chatAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { VibesProblemSummary } from "./VibesProblemSummary";
@@ -186,6 +186,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const chatId = forceChatId ?? selectedChatId;
   const isStreamingMap = useAtomValue(isStreamingByIdAtom);
   const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
+  const isZenMode = useAtomValue(isZenModeAtom);
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once
@@ -279,8 +280,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
     const flushBadgeGroup = () => {
       if (badgeGroup.length > 0) {
-        // Separate token-usage badges so they are always visible (never grouped/collapsed)
-        const alwaysVisibleBadges = badgeGroup.filter(b => b.tag === "vibes-token-usage");
+        // Token-usage badges are no longer rendered inline — they live in ChatMessage footer.
         const groupableBadges = badgeGroup.filter(b => b.tag !== "vibes-token-usage");
 
         const currentGroupIndex = groupIndex;
@@ -296,22 +296,6 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
                 isFirstGroup={currentGroupIndex === 0}
               />
             </div>
-          );
-        }
-
-        // Render token-usage badges independently so the cost is always visible
-        for (const tokenBadge of alwaysVisibleBadges) {
-          const meta = resolveToolMeta(tokenBadge.tag, tokenBadge.attributes);
-          const Icon = meta.icon;
-          elements.push(
-            <TokenUsageBadge
-              key={`token-usage-${elements.length}`}
-              icon={Icon}
-              color={meta.color}
-              label={meta.label}
-              detail={tokenBadge.detail}
-              modalContent={tokenBadge.originalContent}
-            />
           );
         }
 
@@ -338,7 +322,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
       if (piece.type === "markdown") {
         const isWhitespaceOnly = !piece.content || !piece.content.trim();
         // Only flush if this is real markdown content AND we're not between compactable tags
-        if (isWhitespaceOnly && badgeGroup.length > 0 && isNextPieceCompactable(index)) {
+        if (!isZenMode && isWhitespaceOnly && badgeGroup.length > 0 && isNextPieceCompactable(index)) {
           // Skip whitespace between compactable tags — don't break the row
           return;
         }
@@ -360,6 +344,41 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         const state = getState({ isStreaming, inProgress });
         const isThinkTag = THINK_TAGS.has(tag);
 
+        // ── Zen Mode: skip almost all custom tags ──
+        // Only keep: vibes-output (errors/warnings), vibes-ask-user (interactive).
+        // Token-usage is handled by ChatMessage footer. Everything else is discarded.
+        if (isZenMode) {
+          const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user"]);
+          if (ZEN_ALLOWED_TAGS.has(tag)) {
+            // Render output/ask-user normally
+            elements.push(
+              <React.Fragment key={index}>
+                {renderCustomTag(piece.tagInfo, { isStreaming })}
+              </React.Fragment>
+            );
+          }
+          // All other tags: skip entirely — no DOM, no badges, no modals
+
+          // Error button after last error (still useful in zen mode)
+          if (
+            index === lastErrorIndex &&
+            errorCount > 1 &&
+            !isStreaming &&
+            chatId
+          ) {
+            elements.push(
+              <div key={`fix-errors-${index}`} className="mt-3 w-full flex">
+                <FixAllErrorsButton
+                  errorMessages={errorMessages}
+                  chatId={chatId}
+                />
+              </div>
+            );
+          }
+          return; // Skip full-mode rendering below
+        }
+
+        // ── Full Mode (existing behavior) ──
         if (shouldCompact(tag)) {
           const detail = getToolDetail(tag, attributes);
           const originalContent = renderModalContent(piece.tagInfo, { isStreaming });

@@ -51,7 +51,7 @@ export async function logChatInternal(options: ChatLogOptions): Promise<void> {
       category: options.category,
       message: options.message,
       metadata: {
-        ...(options.metadata ?? {}),
+        ...options.metadata,
         chatMode: settings.selectedChatMode,
       },
       timestamp: new Date(),

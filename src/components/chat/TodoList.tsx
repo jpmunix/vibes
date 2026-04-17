@@ -40,7 +40,7 @@ function getStatusIcon(status: AgentTodo["status"], size: "sm" | "md" = "sm") {
 }
 
 export function TodoList({ todos }: TodoListProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   if (!todos.length) return null;
 

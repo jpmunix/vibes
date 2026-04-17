@@ -31,7 +31,6 @@ import {
   Download,
   Upload,
   Info,
-  Server,
 } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -814,8 +813,7 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-              <Server className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
               Herramientas MCP
             </h2>
             <McpServersSettings />

@@ -1338,8 +1338,6 @@ export async function gitPull({
     // Use withGitAuthor since pull may need to create merge commits
     // and requires user.name and user.email
     const pullArgs = await withGitAuthor([
-      "-c",
-      "credential.helper=",
       "pull",
       "--rebase=false",
       remote,
@@ -1765,11 +1763,68 @@ export async function gitLogDetailed({
     files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
   }> = [];
 
+  // After split on END-COMMIT marker, chunk N+1's parts[0] contains:
+  // "<numstat lines from commit N>\n<hash of commit N+1>".
+  // We separate the numstat lines (belonging to the previous commit) from the hash.
+
   for (const chunk of rawChunks) {
     const parts = chunk.split("\x00");
     if (parts.length < 7) continue;
 
-    const hash = parts[0].trim();
+    // parts[0] may contain numstat lines from the previous commit followed
+    // by the current commit's hash on the last non-empty line.
+    const rawFirstPart = parts[0];
+    const firstPartLines = rawFirstPart.split("\n");
+
+    // Find the hash: it's the last non-empty line that looks like a 40-char hex hash
+    let hash = "";
+    const numstatFromPrevious: string[] = [];
+    for (let i = firstPartLines.length - 1; i >= 0; i--) {
+      const trimmed = firstPartLines[i].trim();
+      if (!trimmed) continue;
+      if (/^[0-9a-f]{40}$/.test(trimmed)) {
+        hash = trimmed;
+        // Everything before this line is numstat data from the previous commit
+        for (let j = 0; j < i; j++) {
+          const numLine = firstPartLines[j].trim();
+          if (numLine) numstatFromPrevious.push(numLine);
+        }
+        break;
+      }
+    }
+
+    // If no valid hash found, try the raw trimmed value (first chunk has no leading numstat)
+    if (!hash) {
+      hash = rawFirstPart.trim();
+    }
+
+    // Attach numstat lines from the previous chunk to the previous commit
+    if (numstatFromPrevious.length > 0 && commits.length > 0) {
+      const prevCommit = commits[commits.length - 1];
+      for (const numLine of numstatFromPrevious) {
+        const tabParts = numLine.split("\t");
+        if (tabParts.length >= 3) {
+          const ins = tabParts[0] === "-" ? 0 : parseInt(tabParts[0], 10);
+          const del = tabParts[1] === "-" ? 0 : parseInt(tabParts[1], 10);
+          const filePath = tabParts.slice(2).join("\t");
+          prevCommit.insertions += ins;
+          prevCommit.deletions += del;
+
+          let status: "added" | "modified" | "deleted" | "renamed" | "unknown" = "modified";
+          if (filePath.includes(" => ") || filePath.includes("{")) {
+            status = "renamed";
+          } else if (del === 0 && ins > 0) {
+            status = "added";
+          } else if (ins === 0 && del > 0) {
+            status = "deleted";
+          }
+
+          prevCommit.files.push({ path: filePath, status });
+          prevCommit.filesChanged = prevCommit.files.length;
+        }
+      }
+    }
+
     const shortHash = parts[1];
     const message = parts[2];
     const author = parts[3];
@@ -1827,6 +1882,9 @@ export async function gitLogDetailed({
       files,
     });
   }
+
+  // Handle trailing numstat lines from the very last chunk
+  // (they appear after the last END-COMMIT marker in parts[6] and are already parsed above)
 
   // Now try to get accurate file statuses using --name-status for the same range
   try {
@@ -1928,28 +1986,17 @@ export async function gitShowCommitDetail({
   files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }>;
   diff: string;
 }> {
-  // Validate commitHash to prevent injection
-  if (!/^[a-f0-9]{4,40}$/i.test(commitHash)) {
-    throw new Error("Invalid commit hash format");
+  // Get commit metadata (separate from file list to avoid mixing issues)
+  const showMeta = await execGit(
+    ["show", "--no-patch", `--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at`, commitHash],
+    path,
+  );
+  if (showMeta.exitCode !== 0) {
+    throw new Error(showMeta.stderr.toString());
   }
 
-  // Get commit info
-  const showArgs = [
-    "show",
-    "--format=%H%x00%h%x00%s%x00%an%x00%ae%x00%aI%x00%at",
-    "--stat",
-    "--name-status",
-    commitHash,
-  ];
-
-  const showResult = await execGit(showArgs, path);
-  if (showResult.exitCode !== 0) {
-    throw new Error(showResult.stderr.toString());
-  }
-
-  const output = showResult.stdout.toString();
-  const firstLine = output.split("\n")[0];
-  const parts = firstLine.split("\x00");
+  const metaLine = showMeta.stdout.toString().split("\n")[0];
+  const parts = metaLine.split("\x00");
 
   if (parts.length < 7) {
     throw new Error("Failed to parse commit details");
@@ -1963,35 +2010,48 @@ export async function gitShowCommitDetail({
   const date = parts[5];
   const timestamp = parseInt(parts[6], 10);
 
-  // Parse files from name-status
-  const lines = output.split("\n").slice(1);
+  // Get file status list separately
+  const showFiles = await execGit(
+    ["diff-tree", "-r", "--no-commit-id", "--name-status", commitHash],
+    path,
+  );
   const files: Array<{ path: string; status: "added" | "modified" | "deleted" | "renamed" | "unknown" }> = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const tabParts = trimmed.split("\t");
-    if (tabParts.length >= 2) {
-      const rawStatus = tabParts[0].charAt(0);
-      const filePath = tabParts.slice(1).join("\t");
-
-      let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
-      switch (rawStatus) {
-        case "A": status = "added"; break;
-        case "M": status = "modified"; break;
-        case "D": status = "deleted"; break;
-        case "R": status = "renamed"; break;
-        default: status = "unknown"; break;
+  if (showFiles.exitCode === 0) {
+    for (const line of showFiles.stdout.toString().split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const tabParts = trimmed.split("\t");
+      if (tabParts.length >= 2) {
+        const rawStatus = tabParts[0].charAt(0);
+        const filePath = tabParts.slice(1).join("\t");
+        let status: "added" | "modified" | "deleted" | "renamed" | "unknown";
+        switch (rawStatus) {
+          case "A": status = "added"; break;
+          case "M": status = "modified"; break;
+          case "D": status = "deleted"; break;
+          case "R": status = "renamed"; break;
+          default: status = "unknown"; break;
+        }
+        files.push({ path: filePath, status });
       }
-
-      files.push({ path: filePath, status });
     }
   }
 
-  // Get diff
+  // Get diff — handle first commit gracefully (no parent)
+  let diff = "";
   const diffArgs = ["diff", `${commitHash}^..${commitHash}`, "--no-color"];
   const diffResult = await execGit(diffArgs, path);
-  const diff = diffResult.exitCode === 0 ? diffResult.stdout.toString() : "";
+  if (diffResult.exitCode === 0) {
+    diff = diffResult.stdout.toString();
+  } else {
+    // First commit has no parent — show entire tree as additions
+    const firstCommitDiff = await execGit(
+      ["show", "--format=", "--no-color", commitHash],
+      path,
+    );
+    if (firstCommitDiff.exitCode === 0) diff = firstCommitDiff.stdout.toString();
+  }
 
   // Count insertions/deletions from the diff
   let insertions = 0;

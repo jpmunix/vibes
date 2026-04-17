@@ -138,6 +138,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   // Crush (ex-OpenCode) diagnostic channels
   ...OPENCODE_INVOKE_CHANNELS,
+
+  // Git commit message streaming (direct ipcMain.handle, not via contracts)
+  "github:generate-commit-message-stream",
 ] as const;
 
 // =============================================================================
@@ -169,6 +172,12 @@ export const VALID_RECEIVE_CHANNELS = [
 
   // Cross-window navigation
   "navigate-to-route",
+
+  // Git commit message streaming
+  "git:commit-message-start",
+  "git:commit-message-token",
+  "git:commit-message-done",
+  "git:commit-message-error",
 ] as const;
 
 // =============================================================================

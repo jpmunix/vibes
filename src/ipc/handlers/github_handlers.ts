@@ -1,4 +1,4 @@
-import { BrowserWindow, IpcMainInvokeEvent } from "electron";
+import { BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
 import fetch from "node-fetch"; // Use node-fetch for making HTTP requests in main process
 import { writeSettings, readSettings } from "../../main/settings";
 import {
@@ -49,6 +49,9 @@ import { withLock } from "../utils/lock_utils";
 import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "@/prompts";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
+import { streamText } from "ai";
+import { getModelClient } from "../utils/get_model_client";
+import { safeSend } from "../utils/safe_sender";
 // createTypedHandler removed as it's now imported above with HandlerContext
 
 const logger = log.scope("github_handlers");
@@ -1679,98 +1682,11 @@ async function handleGetPreview(
   }
 }
 
-// --- GitHub Generate Commit Message Handler ---
-async function handleGenerateCommitMessage(
-  event: IpcMainInvokeEvent,
-  { appId }: { appId: number },
-  context: HandlerContext,
-): Promise<{ message: string }> {
-  if (!context.userId) throw new Error("Unauthorized");
-  const db = getRemoteDb();
-  try {
-    if (!hasOpenRouterApiKey()) {
-      throw new Error("OpenRouter API key not found");
-    }
-    const settings = readSettings();
-
-    const model =
-      settings.standardModeModel || DEFAULT_STANDARD_MODEL;
-
-    const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
-    if (!app) {
-      throw new Error("App not found");
-    }
-
-    const appPath = getVibesAppPath(app.path);
-
-    // Get uncommitted files with diffs
-    const { default: git } = await import("isomorphic-git");
-    const fs = await import("fs/promises");
-
-    // Get git status to find uncommitted files
-    const status = await git.statusMatrix({ fs, dir: appPath });
-    const uncommittedFiles = status
-      .filter(([, head, workdir, stage]) => {
-        return head !== workdir || workdir !== stage;
-      })
-      .map(([filepath, head, workdir]) => {
-        let statusType: "added" | "modified" | "deleted" = "modified";
-        if (head === 0 && workdir === 2) statusType = "added";
-        else if (head === 1 && workdir === 0) statusType = "deleted";
-        return { path: filepath, status: statusType };
-      });
-
-    if (uncommittedFiles.length === 0) {
-      return { message: "No hay cambios para confirmar" };
-    }
-
-    // Get diffs for context (limit to first 10 files to avoid token limits)
-    const filesToAnalyze = uncommittedFiles.slice(0, 10);
-    const diffsPromises = filesToAnalyze.map(async (file) => {
-      try {
-        const { diff } = await gitDiffFile({
-          path: appPath,
-          filepath: file.path,
-        });
-        return `File: ${file.path} (${file.status})\n${diff.slice(0, 500)}`; // Limit diff size
-      } catch {
-        return `File: ${file.path} (${file.status})`;
-      }
-    });
-
-    const diffs = await Promise.all(diffsPromises);
-    const diffsContext = diffs.join("\n\n");
-
-    // Use the editable prompt from settings
-    const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
-
-    const prompt = `${systemPrompt}\n\nCambios:\n${diffsContext}`;
-
-    // Call OpenRouter API
-    const data = await openRouterCompletion({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 100,
-      title: "Vibes - Git Commit Message Generator",
-    });
-    const generatedMessage =
-      data.choices?.[0]?.message?.content?.trim() ||
-      "Actualizar archivos del proyecto";
-
-    return { message: generatedMessage };
-  } catch (err: any) {
-    logger.error("[GitHub Handler] Failed to generate commit message:", err);
-    throw new Error(
-      err.message || "Failed to generate commit message with AI.",
-    );
-  }
-}
+// --- GitHub Generate Commit Message (streaming, registered via ipcMain.handle like debates) ---
+// This is intentionally NOT using createTypedHandler. The pattern is identical
+// to debate_stream_handlers.ts: the handler runs the stream to completion,
+// sends chunks via safeSend, and finishes with a done/error event.
+// The renderer calls invoke() without await (fire-and-forget).
 
 /**
  * Generate an AI commit message for a squash operation.
@@ -1917,12 +1833,8 @@ export function registerGithubHandlers() {
     return handleGetPreview(event, params, context);
   });
 
-  createTypedHandler(
-    githubContracts.generateCommitMessage,
-    async (event, params, context) => {
-      return handleGenerateCommitMessage(event, params, context);
-    },
-  );
+  // generateCommitMessage is registered separately via ipcMain.handle
+  // (see registerCommitMessageStreamHandler below)
 
   createTypedHandler(
     githubContracts.generateSquashMessage,
@@ -1969,4 +1881,104 @@ export async function updateAppGithubRepo({
       githubBranch: branch || "main",
     })
     .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)));
+}
+
+/**
+ * Register the commit message streaming handler.
+ * This follows the exact same pattern as registerDebateStreamHandlers():
+ * - Uses ipcMain.handle directly (not createTypedHandler)
+ * - Runs the stream to completion inline
+ * - Sends chunks via safeSend
+ * - Renderer calls invoke() without await (fire-and-forget)
+ */
+export function registerCommitMessageStreamHandler() {
+  ipcMain.handle("github:generate-commit-message-stream", async (event, req) => {
+    const { appId } = req;
+    const settings = readSettings();
+    const userId = settings.userId;
+
+    if (!userId) {
+      safeSend(event.sender, "git:commit-message-error", { error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      if (!hasOpenRouterApiKey()) {
+        safeSend(event.sender, "git:commit-message-error", { error: "OpenRouter API key not found" });
+        return;
+      }
+
+      const db = getRemoteDb();
+      const model = settings.standardModeModel || DEFAULT_STANDARD_MODEL;
+
+      const app = await db.query.apps.findFirst({
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, userId)),
+      });
+      if (!app) {
+        safeSend(event.sender, "git:commit-message-error", { error: "App not found" });
+        return;
+      }
+
+      const appPath = getVibesAppPath(app.path);
+
+      // Notify renderer that stream is starting
+      safeSend(event.sender, "git:commit-message-start", {});
+
+      const uncommittedFiles = req.files || [];
+
+      if (uncommittedFiles.length === 0) {
+        safeSend(event.sender, "git:commit-message-token", { token: "No hay cambios para confirmar" });
+        safeSend(event.sender, "git:commit-message-done", {});
+        return;
+      }
+
+      const diffsStart = performance.now();
+      const filesToAnalyze = uncommittedFiles.slice(0, 10);
+      const diffsPromises = filesToAnalyze.map(async (file: { path: string; status: string }) => {
+        try {
+          const { diff } = await gitDiffFile({ path: appPath, filepath: file.path });
+          return `File: ${file.path} (${file.status})\n${diff.slice(0, 500)}`;
+        } catch {
+          return `File: ${file.path} (${file.status})`;
+        }
+      });
+
+      const diffs = await Promise.all(diffsPromises);
+      const diffsContext = diffs.join("\n\n");
+      const diffsEnd = performance.now();
+      logger.info(`[CommitStream] Computed diffs in ${Math.round(diffsEnd - diffsStart)}ms`);
+
+      const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
+
+      const { modelClient } = await getModelClient({ name: model, provider: "openrouter" }, settings);
+      logger.info(`[CommitStream] Calling streamText with model ${model}`);
+
+      const result = await streamText({
+        model: modelClient.model,
+        system: systemPrompt,
+        prompt: `Cambios:\n${diffsContext}`,
+        temperature: 0.7,
+        maxTokens: 100,
+      });
+
+      let chunkCount = 0;
+      const firstChunkStart = performance.now();
+      for await (const chunk of result.textStream) {
+        if (chunkCount === 0) {
+          logger.info(`[CommitStream] First chunk received after ${Math.round(performance.now() - firstChunkStart)}ms. Token: "${chunk}"`);
+        }
+        chunkCount++;
+        if (event.sender.isDestroyed()) break;
+        safeSend(event.sender, "git:commit-message-token", { token: chunk });
+      }
+
+      logger.info(`[CommitStream] Stream complete. Total chunks: ${chunkCount}`);
+      safeSend(event.sender, "git:commit-message-done", {});
+    } catch (err: any) {
+      logger.error("[CommitMessageStream] Error:", err);
+      safeSend(event.sender, "git:commit-message-error", {
+        error: err.message || "Failed to generate commit message",
+      });
+    }
+  });
 }

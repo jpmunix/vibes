@@ -237,34 +237,42 @@ body[data-scroll-locked] .app-region-drag {
 @media (pointer: fine) {
   @supports not (selector(::-webkit-scrollbar)) {
     * {
-      scrollbar-color: #dadce0 transparent;
+      scrollbar-color: hsla(220, 30%, 55%, 0.25) transparent;
       scrollbar-gutter: auto;
       scrollbar-width: thin;
+    }
+
+    *:hover {
+      scrollbar-color: hsla(220, 30%, 55%, 0.45) transparent;
     }
   }
 
   ::-webkit-scrollbar,
   ::-webkit-scrollbar-corner {
     background: transparent;
-    height: 12px;
-    width: 12px;
+    height: 6px;
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: content-box currentColor;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    color: #dadce0;
-    min-height: 48px;
-    min-width: 48px;
+    background: hsla(220, 30%, 55%, 0.15);
+    border-radius: 9999px;
   }
 
   :hover::-webkit-scrollbar-thumb {
-    color: #80868b;
+    background: hsla(220, 30%, 55%, 0.4);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsla(220, 30%, 55%, 0.55);
   }
 
   ::-webkit-scrollbar-thumb:active {
-    color: #5f6368;
+    background: hsla(220, 30%, 55%, 0.7);
   }
 
   ::-webkit-scrollbar-button {

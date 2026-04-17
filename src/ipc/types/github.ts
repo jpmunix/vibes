@@ -516,6 +516,12 @@ export const gitContracts = {
     input: z.object({ appId: z.number(), commitHash: z.string() }),
     output: z.object({ success: z.boolean(), message: z.string() }),
   }),
+
+  getFileContent: defineContract({
+    channel: "git:get-file-content",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ content: z.string() }),
+  }),
 } as const;
 
 // =============================================================================

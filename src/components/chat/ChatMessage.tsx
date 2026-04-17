@@ -8,7 +8,7 @@ import {
 import { UserMessageContent } from "./UserMessageContent";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
-import { TOOL_META, getToolDetail, getBgColorClass } from "./CompactToolBadge";
+import { TOOL_META, getToolDetail, getBgColorClass, formatPriceCost } from "./CompactToolBadge";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -47,6 +47,7 @@ import {
   isSelectingModelByIdAtom,
   chatErrorByIdAtom,
   quotedMessagesAtom,
+  isZenModeAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -107,16 +108,19 @@ function translateError(raw: string): string {
   return msg || "Ha ocurrido un error inesperado.";
 }
 
+/** Compact relative time: "2h", "15min", "3d", or full date if > 7d */
 const formatTimestamp = (timestamp: string | Date) => {
   const now = new Date();
   const messageTime = new Date(timestamp);
-  const diffInHours =
-    (now.getTime() - messageTime.getTime()) / (1000 * 60 * 60);
-  if (diffInHours < 24) {
-    return formatDistanceToNow(messageTime, { addSuffix: true, locale: es });
-  } else {
-    return format(messageTime, "d 'de' MMM yyyy, H:mm", { locale: es });
-  }
+  const diffMs = now.getTime() - messageTime.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMin / 60);
+  const diffD = Math.floor(diffH / 24);
+  if (diffMin < 1) return "ahora";
+  if (diffMin < 60) return `${diffMin}min`;
+  if (diffH < 24) return `${diffH}h`;
+  if (diffD <= 7) return `${diffD}d`;
+  return format(messageTime, "d MMM, H:mm", { locale: es });
 };
 
 /** Format milliseconds into a human-readable duration (e.g. "23s", "1m 23s") */
@@ -143,6 +147,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const errorById = useAtomValue(chatErrorByIdAtom);
   const chatError = selectedChatId ? (errorById.get(selectedChatId) ?? null) : null;
   const userAtomValue = useAtomValue(userAtom);
+  const isZenMode = useAtomValue(isZenModeAtom);
 
   const activeUser = user || userAtomValue;
 
@@ -342,7 +347,9 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   }, [message.content, isStreaming, isLastMessage]);
 
   // Plain-text excerpt for collapsed view (~80 chars)
+  // Skipped in zen mode — no collapse feature.
   const plainTextExcerpt = useMemo(() => {
+    if (isZenMode) return "";
     if (!normalizedMessageContent || !isAssistant) return "";
     const stripped = normalizedMessageContent
       .replace(/<(vibes-[\w-]+|think|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "")
@@ -351,10 +358,12 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
       .replace(/\n+/g, " ")
       .trim();
     return stripped.length > 80 ? stripped.slice(0, 80) + "…" : stripped;
-  }, [normalizedMessageContent, isAssistant]);
+  }, [normalizedMessageContent, isAssistant, isZenMode]);
 
   // Tool usage summary grouped by icon (for collapsed badges)
+  // Skipped in zen mode — no badges, no collapse summary.
   const toolSummary = useMemo(() => {
+    if (isZenMode) return [];
     if (!normalizedMessageContent || !isAssistant) return [];
     const tagPattern = /<(vibes-[\w-]+)\s[^>]*>[\s\S]*?<\/\1>/g;
     const counts = new Map<string, number>();
@@ -376,7 +385,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
       }
     }
     return Array.from(byIcon.values());
-  }, [message.content, isAssistant]);
+  }, [message.content, isAssistant, isZenMode]);
 
   // Find the version that was active when this message was sent
   const messageVersion = useMemo(() => {
@@ -396,7 +405,30 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     return null;
   }, [message.commitHash, message.role, liveVersions]);
 
-
+  // Extract total message cost from vibes-token-usage tags
+  const messageCost = useMemo(() => {
+    if (!normalizedMessageContent || !isAssistant) return null;
+    const tokenTagPattern = /<vibes-token-usage\s([^>]*)>[\s\S]*?<\/vibes-token-usage>/g;
+    let totalCost = 0;
+    let match;
+    while ((match = tokenTagPattern.exec(normalizedMessageContent)) !== null) {
+      const attrsStr = match[1];
+      const getAttr = (name: string) => {
+        const m = new RegExp(`${name}="([^"]*)"`).exec(attrsStr);
+        return m ? m[1] : "0";
+      };
+      const inp = parseInt(getAttr("input"), 10);
+      const out = parseInt(getAttr("output"), 10);
+      const cached = parseInt(getAttr("cached"), 10);
+      const webSearches = parseInt(getAttr("web-searches"), 10);
+      const priceIn = parseFloat(getAttr("price-input"));
+      const priceOut = parseFloat(getAttr("price-output"));
+      if (priceIn > 0 || priceOut > 0 || webSearches > 0) {
+        totalCost += (inp - cached) * priceIn + cached * priceIn * 0.5 + out * priceOut + webSearches * 0.02;
+      }
+    }
+    return totalCost > 0 ? formatPriceCost(totalCost) : null;
+  }, [normalizedMessageContent, isAssistant]);
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
 
@@ -464,8 +496,8 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25"
                   : `px-4 ${isCollapsed ? "py-2 cursor-pointer hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors" : "py-3"} bg-secondary/50 dark:bg-secondary/30 border border-secondary/40`
                 : isFixError
-                  ? "px-4 py-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
-                  : "px-4 py-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
+                  ? "px-4 pt-2 pb-3 bg-rose-500/8 dark:bg-rose-500/10 border border-rose-400/25 w-fit cursor-pointer"
+                  : "px-4 pt-2 pb-3 bg-primary/10 dark:bg-primary/15 border border-primary/20 w-fit"
                 }`}
             >
               {/* === System messages === */}
@@ -521,7 +553,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                 </div>
               )}
 
-              {(isAssistant && message.content) ? (
+              {(isAssistant && message.content && !isZenMode) ? (
                 <div
                   onClick={() => setIsCollapsed(!isCollapsed)}
                   className="mt-2 flex items-center justify-between text-xs cursor-pointer hover:bg-accent/50 rounded-lg px-1 py-1 -mx-1 transition-colors"
@@ -551,6 +583,18 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         >
                           {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                         </button>
+                        {messageCost && (
+                          <span className="text-xs text-muted-foreground ml-1">{messageCost}</span>
+                        )}
+                        {message.createdAt && (
+                          <span className="text-xs text-muted-foreground ml-1 flex items-center gap-1">
+                            <Clock size={10} />
+                            {message.durationMs != null && message.durationMs > 0
+                              ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
+                              : formatTimestamp(message.createdAt)
+                            }
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -574,10 +618,62 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
                   </div>
                 </div>
+              ) : isAssistant && message.content && isZenMode ? (
+                /* Zen mode: minimal footer with just quote/copy + model — no collapse */
+                <div className="mt-2 flex items-center justify-between text-xs px-1 py-1 -mx-1">
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={handleQuote}
+                      title="Citar"
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      aria-label="Citar respuesta"
+                    >
+                      <Quote size={12} />
+                    </button>
+                    <button
+                      onClick={handleCopyFormatted}
+                      title={copied ? "¡Copiado!" : "Copiar"}
+                      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                      aria-label="Copiar respuesta"
+                    >
+                      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                    </button>
+                    {messageCost && (
+                      <span className="text-xs text-muted-foreground ml-1">{messageCost}</span>
+                    )}
+                    {message.createdAt && (
+                      <span className="text-xs text-muted-foreground ml-1 flex items-center gap-1">
+                        <Clock size={10} />
+                        {message.durationMs != null && message.durationMs > 0
+                          ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
+                          : formatTimestamp(message.createdAt)
+                        }
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {isAssistant && message.model && (
+                      <>
+                        {selectedChatId &&
+                          autoRouterModelInfo.get(selectedChatId) ? (
+                          <AutoRouterModelBadge
+                            modelInfo={autoRouterModelInfo.get(selectedChatId)!}
+                            showInline={false}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
+                            <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
+                            <span>{message.model}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               ) : null}
 
-              {/* === Compact collapsed summary === */}
-              {isAssistant && isCollapsed && message.content && (
+              {/* === Compact collapsed summary (full mode only) === */}
+              {!isZenMode && isAssistant && isCollapsed && message.content && (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">
                     {plainTextExcerpt}
@@ -607,68 +703,6 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
             </div>{/* end relative wrapper */}
           </div>
         </div>
-        {/* Timestamp and commit info for assistant messages - only visible on hover */}
-        {isAssistant && message.createdAt && (
-          <div className="mt-3 flex flex-wrap items-center justify-start space-x-2 text-xs text-muted-foreground ">
-            <div className="flex items-center space-x-1 ml-10">
-              <Clock className="h-3 w-3" />
-              <span>
-                {message.durationMs != null && message.durationMs > 0
-                  ? `Ha demorado ${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
-                  : formatTimestamp(message.createdAt)
-                }
-              </span>
-            </div>
-            {messageVersion && messageVersion.message && (
-              <div className="flex items-center space-x-1">
-                <GitCommit className="h-3 w-3" />
-                {messageVersion && messageVersion.message && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="max-w-50 truncate font-medium cursor-pointer hover:text-foreground hover:underline transition-colors"
-                        onClick={() => {
-                          if (appId != null) {
-                            ipc.system.openGitWindow({
-                              appId,
-                              commitHash: message.commitHash ?? undefined,
-                              theme: (localStorage.getItem("theme") as "light" | "dark" | "system") ?? undefined,
-                              themeIntensity: parseFloat(localStorage.getItem("theme-intensity") ?? "") || undefined,
-                            });
-                          }
-                        }}
-                      >
-                        {
-                          messageVersion.message
-                            .replace(/^\[(dyad|vibes)\]\s*/i, "")
-                            .split("\n")[0]
-                        }
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Ver en Control de Git</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )}
-
-            {message.totalTokens && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-1 px-1 py-0.5">
-                      <Info className="h-3 w-3" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Máximo de tokens usados:{" "}
-                    {message.totalTokens.toLocaleString()}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-          </div>
-        )}
       </div>
     </div>
   );

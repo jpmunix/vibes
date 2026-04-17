@@ -1,4 +1,4 @@
-import { BrowserWindow, Menu, MenuItem } from "electron";
+import { BrowserWindow, Menu, MenuItem, app, nativeImage } from "electron";
 import * as path from "node:path";
 import log from "electron-log";
 import { platform } from "os";
@@ -192,6 +192,9 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for git window title: ${e}`);
     }
 
+    const gitIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const gitIcon = nativeImage.createFromPath(gitIconPath);
+
     const gitWindow = new BrowserWindow({
       width: 1100,
       height: 750,
@@ -199,7 +202,8 @@ export function registerWindowHandlers() {
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
-      title: `${appName} — Control de Git`,
+      title: `[Git] ${appName}`,
+      icon: gitIcon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
@@ -212,6 +216,18 @@ export function registerWindowHandlers() {
         contextIsolation: true,
         preload: path.join(__dirname, "preload.js"),
       },
+    });
+
+    // Explicitly set icon after creation (required on some Linux WMs like Cinnamon)
+    if (!gitIcon.isEmpty()) {
+      gitWindow.setIcon(gitIcon);
+    } else {
+      logger.warn(`git icon not found at: ${gitIconPath}`);
+    }
+
+    // Prevent the renderer (HTML <title>) from overriding our window title
+    gitWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
     });
 
     // Remove native menu bar entirely (File, Edit, View, etc.)
