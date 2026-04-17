@@ -227,13 +227,18 @@ export function ChatPanel({
     }
     try {
       const chat = await ipc.chat.getChat(chatId);
+      const dbLastAssistantForLog = [...chat.messages].reverse().find(m => m.role === "assistant");
+      console.log(`[TRACE:fetchChat] chatId=${chatId} dbMsgs=${chat.messages.length} dbLastAssistant.id=${dbLastAssistantForLog?.id} dbContent=${dbLastAssistantForLog?.content?.length ?? 0}ch isStreaming=${isStreamingRef.current}`);
+
       setMessagesById((prev) => {
         // Protect against overwriting fresh local state with slightly stale DB state
         if (chatId) {
           const currentMessages = prev.get(chatId) ?? [];
+          const localLastAssistantForLog = [...currentMessages].reverse().find(m => m.role === "assistant");
           
           // If we are actively streaming right now, do not overwrite local messages
           if (isStreamingRef.current) {
+            console.log(`[TRACE:fetchChat:SKIP] reason=isStreaming localMsgs=${currentMessages.length} localLastAssistant.id=${localLastAssistantForLog?.id} localContent=${localLastAssistantForLog?.content?.length ?? 0}ch`);
             return prev;
           }
 
@@ -241,8 +246,27 @@ export function ChatPanel({
           // than the DB has, it means our local UI is ahead of what was just fetched.
           const hasOptimisticMessages = currentMessages.some(m => m.id < 0);
           if (hasOptimisticMessages || currentMessages.length > chat.messages.length) {
+            console.log(`[TRACE:fetchChat:SKIP] reason=optimistic/ahead hasOptimistic=${hasOptimisticMessages} localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length}`);
             return prev;
           }
+
+          // Guard against race condition: the DB fetch may arrive with an empty placeholder
+          // while the stream has already delivered real content to the atom.
+          // If the local assistant message has MORE content than the DB version for the
+          // same message ID, keep the local (streamed) version.
+          const dbLastAssistant = [...chat.messages].reverse().find(m => m.role === "assistant");
+          const localLastAssistant = [...currentMessages].reverse().find(m => m.role === "assistant");
+          if (
+            dbLastAssistant && localLastAssistant &&
+            dbLastAssistant.id === localLastAssistant.id &&
+            (localLastAssistant.content?.length ?? 0) > (dbLastAssistant.content?.length ?? 0)
+          ) {
+            console.log(`[TRACE:fetchChat:SKIP] reason=localRicher localContent=${localLastAssistant.content?.length ?? 0}ch dbContent=${dbLastAssistant.content?.length ?? 0}ch id=${dbLastAssistant.id}`);
+            // Local atom has richer content → the DB save hasn't caught up yet, keep local
+            return prev;
+          }
+
+          console.log(`[TRACE:fetchChat:APPLY] overwriting atom with DB. localMsgs=${currentMessages.length} dbMsgs=${chat.messages.length} localLastContent=${localLastAssistantForLog?.content?.length ?? 0}ch dbLastContent=${dbLastAssistantForLog?.content?.length ?? 0}ch`);
         }
 
         const next = new Map(prev);
@@ -392,6 +416,21 @@ export function ChatPanel({
         scrollerCleanupRef.current = null;
       }
     };
+  }, []);
+
+  // Listen for explicit scroll-to-bottom requests (e.g. from ChatInput on submit)
+  useEffect(() => {
+    const handleScrollRequest = () => {
+      setIsUserScrolling(false);
+      setShowScrollButton(false);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom("instant");
+        });
+      });
+    };
+    window.addEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
+    return () => window.removeEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
   }, []);
 
   const isPlanMode = settings?.selectedChatMode === "plan" || preservePlanMode;

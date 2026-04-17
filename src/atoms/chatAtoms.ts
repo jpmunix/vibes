@@ -18,6 +18,14 @@ export const recentStreamChatIdsAtom = atom<Set<number>>(new Set<number>());
 
 export const attachmentsAtom = atom<FileAttachment[]>([]);
 
+// Quoted messages for the reply/cite feature (supports multiple)
+export interface QuotedMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string; // Plain text excerpt (already stripped)
+}
+export const quotedMessagesAtom = atom<QuotedMessage[]>([]);
+
 // Agent tool consent request queue
 export interface PendingAgentConsent {
   requestId: string;
@@ -60,4 +68,3 @@ export const autoRouterModelInfoByChatIdAtom = atom<
 
 // Auto-router model selection loading state per chat
 export const isSelectingModelByIdAtom = atom<Map<number, boolean>>(new Map());
-

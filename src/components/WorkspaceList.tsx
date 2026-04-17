@@ -84,6 +84,8 @@ const AppChats = memo(function AppChats({
     onChatClick(appId, chatId);
   }, [setRecentStreamChatIds, onChatClick]);
 
+  const queryClient = useQueryClient();
+
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -91,16 +93,23 @@ const AppChats = memo(function AppChats({
   const renameInputRef = useRef<HTMLInputElement>(null);
   const menuBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
+  const isSubmittingRename = useRef(false);
+
   const handleRenameSubmit = useCallback(async (chatId: number) => {
+    if (isSubmittingRename.current) return;
     const trimmed = renameValue.trim();
-    if (!trimmed) return;
+    if (!trimmed) { setRenamingId(null); return; }
+    isSubmittingRename.current = true;
     try {
       await ipc.chat.renameChat({ chatId, title: trimmed });
       setRenamingId(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
     } catch (e) {
       showError(e);
+    } finally {
+      isSubmittingRename.current = false;
     }
-  }, [renameValue]);
+  }, [renameValue, queryClient]);
 
   const openMenu = useCallback((chatId: number) => {
     const btn = menuBtnRefs.current.get(chatId);
@@ -166,7 +175,16 @@ const AppChats = memo(function AppChats({
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onBlur={() => handleRenameSubmit(chat.id)}
-                      onKeyDown={(e) => { if (e.key === "Escape") setRenamingId(null); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setRenamingId(null);
+                        } else if (e.key === "Enter") {
+                          // Prevent blur from double-firing after Enter submit
+                          e.preventDefault();
+                          handleRenameSubmit(chat.id);
+                        }
+                      }}
                       autoFocus
                       className="w-full bg-sidebar-accent/60 border border-primary/30 rounded-md px-2 py-0.5 text-[13px] outline-none focus:border-primary"
                     />

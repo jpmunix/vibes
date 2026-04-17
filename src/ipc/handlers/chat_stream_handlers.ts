@@ -1499,7 +1499,6 @@ This conversation includes one or more image attachments. When the user uploads 
             );
           }
 
-
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
             try {
@@ -1721,12 +1720,14 @@ This conversation includes one or more image attachments. When the user uploads 
             );
 
           // Send the final response to the frontend
+          const finalMessages = [
+            ...updatedChat.messages.slice(0, -1),
+            { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
+          ];
+
           safeSend(event.sender, "chat:response:chunk", {
             chatId: req.chatId,
-            messages: [
-              ...updatedChat.messages.slice(0, -1),
-              { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
-            ],
+            messages: finalMessages,
           });
 
           // Process any file changes from OpenCode's response

@@ -15,7 +15,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-
   GitCommit,
   Copy,
   Check,
@@ -25,12 +24,13 @@ import {
   ChevronUp,
   Sparkles,
   User as UserIcon,
+  Quote,
   type LucideIcon,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { userAtom, type VibesUser } from "@/atoms/authAtoms";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -46,6 +46,7 @@ import {
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
   chatErrorByIdAtom,
+  quotedMessagesAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -163,10 +164,17 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
 
   // Is this an error message? (assistant, not streaming, error exists)
   const isErrorMessage = isAssistant && !isStreaming && !!effectiveError;
-  //handle copy chat (assistant)
+  //handle copy chat (assistant) — strips tool calls, keeps only prose
   const { copyMessageContent, copied } = useCopyToClipboard();
   const handleCopyFormatted = useCallback(async () => {
-    await copyMessageContent(message.content);
+    let text = message.content ?? "";
+    text = text
+      .replace(/<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "")
+      .replace(/<\/?[^>]+>/g, "")
+      .replace(/[ \t]*\n[ \t]*/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    await copyMessageContent(text);
   }, [copyMessageContent, message.content]);
 
   // handle copy for user messages (strips attachment metadata)
@@ -184,6 +192,39 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
     setUserCopied(true);
     setTimeout(() => setUserCopied(false), 2000);
   }, [copyMessageContent, message.content]);
+
+  // Quote / cite message
+  const [, setQuotedMessages] = useAtom(quotedMessagesAtom);
+  const handleQuote = useCallback(() => {
+    let text = message.content ?? "";
+    if (isUser) {
+      // Strip metadata like copy does
+      const m1 = text.indexOf("\n\nAttachments:\n");
+      if (m1 !== -1) text = text.substring(0, m1);
+      const m2 = text.indexOf("\n\nSelected components:\n");
+      if (m2 !== -1) text = text.substring(0, m2);
+      const m3 = text.indexOf("\n\nFile to upload to codebase:");
+      if (m3 !== -1) text = text.substring(0, m3);
+    } else {
+      // For assistant: remove ALL vibes tool blocks + think blocks, keep only prose
+      text = text
+        .replace(/<(vibes-[\w-]+|think|thought|vibes-think)[^>]*>[\s\S]*?<\/\1>/g, "")
+        .replace(/<\/?[^>]+>/g, "")   // strip any remaining tags
+        .replace(/[ \t]*\n[ \t]*/g, "\n") // normalize lines
+        .replace(/\n{3,}/g, "\n\n")   // collapse excessive blank lines
+        .trim();
+    }
+    const newQuote = {
+      id: message.id,
+      role: message.role as "user" | "assistant",
+      content: text,
+    };
+    setQuotedMessages((prev) => {
+      // Avoid duplicates
+      if (prev.some((q) => q.id === message.id)) return prev;
+      return [...prev, newQuote];
+    });
+  }, [message.id, message.role, message.content, isUser, setQuotedMessages]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
@@ -391,26 +432,28 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleCopyUserMessage}
-                      className="absolute -left-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
-                      aria-label="Copiar mensaje"
-                    >
-                      {userCopied ? (
-                        <Check size={13} className="text-green-500" />
-                      ) : (
-                        <Copy size={13} />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {userCopied ? "¡Copiado!" : "Copiar mensaje"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="absolute -left-16 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <button
+                  onClick={handleQuote}
+                  title="Citar"
+                  className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  aria-label="Citar mensaje"
+                >
+                  <Quote size={13} />
+                </button>
+                <button
+                  onClick={handleCopyUserMessage}
+                  title={userCopied ? "¡Copiado!" : "Copiar"}
+                  className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  aria-label="Copiar mensaje"
+                >
+                  {userCopied ? (
+                    <Check size={13} className="text-green-500" />
+                  ) : (
+                    <Copy size={13} />
+                  )}
+                </button>
+              </div>
             )}
             <div
               onClick={isCollapsed && isAssistant ? () => setIsCollapsed(false) : undefined}
@@ -489,6 +532,27 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                     ) : (
                       <ChevronUp className="h-4 w-4" />
                     )}
+                    {/* Quote + Copy buttons for assistant — stop propagation to avoid collapsing */}
+                    {!isCollapsed && message.content && (
+                      <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleQuote(); }}
+                          title="Citar"
+                          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                          aria-label="Citar respuesta"
+                        >
+                          <Quote size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCopyFormatted(); }}
+                          title={copied ? "¡Copiado!" : "Copiar"}
+                          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                          aria-label="Copiar respuesta"
+                        >
+                          {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {isAssistant && message.model && (
@@ -511,6 +575,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   </div>
                 </div>
               ) : null}
+
               {/* === Compact collapsed summary === */}
               {isAssistant && isCollapsed && message.content && (
                 <div className="flex items-center gap-2 min-w-0">

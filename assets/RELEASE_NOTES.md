@@ -1,5 +1,8 @@
 ## ✨ Novedades
 
+- **Citar mensajes**: puedes citar cualquier mensaje del chat (tanto del usuario como de la IA) usando el botón de citar. La cita aparece como una pill encima del campo de texto y se envía como contexto al modelo
+- **Múltiples citas**: puedes añadir varias citas a la vez antes de enviar tu mensaje
+- **Copiar respuestas de la IA**: el botón de copiar en la burbuja de la IA copia solo el texto limpio, sin etiquetas internas de herramientas ni metadatos
 - **Gestión de chats en el sidebar**: cada chat tiene un botón de acción rápida para archivar y un menú `⋮` con opciones: marcar como no leído, renombrar y eliminar
 - **Sistema de archivado**: archiva chats directamente desde el sidebar; los chats archivados desaparecen de la lista principal sin borrarse
 - **Panel de archivados**: desde el menú de carpeta, "Ver archivados" abre un modal centrado con todos los chats archivados, fecha y botón para restaurarlos individualmente

@@ -79,6 +79,8 @@ import { VisualEditingChangesDialog } from "@/components/preview_panel/VisualEdi
 import { useUserBudgetInfo } from "@/hooks/useUserBudgetInfo";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { QuotePreview } from "./QuotePreview";
+import { quotedMessagesAtom } from "@/atoms/chatAtoms";
 
 export function ChatInput({
   chatId,
@@ -93,6 +95,7 @@ export function ChatInput({
 }) {
   const posthog = usePostHog();
   const [inputValue, setInputValue] = useAtom(chatInputValueAtom);
+  const [quotedMessages, setQuotedMessages] = useAtom(quotedMessagesAtom);
   const { settings, updateSettings } = useSettings();
   const appId = useAtomValue(selectedAppIdAtom);
   const { versions, revertVersion, refreshVersions } = useVersions(appId);
@@ -245,7 +248,27 @@ export function ChatInput({
       return;
     }
 
-    const currentInput = inputValue;
+    // Prepend quoted messages as context block if any are set
+    let currentInput = inputValue;
+    if (quotedMessages.length > 0) {
+      const quoteBlock = quotedMessages
+        .map((q) => {
+          const roleLabel = q.role === "user" ? "Usuario" : "IA";
+          // Prefix EVERY line with > to form a proper markdown blockquote
+          const quotedLines = q.content
+            .split("\n")
+            .map((line) => `> ${line}`)
+            .join("\n");
+          return `> **[${roleLabel}]:**\n${quotedLines}`;
+        })
+        .join("\n\n");
+      currentInput = `${quoteBlock}\n\n${currentInput}`;
+      setQuotedMessages([]);
+    }
+
+    // Scroll to bottom immediately so the user sees the new message
+    window.dispatchEvent(new CustomEvent("vibes:scroll-to-bottom"));
+
     setInputValue("");
 
     let currentChatId = chatId;
@@ -460,6 +483,9 @@ export function ChatInput({
                   }
                 }}
               />
+
+              {/* Quote preview card — shown when a message is cited */}
+              <QuotePreview />
 
               {/* Use the AttachmentsList component */}
               <AttachmentsList

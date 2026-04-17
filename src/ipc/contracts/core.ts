@@ -305,21 +305,15 @@ export function createStreamClient<
     const ipcRenderer = getIpcRenderer();
     if (!ipcRenderer) return;
 
+    // Chunks: ALWAYS use fast path (skip Zod validation).
+    // Data comes from our own main process (trusted source).
+    // In dev, Zod v4 validation was silently dropping ALL chunks when any
+    // message in the array had extra DB fields (userId, chatId, etc.)
+    // or unexpected types, causing the "empty bubble" bug in old chats.
     ipcRenderer.on(contract.events.chunk.channel, (data: unknown) => {
-      if (IS_DEV) {
-        const parsed = contract.events.chunk.payload.safeParse(data);
-        if (parsed.success) {
-          const key = (parsed.data as Record<string, unknown>)[
-            contract.keyField
-          ] as KeyValue;
-          streams.get(key)?.onChunk(parsed.data);
-        }
-      } else {
-        // Production fast path: skip Zod validation for streaming chunks
-        const typedData = data as Record<string, unknown>;
-        const key = typedData[contract.keyField] as KeyValue;
-        streams.get(key)?.onChunk(typedData as any);
-      }
+      const typedData = data as Record<string, unknown>;
+      const key = typedData[contract.keyField] as KeyValue;
+      streams.get(key)?.onChunk(typedData as any);
     });
 
     ipcRenderer.on(contract.events.end.channel, (data: unknown) => {
@@ -331,6 +325,18 @@ export function createStreamClient<
           ] as KeyValue;
           streams.get(key)?.onEnd(parsed.data);
           streams.delete(key);
+        } else {
+          console.error(
+            `[StreamClient:end] Zod validation FAILED on ${contract.events.end.channel}:`,
+            parsed.error.format(),
+          );
+          // Still try to clean up — extract key from raw data
+          const typedData = data as Record<string, unknown>;
+          const key = typedData[contract.keyField] as KeyValue;
+          if (key !== undefined) {
+            streams.get(key)?.onEnd(typedData as any);
+            streams.delete(key);
+          }
         }
       } else {
         const typedData = data as Record<string, unknown>;
@@ -349,6 +355,18 @@ export function createStreamClient<
           ] as KeyValue;
           streams.get(key)?.onError(parsed.data);
           streams.delete(key);
+        } else {
+          console.error(
+            `[StreamClient:error] Zod validation FAILED on ${contract.events.error.channel}:`,
+            parsed.error.format(),
+          );
+          // Still try to deliver the error
+          const typedData = data as Record<string, unknown>;
+          const key = typedData[contract.keyField] as KeyValue;
+          if (key !== undefined) {
+            streams.get(key)?.onError(typedData as any);
+            streams.delete(key);
+          }
         }
       } else {
         const typedData = data as Record<string, unknown>;

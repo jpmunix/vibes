@@ -1179,6 +1179,7 @@ export async function handleOpenCodeStream(
 
         // Send final response with all content
         const finalContent = buildFinalResponse(timeline, filesEdited, toolsActive);
+        logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
         logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}`);
@@ -1643,10 +1644,6 @@ function escapeAttr(s: string): string {
 }
 
 /**
- * Build live content showing accumulated vibes tags + current activity + response text.
- * This is what the user sees in the chat bubble while OpenCode works.
- */
-/**
  * Build live content from the chronological timeline.
  * Tools and text/thinking appear in the exact order they occurred.
  */
@@ -1692,17 +1689,14 @@ function buildFinalResponse(
 ): string {
     let content = "";
 
-    // Collect raw text for fallback detection
-    let rawTextLength = 0;
-
     // Render timeline in chronological order
     for (const entry of timeline) {
         if (entry.type === "tool") {
             const tagContent = entry.error ? "[error]" : entry.output;
             content += buildVibesTag(entry.tool, entry.detail, tagContent) + "\n";
         } else {
-            rawTextLength += entry.text.length;
-            content += cleanResponseText(entry.text);
+            const cleaned = cleanResponseText(entry.text);
+            content += cleaned;
         }
     }
 
@@ -1722,15 +1716,6 @@ function buildFinalResponse(
                 content += `<vibes-write path="${escapeAttr(file)}" description=""></vibes-write>\n`;
             }
         }
-    }
-
-    // Fallback: if cleanResponseText stripped all visible text but the model DID
-    // produce text (e.g. only <think> blocks), show a brief indicator instead of
-    // rendering an empty bubble.
-    const trimmed = content.trim();
-    if (!trimmed && rawTextLength > 0) {
-        content = "*(El modelo procesó la solicitud internamente sin generar una respuesta visible.)*";
-        logger.info(`[OpenCode] buildFinalResponse: all ${rawTextLength} chars of text were internal reasoning — injected fallback`);
     }
 
     return content;
@@ -1795,6 +1780,8 @@ function sendChunk(
             lastMsg.content = content;
         }
     }
+    const lastAssistant = currentMessages.filter(m => m.role === "assistant").pop();
+    logger.info(`[OC:sendChunk] chatId=${chatId} msgs=${currentMessages.length} lastAssistant.id=${lastAssistant?.id} content=${lastAssistant?.content?.length ?? 0}ch`);
     safeSend(event.sender, "chat:response:chunk", {
         chatId,
         messages: currentMessages,
