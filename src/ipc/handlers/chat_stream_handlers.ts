@@ -1499,6 +1499,11 @@ This conversation includes one or more image attachments. When the user uploads 
             );
           }
 
+          // 3. Tool correction (mainly for Gemini hallucinating Aider/OpenAI specific tools)
+          contextInstructions.push(
+            `NOTAS DE ENTORNO: La herramienta para aplicar diffs unificados se llama exactamente "patch". NO uses herramientas inexistentes como "apply_patch".`
+          );
+
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
             try {
