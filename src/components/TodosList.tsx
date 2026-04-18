@@ -33,7 +33,7 @@ export function TodosList({ show }: { show?: boolean }) {
             className="overflow-y-auto h-[calc(100vh-112px)]"
             data-testid="todos-list-container"
         >
-            <SidebarGroupLabel>Tareas por app</SidebarGroupLabel>
+            
             <SidebarGroupContent>
                 <div className="flex flex-col space-y-2">
                     {loading ? (

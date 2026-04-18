@@ -54,25 +54,6 @@ export type ChatSearchResult = z.infer<typeof ChatSearchResultSchema>;
 
 export const ChatSearchResultsSchema = z.array(ChatSearchResultSchema);
 
-/**
- * Zod schema for note summary objects returned by the get-notes IPC
- */
-export const NoteSummarySchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-/**
- * Type derived from the NoteSummarySchema
- */
-export type NoteSummary = z.infer<typeof NoteSummarySchema>;
-
-/**
- * Zod schema for an array of note summaries
- */
-export const NoteSummariesSchema = z.array(NoteSummarySchema);
 
 // Zod schema for app search result objects returned by the search-app IPC
 export const AppSearchResultSchema = z.object({
@@ -332,7 +313,7 @@ export const UserSettingsSchema = z
     knowledgeExtractionModel: z.string().optional(),
     dossierModel: z.string().optional(),
     // Unified model keys — two tiers that replace all 7 individual fields above
-    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates, dossiers)
+    standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates)
     proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
     githubUser: GithubUserSchema.optional(),
@@ -514,7 +495,6 @@ export interface CodeProposal {
 
 export type SuggestedAction =
   | RestartAppAction
-  | SummarizeInNewChatAction
   | RefactorFileAction
   | WriteCodeProperlyAction
   | RebuildAction
@@ -526,9 +506,6 @@ export interface RestartAppAction {
   id: "restart-app";
 }
 
-export interface SummarizeInNewChatAction {
-  id: "summarize-in-new-chat";
-}
 
 export interface WriteCodeProperlyAction {
   id: "write-code-properly";

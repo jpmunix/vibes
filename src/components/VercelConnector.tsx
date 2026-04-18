@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Globe } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ipc, App } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
@@ -81,7 +82,7 @@ function ConnectedVercelConnector({
       className="mt-4 w-full rounded-md"
       data-testid="vercel-connected-project"
     >
-      <p className="text-sm text-gray-600 dark:text-gray-300">
+      <p className="text-sm text-muted-foreground">
         Conectado al proyecto de Vercel:
       </p>
       <a
@@ -91,7 +92,7 @@ function ConnectedVercelConnector({
             `https://vercel.com/${app.vercelTeamSlug}/${app.vercelProjectName}`,
           );
         }}
-        className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+        className="cursor-pointer text-primary hover:underline"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -99,7 +100,7 @@ function ConnectedVercelConnector({
       </a>
       {app.vercelDeploymentUrl && (
         <div className="mt-2">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="text-sm text-muted-foreground">
             URL en vivo:{" "}
             <a
               onClick={(e) => {
@@ -108,7 +109,7 @@ function ConnectedVercelConnector({
                   ipc.system.openExternalUrl(app.vercelDeploymentUrl);
                 }
               }}
-              className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400 font-mono"
+              className="cursor-pointer text-primary hover:underline font-mono"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -118,7 +119,7 @@ function ConnectedVercelConnector({
         </div>
       )}
       <div className="mt-2 flex gap-2">
-        <Button onClick={handleGetDeployments} disabled={isLoadingOrRefreshing}>
+        <Button onClick={handleGetDeployments} disabled={isLoadingOrRefreshing} variant="outline">
           {isLoadingOrRefreshing ? (
             <>
               <svg
@@ -158,7 +159,7 @@ function ConnectedVercelConnector({
       </div>
       {deploymentsError && (
         <div className="mt-2">
-          <p className="text-red-600">{deploymentsError}</p>
+          <p className="text-destructive">{deploymentsError}</p>
         </div>
       )}
       {deployments.length > 0 && (
@@ -168,21 +169,25 @@ function ConnectedVercelConnector({
             {deployments.map((deployment) => (
               <div
                 key={deployment.uid}
-                className="bg-gray-50 dark:bg-gray-800 rounded-md p-3"
+                className="bg-muted rounded-md p-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${deployment.readyState === "READY"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300"
+                    <Badge
+                      variant={
+                        deployment.readyState === "READY"
+                          ? "default"
                           : deployment.readyState === "BUILDING"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                        }`}
+                            ? "secondary"
+                            : deployment.readyState === "ERROR"
+                              ? "destructive"
+                              : "outline"
+                      }
+                      className="rounded-full"
                     >
                       {deployment.readyState}
-                    </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
                       {new Date(deployment.createdAt).toLocaleString()}
                     </span>
                   </div>
@@ -191,7 +196,7 @@ function ConnectedVercelConnector({
                       e.preventDefault();
                       ipc.system.openExternalUrl(`https://${deployment.url}`);
                     }}
-                    className="cursor-pointer text-blue-600 hover:underline dark:text-blue-400 text-sm"
+                    className="cursor-pointer text-primary hover:underline text-sm"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -205,7 +210,7 @@ function ConnectedVercelConnector({
         </div>
       )}
       {disconnectError && (
-        <p className="text-red-600 mt-2">{disconnectError}</p>
+        <p className="text-destructive mt-2">{disconnectError}</p>
       )}
     </div>
   );
@@ -378,11 +383,11 @@ function UnconnectedVercelConnector({
           </div>
 
           <div className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
+              <p className="text-sm text-foreground mb-2">
                 Para conectar tu app a Vercel, deberás crear un token de acceso:
               </p>
-              <ol className="list-decimal list-inside text-sm text-blue-700 dark:text-blue-300 space-y-1">
+              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
                 <li>Si no tienes una cuenta de Vercel, regístrate primero</li>
                 <li>Ve a los ajustes de Vercel para crear un token</li>
                 <li>Copia el token y pégalo a continuación</li>
@@ -404,7 +409,7 @@ function UnconnectedVercelConnector({
                       "https://vercel.com/account/settings/tokens",
                     );
                   }}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1"
                 >
                   Abrir ajustes de Vercel
                 </Button>
@@ -462,16 +467,16 @@ function UnconnectedVercelConnector({
             </form>
 
             {tokenError && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-                <p className="text-sm text-red-800 dark:text-red-200">
+              <div className="bg-destructive/5 border border-destructive/20 rounded-md p-3">
+                <p className="text-sm text-destructive">
                   {tokenError}
                 </p>
               </div>
             )}
 
             {tokenSuccess && (
-              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
-                <p className="text-sm text-green-800 dark:text-green-200">
+              <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
+                <p className="text-sm text-primary">
                   ¡Conectado a Vercel con éxito! Ahora puedes configurar tu
                   proyecto a continuación.
                 </p>
@@ -495,13 +500,13 @@ function UnconnectedVercelConnector({
         <div className="pt-0 space-y-4">
           {/* Mode Selection */}
           <div>
-            <div className="flex rounded-md border border-gray-200 dark:border-gray-700">
+            <div className="flex rounded-md border border-border">
               <Button
                 type="button"
                 variant={projectSetupMode === "create" ? "default" : "ghost"}
                 className={`flex-1 rounded-none rounded-l-md border-0 ${projectSetupMode === "create"
                     ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                    : "hover:bg-muted"
                   }`}
                 onClick={() => {
                   setProjectSetupMode("create");
@@ -514,9 +519,9 @@ function UnconnectedVercelConnector({
               <Button
                 type="button"
                 variant={projectSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${projectSetupMode === "existing"
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${projectSetupMode === "existing"
                     ? "bg-primary text-primary-foreground"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                    : "hover:bg-muted"
                   }`}
                 onClick={() => {
                   setProjectSetupMode("existing");
@@ -550,17 +555,17 @@ function UnconnectedVercelConnector({
                     disabled={isCreatingProject}
                   />
                   {isCheckingProject && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Comprobando disponibilidad...
                     </p>
                   )}
                   {projectAvailable === true && (
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-primary mt-1">
                       ¡El nombre del proyecto está disponible!
                     </p>
                   )}
                   {projectAvailable === false && (
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       {projectCheckError}
                     </p>
                   )}
@@ -622,10 +627,10 @@ function UnconnectedVercelConnector({
           </form>
 
           {createProjectError && (
-            <p className="text-red-600 mt-2">{createProjectError}</p>
+            <p className="text-destructive mt-2">{createProjectError}</p>
           )}
           {createProjectSuccess && (
-            <p className="text-green-600 mt-2">
+            <p className="text-primary mt-2">
               {projectSetupMode === "create"
                 ? "¡Proyecto creado y enlazado!"
                 : "¡Conectado al proyecto!"}

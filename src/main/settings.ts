@@ -224,8 +224,7 @@ export function readSettings(): UserSettings {
         (migrated as any).todoAnalysisModel = DEFAULT_STANDARD_MODEL;
       if (shouldMigrate((validatedSettings as any).knowledgeExtractionModel))
         (migrated as any).knowledgeExtractionModel = FALLBACK_PRO_MODEL;
-      if (shouldMigrate((validatedSettings as any).dossierModel))
-        (migrated as any).dossierModel = DEFAULT_STANDARD_MODEL;
+
 
       // Mark migration as done and persist
       const migratedSettings = {
@@ -381,14 +380,14 @@ export function readSettings(): UserSettings {
 
     // ── Migration: v5 unified model keys ──
     // Replace the 7 individual model fields with 2 unified keys:
-    //   standardModeModel  (cheap/fast)  ← appTitleGenerationModel, todoAnalysisModel, summaryModel, debateModel, dossierModel
+    //   standardModeModel  (cheap/fast)  ← appTitleGenerationModel, todoAnalysisModel, summaryModel, debateModel
     //   proModeModel        (thinking)   ← turboEditModel, knowledgeExtractionModel
     if (!(validatedSettings as any)._migrations?.v5_unified_model_keys) {
       const migrated: Partial<UserSettings> = {};
       const vs = validatedSettings as any;
 
       // Pick the best value for standardModeModel from old fields (first non-empty wins)
-      const standardCandidate = vs.standardModeModel || vs.appTitleGenerationModel || vs.summaryModel || vs.todoAnalysisModel || vs.debateModel || vs.dossierModel;
+      const standardCandidate = vs.standardModeModel || vs.appTitleGenerationModel || vs.summaryModel || vs.todoAnalysisModel || vs.debateModel;
       if (standardCandidate) {
         (migrated as any).standardModeModel = standardCandidate;
       } else {

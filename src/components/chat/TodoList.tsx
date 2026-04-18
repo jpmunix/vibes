@@ -53,7 +53,7 @@ export function TodoList({ todos }: TodoListProps) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
+        className="cursor-pointer w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {isExpanded ? (

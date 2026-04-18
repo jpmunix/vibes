@@ -31,7 +31,7 @@ import { useCheckProblems } from "./useCheckProblems";
 import { useSettings } from "./useSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { SUMMARY_SYSTEM_PROMPT_LANGS } from "@/prompts/summarize_chat_system_prompt";
+
 import type { ChatSummary } from "@/lib/schemas";
 
 export function getRandomNumberId() {
@@ -208,12 +208,8 @@ export function useStreamChat({
       // Fire and forget title generation with the prompt for new chats
       (async () => {
         try {
-          // Don't generate title if it's a summarize command or a system prompt
-          const isSummarize = Object.values(SUMMARY_SYSTEM_PROMPT_LANGS).some(
-            (prefix) => prompt.startsWith(prefix),
-          );
-
-          if (isSummarize || isSystemPrompt) {
+          // Don't generate title for system prompts
+          if (isSystemPrompt) {
             return;
           }
 

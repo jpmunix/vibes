@@ -17,9 +17,9 @@ export const PublishPanel = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
           <svg
-            className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin"
+            className="w-6 h-6 text-primary animate-spin"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -38,7 +38,7 @@ export const PublishPanel = () => {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           Cargando...
         </h2>
       </div>
@@ -48,9 +48,9 @@ export const PublishPanel = () => {
   if (!selectedAppId || !app) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-900/30 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
           <svg
-            className="w-6 h-6 text-gray-600 dark:text-gray-400"
+            className="w-6 h-6 text-muted-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -63,10 +63,10 @@ export const PublishPanel = () => {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           Ninguna aplicación seleccionada
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md">
+        <p className="text-muted-foreground max-w-md">
           Selecciona una aplicación para ver las opciones de publicación.
         </p>
       </div>
@@ -77,7 +77,7 @@ export const PublishPanel = () => {
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="p-4 space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Publicar aplicación
           </h1>
         </div>
@@ -100,7 +100,7 @@ export const PublishPanel = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Sincroniza tu código con GitHub para colaborar.
             </p>
             <GitHubConnector
@@ -109,7 +109,7 @@ export const PublishPanel = () => {
               expanded={true}
             />
             {app.githubOrg && app.githubRepo && (
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="pt-4 border-t border-border">
                 <GithubCollaboratorManager appId={selectedAppId} />
               </div>
             )}
@@ -124,7 +124,7 @@ export const PublishPanel = () => {
                 onClick={() => {
                   ipc.system.openExternalUrl("https://vercel.com/dashboard");
                 }}
-                className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer bg-transparent border-none p-0"
+                className="flex items-center gap-2 hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 <svg
                   className="w-5 h-5"
@@ -138,15 +138,15 @@ export const PublishPanel = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Publica tu aplicación desplegándola en Vercel.
             </p>
 
             {!app?.githubOrg || !app?.githubRepo ? (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <div className="bg-accent border border-border rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <svg
-                    className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                    className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -159,10 +159,10 @@ export const PublishPanel = () => {
                     />
                   </svg>
                   <div>
-                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    <h3 className="text-sm font-medium text-foreground">
                       Se requiere GitHub para el despliegue en Vercel
                     </h3>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       El despliegue en Vercel requiere conectar primero con
                       GitHub. Por favor, configura tu repositorio de GitHub
                       arriba.

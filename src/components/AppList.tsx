@@ -1,11 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { PlusCircle, Search, FolderPlus, Loader2 } from "lucide-react";
-import { useAtom, useSetAtom } from "jotai";
+import { Loader2 } from "lucide-react";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import {
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { AppSearchDialog } from "./AppSearchDialog";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { AppItem } from "./appItem";
@@ -58,6 +58,29 @@ export function AppList({ show }: { show?: boolean }) {
   const [emptyAppName, setEmptyAppName] = useState("");
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+
+  // Listen for sidebar action triggers from TopNavbar dropdown
+  const sidebarAction = useAtomValue(sidebarActionAtom);
+  const lastActionRef = useRef<number>(0);
+  useEffect(() => {
+    if (!sidebarAction || sidebarAction.ts === lastActionRef.current) return;
+    lastActionRef.current = sidebarAction.ts;
+    switch (sidebarAction.action) {
+      case "apps:new":
+        handleNewApp();
+        break;
+      case "apps:empty":
+        setIsEmptyAppDialogOpen(true);
+        break;
+      case "apps:import":
+        // Trigger the import button programmatically via a custom event
+        window.dispatchEvent(new CustomEvent("trigger-import-app"));
+        break;
+      case "apps:search":
+        setIsSearchDialogOpen(true);
+        break;
+    }
+  }, [sidebarAction]);
 
   const allApps = useMemo(
     () =>
@@ -229,33 +252,9 @@ export function AppList({ show }: { show?: boolean }) {
         className="overflow-y-auto h-[calc(100vh-112px)]"
         data-testid="app-list-container"
       >
-        <SidebarGroupLabel>Tus aplicaciones</SidebarGroupLabel>
+        
         <SidebarGroupContent>
           <div className="flex flex-col gap-1.5 px-2">
-            <button onClick={handleNewApp} className="sidebar-action-btn" type="button">
-              <PlusCircle size={15} />
-              <span>Nueva aplicación</span>
-            </button>
-            <button
-              onClick={() => setIsEmptyAppDialogOpen(true)}
-              className="sidebar-action-btn"
-              data-testid="new-empty-app-button"
-              type="button"
-            >
-              <FolderPlus size={15} />
-              <span>Nueva aplicación vacía</span>
-            </button>
-            <ImportAppButton className="mx-0 px-0 pb-0" />
-            <button
-              onClick={() => setIsSearchDialogOpen(!isSearchDialogOpen)}
-              className="sidebar-action-btn"
-              data-testid="search-apps-button"
-              type="button"
-            >
-              <Search size={15} />
-              <span>Buscar aplicaciones</span>
-            </button>
-
             {loading ? (
               <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
                 Cargando aplicaciones...

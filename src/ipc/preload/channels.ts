@@ -33,7 +33,7 @@ import { languageModelContracts } from "../types/language-model";
 import { mcpContracts, mcpEvents } from "../types/mcp";
 import { miscContracts, miscEvents } from "../types/misc";
 import { neonContracts } from "../types/neon";
-import { noteContracts } from "../types/note";
+
 import { promptContracts } from "../types/prompts";
 import { proposalContracts } from "../types/proposals";
 import { securityContracts } from "../types/security";
@@ -50,7 +50,7 @@ import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
 
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
-import { dossierContracts, dossierStreamContract } from "../types/dossier";
+
 import { authContracts } from "../types/auth";
 
 
@@ -61,7 +61,7 @@ import { authContracts } from "../types/auth";
 const CHAT_STREAM_CHANNELS = getStreamChannels(chatStreamContract);
 const HELP_STREAM_CHANNELS = getStreamChannels(helpStreamContract);
 const DEBATE_STREAM_CHANNELS = getStreamChannels(debateStreamContract);
-const DOSSIER_STREAM_CHANNELS = getStreamChannels(dossierStreamContract);
+
 
 // Test-only channels (handler only registered in E2E test builds, but channel always allowed)
 const TEST_INVOKE_CHANNELS = [
@@ -85,7 +85,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(settingsContracts),
   ...getInvokeChannels(appContracts),
   ...getInvokeChannels(chatContracts),
-  ...getInvokeChannels(noteContracts),
+
   ...getInvokeChannels(todoContracts),
   ...getInvokeChannels(agentContracts),
   ...getInvokeChannels(debateContracts),
@@ -94,7 +94,7 @@ export const VALID_INVOKE_CHANNELS = [
   CHAT_STREAM_CHANNELS.invoke,
   HELP_STREAM_CHANNELS.invoke,
   DEBATE_STREAM_CHANNELS.invoke,
-  DOSSIER_STREAM_CHANNELS.invoke,
+
 
   // Integrations
   ...getInvokeChannels(githubContracts),
@@ -129,7 +129,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(pocketbaseContracts),
   // knowledgeContracts — KB removed
   ...getInvokeChannels(aiQueryLogContracts),
-  ...getInvokeChannels(dossierContracts),
+
   ...getInvokeChannels(authContracts),
 
 
@@ -156,7 +156,7 @@ export const VALID_RECEIVE_CHANNELS = [
   ...CHAT_STREAM_CHANNELS.receive,
   ...HELP_STREAM_CHANNELS.receive,
   ...DEBATE_STREAM_CHANNELS.receive,
-  ...DOSSIER_STREAM_CHANNELS.receive,
+
 
   // Event channels
   ...getReceiveChannels(agentEvents),

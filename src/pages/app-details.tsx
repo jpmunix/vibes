@@ -65,8 +65,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { DossierModal } from "@/components/DossierModal";
-import { Brain, FileText as FileTextIcon } from "lucide-react";
+import { Brain } from "lucide-react";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
@@ -108,7 +107,7 @@ export default function AppDetailsPage() {
   const [isChangeLocationDialogOpen, setIsChangeLocationDialogOpen] =
     useState(false);
   const [isKnowledgeBaseModalOpen, setIsKnowledgeBaseModalOpen] = useState(false);
-  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+
   const [initialPrompt, setInitialPrompt] = useState<{ content: string | null; createdAt: Date | string | null } | null>(null);
   const [isLoadingInitialPrompt, setIsLoadingInitialPrompt] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -706,38 +705,8 @@ export default function AppDetailsPage() {
                 </div>
               </div>
 
-              {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
 
-              {/* Dossier button — hidden until feature is polished
-              {appId && (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDossierModalOpen(true)}
-                  className="w-full justify-between h-auto py-3 px-4 border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12"
-                >
-                  <div className="flex items-center gap-2">
-                    <ChevronRight className="h-4 w-4 text-gray-500" />
-                    <div className="flex flex-col items-start">
-                      <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                        Dossier de la App
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 text-left">
-                        Genera tutorial + memoria técnica en DOCX para licitaciones
-                      </span>
-                    </div>
-                  </div>
-                  <FileTextIcon className="h-3.5 w-3.5 text-gray-400" />
-                </Button>
-              )}
-              {appId && selectedApp && (
-                <DossierModal
-                  appId={appId}
-                  appName={selectedApp.name}
-                  isOpen={isDossierModalOpen}
-                  onClose={() => setIsDossierModalOpen(false)}
-                />
-              )}
-              */}
+              {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
             </div>
 
             {/* Rename Dialog */}

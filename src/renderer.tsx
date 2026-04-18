@@ -511,10 +511,10 @@ function MainWindowSkeleton() {
 
   // Title bar height matches the real TitleBar (44px = h-11)
   const titleBarHeight = 44;
-  // Sidebar icon column width (~56px = w-14)
-  const iconColWidth = 56;
-  // Sidebar expanded panel width (~200px)
-  const appListWidth = 200;
+  // Top navbar height (40px)
+  const topNavHeight = 40;
+  // Secondary sidebar panel width (~250px)
+  const sidebarPanelWidth = 250;
 
   return (
     <div style={{
@@ -537,57 +537,56 @@ function MainWindowSkeleton() {
         WebkitAppRegionDrag: "drag",
       } as React.CSSProperties} />
 
-      {/* Below title bar: sidebar + content */}
+      {/* Top navbar */}
+      <div style={{
+        height: `${topNavHeight}px`,
+        background: sidebarBg,
+        borderBottom: `1px solid ${sepColor}`,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 12px",
+        gap: "8px",
+        flexShrink: 0,
+      }}>
+        {/* Toggle + separator */}
+        <div style={{ ...pulseStyle, width: "80px", height: "28px", borderRadius: "8px", animationDelay: "0s" }} />
+        <div style={{ width: "1px", height: "20px", background: sepColor, flexShrink: 0 }} />
+
+        {/* 3 nav items (Apps, Agente, Tareas) */}
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "0 10px",
+            height: "28px",
+            borderRadius: "8px",
+            ...(i === 0 ? { background: sepColor } : {}),
+          }}>
+            <div style={{ ...pulseStyle, width: "16px", height: "16px", borderRadius: "4px", animationDelay: `${i * 0.06}s` }} />
+            <div style={{ ...pulseStyle, width: `${40 + i * 10}px`, height: "12px", borderRadius: "4px", animationDelay: `${i * 0.06 + 0.03}s` }} />
+          </div>
+        ))}
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Right side items (credits, settings, avatar) */}
+        <div style={{ ...pulseStyle, width: "60px", height: "28px", borderRadius: "8px", animationDelay: "0.3s" }} />
+        <div style={{ ...pulseStyle, width: "28px", height: "28px", borderRadius: "8px", animationDelay: "0.35s" }} />
+        <div style={{ ...pulseStyle, width: "24px", height: "24px", borderRadius: "50%", animationDelay: "0.4s" }} />
+      </div>
+
+      {/* Below topnav: sidebar panel + content */}
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
 
-        {/* Sidebar: icon column */}
+        {/* Secondary sidebar panel */}
         <div style={{
-          width: `${iconColWidth}px`,
+          width: `${sidebarPanelWidth}px`,
           background: sidebarBg,
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          paddingTop: "8px",
-          gap: "4px",
-          flexShrink: 0,
-        }}>
-          {/* Sidebar toggle button */}
-          <div style={{ ...pulseStyle, width: "36px", height: "36px", borderRadius: "10px", marginBottom: "8px", animationDelay: "0s" }} />
-
-          {/* 5 nav icon buttons (Apps, Notes, Tasks, Debates, Settings) */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "4px",
-              width: "48px",
-              height: "48px",
-              justifyContent: "center",
-              borderRadius: "14px",
-              ...(i === 0 ? { background: sepColor } : {}), // First one highlighted like active tab
-            }}>
-              <div style={{ ...pulseStyle, width: "20px", height: "20px", borderRadius: "4px", animationDelay: `${i * 0.08}s` }} />
-              <div style={{ ...pulseStyle, width: "24px", height: "8px", borderRadius: "4px", animationDelay: `${i * 0.08 + 0.04}s` }} />
-            </div>
-          ))}
-
-          {/* Spacer to push bottom icons down */}
-          <div style={{ flex: 1 }} />
-
-          {/* Bottom icons (credits, docs, avatar) */}
-          <div style={{ ...pulseStyle, width: "36px", height: "36px", borderRadius: "10px", animationDelay: "0.5s" }} />
-          <div style={{ ...pulseStyle, width: "36px", height: "36px", borderRadius: "10px", animationDelay: "0.55s" }} />
-          <div style={{ ...pulseStyle, width: "28px", height: "28px", borderRadius: "50%", marginBottom: "16px", animationDelay: "0.6s" }} />
-        </div>
-
-        {/* Sidebar: app list panel */}
-        <div style={{
-          width: `${appListWidth}px`,
-          background: sidebarBg,
-          display: "flex",
-          flexDirection: "column",
-          padding: "8px 8px 16px 4px",
+          padding: "8px 8px 16px 8px",
           gap: "6px",
           flexShrink: 0,
           borderRight: `1px solid ${sepColor}`,

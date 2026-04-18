@@ -23,7 +23,7 @@ export const ChatError = React.memo(function ChatError({ error, onDismiss }: Cha
       <span className="flex-1">{error}</span>
       <button
         onClick={onDismiss}
-        className="absolute top-1 right-1 p-1 rounded-full hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+        className="cursor-pointer absolute top-1 right-1 p-1 rounded-full hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-400"
         aria-label="Dismiss error"
       >
         <XCircle className="h-4 w-4 text-red-500 hover:text-red-700" />

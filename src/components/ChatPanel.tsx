@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, Suspense, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
@@ -14,9 +14,7 @@ import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatError } from "./chat/ChatError";
 
-const ChatLogsPanel = React.lazy(() =>
-  import("./chat/ChatLogsPanel").then((m) => ({ default: m.ChatLogsPanel }))
-);
+
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Loader2 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
@@ -107,7 +105,7 @@ export function ChatPanel({
   // Scroll-related state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
-  const [isLogsOpen, setIsLogsOpen] = useState(false);
+
 
   // Refs for scroll tracking (both test and Virtuoso modes)
   const distanceFromBottomRef = useRef<number>(0);
@@ -455,19 +453,8 @@ export function ChatPanel({
         <ChatHeader
           isPreviewOpen={isPreviewOpen}
           onTogglePreview={onTogglePreview}
-          isLogsOpen={isLogsOpen}
-          onToggleLogs={() => setIsLogsOpen(!isLogsOpen)}
           workspaceMode={workspaceMode}
         />
-        {chatId && (
-          <Suspense fallback={null}>
-            <ChatLogsPanel
-              chatId={chatId}
-              isOpen={isLogsOpen}
-              onClose={() => setIsLogsOpen(false)}
-            />
-          </Suspense>
-        )}
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">

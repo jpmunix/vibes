@@ -1,5 +1,5 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { TopNavbar, SecondarySidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { DeepLinkProvider } from "../contexts/DeepLinkContext";
 import { Toaster } from "sonner";
@@ -22,7 +22,7 @@ import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } f
 import type { ZoomLevel } from "@/lib/schemas";
 
 // Routes that can be restored on startup
-const RESTORABLE_ROUTES = ["/", "/workspace", "/notes", "/todos"];
+const RESTORABLE_ROUTES = ["/", "/workspace", "/todos"];
 const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
@@ -158,12 +158,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <DeepLinkProvider>
           <SidebarProvider>
             <TitleBar />
-            <AppSidebar />
-            <div
-              id="layout-main-content-container"
-              className="flex h-[calc(100vh-44px)] w-full overflow-x-hidden mt-11 bg-background"
-            >
-              {children}
+            {/* Layout: TitleBar (fixed 44px) → TopNavbar (40px) → [SecondarySidebar + Content] */}
+            <div className="flex flex-col w-full h-[calc(100vh-44px)] mt-11">
+              <TopNavbar />
+              <div className="flex flex-1 min-h-0 overflow-hidden">
+                <SecondarySidebar />
+                <div
+                  id="layout-main-content-container"
+                  className="flex flex-1 min-h-0 w-full overflow-x-hidden bg-background"
+                >
+                  {children}
+                </div>
+              </div>
             </div>
             <Toaster richColors />
           </SidebarProvider>

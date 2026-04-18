@@ -53,11 +53,6 @@ import {
   getSupabaseContext,
   getSupabaseClientCode,
 } from "../../supabase_admin/supabase_context";
-import {
-  SUMMARIZE_CHAT_SYSTEM_PROMPT,
-  SUMMARIZE_IN_SPANISH_PROMPT,
-  SUMMARY_SYSTEM_PROMPT_LANGS,
-} from "../../prompts/summarize_chat_system_prompt";
 import { SECURITY_REVIEW_SYSTEM_PROMPT } from "../../prompts/security_review_prompt";
 import fs from "node:fs";
 import * as path from "path";
@@ -516,11 +511,6 @@ ${componentSnippet}
       // Check if this is a test prompt
       const testResponse = getTestResponse(req.prompt);
 
-      // Check if this is a summarize prompt (before creating the message)
-      const isSummarizeIntent =
-        req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.en) ||
-        req.prompt.startsWith(SUMMARY_SYSTEM_PROMPT_LANGS.es);
-
       // Declare placeholderAssistantMessage and updatedChat at a higher scope
       let placeholderAssistantMessage: any;
       let updatedChat: any;
@@ -578,48 +568,6 @@ ${componentSnippet}
       } else {
         // Normal AI processing for non-test prompts
 
-        // Summarize is a lightweight task — always use the cheap/fast model
-        // regardless of what the user has selected for chat.
-        if (isSummarizeIntent) {
-          const summaryModelStr =
-            settings.standardModeModel || DEFAULT_STANDARD_MODEL;
-
-          // standardModeModel is an OpenRouter model identifier (e.g. "openai/gpt-4.1-nano")
-          // The provider is always "openrouter", the full string is the model name.
-          selectedModel = {
-            provider: "openrouter",
-            name: summaryModelStr,
-          };
-
-          logger.info(
-            `Using standard model for summarize task: ${summaryModelStr}`,
-          );
-
-
-          // Set the title of this summarize chat directly — don't rely on the model
-          // to generate a <vibes-chat-summary> tag (cheap models often skip it).
-          try {
-            // Extract the original chat ID from the prompt (e.g. "Resumir el chat chat-id=276")
-            const originalChatIdMatch = req.prompt.match(/chat-id=(\d+)/);
-            let summarizeTitle = "Resumen del chat";
-            if (originalChatIdMatch) {
-              const originalChatId = parseInt(originalChatIdMatch[1], 10);
-              const originalChat = await db.query.chats.findFirst({
-                where: and(eq(remoteSchema.chats.id, originalChatId), eq(remoteSchema.chats.userId, currentUserId as string)),
-                columns: { title: true },
-              });
-              if (originalChat?.title) {
-                summarizeTitle = `Resumen: ${originalChat.title}`.slice(0, 50);
-              }
-            }
-            await db
-              .update(remoteSchema.chats)
-              .set({ title: summarizeTitle })
-              .where(and(eq(remoteSchema.chats.id, req.chatId), eq(remoteSchema.chats.userId, currentUserId as string)));
-          } catch (e) {
-            logger.warn("Failed to set summarize chat title:", e);
-          }
-        }
 
         // Create placeholder assistant message after model selection is complete
         [placeholderAssistantMessage] = await db
@@ -710,11 +658,7 @@ ${componentSnippet}
           settings.selectedChatMode === "mockup" ||
           (settings.selectedChatMode as unknown as string) === "crush-agent";
 
-        if (isSummarizeIntent) {
-          logger.log(
-            `[CODEBASE] Skipping codebase extraction for summarize intent`,
-          );
-        } else if (isAgentMode) {
+        if (isAgentMode) {
           logger.log(
             `[CODEBASE] Skipping codebase extraction — agent explores files via tools`,
           );
@@ -963,13 +907,7 @@ ${componentSnippet}
         ) {
           systemPrompt += "\n\n" + POCKETBASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
-        // Use the isSummarizeIntent variable declared earlier
-        if (isSummarizeIntent) {
-          systemPrompt = getEffectivePrompt("summarize_chat_system", settings);
-          if (settings.chatLanguage === "es") {
-            systemPrompt += SUMMARIZE_IN_SPANISH_PROMPT;
-          }
-        }
+
 
         // Update the system prompt for images if there are image attachments
         const hasImageAttachments =
@@ -1101,24 +1039,7 @@ This conversation includes one or more image attachments. When the user uploads 
           );
         }
 
-        if (isSummarizeIntent) {
-          const previousChat = await db.query.chats.findFirst({
-            where: eq(remoteSchema.chats.id, parseInt(req.prompt.split("=")[1])),
-            with: {
-              messages: {
-                orderBy: (messages, { asc }) => [asc(messages.createdAt)],
-              },
-            },
-          });
-          chatMessages = [
-            {
-              role: "user",
-              content:
-                "Summarize the following chat: " +
-                formatMessagesForSummary(previousChat?.messages ?? []),
-            } satisfies ModelMessage,
-          ];
-        }
+
         const simpleStreamText = async ({
           chatMessages,
           modelClient,
@@ -1468,7 +1389,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
         const agentId = agentIdMap[resolvedChatMode] || "build";
 
-        if (!isSummarizeIntent && !mentionedAppsCodebases.length) {
+        if (!mentionedAppsCodebases.length) {
           const modeLabel = agentId.charAt(0).toUpperCase() + agentId.slice(1);
           logger.log(`[OpenCode:${modeLabel}] Starting ${agentId} agent for chat ${req.chatId} (mode: ${settings.selectedChatMode})`);
 
@@ -1758,7 +1679,7 @@ This conversation includes one or more image attachments. When the user uploads 
           return;
         }
 
-        // Fallback: summarize intent with mentioned apps falls through to here
+        // Fallback: mentioned apps case falls through to here
         // (rare case — most paths return before this point)
         return req.chatId;
       }
@@ -1840,34 +1761,7 @@ This conversation includes one or more image attachments. When the user uploads 
 
 export default registerChatStreamHandlers;
 
-export function formatMessagesForSummary(
-  messages: { role: string; content: string | undefined }[],
-) {
-  if (messages.length <= 8) {
-    // If we have 8 or fewer messages, include all of them
-    return messages
-      .map((m) => `<message role="${m.role}">${m.content}</message>`)
-      .join("\n");
-  }
 
-  // Take first 2 messages and last 6 messages
-  const firstMessages = messages.slice(0, 2);
-  const lastMessages = messages.slice(-6);
-
-  // Combine them with an indicator of skipped messages
-  const combinedMessages = [
-    ...firstMessages,
-    {
-      role: "system",
-      content: `[... ${messages.length - 8} messages omitted ...]`,
-    },
-    ...lastMessages,
-  ];
-
-  return combinedMessages
-    .map((m) => `<message role="${m.role}">${m.content}</message>`)
-    .join("\n");
-}
 
 // Helper function to replace text attachment placeholders with full content
 async function replaceTextAttachmentWithContent(

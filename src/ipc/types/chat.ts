@@ -233,11 +233,6 @@ export const chatContracts = {
     output: z.void(),
   }),
 
-  deleteMessages: defineContract({
-    channel: "delete-messages",
-    input: z.number(), // chatId
-    output: z.void(),
-  }),
 
   searchChats: defineContract({
     channel: "search-chats",
@@ -284,11 +279,6 @@ export const chatContracts = {
     output: z.void(),
   }),
 
-  summarizeTodaysChats: defineContract({
-    channel: "summarize-todays-chats",
-    input: z.number(), // appId
-    output: z.object({ summary: z.string() }),
-  }),
 
   savePlanData: defineContract({
     channel: "save-plan-data",

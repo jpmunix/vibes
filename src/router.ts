@@ -4,9 +4,6 @@ import { chatRoute } from "./routes/chat";
 import { homeRoute } from "./routes/home";
 import { hubRoute } from "./routes/hub";
 import { libraryRoute } from "./routes/library";
-import { notesRoute } from "./routes/notes";
-import { noteDetailRoute } from "./routes/notes_.$noteId";
-import { notesIndexRoute } from "./routes/notes_.index";
 import { rootRoute } from "./routes/root";
 import { settingsRoute } from "./routes/settings";
 
@@ -26,7 +23,6 @@ const routeTree = rootRoute.addChildren([
   libraryRoute,
   themesRoute,
   chatRoute,
-  notesRoute.addChildren([notesIndexRoute, noteDetailRoute]),
   todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
   workspaceRoute,

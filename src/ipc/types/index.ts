@@ -53,7 +53,7 @@ export { visualEditingContracts } from "./visual-editing";
 export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 
-export { noteContracts } from "./note";
+
 export { todoContracts, todoAttachmentContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
@@ -61,7 +61,7 @@ export { chatLogsContracts } from "./chat_logs";
 export { debateContracts, debateStreamContract } from "./debate";
 export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
-export { dossierContracts, dossierStreamContract } from "./dossier";
+
 export { authContracts } from "./auth";
 
 // =============================================================================
@@ -71,7 +71,6 @@ export { authContracts } from "./auth";
 export { settingsClient } from "./settings";
 export { appClient } from "./app";
 export { chatClient, chatStreamClient } from "./chat";
-export { noteClient } from "./note";
 export { todoClient, todoAttachmentClient } from "./todo";
 export { agentClient, agentEventClient } from "./agent";
 export { githubClient, gitClient, githubEventClient } from "./github";
@@ -103,7 +102,7 @@ export { miscClient, miscEventClient } from "./misc";
 
 export { knowledgeClient } from "./knowledge";
 export { aiQueryLogClient } from "./ai_query_logs";
-export { dossierClient, dossierStreamClient } from "./dossier";
+
 export { authClient } from "./auth";
 
 // =============================================================================
@@ -328,8 +327,7 @@ export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
 
 
 
-// Note types
-export type { Note, NoteSummary, UpdateNoteParams } from "./note";
+
 
 // Todo types
 export type {
@@ -362,15 +360,7 @@ export type {
   KnowledgeHealthResult,
 } from "./knowledge";
 
-// Dossier types
-export type {
-  DossierGenerateParams,
-  DossierCheckExistingParams,
-  DossierCheckExistingResult,
-  DossierDownloadResult,
-  DossierChunk,
-  DossierEnd,
-} from "./dossier";
+
 
 // =============================================================================
 // Schema Exports (for validation in handlers/components)
@@ -422,7 +412,6 @@ import { languageModelClient } from "./language-model";
 import { mcpClient, mcpEventClient } from "./mcp";
 import { miscClient, miscEventClient } from "./misc";
 import { neonClient } from "./neon";
-import { noteClient } from "./note";
 import { promptClient } from "./prompts";
 import { proposalClient } from "./proposals";
 import { securityClient } from "./security";
@@ -442,7 +431,7 @@ import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
 import { pocketbaseClient } from "./pocketbase";
 import { aiQueryLogClient } from "./ai_query_logs";
-import { dossierClient, dossierStreamClient } from "./dossier";
+
 import { authClient } from "./auth";
 
 /**
@@ -469,7 +458,6 @@ export const ipc = {
   settings: settingsClient,
   app: appClient,
   chat: chatClient,
-  note: noteClient,
   todo: todoClient,
   todoAttachment: todoAttachmentClient,
   agent: agentClient,
@@ -479,7 +467,7 @@ export const ipc = {
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
   debateStream: debateStreamClient,
-  dossierStream: dossierStreamClient,
+
 
   // Integrations
   github: githubClient,
@@ -513,7 +501,7 @@ export const ipc = {
 
   knowledge: knowledgeClient,
   aiQueryLogs: aiQueryLogClient,
-  dossier: dossierClient,
+
 
   // Auth
   auth: authClient,

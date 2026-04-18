@@ -10,3 +10,18 @@ export const chatPositionAtom = atomWithStorage<ChatPosition>("chat-position", "
 
 // Atom to track if workspace mode is active (persisted)
 export const workspaceModeAtom = atomWithStorage<boolean>("workspace-mode", false);
+
+// ── Sidebar action triggers ──
+// These atoms are set by the TopNavbar dropdown menus and consumed by the
+// sidebar list components (AppList, WorkspaceList) to trigger their actions.
+// The timestamp ensures each trigger is unique.
+export type SidebarAction =
+  | "apps:new"
+  | "apps:empty"
+  | "apps:import"
+  | "apps:search"
+  | "workspace:open-folder"
+  | null;
+
+export const sidebarActionAtom = atom<{ action: SidebarAction; ts: number } | null>(null);
+

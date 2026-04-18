@@ -242,7 +242,7 @@ export function AIBehaviorSettings({
               />
               <SettingRow
                 label="Modo Pro"
-                description="Debates, conocimientos y dossier"
+                description="Debates y conocimientos"
                 control={<ProModeModelSelector />}
               />
             </div>

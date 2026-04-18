@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Loader2,
   Search,
-  PlusCircle,
   Plus,
   FolderOpen,
   X,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
+import { sidebarActionAtom } from "@/atoms/uiAtoms";
 import { selectedChatIdAtom, recentStreamChatIdsAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
@@ -33,7 +33,6 @@ import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
 import {
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 
 
@@ -650,6 +649,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const lastSavedSelectionRef = useRef<string | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
 
+  // Listen for sidebar action triggers from TopNavbar dropdown
+  const sidebarAction = useAtomValue(sidebarActionAtom);
+  const lastActionRef2 = useRef<number>(0);
+  useEffect(() => {
+    if (!sidebarAction || sidebarAction.ts === lastActionRef2.current) return;
+    lastActionRef2.current = sidebarAction.ts;
+    if (sidebarAction.action === "workspace:open-folder") {
+      handleOpenFolder();
+    }
+  }, [sidebarAction]);
+
   // Close app dialog state
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
   const [closeAppId, setCloseAppId] = useState<number | null>(null);
@@ -986,23 +996,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         className="overflow-y-auto h-[calc(100vh-112px)]"
         data-testid="workspace-list-container"
       >
-        <SidebarGroupLabel>Chats</SidebarGroupLabel>
+        
         <SidebarGroupContent>
           <div className="flex flex-col gap-1.5 px-2">
-            {/* Open folder button */}
-            <button
-              type="button"
-              className="workspace-open-folder-btn"
-              onClick={handleOpenFolder}
-              disabled={isOpeningFolder}
-            >
-              {isOpeningFolder ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <FolderOpen size={15} />
-              )}
-              <span>{isOpeningFolder ? "Abriendo..." : "Abrir carpeta"}</span>
-            </button>
 
             {/* Search */}
             <div className="relative">

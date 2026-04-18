@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from "jotai";
 import { previewModeAtom, selectedAppIdAtom, currentAppAtom } from "../../atoms/appAtoms";
 import { ipc } from "@/ipc/types";
+import { ExpandPreviewButton, OpenExternalButton, DeviceModeButton } from "./PreviewIframe";
 
 
 import {
@@ -18,6 +19,7 @@ import {
   ChevronDown,
   Database,
   Square,
+  Logs,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -42,6 +44,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useCheckProblems } from "@/hooks/useCheckProblems";
 import { isPreviewOpenAtom } from "@/atoms/viewAtoms";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import { useVersions } from "@/hooks/useVersions";
 
@@ -79,6 +82,7 @@ export const ActionHeader = () => {
   const { versions, loading: versionsLoading } = useVersions(selectedAppId);
   const currentApp = useAtomValue(currentAppAtom);
   const hasDatabase = Boolean(currentApp?.supabaseProjectId || currentApp?.bunnyConfig || currentApp?.pocketbaseConfig);
+  const { theme, intensity } = useTheme();
   const previewGroupRef = useRef<HTMLButtonElement>(null);
   const codeGroupRef = useRef<HTMLButtonElement>(null);
   const versionsGroupRef = useRef<HTMLButtonElement>(null);
@@ -89,6 +93,7 @@ export const ActionHeader = () => {
   const { restartApp, stopApp, refreshAppIframe } = useRunApp();
 
   const isCompact = windowWidth < 888;
+
 
   // Track window width
   useEffect(() => {
@@ -273,7 +278,7 @@ export const ActionHeader = () => {
 
   return (
     <TooltipProvider>
-      <div className="no-app-region-drag flex items-center justify-between px-1 py-2 mt-1 border-b border-border">
+      <div className="no-app-region-drag flex items-center justify-between px-1 py-2 border-b border-border h-[45px]">
         <div className="relative flex rounded-md p-0.5 gap-0.5">
           <motion.div
             className="absolute top-0.5 bottom-0.5 bg-[var(--background-lightest)] shadow rounded-md"
@@ -407,6 +412,27 @@ export const ActionHeader = () => {
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (selectedAppId != null) {
+                    ipc.system.openConsoleWindow({
+                      appId: selectedAppId,
+                      theme,
+                      themeIntensity: intensity,
+                    });
+                  }
+                }}
+                disabled={selectedAppId == null}
+              >
+                <Logs size={14} />
+                <div className="flex flex-col">
+                  <span>Mensajes del sistema</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Abre en ventana independiente
+                  </span>
+                </div>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -495,6 +521,13 @@ export const ActionHeader = () => {
           })()}
         </div>
 
+        {/* ─── Action buttons (far right) ─── */}
+        <div className="flex items-center gap-1">
+          <OpenExternalButton />
+          <DeviceModeButton />
+          <ExpandPreviewButton position="left" />
+          <ExpandPreviewButton position="right" />
+        </div>
       </div>
     </TooltipProvider>
   );

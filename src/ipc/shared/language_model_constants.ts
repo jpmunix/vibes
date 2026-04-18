@@ -30,7 +30,7 @@ export const GPT_5_MINI = "openai/gpt-5-mini";
 // To change a default, update ONLY here.
 // ═══════════════════════════════════════════════════════════════════
 
-/** Cheap/fast model for internal tasks: titles, summaries, compaction, todos, dossiers, debates */
+/** Cheap/fast model for internal tasks: titles, summaries, compaction, todos, debates */
 export const FALLBACK_STANDARD_MODEL = "google/gemini-2.5-flash-lite";
 
 /** Strong model for thinking tasks: turbo edits, knowledge extraction */

@@ -36,7 +36,7 @@ export function AttachmentsList({
           <span className="truncate max-w-[120px]">{attachment.file.name}</span>
           <button
             onClick={() => onRemove(index)}
-            className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+            className="cursor-pointer hover:bg-muted-foreground/20 rounded-full p-0.5"
             aria-label="Remove attachment"
           >
             <X size={12} />

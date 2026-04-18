@@ -49,7 +49,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   debate_chat_system: <MessageSquare className="w-4 h-4" />,
   debate_summary_system: <Lightbulb className="w-4 h-4" />,
   quick_edit_system: <Wand2 className="w-4 h-4" />,
-  dossier_prompt: <FileText className="w-4 h-4" />,
+
   auto_commit_message: <GitBranch className="w-4 h-4" />,
 };
 
@@ -58,7 +58,7 @@ const HIDDEN_PROMPTS = new Set<PromptId>([
   "thinking_prompt",
   "agent_mode_system",
   "turbo_edit_system",
-  "dossier_prompt",
+
   "debate_chat_system",
   "debate_summary_system",
 ]);

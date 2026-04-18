@@ -23,7 +23,6 @@ import { registerLanguageModelHandlers } from "./handlers/language_model_handler
 import { registerLocalModelHandlers } from "./handlers/local_model_handlers";
 import { registerNeonHandlers } from "./handlers/neon_handlers";
 import { registerNodeHandlers } from "./handlers/node_handlers";
-import { registerNoteHandlers } from "./handlers/note_handlers";
 import { registerPortalHandlers } from "./handlers/portal_handlers";
 import { registerProblemsHandlers } from "./handlers/problems_handlers";
 import { registerPromptHandlers } from "./handlers/prompt_handlers";
@@ -47,7 +46,7 @@ import { registerWindowHandlers } from "./handlers/window_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
 // Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
-import { registerDossierHandlers } from "./handlers/dossier_handlers";
+
 import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
 import { registerAuthHandlers } from "./handlers/auth_handlers";
@@ -61,7 +60,6 @@ export function registerIpcHandlers() {
 
   registerAppHandlers();
   registerChatHandlers();
-  registerNoteHandlers();
   registerTodoHandlers();
   registerChatStreamHandlers();
   registerSettingsHandlers();
@@ -109,7 +107,7 @@ export function registerIpcHandlers() {
   registerBackupHandlers();
   // registerKnowledgeHandlers(); // KB removed — replaced by OpenCode AGENTS.md
   registerAiQueryLogHandlers();
-  registerDossierHandlers();
+
   registerConsoleHandlers();
   registerUpdateCheckerHandlers();
 

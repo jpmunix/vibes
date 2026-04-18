@@ -405,11 +405,11 @@ export function GithubBranchManager({
           <SelectContent>
             {branches.map((branch) => (
               <SelectItem key={branch} value={branch} aria-label={branch}>
-                <Network className="h-4 w-4 text-gray-500" />
+                <Network className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium text-sm">Branch:</span>
                 <span
                   data-testid="current-branch-display"
-                  className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded"
+                  className="font-mono text-sm bg-muted px-2 py-0.5 rounded"
                 >
                   {branch}
                 </span>
@@ -616,8 +616,8 @@ export function GithubBranchManager({
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
-                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent">
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
               </span>
 
               <div className="flex flex-col">
@@ -646,7 +646,7 @@ export function GithubBranchManager({
               </p>
 
               {abortConfirmation?.hasConflicts && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive">
                   <p className="font-medium">Unresolved conflicts detected</p>
                   <p className="mt-1 text-xs">
                     Aborting will discard any conflict resolution work you’ve
@@ -673,7 +673,7 @@ export function GithubBranchManager({
             <AlertDialogAction
               onClick={handleConfirmAbortAndSwitch}
               disabled={isSwitching}
-              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+              className="bg-destructive text-white hover:bg-destructive/90 focus:ring-destructive"
               data-testid="abort-confirmation-proceed"
             >
               {isSwitching ? (
@@ -694,7 +694,7 @@ export function GithubBranchManager({
 
       {/* Conflict Resolver */}
       {conflicts.length > 0 && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-destructive">
           There are conflicts in the repository. Please resolve them in the
           editor.
         </p>
@@ -718,9 +718,9 @@ export function GithubBranchManager({
               </div>
             </div>
             {isExpanded ? (
-              <ChevronsDownUp className="w-5 h-5 text-gray-500" />
+              <ChevronsDownUp className="w-5 h-5 text-muted-foreground" />
             ) : (
-              <ChevronsUpDown className="w-5 h-5 text-gray-500" />
+              <ChevronsUpDown className="w-5 h-5 text-muted-foreground" />
             )}
           </div>
         </CardHeader>
@@ -733,13 +733,13 @@ export function GithubBranchManager({
             {!settings?.enableNativeGit && (
               <Alert
                 variant="default"
-                className="border-amber-500/50 bg-amber-500/10"
+                className="border-border bg-accent"
               >
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                <AlertTitle className="text-amber-900 dark:text-amber-100">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <AlertTitle className="text-foreground">
                   Native Git Required
                 </AlertTitle>
-                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                <AlertDescription className="text-muted-foreground">
                   <p className="mb-2">
                     Some Git actions (like rebase, merge abort, and advanced
                     branch operations) require Native Git to be enabled.
@@ -748,7 +748,7 @@ export function GithubBranchManager({
                     variant="outline"
                     size="sm"
                     onClick={() => navigate({ to: "/settings" })}
-                    className="mt-2 border-amber-600 dark:border-amber-400 text-amber-900 dark:text-amber-100 hover:bg-amber-600/10"
+                    className="mt-2"
                   >
                     Enable in Settings
                   </Button>
@@ -762,7 +762,7 @@ export function GithubBranchManager({
                   {branches.map((branch) => (
                     <div
                       key={branch}
-                      className="flex items-center justify-between text-sm py-1 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded"
+                      className="flex items-center justify-between text-sm py-1 px-2 hover:bg-muted rounded"
                       data-testid={`branch-item-${branch}`}
                     >
                       <span
@@ -809,7 +809,7 @@ export function GithubBranchManager({
                               Rename
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-red-600"
+                              className="text-destructive"
                               onClick={() => setBranchToDelete(branch)}
                               data-testid="delete-branch-menu-item"
                             >

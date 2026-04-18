@@ -263,7 +263,7 @@ export const FileEditor = ({
             scrollBeyondLastLine: false,
             wordWrap: "on",
             automaticLayout: true,
-            fontFamily: "monospace",
+            fontFamily: "Geist Mono, monospace",
             fontSize: 13,
             lineNumbers: "on",
           }}

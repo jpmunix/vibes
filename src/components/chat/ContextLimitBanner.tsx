@@ -1,11 +1,10 @@
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 
 const CONTEXT_LIMIT_THRESHOLD = 40_000;
 
@@ -25,7 +24,6 @@ export function ContextLimitBanner({
   totalTokens,
   contextWindow,
 }: ContextLimitBannerProps) {
-  const { handleSummarize } = useSummarizeInNewChat();
 
   // Don't show banner if we don't have the necessary data
   if (!totalTokens || !contextWindow) {
@@ -75,15 +73,6 @@ export function ContextLimitBanner({
           Estás cerca del límite de contexto para este chat.
         </p>
       </div>
-      <Button
-        onClick={handleSummarize}
-        variant="outline"
-        size="sm"
-        className="h-8 border-amber-500/50 hover:bg-amber-500/20 hover:border-amber-500 text-amber-600 dark:text-amber-400"
-      >
-        Resumir en un nuevo chat
-        <ArrowRight className="h-3 w-3 ml-2" />
-      </Button>
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function VibesListFiles({ node, children }: VibesListFilesProps) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 px-3 py-2 bg-muted/50 w-full text-left hover:bg-muted/70 transition-colors"
+        className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-muted/50 w-full text-left hover:bg-muted/70 transition-colors"
       >
         <ChevronRight
           className={`size-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}

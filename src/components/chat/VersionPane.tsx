@@ -116,7 +116,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
-            className="p-1 hover:bg-(--background-lightest) rounded-md  "
+            className="cursor-pointer p-1 hover:bg-(--background-lightest) rounded-md  "
             aria-label="Cerrar panel de versiones"
           >
             <X size={20} />
@@ -246,7 +246,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                           }}
                           disabled={isRevertingVersion}
                           className={cn(
-                            "invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
+                            "cursor-pointer invisible mt-1 flex items-center gap-1 px-2 py-0.5 text-sm font-medium bg-(--primary) text-(--primary-foreground) hover:bg-background-lightest rounded-md transition-colors",
                             selectedVersionId === version.oid && "visible",
                             isRevertingVersion &&
                             "opacity-50 cursor-not-allowed",

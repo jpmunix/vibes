@@ -138,6 +138,8 @@ body[data-scroll-locked] .app-region-drag {
 
 .prose {
   --tw-prose-pre-bg: var(--background);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dark {
@@ -231,6 +233,23 @@ body[data-scroll-locked] .app-region-drag {
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Global interactive cursor — every clickable element gets pointer */
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
   }
 }
 
@@ -331,6 +350,8 @@ body[data-scroll-locked] .app-region-drag {
 
 .prose pre {
   @apply bg-zinc-900 text-zinc-100 p-4 rounded-lg font-mono text-sm;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .prose code {

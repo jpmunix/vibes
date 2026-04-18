@@ -84,7 +84,7 @@ export function AgentConsentBanner({
           )}
           <button
             onClick={onClose}
-            className="ml-auto flex-shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted"
+            className="cursor-pointer ml-auto flex-shrink-0 p-1 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted"
             aria-label="Cerrar"
           >
             <X className="w-3.5 h-3.5" />
@@ -105,7 +105,7 @@ export function AgentConsentBanner({
             {inputHasOverflow && (
               <button
                 type="button"
-                className="mt-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                className="cursor-pointer mt-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline"
                 onClick={() => setIsInputExpanded((v) => !v)}
               >
                 {isInputExpanded ? "Mostrar menos" : "Mostrar más"}

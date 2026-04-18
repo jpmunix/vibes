@@ -32,21 +32,22 @@ export function OpenRouterCreditsButton() {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className="no-app-region-drag sidebar-util-btn"
+            className="no-app-region-drag topnav-util-btn gap-1 !w-auto px-2"
             onClick={() => refetch()}
             disabled={isFetching}
+            style={{ display: 'flex', alignItems: 'center' }}
           >
             {isFetching ? (
-              <RefreshCw size={19} className="animate-spin" />
+              <RefreshCw size={15} className="animate-spin" />
             ) : (
-              <DollarSign size={19} />
+              <DollarSign size={15} />
             )}
-            <span className="text-[12.5px] font-bold leading-none mt-0.5 opacity-70">
+            <span className="text-[12px] font-bold leading-none opacity-70">
               {isLoading ? "..." : formattedBalance}
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="p-4 rounded-xl shadow-lg border-border bg-popover text-popover-foreground" arrowClassName="fill-popover">
+        <TooltipContent side="bottom" className="p-4 rounded-xl shadow-lg border-border bg-popover text-popover-foreground" arrowClassName="fill-popover">
           <div className="space-y-1">
             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
               {data.label || "OpenRouter"}

@@ -36,7 +36,7 @@ export function ChatActivityButton() {
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
             <button
-              className="no-app-region-drag relative flex items-center justify-center p-1.5 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
+              className="cursor-pointer no-app-region-drag relative flex items-center justify-center p-1.5 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
               data-testid="chat-activity-button"
             >
               {isAnyStreaming && (
@@ -98,7 +98,7 @@ function ChatActivityList({ onSelect }: { onSelect?: () => void }) {
         return (
           <button
             key={c.id}
-            className="w-full text-left px-3 py-2 flex items-center justify-between gap-2 rounded-md hover:bg-[var(--background-darker)] dark:hover:bg-[var(--background-lighter)] transition-colors"
+            className="cursor-pointer w-full text-left px-3 py-2 flex items-center justify-between gap-2 rounded-md hover:bg-[var(--background-darker)] dark:hover:bg-[var(--background-lighter)] transition-colors"
             onClick={() => {
               onSelect?.();
               selectChat({ chatId: c.id, appId: c.appId });

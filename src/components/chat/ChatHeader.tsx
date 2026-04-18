@@ -1,14 +1,9 @@
 
 import {
   PanelRightOpen,
-  PlusCircle,
+  MessageSquarePlus,
   GitBranch,
-  Eraser,
-  Sparkles,
   Eye,
-  Save,
-  FileText,
-  MoreHorizontal,
   Brain,
   ChevronDown,
   MessageSquare,
@@ -35,9 +30,7 @@ import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
 import ConfirmationDialog from "../ConfirmationDialog";
-import { marked } from "marked";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
 import { useSetAtom } from "jotai";
 import { useCurrentBranch } from "@/hooks/useCurrentBranch";
@@ -46,13 +39,12 @@ import { useRenameBranch } from "@/hooks/useRenameBranch";
 import { isAnyCheckoutVersionInProgressAtom } from "@/store/appAtoms";
 import { LoadingBar } from "../ui/LoadingBar";
 import { UncommittedFilesBanner } from "./UncommittedFilesBanner";
-import { GitChangesButton } from "@/components/GitChangesButton";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 // KnowledgeBaseModal — REMOVED
 import { chatPositionAtom } from "@/atoms/uiAtoms";
@@ -70,16 +62,12 @@ import {
 interface ChatHeaderProps {
   isPreviewOpen: boolean;
   onTogglePreview: () => void;
-  isLogsOpen?: boolean;
-  onToggleLogs?: () => void;
   workspaceMode?: boolean;
 }
 
 export function ChatHeader({
   isPreviewOpen,
   onTogglePreview,
-  isLogsOpen = false,
-  onToggleLogs,
   workspaceMode,
 }: ChatHeaderProps) {
   const appId = useAtomValue(selectedAppIdAtom);
@@ -88,16 +76,15 @@ export function ChatHeader({
   const [selectedChatId, setSelectedChatId] = useAtom(selectedChatIdAtom);
   const { chats, invalidateChats } = useChats(appId);
   const { isStreaming } = useStreamChat();
+
+
   const { settings } = useSettings();
   const setMessagesById = useSetAtom(chatMessagesByIdAtom);
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const recentStreamChatIds = useAtomValue(recentStreamChatIdsAtom);
-  const { handleSummarize } = useSummarizeInNewChat();
   const isAnyCheckoutVersionInProgress = useAtomValue(
     isAnyCheckoutVersionInProgressAtom,
   );
-  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [isSavingNote, setIsSavingNote] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<{ id: number; title: string } | null>(null);
   const [chatToRename, setChatToRename] = useState<{ id: number; title: string } | null>(null);
 
@@ -110,8 +97,6 @@ export function ChatHeader({
 
   const { checkoutVersion, isCheckingOutVersion } = useCheckoutVersion();
   const { renameBranch, isRenamingBranch } = useRenameBranch();
-  const [isConfirmEmptyDialogOpen, setIsConfirmEmptyDialogOpen] =
-    useState(false);
 
   const messagesById = useAtomValue(chatMessagesByIdAtom);
 
@@ -154,70 +139,7 @@ export function ChatHeader({
     }
   };
 
-  const handleEmptyChat = async () => {
-    if (!selectedChatId) return;
-    try {
-      await ipc.chat.deleteMessages(selectedChatId);
-      showSuccess("Chat vaciado correctamente");
 
-      // Update local atom to reflect empty messages immediately
-      setMessagesById((prev) => {
-        const next = new Map(prev);
-        next.set(selectedChatId, []);
-        return next;
-      });
-
-      // Invalidate chats (for title/last message)
-      await invalidateChats();
-
-      navigate({
-        to: "/chat",
-        search: { id: selectedChatId },
-      });
-    } catch (error) {
-      showError(`Error al vaciar el chat: ${(error as any).toString()}`);
-    }
-    setIsConfirmEmptyDialogOpen(false);
-  };
-
-  const handleSaveNote = async () => {
-    if (!selectedChatId) return;
-    try {
-      setIsSavingNote(true);
-
-      // Obtener el chat actual para el título
-      const currentChat = chats.find((chat) => chat.id === selectedChatId);
-      const chatTitle = currentChat?.title || "Chat sin título";
-
-      // Obtener los mensajes del chat
-      const messages = messagesById.get(selectedChatId) || [];
-      const chatMarkdown = messages
-        .map((msg) => {
-          const role = msg.role === "user" ? "**Usuario**" : "**Asistente**";
-          return `### ${role}\n\n${msg.content}\n`;
-        })
-        .join("\n---\n\n");
-
-      // Convertir el markdown a HTML
-      const chatContent = (await marked.parse(chatMarkdown)) as string;
-
-      // Crear la nota
-      const noteId = await ipc.note.createNote();
-
-      // Actualizar la nota con el título y contenido del chat
-      await ipc.note.updateNote({
-        noteId,
-        title: chatTitle,
-        content: chatContent,
-      });
-
-      showSuccess("Nota guardada correctamente");
-    } catch (error) {
-      showError(`Error al guardar la nota: ${(error as any).toString()}`);
-    } finally {
-      setIsSavingNote(false);
-    }
-  };
 
   // Detect if we're browsing versions (detached HEAD is expected in that case)
   const isBrowsingVersions = previewMode === "versions";
@@ -238,8 +160,11 @@ export function ChatHeader({
     : undefined;
 
   return (
-    <div className="flex flex-col w-full @container">
-      <LoadingBar isVisible={showLoadingBar} message={loadingMessage} />
+    <div className="relative flex flex-col w-full @container">
+      {/* LoadingBar: absolutely positioned at top so it doesn't affect toolbar height */}
+      <div className="absolute top-0 left-0 right-0 z-10">
+        <LoadingBar isVisible={showLoadingBar} message={loadingMessage} />
+      </div>
 
       {/* Friendly banner when viewing a previous version */}
       {showVersionBrowsingBanner && (
@@ -271,238 +196,154 @@ export function ChatHeader({
         <UncommittedFilesBanner appId={appId} />
       )}
 
-      {/* Why is this pt-0.5? Because the loading bar is h-1 (it always takes space) and we want the vertical spacing to be consistent.*/}
       {!workspaceMode && (
-      <div className="@container flex items-center px-1 py-2 border-b border-border no-app-region-drag">
+      <div className="@container flex items-center px-1 py-2 border-b border-border no-app-region-drag h-[45px]">
         <div className="flex items-center shrink-0">
+          <Button
+            onClick={handleNewChat}
+            variant="ghost"
+            className="hidden @2xs:flex items-center justify-start gap-1 mx-1 px-2.5 py-1 text-xs font-medium"
+          >
+            <MessageSquarePlus size={15} />
+            <span>Nuevo chat</span>
+          </Button>
+        </div>
+
+        {/* Chat selector dropdown — next to options on the left */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
+            >
+              <span className="flex items-center gap-2">
+                {(() => {
+                  const currentChat = chats.find((c) => c.id === selectedChatId);
+                  if (currentChat?.isPlan) {
+                    return (
+                      <>
+                        <Brain size={14} className="text-primary" />
+                        <span className="font-semibold text-primary">
+                          {currentChat.title || "Planificación"}
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      {isStreaming ? (
+                        <Loader2 size={14} className="shrink-0 animate-spin text-primary" />
+                      ) : (
+                        <MessageSquare size={14} className="shrink-0" />
+                      )}
+                      <span>
+                        {currentChat?.title || "Chat"}
+                      </span>
+                    </>
+                  );
+                })()}
+              </span>
+              <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
+            {chats.length === 0 ? (
+              <DropdownMenuItem disabled>
+                <span className="text-muted-foreground text-sm">Sin chats</span>
+              </DropdownMenuItem>
+            ) : (
+              [...chats]
+                .sort((a, b) => {
+                  if (a.isPlan && !b.isPlan) return -1;
+                  if (!a.isPlan && b.isPlan) return 1;
+                  return 0;
+                })
+                .map((chat) => {
+                  const chatStreaming = isStreamingById.get(chat.id) ?? false;
+                  const chatUnread = selectedChatId !== chat.id && recentStreamChatIds.has(chat.id);
+                  return (
+                  <DropdownMenuItem
+                    key={chat.id}
+                    onClick={() => {
+                      setSelectedChatId(chat.id);
+                      navigate({
+                        to: "/chat",
+                        search: { id: chat.id },
+                      });
+                    }}
+                    className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
+                  >
+                    {chat.isPlan ? (
+                      <>
+                        <Brain size={14} className="mr-2 shrink-0 text-primary" />
+                        <span className="flex-1 font-semibold text-primary">
+                          {chat.title || "Planificación"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {chatStreaming ? (
+                          <Loader2 size={14} className="mr-2 shrink-0 animate-spin text-primary" />
+                        ) : chatUnread ? (
+                          <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          </span>
+                        ) : (
+                          <MessageSquare size={14} className="mr-2 shrink-0" />
+                        )}
+                        <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
+                          {chat.title || `Chat ${chat.id}`}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChatToRename({
+                              id: chat.id,
+                              title: chat.title || `Chat ${chat.id}`,
+                            });
+                          }}
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
+                        >
+                          <Pencil size={12} className="text-amber-500" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChatToDelete({
+                              id: chat.id,
+                              title: chat.title || `Chat ${chat.id}`,
+                            });
+                          }}
+                          className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
+                        >
+                          <Trash2 size={12} className="text-destructive" />
+                        </button>
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  );
+                })
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Right: Expand + Position toggle | Session cost */}
+        <div className="flex-1 flex items-center justify-end pr-1 gap-1.5">
           {!workspaceMode && (
             <ExpandChatButton
               isPreviewOpen={isPreviewOpen}
               onTogglePreview={onTogglePreview}
             />
           )}
-          <Button
-            onClick={handleNewChat}
-            variant="ghost"
-            className="hidden @2xs:flex items-center justify-start gap-1 mx-1 px-2.5 py-1 text-xs font-medium"
-          >
-            <PlusCircle size={15} />
-            <span>Nuevo chat</span>
-          </Button>
-
-          {/* Menú desplegable con las demás opciones */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-md"
-              >
-                <MoreHorizontal size={15} />
-                <span className="hidden @xs:inline">Opciones</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[200px]">
-              <DropdownMenuItem
-                onClick={handleSummarize}
-                disabled={!selectedChatId || isStreaming}
-              >
-                <Sparkles size={16} className="mr-2" />
-                Resumir chat
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async () => {
-                  if (!selectedChatId) return;
-                  try {
-                    console.log(
-                      `[ChatHeader] Generating title for chatId=${selectedChatId}`,
-                    );
-                    setIsGeneratingTitle(true);
-                    const result = await ipc.chat.generateChatTitle({
-                      chatId: selectedChatId,
-                    });
-                    console.log(
-                      `[ChatHeader] Generated title result:`,
-                      result,
-                      `for chatId=${selectedChatId}`,
-                    );
-                    await invalidateChats();
-                    console.log(`[ChatHeader] Invalidated chats cache`);
-                    showSuccess("Título del chat actualizado");
-                  } catch (error) {
-                    console.error("Failed to generate chat title:", error);
-                    showError("Error al generar el título del chat");
-                  } finally {
-                    setIsGeneratingTitle(false);
-                  }
-                }}
-                disabled={!selectedChatId || isStreaming || isGeneratingTitle}
-              >
-                <Sparkles size={16} className="mr-2" />
-                Título automático
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleSaveNote}
-                disabled={!selectedChatId || isStreaming || isSavingNote}
-              >
-                <Save size={16} className="mr-2" />
-                Guardar nota
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setIsConfirmEmptyDialogOpen(true)}
-                disabled={!selectedChatId || isStreaming}
-              >
-                <Eraser size={16} className="mr-2" />
-                Vaciar chat
-              </DropdownMenuItem>
-              {/* Logs — hidden: logging system retired */}
-              {/* Knowledge Base — hidden: retired in agent mode */}
-              <ChatPositionToggle />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Session cost badge and Git changes */}
-        <div className="flex-1 flex items-center justify-end pr-1 gap-2">
-          {appId && <GitChangesButton appId={appId} />}
+          <ChatPositionToggleInline />
+          <div className="w-px h-4 bg-border/60 shrink-0" />
           <SessionCostBadge chatId={selectedChatId} />
         </div>
-
-        {/* Chat selector dropdown — adapts to chat title width */}
-        <div className="mx-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
-              >
-                <span className="flex items-center gap-2">
-                  {(() => {
-                    const currentChat = chats.find((c) => c.id === selectedChatId);
-                    if (currentChat?.isPlan) {
-                      return (
-                        <>
-                          <Brain size={14} className="text-primary" />
-                          <span className="font-semibold text-primary">
-                            {currentChat.title || "Planificación"}
-                          </span>
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        {isStreaming ? (
-                          <Loader2 size={14} className="shrink-0 animate-spin text-primary" />
-                        ) : (
-                          <MessageSquare size={14} className="shrink-0" />
-                        )}
-                        <span>
-                          {currentChat?.title || "Chat"}
-                        </span>
-                      </>
-                    );
-                  })()}
-                </span>
-                <ChevronDown size={14} className="shrink-0 text-muted-foreground/70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
-              {chats.length === 0 ? (
-                <DropdownMenuItem disabled>
-                  <span className="text-muted-foreground text-sm">Sin chats</span>
-                </DropdownMenuItem>
-              ) : (
-                [...chats]
-                  .sort((a, b) => {
-                    if (a.isPlan && !b.isPlan) return -1;
-                    if (!a.isPlan && b.isPlan) return 1;
-                    return 0;
-                  })
-                  .map((chat) => {
-                    const chatStreaming = isStreamingById.get(chat.id) ?? false;
-                    const chatUnread = selectedChatId !== chat.id && recentStreamChatIds.has(chat.id);
-                    return (
-                    <DropdownMenuItem
-                      key={chat.id}
-                      onClick={() => {
-                        setSelectedChatId(chat.id);
-                        navigate({
-                          to: "/chat",
-                          search: { id: chat.id },
-                        });
-                      }}
-                      className={`group/chat-item ${selectedChatId === chat.id ? "bg-accent" : ""}`}
-                    >
-                      {chat.isPlan ? (
-                        <>
-                          <Brain size={14} className="mr-2 shrink-0 text-primary" />
-                          <span className="flex-1 font-semibold text-primary">
-                            {chat.title || "Planificación"}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          {chatStreaming ? (
-                            <Loader2 size={14} className="mr-2 shrink-0 animate-spin text-primary" />
-                          ) : chatUnread ? (
-                            <span className="mr-2 shrink-0 flex items-center justify-center w-3.5 h-3.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                            </span>
-                          ) : (
-                            <MessageSquare size={14} className="mr-2 shrink-0" />
-                          )}
-                          <span className={`flex-1 ${chatUnread ? "font-semibold" : ""}`}>
-                            {chat.title || `Chat ${chat.id}`}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setChatToRename({
-                                id: chat.id,
-                                title: chat.title || `Chat ${chat.id}`,
-                              });
-                            }}
-                            className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
-                          >
-                            <Pencil size={12} className="text-amber-500" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setChatToDelete({
-                                id: chat.id,
-                                title: chat.title || `Chat ${chat.id}`,
-                              });
-                            }}
-                            className="opacity-0 group-hover/chat-item:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all shrink-0"
-                          >
-                            <Trash2 size={12} className="text-destructive" />
-                          </button>
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    );
-                  })
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-
 
       </div>
       )}
 
-      <ConfirmationDialog
-        isOpen={isConfirmEmptyDialogOpen}
-        title="¿Vaciar chat?"
-        message="Esta acción eliminará todos los mensajes de este chat de forma permanente. No se puede deshacer."
-        confirmText="Vaciar"
-        cancelText="Cancelar"
-        confirmButtonClass="bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
-        showOverlay={false}
-        onConfirm={handleEmptyChat}
-        onCancel={() => setIsConfirmEmptyDialogOpen(false)}
-      />
+
 
       <ConfirmationDialog
         isOpen={!!chatToDelete}
@@ -671,6 +512,27 @@ function ChatPositionToggle() {
   );
 }
 
+function ChatPositionToggleInline() {
+  const [chatPosition, setChatPosition] = useAtom(chatPositionAtom);
+  const { updateSettings } = useSettings();
+  const isLeft = chatPosition === "left";
+
+  return (
+    <button
+      onClick={() => {
+        const newPosition = isLeft ? "right" : "left";
+        setChatPosition(newPosition);
+        const previewPos = newPosition === "left" ? "right" : "left";
+        updateSettings({ previewPosition: previewPos });
+      }}
+      className="cursor-pointer p-1 hover:bg-(--background-lightest) rounded-md transition-colors"
+      title={isLeft ? "Chat a la derecha" : "Chat a la izquierda"}
+    >
+      {isLeft ? <PanelLeft size={16} /> : <PanelRightOpen size={16} />}
+    </button>
+  );
+}
+
 function TogglePreviewInline({
   isPreviewOpen,
   onTogglePreview,
@@ -707,7 +569,7 @@ function ExpandChatButton({
   return (
     <button
       onClick={onTogglePreview}
-      className="p-1 ml-1 hover:bg-(--background-lightest) rounded-md transition-colors"
+      className="cursor-pointer p-1 ml-1 hover:bg-(--background-lightest) rounded-md transition-colors"
       title={isPreviewOpen ? "Maximizar chat" : "Restaurar paneles"}
     >
       {isPreviewOpen ? <Maximize2 size={16} /> : <Minimize2 size={16} />}

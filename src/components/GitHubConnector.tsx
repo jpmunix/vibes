@@ -529,7 +529,7 @@ function ConnectedGitHubConnector({
         <GithubBranchManager appId={appId} onBranchChange={refreshApp} />
       )}
       {hasUncommittedFiles && (
-        <div className="p-4 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="p-4 rounded-md border border-border bg-muted/50">
           <div className="flex items-center gap-2 text-sm text-foreground mb-3">
             <FileWarning size={16} />
             <span className="font-medium">
@@ -544,7 +544,7 @@ function ConnectedGitHubConnector({
                 Mensaje de commit
               </Label>
               {!commitMessage.trim() && (
-                <span className="text-[10px] text-red-500 font-medium">
+                <span className="text-[10px] text-destructive font-medium">
                   Obligatorio
                 </span>
               )}
@@ -558,9 +558,9 @@ function ConnectedGitHubConnector({
                 setIsCommitMessageEdited(true);
               }}
               className={cn(
-                "bg-white dark:bg-slate-950",
+                "bg-card",
                 !commitMessage.trim() &&
-                "border-red-500 focus-visible:ring-red-500",
+                "border-destructive focus-visible:ring-destructive",
               )}
             />
             <p className="text-[10px] text-muted-foreground">
@@ -627,14 +627,14 @@ function ConnectedGitHubConnector({
         <div className="mt-2 space-y-2">
           {/* Smart error recovery UI */}
           {errorType === "merge-in-progress" ? (
-            <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+            <div className="rounded-md border border-border bg-accent p-3 space-y-2">
               <div className="flex items-start gap-2">
-                <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <GitMerge className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  <p className="text-sm font-medium text-foreground">
                     Hay un merge en progreso que bloquea esta operación
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Puedes abortar el merge para desbloquear la operación.
                   </p>
                 </div>
@@ -644,7 +644,7 @@ function ConnectedGitHubConnector({
                 variant="outline"
                 size="sm"
                 disabled={isFixingError}
-                className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+                className="w-full"
               >
                 {isFixingError ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -655,14 +655,14 @@ function ConnectedGitHubConnector({
               </Button>
             </div>
           ) : errorType === "index-lock" ? (
-            <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
               <div className="flex items-start gap-2">
-                <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                <Wrench className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                  <p className="text-sm font-medium text-foreground">
                     Git está bloqueado por un proceso anterior
                   </p>
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Un proceso de git previo dejó un archivo lock. Se puede eliminar de forma segura.
                   </p>
                 </div>
@@ -672,7 +672,7 @@ function ConnectedGitHubConnector({
                 variant="outline"
                 size="sm"
                 disabled={isFixingError}
-                className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+                className="w-full"
               >
                 {isFixingError ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -683,14 +683,14 @@ function ConnectedGitHubConnector({
               </Button>
             </div>
           ) : errorType === "merge-conflict" ? (
-            <div className="rounded-md border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 space-y-2.5">
+            <div className="rounded-md border border-border bg-accent p-3 space-y-2.5">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                  <p className="text-sm font-medium text-foreground">
                     Conflictos de merge detectados
                   </p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Hay archivos con cambios incompatibles entre tu versión local y la remota. Elige cómo resolverlos:
                   </p>
                 </div>
@@ -702,7 +702,7 @@ function ConnectedGitHubConnector({
                   variant="outline"
                   size="sm"
                   disabled={isFixingError}
-                  className="flex-1 border-blue-400 dark:border-blue-600 text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30"
+                  className="flex-1"
                 >
                   {isFixingError ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -716,7 +716,7 @@ function ConnectedGitHubConnector({
                   variant="outline"
                   size="sm"
                   disabled={isFixingError}
-                  className="flex-1 border-green-400 dark:border-green-600 text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-800/30"
+                  className="flex-1"
                 >
                   {isFixingError ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -732,7 +732,7 @@ function ConnectedGitHubConnector({
                   onClick={handleOpenGitPanel}
                   variant="outline"
                   size="sm"
-                  className="flex-1 border-orange-400 dark:border-orange-600 text-orange-800 dark:text-orange-200"
+                  className="flex-1"
                 >
                   <GitMerge className="h-3.5 w-3.5 mr-1.5" />
                   Resolver manualmente
@@ -742,7 +742,6 @@ function ConnectedGitHubConnector({
                   variant="outline"
                   size="sm"
                   disabled={isFixingError}
-                  className="border-red-400 dark:border-red-600 text-red-700 dark:text-red-300"
                 >
                   {isFixingError ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -754,14 +753,14 @@ function ConnectedGitHubConnector({
               </div>
             </div>
           ) : errorType === "git-not-found" ? (
-            <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+            <div className="rounded-md border border-border bg-accent p-3 space-y-2">
               <div className="flex items-start gap-2">
-                <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                  <p className="text-sm font-medium text-foreground">
                     Git no encontrado en el sistema
                   </p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Asegúrate de que Git esté instalado en tu sistema. Puedes descargarlo desde git-scm.com.
                   </p>
                 </div>
@@ -770,7 +769,7 @@ function ConnectedGitHubConnector({
                 onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
                 variant="outline"
                 size="sm"
-                className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+                className="w-full"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Descargar Git
@@ -778,7 +777,7 @@ function ConnectedGitHubConnector({
             </div>
           ) : (
             /* Fallback: original error display for unrecognized errors */
-            <p className="text-red-600">
+            <p className="text-destructive">
               {syncError}{" "}
               <a
                 onClick={(e) => {
@@ -794,8 +793,8 @@ function ConnectedGitHubConnector({
             </p>
           )}
           {showRebaseRecoveryOptions && (
-            <div className="space-y-2 rounded-md border border-orange-200 p-3 dark:border-orange-800 dark:bg-orange-900/20">
-              <p className="text-sm text-orange-800 dark:text-orange-100">
+            <div className="space-y-2 rounded-md border border-border p-3 bg-accent">
+              <p className="text-sm text-foreground">
                 Ya hay un rebase en curso. Elige cómo proceder.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -824,7 +823,7 @@ function ConnectedGitHubConnector({
                   variant="outline"
                   size="sm"
                   disabled={isRebaseActionPending}
-                  className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                  className=""
                 >
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   {rebaseAction === "safe-push"
@@ -840,7 +839,7 @@ function ConnectedGitHubConnector({
               variant="outline"
               size="sm"
               disabled={isRebaseActionPending}
-              className="text-orange-600 border-orange-600 hover:bg-orange-50"
+              className=""
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
               Forzar subida (Peligroso)
@@ -862,12 +861,12 @@ function ConnectedGitHubConnector({
       )}
       {/* Conflict Resolver */}
       {conflicts.length > 0 && !errorType && (
-        <p className="text-sm text-red-600">
+        <p className="text-sm text-destructive">
           Hay conflictos en el repositorio. Por favor, resuélvelos en el editor.
         </p>
       )}
       {rebaseStatusMessage && (
-        <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           {rebaseStatusMessage}
         </p>
       )}
@@ -877,7 +876,7 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {disconnectError && (
-        <p className="text-red-600 mt-2">{disconnectError}</p>
+        <p className="text-destructive mt-2">{disconnectError}</p>
       )}
 
       {/* Force Push Warning Dialog */}
@@ -885,7 +884,7 @@ function ConnectedGitHubConnector({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
               Advertencia de forzar subida
             </DialogTitle>
             <DialogDescription>
@@ -894,13 +893,13 @@ function ConnectedGitHubConnector({
                   Estás a punto de realizar un{" "}
                   <strong>forzado de subida</strong> a tu repositorio de GitHub.
                 </p>
-                <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-md border border-orange-200 dark:border-orange-800">
-                  <p className="text-sm text-orange-800 dark:text-orange-200">
+                <div className="bg-accent p-3 rounded-md border border-border">
+                  <p className="text-sm text-foreground">
                     <strong>
                       Esto es peligroso e irreversible y hará lo siguiente:
                     </strong>
                   </p>
-                  <ul className="text-sm text-orange-700 dark:text-orange-300 list-disc list-inside mt-2 space-y-1">
+                  <ul className="text-sm text-muted-foreground list-disc list-inside mt-2 space-y-1">
                     <li>Sobrescribir el historial del repositorio remoto</li>
                     <li>
                       Eliminar permanentemente los commits que existen en el
@@ -1271,10 +1270,10 @@ export function UnconnectedGitHubConnector({
 
         {/* GitHub Connection Status/Instructions */}
         {(githubUserCode || githubStatusMessage || githubError) && (
-          <div className="mt-6 p-4 border rounded-md bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
+          <div className="mt-6 p-4 border rounded-md bg-muted/50 border-border">
             <h4 className="font-medium mb-2">Conexión con GitHub</h4>
             {githubError && (
-              <p className="text-red-600 dark:text-red-400 mb-2">
+              <p className="text-destructive mb-2">
                 Error: {githubError}
               </p>
             )}
@@ -1297,11 +1296,11 @@ export function UnconnectedGitHubConnector({
                 </p>
                 <p>
                   2. Introduce el código:
-                  <strong className="ml-1 font-mono text-lg tracking-wider bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded">
+                  <strong className="ml-1 font-mono text-lg tracking-wider bg-muted px-2 py-0.5 rounded">
                     {githubUserCode}
                   </strong>
                   <button
-                    className="ml-2 p-1 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none"
+                    className="ml-2 p-1 rounded-md hover:bg-accent focus:outline-none"
                     onClick={() => {
                       if (githubUserCode) {
                         navigator.clipboard
@@ -1327,7 +1326,7 @@ export function UnconnectedGitHubConnector({
               </div>
             )}
             {githubStatusMessage && (
-              <p className="text-sm text-gray-600 dark:text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 {githubStatusMessage}
               </p>
             )}
@@ -1344,13 +1343,13 @@ export function UnconnectedGitHubConnector({
         type="button"
         onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
         className={`w-full p-4 text-left transition-colors rounded-md flex items-center justify-between ${!isExpanded
-          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          ? "cursor-pointer hover:bg-muted"
           : ""
           }`}
       >
         <span className="font-medium">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
-          <ChevronRight className="h-4 w-4 text-gray-500" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}
       </button>
 
@@ -1362,13 +1361,13 @@ export function UnconnectedGitHubConnector({
         <div className="p-4 pt-0 space-y-4">
           {/* Mode Selection */}
           <div>
-            <div className="flex rounded-md border border-gray-200 dark:border-gray-700">
+            <div className="flex rounded-md border border-border">
               <Button
                 type="button"
                 variant={repoSetupMode === "create" ? "default" : "ghost"}
                 className={`flex-1 rounded-none rounded-l-md border-0 ${repoSetupMode === "create"
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  : "hover:bg-muted"
                   }`}
                 onClick={() => {
                   setRepoSetupMode("create");
@@ -1381,9 +1380,9 @@ export function UnconnectedGitHubConnector({
               <Button
                 type="button"
                 variant={repoSetupMode === "existing" ? "default" : "ghost"}
-                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-gray-200 dark:border-gray-700 ${repoSetupMode === "existing"
+                className={`flex-1 rounded-none rounded-r-md border-0 border-l border-border ${repoSetupMode === "existing"
                   ? "bg-primary text-primary-foreground"
-                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  : "hover:bg-muted"
                   }`}
                 onClick={() => {
                   setRepoSetupMode("existing");
@@ -1417,7 +1416,7 @@ export function UnconnectedGitHubConnector({
                     disabled={isCreatingRepo}
                   />
                   {isCheckingRepo && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Comprobando disponibilidad...
                     </p>
                   )}
@@ -1427,7 +1426,7 @@ export function UnconnectedGitHubConnector({
                     </p>
                   )}
                   {repoAvailable === false && (
-                    <p className="text-xs text-red-600 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       {repoCheckError}
                     </p>
                   )}
@@ -1561,14 +1560,14 @@ export function UnconnectedGitHubConnector({
           {createRepoError && (
             <div className="mt-2">
               {setupErrorType === "merge-in-progress" ? (
-                <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 space-y-2">
+                <div className="rounded-md border border-border bg-accent p-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <GitMerge className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <GitMerge className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      <p className="text-sm font-medium text-foreground">
                         Hay un merge en progreso que bloquea esta operación
                       </p>
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Abórtalo para poder conectar el repositorio.
                       </p>
                     </div>
@@ -1579,7 +1578,7 @@ export function UnconnectedGitHubConnector({
                     variant="outline"
                     size="sm"
                     disabled={isFixingSetupError}
-                    className="w-full border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-800/40 text-amber-800 dark:text-amber-200"
+                    className="w-full"
                   >
                     {isFixingSetupError ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1590,14 +1589,14 @@ export function UnconnectedGitHubConnector({
                   </Button>
                 </div>
               ) : setupErrorType === "index-lock" ? (
-                <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 space-y-2">
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <Wrench className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                    <Wrench className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                      <p className="text-sm font-medium text-foreground">
                         Git está bloqueado por un proceso anterior
                       </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Se puede eliminar el lock de forma segura.
                       </p>
                     </div>
@@ -1608,7 +1607,7 @@ export function UnconnectedGitHubConnector({
                     variant="outline"
                     size="sm"
                     disabled={isFixingSetupError}
-                    className="w-full border-red-400 dark:border-red-600 bg-red-100/50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/40 text-red-800 dark:text-red-200"
+                    className="w-full"
                   >
                     {isFixingSetupError ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1619,14 +1618,14 @@ export function UnconnectedGitHubConnector({
                   </Button>
                 </div>
               ) : setupErrorType === "git-not-found" ? (
-                <div className="rounded-md border border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 p-3 space-y-2">
+                <div className="rounded-md border border-border bg-accent p-3 space-y-2">
                   <div className="flex items-start gap-2">
-                    <Wrench className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                    <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                      <p className="text-sm font-medium text-foreground">
                         Git no encontrado en el sistema
                       </p>
-                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Necesitas Git instalado para conectar repositorios.
                       </p>
                     </div>
@@ -1636,14 +1635,14 @@ export function UnconnectedGitHubConnector({
                     onClick={() => ipc.system.openExternalUrl("https://git-scm.com/downloads")}
                     variant="outline"
                     size="sm"
-                    className="w-full border-purple-400 dark:border-purple-600 text-purple-800 dark:text-purple-200"
+                    className="w-full"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Descargar Git
                   </Button>
                 </div>
               ) : (
-                <p className="text-red-600">{createRepoError}</p>
+                <p className="text-destructive">{createRepoError}</p>
               )}
             </div>
           )}

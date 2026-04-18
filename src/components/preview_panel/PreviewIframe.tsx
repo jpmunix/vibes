@@ -208,7 +208,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
 // Expand/Collapse Preview Button
 // position="left" → renders only when preview is on the left (chat right)
 // position="right" → renders only when preview is on the right (chat left)
-const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
+export const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
   const [isExpanded, setIsExpanded] = useAtom(isPreviewExpandedAtom);
   const chatPosition = useAtomValue(chatPositionAtom);
   const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
@@ -258,6 +258,124 @@ const ExpandPreviewButton = ({ position }: { position: "left" | "right" }) => {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+};
+
+// Open in external browser button
+export const OpenExternalButton = () => {
+  const { originalUrl } = useAtomValue(appUrlAtom);
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            data-testid="preview-open-browser-button"
+            onClick={() => {
+              if (originalUrl) {
+                ipc.system.openExternalUrl(originalUrl);
+              }
+            }}
+            className="p-1 rounded hover:bg-accent text-foreground transition-colors"
+            disabled={!originalUrl}
+          >
+            <ExternalLink size={16} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Abrir en navegador</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+// Device mode button with popover
+export const DeviceModeButton = () => {
+  const { settings, updateSettings } = useSettings();
+  const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
+  const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
+
+  return (
+    <Popover open={isDevicePopoverOpen} modal={false}>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                data-testid="device-mode-button"
+                onClick={() => {
+                  if (isDevicePopoverOpen)
+                    updateSettings({ previewDeviceMode: "desktop" });
+                  setIsDevicePopoverOpen(!isDevicePopoverOpen);
+                }}
+                className={cn(
+                  "p-1 rounded hover:bg-accent text-foreground transition-colors",
+                  deviceMode !== "desktop" && "bg-accent",
+                )}
+              >
+                <MonitorSmartphone size={16} />
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Modo de dispositivo</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <PopoverContent
+        className="w-auto p-2"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <TooltipProvider>
+          <ToggleGroup
+            type="single"
+            title="Modo de dispositivo"
+            value={deviceMode}
+            onValueChange={(value) => {
+              if (value) {
+                updateSettings({
+                  previewDeviceMode: value as DeviceMode,
+                });
+                setIsDevicePopoverOpen(false);
+              }
+            }}
+            variant="outline"
+          >
+            <ToggleGroupItem value="desktop" aria-label="Vista de escritorio">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center justify-center">
+                    <Monitor size={16} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent><p>Desktop</p></TooltipContent>
+              </Tooltip>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="tablet" aria-label="Vista de tableta">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center justify-center">
+                    <Tablet size={16} className="scale-x-130" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent><p>Tablet</p></TooltipContent>
+              </Tooltip>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="mobile" aria-label="Vista móvil">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center justify-center">
+                    <Smartphone size={16} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent><p>Mobile</p></TooltipContent>
+              </Tooltip>
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </TooltipProvider>
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -335,9 +453,9 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
   const setIconLine = useSetAtom(iconLineAtom);
   const setComponentTextContent = useSetAtom(componentTextContentAtom);
 
-  // Device mode state
+
+  // Device mode — still read for iframe sizing
   const deviceMode: DeviceMode = settings?.previewDeviceMode ?? "desktop";
-  const [isDevicePopoverOpen, setIsDevicePopoverOpen] = useState(false);
 
   // Address bar combobox state
   const [isEditingUrl, setIsEditingUrl] = useState(false);
@@ -1442,8 +1560,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
         <div className="flex items-center p-2 border-b space-x-2">
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
-            {/* ExpandPreview at left when preview is on the left (chat right) */}
-            <ExpandPreviewButton position="left" />
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1662,120 +1779,6 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex space-x-1">
-            <button
-              onClick={onRestart}
-              className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm hover:bg-[var(--background-darkest)] transition-colors"
-              title="Reiniciar aplicación"
-            >
-              <Power size={16} />
-              <span>Reiniciar</span>
-            </button>
-            <button
-              data-testid="preview-open-browser-button"
-              onClick={() => {
-                if (originalUrl) {
-                  ipc.system.openExternalUrl(originalUrl);
-                }
-              }}
-              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
-            >
-              <ExternalLink size={16} />
-            </button>
-
-            {/* Device Mode Button */}
-            <Popover open={isDevicePopoverOpen} modal={false}>
-              <PopoverTrigger asChild>
-                <button
-                  data-testid="device-mode-button"
-                  onClick={() => {
-                    // Toggle popover open/close
-                    if (isDevicePopoverOpen)
-                      updateSettings({ previewDeviceMode: "desktop" });
-                    setIsDevicePopoverOpen(!isDevicePopoverOpen);
-                  }}
-                  className={cn(
-                    "p-1 rounded hover:bg-accent text-foreground",
-                    deviceMode !== "desktop" && "bg-accent",
-                  )}
-                  title="Modo de dispositivo"
-                >
-                  <MonitorSmartphone size={16} />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-2"
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                onInteractOutside={(e) => e.preventDefault()}
-              >
-                <TooltipProvider>
-                  <ToggleGroup
-                    type="single"
-                    title="Modo de dispositivo"
-                    value={deviceMode}
-                    onValueChange={(value) => {
-                      if (value) {
-                        updateSettings({
-                          previewDeviceMode: value as DeviceMode,
-                        });
-                        setIsDevicePopoverOpen(false);
-                      }
-                    }}
-                    variant="outline"
-                  >
-                    {/* Tooltips placed inside items instead of wrapping
-                    to avoid asChild prop merging that breaks highlighting */}
-                    <ToggleGroupItem
-                      value="desktop"
-                      aria-label="Vista de escritorio"
-                    >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="flex items-center justify-center">
-                            <Monitor size={16} />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Desktop</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="tablet"
-                      aria-label="Vista de tableta"
-                    >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="flex items-center justify-center">
-                            <Tablet size={16} className="scale-x-130" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Tablet</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="mobile" aria-label="Vista móvil">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="flex items-center justify-center">
-                            <Smartphone size={16} />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Mobile</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </TooltipProvider>
-              </PopoverContent>
-            </Popover>
-            {/* ExpandPreview at right when preview is on the right (chat left) */}
-            <ExpandPreviewButton position="right" />
           </div>
         </div>
       )}

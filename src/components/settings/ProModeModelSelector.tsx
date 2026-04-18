@@ -8,7 +8,7 @@ const DEFAULT_MODEL = FALLBACK_STANDARD_MODEL;
 /**
  * Single selector for "Modo Pro" tasks.
  * Uses the unified `proModeModel` key.
- * Applies to: debates, knowledge extraction, dossier.
+ * Applies to: debates, knowledge extraction.
  */
 export function ProModeModelSelector() {
     const { settings, updateSettings } = useSettings();

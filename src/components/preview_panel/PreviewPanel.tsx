@@ -1,6 +1,5 @@
 import { useAtom, useAtomValue } from "jotai";
 import {
-  appConsoleEntriesAtom,
   previewModeAtom,
   previewPanelKeyAtom,
   selectedAppIdAtom,
@@ -18,11 +17,8 @@ const PreviewIframe = React.lazy(() =>
   import("./PreviewIframe").then((m) => ({ default: m.PreviewIframe }))
 );
 import { Problems } from "./Problems";
-import { ChevronDown, ChevronUp, Logs, GripHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
-import { Console } from "./Console";
-import { ConsoleTerminal } from "./ConsoleTerminal";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useSupabase } from "@/hooks/useSupabase";
 import { VersionPane } from "../chat/VersionPane";
@@ -32,7 +28,7 @@ import {
   visualEditingSelectedComponentAtom,
   previewIframeRefAtom,
 } from "@/atoms/previewAtoms";
-import { isPreviewExpandedAtom } from "@/atoms/viewAtoms";
+
 
 // Lazy load heavy panels — they are only needed when user switches to their specific tab
 const ConfigurePanel = React.lazy(() =>
@@ -61,104 +57,19 @@ const LazyFallback = ({ text = "Cargando..." }: { text?: string }) => (
   </div>
 );
 
-interface ConsoleHeaderProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  latestMessage?: string;
-  consoleView: "logs" | "terminal";
-  onViewChange: (view: "logs" | "terminal") => void;
-}
-
-// Console header component
-const ConsoleHeader = ({
-  isOpen,
-  onToggle,
-  latestMessage,
-  consoleView,
-  onViewChange,
-}: ConsoleHeaderProps) => (
-  <div className="flex items-center gap-2 px-4 py-1.5 border-t border-border bg-background">
-    <div
-      onClick={onToggle}
-      className="flex items-start gap-2 cursor-pointer hover:bg-[var(--background-darkest)] transition-colors flex-1 min-w-0"
-    >
-      <Logs size={16} className="mt-0.5 shrink-0" />
-      <div className="flex flex-col min-w-0">
-        <span className="text-sm font-medium whitespace-nowrap">
-          {consoleView === "logs" ? "Mensajes del sistema" : "Consola"}
-        </span>
-        {!isOpen && latestMessage && (
-          <span className="text-xs text-gray-500 truncate max-w-[200px] md:max-w-[400px]">
-            {latestMessage}
-          </span>
-        )}
-      </div>
-    </div>
-
-    {isOpen && (
-      <div className="flex items-center bg-muted rounded-md p-0.5 mr-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewChange("logs");
-          }}
-          className={cn(
-            "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
-            consoleView === "logs"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Logs
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewChange("terminal");
-          }}
-          className={cn(
-            "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
-            consoleView === "terminal"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Console
-        </button>
-      </div>
-    )}
-
-    <div
-      onClick={onToggle}
-      className="cursor-pointer hover:bg-[var(--background-darkest)] p-1 rounded transition-colors"
-    >
-      {isOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-    </div>
-  </div>
-);
-
 // Main PreviewPanel component
 export function PreviewPanel() {
   const [previewMode, setPreviewMode] = useAtom(previewModeAtom);
   const selectedAppId = useAtomValue(selectedAppIdAtom);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-  const [consoleView, setConsoleView] = useState<"logs" | "terminal">("logs");
   const { runApp, stopApp, loading, app } = useRunApp();
   const { loadEdgeLogs } = useSupabase();
   const runningAppIdRef = useRef<number | null>(null);
   const key = useAtomValue(previewPanelKeyAtom);
-  const consoleEntries = useAtomValue(appConsoleEntriesAtom);
 
   // Natural Editing Panel atoms
   const naturalEditingPanelOpen = useAtomValue(naturalEditingPanelOpenAtom);
   const visualEditingSelectedComponent = useAtomValue(visualEditingSelectedComponentAtom);
   const previewIframeRef = useAtomValue(previewIframeRefAtom);
-  const isPreviewExpanded = useAtomValue(isPreviewExpandedAtom);
-
-  const latestMessage =
-    consoleEntries.length > 0
-      ? consoleEntries[consoleEntries.length - 1]?.message
-      : undefined;
 
   useEffect(() => {
     const previousAppId = runningAppIdRef.current;
@@ -230,104 +141,70 @@ export function PreviewPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-hidden">
-        <PanelGroup direction="vertical">
-          <Panel id="content" minSize={30}>
-            <div className={cn("h-full", previewMode === "versions" ? "overflow-hidden" : "overflow-y-auto")}>
-              {previewMode === "versions" ? (
-                <PanelGroup direction="horizontal">
-                  <Panel id="version-list" defaultSize={35} minSize={20} maxSize={50}>
-                    <VersionPane
-                      isVisible={true}
-                      onClose={() => setPreviewMode("preview")}
-                    />
-                  </Panel>
-                  <PanelResizeHandle className="relative flex w-px h-full items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize" />
-                  <Panel id="version-preview" minSize={30}>
-                    <Suspense fallback={<LazyFallback />}>
-                      <PreviewIframe key={key} loading={loading} />
-                    </Suspense>
-                  </Panel>
-                </PanelGroup>
-              ) : previewMode === "git" ? (
-                <Suspense fallback={<LazyFallback />}>
-                  <GitPanel
-                    onClose={() => setPreviewMode("preview")}
-                  />
-                </Suspense>
-              ) : previewMode === "preview" ? (
-                <div className="flex h-full">
-                  <div className="flex-1 min-w-0 h-full">
-                    <Suspense fallback={<LazyFallback />}>
-                      <PreviewIframe key={key} loading={loading} />
-                    </Suspense>
-                  </div>
-                  {naturalEditingPanelOpen &&
-                    visualEditingSelectedComponent && (
-                      <Suspense fallback={<LazyFallback />}>
-                        <NaturalEditingPanel
-                          selectedComponent={visualEditingSelectedComponent}
-                          iframeRef={previewIframeRef}
-                        />
-                      </Suspense>
-                    )}
-                </div>
-              ) : previewMode === "code" ? (
-                <Suspense fallback={<LazyFallback text="Cargando editor..." />}>
-                  <CodeView loading={loading} app={app} />
-                </Suspense>
-              ) : previewMode === "configure" ? (
-                <Suspense fallback={<LazyFallback />}>
-                  <ConfigurePanel />
-                </Suspense>
-              ) : previewMode === "publish" ? (
-                <Suspense fallback={<LazyFallback />}>
-                  <PublishPanel />
-                </Suspense>
-              ) : previewMode === "security" ? (
-                <Suspense fallback={<LazyFallback />}>
-                  <SecurityPanel />
-                </Suspense>
-              ) : previewMode === "database" ? (
-                <Suspense fallback={<LazyFallback />}>
-                  <DatabasePanel />
-                </Suspense>
-              ) : (
-                <Problems />
-              )}
-            </div>
-          </Panel>
-          {!isPreviewExpanded && isConsoleOpen && (
-            <>
-              <PanelResizeHandle className="relative flex h-px w-full items-center justify-center bg-border after:absolute after:inset-x-0 after:top-1/2 after:h-1 after:-translate-y-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-row-resize">
-                <div className="z-10 flex h-3 w-4 items-center justify-center rounded-sm border bg-border">
-                  <GripHorizontal className="h-2.5 w-2.5" />
-                </div>
-              </PanelResizeHandle>
-              <Panel id="console" minSize={10} defaultSize={30}>
-                <div className="flex flex-col h-full">
-                  <ConsoleHeader
-                    isOpen={true}
-                    onToggle={() => setIsConsoleOpen(false)}
-                    latestMessage={latestMessage}
-                    consoleView={consoleView}
-                    onViewChange={setConsoleView}
-                  />
-                  {consoleView === "logs" ? <Console /> : <ConsoleTerminal />}
-                </div>
+        <div className={cn("h-full", previewMode === "versions" ? "overflow-hidden" : "overflow-y-auto")}>
+          {previewMode === "versions" ? (
+            <PanelGroup direction="horizontal">
+              <Panel id="version-list" defaultSize={35} minSize={20} maxSize={50}>
+                <VersionPane
+                  isVisible={true}
+                  onClose={() => setPreviewMode("preview")}
+                />
               </Panel>
-            </>
+              <PanelResizeHandle className="relative flex w-px h-full items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 cursor-col-resize" />
+              <Panel id="version-preview" minSize={30}>
+                <Suspense fallback={<LazyFallback />}>
+                  <PreviewIframe key={key} loading={loading} />
+                </Suspense>
+              </Panel>
+            </PanelGroup>
+          ) : previewMode === "git" ? (
+            <Suspense fallback={<LazyFallback />}>
+              <GitPanel
+                onClose={() => setPreviewMode("preview")}
+              />
+            </Suspense>
+          ) : previewMode === "preview" ? (
+            <div className="flex h-full">
+              <div className="flex-1 min-w-0 h-full">
+                <Suspense fallback={<LazyFallback />}>
+                  <PreviewIframe key={key} loading={loading} />
+                </Suspense>
+              </div>
+              {naturalEditingPanelOpen &&
+                visualEditingSelectedComponent && (
+                  <Suspense fallback={<LazyFallback />}>
+                    <NaturalEditingPanel
+                      selectedComponent={visualEditingSelectedComponent}
+                      iframeRef={previewIframeRef}
+                    />
+                  </Suspense>
+                )}
+            </div>
+          ) : previewMode === "code" ? (
+            <Suspense fallback={<LazyFallback text="Cargando editor..." />}>
+              <CodeView loading={loading} app={app} />
+            </Suspense>
+          ) : previewMode === "configure" ? (
+            <Suspense fallback={<LazyFallback />}>
+              <ConfigurePanel />
+            </Suspense>
+          ) : previewMode === "publish" ? (
+            <Suspense fallback={<LazyFallback />}>
+              <PublishPanel />
+            </Suspense>
+          ) : previewMode === "security" ? (
+            <Suspense fallback={<LazyFallback />}>
+              <SecurityPanel />
+            </Suspense>
+          ) : previewMode === "database" ? (
+            <Suspense fallback={<LazyFallback />}>
+              <DatabasePanel />
+            </Suspense>
+          ) : (
+            <Problems />
           )}
-        </PanelGroup>
+        </div>
       </div>
-      {!isPreviewExpanded && !isConsoleOpen && (
-        <ConsoleHeader
-          isOpen={false}
-          onToggle={() => setIsConsoleOpen(true)}
-          latestMessage={latestMessage}
-          consoleView={consoleView}
-          onViewChange={setConsoleView}
-        />
-      )}
     </div>
   );
 }

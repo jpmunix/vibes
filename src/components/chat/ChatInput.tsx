@@ -58,7 +58,6 @@ import { useAttachments } from "@/hooks/useAttachments";
 import { AttachmentsList } from "./AttachmentsList";
 import { DragDropOverlay } from "./DragDropOverlay";
 import { showExtraFilesToast } from "@/lib/toast";
-import { useSummarizeInNewChat } from "./SummarizeInNewChatButton";
 import { ChatInputControls } from "../ChatInputControls";
 
 import { AgentConsentBanner } from "./AgentConsentBanner";
@@ -684,17 +683,6 @@ function SuggestionButton({
   );
 }
 
-function SummarizeInNewChatButton() {
-  const { handleSummarize } = useSummarizeInNewChat();
-  return (
-    <SuggestionButton
-      onClick={handleSummarize}
-      tooltipText="Crear un nuevo chat hace que la IA sea más enfocada y eficiente"
-    >
-      Resumir en un nuevo chat
-    </SuggestionButton>
-  );
-}
 
 function RefactorFileButton({ path }: { path: string }) {
   const chatId = useAtomValue(selectedChatIdAtom);
@@ -769,7 +757,7 @@ function KeepGoingButton() {
 export function mapActionToButton(action: SuggestedAction) {
   switch (action.id) {
     case "summarize-in-new-chat":
-      return <SummarizeInNewChatButton />;
+      return null;
     case "refactor-file":
       return <RefactorFileButton path={action.path} />;
     case "write-code-properly":

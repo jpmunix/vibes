@@ -4,11 +4,10 @@ import {
   PLAN_MODE_SYSTEM_PROMPT,
 } from "./system_prompt";
 import { AGENT_SYSTEM_PROMPT } from "./agent_prompt";
-import { SUMMARIZE_CHAT_SYSTEM_PROMPT } from "./summarize_chat_system_prompt";
+
 
 export type PromptId =
   | "thinking_prompt"
-  | "summarize_chat_system"
   | "turbo_edit_system"
   | "app_title_short"
   | "app_name_pro"
@@ -18,13 +17,12 @@ export type PromptId =
   | "debate_chat_system"
   | "debate_summary_system"
   | "quick_edit_system"
-  | "dossier_prompt"
+
   | "auto_commit_message"
   | "plan_mode_system";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
-  summarize_chat_system: SUMMARIZE_CHAT_SYSTEM_PROMPT,
   agent_mode_system: AGENT_SYSTEM_PROMPT,
   plan_mode_system: PLAN_MODE_SYSTEM_PROMPT,
   turbo_edit_system: [
@@ -140,51 +138,6 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido. No agregues explicaciones, markdown, ni ningún otro texto.",
   ].join("\n"),
-  dossier_prompt: [
-    "Eres un documentalista técnico profesional especializado en auditorías y licitaciones del Estado.",
-    "Tu misión es analizar exhaustivamente el código fuente, dependencias, estructura y flujos del proyecto proporcionado y generar DOS documentos de calidad profesional.",
-    "",
-    "IMPORTANTE: Tu respuesta debe contener EXACTAMENTE dos secciones separadas por los marcadores indicados.",
-    "",
-    "===DOCUMENTO_1_TUTORIAL_INTERACTIVO===",
-    "",
-    "Genera un Tutorial Interactivo completo orientado a onboarding de usuarios finales:",
-    "- Pasos numerados y concretos de uso",
-    "- Overlays descritos textualmente (ej: 'overlay resaltando el botón Guardar')",
-    "- Flechas explicadas (ej: 'flecha apuntando al menú lateral izquierdo')",
-    "- Mensajes contextuales claros en cada paso",
-    "- Ejemplos de uso reales basados en la funcionalidad detectada",
-    "- Recorrido completo tipo 'modo guía' de toda la aplicación",
-    "- Tono didáctico, práctico y entendible para cualquier usuario",
-    "- Incluir secciones: Bienvenida, Primeros pasos, Navegación principal, Funcionalidades clave, Casos de uso avanzados, Preguntas frecuentes",
-    "",
-    "===DOCUMENTO_2_MEMORIA_TECNICA===",
-    "",
-    "Genera una Memoria Técnica Completa con las siguientes secciones obligatorias:",
-    "1. Descripción general del proyecto",
-    "2. Objetivos funcionales y no funcionales",
-    "3. Tecnologías utilizadas (frameworks, librerías, backend, bases de datos, cloud, CI/CD)",
-    "4. Arquitectura lógica y física",
-    "5. Módulos y componentes principales",
-    "6. Flujos funcionales clave",
-    "7. Integraciones externas (APIs, servicios cloud, autenticación, seguridad)",
-    "8. Manejo de datos y persistencia",
-    "9. Accesibilidad, buenas prácticas y estándares de calidad",
-    "10. Metodología de desarrollo",
-    "11. Despliegue, CI/CD y entornos",
-    "12. Seguridad, cumplimiento normativo y hardening",
-    "13. Monitoreo, rendimiento, logs y diagnósticos",
-    "14. Escalabilidad y estrategia de crecimiento",
-    "15. Anexos técnicos",
-    "",
-    "REGLAS:",
-    "- Tono formal, técnico y riguroso, apto para auditorías y licitaciones públicas",
-    "- Usa el conocimiento REAL del proyecto analizado, no genérico",
-    "- Si hay lagunas, reconstruye mediante razonamiento fiel",
-    "- No uses placeholders genéricos",
-    "- Cada sección debe ser exhaustiva y detallada",
-    "- Formato: Markdown con encabezados jerárquicos",
-  ].join("\n"),
   auto_commit_message: [
     "Genera un mensaje de commit ULTRA ESPECÍFICO en español basándote en el diff real.",
     "",
@@ -225,7 +178,6 @@ export function getEffectivePrompt(
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
   thinking_prompt: "Thinking Process (Razonamiento)",
-  summarize_chat_system: "Resumen de Chat",
   agent_mode_system: "Modo Agente (Desarrollo y Análisis)",
   plan_mode_system: "Modo Planificación (Sistema)",
   turbo_edit_system: "Turbo Edit (Edición Precisa)",
@@ -236,15 +188,13 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   debate_chat_system: "Chat de Debate (Sistema)",
   debate_summary_system: "Resumen de Debate",
   quick_edit_system: "Quick Edit (Edición Visual Rápida)",
-  dossier_prompt: "Prompt de Dossier (Tutorial + Memoria Técnica)",
+
   auto_commit_message: "Mensaje de Commit Automático",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   thinking_prompt:
     "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
-  summarize_chat_system:
-    "Instrucciones para generar el resumen técnico de la conversación.",
   agent_mode_system:
     "Controla el comportamiento del agente al usar herramientas y realizar cambios en el código.",
   plan_mode_system:
@@ -262,6 +212,6 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
   debate_summary_system: "Instrucciones para generar el resumen de un debate.",
   quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
-  dossier_prompt: "Instrucciones para generar el dossier completo de la app: Tutorial Interactivo y Memoria Técnica profesional.",
+
   auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
 };
