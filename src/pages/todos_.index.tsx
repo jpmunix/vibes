@@ -1,6 +1,6 @@
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 import { useEffect } from "react";
 
 export default function TodosIndexPage() {

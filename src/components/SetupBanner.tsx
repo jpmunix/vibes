@@ -6,7 +6,7 @@ import {
   XCircle,
   Loader2,
   Folder,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import SetupProviderCard from "@/components/SetupProviderCard";
 
@@ -138,7 +138,7 @@ export function SetupBanner() {
 
   const getStatusIcon = (isComplete: boolean, hasError: boolean = false) => {
     if (hasError) {
-      return <XCircle className="w-5 h-5 text-red-500" />;
+      return <XCircle className="w-5 h-5 text-destructive" />;
     }
     return isComplete ? (
       <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500" />
@@ -184,7 +184,7 @@ export function SetupBanner() {
             </AccordionTrigger>
             <AccordionContent className="px-4 pt-2 pb-4 bg-white dark:bg-zinc-900 border-t border-inherit">
               {nodeCheckError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-destructive">
                   Error al comprobar el estado de Node.js. Intenta instalar
                   Node.js.
                 </p>
@@ -201,7 +201,7 @@ export function SetupBanner() {
                       Después de instalar Node.js, haz clic en "Continuar". Si
                       el instalador no funcionó, prueba con{" "}
                       <a
-                        className="text-blue-500 dark:text-blue-400 hover:underline"
+                        className="text-primary hover:underline"
                         onClick={() => {
                           ipc.system.openExternalUrl(
                             "https://nodejs.org/en/download",
@@ -222,7 +222,7 @@ export function SetupBanner() {
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => setShowManualConfig(!showManualConfig)}
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-sm text-primary hover:underline"
                     >
                       ¿Node.js ya está instalado? Configura la ruta manualmente
                       →
@@ -378,7 +378,7 @@ function NodeJsHelpCallout() {
           onClick={() => {
             ipc.system.openExternalUrl("https://www.dyad.sh/docs/help/nodejs");
           }}
-          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          className="text-primary hover:underline font-medium"
         >
           guía de solución de problemas de Node.js
         </a>
@@ -427,7 +427,7 @@ function NodeInstallButton({
       );
     case "finished-checking":
       return (
-        <div className="mt-3 text-sm text-red-600 dark:text-red-400">
+        <div className="mt-3 text-sm text-destructive">
           No se detecta Node.js. Cerrar y volver a abrir Vibes suele solucionar
           esto.
         </div>

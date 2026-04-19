@@ -16,7 +16,7 @@ import {
     EmailAuthProvider,
 } from "firebase/auth";
 import { toast } from "sonner";
-import { User, Lock, Upload, X, Palette } from "lucide-react";
+import { User, Lock, Upload, X, Palette } from "@/components/ui/icons";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
 import { useSetAtom } from "jotai";
 import { userAtom, VibesUser } from "@/atoms/authAtoms";
@@ -126,8 +126,8 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                 <div className="p-6 space-y-4">
                     <DialogHeader className="flex flex-row items-center justify-between">
                         <div className="space-y-1">
-                            <DialogTitle className="text-xl font-bold">Configuración de cuenta</DialogTitle>
-                            <DialogDescription className="text-muted-foreground text-sm">
+                            <DialogTitle className="typo-section-title">Configuración de cuenta</DialogTitle>
+                            <DialogDescription className="typo-caption">
                                 Administra tu perfil y configuración de seguridad
                             </DialogDescription>
                         </div>
@@ -135,11 +135,11 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
                     <Tabs defaultValue="profile" className="w-full">
                         <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 h-12">
-                            <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
+                            <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none typo-tab">
                                 <User className="h-4 w-4" />
                                 Perfil
                             </TabsTrigger>
-                            <TabsTrigger value="password" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none">
+                            <TabsTrigger value="password" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 shadow-none border-none typo-tab">
                                 <Lock className="h-4 w-4" />
                                 Contraseña
                             </TabsTrigger>
@@ -177,7 +177,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="displayName" className="text-sm font-semibold">Nombre visible</Label>
+                                    <Label htmlFor="displayName" className="typo-label">Nombre visible</Label>
                                     <Input
                                         id="displayName"
                                         value={name}
@@ -187,8 +187,8 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                                     />
                                 </div>
                                 <div className="p-4 rounded-lg border bg-muted/30 space-y-1">
-                                    <p className="text-sm text-muted-foreground">Tu dirección de email: <span className="text-foreground font-medium">{user?.email}</span></p>
-                                    <p className="text-[10px] text-muted-foreground/70 uppercase">El email no se puede cambiar por razones de seguridad</p>
+                                    <p className="typo-caption">Tu dirección de email: <span className="font-bold">{user?.email}</span></p>
+                                    <p className="typo-micro uppercase">El email no se puede cambiar por razones de seguridad</p>
                                 </div>
                             </div>
 
@@ -206,15 +206,15 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
 
                         <TabsContent value="password" className="space-y-4 pt-6">
                             <div className="space-y-1">
-                                <h3 className="text-sm font-semibold">Cambiar contraseña</h3>
-                                <p className="text-sm text-muted-foreground">
+                                <h3 className="typo-label">Cambiar contraseña</h3>
+                                <p className="typo-caption">
                                     Para cambiar tu contraseña, por favor confirma tu contraseña actual y establece una nueva
                                 </p>
                             </div>
 
                             <div className="space-y-4 py-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="current" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Contraseña actual</Label>
+                                    <Label htmlFor="current" className="typo-micro uppercase tracking-wider">Contraseña actual</Label>
                                     <Input
                                         id="current"
                                         type="password"
@@ -224,7 +224,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="new" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nueva contraseña</Label>
+                                    <Label htmlFor="new" className="typo-micro uppercase tracking-wider">Nueva contraseña</Label>
                                     <Input
                                         id="new"
                                         type="password"
@@ -234,7 +234,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="confirm" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar nueva contraseña</Label>
+                                    <Label htmlFor="confirm" className="typo-micro uppercase tracking-wider">Confirmar nueva contraseña</Label>
                                     <Input
                                         id="confirm"
                                         type="password"
@@ -246,7 +246,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                             </div>
 
                             <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 p-4 rounded-lg">
-                                <p className="text-sm text-orange-800 dark:text-orange-200">
+                                <p className="typo-caption">
                                     <span className="font-bold">Importante:</span> Después de cambiar la contraseña, necesitarás usarla para iniciar sesión la próxima vez.
                                 </p>
                             </div>

@@ -9,7 +9,7 @@ import {
   CircleX,
   Edit,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 import { FileEditor } from "../preview_panel/FileEditor";
@@ -113,7 +113,7 @@ export const VibesWrite: React.FC<VibesWriteProps> = ({
                     e.stopPropagation();
                     handleEdit();
                   }}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground px-2 py-1 rounded cursor-pointer"
                 >
                   <Edit size={14} />
                   Edit
@@ -140,7 +140,7 @@ export const VibesWrite: React.FC<VibesWriteProps> = ({
         </div>
       )}
       {description && (
-        <div className="text-sm text-muted-foreground">
+        <div className="typo-caption">
           <span className="font-medium">Summary: </span>
           {description}
         </div>

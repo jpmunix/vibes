@@ -50,7 +50,6 @@ export { capacitorContracts } from "./capacitor";
 export { contextContracts } from "./context";
 export { upgradeContracts } from "./upgrade";
 export { visualEditingContracts } from "./visual-editing";
-export { securityContracts } from "./security";
 export { miscContracts, miscEvents } from "./misc";
 
 
@@ -97,7 +96,6 @@ export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
 
 export { debateClient, debateStreamClient } from "./debate";
-export { securityClient } from "./security";
 export { miscClient, miscEventClient } from "./misc";
 
 export { knowledgeClient } from "./knowledge";
@@ -319,8 +317,6 @@ export type {
   ElementType,
 } from "./visual-editing";
 
-// Security types
-export type { SecurityReviewResult } from "./security";
 
 // Misc types
 export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
@@ -414,7 +410,6 @@ import { miscClient, miscEventClient } from "./misc";
 import { neonClient } from "./neon";
 import { promptClient } from "./prompts";
 import { proposalClient } from "./proposals";
-import { securityClient } from "./security";
 import { settingsClient } from "./settings";
 import { supabaseClient } from "./supabase";
 import { systemClient, systemEventClient } from "./system";
@@ -493,7 +488,6 @@ export const ipc = {
   context: contextClient,
   upgrade: upgradeClient,
   visualEditing: visualEditingClient,
-  security: securityClient,
   misc: miscClient,
 
   tokenStats: tokenStatsClient,

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
@@ -18,7 +19,7 @@ import {
   Archive,
   ArchiveRestore,
   GitBranch,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -116,7 +117,12 @@ const AppChats = memo(function AppChats({
     const btn = menuBtnRefs.current.get(chatId);
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.right + 8 });
+    const menuHeight = 110; // Approx height of 3 items popup
+    let top = rect.bottom + 4;
+    if (top + menuHeight > window.innerHeight) {
+      top = rect.top - menuHeight - 4;
+    }
+    setMenuPos({ top, left: rect.right + 8 });
     setOpenMenuId(chatId);
   }, []);
 
@@ -135,7 +141,7 @@ const AppChats = memo(function AppChats({
   if (loading) {
     return (
       <div className="pl-6 py-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+        <div className="flex items-center gap-2 typo-micro opacity-60">
           <Loader2 size={12} className="animate-spin" />
           <span>Cargando...</span>
         </div>
@@ -145,9 +151,9 @@ const AppChats = memo(function AppChats({
 
   return (
     <>
-    <div className="pl-7 flex flex-col gap-0.5 py-1">
+    <div className="pl-8 flex flex-col gap-1 py-1.5">
       {sortedChats.length === 0 ? (
-        <div className="px-2 py-1.5 text-xs text-muted-foreground/50">
+        <div className="px-2 py-1.5 typo-micro opacity-50">
           Sin chats
         </div>
       ) : (
@@ -160,7 +166,9 @@ const AppChats = memo(function AppChats({
             return (
               <div
                 key={chat.id}
-                className="group/chat-row relative flex items-center rounded-md transition-colors hover:bg-sidebar-accent/60"
+                className={`group/chat-row relative flex items-center rounded-xl transition-colors hover:bg-sidebar-accent/60 ${
+                  isMenuOpen ? "bg-sidebar-accent/60" : ""
+                }`}
               >
                 {isRenaming ? (
                   <form
@@ -183,13 +191,13 @@ const AppChats = memo(function AppChats({
                         }
                       }}
                       autoFocus
-                      className="w-full bg-sidebar-accent/60 border border-primary/30 rounded-md px-2 py-0.5 text-[13px] outline-none focus:border-primary"
+                      className="w-full bg-sidebar-accent/60 border border-primary/30 rounded-xl px-2 py-0.5 text-sm outline-none focus:border-primary"
                     />
                   </form>
                 ) : (
                   <button
                     type="button"
-                    className={`flex items-center gap-2 px-2 py-1.5 text-[14px] rounded-md cursor-pointer text-left w-full min-w-0 ${
+                    className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
                       selectedChatId === chat.id
                         ? "text-primary font-medium"
                         : "text-foreground/80"
@@ -207,7 +215,7 @@ const AppChats = memo(function AppChats({
                       ) : null}
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className={`truncate ${unread ? "font-semibold" : ""}`}>{chat.title || "Nuevo chat"}</span>
-                        <span className="text-[12px] text-muted-foreground/60 mt-0.5">
+                        <span className="typo-micro opacity-60 mt-0.5">
                           {formatDistanceToNow(new Date(chat.createdAt), {
                             addSuffix: false,
                             locale: es,
@@ -221,11 +229,11 @@ const AppChats = memo(function AppChats({
                 {/* Gradient + quick actions + 3-dot menu */}
                 {!isRenaming && (
                   <>
-                    <div className="absolute right-0 top-0 bottom-0 w-32 pointer-events-none opacity-0 group-hover/chat-row:opacity-100 transition-opacity z-10 rounded-r-md bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent" />
+                    <div className={`absolute right-0 top-0 bottom-0 w-32 pointer-events-none transition-opacity z-10 rounded-r-md bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`} />
                     {/* Archive quick action */}
                     <button
                       type="button"
-                      className="absolute right-9 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/chat-row:opacity-100 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+                      className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Archivar"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -238,7 +246,7 @@ const AppChats = memo(function AppChats({
                     <button
                       ref={(el) => { if (el) menuBtnRefs.current.set(chat.id, el); else menuBtnRefs.current.delete(chat.id); }}
                       type="button"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/chat-row:opacity-100 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Opciones"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -255,7 +263,7 @@ const AppChats = memo(function AppChats({
           {chats.length > 5 && (
             <button
               type="button"
-              className="px-2 py-1 text-[10.5px] text-muted-foreground/60 hover:text-primary transition-colors cursor-pointer text-left"
+              className="px-2 py-1 typo-micro opacity-60 hover:text-primary transition-colors cursor-pointer text-left"
               onClick={(e) => {
                 e.stopPropagation();
               }}
@@ -278,15 +286,15 @@ const AppChats = memo(function AppChats({
         >
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onMarkUnread(openMenuId); }}
           >
-            <BellOff size={14} className="text-muted-foreground shrink-0" />
+            <BellOff size={14} className="opacity-60 shrink-0" />
             Marcar como no leído
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => {
               const chat = sortedChats.find(c => c.id === openMenuId);
               closeMenu();
@@ -297,13 +305,12 @@ const AppChats = memo(function AppChats({
               }
             }}
           >
-            <Pencil size={14} className="text-muted-foreground shrink-0" />
+            <Pencil size={14} className="opacity-60 shrink-0" />
             Renombrar
           </button>
-          <div className="border-t border-border mx-2 my-1" />
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-destructive/10 text-destructive transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => {
               const chat = sortedChats.find(c => c.id === openMenuId);
               closeMenu();
@@ -321,8 +328,8 @@ const AppChats = memo(function AppChats({
   );
 });
 
-// --- App Git Dot Indicator ---
-const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) {
+// --- App Git Data Hook ---
+function useAppGitStatus(appId: number) {
   const { hasUncommittedFiles } = useUncommittedFiles(appId);
   const { data: gitState } = useQuery({
     queryKey: ["git-state", appId],
@@ -337,11 +344,17 @@ const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) 
   });
 
   const hasUnpushedChanges = hasUncommittedFiles || (gitState?.ahead ?? 0) > 0;
+  return { hasUnpushedChanges };
+}
+
+// --- App Git Dot Indicator ---
+const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) {
+  const { hasUnpushedChanges } = useAppGitStatus(appId);
 
   if (!hasUnpushedChanges) return null;
 
   return (
-    <GitBranch className="w-3.5 h-3.5 text-orange-500 animate-pulse shrink-0 ml-1.5" />
+    <GitBranch className="w-3.5 h-3.5 text-primary animate-pulse shrink-0 ml-1.5" />
   );
 });
 
@@ -357,6 +370,7 @@ interface WorkspaceAppItemProps {
   onMarkUnread: (chatId: number) => void;
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
+  onOpenGit: (appId: number) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -372,10 +386,12 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onMarkUnread,
   onNewChat,
   onCloseApp,
+  onOpenGit,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
   const isActive = selectedAppId === app.id;
+  const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const queryClient = useQueryClient();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -392,7 +408,12 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     const btn = menuBtnRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, left: rect.right + 8 });
+    const menuHeight = 110; // Approx height of 3 items popup
+    let top = rect.bottom + 4;
+    if (top + menuHeight > window.innerHeight) {
+      top = rect.top - menuHeight - 4;
+    }
+    setMenuPos({ top, left: rect.right + 8 });
     setMenuOpen(true);
   }, []);
 
@@ -434,13 +455,13 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 
   return (
     <>
-    <div className="mb-0.5">
-      <div className={`group/app-row relative flex items-center rounded-lg transition-all duration-150 ${
+    <div className="mb-3">
+      <div className={`group/app-row relative flex items-center rounded-xl transition-all duration-150 ${
         isActive ? "bg-primary/8" : "hover:bg-sidebar-accent/60"
-      }`}>
+      } ${menuOpen ? "bg-sidebar-accent/60" : ""}`}>
         <button
           type="button"
-          className={`flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 cursor-pointer text-left ${
+          className={`flex items-center gap-2.5 flex-1 min-w-0 px-3 py-2 cursor-pointer text-left ${
             isActive ? "text-primary" : ""
           }`}
           onClick={() => onToggle(app.id)}
@@ -450,20 +471,30 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           ) : (
             <ChevronRight size={13} className="text-muted-foreground/70 shrink-0" />
           )}
-          <span className={`text-[15px] truncate flex-1 ${isActive ? "font-semibold" : "font-medium"}`}>
-            {app.name}
-          </span>
-          <SidebarGitDot appId={app.id} />
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="typo-menu-item truncate leading-tight">
+                {app.name}
+              </span>
+              <SidebarGitDot appId={app.id} />
+            </div>
+            <span className={`typo-micro mt-0.5 ${isActive ? "opacity-90 text-primary" : "opacity-50 text-foreground"}`}>
+              {formatDistanceToNow(new Date(app.createdAt), {
+                addSuffix: true,
+                locale: es,
+              })}
+            </span>
+          </div>
         </button>
 
         {/* Gradient fade */}
-        <div className="absolute right-0 top-0 bottom-0 w-24 pointer-events-none opacity-0 group-hover/app-row:opacity-100 transition-opacity z-10 rounded-r-lg bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent" />
+        <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none transition-opacity z-10 rounded-r-lg bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`} />
 
         {/* 3-dot menu button */}
         <button
           ref={menuBtnRef}
           type="button"
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/app-row:opacity-100 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer"
+          className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/app-row:opacity-100"}`}
           title="Opciones"
           onClick={(e) => { e.stopPropagation(); menuOpen ? closeMenu() : openMenu(); }}
         >
@@ -473,7 +504,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
         {/* New chat (Plus) button */}
         <button
           type="button"
-          className="absolute right-8 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/app-row:opacity-100 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer"
+          className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
           title="Nuevo chat"
           onClick={(e) => { e.stopPropagation(); onNewChat(app.id); }}
         >
@@ -506,24 +537,33 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
         >
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onNewChat(app.id); }}
           >
-            <Plus size={14} className="text-muted-foreground shrink-0" />
+            <Plus size={14} className="opacity-60 shrink-0" />
             Nuevo chat
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] hover:bg-sidebar-accent transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={loadAndShowArchived}
           >
-            <Archive size={14} className="text-muted-foreground shrink-0" />
+            <Archive size={14} className="opacity-60 shrink-0" />
             Ver archivados
           </button>
-          <div className="border-t border-border mx-2 my-1" />
+          {hasUnpushedChanges && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => { closeMenu(); onOpenGit(app.id); }}
+            >
+              <GitBranch size={14} className="opacity-60 shrink-0" />
+              Revisar cambios
+            </button>
+          )}
           <button
             type="button"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-[13px] text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
           >
             <X size={14} className="shrink-0" />
@@ -552,8 +592,8 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 <Archive size={15} className="text-primary" />
               </div>
               <div>
-                <span className="text-[14px] font-semibold block">Chats archivados</span>
-                <span className="text-[11px] text-muted-foreground/60">{app.name}</span>
+                <span className="text-sm font-semibold block">Chats archivados</span>
+                <span className="text-xs text-muted-foreground/60">{app.name}</span>
               </div>
             </div>
             <button
@@ -570,7 +610,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             {loadingArchived ? (
               <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
                 <Loader2 size={16} className="animate-spin" />
-                <span className="text-[13px]">Cargando archivados...</span>
+                <span className="text-sm">Cargando archivados...</span>
               </div>
             ) : archivedChats.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
@@ -578,8 +618,8 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   <Archive size={28} className="opacity-50" />
                 </div>
                 <div className="text-center">
-                  <p className="text-[13px] font-medium text-muted-foreground/70">Sin chats archivados</p>
-                  <p className="text-[12px] mt-0.5 text-muted-foreground/40">Los chats archivados de {app.name} aparecerán aquí</p>
+                  <p className="text-sm font-medium text-muted-foreground/70">Sin chats archivados</p>
+                  <p className="text-xs mt-0.5 text-muted-foreground/40">Los chats archivados de {app.name} aparecerán aquí</p>
                 </div>
               </div>
             ) : (
@@ -593,14 +633,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                       <Archive size={12} className="text-muted-foreground/50" />
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-[13.5px] truncate font-medium">{chat.title || "Sin título"}</span>
-                      <span className="text-[11.5px] text-muted-foreground/55 mt-0.5">
+                      <span className="text-sm truncate font-medium">{chat.title || "Sin título"}</span>
+                      <span className="text-xs text-muted-foreground/55 mt-0.5">
                         Archivado · {formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true, locale: es })}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[12px] font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                       onClick={() => handleUnarchive(chat.id)}
                       disabled={unarchivingId === chat.id}
                     >
@@ -619,10 +659,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           {/* Footer */}
           {archivedChats.length > 0 && (
             <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
-              <span className="text-[12px] text-muted-foreground/50">
+              <span className="text-xs text-muted-foreground/50">
                 {archivedChats.length} {archivedChats.length !== 1 ? 'chats archivados' : 'chat archivado'}
               </span>
-              <span className="text-[11px] text-muted-foreground/35">Hover para restaurar</span>
+              <span className="text-xs text-muted-foreground/35">Hover para restaurar</span>
             </div>
           )}
         </div>
@@ -651,6 +691,12 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
   // Listen for sidebar action triggers from TopNavbar dropdown
   const sidebarAction = useAtomValue(sidebarActionAtom);
+  const { theme, intensity } = useTheme();
+
+  const handleOpenGit = useCallback((appId: number) => {
+    ipc.system.openGitWindow({ appId, theme, themeIntensity: intensity });
+  }, [theme, intensity]);
+
   const lastActionRef2 = useRef<number>(0);
   useEffect(() => {
     if (!sidebarAction || sidebarAction.ts === lastActionRef2.current) return;
@@ -950,7 +996,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
           border-color: var(--primary);
         }
         .workspace-search-input::placeholder {
-          color: var(--muted-foreground);
+          /* Color will be inherited from the component's semantic token */
           opacity: 0.5;
         }
         .workspace-open-folder-btn {
@@ -998,17 +1044,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       >
         
         <SidebarGroupContent>
-          <div className="flex flex-col gap-1.5 px-2">
+          <div className="flex flex-col gap-3 px-2">
 
             {/* Search */}
             <div className="relative">
               <Search
                 size={14}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 typo-input opacity-50"
               />
               <input
                 type="text"
-                className="workspace-search-input"
+                className="workspace-search-input typo-input"
                 placeholder="Buscar aplicación..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1017,15 +1063,15 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
             {/* Apps list */}
             {loading ? (
-              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
+              <div className="py-3 px-2 typo-micro opacity-60 text-center">
                 Cargando aplicaciones...
               </div>
             ) : error ? (
-              <div className="py-3 px-2 text-xs text-red-400 text-center">
+              <div className="py-3 px-2 text-xs text-destructive text-center">
                 Error al cargar las aplicaciones
               </div>
             ) : filteredApps.length === 0 ? (
-              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
+              <div className="py-3 px-2 typo-micro opacity-60 text-center">
                 {searchQuery ? "Sin resultados" : "No se encontraron aplicaciones"}
               </div>
             ) : (
@@ -1043,6 +1089,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onMarkUnread={handleMarkUnread}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
+                    onOpenGit={handleOpenGit}
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />
@@ -1127,8 +1174,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-semibold mb-1">¿Eliminar chat?</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="typo-label mb-1">¿Eliminar chat?</h3>
+            <p className="typo-body text-muted-foreground mb-3">
               Se eliminará "{deleteChatTitle}" de forma permanente. Esta acción no se puede deshacer.
               <br /><br />
               <strong>Nota:</strong> Los cambios de código ya aceptados se mantendrán.
@@ -1136,14 +1183,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-sidebar-accent transition-colors"
+                className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
                 onClick={() => setIsDeleteChatDialogOpen(false)}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                className="px-3 py-1.5 text-xs rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
+                className="px-3 py-1.5 typo-button rounded-md text-white bg-destructive hover:bg-destructive/90 transition-colors"
                 onClick={handleConfirmDeleteChat}
               >
                 Eliminar chat

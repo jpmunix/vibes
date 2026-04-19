@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -109,9 +109,9 @@ export function AppList({ show }: { show?: boolean }) {
     [apps],
   );
 
-  if (!show) {
-    return null;
-  }
+  // if (!show) {
+  //  return null;
+  // }
 
   const handleAppClick = (id: number) => {
     setSelectedAppId(id);
@@ -202,76 +202,78 @@ export function AppList({ show }: { show?: boolean }) {
 
   return (
     <>
-      {/* ── Sidebar premium styles ── */}
-      <style>{`
-        .sidebar-action-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          padding: 7px 10px;
-          border-radius: 10px;
-          border: 1px solid var(--border);
-          background: var(--sidebar);
-          color: var(--sidebar-foreground);
-          font-size: 14.5px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .sidebar-action-btn:hover {
-          background: var(--sidebar-accent);
-          border-color: var(--border);
-          transform: translateY(-0.5px);
-          box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
-        }
-        .sidebar-action-btn:active {
-          transform: scale(0.98);
-        }
-        .sidebar-action-btn svg {
-          opacity: 0.55;
-          flex-shrink: 0;
-          color: var(--primary);
-        }
-        .sidebar-action-btn:hover svg {
-          opacity: 0.85;
-        }
+      {show && (
+        <>
+          {/* ── Sidebar premium styles ── */}
+          <style>{`
+            .sidebar-action-btn {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              width: 100%;
+              padding: 7px 10px;
+              border-radius: 10px;
+              border: 1px solid var(--border);
+              background: var(--sidebar);
+              color: var(--sidebar-foreground);
+              font-size: 14.5px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+            }
+            .sidebar-action-btn:hover {
+              background: var(--sidebar-accent);
+              border-color: var(--border);
+              transform: translateY(-0.5px);
+              box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+            }
+            .sidebar-action-btn:active {
+              transform: scale(0.98);
+            }
+            .sidebar-action-btn svg {
+              opacity: 0.55;
+              flex-shrink: 0;
+              color: var(--primary);
+            }
+            .sidebar-action-btn:hover svg {
+              opacity: 0.85;
+            }
 
-        .sidebar-section-label {
-          font-size: 12.5px;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: var(--muted-foreground);
-          opacity: 0.5;
-          padding: 10px 12px 4px;
-        }
-      `}</style>
+            .sidebar-section-label {
+              font-size: 12.5px;
+              font-weight: 700;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              color: var(--muted-foreground);
+              opacity: 0.5;
+              padding: 10px 12px 4px;
+            }
+          `}</style>
 
-      <SidebarGroup
-        className="overflow-y-auto h-[calc(100vh-112px)]"
-        data-testid="app-list-container"
-      >
+          <SidebarGroup
+            className="overflow-y-auto h-[calc(100vh-112px)]"
+            data-testid="app-list-container"
+          >
         
         <SidebarGroupContent>
           <div className="flex flex-col gap-1.5 px-2">
             {loading ? (
-              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
+              <div className="py-3 px-2 typo-caption opacity-60 text-center">
                 Cargando aplicaciones...
               </div>
             ) : error ? (
-              <div className="py-3 px-2 text-xs text-red-400 text-center">
+              <div className="py-3 px-2 typo-caption text-destructive text-center">
                 Error al cargar las aplicaciones
               </div>
             ) : apps.length === 0 ? (
-              <div className="py-3 px-2 text-xs text-muted-foreground/60 text-center">
+              <div className="py-3 px-2 typo-caption opacity-60 text-center">
                 No se encontraron aplicaciones
               </div>
             ) : (
               <SidebarMenu className="mt-1" data-testid="app-list">
                 {favoriteApps.length > 0 && (
                   <>
-                    <div className="sidebar-section-label">Aplicaciones favoritas</div>
+                    <div className="px-3 py-2 typo-menu-header opacity-50">Aplicaciones favoritas</div>
                     {favoriteApps.map((app) => (
                       <AppItem
                         key={app.id}
@@ -288,7 +290,7 @@ export function AppList({ show }: { show?: boolean }) {
                 )}
                 {nonFavoriteApps.length > 0 && (
                   <>
-                    <div className="sidebar-section-label">Otras aplicaciones</div>
+                    <div className="px-3 py-2 typo-menu-header opacity-50">Otras aplicaciones</div>
                     {nonFavoriteApps.map((app) => (
                       <AppItem
                         key={app.id}
@@ -305,7 +307,7 @@ export function AppList({ show }: { show?: boolean }) {
                 )}
                 {noLocalFilesApps.length > 0 && (
                   <>
-                    <div className="sidebar-section-label" style={{ opacity: 0.35 }}>Sin archivos locales</div>
+                    <div className="px-3 py-2 typo-menu-header opacity-50">Sin archivos locales</div>
                     {noLocalFilesApps.map((app) => (
                       <AppItem
                         key={app.id}
@@ -325,6 +327,8 @@ export function AppList({ show }: { show?: boolean }) {
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
+        </>
+      )}
       <AppSearchDialog
         open={isSearchDialogOpen}
         onOpenChange={setIsSearchDialogOpen}
@@ -340,7 +344,7 @@ export function AppList({ show }: { show?: boolean }) {
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>¿Cerrar "{deleteAppName}"?</DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
             </DialogDescription>
           </DialogHeader>
@@ -353,7 +357,7 @@ export function AppList({ show }: { show?: boolean }) {
               disabled={isDeleting}
               className="rounded border-border"
             />
-            <label htmlFor="delete-files-check" className="text-xs text-muted-foreground cursor-pointer">
+            <label htmlFor="delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
               También eliminar archivos del disco
             </label>
           </div>
@@ -415,7 +419,7 @@ export function AppList({ show }: { show?: boolean }) {
                   autoFocus
                 />
                 {emptyAppNameCheck?.exists && (
-                  <p className="text-sm text-red-500">
+                  <p className="typo-caption text-destructive">
                     Ya existe una aplicación con este nombre
                   </p>
                 )}
@@ -447,6 +451,7 @@ export function AppList({ show }: { show?: boolean }) {
           </form>
         </DialogContent>
       </Dialog>
+      <ImportAppButton />
     </>
   );
 }

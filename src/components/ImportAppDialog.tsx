@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
 import { useMutation } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/lib/toast";
-import { Folder, X, Loader2, Info } from "lucide-react";
+import { Folder, X, Loader2, Info } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -340,7 +340,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
       <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] max-h-[98vh] overflow-y-auto flex flex-col p-0">
         <DialogHeader className="sticky top-0 bg-background border-b px-6 py-4">
           <DialogTitle>Importar App</DialogTitle>
-          <DialogDescription className="text-sm">
+          <DialogDescription>
             Importa una aplicación existente desde una carpeta local o clónala
             desde Github.
           </DialogDescription>
@@ -351,20 +351,20 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger
                 value="local-folder"
-                className="text-xs sm:text-sm px-2 py-2"
+                className="typo-body px-2 py-2"
               >
                 Carpeta local
               </TabsTrigger>
               <TabsTrigger
                 value="github-repos"
-                className="text-xs sm:text-sm px-2 py-2"
+                className="typo-body px-2 py-2"
               >
                 <span className="hidden sm:inline">Mis repos de GitHub</span>
                 <span className="sm:hidden">GitHub</span>
               </TabsTrigger>
               <TabsTrigger
                 value="github-url"
-                className="text-xs sm:text-sm px-2 py-2"
+                className="typo-body px-2 py-2"
               >
                 GitHub URL
               </TabsTrigger>
@@ -391,10 +391,10 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <div className="rounded-md border p-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 overflow-hidden">
-                          <p className="text-sm font-medium mb-1">
+                          <p className="typo-label mb-1">
                             Carpeta seleccionada:
                           </p>
-                          <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          <p className="typo-body text-muted-foreground break-words">
                             {selectedPath}
                           </p>
                         </div>
@@ -414,18 +414,18 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                     <div className="space-y-2">
                       {nameExists && !existingAppId && (
-                        <p className="text-xs sm:text-sm text-yellow-500">
+                        <p className="typo-body text-yellow-500">
                           Ya existe una aplicación con este nombre. Por favor,
                           elige un nombre diferente:
                         </p>
                       )}
                       {nameExists && existingAppId && (
-                        <p className="text-xs sm:text-sm text-blue-500">
+                        <p className="typo-body text-blue-500">
                           Esta app ya está registrada. Se abrirá directamente.
                         </p>
                       )}
                       <div className="relative">
-                        <Label className="text-xs sm:text-sm ml-2 mb-2">
+                        <Label className="typo-body ml-2 mb-2">
                           Nombre de la aplicación
                         </Label>
                         <Input
@@ -445,12 +445,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                     <Accordion type="single" collapsible>
                       <AccordionItem value="advanced-options">
-                        <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
+                        <AccordionTrigger className="typo-body hover:no-underline">
                           Opciones avanzadas
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4">
                           <div className="grid gap-2">
-                            <Label className="text-xs sm:text-sm ml-2 mb-2">
+                            <Label className="typo-body ml-2 mb-2">
                               Comando de instalación
                             </Label>
                             <Input
@@ -459,24 +459,24 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                 setInstallCommand(e.target.value)
                               }
                               placeholder="npm install"
-                              className="text-sm"
+                              className="typo-label"
                               disabled={importAppMutation.isPending}
                             />
                           </div>
                           <div className="grid gap-2">
-                            <Label className="text-xs sm:text-sm ml-2 mb-2">
+                            <Label className="typo-body ml-2 mb-2">
                               Comando de inicio
                             </Label>
                             <Input
                               value={startCommand}
                               onChange={(e) => setStartCommand(e.target.value)}
                               placeholder="npm run dev"
-                              className="text-sm"
+                              className="typo-label"
                               disabled={importAppMutation.isPending}
                             />
                           </div>
                           {!commandsValid && (
-                            <p className="text-xs sm:text-sm text-red-500">
+                            <p className="typo-body text-red-500">
                               Ambos comandos son obligatorios al personalizar.
                             </p>
                           )}
@@ -492,14 +492,14 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                               <Info className="h-4 w-4 flex-shrink-0 mt-1" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">
+                              <p className="typo-caption">
                                 AI_RULES.md le dice a Vibes qué tecnologías usar
                                 para editar la app
                               </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                        <AlertDescription className="text-xs sm:text-sm">
+                        <AlertDescription className="typo-body">
                           No se encontró AI_RULES.md. Vibes generará uno
                           automáticamente después de importar.
                         </AlertDescription>
@@ -573,7 +573,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   )}
 
                   <div className="space-y-2">
-                    <Label className="text-xs sm:text-sm ml-2 mb-2">
+                    <Label className="typo-body ml-2 mb-2">
                       Nombre de la aplicación (opcional)
                     </Label>
                     <Input
@@ -589,7 +589,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       </div>
                     )}
                     {githubNameExists && (
-                      <p className="text-xs sm:text-sm text-yellow-500">
+                      <p className="typo-body text-yellow-500">
                         Ya existe una aplicación con este nombre. Por favor,
                         elige un nombre diferente.
                       </p>
@@ -598,7 +598,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
                   <div className="flex flex-col space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
                     {!loading && repos.length === 0 && (
-                      <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
+                      <p className="typo-body text-muted-foreground text-center py-4">
                         No se encontraron repositorios
                       </p>
                     )}
@@ -611,7 +611,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                           <p className="font-semibold truncate text-sm">
                             {repo.name}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="typo-caption text-muted-foreground truncate">
                             {repo.full_name}
                           </p>
                         </div>
@@ -636,12 +636,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                     <>
                       <Accordion type="single" collapsible>
                         <AccordionItem value="advanced-options">
-                          <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
+                          <AccordionTrigger className="typo-body hover:no-underline">
                             Opciones avanzadas
                           </AccordionTrigger>
                           <AccordionContent className="space-y-4">
                             <div className="grid gap-2">
-                              <Label className="text-xs sm:text-sm">
+                              <Label className="typo-body">
                                 Comando de instalación
                               </Label>
                               <Input
@@ -650,12 +650,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                   setInstallCommand(e.target.value)
                                 }
                                 placeholder="npm install"
-                                className="text-sm"
+                                className="typo-label"
                                 disabled={importing}
                               />
                             </div>
                             <div className="grid gap-2">
-                              <Label className="text-xs sm:text-sm">
+                              <Label className="typo-body">
                                 Comando de inicio
                               </Label>
                               <Input
@@ -664,12 +664,12 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                                   setStartCommand(e.target.value)
                                 }
                                 placeholder="npm run dev"
-                                className="text-sm"
+                                className="typo-label"
                                 disabled={importing}
                               />
                             </div>
                             {!commandsValid && (
-                              <p className="text-xs sm:text-sm text-red-500">
+                              <p className="typo-body text-red-500">
                                 Ambos comandos son obligatorios al personalizar.
                               </p>
                             )}
@@ -683,7 +683,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
             </TabsContent>
             <TabsContent value="github-url" className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">
+                <Label className="typo-body">
                   URL del repositorio
                 </Label>
                 <Input
@@ -692,11 +692,11 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   onChange={(e) => setUrl(e.target.value)}
                   disabled={importing}
                   onBlur={handleUrlBlur}
-                  className="text-sm break-all"
+                  className="typo-label break-all"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">
+                <Label className="typo-body">
                   Nombre de la aplicación (opcional)
                 </Label>
                 <Input
@@ -704,7 +704,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   onChange={handleGithubAppNameChange}
                   placeholder="Deja vacío para usar el nombre del repositorio"
                   disabled={importing}
-                  className="text-sm"
+                  className="typo-label"
                 />
                 {isCheckingGithubName && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -712,7 +712,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                   </div>
                 )}
                 {githubNameExists && (
-                  <p className="text-xs sm:text-sm text-yellow-500">
+                  <p className="typo-body text-yellow-500">
                     Ya existe una aplicación con este nombre. Por favor, elige
                     un nombre diferente.
                   </p>
@@ -721,36 +721,36 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
 
               <Accordion type="single" collapsible>
                 <AccordionItem value="advanced-options">
-                  <AccordionTrigger className="text-xs sm:text-sm hover:no-underline">
+                  <AccordionTrigger className="typo-body hover:no-underline">
                     Opciones avanzadas
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <div className="grid gap-2">
-                      <Label className="text-xs sm:text-sm">
+                      <Label className="typo-body">
                         Comando de instalación
                       </Label>
                       <Input
                         value={installCommand}
                         onChange={(e) => setInstallCommand(e.target.value)}
                         placeholder="npm install"
-                        className="text-sm"
+                        className="typo-label"
                         disabled={importing}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label className="text-xs sm:text-sm">
+                      <Label className="typo-body">
                         Comando de inicio
                       </Label>
                       <Input
                         value={startCommand}
                         onChange={(e) => setStartCommand(e.target.value)}
                         placeholder="npm run dev"
-                        className="text-sm"
+                        className="typo-label"
                         disabled={importing}
                       />
                     </div>
                     {!commandsValid && (
-                      <p className="text-xs sm:text-sm text-red-500">
+                      <p className="typo-body text-red-500">
                         Ambos comandos son obligatorios al personalizar.
                       </p>
                     )}

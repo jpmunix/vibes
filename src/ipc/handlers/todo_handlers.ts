@@ -529,8 +529,7 @@ export function registerTodoHandlers() {
       .map((msg) => `${msg.role}: ${msg.content}`)
       .join("\n");
 
-    const { getEffectivePrompt } = await import("../../prompts");
-    const systemPrompt = getEffectivePrompt("summarize_chat_system", settings);
+    const systemPrompt = "Resume el siguiente chat de desarrollo de forma concisa pero capturando los puntos clave, decisiones técnicas y resultados. Devuelve el resumen en formato Markdown con secciones claras.";
 
     try {
       const data = await openRouterCompletion({

@@ -1,6 +1,6 @@
 import { ipc } from "@/ipc/types";
 import { useEffect, useState } from "react";
-import { Minus, Square, Copy, X } from "lucide-react";
+import { Minus, Square, Copy, X } from "@/components/ui/icons";
 
 interface WindowsControlsProps {
     className?: string;
@@ -55,7 +55,7 @@ export function WindowsControls({ className = "", buttonClassName = "" }: Window
         ipc.system.closeWindow();
     };
 
-    const baseButtonStyle = "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-all cursor-pointer mx-0.5";
+    const baseButtonStyle = "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-all cursor-pointer mx-0.5";
 
     return (
         <div className={`flex items-center h-full no-app-region-drag px-2 ${className}`}>

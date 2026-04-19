@@ -359,7 +359,7 @@ function Component() {
   return (
     <div>
       <h1 className="text-[18px]">Title</h1>
-      <p className="text-[14px]">Paragraph</p>
+      <p className="text-sm">Paragraph</p>
     </div>
   );
 }`;
@@ -373,7 +373,7 @@ function Component() {
       expect(result).toContain("text-[32px]");
       expect(result).not.toContain("text-[18px]");
       expect(result).toContain("text-[16px]");
-      expect(result).not.toContain("text-[14px]");
+      expect(result).not.toContain("text-sm");
     });
   });
 

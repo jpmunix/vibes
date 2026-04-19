@@ -13,8 +13,10 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
-} from "lucide-react";
-import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+  Check,
+} from "@/components/ui/icons";
+
+import { PanelRightClose, PanelLeftClose, PanelLeftOpen } from "@/components/ui/icons";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, previewModeAtom } from "@/atoms/appAtoms";
 import { Button } from "../ui/button";
@@ -26,9 +28,12 @@ import {
 import { ipc } from "@/ipc/types";
 import { useRouter } from "@tanstack/react-router";
 import { selectedChatIdAtom, isStreamingByIdAtom, recentStreamChatIdsAtom } from "@/atoms/chatAtoms";
+
 import { useChats } from "@/hooks/useChats";
 import { showError, showSuccess } from "@/lib/toast";
 import { useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import ConfirmationDialog from "../ConfirmationDialog";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { chatMessagesByIdAtom } from "@/atoms/chatAtoms";
@@ -109,7 +114,8 @@ export function ChatHeader({
   const handleCheckoutMainBranch = async () => {
     if (!appId) return;
     // Use the current branch instead of hardcoded "main"
-    const currentBranch = branchInfo?.branch || "main";
+    const rawBranch = branchInfo?.branch;
+    const currentBranch = (rawBranch && rawBranch !== "<no-branch>") ? rawBranch : "main";
     await checkoutVersion({ appId, versionId: currentBranch });
   };
 
@@ -197,14 +203,14 @@ export function ChatHeader({
       )}
 
       {!workspaceMode && (
-      <div className="@container flex items-center px-1 py-2 border-b border-border no-app-region-drag h-[45px]">
+      <div className="@container flex items-center px-3 py-2 border-b border-border bg-sidebar no-app-region-drag h-[45px]">
         <div className="flex items-center shrink-0">
           <Button
             onClick={handleNewChat}
             variant="ghost"
-            className="hidden @2xs:flex items-center justify-start gap-1 mx-1 px-2.5 py-1 text-xs font-medium"
+            className="hidden @2xs:flex items-center justify-start gap-1.5 mx-1 px-4 h-8 rounded-lg typo-tab"
           >
-            <MessageSquarePlus size={15} />
+            <MessageSquarePlus size={17} />
             <span>Nuevo chat</span>
           </Button>
         </div>
@@ -214,7 +220,7 @@ export function ChatHeader({
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-1 text-sm px-2 py-1 rounded-md"
+              className="flex items-center gap-1.5 typo-tab px-4 h-8 rounded-lg"
             >
               <span className="flex items-center gap-2">
                 {(() => {
@@ -249,7 +255,7 @@ export function ChatHeader({
           <DropdownMenuContent align="start" className="w-fit min-w-[320px] max-w-[500px] max-h-[400px] overflow-y-auto">
             {chats.length === 0 ? (
               <DropdownMenuItem disabled>
-                <span className="text-muted-foreground text-sm">Sin chats</span>
+                <span className="typo-caption text-muted-foreground">Sin chats</span>
               </DropdownMenuItem>
             ) : (
               [...chats]
@@ -282,6 +288,9 @@ export function ChatHeader({
                       </>
                     ) : (
                       <>
+                        <span className="w-4 mr-1 shrink-0 flex items-center justify-center">
+                          {selectedChatId === chat.id && <Check size={14} className="text-primary" />}
+                        </span>
                         {chatStreaming ? (
                           <Loader2 size={14} className="mr-2 shrink-0 animate-spin text-primary" />
                         ) : chatUnread ? (
@@ -302,9 +311,9 @@ export function ChatHeader({
                               title: chat.title || `Chat ${chat.id}`,
                             });
                           }}
-                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-amber-500/10 hover:text-amber-500 transition-all shrink-0"
+                          className="opacity-0 group-hover/chat-item:opacity-100 ml-2 p-1 rounded hover:bg-muted hover:text-foreground transition-all shrink-0"
                         >
-                          <Pencil size={12} className="text-amber-500" />
+                          <Pencil size={12} className="text-muted-foreground" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -409,7 +418,7 @@ export function ChatHeader({
               name="title"
               autoFocus
               defaultValue={chatToRename?.title || ""}
-              className="w-full bg-transparent border border-border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full bg-transparent border border-border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30"
               placeholder="Título del chat"
             />
             <DialogFooter className="mt-4">
@@ -443,7 +452,7 @@ function SessionCostBadge({ chatId }: { chatId: number | null }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <div
-          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium
+          className="inline-flex items-center px-2 py-0.5 rounded-md typo-badge
             bg-muted text-muted-foreground
             border border-border
             transition-all duration-200 select-none cursor-default"
@@ -452,9 +461,9 @@ function SessionCostBadge({ chatId }: { chatId: number | null }) {
           <span className="tabular-nums tracking-tight">{shortDisplay}</span>
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-center">
-        <div>Gasto en esta sesión</div>
-        <div className="font-semibold">{fullPrecision}</div>
+      <TooltipContent side="bottom" className="text-center p-3 rounded-xl shadow-lg border-border bg-popover text-popover-foreground">
+        <div className="typo-body text-muted-foreground mb-1">Gasto en esta sesión</div>
+        <div className="typo-mono text-lg font-bold text-foreground">{fullPrecision}</div>
       </TooltipContent>
     </Tooltip>
   );

@@ -7,7 +7,7 @@ import {
     CheckCircle2,
     AlertTriangle,
     FileSearch,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 interface VibesTypecheckSummaryProps {
     children?: ReactNode;
@@ -63,7 +63,7 @@ export const VibesTypecheckSummary: React.FC<VibesTypecheckSummaryProps> = ({ ch
                             {entry.label}
                         </span>
                         {entry.status === "ok" && (
-                            <span className="text-gray-500 ml-1">— sin errores</span>
+                            <span className="text-muted-foreground ml-1">— sin errores</span>
                         )}
                         {entry.detail && (
                             <pre className="text-red-400/80 mt-0.5 whitespace-pre-wrap break-all font-mono text-xs leading-tight">

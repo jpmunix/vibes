@@ -140,6 +140,19 @@ export function useGitPanel(appId: number | null) {
         onError: (err: Error) => toast.error(`Error al unstage: ${err.message}`),
     });
 
+    // Discard file changes
+    const discardFileChangesMutation = useMutation({
+        mutationFn: async (filepath: string) => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.git.discardFileChanges({ appId, filepath });
+        },
+        onSuccess: () => {
+            refreshFiles();
+            toast.success("Cambios descartados");
+        },
+        onError: (err: Error) => toast.error(`Error al descartar: ${err.message}`),
+    });
+
     // Commit mutation
     const commitMutation = useMutation({
         mutationFn: async ({
@@ -213,7 +226,7 @@ export function useGitPanel(appId: number | null) {
     // 1. Register event listeners for token/done/error
     // 2. Fire invoke() without await (fire-and-forget)
     // 3. All data arrives via events, invoke resolves when stream ends
-    const generateCommitMessage = useCallback(() => {
+    const generateCommitMessage = useCallback((selectedFiles?: GitPanelFile[]) => {
         if (!appId) return;
         setIsGeneratingMessage(true);
         setCommitMessage("");
@@ -271,9 +284,7 @@ export function useGitPanel(appId: number | null) {
         );
 
         // Fire-and-forget via the NEW dedicated streaming channel.
-        // This bypasses the typed client entirely — direct ipcRenderer.invoke,
-        // exactly like debateStreamClient.start() calls ipcRenderer.invoke().
-        const filesToPass = uncommittedFiles.map(f => ({ path: f.path, status: f.status }));
+        const filesToPass = (selectedFiles || uncommittedFiles).map(f => ({ path: f.path, status: f.status }));
         window.electron.ipcRenderer
             .invoke("github:generate-commit-message-stream", { appId, files: filesToPass })
             .catch((err: any) => {
@@ -434,6 +445,7 @@ export function useGitPanel(appId: number | null) {
         resolveFileTheirs: resolveFileTheirsMutation.mutateAsync,
         getConflictFileDiff,
         switchBranch: switchBranchMutation.mutateAsync,
+        discardFileChanges: discardFileChangesMutation.mutateAsync,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -447,6 +459,7 @@ export function useGitPanel(appId: number | null) {
         isAbortingMerge: abortMergeMutation.isPending,
         isResolvingFile: resolveFileOursMutation.isPending || resolveFileTheirsMutation.isPending,
         isSwitchingBranch: switchBranchMutation.isPending,
+        isDiscarding: discardFileChangesMutation.isPending,
     };
 }
 

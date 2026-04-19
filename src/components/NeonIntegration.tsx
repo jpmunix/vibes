@@ -1,6 +1,6 @@
 import { useSettings } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/button";
-import { DatabaseZap } from "lucide-react";
+import { DatabaseZap } from "@/components/ui/icons";
 
 export function NeonIntegration() {
   const { settings, updateSettings } = useSettings();
@@ -26,11 +26,11 @@ export function NeonIntegration() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <DatabaseZap className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-base font-semibold text-foreground">
             Neon
           </h3>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="typo-caption mt-1">
           Tu cuenta está conectada a Neon Database
         </p>
       </div>

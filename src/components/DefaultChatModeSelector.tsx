@@ -1,16 +1,34 @@
 import { useSettings } from "@/hooks/useSettings";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
+
 import type { ChatMode } from "@/lib/schemas";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 
+const chatModeOptions: SelectorOption[] = [
+  {
+    value: "agent",
+    label: "Agente",
+    description: "Desarrolla, edita y depura con acceso a herramientas",
+  },
+  {
+    value: "mockup",
+    label: "Turbo",
+    description: "Velocidad máxima para desarrollar y editar código al instante",
+  },
+  {
+    value: "plan",
+    label: "Planificar",
+    description: "Diseña un plan de acción antes de implementar",
+  },
+  {
+    value: "ask",
+    label: "Preguntar",
+    description: "Consulta sobre tu código sin realizar cambios",
+  },
+];
+
 export function DefaultChatModeSelector() {
-  const { settings, updateSettings, envVars } = useSettings();
+  const { settings, updateSettings } = useSettings();
 
   if (!settings) {
     return null;
@@ -18,67 +36,19 @@ export function DefaultChatModeSelector() {
 
   const effectiveDefault = getEffectiveDefaultChatMode(settings);
 
-  const handleDefaultChatModeChange = (value: ChatMode) => {
-    updateSettings({ defaultChatMode: value });
-  };
-
-  const getModeDisplayName = (mode: ChatMode) => {
-    switch (mode) {
-      case "plan":
-        return "Planificar";
-      case "ask":
-        return "Preguntar";
-      case "mockup":
-        return "Turbo";
-      case "build":
-      case "agent":
-      default:
-        return "Agente";
-    }
+  const handleDefaultChatModeChange = (value: string) => {
+    updateSettings({ defaultChatMode: value as ChatMode });
   };
 
   return (
-    <Select
+    <UnifiedSelector
       value={effectiveDefault}
-      onValueChange={handleDefaultChatModeChange}
-    >
-      <SelectTrigger className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer [&_svg]:!text-current [&_svg]:!opacity-100" id="default-chat-mode">
-        <SelectValue>{getModeDisplayName(effectiveDefault)}</SelectValue>
-      </SelectTrigger>
-      <SelectContent align="end">
-        <SelectItem value="agent">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Agente</span>
-            <span className="text-xs text-muted-foreground">
-              Desarrolla, edita y depura con acceso a herramientas
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="mockup">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Turbo</span>
-            <span className="text-xs text-muted-foreground">
-              Velocidad máxima para desarrollar y editar código al instante
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="plan">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Planificar</span>
-            <span className="text-xs text-muted-foreground">
-              Diseña un plan de acción antes de implementar
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="ask">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Preguntar</span>
-            <span className="text-xs text-muted-foreground">
-              Consulta sobre tu código sin realizar cambios
-            </span>
-          </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+      onChange={handleDefaultChatModeChange}
+      options={chatModeOptions}
+      triggerVariant="pill"
+      triggerSize="md"
+      popoverWidth="w-[280px]"
+      data-testid="default-chat-mode"
+    />
   );
 }

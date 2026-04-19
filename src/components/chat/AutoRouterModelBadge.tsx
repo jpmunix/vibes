@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { Bot } from "@/components/ui/icons";
 import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
 import {
   Tooltip,
@@ -74,7 +74,7 @@ export function AutoRouterModelBadge({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 w-full sm:w-auto cursor-help">
+          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto cursor-help">
             <Bot className="h-4 w-4 flex-shrink-0" />
             <span className="text-xs">auto → {modelName}</span>
           </div>

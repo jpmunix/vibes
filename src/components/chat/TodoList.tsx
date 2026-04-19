@@ -7,7 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   ListTodo,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface TodoListProps {
@@ -78,7 +78,7 @@ export function TodoList({ todos }: TodoListProps) {
               ) : (
                 <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               )}
-              <span className="text-sm text-muted-foreground">
+              <span className="typo-caption">
                 {completed === total
                   ? "All tasks completed"
                   : "No task in progress"}

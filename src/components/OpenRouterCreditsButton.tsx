@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, RefreshCw } from "lucide-react";
+import { DollarSign, RefreshCw } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -42,29 +42,29 @@ export function OpenRouterCreditsButton() {
             ) : (
               <DollarSign size={15} />
             )}
-            <span className="text-[12px] font-bold leading-none opacity-70">
+            <span className="typo-badge leading-none opacity-70">
               {isLoading ? "..." : formattedBalance}
             </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="p-4 rounded-xl shadow-lg border-border bg-popover text-popover-foreground" arrowClassName="fill-popover">
           <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+            <p className="typo-menu-header mb-3">
               {data.label || "OpenRouter"}
             </p>
-            <div className="flex justify-between gap-4 text-sm">
+            <div className="flex justify-between gap-4 typo-body">
               <span className="text-muted-foreground">Gasto Total:</span>
-              <span className="font-mono font-bold text-rose-500 dark:text-rose-400">${data.totalUsage.toFixed(2)}</span>
+              <span className="typo-mono text-foreground">${data.totalUsage.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between gap-4 text-sm">
+            <div className="flex justify-between gap-4 typo-body">
               <span className="text-muted-foreground">Créditos Restantes:</span>
-              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">${data.availableCredits.toFixed(2)}</span>
+              <span className="typo-mono text-foreground">${data.availableCredits.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between gap-4 text-sm border-t border-border mt-2 pt-2">
+            <div className="flex justify-between gap-4 typo-body border-t border-border mt-3 pt-3">
               <span className="text-muted-foreground">Total Recargado:</span>
-              <span className="font-mono">${data.totalCredits.toFixed(2)}</span>
+              <span className="typo-mono text-foreground">${data.totalCredits.toFixed(2)}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground/70 mt-2 text-right italic">
+            <p className="typo-micro mt-3 text-right opacity-50">
               Click para actualizar
             </p>
           </div>

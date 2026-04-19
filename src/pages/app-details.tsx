@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-
+  Loader2,
   MessageCircle,
   Pencil,
   Folder,
@@ -33,7 +33,10 @@ import {
   MessageSquareText,
   ClipboardCopy,
   Check,
-} from "lucide-react";
+  BunnyIcon,
+  PocketBaseIcon,
+  SupabaseIcon,
+} from "@/components/ui/icons";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -52,20 +55,16 @@ import { PocketBaseConnector } from "@/components/PocketBaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckName } from "@/hooks/useCheckName";
 import { AppUpgrades } from "@/components/AppUpgrades";
 import { CapacitorControls } from "@/components/CapacitorControls";
-import bunnyLogo from "../../assets/logo-bunnynet-icon.svg";
-import supabaseLogo from "../../assets/logo-supabase-icon.svg";
-import pocketbaseLogo from "../../assets/logo-pocketbase-icon.svg";
 import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { Brain } from "lucide-react";
+import { Brain } from "@/components/ui/icons";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
@@ -362,7 +361,7 @@ export default function AppDetailsPage() {
           Atrás
         </Button>
         <div className="flex flex-col items-center justify-center flex-1">
-          <h2 className="text-xl font-bold">Aplicación no encontrada</h2>
+          <h2 className="typo-section-title">Aplicación no encontrada</h2>
         </div>
       </div>
     );
@@ -410,7 +409,7 @@ export default function AppDetailsPage() {
           <div className="my-auto w-full flex flex-col">
             {/* Hero */}
             <div className="flex items-center justify-center gap-3 mb-8 mt-2">
-              <h1 className="text-4xl font-bold text-center tracking-tight">{selectedApp.name}</h1>
+              <h1 className="typo-page-title text-center tracking-tight">{selectedApp.name}</h1>
               <Button
                 variant="ghost"
                 size="sm"
@@ -422,7 +421,7 @@ export default function AppDetailsPage() {
                 <Star
                   className={`h-6 w-6 transition-all duration-200 ${selectedApp.isFavorite
                     ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]"
-                    : "text-gray-400/60 hover:text-yellow-400"
+                    : "text-muted-foreground/70/60 hover:text-yellow-400"
                     }`}
                 />
               </Button>
@@ -440,61 +439,63 @@ export default function AppDetailsPage() {
                   }
                   ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
                 }}
-                className="cursor-pointer w-full py-5 flex justify-center items-center gap-2 bg-black/5 dark:bg-white/8 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
+                className="cursor-pointer w-full py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 hover:bg-muted/80 dark:hover:bg-black/60 transition-colors"
                 size="lg"
               >
-                <MessageCircle className="h-4 w-4" />
-                Abrir en Chat
+                <MessageCircle className="h-5 w-5" />
+                <span className="mb-0.5">Abrir en Chat</span>
               </Button>
               )}
               <div className="grid grid-cols-2 gap-2">
-                <button
+                <Button
+                  variant="outline"
                   onClick={handleOpenCopyDialog}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-black/10 dark:hover:bg-white/15 transition-colors cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-4 py-5 rounded-lg text-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 hover:bg-muted/80 dark:hover:bg-black/60 cursor-pointer shadow-sm transition-colors"
                 >
                   <Copy className="h-4 w-4" />
                   Clonar aplicación
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/8 text-sm text-foreground hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-600 dark:hover:bg-amber-500/15 dark:hover:text-amber-400 transition-colors cursor-pointer"
+                  className="flex items-center justify-center gap-2 px-4 py-5 rounded-lg text-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 text-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive dark:hover:bg-destructive/20 cursor-pointer shadow-sm transition-colors"
                 >
                   <FolderX className="h-4 w-4" />
                   Cerrar carpeta
-                </button>
+                </Button>
               </div>
               {/* Collapsible Información y opciones section */}
-              <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
+              <div className="border border-border dark:border-white/10 rounded-xl bg-card dark:bg-black/40 backdrop-blur-xl shadow-sm overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setIsInfoSectionOpen(!isInfoSectionOpen)}
-                  className="w-full px-4 py-3 flex items-center justify-between bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 transition-colors cursor-pointer"
+                  className="w-full px-4 py-4 flex items-center justify-between hover:bg-muted/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     {isInfoSectionOpen ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     )}
                     <div className="flex flex-col items-start">
-                      <span className="font-medium text-sm">Información y opciones</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Nombre, carpeta y datos de la aplicación</span>
+                      <span className="typo-label">Información y opciones</span>
+                      <span className="typo-caption">Nombre, carpeta y datos de la aplicación</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Settings className="h-3.5 w-3.5 text-gray-400" />
-                    <Info className="h-3.5 w-3.5 text-gray-400" />
+                    <Settings className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    <Info className="h-3.5 w-3.5 text-muted-foreground/70" />
                   </div>
                 </button>
                 <div
                   className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isInfoSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
                     }`}
                 >
-                  <div className="p-4 space-y-3 border-t border-black/10 dark:border-white/08 bg-black/3 dark:bg-black/15">
+                  <div className="p-4 space-y-3 border-t border-border dark:border-white/10 bg-muted/20 dark:bg-black/20">
                     {/* Opciones Card */}
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
+                        <CardTitle className="flex items-center gap-2 typo-label">
                           <Settings className="h-5 w-5" />
                           Opciones
                         </CardTitle>
@@ -557,31 +558,31 @@ export default function AppDetailsPage() {
                     {/* Información Card */}
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
+                        <CardTitle className="flex items-center gap-2 typo-label">
                           <Info className="h-5 w-5" />
                           Información
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="flex items-start gap-3">
-                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                          <MapPin className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
                           <div>
-                            <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Ruta</span>
-                            <span className="text-sm break-all">{currentAppPath}</span>
+                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Ruta</span>
+                            <span className="typo-mono-xs break-all !text-[13px]">{currentAppPath}</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <Calendar className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                          <Calendar className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
                           <div>
-                            <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Fecha de creación</span>
-                            <span className="text-sm">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Fecha de creación</span>
+                            <span className="typo-mono !text-[13px]">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
-                          <Clock className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                          <Clock className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
                           <div>
-                            <span className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Última actualización</span>
-                            <span className="text-sm">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Última actualización</span>
+                            <span className="typo-mono !text-[13px]">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -590,22 +591,22 @@ export default function AppDetailsPage() {
                     {/* Prompt Inicial Card */}
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
+                        <CardTitle className="flex items-center gap-2 typo-label">
                           <MessageSquareText className="h-5 w-5" />
                           Prompt inicial
                         </CardTitle>
-                        <CardDescription>El mensaje que dio origen a esta aplicación</CardDescription>
+                        <CardDescription className="typo-caption">El mensaje que dio origen a esta aplicación</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {isLoadingInitialPrompt ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Cargando...
                           </div>
                         ) : initialPrompt?.content ? (
                           <div className="space-y-2">
                             <div className="relative group">
-                              <div className="text-sm whitespace-pre-wrap break-words bg-black/5 dark:bg-white/5 rounded-lg p-3 border border-black/5 dark:border-white/5 max-h-48 overflow-y-auto">
+                              <div className="typo-body whitespace-pre-wrap break-words bg-black/5 dark:bg-white/5 rounded-lg p-3 border border-black/5 dark:border-white/5 max-h-48 overflow-y-auto">
                                 {initialPrompt.content}
                               </div>
                               <button
@@ -621,13 +622,13 @@ export default function AppDetailsPage() {
                                 {copiedPrompt ? (
                                   <Check className="h-3.5 w-3.5 text-green-500" />
                                 ) : (
-                                  <ClipboardCopy className="h-3.5 w-3.5 text-gray-500" />
+                                  <ClipboardCopy className="h-3.5 w-3.5 text-muted-foreground" />
                                 )}
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                          <p className="text-sm text-muted-foreground italic">
                             No se encontró el prompt inicial de esta aplicación.
                           </p>
                         )}
@@ -638,38 +639,38 @@ export default function AppDetailsPage() {
               </div>
 
               {/* Collapsible Repositorio e integraciones section */}
-              <div className="border border-black/10 dark:border-white/10 rounded-lg overflow-hidden">
+              <div className="border border-border dark:border-white/10 rounded-xl bg-card dark:bg-black/40 backdrop-blur-xl shadow-sm overflow-hidden mt-2">
                 <button
                   type="button"
                   onClick={() => setIsIntegrationsSectionOpen(!isIntegrationsSectionOpen)}
-                  className="w-full px-4 py-3 flex items-center justify-between bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 transition-colors cursor-pointer"
+                  className="w-full px-4 py-4 flex items-center justify-between hover:bg-muted/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     {isIntegrationsSectionOpen ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     )}
                     <div className="flex flex-col items-start">
-                      <span className="font-medium text-sm">Repositorio e integraciones</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">GitHub, Bunny.net, PocketBase y Supabase</span>
+                      <span className="typo-label">Repositorio e integraciones</span>
+                      <span className="typo-caption text-muted-foreground">GitHub, Bunny.net, PocketBase y Supabase</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Github className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.githubOrg && selectedApp.githubRepo ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    <img src={bunnyLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.bunnyConfig ? 'opacity-90' : 'opacity-30'}`} />
-                    <img src={pocketbaseLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.pocketbaseConfig ? 'opacity-90' : 'opacity-30'}`} />
-                    <img src={supabaseLogo} alt="" className={`h-3.5 w-3.5 transition-all duration-200 invert dark:invert-0 ${selectedApp.supabaseProjectId ? 'opacity-90' : 'opacity-30'}`} />
+                    <BunnyIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.bunnyConfig ? 'text-primary' : 'text-foreground opacity-40'}`} />
+                    <PocketBaseIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.pocketbaseConfig ? 'text-primary' : 'text-foreground opacity-40'}`} />
+                    <SupabaseIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.supabaseProjectId ? 'text-primary' : 'text-foreground opacity-40'}`} />
                     {/* Firebase hidden - not mature yet */}
-                    {/* <Flame className="h-3.5 w-3.5 text-gray-400" /> */}
-                    {/* <Smartphone className="h-3.5 w-3.5 text-gray-400" /> */}
+                    {/* <Flame className="h-3.5 w-3.5 text-muted-foreground/70" /> */}
+                    {/* <Smartphone className="h-3.5 w-3.5 text-muted-foreground/70" /> */}
                   </div>
                 </button>
                 <div
                   className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isIntegrationsSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
                     }`}
                 >
-                  <div className="p-4 space-y-3 border-t border-black/10 dark:border-white/08 bg-black/3 dark:bg-black/15">
+                  <div className="p-4 space-y-3 border-t border-border dark:border-white/10 bg-muted/20 dark:bg-black/20">
                     {/* GitHub */}
                     <CollapsibleCard
                       title="GitHub"
@@ -753,7 +754,7 @@ export default function AppDetailsPage() {
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
                   <DialogTitle>Renombrar carpeta de la aplicación</DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription>
                     Esto cambiará solo el nombre de la carpeta, no el nombre de la
                     aplicación.
                   </DialogDescription>
@@ -781,26 +782,7 @@ export default function AppDetailsPage() {
                   >
                     {isRenamingFolder ? (
                       <>
-                        <svg
-                          className="animate-spin h-3 w-3 mr-1"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
+                        <Loader2 className="animate-spin h-3 w-3 mr-1" />
                         Renombrando...
                       </>
                     ) : (
@@ -818,10 +800,10 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle className="text-base">
+                  <DialogTitle>
                     ¿Cómo te gustaría renombrar "{selectedApp.name}"?
                   </DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription>
                     Elige una opción:
                   </DialogDescription>
                 </DialogHeader>
@@ -833,15 +815,15 @@ export default function AppDetailsPage() {
                     disabled={isRenaming}
                   >
                     <div className="absolute top-1 right-1">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                      <span className="bg-blue-100 text-blue-800 typo-caption font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
                         Recomendado
                       </span>
                     </div>
                     <div className="text-left">
-                      <p className="font-medium text-xs">
+                      <p className="typo-label">
                         Renombrar aplicación y carpeta
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="typo-caption text-muted-foreground">
                         Renombra la carpeta para que coincida con el nuevo nombre de
                         la aplicación.
                       </p>
@@ -855,10 +837,10 @@ export default function AppDetailsPage() {
                     disabled={isRenaming}
                   >
                     <div className="text-left">
-                      <p className="font-medium text-xs">
+                      <p className="typo-label">
                         Solo renombrar la aplicación
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="typo-caption text-muted-foreground">
                         El nombre de la carpeta seguirá siendo el mismo.
                       </p>
                     </div>
@@ -883,7 +865,7 @@ export default function AppDetailsPage() {
                 <DialogContent className="max-w-md p-4">
                   <DialogHeader className="pb-2">
                     <DialogTitle>Clonar "{selectedApp.name}"</DialogTitle>
-                    <DialogDescription className="text-sm">
+                    <DialogDescription>
                       <p>Crea una copia independiente de esta aplicación con un nuevo nombre.</p>
                       <p>
                         Las integraciones (Supabase, GitHub) no se clonan.
@@ -912,7 +894,7 @@ export default function AppDetailsPage() {
                       </div>
 
                       {nameExists && (
-                        <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+                        <p className="typo-caption text-yellow-600 dark:text-yellow-500 mt-1">
                           Ya existe una aplicación con este nombre. Por favor, elige
                           otro nombre.
                         </p>
@@ -938,15 +920,15 @@ export default function AppDetailsPage() {
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
                         <div className="absolute top-1 right-1">
-                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 text-[10px]">
+                          <span className="bg-blue-100 text-blue-800 typo-caption font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
                             Recomendado
                           </span>
                         </div>
                         <div className="text-left">
-                          <p className="font-medium text-xs">
+                          <p className="typo-label">
                             Clonar con historial
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="typo-caption text-muted-foreground">
                             Clona toda la aplicación incluyendo el historial de
                             versiones.
                           </p>
@@ -971,10 +953,10 @@ export default function AppDetailsPage() {
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
                         <div className="text-left">
-                          <p className="font-medium text-xs">
+                          <p className="typo-label">
                             Clonar sin historial
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="typo-caption text-muted-foreground">
                             Solo clona el estado actual del código, sin versiones
                             anteriores. Útil si hay problemas con Git.
                           </p>
@@ -1004,7 +986,7 @@ export default function AppDetailsPage() {
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
                   <DialogTitle>Cambiar ubicación de la aplicación</DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription>
                     Selecciona una carpeta donde se guardará esta aplicación. El
                     nombre de la carpeta de la aplicación seguirá siendo el mismo.
                   </DialogDescription>
@@ -1044,7 +1026,7 @@ export default function AppDetailsPage() {
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
                   <DialogTitle>¿Cerrar "{selectedApp.name}"?</DialogTitle>
-                  <DialogDescription className="text-xs">
+                  <DialogDescription>
                     La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
                   </DialogDescription>
                 </DialogHeader>

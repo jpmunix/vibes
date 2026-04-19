@@ -169,13 +169,13 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
               <div className="flex items-start gap-2">
-                <div className="text-destructive text-sm font-medium">
+                <div className="typo-label text-destructive">
                   Error:
                 </div>
-                <div className="text-destructive text-sm flex-1">{error}</div>
+                <div className="typo-body text-destructive flex-1">{error}</div>
                 <button
                   onClick={() => setError(null)}
-                  className="text-destructive hover:text-destructive/80 text-xs"
+                  className="typo-caption text-destructive hover:text-destructive/80"
                 >
                   ✕
                 </button>
@@ -185,10 +185,10 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
           <div className="flex-1 overflow-auto rounded-md border p-3 bg-(--background-lightest)">
             {messages.length === 0 ? (
               <div className="space-y-3">
-                <div className="text-sm text-muted-foreground">
+                <div className="typo-caption">
                   Haz una pregunta sobre cómo usar Vibes.
                 </div>
-                <div className="text-xs text-muted-foreground/70 bg-muted/50 rounded-md p-3">
+                <div className="typo-caption text-muted-foreground/70 bg-muted/50 rounded-md p-3">
                   Esta conversación puede ser registrada y utilizada para
                   mejorar el producto. Por favor, no introduzcas información
                   sensible aquí.
@@ -226,7 +226,7 @@ export function HelpBotDialog({ isOpen, onClose }: HelpBotDialogProps) {
           </div>
           <div className="flex gap-2">
             <input
-              className="flex-1 h-10 rounded-md border bg-background px-3 text-sm"
+              className="flex-1 h-10 rounded-md border bg-background px-3 typo-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu pregunta..."

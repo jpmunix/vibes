@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { ipc } from "@/ipc/types";
 import {
   ChevronsDownUp,
@@ -23,7 +17,7 @@ import {
   AlertCircle,
   GitPullRequestArrow,
   EllipsisVertical,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useNavigate } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -386,9 +380,9 @@ export function GithubBranchManager({
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
-        <Select
+        <UnifiedSelector
           value={currentBranch || ""}
-          onValueChange={handleSwitchBranch}
+          onChange={(val) => handleSwitchBranch(String(val))}
           disabled={
             isSwitching ||
             isDeleting ||
@@ -398,25 +392,25 @@ export function GithubBranchManager({
             isLoading ||
             isPulling
           }
-        >
-          <SelectTrigger className="w-full" data-testid="branch-select-trigger">
-            <SelectValue placeholder="Seleccionar rama" />
-          </SelectTrigger>
-          <SelectContent>
-            {branches.map((branch) => (
-              <SelectItem key={branch} value={branch} aria-label={branch}>
-                <Network className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">Branch:</span>
-                <span
-                  data-testid="current-branch-display"
-                  className="font-mono text-sm bg-muted px-2 py-0.5 rounded"
-                >
-                  {branch}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={branches.map((branch) => ({ value: branch, label: branch }))}
+          renderItem={(opt) => (
+            <div className="flex items-center gap-2">
+              <Network className="h-4 w-4 text-muted-foreground" />
+              <span className="typo-label">Branch:</span>
+              <span
+                data-testid="current-branch-display"
+                className="typo-mono bg-muted px-2 py-0.5 rounded"
+              >
+                {opt.value}
+              </span>
+            </div>
+          )}
+          triggerVariant="outline"
+          triggerSize="md"
+          triggerClassName="w-full flex-1"
+          placeholder="Seleccionar rama"
+          data-testid="branch-select-trigger"
+        />
 
         <DropdownMenu>
           <TooltipProvider>
@@ -477,22 +471,19 @@ export function GithubBranchManager({
               </div>
               <div>
                 <Label htmlFor="source-branch">Source Branch</Label>
-                <Select value={sourceBranch} onValueChange={setSourceBranch}>
-                  <SelectTrigger
-                    className="mt-2"
-                    data-testid="source-branch-select-trigger"
-                  >
-                    <SelectValue placeholder="Seleccionar origen (opcional, por defecto HEAD)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HEAD">HEAD (Current)</SelectItem>
-                    {branches.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <UnifiedSelector
+                  value={sourceBranch}
+                  onChange={(val) => setSourceBranch(String(val))}
+                  options={[
+                    { value: "HEAD", label: "HEAD (Current)" },
+                    ...branches.map((b) => ({ value: b, label: b }))
+                  ]}
+                  triggerVariant="outline"
+                  triggerSize="md"
+                  triggerClassName="mt-2 w-full"
+                  placeholder="Seleccionar origen (opcional, por defecto HEAD)"
+                  data-testid="source-branch-select-trigger"
+                />
               </div>
             </div>
             <DialogFooter>
@@ -621,25 +612,25 @@ export function GithubBranchManager({
               </span>
 
               <div className="flex flex-col">
-                <span className="text-base font-semibold">
+                <span className="typo-label">
                   {abortConfirmation?.operationType === "merge"
                     ? "Merge in Progress"
                     : "Rebase in Progress"}
                 </span>
-                <span className="text-sm text-muted-foreground font-normal">
+                <span className="typo-caption">
                   This action will abort the current operation
                 </span>
               </div>
             </AlertDialogTitle>
 
-            <AlertDialogDescription className="mt-4 space-y-4 text-sm">
+            <AlertDialogDescription className="mt-4 space-y-4 typo-body">
               <p className="text-foreground">
                 A{" "}
-                <span className="font-medium">
+                <span className="typo-label">
                   {abortConfirmation?.operationType}
                 </span>{" "}
                 operation is currently in progress. Switching to{" "}
-                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                <span className="rounded bg-muted px-1.5 py-0.5 typo-mono-xs">
                   {abortConfirmation?.targetBranch}
                 </span>{" "}
                 will abort this operation.
@@ -647,8 +638,8 @@ export function GithubBranchManager({
 
               {abortConfirmation?.hasConflicts && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive">
-                  <p className="font-medium">Unresolved conflicts detected</p>
-                  <p className="mt-1 text-xs">
+                  <p className="typo-label">Unresolved conflicts detected</p>
+                  <p className="mt-1 typo-caption">
                     Aborting will discard any conflict resolution work you’ve
                     already done.
                   </p>
@@ -694,7 +685,7 @@ export function GithubBranchManager({
 
       {/* Conflict Resolver */}
       {conflicts.length > 0 && (
-        <p className="text-sm text-destructive">
+        <p className="typo-caption text-destructive">
           There are conflicts in the repository. Please resolve them in the
           editor.
         </p>
@@ -709,10 +700,10 @@ export function GithubBranchManager({
             <div className="flex items-center gap-3">
               <GitBranch className="w-5 h-5" />
               <div>
-                <CardTitle className="text-sm" data-testid="branches-header">
+                <CardTitle className="typo-label" data-testid="branches-header">
                   Branches
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription>
                   Manage your branches, merge, delete, and more.
                 </CardDescription>
               </div>
@@ -762,13 +753,13 @@ export function GithubBranchManager({
                   {branches.map((branch) => (
                     <div
                       key={branch}
-                      className="flex items-center justify-between text-sm py-1 px-2 hover:bg-muted rounded"
+                      className="flex items-center justify-between typo-body py-1 px-2 hover:bg-muted rounded"
                       data-testid={`branch-item-${branch}`}
                     >
                       <span
                         className={
                           branch === currentBranch
-                            ? "font-bold text-foreground"
+                            ? "text-foreground typo-label"
                             : ""
                         }
                       >

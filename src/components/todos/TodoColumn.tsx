@@ -7,7 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Todo, TodoSection } from "@/ipc/types";
 import { SortableTodoItem } from "./TodoItem";
 import { Button } from "@/components/ui/button";
-import { Plus, MoreVertical, Trash2, Edit2 } from "lucide-react";
+import { Plus, MoreVertical, Trash2, Edit2 } from "@/components/ui/icons";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -105,7 +105,7 @@ export function TodoColumn({
               <div className="py-1">
                 <p className="text-sm font-medium">{todo.content}</p>
                 {todo.description && (
-                  <p className="text-[10px] mt-0.5">{todo.description}</p>
+                  <p className="text-xs mt-0.5">{todo.description}</p>
                 )}
               </div>
             </div>
@@ -160,7 +160,7 @@ export function TodoColumn({
             <h3 className="font-semibold truncate text-sm">
               {section?.title || "Sin lista"}
             </h3>
-            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">
               {todos.filter((t) => !t.completed).length}
             </span>
           </div>

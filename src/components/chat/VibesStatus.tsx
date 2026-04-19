@@ -6,7 +6,7 @@ import {
   XCircle,
   ChevronsDownUp,
   ChevronsUpDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import { t } from "@/lib/i18n";
 
@@ -53,7 +53,7 @@ export function VibesStatus({ node, children }: VibesStatusProps) {
             className={`font-medium text-sm ${
               isInProgress
                 ? "bg-gradient-to-r from-foreground via-muted-foreground to-foreground bg-[length:200%_100%] animate-[shimmer_2s_ease-in-out_infinite] bg-clip-text text-transparent"
-                : "text-gray-700 dark:text-gray-300"
+                : "text-foreground"
             }`}
           >
             {title}
@@ -63,12 +63,12 @@ export function VibesStatus({ node, children }: VibesStatusProps) {
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>

@@ -21,10 +21,7 @@ export function ChatInputControls({
       <ModelPicker />
       {!isTurboMode && <ReasoningEffortSelector variant="compact" />}
       {showTemplatePicker && (
-        <>
-          <span className="text-muted-foreground/40">·</span>
-          <TemplatePicker variant="compact" />
-        </>
+        <TemplatePicker variant="compact" />
       )}
       {showContextFilesPicker && (
         <>

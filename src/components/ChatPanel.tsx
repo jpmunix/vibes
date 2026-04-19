@@ -16,7 +16,7 @@ import { ChatError } from "./chat/ChatError";
 
 
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Loader2 } from "lucide-react";
+import { ArrowDown, Loader2 } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 
 
@@ -459,7 +459,7 @@ export function ChatPanel({
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           <div
-            className="flex-1 relative overflow-hidden"
+            className="flex-1 relative overflow-hidden font-chat"
             onClick={(e) => {
               // Focus chat input when clicking empty space in the chat panel
               const target = e.target as HTMLElement;
@@ -503,7 +503,7 @@ export function ChatPanel({
             </>
 
             {/* Scroll to bottom button */}
-            {showScrollButton && (
+            {showScrollButton && progressiveMessages.length > 0 && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
                 <Button
                   onClick={handleScrollButtonClick}

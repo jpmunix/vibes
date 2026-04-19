@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { Database, GitBranch } from "lucide-react";
+import { Database, GitBranch } from "@/components/ui/icons";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { ipc } from "@/ipc/types";
@@ -19,11 +19,11 @@ const getBranchTypeColor = (type: NeonBranch["type"]) => {
     case "development":
       return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
     case "snapshot":
-      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+      return "bg-gray-100 text-foreground dark:bg-gray-900 dark:text-muted-foreground/50";
     case "preview":
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
     default:
-      return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+      return "bg-gray-100 text-foreground dark:bg-gray-900 dark:text-muted-foreground/50";
   }
 };
 
@@ -67,7 +67,7 @@ export const NeonConfigure = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <div className="text-sm text-muted-foreground">
+            <div className="typo-caption">
               Loading Neon project information...
             </div>
           </div>

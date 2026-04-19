@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Search, Info } from "lucide-react";
+import { Search, Info } from "@/components/ui/icons";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
@@ -156,7 +156,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
                     <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-                        <DialogTitle>Añadir modelos</DialogTitle>
+                        <DialogTitle className="typo-section-title">Añadir modelos</DialogTitle>
                     </DialogHeader>
 
                     {/* Filters + Search */}
@@ -165,7 +165,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                         <div className="flex flex-wrap gap-4">
                             {MODEL_CAPABILITY_FILTERS.map((filterDef) => (
                                 <div key={filterDef.id} className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
+                                    <span className="typo-menu-header opacity-80 shrink-0">
                                         {filterDef.label}
                                     </span>
                                     <div className="flex bg-muted/50 rounded-lg p-0.5 border border-border">
@@ -175,10 +175,10 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                                                 type="button"
                                                 onClick={() => setFilter(filterDef.id, opt.value)}
                                                 className={cn(
-                                                    "px-3 py-1 text-xs font-semibold rounded-md transition-all duration-150 cursor-pointer",
+                                                    "px-3 py-1 typo-select rounded-md transition-all duration-150 cursor-pointer",
                                                     filters[filterDef.id] === opt.value
-                                                        ? "bg-background text-foreground shadow-sm"
-                                                        : "text-muted-foreground hover:text-foreground"
+                                                        ? "bg-background shadow-sm"
+                                                        : "hover:bg-muted"
                                                 )}
                                             >
                                                 {opt.label}
@@ -206,11 +206,11 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                     {/* Model list */}
                     <div className="flex-1 overflow-y-auto min-h-0 px-4 py-2">
                         {isLoading ? (
-                            <div className="text-center py-8 text-muted-foreground text-sm">
+                            <div className="text-center py-8 typo-caption">
                                 Cargando modelos...
                             </div>
                         ) : filteredModels.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground text-sm">
+                            <div className="text-center py-8 typo-caption">
                                 No se encontraron modelos
                             </div>
                         ) : (
@@ -228,24 +228,24 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                                             title="Ver detalles del modelo"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                                <span className="typo-label truncate group-hover:text-primary transition-colors">
                                                     {model.displayName}
                                                 </span>
-                                                <Info className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary/70 shrink-0 transition-colors" />
+                                                <Info className="h-3.5 w-3.5 group-hover:text-primary/70 shrink-0 transition-colors" />
                                                 {model.dollarSigns !== undefined && (
-                                                    <span className="text-xs text-muted-foreground/70 shrink-0">
+                                                    <span className="typo-caption shrink-0">
                                                         {dollarLabel(model.dollarSigns)}
                                                     </span>
                                                 )}
                                                 {model.contextWindow && (
-                                                    <span className="text-xs text-muted-foreground/50 shrink-0">
+                                                    <span className="typo-caption shrink-0">
                                                         {model.contextWindow >= 1_000_000
                                                             ? `${(model.contextWindow / 1_000_000).toFixed(0)}M ctx`
                                                             : `${(model.contextWindow / 1_000).toFixed(0)}K ctx`}
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-xs text-muted-foreground/70 truncate mt-0.5">
+                                            <div className="typo-caption truncate mt-0.5">
                                                 {model.apiName}
                                             </div>
                                         </button>
@@ -262,7 +262,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                     </div>
 
                     {/* Footer */}
-                    <div className="px-6 py-3 border-t border-border shrink-0 text-xs text-muted-foreground text-center bg-muted/10">
+                    <div className="px-6 py-3 border-t border-border shrink-0 typo-caption opacity-80 text-center bg-muted/10">
                         {filteredModels.length} de {allModels.length} modelos · {enabledModels.length} habilitados
                     </div>
                 </DialogContent>

@@ -1,10 +1,4 @@
-import {
-  MiniSelectTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { useSettings } from "@/hooks/useSettings";
 
 import type { ChatMode } from "@/lib/schemas";
@@ -42,54 +36,42 @@ export function ChatModeSelector() {
   const isMac = detectIsMac();
 
   return (
-    <Select value={selectedMode} onValueChange={handleModeChange}>
-      <MiniSelectTrigger
-        data-testid="chat-mode-selector"
-        className={cn(
-          "!h-6 w-fit px-1.5 py-0 text-xs-sm font-medium shadow-none gap-0.5 transition-colors cursor-pointer",
-          selectedMode === "agent"
-            ? "bg-background hover:bg-muted/50 focus:bg-muted/50"
-            : "bg-primary/10 hover:bg-primary/20 focus:bg-primary/20 text-primary border-primary/20",
-        )}
-        size="sm"
-      >
-        <SelectValue>{getModeDisplayName(selectedMode)}</SelectValue>
-      </MiniSelectTrigger>
-      <SelectContent align="start" onCloseAutoFocus={(e) => e.preventDefault()}>
-
-        <SelectItem value="agent">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Agente</span>
-            <span className="text-xs text-muted-foreground">
-              Desarrolla, edita y depura con herramientas avanzadas
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="mockup">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Turbo</span>
-            <span className="text-xs text-muted-foreground">
-              Velocidad máxima para desarrollar y editar código al instante
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="plan">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Planificar</span>
-            <span className="text-xs text-muted-foreground">
-              Diseña un plan de acción antes de implementar
-            </span>
-          </div>
-        </SelectItem>
-        <SelectItem value="ask">
-          <div className="flex flex-col items-start">
-            <span className="font-medium">Preguntar</span>
-            <span className="text-xs text-muted-foreground">
-              Consulta sobre tu código sin realizar cambios
-            </span>
-          </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+    <UnifiedSelector
+      value={selectedMode}
+      onChange={handleModeChange}
+      options={[
+        {
+          value: "agent",
+          label: "Agente",
+          description: "Desarrolla, edita y depura con herramientas avanzadas",
+        },
+        {
+          value: "mockup",
+          label: "Turbo",
+          description: "Velocidad máxima para desarrollar y editar código al instante",
+        },
+        {
+          value: "plan",
+          label: "Planificar",
+          description: "Diseña un plan de acción antes de implementar",
+        },
+        {
+          value: "ask",
+          label: "Preguntar",
+          description: "Consulta sobre tu código sin realizar cambios",
+        },
+      ]}
+      triggerVariant="pill"
+      triggerSize="sm"
+      triggerClassName={cn(
+        selectedMode === "agent"
+          ? "bg-muted/80 text-foreground hover:bg-muted"
+          : "!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30"
+      )}
+      customTriggerLabel={<span className="font-semibold">{getModeDisplayName(selectedMode)}</span>}
+      popoverWidth="w-[280px]"
+      data-testid="chat-mode-selector"
+      side="top"
+    />
   );
 }

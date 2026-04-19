@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inbox, StickyNote, CheckSquare, Search, Plus } from "lucide-react";
+import { Inbox, StickyNote, CheckSquare, Search, Plus } from "@/components/ui/icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { InjectedItem } from "@/ipc/types/debate";
 
@@ -123,7 +123,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
       </DialogTrigger>
       <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-6 gap-4 border-none shadow-2xl bg-background/95 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          <DialogTitle className="typo-page-title bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
             Inyectar contenido en el debate
           </DialogTitle>
         </DialogHeader>
@@ -132,7 +132,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <input
             placeholder="Buscar chats, notas o tareas..."
-            className="w-full bg-accent/50 border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm transition-[box-shadow] shadow-inner outline-none"
+            className="w-full bg-accent/50 border-none rounded-2xl py-2.5 pl-10 pr-4 typo-input transition-[box-shadow] shadow-inner outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -169,7 +169,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
                 {groupedChats.map(({ app, items }) => (
                   <div key={app.id} className="space-y-2">
                     <div className="flex items-center gap-2 px-2 py-1 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                      <span className="typo-menu-header text-primary/70">
                         {app.name}
                       </span>
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
@@ -182,10 +182,10 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
                           className="w-full justify-start h-auto flex-col items-start p-4 gap-1 rounded-2xl hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/20"
                           onClick={() => handleSelectItem("chat", c)}
                         >
-                          <span className="font-semibold text-foreground/90">
+                          <span className="typo-label text-foreground/90">
                             {c.title || "Nuevo Chat"}
                           </span>
-                          <span className="text-xs text-muted-foreground bg-accent/50 px-2 py-0.5 rounded-full">
+                          <span className="typo-caption text-muted-foreground bg-accent/50 px-2 py-0.5 rounded-full">
                             {new Date(c.createdAt).toLocaleDateString()}
                           </span>
                         </Button>
@@ -212,7 +212,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
               <div className="space-y-4 pb-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 px-2 py-1 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                    <span className="typo-menu-header text-primary/70">
                       General
                     </span>
                     <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
@@ -225,10 +225,10 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
                         className="w-full justify-start h-auto flex-col items-start p-4 gap-1 rounded-2xl hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/20"
                         onClick={() => handleSelectItem("note", n)}
                       >
-                        <span className="font-semibold text-foreground/90">
+                        <span className="typo-label text-foreground/90">
                           {n.title}
                         </span>
-                        <span className="text-xs text-muted-foreground line-clamp-2 bg-accent/30 p-2 rounded-lg w-full text-left">
+                        <span className="typo-caption text-muted-foreground line-clamp-2 bg-accent/30 p-2 rounded-lg w-full text-left">
                           {n.content || "Sin contenido previo"}
                         </span>
                       </Button>
@@ -255,7 +255,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
                 {groupedTodos.map(({ app, items }) => (
                   <div key={app.id} className="space-y-2">
                     <div className="flex items-center gap-2 px-2 py-1 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">
+                      <span className="typo-menu-header text-primary/70">
                         {app.name}
                       </span>
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
@@ -268,11 +268,11 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
                           className="w-full justify-start h-auto flex-col items-start p-4 gap-1 rounded-2xl hover:bg-primary/5 transition-colors border border-transparent hover:border-primary/20"
                           onClick={() => handleSelectItem("todo", t)}
                         >
-                          <span className="font-semibold text-foreground/90">
+                          <span className="typo-label text-foreground/90">
                             {t.content}
                           </span>
                           {t.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-2 bg-accent/30 p-2 rounded-lg w-full text-left">
+                            <span className="typo-caption text-muted-foreground line-clamp-2 bg-accent/30 p-2 rounded-lg w-full text-left">
                               {t.description}
                             </span>
                           )}

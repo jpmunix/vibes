@@ -19,7 +19,7 @@ import { NEON_TEMPLATE_IDS, Template } from "@/shared/templates";
 import { useRouter } from "@tanstack/react-router";
 import { ipc } from "@/ipc/types";
 
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 import { neonTemplateHook } from "@/client_logic/template_hook";
 import { showError } from "@/lib/toast";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -108,7 +108,7 @@ export function CreateAppDialog({
                 disabled={isSubmitting}
               />
               {nameExists && (
-                <p className="text-sm text-red-500">
+                <p className="typo-label text-red-500">
                   Ya existe una aplicación con este nombre
                 </p>
               )}

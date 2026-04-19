@@ -17,7 +17,7 @@ import {
   FileText,
   ClipboardList,
   GitBranch,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { useRef } from "react";
 
@@ -38,7 +38,7 @@ import { toast } from "sonner";
 
 const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   thinking_prompt: <Sparkles className="w-4 h-4" />,
-  summarize_chat_system: <Lightbulb className="w-4 h-4" />,
+
   agent_mode_system: <Search className="w-4 h-4" />,
   plan_mode_system: <ClipboardList className="w-4 h-4" />,
   turbo_edit_system: <Zap className="w-4 h-4" />,
@@ -67,7 +67,7 @@ export function PromptsSettings() {
   const { settings, updateSettings, loading } = useSettings();
   const [localPrompts, setLocalPrompts] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<PromptId>("summarize_chat_system");
+  const [activeTab, setActiveTab] = useState<PromptId>("plan_mode_system");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export function PromptsSettings() {
               <h1 className="text-xl font-semibold tracking-tight">
                 Configuración de Prompts
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="typo-caption">
                 Personaliza el comportamiento del agente AI
               </p>
             </div>
@@ -150,7 +150,7 @@ export function PromptsSettings() {
               className="bg-destructive/5 border-destructive/20 py-2 mx-12 flex-1"
             >
               <AlertTriangle className="w-4 h-4 text-destructive" />
-              <AlertDescription className="text-[11px] leading-tight text-destructive/90">
+              <AlertDescription className="text-xs leading-tight text-destructive/90">
                 <strong>Opción avanzada:</strong> No elimines tags vitales como
                 [[AI_RULES]] o [[LANGUAGE_INSTRUCTION]] o tag tipo html. Su
                 permanencia es necesaria para el correcto funcionamiento del
@@ -216,7 +216,7 @@ export function PromptsSettings() {
                   <div className="text-sm font-medium truncate">
                     {PROMPT_LABELS[id]}
                   </div>
-                  <div className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                  <div className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
                     {PROMPT_DESCRIPTIONS[id]}
                   </div>
                 </div>
@@ -275,7 +275,7 @@ export function PromptsSettings() {
                       Original length: {DEFAULT_PROMPTS[activeTab].length} chars
                     </span>
                     {localPrompts[activeTab] !== DEFAULT_PROMPTS[activeTab] && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-medium">
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-medium">
                         MODIFICADO
                       </span>
                     )}

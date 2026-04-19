@@ -15,7 +15,7 @@ import {
     X,
     Lock,
     GitBranch,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -219,7 +219,7 @@ export function GitRemoteSetup({ appId, appName, onLinked }: GitRemoteSetupProps
                     </Button>
                 </div>
                 {repoAvailable === false && (
-                    <p className="text-[10px] text-red-500">Ese nombre ya está en uso</p>
+                    <p className="text-xs text-red-500">Ese nombre ya está en uso</p>
                 )}
             </div>
         );

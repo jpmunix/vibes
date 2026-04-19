@@ -1,6 +1,6 @@
 import React from "react";
 import { toast } from "sonner";
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle } from "@/components/ui/icons";
 import { Button } from "./ui/button";
 
 interface InputRequestToastProps {

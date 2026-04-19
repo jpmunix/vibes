@@ -54,7 +54,7 @@ const CustomMenuItem = forwardRef<
     >
       <div className="flex items-center space-x-2 min-w-0">
         <span
-          className={`px-2 py-0.5 text-xs font-medium rounded-md flex-shrink-0 ${isPrompt
+          className={`px-2 py-0.5 typo-badge rounded-md flex-shrink-0 ${isPrompt
             ? "bg-purple-500 text-white"
             : isApp
               ? "bg-primary text-primary-foreground"
@@ -63,7 +63,7 @@ const CustomMenuItem = forwardRef<
         >
           {label}
         </span>
-        <span className="truncate text-sm">{value}</span>
+        <span className="truncate typo-body">{value}</span>
       </div>
     </li>
   );
@@ -396,7 +396,7 @@ export function LexicalChatInput({
               }`}
               aria-placeholder={placeholder}
               placeholder={
-                <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none select-none">
+                <div className="absolute top-4 left-4 typo-body text-muted-foreground pointer-events-none select-none">
                   {placeholder}
                 </div>
               }

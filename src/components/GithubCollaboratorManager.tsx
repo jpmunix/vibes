@@ -16,7 +16,7 @@ import {
   Users,
   ChevronsDownUp,
   ChevronsUpDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { showSuccess, showError } from "@/lib/toast";
 import {
   AlertDialog,

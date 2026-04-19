@@ -505,6 +505,12 @@ export const gitContracts = {
     output: z.object({ removed: z.boolean(), message: z.string() }),
   }),
 
+  discardFileChanges: defineContract({
+    channel: "git:discard-file-changes",
+    input: z.object({ appId: z.number(), filepath: z.string() }),
+    output: z.object({ message: z.string() }),
+  }),
+
   discardAllChanges: defineContract({
     channel: "git:discard-all-changes",
     input: z.object({ appId: z.number() }),

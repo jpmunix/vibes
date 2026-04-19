@@ -12,7 +12,7 @@ import {
   Bot,
   AlignLeft,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
 import { useAtom } from "jotai";
 import { Button } from "../ui/button";

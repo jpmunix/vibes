@@ -4,7 +4,7 @@ import {
   visualEditingSelectedComponentAtom,
 } from "@/atoms/previewAtoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Code2, X } from "lucide-react";
+import { Code2, X } from "@/components/ui/icons";
 
 export function SelectedComponentsDisplay() {
   const [selectedComponents, setSelectedComponents] = useAtom(

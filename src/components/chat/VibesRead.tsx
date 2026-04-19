@@ -1,6 +1,6 @@
 import type React from "react";
 import type { ReactNode } from "react";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/ui/icons";
 
 interface VibesReadProps {
   children?: ReactNode;
@@ -32,25 +32,25 @@ export const VibesRead: React.FC<VibesReadProps> = ({
     <div className="bg-(--background-lightest) rounded-lg px-4 py-2 border border-border my-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText size={16} className="text-gray-600" />
+          <FileText size={16} className="text-muted-foreground" />
           {fileName && (
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+            <span className="text-foreground font-medium text-sm">
               {fileName}
             </span>
           )}
-          <div className="text-xs text-gray-600 font-medium">Read</div>
+          <div className="text-xs text-muted-foreground font-medium">Read</div>
           {lineRangeText && (
-            <span className="text-xs text-gray-500">({lineRangeText})</span>
+            <span className="text-xs text-muted-foreground">({lineRangeText})</span>
           )}
         </div>
       </div>
       {path && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+        <div className="text-xs text-muted-foreground font-medium mb-1">
           {path}
         </div>
       )}
       {children && (
-        <div className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground/50 mt-2">
           {children}
         </div>
       )}

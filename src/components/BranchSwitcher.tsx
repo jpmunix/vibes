@@ -1,10 +1,6 @@
 import { useState, useCallback } from "react";
-import { GitBranch, Check, Plus, Loader2, ChevronDown } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { GitBranch, Check, Plus, Loader2, ChevronDown } from "@/components/ui/icons";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +35,6 @@ export function BranchSwitcher({
   aheadCount,
   align = "end",
 }: BranchSwitcherProps) {
-  const [open, setOpen] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -72,81 +67,57 @@ export function BranchSwitcher({
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium",
-              "hover:bg-primary/20 transition-colors cursor-pointer",
-              isSwitchingBranch && "opacity-60 pointer-events-none",
-            )}
-            disabled={isSwitchingBranch}
-          >
-            {isSwitchingBranch ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <GitBranch size={12} />
-            )}
-            <span className="truncate max-w-[120px]">{currentBranch}</span>
+      <UnifiedSelector
+        value={currentBranch}
+        onChange={async (val) => {
+          if (val === "__create__") {
+            setShowCreateDialog(true);
+          } else {
+            await switchBranch(String(val));
+          }
+        }}
+        options={[
+          ...branches.map((b) => ({
+            value: b,
+            label: b,
+            leftIcon: <GitBranch size={14} className="opacity-70" />,
+            group: "branches"
+          })),
+          {
+            value: "__create__",
+            label: "Crear nueva rama...",
+            leftIcon: <Plus size={14} className="text-primary" />,
+            group: "actions"
+          }
+        ]}
+        groups={[
+          { id: "branches", heading: "Cambiar de rama" },
+          { id: "actions", heading: undefined }
+        ]}
+        searchable
+        searchPlaceholder="Buscar rama..."
+        triggerVariant="pill"
+        triggerSize="sm"
+        triggerClassName={cn(
+          "!bg-primary/10 !text-primary !shadow-none hover:!bg-primary/20",
+          isSwitchingBranch && "opacity-60 pointer-events-none"
+        )}
+        customTriggerLabel={
+          <div className="flex items-center gap-1.5 min-w-0">
+            {isSwitchingBranch ? <Loader2 size={12} className="animate-spin" /> : <GitBranch size={12} />}
+            <span className="truncate max-w-[120px] typo-label">{currentBranch}</span>
             {aheadCount !== undefined && aheadCount > 0 && (
-              <span className="ml-0.5 text-[10px] bg-primary/20 px-1 rounded">
+              <span className="ml-0.5 text-[10px] bg-primary/20 px-1 rounded-sm leading-tight inline-flex items-center">
                 ↑{aheadCount}
               </span>
             )}
-            <ChevronDown size={10} className="ml-0.5 opacity-60" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align={align} className="w-56 p-1">
-          <div className="px-2 py-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Cambiar de rama
-            </p>
           </div>
-          <div className="max-h-48 overflow-y-auto">
-            {branches.length === 0 ? (
-              <p className="px-2 py-2 text-xs text-muted-foreground italic">
-                No hay ramas disponibles
-              </p>
-            ) : (
-              branches.map((branch) => (
-                <button
-                  key={branch}
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs transition-colors text-left",
-                    branch === currentBranch
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "hover:bg-muted text-foreground",
-                  )}
-                  disabled={branch === currentBranch || isSwitchingBranch}
-                  onClick={async () => {
-                    setOpen(false);
-                    await switchBranch(branch);
-                  }}
-                >
-                  {branch === currentBranch ? (
-                    <Check size={12} className="text-primary shrink-0" />
-                  ) : (
-                    <GitBranch size={12} className="text-muted-foreground shrink-0" />
-                  )}
-                  <span className="truncate">{branch}</span>
-                </button>
-              ))
-            )}
-          </div>
-          <div className="border-t border-border/50 mt-1 pt-1">
-            <button
-              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-xs transition-colors text-left hover:bg-muted"
-              onClick={() => {
-                setOpen(false);
-                setShowCreateDialog(true);
-              }}
-            >
-              <Plus size={12} className="text-primary shrink-0" />
-              <span className="text-primary font-medium">Crear nueva rama...</span>
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
+        }
+        align={align}
+        popoverWidth="w-[260px]"
+        popoverMaxHeight="max-h-[300px]"
+        showCheckmark
+      />
 
       {/* Create branch dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -156,7 +127,7 @@ export function BranchSwitcher({
           </DialogHeader>
           <form onSubmit={handleCreateBranch}>
             <div className="py-4">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label opacity-80 mb-1 block">
                 Nombre de la rama (basada en {currentBranch})
               </label>
               <Input
@@ -164,7 +135,7 @@ export function BranchSwitcher({
                 placeholder="ej: feature/nueva-ui"
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
-                className="text-sm"
+                className="typo-body"
               />
             </div>
             <DialogFooter>

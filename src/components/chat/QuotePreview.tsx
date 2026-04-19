@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { useAtom } from "jotai";
 import { quotedMessagesAtom } from "@/atoms/chatAtoms";
-import { X, Bot, User } from "lucide-react";
+import { X, Bot, User } from "@/components/ui/icons";
 
 /**
  * QuotePreview — tarjetas de cita apiladas que aparecen encima del ChatInput.
@@ -40,7 +40,7 @@ export const QuotePreview = React.memo(function QuotePreview() {
 
             {/* Content */}
             <div className="flex-1 min-w-0 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/50">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary/50">
                 {isUser ? "Mensaje del usuario" : "Respuesta de la IA"}
               </p>
               <p className="text-muted-foreground/80 leading-relaxed break-words line-clamp-3 whitespace-pre-line">

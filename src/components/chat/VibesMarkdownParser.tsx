@@ -77,7 +77,7 @@ const TokenUsageBadge: React.FC<{
             <DialogTitle className={`flex items-center gap-2 ${color}`}>
               <Icon size={20} />
               {label}
-              {detail && <span className="text-muted-foreground font-normal text-sm ml-1">{detail}</span>}
+              {detail && <span className="text-muted-foreground font-normal typo-body ml-1">{detail}</span>}
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2">{modalContent}</div>
@@ -1097,7 +1097,7 @@ function renderModalContent(
             </div>
           )}
           {description && (
-            <div className="text-sm text-muted-foreground">
+            <div className="typo-caption">
               <span className="font-medium">Summary: </span>{description}
             </div>
           )}
@@ -1158,7 +1158,7 @@ function renderModalContent(
               {path}
             </div>
           )}
-          {content && <div className="text-sm text-muted-foreground">{content}</div>}
+          {content && <div className="typo-caption">{content}</div>}
         </div>
       );
     }
@@ -1179,7 +1179,7 @@ function renderModalContent(
               <span className="font-medium">To:</span> {to}
             </div>
           )}
-          {content && <div className="text-sm text-muted-foreground">{content}</div>}
+          {content && <div className="typo-caption">{content}</div>}
         </div>
       );
     }
@@ -1197,7 +1197,7 @@ function renderModalContent(
 
       return (
         <div className="space-y-2">
-          <div className="text-sm text-muted-foreground">
+          <div className="typo-caption">
             {description}
             {resultSummary && <span className="ml-2 text-muted-foreground/70">({resultSummary})</span>}
           </div>
@@ -1289,7 +1289,7 @@ function renderModalContent(
         <div className="space-y-2">
           {query && <div className="text-sm italic text-muted-foreground">{query}</div>}
           {content && content !== query && (
-            <div className="text-sm text-muted-foreground">{content}</div>
+            <div className="typo-caption">{content}</div>
           )}
         </div>
       );
@@ -1310,7 +1310,7 @@ function renderModalContent(
     // === Web crawl ===
     case "vibes-web-crawl":
       return (
-        <div className="text-sm text-muted-foreground">
+        <div className="typo-caption">
           {content || ""}
         </div>
       );
@@ -1348,7 +1348,7 @@ function renderModalContent(
       return (
         <div className="space-y-2">
           {queryDescription && (
-            <div className="text-sm text-muted-foreground">{queryDescription}</div>
+            <div className="typo-caption">{queryDescription}</div>
           )}
           {content && (
             <div className="text-xs overflow-hidden">
@@ -1372,7 +1372,7 @@ function renderModalContent(
       return (
         <div className="space-y-2">
           {(logCount || filterDesc) && (
-            <div className="text-sm text-muted-foreground">
+            <div className="typo-caption">
               {logCount ? `${logCount} logs` : "Logs"}{filterDesc}
             </div>
           )}
@@ -1424,7 +1424,7 @@ function renderModalContent(
       return (
         <div className="space-y-2">
           {table && (
-            <div className="text-sm text-muted-foreground font-medium">{table}</div>
+            <div className="typo-caption font-medium">{table}</div>
           )}
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-muted/20 p-3 rounded">
@@ -1485,7 +1485,7 @@ function renderModalContent(
       return (
         <div className="space-y-2">
           {operation && (
-            <div className="text-sm text-muted-foreground">
+            <div className="typo-caption">
               <span className="font-medium">git {operation}</span>
             </div>
           )}
@@ -1539,7 +1539,7 @@ function renderModalContent(
             {processId && <span className="font-medium">{processId}</span>}
             {status && <span className="ml-auto font-medium">{status}</span>}
           </div>
-          {content && <div className="text-sm text-muted-foreground whitespace-pre-wrap">{content}</div>}
+          {content && <div className="typo-caption whitespace-pre-wrap">{content}</div>}
         </div>
       );
     }
@@ -1548,7 +1548,7 @@ function renderModalContent(
       const count = attributes.count || "";
       return (
         <div className="space-y-2">
-          {count && <div className="text-sm text-muted-foreground">{count} proceso(s)</div>}
+          {count && <div className="typo-caption">{count} proceso(s)</div>}
           {content && (
             <div className="text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto bg-muted/20 p-3 rounded">
               {content}
@@ -1575,7 +1575,7 @@ function renderModalContent(
             {attempts && <span>{attempts} intentos</span>}
             {responseTime && <span>{responseTime}</span>}
           </div>
-          {content && <div className="text-sm text-muted-foreground whitespace-pre-wrap">{content}</div>}
+          {content && <div className="typo-caption whitespace-pre-wrap">{content}</div>}
         </div>
       );
     }

@@ -114,7 +114,7 @@ function PromptCard({
           <div>
             <h3 className="text-lg font-semibold">{prompt.title}</h3>
             {prompt.description && (
-              <p className="text-sm text-muted-foreground">
+              <p className="typo-caption">
                 {prompt.description}
               </p>
             )}

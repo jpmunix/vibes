@@ -108,7 +108,6 @@ const getProposalHandler = async (
             type: "code-proposal",
             // Use parsed title or a default title if summary tag is missing but write tags exist
             title: proposalTitle ?? "Proposed File Changes",
-            securityRisks: [], // Keep empty
             filesChanged,
             packagesAdded,
             sqlQueries: proposalExecuteSqlQueries.map((query) => ({

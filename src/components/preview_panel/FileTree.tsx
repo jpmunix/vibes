@@ -7,7 +7,7 @@ import {
   Loader2,
   Search,
   X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { selectedFileAtom } from "@/atoms/viewAtoms";
 import { useSetAtom } from "jotai";
 import { Input } from "@/components/ui/input";
@@ -190,7 +190,7 @@ export const FileTree = ({ appId, files }: FileTreeProps) => {
           )}
         </div>
         {isSearchMode && (
-          <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
             <span>
               {searchLoading
                 ? "Buscando archivos..."
@@ -353,7 +353,7 @@ const SearchResultItem = ({
               handleSnippetClick(snippet.line);
             }}
           >
-            <div className="font-mono text-[11px] leading-tight text-foreground truncate">
+            <div className="font-mono text-xs leading-tight text-foreground truncate">
               <span className="text-muted-foreground">{snippet.before}</span>
               <mark className="bg-primary/20 text-foreground font-medium px-0.5 rounded">
                 {snippet.match}
@@ -402,7 +402,7 @@ const TreeNode = ({
         onClick={handleClick}
       >
         {node.isDirectory && (
-          <span className="mr-1 text-gray-500">
+          <span className="mr-1 text-muted-foreground">
             {expanded ? <FolderOpen size={16} /> : <Folder size={16} />}
           </span>
         )}
@@ -426,7 +426,7 @@ const TreeNode = ({
               });
             }}
           >
-            <div className="font-mono text-[11px] leading-tight text-foreground truncate">
+            <div className="font-mono text-xs leading-tight text-foreground truncate">
               <span className="text-muted-foreground">{snippet.before}</span>
               <mark className="bg-primary/20 text-foreground font-medium px-0.5 rounded">
                 {snippet.match}

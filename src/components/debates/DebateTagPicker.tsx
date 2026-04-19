@@ -6,7 +6,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, X, Hash, Check, Trash2 } from "lucide-react";
+import { Plus, X, Hash, Check, Trash2 } from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
 import type { DebateTag } from "@/ipc/types/debate";
 
@@ -93,7 +93,7 @@ export function DebateTagPicker({
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                    className="h-6 gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                     <Plus size={10} />
                     {selectedTags.length === 0 ? "Añadir etiquetas" : "Editar"}

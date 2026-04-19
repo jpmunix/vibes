@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAppVersion } from "@/hooks/useAppVersion";
+import { useAppVersion } from "./useAppVersion";
 import { ipc } from "@/ipc/types";
 
 const DISMISSED_KEY = "update-dismissed-version";

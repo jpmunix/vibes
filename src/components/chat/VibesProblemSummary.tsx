@@ -4,7 +4,7 @@ import {
   ChevronsUpDown,
   AlertTriangle,
   FileText,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { Problem } from "@/ipc/types";
 
 type ProblemWithoutSnippet = Omit<Problem, "snippet">;
@@ -23,25 +23,25 @@ const ProblemItem: React.FC<ProblemItemProps> = ({ problem, index }) => {
   return (
     <div className="flex items-start gap-3 py-2 px-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mt-0.5">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+        <span className="text-xs font-medium text-muted-foreground">
           {index + 1}
         </span>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
-          <FileText size={14} className="text-gray-500 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          <FileText size={14} className="text-muted-foreground flex-shrink-0" />
+          <span className="text-sm font-medium text-foreground truncate">
             {problem.file}
           </span>
 
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-muted-foreground">
             {problem.line}:{problem.column}
           </span>
-          <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
+          <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-muted-foreground dark:text-muted-foreground/50">
             TS{problem.code}
           </span>
         </div>
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="text-sm text-foreground leading-relaxed">
           {problem.message}
         </p>
       </div>
@@ -106,7 +106,7 @@ export const VibesProblemSummary: React.FC<VibesProblemSummaryProps> = ({
             size={16}
             className="text-amber-600 dark:text-amber-500"
           />
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+          <span className="text-foreground font-medium text-sm">
             <span className="font-bold mr-2 outline-2 outline-amber-200 dark:outline-amber-700 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-md px-1">
               Auto-fix
             </span>
@@ -117,12 +117,12 @@ export const VibesProblemSummary: React.FC<VibesProblemSummaryProps> = ({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>
@@ -145,7 +145,7 @@ export const VibesProblemSummary: React.FC<VibesProblemSummaryProps> = ({
 
       {/* Fallback content area for raw children */}
       {isContentVisible && totalProblems === 0 && children && (
-        <div className="mt-4 text-sm text-gray-800 dark:text-gray-200">
+        <div className="mt-4 text-sm text-foreground dark:text-foreground">
           <pre className="whitespace-pre-wrap font-mono text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded">
             {children}
           </pre>

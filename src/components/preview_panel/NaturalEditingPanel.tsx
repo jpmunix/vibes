@@ -16,7 +16,7 @@ import {
     Loader2,
     Minimize2,
     Check,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Label } from "@/components/ui/label";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ComponentSelection, ElementType } from "@/ipc/types";

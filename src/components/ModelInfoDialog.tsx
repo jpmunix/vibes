@@ -18,7 +18,7 @@ import {
     FileText,
     ArrowRight,
     ChevronDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useState } from "react";
 
 interface ModelInfoDialogProps {
@@ -52,7 +52,7 @@ function ModalityBadges({ modalities, label }: { modalities?: string[]; label: s
     if (!modalities || modalities.length === 0) return null;
     return (
         <div className="space-y-2">
-            <span className="text-xs text-muted-foreground font-medium">{label}</span>
+            <span className="typo-micro uppercase">{label}</span>
             <div className="flex gap-2">
                 {modalities.map((mod) => {
                     const info = MODALITY_ICONS[mod] || { icon: FileText, label: mod };
@@ -60,7 +60,7 @@ function ModalityBadges({ modalities, label }: { modalities?: string[]; label: s
                     return (
                         <div
                             key={mod}
-                            className="p-1.5 rounded-md bg-muted text-muted-foreground"
+                            className="p-1.5 rounded-md bg-muted typo-caption"
                             title={info.label}
                         >
                             <Icon className="w-4 h-4" />
@@ -79,7 +79,7 @@ function ExpandableDescription({ text }: { text: string }) {
         <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="w-full bg-muted p-3 rounded-md text-sm text-muted-foreground text-left group cursor-pointer"
+            className="w-full bg-muted p-3 rounded-md typo-caption text-left group cursor-pointer"
         >
             <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
@@ -134,20 +134,20 @@ export function ModelInfoDialog({
 
                     {/* Pricing */}
                     <div className="space-y-2">
-                        <h4 className="text-sm font-medium leading-none">Precios</h4>
+                        <h4 className="typo-label">Precios</h4>
                         {isFree ? (
-                            <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                            <div className="typo-body font-medium text-emerald-600 dark:text-emerald-400">
                                 ✦ Gratis
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Input</div>
-                                    <div className="text-sm font-semibold font-mono">{inputPrice}</div>
+                                    <div className="typo-micro uppercase tracking-widest mb-1">Input</div>
+                                    <div className="typo-mono font-semibold">{inputPrice}</div>
                                 </div>
                                 <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Output</div>
-                                    <div className="text-sm font-semibold font-mono">{outputPrice}</div>
+                                    <div className="typo-micro uppercase tracking-widest mb-1">Output</div>
+                                    <div className="typo-mono font-semibold">{outputPrice}</div>
                                 </div>
                             </div>
                         )}
@@ -156,12 +156,12 @@ export function ModelInfoDialog({
                     {/* Context & Output tokens */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <span className="text-xs text-muted-foreground">Ventana de contexto</span>
-                            <div className="text-sm font-mono font-semibold">{formatTokens(model.contextWindow)} tokens</div>
+                            <span className="typo-caption">Ventana de contexto</span>
+                            <div className="typo-mono font-semibold">{formatTokens(model.contextWindow)} tokens</div>
                         </div>
                         <div className="space-y-1">
-                            <span className="text-xs text-muted-foreground">Máx. salida</span>
-                            <div className="text-sm font-mono font-semibold">{formatTokens(model.maxOutputTokens)} tokens</div>
+                            <span className="typo-caption">Máx. salida</span>
+                            <div className="typo-mono font-semibold">{formatTokens(model.maxOutputTokens)} tokens</div>
                         </div>
                     </div>
 
@@ -170,7 +170,7 @@ export function ModelInfoDialog({
                     {/* Modalities */}
                     {(model.inputModalities || model.outputModalities) && (
                         <div className="space-y-3">
-                            <h4 className="text-sm font-medium leading-none flex items-center gap-2">
+                            <h4 className="typo-label flex items-center gap-2">
                                 Modalidades
                             </h4>
                             <div className="flex items-center gap-3">
@@ -189,17 +189,17 @@ export function ModelInfoDialog({
 
                     {/* Technical ID */}
                     <div className="space-y-2">
-                        <h4 className="text-sm font-medium leading-none">Identificador</h4>
-                        <div className="flex items-center justify-between bg-muted/50 p-2 rounded border font-mono text-xs overflow-hidden">
+                        <h4 className="typo-label">Identificador</h4>
+                        <div className="flex items-center justify-between bg-muted/50 p-2 rounded border typo-mono-xs overflow-hidden">
                             <span className="truncate select-all">{model.apiName}</span>
-                            {model.id && <Badge variant="outline" className="ml-2 text-[10px]">ID: {model.id}</Badge>}
+                            {model.id && <Badge variant="outline" className="ml-2 text-xs">ID: {model.id}</Badge>}
                         </div>
                     </div>
 
                     {/* Tags */}
                     {model.tag && (
                         <div className="flex gap-2">
-                            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold uppercase tracking-tighter">
+                            <span className="typo-badge uppercase tracking-tighter">
                                 {model.tag}
                             </span>
                         </div>

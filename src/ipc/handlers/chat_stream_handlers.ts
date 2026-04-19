@@ -53,7 +53,7 @@ import {
   getSupabaseContext,
   getSupabaseClientCode,
 } from "../../supabase_admin/supabase_context";
-import { SECURITY_REVIEW_SYSTEM_PROMPT } from "../../prompts/security_review_prompt";
+
 import fs from "node:fs";
 import * as path from "path";
 import * as os from "os";
@@ -830,27 +830,6 @@ ${componentSnippet}
           }
         } // end !isAgentMode
 
-        const isSecurityReviewIntent =
-          req.prompt.startsWith("/security-review");
-        if (isSecurityReviewIntent) {
-          systemPrompt = SECURITY_REVIEW_SYSTEM_PROMPT;
-          try {
-            const appPath = getVibesAppPath(updatedChat.app.path);
-            const rulesPath = path.join(appPath, "SECURITY_RULES.md");
-            let securityRules = "";
-
-            await fs.promises.access(rulesPath);
-            securityRules = await fs.promises.readFile(rulesPath, "utf8");
-
-            if (securityRules && securityRules.trim().length > 0) {
-              systemPrompt +=
-                "\n\n# Project-specific security rules:\n" + securityRules;
-            }
-          } catch (error) {
-            // Best-effort: if reading rules fails, continue without them
-            logger.info("Failed to read security rules", error);
-          }
-        }
 
         if (
           updatedChat.app?.supabaseProjectId &&
@@ -877,9 +856,7 @@ ${componentSnippet}
           !updatedChat.app?.neonProjectId &&
           // In local agent mode, we will suggest supabase as part of the add-integration tool
           settings.selectedChatMode !== "agent" &&
-          settings.selectedChatMode !== "mockup" &&
-          // If in security review mode, we don't need to mention supabase is available.
-          !isSecurityReviewIntent
+          settings.selectedChatMode !== "mockup"
         ) {
           systemPrompt += "\n\n" + SUPABASE_NOT_AVAILABLE_SYSTEM_PROMPT;
         }
@@ -889,7 +866,6 @@ ${componentSnippet}
         if (bunnyConfig && (bunnyConfig.databases?.length > 0 || bunnyConfig.storageZones?.length > 0)) {
           systemPrompt += "\n\n" + getBunnyAvailableSystemPrompt(bunnyConfig);
         } else if (
-          !isSecurityReviewIntent &&
           settings.selectedChatMode !== "agent" &&
           settings.selectedChatMode !== "mockup"
         ) {
@@ -901,7 +877,6 @@ ${componentSnippet}
         if (pocketbaseConfig && pocketbaseConfig.url && pocketbaseConfig.adminEmail) {
           systemPrompt += "\n\n" + getPocketBaseAvailableSystemPrompt(pocketbaseConfig);
         } else if (
-          !isSecurityReviewIntent &&
           settings.selectedChatMode !== "agent" &&
           settings.selectedChatMode !== "mockup"
         ) {

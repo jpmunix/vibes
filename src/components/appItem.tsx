@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Star, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "lucide-react";
+import { Star, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "@/components/ui/icons";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
@@ -64,29 +64,27 @@ export function AppItem({
         >
           <div className="flex flex-col w-full relative overflow-hidden">
             <div className="flex items-center gap-1.5 overflow-hidden">
-              <span
-                className={`truncate text-[15px] leading-tight ${selectedAppId === app.id ? "font-semibold" : "font-medium"}`}
-              >
+              <span className="truncate typo-menu-item leading-tight">
                 {app.name}
               </span>
               <LanguageBadge language={app.primaryLanguage} />
               {app.localPathExists === false && (
                 <AlertTriangle
-                  size={11}
-                  className="text-red-500 flex-shrink-0 animate-pulse"
+                  size={14}
+                  className="text-red-500 flex-shrink-0 animate-pulse ml-1"
                   title="Archivos locales no encontrados"
                 />
               )}
             </div>
             <span
-              className={`text-[12.5px] leading-tight mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "text-primary/60" : "text-muted-foreground/60"}`}
+              className={`typo-micro mt-0.5 flex items-center gap-1 ${selectedAppId === app.id ? "opacity-90" : "opacity-50"}`}
             >
               {formatDistanceToNow(new Date(app.createdAt), {
                 addSuffix: true,
                 locale: es,
               })}
               {app.localPathExists === false && (
-                <span className="text-[11.5px] text-red-400/80 font-medium whitespace-nowrap">
+                <span className="typo-micro text-red-500 font-medium whitespace-nowrap">
                   • Sin archivos locales
                 </span>
               )}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, GripVertical } from "@/components/ui/icons";
 
 interface DraggableTextInputProps {
   input: {
@@ -102,7 +102,7 @@ export const DraggableTextInput = ({
       <div className="relative">
         {/* Drag Handle */}
         <div
-          className="absolute left-2 top-1/2 -translate-y-1/2 cursor-move p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors z-10"
+          className="absolute left-2 top-1/2 -translate-y-1/2 cursor-move p-1 hover:bg-gray-100 dark:hover:bg-accent rounded transition-colors z-10"
           onMouseDown={(e) => {
             setIsDragging(true);
             dragOffset.current = {
@@ -115,20 +115,7 @@ export const DraggableTextInput = ({
           title="Arrastrar para mover"
         >
           {/* Grip dots icon - smaller and more subtle */}
-          <svg
-            width="8"
-            height="12"
-            viewBox="0 0 8 12"
-            fill="currentColor"
-            className="text-gray-400 dark:text-gray-500"
-          >
-            <circle cx="2" cy="2" r="1" />
-            <circle cx="6" cy="2" r="1" />
-            <circle cx="2" cy="6" r="1" />
-            <circle cx="6" cy="6" r="1" />
-            <circle cx="2" cy="10" r="1" />
-            <circle cx="6" cy="10" r="1" />
-          </svg>
+          <GripVertical className="w-3 h-3 text-muted-foreground/70" />
         </div>
 
         <span
@@ -149,7 +136,7 @@ export const DraggableTextInput = ({
           value={input.value}
           onChange={(e) => onChange(input.id, e.target.value)}
           onKeyDown={(e) => onKeyDown(input.id, e, index)}
-          className="pl-8 pr-8 py-2 bg-[var(--background)] border-2 rounded-md shadow-lg text-gray-900 dark:text-gray-100 focus:outline-none min-w-[200px] cursor-text"
+          className="pl-8 pr-8 py-2 bg-[var(--background)] border-2 rounded-md shadow-lg text-foreground focus:outline-none min-w-[200px] cursor-text"
           style={{ borderColor: color }}
           placeholder="Escribe texto..."
           ref={(e) => {
@@ -168,7 +155,7 @@ export const DraggableTextInput = ({
           title="Eliminar entrada de texto"
           type="button"
         >
-          <X className="w-3 h-3 text-gray-400 dark:text-gray-500 group-hover:text-red-600 dark:group-hover:text-red-400" />
+          <X className="w-3 h-3 text-muted-foreground/70 group-hover:text-red-600 dark:group-hover:text-red-400" />
         </button>
       </div>
     </div>

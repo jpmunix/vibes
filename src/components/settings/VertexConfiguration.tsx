@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, CheckCircle2 } from "lucide-react";
+import { Info, CheckCircle2 } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import type { UserSettings, VertexProviderSetting } from "@/lib/schemas";
 
@@ -75,7 +75,7 @@ export function VertexConfiguration() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Project ID</label>
+          <label className="block typo-label mb-1">Project ID</label>
           <Input
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
@@ -83,20 +83,20 @@ export function VertexConfiguration() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Location</label>
+          <label className="block typo-label mb-1">Location</label>
           <Input
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder="us-central1"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 typo-caption text-muted-foreground">
             If you see a "model not found" error, try a different region. Some
             partner models (MaaS) are only available in specific locations
             (e.g., us-central1, us-west2).
           </p>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label className="block typo-label mb-1">
             Service Account JSON Key
           </label>
           <Textarea

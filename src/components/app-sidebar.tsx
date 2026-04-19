@@ -18,7 +18,7 @@ import {
   FolderPlus,
   FolderOpen,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
 import { useSettings } from "@/hooks/useSettings";
@@ -75,11 +75,17 @@ const items: {
     ],
   },
   {
-    title: "Tareas",
-    tabKey: "Tareas",
-    to: "/todos",
-    icon: CheckSquare,
+    title: "Ajustes",
+    tabKey: "Ajustes",
+    to: "/settings",
+    icon: Settings,
   },
+  // {
+  //   title: "Tareas",
+  //   tabKey: "Tareas",
+  //   to: "/todos",
+  //   icon: CheckSquare,
+  // },
 ];
 
 /**
@@ -102,10 +108,6 @@ export function TopNavbar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const setUser = useSetAtom(userAtom);
-
-  const routerState = useRouterState();
-  const isSettingsRoute = routerState.location.pathname.startsWith("/settings");
-
   const handleLogout = async () => {
     try {
       const userId = (user as any)?.id || (user as any)?.uid;
@@ -159,8 +161,6 @@ export function TopNavbar() {
           color: var(--sidebar-foreground);
           transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
           text-decoration: none;
-          font-size: 13px;
-          font-weight: 600;
           white-space: nowrap;
         }
         .topnav-item:hover {
@@ -202,28 +202,6 @@ export function TopNavbar() {
           from { opacity: 0; transform: translateY(-4px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .topnav-dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          padding: 7px 10px;
-          border-radius: 7px;
-          border: none;
-          background: transparent;
-          color: var(--popover-foreground);
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.12s ease;
-          text-align: left;
-        }
-        .topnav-dropdown-item:hover {
-          background: var(--sidebar-accent);
-        }
-        .topnav-dropdown-item svg {
-          color: var(--primary);
-        }
 
         .topnav-util-btn {
           display: flex;
@@ -263,8 +241,6 @@ export function TopNavbar() {
           background: transparent;
           color: var(--sidebar-foreground);
           transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-          font-size: 12px;
-          font-weight: 600;
           opacity: 0.7;
         }
         .sidebar-toggle-btn:hover {
@@ -307,7 +283,7 @@ export function TopNavbar() {
                 >
                   <Link
                     to={item.to}
-                    className={`topnav-item no-app-region-drag ${isActive ? "topnav-item--active" : ""}`}
+                    className={`topnav-item typo-tab no-app-region-drag ${isActive ? "topnav-item--active" : ""}`}
                     onClick={(e) => {
                       if (hasMenu) {
                         e.preventDefault();
@@ -317,7 +293,7 @@ export function TopNavbar() {
                       }
                     }}
                   >
-                    <item.icon size={16} />
+                    <item.icon size={17} />
                     <span>{item.title}</span>
                     {hasMenu && (
                       <ChevronDown size={12} className="opacity-50 -ml-1" />
@@ -331,13 +307,13 @@ export function TopNavbar() {
                         <button
                           key={mi.action}
                           type="button"
-                          className="topnav-dropdown-item"
+                          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
                           onClick={() => {
                             dispatchAction({ action: mi.action, ts: Date.now() });
                             setHoveredMenu(null);
                           }}
                         >
-                          <mi.icon size={14} className="shrink-0 opacity-60" />
+                          <mi.icon size={14} className="opacity-60 shrink-0" />
                           <span>{mi.label}</span>
                         </button>
                       ))}
@@ -352,18 +328,6 @@ export function TopNavbar() {
         {/* Right side: Credits, Settings, Avatar */}
         <div className="flex items-center gap-1 ml-auto">
           <OpenRouterCreditsButton />
-
-          {/* Settings button */}
-          <Link
-            to="/settings"
-            className={`no-app-region-drag topnav-util-btn ${isSettingsRoute ? "topnav-item--active" : ""}`}
-            onClick={() => {
-              setActiveTab("Ajustes");
-            }}
-            title="Ajustes"
-          >
-            <Settings size={17} />
-          </Link>
 
           {/* User Avatar */}
           {user && (
@@ -385,7 +349,7 @@ export function TopNavbar() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="bottom" align="end" className="w-64 p-2 shadow-xl border-border/50">
-                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                <DropdownMenuLabel className="typo-micro uppercase tracking-wider px-2 py-1">
                   Cuenta
                 </DropdownMenuLabel>
                 <div className="flex items-center gap-3 px-2 py-3">
@@ -400,10 +364,10 @@ export function TopNavbar() {
                     />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-bold truncate">
+                    <span className="typo-label !text-sm truncate">
                       {user.displayName || "Usuario"}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="typo-micro truncate">
                       {user.email}
                     </span>
                   </div>
@@ -413,14 +377,14 @@ export function TopNavbar() {
                   onClick={() => setIsProfileModalOpen(true)}
                 >
                   <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Editar Perfil</span>
+                  <span className="typo-tab">Editar Perfil</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent text-foreground"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-3 h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Cerrar sesión</span>
+                  <span className="typo-tab">Cerrar sesión</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -643,7 +607,7 @@ export function SecondarySidebar() {
 
       <AppList show={activeTab === "Aplicaciones"} />
       <WorkspaceList show={activeTab === "Workspace"} />
-      <TodosList show={activeTab === "Tareas"} />
+      {/* <TodosList show={activeTab === "Tareas"} /> */}
       <SettingsList show={activeTab === "Ajustes"} />
       <LibraryList show={activeTab === "Biblioteca"} />
 

@@ -1,0 +1,136 @@
+/*
+ * ══════════════════════════════════════════════════
+ *  Typography Design Tokens
+ * ══════════════════════════════════════════════════
+ *
+ *  Semantic classes that replace ad-hoc size/weight/color
+ *  combos scattered across 197+ components.
+ *
+ *  USAGE:
+ *    <h1 className="typo-page-title">Ajustes</h1>
+ *    <p className="typo-caption">Descripción secundaria</p>
+ *    <button className="typo-button">Guardar</button>
+ *
+ *  SCALE (7 levels):
+ *    page-title  → 36px bold
+ *    section-title → 24px bold
+ *    subsection-title → 18px semibold
+ *    label → 14px semibold
+ *    body  → 14px normal
+ *    caption → 13px normal muted
+ *    micro → 11px medium muted
+ *
+ *  INTERACTIVE (7):
+ *    button → 14px bold
+ *    select → 13px bold
+ *    input  → 14px normal
+ *    badge  → 12px medium
+ *    tab    → 14px medium  ← TOP-LEVEL NAV buttons
+ *    dropdown → 13px normal ← dropdown/contextual actions
+ *
+ *  MENU & SIDEBAR (3):
+ *    menu-header  → 11px bold upper ← group separators
+ *    menu-item    → 13px bold       ← level 1: apps, folders, settings nav
+ *    menu-subitem → 13px normal     ← level 2: chats, sub-items
+ */
+
+/* ── Content typography ────────────────────────── */
+
+.typo-page-title {
+  @apply text-4xl font-bold tracking-tight;
+  
+}
+
+.typo-section-title {
+  @apply text-2xl font-bold;
+  
+}
+
+.typo-subsection-title {
+  @apply text-lg font-semibold;
+  
+}
+
+.typo-label {
+  font-size: 14px;
+  @apply font-semibold;
+  
+}
+
+.typo-body {
+  @apply text-sm font-normal;
+  
+}
+
+.typo-caption {
+  font-size: 13px;
+  @apply font-normal;
+  
+}
+
+.typo-micro {
+  font-size: 11px;
+  @apply font-medium;
+}
+
+/* ── Interactive elements ──────────────────────── */
+
+.typo-button {
+  @apply text-sm font-bold;
+  
+}
+
+.typo-select {
+  font-size: 13px;
+  @apply font-bold;
+  
+}
+
+.typo-input {
+  @apply text-sm font-normal;
+  
+}
+
+.typo-badge {
+  @apply text-xs font-medium;
+  
+}
+
+.typo-tab {
+  @apply text-sm font-medium;
+}
+
+.typo-dropdown {
+  font-size: 13px;
+  @apply font-normal;
+  
+}
+
+/* ── Menu & Sidebar elements ─────────────────────── */
+
+.typo-menu-header {
+  font-size: 11px;
+  @apply font-bold tracking-wider uppercase;
+}
+
+.typo-menu-item {
+  font-size: 13px;
+  @apply font-bold;
+}
+
+.typo-menu-subitem {
+  font-size: 13px;
+  @apply font-normal;
+}
+
+/* ── Utility: mono variant ─────────────────────── */
+
+.typo-mono {
+  @apply font-mono text-sm;
+  
+}
+
+.typo-mono-xs {
+  @apply font-mono text-xs;
+  
+}

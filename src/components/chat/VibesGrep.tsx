@@ -7,7 +7,7 @@ import {
   Search,
   Loader,
   CircleX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 import { useSettings } from "@/hooks/useSettings";
@@ -78,13 +78,13 @@ export const VibesGrep: React.FC<VibesGrepProps> = ({ children, node }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Search size={16} className="text-(--primary)" />
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+          <span className="text-foreground font-medium text-sm">
             <span className="font-bold mr-2 outline-2 outline-(--primary)/20 bg-(--primary)/10 text-(--primary) rounded-md px-1">
               GREP
             </span>
             {description}
             {resultSummary && (
-              <span className="ml-2 text-gray-500">({resultSummary})</span>
+              <span className="ml-2 text-muted-foreground">({resultSummary})</span>
             )}
           </span>
           {inProgress && (

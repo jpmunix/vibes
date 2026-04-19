@@ -1,6 +1,6 @@
 import React from "react";
 import { CustomTagState } from "./stateTypes";
-import { Database, Loader2 } from "lucide-react";
+import { Database, Loader2 } from "@/components/ui/icons";
 
 interface VibesDatabaseSchemaProps {
   node: {

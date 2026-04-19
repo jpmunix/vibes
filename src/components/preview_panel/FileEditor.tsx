@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { useLoadAppFile } from "@/hooks/useLoadAppFile";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ChevronRight, Circle, Save } from "lucide-react";
+import { ChevronRight, Circle, Save } from "@/components/ui/icons";
 import "@/components/chat/monaco";
 import { ipc } from "@/ipc/types";
 import { showError, showSuccess, showWarning } from "@/lib/toast";
@@ -40,7 +40,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
   const segments = path.split("/").filter(Boolean);
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground dark:text-muted-foreground/50 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center gap-1 overflow-hidden">
         <div className="flex items-center gap-1 overflow-hidden min-w-0">
           {segments.map((segment, index) => (
@@ -48,10 +48,10 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
               {index > 0 && (
                 <ChevronRight
                   size={14}
-                  className="text-gray-400 flex-shrink-0"
+                  className="text-muted-foreground/70 flex-shrink-0"
                 />
               )}
-              <span className="hover:text-gray-900 dark:hover:text-gray-100 cursor-pointer truncate">
+              <span className="hover:text-foreground dark:hover:text-gray-100 cursor-pointer truncate">
                 {segment}
               </span>
             </React.Fragment>
@@ -239,7 +239,7 @@ export const FileEditor = ({
   }
 
   if (!content) {
-    return <div className="p-4 text-gray-500">No hay contenido disponible</div>;
+    return <div className="p-4 text-muted-foreground">No hay contenido disponible</div>;
   }
 
   return (

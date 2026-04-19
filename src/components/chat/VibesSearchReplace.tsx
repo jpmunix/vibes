@@ -8,7 +8,7 @@ import {
   CircleX,
   Search,
   ArrowLeftRight,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 import { parseSearchReplaceBlocks } from "@/pro/shared/search_replace_parser";
@@ -95,7 +95,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>
@@ -106,7 +106,7 @@ export const VibesSearchReplace: React.FC<VibesSearchReplaceProps> = ({
         </div>
       )}
       {description && (
-        <div className="text-sm text-muted-foreground">
+        <div className="typo-caption">
           <span className="font-medium">Summary: </span>
           {description}
         </div>

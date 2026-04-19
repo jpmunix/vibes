@@ -6,6 +6,7 @@ import {
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
 import { AIBehaviorSettings } from "@/components/settings/AIBehaviorSettings";
+import { FONT_OPTIONS } from "@/shared/fonts";
 
 import { ModelsAndConnectivity } from "@/components/settings/ModelsAndConnectivity";
 
@@ -31,8 +32,8 @@ import {
   Download,
   Upload,
   Info,
-} from "lucide-react";
-import { ChevronRight } from "lucide-react";
+} from "@/components/ui/icons";
+import { ChevronRight } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
 import { GitHubIntegration } from "@/components/GitHubIntegration";
 import { VercelIntegration } from "@/components/VercelIntegration";
@@ -69,12 +70,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "@/components/ui/icons";
 
 
 import Fuse from "fuse.js";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
 import { cn } from "@/lib/utils";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 // Settings search index
 interface SearchSettingItem {
@@ -94,6 +110,8 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     description: "Cambiar entre modo claro, oscuro o sistema",
     keywords: [
       "tema",
+      "fuente",
+      "tipografía",
       "dark",
       "light",
       "oscuro",
@@ -113,6 +131,24 @@ const SETTINGS_SEARCH_INDEX: SearchSettingItem[] = [
     section: "Tema",
     sectionId: "general-settings",
   },
+  {
+    id: "font",
+    label: "Tipografía",
+    description: "Elige la fuente para toda la interfaz",
+    keywords: ["fuente", "tipografía", "font", "geist", "inter", "roboto", "letra"],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
+  /*
+  {
+    id: "icon-library",
+    label: "Librería de Iconos",
+    description: "Cambiar entre Lucide e Iconoir para la interfaz",
+    keywords: ["iconos", "icons", "lucide", "iconoir", "tema", "interfaz", "apariencia"],
+    section: "Tema",
+    sectionId: "general-settings",
+  },
+  */
   // Workflow Settings
   {
     id: "chat-mode",
@@ -388,11 +424,11 @@ function SettingItem({
       )}
     >
       <div className="flex-1">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+        <h3 className="typo-label">
           {label}
         </h3>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          <p className="typo-caption mt-1">
             {description}
           </p>
         )}
@@ -410,10 +446,10 @@ function TogglePill({ checked, onCheckedChange }: { checked: boolean; onCheckedC
           key={String(value)}
           onClick={() => onCheckedChange(value)}
           className={cn(
-            "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+            "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
             checked === value
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+              : "hover:bg-primary/10",
           )}
         >
           {value ? "Activado" : "Desactivado"}
@@ -437,6 +473,7 @@ export default function SettingsPage() {
   const appVersion = useAppVersion();
   const { settings, updateSettings } = useSettings();
   const router = useRouter();
+  const navigate = useNavigate();
   const setActiveSettingsSection = useSetAtom(activeSettingsSectionAtom);
 
   // Version info for popover
@@ -593,114 +630,115 @@ export default function SettingsPage() {
       id="settings-scroll-container"
       className="flex flex-col h-full w-full bg-muted/30 text-foreground overflow-y-auto"
     >
-      {/* Sticky header bar */}
-      <div className="sticky top-0 z-20 bg-(--sidebar) border-b border-border">
-        <div className="w-full mx-auto px-8 py-4">
-          <div className="flex justify-between items-center gap-4">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-              Ajustes
-            </h1>
-
+      {/* Header Pill */}
+      <div className="w-full mx-auto px-8 pt-6">
+        <div className="w-full mx-auto">
+          <div className="flex justify-between items-center gap-4 bg-card border border-border rounded-2xl p-4 shadow-sm transition-[border-color,box-shadow] duration-300">
+            
             {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
               <Input
                 type="text"
                 placeholder="Buscar ajustes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 bg-card/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                className="pl-10 pr-10 h-10 bg-muted/50 border border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl typo-input transition-colors hover:bg-muted/70"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            {/* Export/Import/VersionInfo/Reset Buttons */}
-            <div className="flex gap-2">
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 pr-1">
               <Popover onOpenChange={(open) => { if (open) fetchVersionInfo(); }}>
                 <PopoverTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                    className="h-10 px-4 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl"
                   >
-                    <Info className="h-4 w-4 mr-1" />
+                    <Info className="h-4 w-4 mr-2 opacity-70" />
                     {appVersion ? `v${appVersion}` : "Info"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 p-0">
-                  <div className="px-4 py-3 border-b border-border">
-                    <h4 className="text-sm font-bold">Información del sistema</h4>
-                  </div>
+                <PopoverContent align="end" className="w-[300px] p-4 rounded-xl border border-border shadow-2xl bg-card">
                   {versionInfo ? (
-                    <div className="p-4 space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Vibes</span>
-                        <span className="font-mono font-bold">v{versionInfo.vibes}</span>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-2.5 px-1">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Sistema</h4>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-sm">
+                          <span className="text-muted-foreground">Vibes</span>
+                          <span className="font-mono font-medium text-primary">v{versionInfo.vibes}</span>
+                          <span className="text-muted-foreground">OpenCode</span>
+                          <span className="font-mono">{versionInfo.opencode ? `v${versionInfo.opencode}` : "N/A"}</span>
+                          <div className="col-span-2 h-px bg-border/50 my-1" />
+                          <span className="text-muted-foreground">Node.js</span>
+                          <span className="font-mono opacity-80">v{versionInfo.node}</span>
+                          <span className="text-muted-foreground">Electron</span>
+                          <span className="font-mono opacity-80">v{versionInfo.electron}</span>
+                          <span className="text-muted-foreground">Arquitectura</span>
+                          <span className="font-mono opacity-80">{versionInfo.platform}/{versionInfo.arch}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">OpenCode</span>
-                        <span className="font-mono font-bold">{versionInfo.opencode ? `v${versionInfo.opencode}` : "No instalado"}</span>
-                      </div>
-                      <div className="h-px bg-border my-2" />
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Node.js</span>
-                        <span className="font-mono text-xs">v{versionInfo.node}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Electron</span>
-                        <span className="font-mono text-xs">v{versionInfo.electron}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Plataforma</span>
-                        <span className="font-mono text-xs">{versionInfo.platform}/{versionInfo.arch}</span>
-                      </div>
+                      
+                      {hasReleaseNotes && (
+                        <div className="pt-3 border-t border-border/50">
+                          <Button 
+                            onClick={() => { setReleaseNotesOpen(true); }}
+                            className="w-full cursor-pointer bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all rounded-lg"
+                            variant="ghost"
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Novedades de la versión
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="p-4 text-sm text-muted-foreground text-center">Cargando...</div>
+                    <div className="py-6 flex justify-center text-sm text-muted-foreground">Cargando...</div>
                   )}
                 </PopoverContent>
               </Popover>
+
+              <div className="w-px h-5 bg-border/60 mx-1" />
+
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-                onClick={handleExportSettings}
-              >
-                Exportar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
+                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
                 onClick={handleImportSettings}
               >
+                <Download className="h-4 w-4" />
                 Importar
               </Button>
-              {hasReleaseNotes && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="cursor-pointer font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors"
-                  onClick={() => setReleaseNotesOpen(true)}
-                >
-                  Novedades
-                </Button>
-              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
+                onClick={handleExportSettings}
+              >
+                <Upload className="h-4 w-4" />
+                Exportar
+              </Button>
+
+              <div className="w-px h-5 bg-border/60 mx-1" />
+
               <Button
                 onClick={() => setIsResetDialogOpen(true)}
                 disabled={isResetting}
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="cursor-pointer font-bold hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                className="h-10 px-3 cursor-pointer text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors rounded-xl"
               >
-                {isResetting ? "Reseteando..." : "Valores por defecto"}
+                {isResetting ? "Reseteando..." : "Restablecer"}
               </Button>
             </div>
           </div>
@@ -721,10 +759,10 @@ export default function SettingsPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="text-base font-medium text-gray-900 dark:text-white">
+                          <div className="text-base font-medium text-foreground">
                             {result.label}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <div className="typo-caption mt-1">
                             {result.description}
                           </div>
                         </div>
@@ -738,10 +776,10 @@ export default function SettingsPage() {
               ) : (
                 <div className="p-12 text-center">
                   <Search className="h-16 w-16 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-lg font-medium text-gray-900 dark:text-white">
+                  <p className="typo-subsection-title">
                     No se encontraron ajustes
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="typo-caption mt-1">
                     Intenta con otros términos de búsqueda
                   </p>
                 </div>
@@ -788,10 +826,10 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="typo-section-title mb-2">
               Integraciones
             </h2>
-            <p className="text-sm text-muted-foreground mb-8">
+            <p className="typo-caption mb-8">
               Conecta servicios externos para automatizar despliegues y bases de
               datos.
             </p>
@@ -813,7 +851,7 @@ export default function SettingsPage() {
               : ""
               }`}
           >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="typo-section-title mb-6">
               Herramientas MCP
             </h2>
             <McpServersSettings />
@@ -846,7 +884,7 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId } = useTheme();
   const { settings, updateSettings } = useSettings();
 
   useEffect(() => {
@@ -866,6 +904,16 @@ export function GeneralSettings({
     }
   }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark, applyPrimaryColors]);
 
+  // Apply fonts from settings on load
+  useEffect(() => {
+    if (settings?.selectedFont && settings.selectedFont !== currentFontId) {
+      applyFont(settings.selectedFont);
+    }
+    if (settings?.selectedChatFont && settings.selectedChatFont !== currentChatFontId) {
+      applyChatFont(settings.selectedChatFont);
+    }
+  }, [settings?.selectedFont, settings?.selectedChatFont]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div
       id="general-settings"
@@ -876,7 +924,7 @@ export function GeneralSettings({
           : "",
       )}
     >
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+      <h2 className="typo-section-title mb-8">
         Tema
       </h2>
 
@@ -891,10 +939,10 @@ export function GeneralSettings({
                   key={option}
                   onClick={() => setTheme(option)}
                   className={cn(
-                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                    "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                     theme === option
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                      : "hover:bg-primary/10",
                   )}
                 >
                   {option === "system"
@@ -960,10 +1008,10 @@ export function GeneralSettings({
                   updateSettings({ themeIntensity: 0.58 });
                 }}
                 className={cn(
-                  "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                   intensity === 0.58
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                    : "hover:bg-primary/10",
                 )}
               >
                 Por defecto
@@ -974,10 +1022,10 @@ export function GeneralSettings({
                   updateSettings({ themeIntensity: 0 });
                 }}
                 className={cn(
-                  "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                  "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                   intensity === 0
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                    : "hover:bg-primary/10",
                 )}
               >
                 Más claro
@@ -985,6 +1033,81 @@ export function GeneralSettings({
             </div>
           }
         />
+
+        {/* Font Selector */}
+        <SettingItem
+          label="Tipografía de la Interfaz"
+          description="Elige la fuente para toda la interfaz (menús, botones)"
+          control={
+            <UnifiedSelector
+              value={currentFontId}
+              onChange={async (value) => {
+                applyFont(value);
+                await updateSettings({ selectedFont: value });
+              }}
+              options={FONT_OPTIONS.map((font) => ({
+                value: font.id,
+                label: font.name,
+              }))}
+              triggerVariant="pill"
+              triggerSize="md"
+              popoverWidth="w-[200px]"
+              itemLayout="compact"
+              data-testid="font-selector"
+            />
+          }
+        />
+        
+        {/* Chat Font Selector */}
+        <SettingItem
+          label="Tipografía del Chat"
+          description="Elige la fuente base para los mensajes del chat"
+          control={
+            <UnifiedSelector
+              value={currentChatFontId}
+              onChange={async (value) => {
+                applyChatFont(value);
+                await updateSettings({ selectedChatFont: value });
+              }}
+              options={FONT_OPTIONS.map((font) => ({
+                value: font.id,
+                label: font.name,
+              }))}
+              triggerVariant="pill"
+              triggerSize="md"
+              popoverWidth="w-[200px]"
+              itemLayout="compact"
+              data-testid="chat-font-selector"
+            />
+          }
+        />
+
+        {/* Icon Library Selector (Hidden - Experimental)
+        <SettingItem
+          label="Librería de Iconos"
+          description="Selecciona el paquete de iconos para la interfaz"
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              {(["lucide", "iconoir"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={async () => {
+                    await updateSettings({ iconLibrary: option });
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                    (settings?.iconLibrary || "lucide") === option
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "hover:bg-primary/10",
+                  )}
+                >
+                  {option === "lucide" ? "Lucide" : "Iconoir"}
+                </button>
+              ))}
+            </div>
+          }
+        />
+        */}
 
       </div>
     </div>
@@ -1008,10 +1131,10 @@ export function WorkflowSettings({
           : "",
       )}
     >
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+      <h2 className="typo-section-title mb-2">
         Flujo de Trabajo
       </h2>
-      <p className="text-sm text-muted-foreground mb-8">
+      <p className="typo-caption mb-8">
         Configura cómo interactúas con la aplicación y el comportamiento de las
         herramientas de desarrollo.
       </p>
@@ -1069,10 +1192,10 @@ export function WorkflowSettings({
                         }
                       }}
                       className={cn(
-                        "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                        "px-4 py-1.5 typo-select !font-bold rounded-lg transition-colors duration-200 cursor-pointer",
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                          : "hover:bg-primary/10",
                       )}
                     >
                       {option === "off"
@@ -1230,10 +1353,10 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
       {/* Header with master switch on the right */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="typo-section-title">
             Estadísticas y Logs
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="typo-caption mt-1">
             Controla el registro de métricas, estadísticas y logs de la aplicación.
           </p>
         </div>
@@ -1250,7 +1373,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
               <div>
-                <Label className="text-base font-bold text-gray-900 dark:text-white">
+                <Label className="text-base font-bold text-foreground">
                   Métricas de tokens
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1267,7 +1390,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
 
             <div className="p-6 rounded-2xl bg-muted/30 border border-border flex flex-col justify-between gap-4">
               <div>
-                <Label className="text-base font-bold text-gray-900 dark:text-white">
+                <Label className="text-base font-bold text-foreground">
                   Logs verbosos
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1348,7 +1471,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
           {entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <TrendingUp className="text-muted-foreground/20 mb-6" size={64} />
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+              <p className="text-xl font-semibold text-foreground">
                 Aún no hay datos
               </p>
               <p className="text-base text-muted-foreground mt-2">
@@ -1366,10 +1489,10 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                       Total
                     </span>
                   </div>
-                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                  <p className="text-4xl font-black text-foreground">
                     {totalStats.total.toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="typo-caption mt-2">
                     tokens en {entries.length} mensajes
                   </p>
                 </div>
@@ -1381,10 +1504,10 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                       Entrada
                     </span>
                   </div>
-                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                  <p className="text-4xl font-black text-foreground">
                     {totalStats.input.toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="typo-caption mt-2">
                     tokens de prompt (contexto)
                   </p>
                 </div>
@@ -1396,10 +1519,10 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                       Salida
                     </span>
                   </div>
-                  <p className="text-4xl font-black text-gray-900 dark:text-white">
+                  <p className="text-4xl font-black text-foreground">
                     {totalStats.output.toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="typo-caption mt-2">
                     tokens generados por la IA
                   </p>
                 </div>
@@ -1410,7 +1533,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <Clock className="text-muted-foreground/60" size={20} />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="typo-subsection-title">
                       Uso por Hora
                     </h3>
                   </div>
@@ -1428,7 +1551,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                             }}
                           >
                             {stat.tokens > maxHourlyTokens * 0.3 && (
-                              <span className="text-[10px] font-black text-primary-foreground uppercase tracking-widest">
+                              <span className="text-xs font-black text-primary-foreground uppercase tracking-widest">
                                 {stat.tokens.toLocaleString()}
                               </span>
                             )}
@@ -1454,7 +1577,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                 <div className="space-y-6 flex flex-col h-full">
                   <div className="flex items-center gap-3">
                     <Sparkles className="text-muted-foreground/60" size={20} />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="typo-subsection-title">
                       Top Modelos
                     </h3>
                   </div>
@@ -1466,7 +1589,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                             <span className="text-xs font-black text-muted-foreground/30 uppercase tracking-widest flex-shrink-0">
                               #{idx + 1}
                             </span>
-                            <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                            <div className="text-sm font-bold text-foreground truncate">
                               {stat.model}
                             </div>
                           </div>
@@ -1491,7 +1614,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <TrendingUp className="text-muted-foreground/60" size={20} />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="typo-subsection-title">
                       Actividad Reciente
                     </h3>
                   </div>
@@ -1503,10 +1626,10 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                         className="w-full text-left p-4 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-border group shadow-none hover:shadow-sm"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                          <span className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
                             Chat #{entry.chatId} · {entry.model || "IA"}
                           </span>
-                          <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                          <span className="text-xs font-bold text-muted-foreground/40 uppercase tracking-widest">
                             {formatDistanceToNow(new Date(entry.timestamp), {
                               addSuffix: true,
                               locale: es,
@@ -1522,7 +1645,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                               }}
                             />
                           </div>
-                          <span className="text-sm font-black text-gray-900 dark:text-white">
+                          <span className="text-sm font-black text-foreground">
                             {entry.totalTokens.toLocaleString()}
                           </span>
                         </div>
@@ -1547,25 +1670,25 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-foreground">
                         Chat ID
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                      <p className="text-sm text-foreground mt-1">
                         #{selectedEntry.chatId}
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-foreground">
                         Message ID
                       </label>
-                      <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                      <p className="text-sm text-foreground mt-1">
                         {selectedEntry.messageId}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-foreground">
                         Total Tokens
                       </label>
                       <p className="text-2xl font-bold text-primary mt-1">
@@ -1573,7 +1696,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-foreground">
                         Input Tokens
                       </label>
                       <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
@@ -1581,7 +1704,7 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label className="text-sm font-medium text-foreground">
                         Output Tokens
                       </label>
                       <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
@@ -1590,25 +1713,25 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="text-sm font-medium text-foreground">
                       Modelo
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                    <p className="text-sm text-foreground mt-1">
                       {selectedEntry.model || "unknown"}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="text-sm font-medium text-foreground">
                       Timestamp
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
+                    <p className="text-sm text-foreground mt-1">
                       {new Date(selectedEntry.timestamp).toLocaleString()}
                     </p>
                   </div>
                   {selectedEntry.filesSent &&
                     selectedEntry.filesSent.length > 0 && (
                       <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-foreground">
                           Archivos Enviados ({selectedEntry.filesSent.length})
                         </label>
                         <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-2 overflow-x-auto max-h-40">
@@ -1619,14 +1742,14 @@ function StatsSettings({ isHighlighted }: { isHighlighted?: boolean }) {
                   {selectedEntry.toolsUsed &&
                     selectedEntry.toolsUsed.length > 0 && (
                       <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-foreground">
                           Herramientas Usadas
                         </label>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {selectedEntry.toolsUsed.map((tool) => (
                             <span
                               key={tool}
-                              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                              className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-foreground"
                             >
                               {tool}
                             </span>

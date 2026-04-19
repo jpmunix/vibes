@@ -10,7 +10,7 @@ import { useStreamChat } from "@/hooks/useStreamChat";
 import { StreamingLoadingAnimation } from "./StreamingLoadingAnimation";
 import { TOOL_META, getToolDetail, getBgColorClass, formatPriceCost } from "./CompactToolBadge";
 import { normalizeLegacyTags } from "../../../shared/normalizeLegacyTags";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@/components/ui/icons";
 import {
   CheckCircle,
   XCircle,
@@ -26,7 +26,7 @@ import {
   User as UserIcon,
   Quote,
   type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { formatDistanceToNow, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useVersions } from "@/hooks/useVersions";
@@ -516,7 +516,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                     /* Error state: show translated error inline */
                     <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                        <AlertTriangle size={16} className="flex-shrink-0" />
-                       <span className="text-sm font-medium">{translateError(effectiveError!)}</span>
+                       <span className="typo-label">{translateError(effectiveError!)}</span>
                     </div>
                   ) : (
                     <>
@@ -584,10 +584,10 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                         </button>
                         {messageCost && (
-                          <span className="text-xs text-muted-foreground ml-1">{messageCost}</span>
+                          <span className="typo-micro ml-1">{messageCost}</span>
                         )}
                         {message.createdAt && (
-                          <span className="text-xs text-muted-foreground ml-1 flex items-center gap-1">
+                          <span className="typo-micro ml-1 flex items-center gap-1">
                             <Clock size={10} />
                             {message.durationMs != null && message.durationMs > 0
                               ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
@@ -610,7 +610,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
                             <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span>{message.model}</span>
+                            <span className="typo-micro">{message.model}</span>
                           </div>
                         )}
                       </>
@@ -639,10 +639,10 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                       {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                     </button>
                     {messageCost && (
-                      <span className="text-xs text-muted-foreground ml-1">{messageCost}</span>
+                      <span className="typo-micro ml-1">{messageCost}</span>
                     )}
                     {message.createdAt && (
-                      <span className="text-xs text-muted-foreground ml-1 flex items-center gap-1">
+                      <span className="typo-micro ml-1 flex items-center gap-1">
                         <Clock size={10} />
                         {message.durationMs != null && message.durationMs > 0
                           ? `${formatDurationMs(message.durationMs)} · ${formatTimestamp(message.createdAt)}`
@@ -663,7 +663,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         ) : (
                           <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
                             <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
-                            <span>{message.model}</span>
+                            <span className="typo-micro">{message.model}</span>
                           </div>
                         )}
                       </>
@@ -675,7 +675,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
               {/* === Compact collapsed summary (full mode only) === */}
               {!isZenMode && isAssistant && isCollapsed && message.content && (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm text-muted-foreground truncate flex-1 min-w-0">
+                  <span className="typo-caption truncate flex-1 min-w-0">
                     {plainTextExcerpt}
                   </span>
                   {toolSummary.length > 0 && (
@@ -686,7 +686,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           <div key={i} className="inline-flex items-center gap-0.5 text-xs">
                             <Icon size={12} className={g.color} />
                             {g.count > 1 && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="typo-micro">
                                 ×{g.count}
                               </span>
                             )}

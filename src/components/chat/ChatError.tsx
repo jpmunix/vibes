@@ -1,5 +1,5 @@
 import React from "react";
-import { XCircle, AlertTriangle } from "lucide-react"; // Assuming lucide-react is used
+import { XCircle, AlertTriangle } from "@/components/ui/icons"; // Assuming lucide-react is used
 
 interface ChatErrorProps {
   error: string | null;

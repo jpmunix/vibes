@@ -1,4 +1,4 @@
-import { Paperclip } from "lucide-react";
+import { Paperclip } from "@/components/ui/icons";
 
 interface DragDropOverlayProps {
   isDraggingOver: boolean;

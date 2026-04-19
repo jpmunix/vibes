@@ -32,3 +32,17 @@ La sala de máquinas también ha subido de marcha:
 - **Diagnósticos de Código Configurables:** Si sientes que el agente analiza mucho entre mensajes, ahora puedes activar o desactivar la lectura en tiempo real (LSP) de errores en TypeScript desde **Ajustes → Agente**. Con ello desactivado, el agente lo mirará solo al finalizar.
 - **Configuración Básica de Modelos:** Redujimos todo el caos. Solo configuras tu **Modo Estándar** (respuestas y lectura del día a día) y el **Modo Pro** (trabajo pesado). Sencillo y sin mareos.
 - **La Gran Purga:** Para hacer hueco, hemos borrado casi 2000 líneas de código viejo de funciones ("Dossiers", etc.) que nadie utilizaba ya, dándote una aplicación más rápida y eficiente.
+
+## ⌨️ Tu Entorno, Tus Reglas (y Tus Tipografías)
+
+- **Personalización a Otro Nivel:** ¿Trasteas con colores y fuentes para que se vea a tu gusto? Hemos añadido docenas de tipografías nuevas (Bricolage Grotesque, Inter, Outfit, JetBrains Mono...). Y no solo eso: **¡hemos separado las fuentes!** Ahora puedes elegir una tipografía espectacular de diseño para toda la interfaz (botones, ventanas, menús), y asignar una fuente distinta —más técnica o monoespaciada— exclusivamente para leer y generar los mensajes en tu chat.
+- **Previsualiza Colores Sin Cortes:** Si estás jugando con el color de acento principal o la intensidad, el selector en los ajustes ya no se cerrará cada vez que pulses un color. Haz pruebas rápidas, ve los resultados al instante sin bloqueos y ciérralo solo al hacer clic fuera.
+- **Desplegables (de verdad) Premium:** Hemos reconstruido desde cero los menús selectores. Son más bonitos, no cortan los textos, centran milimétricamente la iconografía y la experiencia estética es sencillamente genial al abrirlos. 
+
+## 🚀 Menos Paja, Más Fluidez
+
+Seguimos apostando fuerte por el minimalismo para ganar muchísima velocidad:
+
+- **Reencauzando el Interfaz y las Apps:** Para mantener la pureza en el panel de herramientas de desarrollo hemos desactivado (por ahora) los menús viejos de "Inspiración", el antiguo gestor de "Tareas", las "Notas" y las tabuladas revisiones automáticas de seguridad que no rentaban. Tu código y el Agente son ahora los maestros indiscutibles del espacio del centro, y consumen muchísimos menos recursos.
+- **Tu Git Fluye en (su propio) Espacio:** Un simple panel lateral a veces no es el sitio adecuado para enfrentarte a código denso. Ahora, todas las gestiones de Git importantes lanzan su propia ventana separada independiente. Dejas tu chat limpiecito de fondo y lidias con el versionado libremente sin molestos popups superpuestos.
+- **Indicadores Sutiles e Inteligentes:** ¿Lanzaste algo al agente a trabajar duro y cambiaste a otro hilo? No pasa nada: el desplegable de tu historial te dejará ver sutilmente qué chats continúan pensando mediante un precioso spinner asíncrono giratorio, así que no tendrás que saltar a ciegas de una conversación a otra.

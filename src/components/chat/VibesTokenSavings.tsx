@@ -1,5 +1,5 @@
 import React from "react";
-import { Zap } from "lucide-react";
+import { Zap } from "@/components/ui/icons";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 
 interface VibesTokenSavingsProps {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { CustomTagState } from "./stateTypes";
-import { ChevronRight, FolderOpen, Loader2 } from "lucide-react";
+import { ChevronRight, FolderOpen, Loader2 } from "@/components/ui/icons";
 
 interface VibesListFilesProps {
   node: {

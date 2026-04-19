@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { GitBranch } from "lucide-react";
+import { GitBranch } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";

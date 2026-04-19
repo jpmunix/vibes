@@ -9,7 +9,7 @@ import {
   Loader2,
   ExternalLink,
   Copy,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
   Dialog,
   DialogContent,
@@ -132,7 +132,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
     <>
       <Card className="mt-1" data-testid="capacitor-controls">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-base">
+          <CardTitle className="flex items-center justify-between typo-section-title">
             <div className="flex items-center gap-2">
               <Smartphone className="h-5 w-5" />
               Desarrollo móvil
@@ -146,7 +146,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
                   "https://github.com/minube/vibes/guides/mobile-app#troubleshooting",
                 );
               }}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
+              className="typo-caption text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground flex items-center gap-1"
             >
               ¿Necesitas ayuda?
               <ExternalLink className="h-3 w-3" />
@@ -171,8 +171,8 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
                 <Smartphone className="h-4 w-4" />
               )}
               <div className="text-left">
-                <div className="text-xs font-medium">{iosButtonText.main}</div>
-                <div className="text-xs text-gray-500">{iosButtonText.sub}</div>
+                <div className="typo-label">{iosButtonText.main}</div>
+                <div className="typo-caption text-muted-foreground">{iosButtonText.sub}</div>
               </div>
             </Button>
 
@@ -189,10 +189,10 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
                 <TabletSmartphone className="h-4 w-4" />
               )}
               <div className="text-left">
-                <div className="text-xs font-medium">
+                <div className="typo-label">
                   {androidButtonText.main}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="typo-caption text-muted-foreground">
                   {androidButtonText.sub}
                 </div>
               </div>
@@ -217,7 +217,7 @@ export function CapacitorControls({ appId }: CapacitorControlsProps) {
           {errorDetails && (
             <div className="relative">
               <div className="max-h-[50vh] w-full max-w-md rounded border p-4 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
-                <pre className="text-xs whitespace-pre-wrap font-mono">
+                <pre className="typo-mono whitespace-pre-wrap">
                   {errorDetails.message}
                 </pre>
               </div>

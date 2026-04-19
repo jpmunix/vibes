@@ -17,7 +17,7 @@ import {
   FileText,
   StopCircle,
   Check,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { InjectedItemPicker } from "./InjectedItemPicker";
 import { DebateTagPicker } from "./DebateTagPicker";
 import type { Debate, DebateMessage, InjectedItem } from "@/ipc/types/debate";
@@ -369,7 +369,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             {debate.tags.map((t) => (
               <span
                 key={t.id}
-                className="bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border border-primary/20"
+                className="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border border-primary/20"
               >
                 <Hash size={10} /> {t.name}
               </span>
@@ -454,7 +454,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                         ? "Tú"
                         : "Vibes"}
                   </span>
-                  <span className="text-[10px] text-muted-foreground/40 font-medium">
+                  <span className="text-xs text-muted-foreground/40 font-medium">
                     {new Date(m.createdAt!).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -466,7 +466,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                   {m.injectedItems && m.injectedItems.length > 0 && (
                     <div className="flex flex-col gap-2 mb-2 p-3 bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/10 rounded-xl relative overflow-hidden group/context">
                       <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/50" />
-                      <div className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+                      <div className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-1">
                         <Sparkles size={12} /> Contexto Inyectado (
                         {m.injectedItems.length})
                       </div>
@@ -474,13 +474,13 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                         {m.injectedItems.map((item, idx) => (
                           <div
                             key={idx}
-                            className="bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 text-[10px] flex items-center gap-2 border border-border/50 shadow-sm hover:border-indigo-500/30 transition-colors"
+                            className="bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 text-xs flex items-center gap-2 border border-border/50 shadow-sm hover:border-indigo-500/30 transition-colors"
                           >
                             <Hash size={10} className="text-indigo-500/70" />
                             <span className="font-medium truncate max-w-[150px]">
                               {item.title}
                             </span>
-                            <span className="text-muted-foreground/50 text-[8px] uppercase">
+                            <span className="text-muted-foreground/50 text-xs uppercase">
                               {item.type}
                             </span>
                           </div>
@@ -516,7 +516,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
                             type="button"
                             size="sm"
                             onClick={handleSendEditedMessage}
-                            className="rounded-full bg-white text-black hover:bg-gray-200 h-8 px-4 font-bold"
+                            className="rounded-full bg-white text-black hover:bg-accent h-8 px-4 font-bold"
                           >
                             Enviar
                           </Button>
@@ -643,7 +643,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
               {injectedItems.map((item, idx) => (
                 <div
                   key={idx}
-                  className="bg-primary/5 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2 group shadow-sm"
+                  className="bg-primary/5 text-primary text-xs font-bold px-3 py-1.5 rounded-full border border-primary/20 flex items-center gap-2 group shadow-sm"
                 >
                   <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                   <span className="truncate max-w-[200px]">{item.title}</span>
@@ -703,7 +703,7 @@ export function DebatePanel({ debateId }: DebatePanelProps) {
             </Button>
           </div>
           <div className="flex justify-center px-4">
-            <span className="text-[10px] text-muted-foreground/30 font-medium tracking-tight uppercase">
+            <span className="text-xs text-muted-foreground/30 font-medium tracking-tight uppercase">
               SHIFT + ENTER para nueva línea • AI Debater v1.2
             </span>
           </div>

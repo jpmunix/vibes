@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CheckCircle2, Info, KeyRound } from "lucide-react";
+import { CheckCircle2, Info, KeyRound } from "@/components/ui/icons";
 import type { AzureProviderSetting, UserSettings } from "@/lib/schemas";
 
 interface AzureConfigurationProps {
@@ -151,7 +151,7 @@ export function AzureConfiguration({
         <div>
           <label
             htmlFor="azure-resource-name"
-            className="block text-sm font-medium mb-1"
+            className="block typo-label mb-1"
           >
             Nombre del recurso
           </label>
@@ -170,7 +170,7 @@ export function AzureConfiguration({
         <div>
           <label
             htmlFor="azure-api-key"
-            className="block text-sm font-medium mb-1"
+            className="block typo-label mb-1"
           >
             Clave API
           </label>
@@ -229,7 +229,7 @@ export function AzureConfiguration({
           value="azure-env"
           className="border rounded-lg px-4 bg-background"
         >
-          <AccordionTrigger className="text-lg font-medium hover:no-underline cursor-pointer">
+          <AccordionTrigger className="typo-subsection-title hover:no-underline cursor-pointer">
             Variables de entorno (opcional)
           </AccordionTrigger>
           <AccordionContent className="pt-4 space-y-4">
@@ -240,7 +240,7 @@ export function AzureConfiguration({
                 </code>
                 <span
                   data-testid="azure-api-key-status"
-                  className={`px-2 py-1 rounded text-xs font-medium ${envApiKey ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
+                  className={`px-2 py-1 rounded typo-caption font-medium ${envApiKey ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
                   {envApiKey ? "Configurada" : "No configurada"}
                 </span>
@@ -251,13 +251,13 @@ export function AzureConfiguration({
                 </code>
                 <span
                   data-testid="azure-resource-name-status"
-                  className={`px-2 py-1 rounded text-xs font-medium ${envResourceName ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
+                  className={`px-2 py-1 rounded typo-caption font-medium ${envResourceName ? "bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400"}`}
                 >
                   {envResourceName ? "Configurada" : "No configurada"}
                 </span>
               </div>
             </div>
-            <div className="text-sm text-muted-foreground space-y-2">
+            <div className="typo-caption space-y-2">
               <p>
                 Puedes continuar configurando Azure a través de variables de
                 entorno. Si ambas variables están presentes y no hay ajustes

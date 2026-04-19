@@ -7,7 +7,7 @@ import {
     GitBranch,
     Loader,
     CircleX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 
@@ -78,13 +78,13 @@ export const VibesGit: React.FC<VibesGitProps> = ({ children, node }) => {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <GitBranch size={16} className="text-orange-500" />
-                    <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+                    <span className="text-foreground font-medium text-sm">
                         <span className="font-bold mr-2 outline-2 outline-orange-500/20 bg-orange-500/10 text-orange-500 rounded-md px-1">
                             GIT
                         </span>
                         {operationLabel}
                         {detailStr && (
-                            <span className="ml-2 text-gray-500">{detailStr}</span>
+                            <span className="ml-2 text-muted-foreground">{detailStr}</span>
                         )}
                     </span>
                     {inProgress && (

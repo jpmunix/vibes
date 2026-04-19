@@ -24,7 +24,7 @@ import {
     Eye,
     FolderTree,
     Undo2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -54,7 +54,7 @@ function getFileStatusIcon(status: string) {
         case "renamed":
             return <ArrowRightLeft size={13} className="text-yellow-500 shrink-0" />;
         default:
-            return <FileText size={13} className="text-gray-500 shrink-0" />;
+            return <FileText size={13} className="text-muted-foreground shrink-0" />;
     }
 }
 
@@ -132,7 +132,7 @@ function CommitDiffViewer({ diff }: { diff: string }) {
 
     return (
         <div className="overflow-x-auto overflow-y-auto border-t border-border/50">
-            <pre className="text-xs leading-5 font-mono min-w-max">
+            <pre className="typo-mono-xs leading-5 min-w-max">
                 {lines.map((line, i) => {
                     let bg = "";
                     let fg = "text-foreground/80";
@@ -150,7 +150,7 @@ function CommitDiffViewer({ diff }: { diff: string }) {
 
                     return (
                         <div key={i} className={cn("flex min-h-[20px]", bg)}>
-                            <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none", lineNumFg, "text-[10px] leading-5")}>
+                            <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none", lineNumFg, "text-xs leading-5")}>
                                 {i + 1}
                             </span>
                             <span className={cn("px-3 flex-1 whitespace-pre", fg)}>{line || " "}</span>
@@ -247,7 +247,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
         return (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                 <Loader2 className="animate-spin text-muted-foreground mb-3" size={24} />
-                <p className="text-sm text-muted-foreground">Cargando historial...</p>
+                <p className="typo-caption">Cargando historial...</p>
             </div>
         );
     }
@@ -256,7 +256,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
         return (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                 <GitCommitIcon size={36} className="text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">No hay commits todavía</p>
+                <p className="typo-caption">No hay commits todavía</p>
                 <p className="text-xs text-muted-foreground/60 mt-1">Los commits aparecerán aquí una vez que hagas cambios</p>
             </div>
         );
@@ -304,7 +304,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                         <div key={group.label}>
                             {/* Date group header */}
                             <div className="sticky top-0 z-10 px-3 py-1.5 bg-muted border-b border-border/30">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                <span className="typo-menu-header text-muted-foreground">
                                     {group.label}
                                 </span>
                             </div>
@@ -333,7 +333,7 @@ export function GitCommitHistory({ initialCommitHash }: { initialCommitHash?: st
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium leading-snug truncate">
+                                            <p className="typo-dropdown leading-snug truncate">
                                                 {commit.message}
                                             </p>
                                         </div>

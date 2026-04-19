@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
@@ -52,7 +52,7 @@ export function SetupProviderCard({
             {leadingIcon}
           </div>
           <div>
-            <h4 className={cn("font-medium text-[15px]", styles.titleColor)}>
+            <h4 className={cn("font-medium text-sm", styles.titleColor)}>
               {title}
             </h4>
             {subtitle ? (

@@ -1,4 +1,4 @@
-import { SendHorizontalIcon, StopCircleIcon } from "lucide-react";
+import { SendHorizontalIcon, StopCircleIcon } from "@/components/ui/icons";
 
 import { useSettings } from "@/hooks/useSettings";
 import { homeChatInputValueAtom } from "@/atoms/chatAtoms"; // Use a different atom for home input

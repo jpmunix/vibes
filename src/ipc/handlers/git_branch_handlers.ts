@@ -33,6 +33,7 @@ import {
   gitResolveFileTheirs,
   gitRemoveIndexLock,
   gitDiscardAllChanges,
+  gitDiscardFile,
   gitRevertCommit,
 } from "../utils/git_utils";
 import { getRemoteDb } from "../../db/remote";
@@ -749,6 +750,24 @@ async function handleRemoveIndexLock(
   return gitRemoveIndexLock({ path: appPath });
 }
 
+async function handleDiscardFileChanges(
+  _event: IpcMainInvokeEvent,
+  { appId, filepath }: { appId: number; filepath: string },
+  context: HandlerContext,
+) {
+  if (!context.userId) throw new Error("Unauthorized");
+  
+  const db = getRemoteDb();
+  const app = await db.query.apps.findFirst({
+    where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId))
+  });
+
+  if (!app) throw new Error("App not found");
+  const appPath = getVibesAppPath(app.path);
+
+  return gitDiscardFile({ path: appPath, filepath });
+}
+
 async function handleDiscardAllChanges(
   _event: IpcMainInvokeEvent,
   { appId }: { appId: number },
@@ -819,6 +838,7 @@ export function registerGithubBranchHandlers() {
   createTypedHandler(gitContracts.resolveFileOurs, handleResolveFileOurs);
   createTypedHandler(gitContracts.resolveFileTheirs, handleResolveFileTheirs);
   createTypedHandler(gitContracts.removeIndexLock, handleRemoveIndexLock);
+  createTypedHandler(gitContracts.discardFileChanges, handleDiscardFileChanges);
   createTypedHandler(gitContracts.discardAllChanges, handleDiscardAllChanges);
   createTypedHandler(gitContracts.revertCommit, handleRevertCommit);
   createTypedHandler(gitContracts.getFileContent, handleGetFileContent);

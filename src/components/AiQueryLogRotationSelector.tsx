@@ -1,12 +1,14 @@
 import React from "react";
 import { useSettings } from "@/hooks/useSettings";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
+
+const options: SelectorOption[] = [
+    { value: "50", label: "50 Entradas" },
+    { value: "100", label: "100 Entradas" },
+    { value: "200", label: "200 Entradas" },
+    { value: "500", label: "500 Entradas" },
+    { value: "1000", label: "1000 Entradas" },
+];
 
 export function AiQueryLogRotationSelector() {
     const { settings, updateSettings } = useSettings();
@@ -18,17 +20,14 @@ export function AiQueryLogRotationSelector() {
     };
 
     return (
-        <Select value={value} onValueChange={handleValueChange}>
-            <SelectTrigger className="w-[180px] h-10 border-border bg-card dark:bg-gray-800 rounded-xl font-medium focus:ring-primary/20">
-                <SelectValue placeholder="Seleccionar límite" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-border bg-card dark:bg-gray-800">
-                <SelectItem value="50" className="rounded-lg">50 Entradas</SelectItem>
-                <SelectItem value="100" className="rounded-lg">100 Entradas</SelectItem>
-                <SelectItem value="200" className="rounded-lg">200 Entradas</SelectItem>
-                <SelectItem value="500" className="rounded-lg">500 Entradas</SelectItem>
-                <SelectItem value="1000" className="rounded-lg">1000 Entradas</SelectItem>
-            </SelectContent>
-        </Select>
+        <UnifiedSelector
+            value={value}
+            onChange={handleValueChange}
+            options={options}
+            triggerVariant="default"
+            triggerSize="md"
+            popoverWidth="w-[180px]"
+            itemLayout="compact"
+        />
     );
 }

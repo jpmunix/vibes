@@ -1,17 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { ChevronDown, ExternalLink, Play, RotateCcw, Square, Terminal } from "lucide-react";
+import { ChevronDown, ExternalLink, Play, RotateCcw, Square, Terminal } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useRunApp } from "@/hooks/useRunApp";
 import { useTheme } from "@/contexts/ThemeContext";
 
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { cn } from "@/lib/utils";
 
 type ServerStatus = "running" | "stopped" | "error";
@@ -145,77 +139,54 @@ export function ServerControlButton({ appId }: ServerControlButtonProps) {
 
   return (
     <div className="flex items-center gap-1">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            id="server-control-btn"
-            disabled={loading}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium",
-              "transition-all duration-200 ease-out",
-              "border border-border/50 hover:border-border",
-              "bg-background/60 hover:bg-accent/50",
-              "text-muted-foreground hover:text-foreground",
-              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              "disabled:opacity-50 disabled:pointer-events-none",
-            )}
-          >
-            {/* Status dot */}
+      <UnifiedSelector
+        value={undefined as any}
+        onChange={(val) => {
+          if (val === "start") handleStart();
+          if (val === "stop") handleStop();
+          if (val === "restart") handleRestart();
+          if (val === "console") handleOpenConsole();
+        }}
+        options={[
+          ...(status === "stopped" ? [
+            { value: "start", label: "Iniciar servidor", leftIcon: <Play className="text-emerald-500" />, group: "main" }
+          ] : []),
+          ...(status === "running" ? [
+            { value: "restart", label: "Reiniciar servidor", leftIcon: <RotateCcw className="text-amber-500" />, group: "main" },
+            { value: "stop", label: "Detener servidor", leftIcon: <Square className="text-red-500" />, group: "main" }
+          ] : []),
+          ...(status === "error" ? [
+            { value: "restart", label: "Reiniciar servidor", leftIcon: <RotateCcw className="text-amber-500" />, group: "main" },
+            { value: "start", label: "Iniciar servidor", leftIcon: <Play className="text-emerald-500" />, group: "main" }
+          ] : []),
+          { value: "console", label: "Ver consola", leftIcon: <Terminal />, group: "actions" }
+        ]}
+        groups={[
+          { id: "main", heading: undefined },
+          { id: "actions", heading: undefined }
+        ]}
+        triggerVariant="minimal"
+        triggerSize="sm"
+        triggerClassName={cn(
+          "border border-border/50 hover:border-border",
+          "bg-background/60 hover:bg-accent/50",
+          loading && "opacity-50 pointer-events-none"
+        )}
+        customTriggerLabel={
+          <div className="flex items-center gap-1.5 min-w-0">
             <span
               className={cn(
                 "w-2 h-2 rounded-full shrink-0 transition-colors duration-300",
                 statusColor,
               )}
             />
-            <span className="hidden sm:inline">{statusLabel}</span>
-            <ChevronDown className="h-3 w-3 opacity-50" />
-          </button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent align="end" sideOffset={6} className="min-w-[180px]">
-          {/* Primary action based on status */}
-          {status === "stopped" && (
-            <DropdownMenuItem onClick={handleStart} disabled={loading}>
-              <Play className="h-4 w-4 text-emerald-500" />
-              Iniciar servidor
-            </DropdownMenuItem>
-          )}
-
-          {status === "running" && (
-            <>
-              <DropdownMenuItem onClick={handleRestart} disabled={loading}>
-                <RotateCcw className="h-4 w-4 text-amber-500" />
-                Reiniciar servidor
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleStop} disabled={loading}>
-                <Square className="h-4 w-4 text-red-500" />
-                Detener servidor
-              </DropdownMenuItem>
-            </>
-          )}
-
-          {status === "error" && (
-            <>
-              <DropdownMenuItem onClick={handleRestart} disabled={loading}>
-                <RotateCcw className="h-4 w-4 text-amber-500" />
-                Reiniciar servidor
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleStart} disabled={loading}>
-                <Play className="h-4 w-4 text-emerald-500" />
-                Iniciar servidor
-              </DropdownMenuItem>
-            </>
-          )}
-
-          <DropdownMenuSeparator />
-
-          {/* Console action */}
-          <DropdownMenuItem onClick={handleOpenConsole}>
-            <Terminal className="h-4 w-4" />
-            Ver consola
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <span className="hidden sm:inline font-medium">{statusLabel}</span>
+          </div>
+        }
+        align="end"
+        popoverWidth="w-[200px]"
+        showCheckmark={false}
+      />
 
       {/* Open in browser — only visible when server is actively serving */}
       {appUrl && (

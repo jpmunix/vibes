@@ -14,7 +14,7 @@ import {
     FolderTree,
     TestTube,
     Trash2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { showError } from "@/lib/toast";
 import {
     Tooltip,
@@ -339,7 +339,7 @@ export const ConsoleTerminal = () => {
             case "error":
                 return "text-red-500";
             case "system":
-                return "text-gray-500 italic";
+                return "text-muted-foreground italic";
             default:
                 return "";
         }
@@ -368,14 +368,14 @@ export const ConsoleTerminal = () => {
             {/* Terminal Output */}
             <div className="flex-1 overflow-hidden relative">
                 {entries.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-600 text-xs select-none">
+                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs select-none">
                         <div className="text-center">
                             <TerminalIcon
                                 size={28}
                                 className="mx-auto mb-2 opacity-30"
                             />
                             <p>Consola lista</p>
-                            <p className="text-[10px] mt-1 text-gray-700">
+                            <p className="text-xs mt-1 text-foreground">
                                 Escribe un comando o usa las acciones rápidas
                             </p>
                         </div>
@@ -410,8 +410,8 @@ export const ConsoleTerminal = () => {
                                         if (!isRunning) executeCommand(action.command);
                                     }}
                                     disabled={isRunning || !selectedAppId}
-                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]
-                                        text-gray-600 hover:text-gray-300 hover:bg-gray-800
+                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs
+                                        text-muted-foreground hover:text-muted-foreground/50 hover:bg-gray-800
                                         disabled:opacity-30 disabled:cursor-not-allowed
                                         transition-all duration-150"
                                 >
@@ -437,7 +437,7 @@ export const ConsoleTerminal = () => {
                                         e.stopPropagation();
                                         handleClear();
                                     }}
-                                    className="p-0.5 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+                                    className="p-0.5 rounded text-muted-foreground hover:text-muted-foreground/50 hover:bg-gray-800 transition-colors"
                                 >
                                     <Trash2 size={11} />
                                 </button>
@@ -458,7 +458,7 @@ export const ConsoleTerminal = () => {
                 {isRunning ? (
                     <Loader2 size={14} className="text-yellow-500 animate-spin shrink-0" />
                 ) : (
-                    <span className="text-gray-500 shrink-0 truncate max-w-[200px]">
+                    <span className="text-muted-foreground shrink-0 truncate max-w-[200px]">
                         <span className="text-cyan-600">{getShortCwd()}</span>
                         <span className="text-blue-400 font-bold ml-1">$</span>
                     </span>
@@ -470,7 +470,7 @@ export const ConsoleTerminal = () => {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isRunning}
-                    className="flex-1 bg-transparent border-none outline-none text-green-400 placeholder:text-gray-700 disabled:opacity-50"
+                    className="flex-1 bg-transparent border-none outline-none text-green-400 placeholder:text-foreground disabled:opacity-50"
                     placeholder={
                         isRunning
                             ? "Ejecutando..."
@@ -491,7 +491,7 @@ export const ConsoleTerminal = () => {
                     <button
                         type="submit"
                         disabled={!inputValue.trim() || !selectedAppId}
-                        className="text-gray-500 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="text-muted-foreground hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <Send size={14} />
                     </button>

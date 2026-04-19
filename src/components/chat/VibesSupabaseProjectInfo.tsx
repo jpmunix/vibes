@@ -6,7 +6,7 @@ import {
   CircleX,
   ChevronsDownUp,
   ChevronsUpDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
 
 interface VibesSupabaseProjectInfoProps {
@@ -47,7 +47,7 @@ export function VibesSupabaseProjectInfo({
           ) : (
             <img src={supabaseLogo} alt="Supabase" className="size-4 brightness-0 dark:invert opacity-70" />
           )}
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+          <span className="text-foreground font-medium text-sm">
             Supabase Project Info
           </span>
           {isLoading && (
@@ -61,12 +61,12 @@ export function VibesSupabaseProjectInfo({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>

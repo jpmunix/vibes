@@ -28,7 +28,6 @@ import { registerProblemsHandlers } from "./handlers/problems_handlers";
 import { registerPromptHandlers } from "./handlers/prompt_handlers";
 import { registerProposalHandlers } from "./handlers/proposal_handlers";
 import { registerReleaseNoteHandlers } from "./handlers/release_note_handlers";
-import { registerSecurityHandlers } from "./handlers/security_handlers";
 import { registerSessionHandlers } from "./handlers/session_handlers";
 import { registerSettingsHandlers } from "./handlers/settings_handlers";
 import { registerShellHandlers } from "./handlers/shell_handler";
@@ -97,7 +96,6 @@ export function registerIpcHandlers() {
   registerThemesHandlers();
   registerPortalHandlers();
   registerPromptHandlers();
-  registerSecurityHandlers();
   registerVisualEditingHandlers();
   registerTokenStatsHandlers();
   registerChatLogsHandlers();

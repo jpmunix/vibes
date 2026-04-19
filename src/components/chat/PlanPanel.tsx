@@ -26,7 +26,7 @@ import {
     CheckSquare,
     Square,
     CheckCircle,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 
@@ -230,7 +230,7 @@ function PlanTaskItem({
                             if (e.key === "Enter") confirmEdit();
                             if (e.key === "Escape") cancelEdit();
                         }}
-                        className="flex-1 bg-transparent border-b border-primary text-xs-sm outline-none py-0.5"
+                        className="flex-1 bg-transparent border-b border-primary text-sm outline-none py-0.5"
                     />
                     <button onClick={confirmEdit} className="text-primary hover:text-primary/80">
                         <Check className="h-3 w-3" />
@@ -242,7 +242,7 @@ function PlanTaskItem({
             ) : (
                 <span
                     className={cn(
-                        "flex-1 text-xs-sm leading-relaxed",
+                        "flex-1 text-sm leading-relaxed",
                         (task.checked || task.isDeveloped) && "text-muted-foreground",
                         task.isDeveloped && "line-through opacity-70",
                     )}
@@ -335,13 +335,13 @@ function PlanStageSection({
                                     setEditingTitle(false);
                                 }
                             }}
-                            className="flex-1 bg-transparent border-b border-primary text-xs-sm font-medium outline-none"
+                            className="flex-1 bg-transparent border-b border-primary text-sm font-medium outline-none"
                         />
                     </div>
                 ) : (
                     <h4
                         className={cn(
-                            "text-xs-sm font-medium text-foreground",
+                            "text-sm font-medium text-foreground",
                             !readOnly && "cursor-pointer hover:text-primary transition-colors",
                         )}
                         onClick={() => {
@@ -530,7 +530,7 @@ export function PlanPanel({ chatId }: { chatId?: number }) {
                     className="flex-1 flex items-center gap-2 cursor-pointer text-left min-w-0"
                 >
                     <ListChecks className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-xs-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-foreground">
                         Plan
                     </span>
                     {plan.objective && (

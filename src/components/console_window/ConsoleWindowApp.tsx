@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { ConsoleEntryComponent } from "../preview_panel/ConsoleEntry";
 import { ConsoleFilters } from "../preview_panel/ConsoleFilters";
 import { ConsoleTerminal } from "../preview_panel/ConsoleTerminal";
-import { Logs } from "lucide-react";
+import { Logs } from "@/components/ui/icons";
 
 // Isolated QueryClient for the console window
 const queryClient = new QueryClient({
@@ -273,10 +273,10 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
   return (
     <div className="flex flex-col h-screen w-full bg-background text-foreground text-xs font-mono">
       {/* Custom title bar */}
-      <div className="flex items-center px-4 py-0 border-b border-border/40 bg-background/80 backdrop-blur-sm shrink-0 app-region-drag h-9 font-sans">
+      <div className="flex items-center px-4 py-0 border-b border-border bg-sidebar shrink-0 app-region-drag h-9 font-sans">
         <Logs size={14} className="mr-2 text-muted-foreground shrink-0" />
-        <span className="text-sm font-medium truncate flex-1">
-          {currentApp?.name || "App"} — {consoleView === "logs" ? "Mensajes del sistema" : "Consola"}
+        <span className="typo-tab truncate flex-1">
+          {currentApp?.name || "App"} — Consola
         </span>
 
         {/* Logs/Console toggle */}
@@ -284,10 +284,10 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
           <button
             onClick={() => setConsoleView("logs")}
             className={cn(
-              "px-2.5 py-0.5 text-[10px] font-medium rounded transition-colors",
+              "px-2.5 py-0.5 typo-tab rounded-md transition-colors",
               consoleView === "logs"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-sidebar-accent text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             )}
           >
             Logs
@@ -295,10 +295,10 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
           <button
             onClick={() => setConsoleView("terminal")}
             className={cn(
-              "px-2.5 py-0.5 text-[10px] font-medium rounded transition-colors",
+              "px-2.5 py-0.5 typo-tab rounded-md transition-colors",
               consoleView === "terminal"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-sidebar-accent text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
             )}
           >
             Console

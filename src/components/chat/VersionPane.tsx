@@ -3,7 +3,7 @@ import { selectedAppIdAtom, selectedVersionIdAtom } from "@/atoms/appAtoms";
 import { useVersions } from "@/hooks/useVersions";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { RotateCcw, X, Database, Loader2 } from "lucide-react";
+import { RotateCcw, X, Database, Loader2 } from "@/components/ui/icons";
 import type { Version } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -57,7 +57,8 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
       if (!isVisible && wasVisibleRef.current && selectedVersionId) {
         setSelectedVersionId(null);
         if (appId) {
-          const currentBranch = branchInfo?.branch || "main";
+          const rawBranch = branchInfo?.branch;
+        const currentBranch = (rawBranch && rawBranch !== "<no-branch>") ? rawBranch : "main";
           await checkoutVersion({ appId, versionId: currentBranch });
           if (app?.neonProjectId) {
             await restartApp();
@@ -166,7 +167,7 @@ export function VersionPane({ isVisible, onClose }: VersionPaneProps) {
                                 className={cn(
                                   "inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-md",
                                   isExpired
-                                    ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                                    ? "bg-gray-100 text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground/70"
                                     : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
                                 )}
                               >

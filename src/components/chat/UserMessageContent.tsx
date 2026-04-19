@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
-import { Image as ImageIcon, X, Wrench } from "lucide-react";
+import { Image as ImageIcon, X, Wrench } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -130,13 +130,13 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                         onClick={() => setErrorModalOpen(true)}
                         className="not-prose flex items-center gap-2 cursor-pointer"
                     >
-                        <Wrench size={14} className="text-rose-400 flex-shrink-0" />
-                        <span className="text-sm font-medium text-foreground">Soluciona este error</span>
+                        <Wrench size={14} className="text-destructive flex-shrink-0" />
+                        <span className="typo-button font-normal text-foreground">Soluciona este error</span>
                     </div>
                     <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
                         <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-rose-400">
+                                <DialogTitle className="flex items-center gap-2 text-destructive">
                                     <Wrench size={20} />
                                     Detalle del error
                                 </DialogTitle>
@@ -184,7 +184,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
             {/* Fallback: if we have attachment text but no aiMessagesJson images,
           show a subtle indicator that there were attachments */}
             {hasAttachmentText && images.length === 0 && (
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground/60">
+                <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
                     <ImageIcon size={12} />
                     <span>Adjuntos enviados</span>
                 </div>

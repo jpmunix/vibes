@@ -46,14 +46,14 @@ export function ReleaseNotesDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="!max-w-[1400px] !w-[95vw] max-h-[90vh] flex flex-col p-8 !gap-0 overflow-hidden">
                 <DialogHeader className="mb-6 flex-shrink-0">
-                    <DialogTitle className="text-4xl font-bold flex items-center gap-3">
+                    <DialogTitle className="typo-page-title flex items-center gap-3">
                         🚀 ¿Qué hay de nuevo en v{appVersion}?
                     </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 min-h-0 w-full overflow-y-auto pr-6 custom-scrollbar">
                     <div className="prose prose-sm dark:prose-invert max-w-none pb-8 text-left">
                         {isLoading ? (
-                            <p className="text-muted-foreground text-center py-10">Cargando novedades...</p>
+                            <p className="typo-body opacity-50 text-center py-10">Cargando novedades...</p>
                         ) : (
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                         )}

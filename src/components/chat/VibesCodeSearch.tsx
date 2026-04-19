@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, FileCode, Loader } from "lucide-react";
+import { ChevronDown, ChevronUp, FileCode, Loader } from "@/components/ui/icons";
 import { CustomTagState } from "./stateTypes";
 import { useSettings } from "@/hooks/useSettings";
 import { t } from "@/lib/i18n";
@@ -50,14 +50,14 @@ export const VibesCodeSearch: React.FC<VibesCodeSearchProps> = ({
             </div>
           )}
         </div>
-        <div className="p-1 text-gray-500">
+        <div className="p-1 text-muted-foreground">
           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>
 
       {/* Collapsed preview - show query */}
       <div
-        className="text-sm italic text-gray-600 dark:text-gray-300 mt-2 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        className="text-sm italic text-muted-foreground dark:text-muted-foreground/50 mt-2 overflow-hidden transition-[max-height] duration-300 ease-in-out"
         style={{
           maxHeight: isExpanded ? "0px" : "3em",
           opacity: isExpanded ? 0 : 1,
@@ -75,10 +75,10 @@ export const VibesCodeSearch: React.FC<VibesCodeSearchProps> = ({
           marginTop: isExpanded ? "0.5rem" : "0",
         }}
       >
-        <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground/50 space-y-2">
           {query && (
             <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-medium text-muted-foreground">
                 Query:
               </span>
               <div className="italic mt-0.5">{query}</div>
@@ -86,7 +86,7 @@ export const VibesCodeSearch: React.FC<VibesCodeSearchProps> = ({
           )}
           {children && (
             <div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <span className="text-xs font-medium text-muted-foreground">
                 Results:
               </span>
               <div className="mt-0.5 whitespace-pre-wrap font-mono text-xs">

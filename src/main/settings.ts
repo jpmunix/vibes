@@ -66,6 +66,11 @@ const DEFAULT_SETTINGS: UserSettings = {
   enableOpenCodeLsp: true,
   // Chat render mode: "full" shows all badges/modals, "zen" shows only prose + cost
   chatRenderMode: "zen",
+  // Default font
+  selectedFont: "bricolage-grotesque",
+  selectedChatFont: "jetbrains-mono",
+  // Icon family selection
+  iconLibrary: "lucide",
 };
 
 const SETTINGS_FILE = "user-settings.json";

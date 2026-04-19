@@ -1,7 +1,7 @@
 import React from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
-import { Info, X } from "lucide-react";
+import { Info, X } from "@/components/ui/icons";
 
 interface ModelItemContentProps {
     model: LanguageModel;
@@ -30,12 +30,12 @@ export function ModelItemContent({
         <div className="flex items-center justify-between w-full gap-2 py-0.5 group">
             <div className="flex flex-col gap-0 overflow-hidden flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <span className="font-medium text-[13px] text-foreground truncate">
+                    <span className="!font-medium truncate">
                         {model.displayName}
                     </span>
                     {showAutoRouterBadge && <AutoRouterBadge />}
                 </div>
-                <span className="text-[10px] text-muted-foreground truncate leading-tight">
+                <span className="typo-caption truncate leading-tight">
                     {isAutoRouter ? (
                         "Gestión automática"
                     ) : (

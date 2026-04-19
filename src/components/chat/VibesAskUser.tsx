@@ -7,7 +7,7 @@ import {
     CircleX,
     Send,
     CheckCircle2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CustomTagState } from "./stateTypes";
 import { ipc } from "@/ipc/types";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -125,7 +125,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
             </div>
 
             {/* Question */}
-            <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">{question}</p>
+            <p className="text-sm text-foreground dark:text-foreground mb-2">{question}</p>
 
             {/* Context */}
             {context && (

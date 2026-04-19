@@ -115,7 +115,7 @@ function ChatLoader() {
       `}</style>
       <div className="text-center animate-text-pulse">
         <div className="inline-block">
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+          <p className="text-sm text-muted-foreground font-medium">
             {renderFadingText()}
             <span className="ml-1 inline-block w-2 h-4 bg-gray-500 dark:bg-gray-400 animate-blink" />
           </p>

@@ -17,17 +17,11 @@ import {
   ShieldCheck,
   ArrowDownToLine,
   Wrench,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {
   Dialog,
   DialogContent,
@@ -511,7 +505,7 @@ function ConnectedGitHubConnector({
 
   return (
     <div className="w-full space-y-3" data-testid="github-connected-repo">
-      <p className="text-sm text-muted-foreground">
+      <p className="typo-caption">
         Conectado al repositorio:{" "}
         <a
           onClick={(e) => {
@@ -520,7 +514,7 @@ function ConnectedGitHubConnector({
               `https://github.com/${app.githubOrg}/${app.githubRepo}`,
             );
           }}
-          className="cursor-pointer text-foreground hover:underline font-medium"
+          className="cursor-pointer text-foreground hover:underline typo-label"
         >
           {app.githubOrg}/{app.githubRepo}
         </a>
@@ -530,9 +524,9 @@ function ConnectedGitHubConnector({
       )}
       {hasUncommittedFiles && (
         <div className="p-4 rounded-md border border-border bg-muted/50">
-          <div className="flex items-center gap-2 text-sm text-foreground mb-3">
+          <div className="flex items-center gap-2 typo-body text-foreground mb-3">
             <FileWarning size={16} />
-            <span className="font-medium">
+            <span className="typo-label">
               Tienes {uncommittedFiles.length}{" "}
               {uncommittedFiles.length === 1 ? "cambio" : "cambios"} sin
               confirmar
@@ -540,11 +534,11 @@ function ConnectedGitHubConnector({
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <Label htmlFor="commit-message" className="text-xs font-semibold">
+              <Label htmlFor="commit-message" className="typo-label">
                 Mensaje de commit
               </Label>
               {!commitMessage.trim() && (
-                <span className="text-[10px] text-destructive font-medium">
+                <span className="text-xs text-destructive font-medium">
                   Obligatorio
                 </span>
               )}
@@ -563,7 +557,7 @@ function ConnectedGitHubConnector({
                 "border-destructive focus-visible:ring-destructive",
               )}
             />
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Estos cambios se confirmarán automáticamente antes de sincronizar.
             </p>
           </div>
@@ -866,12 +860,12 @@ function ConnectedGitHubConnector({
         </p>
       )}
       {rebaseStatusMessage && (
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="typo-caption mt-2">
           {rebaseStatusMessage}
         </p>
       )}
       {syncSuccess && (
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="typo-caption mt-2">
           {syncSuccess === "pull" ? "¡Descargado de GitHub con éxito!" : "¡Subido a GitHub con éxito!"}
         </p>
       )}
@@ -899,7 +893,7 @@ function ConnectedGitHubConnector({
                       Esto es peligroso e irreversible y hará lo siguiente:
                     </strong>
                   </p>
-                  <ul className="text-sm text-muted-foreground list-disc list-inside mt-2 space-y-1">
+                  <ul className="typo-caption list-disc list-inside mt-2 space-y-1">
                     <li>Sobrescribir el historial del repositorio remoto</li>
                     <li>
                       Eliminar permanentemente los commits que existen en el
@@ -1245,26 +1239,7 @@ export function UnconnectedGitHubConnector({
           Conectar a GitHub
           <Github className="h-5 w-5" />
           {isConnectingToGithub && (
-            <svg
-              className="animate-spin h-5 w-5 ml-2"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            <Loader2 className="animate-spin h-5 w-5 ml-2" />
           )}
         </Button>
 
@@ -1326,7 +1301,7 @@ export function UnconnectedGitHubConnector({
               </div>
             )}
             {githubStatusMessage && (
-              <p className="text-sm text-muted-foreground">
+              <p className="typo-caption">
                 {githubStatusMessage}
               </p>
             )}
@@ -1347,7 +1322,7 @@ export function UnconnectedGitHubConnector({
           : ""
           }`}
       >
-        <span className="font-medium">Configura tu repositorio de GitHub</span>
+        <span className="typo-label">Configura tu repositorio de GitHub</span>
         {isExpanded ? undefined : (
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}
@@ -1438,31 +1413,24 @@ export function UnconnectedGitHubConnector({
                   <Label className="block text-sm font-medium">
                     Seleccionar repositorio
                   </Label>
-                  <Select
+                  <UnifiedSelector
                     value={selectedRepo}
-                    onValueChange={setSelectedRepo}
+                    onChange={(val) => setSelectedRepo(String(val))}
                     disabled={isLoadingRepos}
-                  >
-                    <SelectTrigger
-                      className="w-full mt-1"
-                      data-testid="github-repo-select"
-                    >
-                      <SelectValue
-                        placeholder={
-                          isLoadingRepos
-                            ? "Cargando repositorios..."
-                            : "Selecciona un repositorio"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRepos.map((repo) => (
-                        <SelectItem key={repo.full_name} value={repo.full_name}>
-                          {repo.full_name} {repo.private && "(privado)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={availableRepos.map((repo) => ({
+                      value: repo.full_name,
+                      label: `${repo.full_name} ${repo.private ? "(privado)" : ""}`,
+                    }))}
+                    triggerVariant="outline"
+                    triggerSize="md"
+                    triggerClassName="w-full mt-1"
+                    placeholder={
+                      isLoadingRepos
+                        ? "Cargando repositorios..."
+                        : "Selecciona un repositorio"
+                    }
+                    data-testid="github-repo-select"
+                  />
                 </div>
               </>
             )}
@@ -1472,46 +1440,40 @@ export function UnconnectedGitHubConnector({
               <Label className="block text-sm font-medium">Rama</Label>
               {repoSetupMode === "existing" && selectedRepo ? (
                 <div className="space-y-2">
-                  <Select
+                  <UnifiedSelector
                     value={
                       branchInputMode === "select" ? selectedBranch : "custom"
                     }
-                    onValueChange={(value) => {
+                    onChange={(value) => {
                       if (value === "custom") {
                         setBranchInputMode("custom");
                         setCustomBranchName("");
                       } else {
                         setBranchInputMode("select");
-                        setSelectedBranch(value);
+                        setSelectedBranch(String(value));
                       }
                     }}
                     disabled={isLoadingBranches}
-                  >
-                    <SelectTrigger
-                      className="w-full mt-1"
-                      data-testid="github-branch-select"
-                    >
-                      <SelectValue
-                        placeholder={
-                          isLoadingBranches
-                            ? "Cargando ramas..."
-                            : "Selecciona una rama"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableBranches.map((branch) => (
-                        <SelectItem key={branch.name} value={branch.name}>
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="custom">
-                        <span className="font-medium">
-                          ✏️ Escribir nombre de rama personalizado
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      ...availableBranches.map((branch) => ({
+                        value: branch.name,
+                        label: branch.name,
+                      })),
+                      {
+                        value: "custom",
+                        label: "✏️ Escribir nombre de rama personalizado",
+                      },
+                    ]}
+                    triggerVariant="outline"
+                    triggerSize="md"
+                    triggerClassName="w-full mt-1"
+                    placeholder={
+                      isLoadingBranches
+                        ? "Cargando ramas..."
+                        : "Selecciona una rama"
+                    }
+                    data-testid="github-branch-select"
+                  />
                   {branchInputMode === "custom" && (
                     <Input
                       data-testid="github-custom-branch-input"
@@ -1647,7 +1609,7 @@ export function UnconnectedGitHubConnector({
             </div>
           )}
           {createRepoSuccess && (
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="typo-caption mt-2">
               {repoSetupMode === "create"
                 ? "¡Repositorio creado y vinculado!"
                 : "¡Conectado al repositorio!"}

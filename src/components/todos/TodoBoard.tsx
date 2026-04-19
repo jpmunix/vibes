@@ -22,7 +22,7 @@ import { TodoColumn } from "./TodoColumn";
 import { SortableTodoItem } from "./TodoItem";
 import { TodoEditModal } from "./TodoEditModal";
 import { Button } from "@/components/ui/button";
-import { Plus, Layout, Loader2, Sparkles } from "lucide-react";
+import { Plus, Layout, Loader2, Sparkles } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 
 interface TodoBoardProps {
@@ -410,7 +410,7 @@ export function TodoBoard({
             <Layout className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">{appName}</h2>
+            <h2 className="typo-section-title tracking-tight">{appName}</h2>
             <p className="text-xs text-muted-foreground">
               {todos.filter((t) => !t.completed).length} tareas pendientes ·{" "}
               {sections.length} listas

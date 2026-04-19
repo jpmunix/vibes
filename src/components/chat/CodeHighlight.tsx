@@ -6,7 +6,7 @@ import ShikiHighlighter, {
 } from "react-shiki/core";
 import type { Element as HastElement } from "hast";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Copy, Check, FileCode2, X, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
+import { Copy, Check, FileCode2, X, ExternalLink, Maximize2, Minimize2 } from "@/components/ui/icons";
 import { useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
@@ -75,7 +75,7 @@ async function ensureLanguage(lang: string): Promise<void> {
   loadedLanguages.add(lang);
 }
 
-function useHighlighter(language?: string) {
+export function useHighlighter(language?: string) {
   const [highlighter, setHighlighter] = useState<HighlighterCore>();
   const [langReady, setLangReady] = useState(false);
 
@@ -147,7 +147,7 @@ function isFilePath(text: string): boolean {
   return false;
 }
 
-function getLanguageFromPath(filePath: string): string {
+export function getLanguageFromPath(filePath: string): string {
   const ext = filePath.split(".").pop()?.toLowerCase() || "";
   return EXT_TO_LANG[ext] || "markdown";
 }
@@ -248,7 +248,7 @@ function FileViewerModal({
               {filePath}
             </span>
             {ext && (
-              <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">
+              <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">
                 {ext}
               </span>
             )}
@@ -333,7 +333,7 @@ function FileViewerModal({
 
         {/* Footer — line count */}
         {content !== null && !loading && (
-          <div className="flex items-center justify-between px-5 py-2 border-t border-border/40 bg-muted/20 text-[11px] text-muted-foreground/60">
+          <div className="flex items-center justify-between px-5 py-2 border-t border-border/40 bg-muted/20 text-xs text-muted-foreground/60">
             <span>{content.split("\n").length} líneas</span>
             <span>{(new Blob([content]).size / 1024).toFixed(1)} KB</span>
           </div>
@@ -374,10 +374,10 @@ export const CodeHighlight = memo(
 
     return !isInline ? (
       <div
-        className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code"
+        className="shiki not-prose relative border border-border/40 rounded-xl overflow-hidden shadow-sm group/code bg-muted/50 dark:bg-zinc-950/50"
       >
         {language ? (
-          <div className="flex items-center justify-between px-4 py-2 bg-(--background-lighter) dark:bg-zinc-900 border-b border-border/40">
+          <div className="flex items-center justify-between px-4 py-2 bg-muted/80 dark:bg-zinc-900 border-b border-border/40">
             <div className="flex items-center gap-2">
               <div className="flex gap-1.5 mr-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/30" />
@@ -421,7 +421,7 @@ export const CodeHighlight = memo(
       <>
         {filePathDetected ? (
           <code
-            className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
+            className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
             onClick={() => setViewingFile(code)}
             title={`Ver archivo: ${code}`}
             {...props}
@@ -429,7 +429,7 @@ export const CodeHighlight = memo(
             {children}
           </code>
         ) : (
-          <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md font-mono text-[0.85em] leading-tight`} {...props}>
+          <code className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight`} {...props}>
             {children}
           </code>
         )}

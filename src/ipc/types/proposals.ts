@@ -5,11 +5,6 @@ import { defineContract, createClient } from "../contracts/core";
 // Proposal Schemas
 // =============================================================================
 
-export const SecurityRiskSchema = z.object({
-  type: z.enum(["warning", "danger"]),
-  title: z.string(),
-  description: z.string(),
-});
 
 export const FileChangeSchema = z.object({
   name: z.string(),
@@ -27,7 +22,6 @@ export const SqlQuerySchema = z.object({
 export const CodeProposalSchema = z.object({
   type: z.literal("code-proposal"),
   title: z.string(),
-  securityRisks: z.array(SecurityRiskSchema),
   filesChanged: z.array(FileChangeSchema),
   packagesAdded: z.array(z.string()),
   sqlQueries: z.array(SqlQuerySchema),

@@ -1,6 +1,6 @@
 import type React from "react";
 import type { ReactNode } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2 } from "@/components/ui/icons";
 
 interface VibesDeleteProps {
   children?: ReactNode;
@@ -25,7 +25,7 @@ export const VibesDelete: React.FC<VibesDeleteProps> = ({
         <div className="flex items-center gap-2">
           <Trash2 size={16} className="text-red-500" />
           {fileName && (
-            <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+            <span className="text-foreground font-medium text-sm">
               {fileName}
             </span>
           )}
@@ -33,11 +33,11 @@ export const VibesDelete: React.FC<VibesDeleteProps> = ({
         </div>
       </div>
       {path && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+        <div className="text-xs text-muted-foreground font-medium mb-1">
           {path}
         </div>
       )}
-      <div className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground/50 mt-2">
         {children}
       </div>
     </div>

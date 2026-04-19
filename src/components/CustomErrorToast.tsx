@@ -1,6 +1,6 @@
 import React from "react";
 import { toast } from "sonner";
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check } from "@/components/ui/icons";
 
 interface CustomErrorToastProps {
   message: string;

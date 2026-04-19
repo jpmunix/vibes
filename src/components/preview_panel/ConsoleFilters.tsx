@@ -1,4 +1,4 @@
-import { Filter, X, Trash2, Download } from "lucide-react";
+import { Filter, X, Trash2, Download } from "@/components/ui/icons";
 import {
   Tooltip,
   TooltipContent,

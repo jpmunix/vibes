@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { ipc } from "@/ipc/types";
 
-import { Package, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { Package, ChevronsUpDown, ChevronsDownUp } from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 
 interface VibesAddDependencyProps {
@@ -33,9 +33,9 @@ export const VibesAddDependency: React.FC<VibesAddDependencyProps> = ({
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Package size={18} className="text-gray-600 dark:text-gray-400" />
+          <Package size={18} className="text-muted-foreground" />
           {packages.length > 0 && (
-            <div className="text-gray-800 dark:text-gray-200 font-semibold text-base">
+            <div className="text-foreground dark:text-foreground font-semibold text-base">
               <div className="font-normal">
                 Do you want to install these packages?
               </div>{" "}
@@ -62,12 +62,12 @@ export const VibesAddDependency: React.FC<VibesAddDependencyProps> = ({
             {isContentVisible ? (
               <ChevronsDownUp
                 size={20}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
               />
             ) : (
               <ChevronsUpDown
                 size={20}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
               />
             )}
           </div>
@@ -75,7 +75,7 @@ export const VibesAddDependency: React.FC<VibesAddDependencyProps> = ({
       </div>
 
       {packages.length > 0 && (
-        <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+        <div className="text-sm text-muted-foreground mb-1">
           Make sure these packages are what you want.{" "}
         </div>
       )}

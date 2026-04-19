@@ -7,7 +7,7 @@ import {
   FileText,
   Loader,
   CircleX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 
@@ -54,7 +54,7 @@ export const VibesLogs: React.FC<VibesLogsProps> = ({ children, node }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-(--primary)" />
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+          <span className="text-foreground font-medium text-sm">
             <span className="font-bold mr-2 outline-2 outline-(--primary)/20 bg-(--primary)/10 text-(--primary) rounded-md px-1">
               LOGS
             </span>

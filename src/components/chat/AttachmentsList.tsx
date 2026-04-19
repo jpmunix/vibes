@@ -1,4 +1,4 @@
-import { FileText, X, MessageSquare, Upload } from "lucide-react";
+import { FileText, X, MessageSquare, Upload } from "@/components/ui/icons";
 import type { FileAttachment } from "@/ipc/types";
 import { useState, useEffect } from "react";
 

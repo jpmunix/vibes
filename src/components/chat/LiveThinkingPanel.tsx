@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Brain } from "lucide-react";
+import { Brain } from "@/components/ui/icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MARKDOWN_COMPONENTS } from "./VibesMarkdownParser";

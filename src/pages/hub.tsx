@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/ui/icons";
 import { useRouter } from "@tanstack/react-router";
 import { useSettings } from "@/hooks/useSettings";
 import { useTemplates } from "@/hooks/useTemplates";
@@ -41,10 +41,10 @@ const HubPage: React.FC = () => {
           Atrás
         </Button>
         <header className="mb-8 text-left">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Elige tu plantilla predeterminada
           </h1>
-          <p className="text-md text-gray-600 dark:text-gray-400">
+          <p className="text-md text-muted-foreground">
             Elige un punto de partida para tu nuevo proyecto.
             {isLoading && " Cargando plantillas adicionales..."}
           </p>
@@ -53,7 +53,7 @@ const HubPage: React.FC = () => {
         {/* Official Templates Section */}
         {officialTemplates.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-6">
               Plantillas oficiales
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -73,7 +73,7 @@ const HubPage: React.FC = () => {
         {/* Community Templates Section */}
         {communityTemplates.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-6">
               Plantillas de la comunidad
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -106,10 +106,10 @@ function BackendSection() {
   return (
     <div className="">
       <header className="mb-4 text-left">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-3xl font-bold text-foreground mb-2">
           Servicios de Backend
         </h1>
-        <p className="text-md text-gray-600 dark:text-gray-400">
+        <p className="text-md text-muted-foreground">
           Conéctate a servicios de backend para tus proyectos.
         </p>
       </header>

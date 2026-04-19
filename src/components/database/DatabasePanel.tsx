@@ -23,7 +23,7 @@ import {
     Terminal,
     Loader2,
     ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import pocketbaseLogo from "../../../assets/logo-pocketbase-icon.svg";
 import supabaseLogo from "../../../assets/logo-supabase-icon.svg";
 import { Button } from "@/components/ui/button";
@@ -93,14 +93,14 @@ function CellEditor({
 function CellValue({ value }: { value: unknown }) {
     if (value === null || value === undefined) {
         return (
-            <span className="text-muted-foreground/50 italic text-[10px]">NULL</span>
+            <span className="typo-caption opacity-50 italic">NULL</span>
         );
     }
     if (typeof value === "boolean") {
         return (
             <span
                 className={cn(
-                    "px-1.5 py-0.5 rounded text-[10px] font-medium",
+                    "px-1.5 py-0.5 rounded text-xs font-medium",
                     value
                         ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                         : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
@@ -120,7 +120,7 @@ function CellValue({ value }: { value: unknown }) {
                     </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[400px]">
-                    <pre className="text-[10px] whitespace-pre-wrap break-words max-h-[300px] overflow-auto">
+                    <pre className="text-xs whitespace-pre-wrap break-words max-h-[300px] overflow-auto">
                         {JSON.stringify(value, null, 2)}
                     </pre>
                 </TooltipContent>
@@ -144,7 +144,7 @@ function CellValue({ value }: { value: unknown }) {
             </Tooltip>
         );
     }
-    return <span className="text-xs">{str}</span>;
+    return <span className="typo-caption text-foreground/90">{str}</span>;
 }
 
 // ── Main Component ──
@@ -237,10 +237,10 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
             <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
                 {/* We use Database here as a generic icon when disconnected */}
                 <Database size={48} className="text-muted-foreground/30" />
-                <h3 className="text-sm font-medium text-muted-foreground">
+                <h3 className="typo-label">
                     No hay conexión a la base de datos
                 </h3>
-                <p className="text-xs text-muted-foreground/70 max-w-[300px]">
+                <p className="typo-caption opacity-70 max-w-[300px]">
                     Conecta este proyecto a Supabase, Bunny.net o PocketBase desde la configuración para ver y
                     gestionar las tablas de la base de datos.
                 </p>
@@ -257,13 +257,13 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                         {db.dbType === "pocketbase" ? (
                             <img src={pocketbaseLogo} alt="PocketBase" className="h-[14px] w-[14px] object-contain" />
                         ) : db.dbType === "bunny" ? (
-                            <Database size={14} className="text-pink-500" />
+                            <Database size={14} />
                         ) : (
                             <img src={supabaseLogo} alt="Supabase" className="h-[14px] w-[14px] brightness-0 dark:invert" />
                         )}
-                        <span className="text-xs font-medium">Base de datos <span className="text-[10px] opacity-70">({db.dbType === "bunny" ? "Bunny.net" : db.dbType === "pocketbase" ? "PocketBase" : "Supabase"})</span></span>
+                        <span className="text-xs font-medium">Base de datos <span className="text-xs opacity-70">({db.dbType === "bunny" ? "Bunny.net" : db.dbType === "pocketbase" ? "PocketBase" : "Supabase"})</span></span>
                         {db.selectedTable && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                                 / {db.selectedTable}
                             </span>
                         )}
@@ -349,7 +349,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                     <Loader2 size={16} className="animate-spin text-muted-foreground" />
                                 </div>
                             ) : filteredTables.length === 0 ? (
-                                <p className="text-xs text-muted-foreground p-3 text-center">
+                                <p className="typo-caption p-3 text-center">
                                     Sin tablas
                                 </p>
                             ) : (
@@ -365,7 +365,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                     >
                                         <Table size={12} className="shrink-0 text-muted-foreground" />
                                         <span className="truncate flex-1">{table.name}</span>
-                                        <span className="text-[10px] text-muted-foreground shrink-0">
+                                        <span className="text-xs text-muted-foreground shrink-0">
                                             {table.rowCount}
                                         </span>
                                     </button>
@@ -379,18 +379,18 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                         {!db.selectedTable ? (
                             <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
                                 <Table size={32} className="opacity-20" />
-                                <p className="text-xs">Selecciona una tabla</p>
+                                <p className="typo-caption">Selecciona una tabla</p>
                             </div>
                         ) : (
                             <>
                                 {/* Toolbar */}
                                 <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] text-muted-foreground">
+                                        <span className="text-xs text-muted-foreground">
                                             {db.totalCount} filas
                                         </span>
                                         {selectedRows.size > 0 && (
-                                            <span className="text-[10px] text-blue-500">
+                                            <span className="text-xs text-blue-500">
                                                 ({selectedRows.size} seleccionadas)
                                             </span>
                                         )}
@@ -467,7 +467,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                                         <th
                                                             key={col}
                                                             onClick={() => db.toggleSort(col)}
-                                                            className="px-2 py-1.5 border-b border-r border-border text-left font-medium cursor-pointer hover:bg-muted/80 transition-colors select-none whitespace-nowrap"
+                                                            className="px-2 py-1.5 border-b border-r border-border text-left typo-label !text-xs cursor-pointer hover:bg-muted/80 transition-colors select-none whitespace-nowrap"
                                                         >
                                                             <div className="flex items-center gap-1">
                                                                 <span
@@ -597,7 +597,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                                     <tr>
                                                         <td
                                                             colSpan={db.columns.length + 1}
-                                                            className="text-center py-8 text-muted-foreground text-xs"
+                                                            className="text-center py-8 typo-caption opacity-70"
                                                         >
                                                             Sin datos
                                                         </td>
@@ -612,7 +612,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                 {db.totalPages > 1 && (
                                     <div className="flex items-center justify-between px-3 py-1.5 border-t border-border shrink-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-muted-foreground">
+                                            <span className="typo-caption opacity-80">
                                                 Página {db.page} de {db.totalPages}
                                             </span>
                                             <select
@@ -621,7 +621,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                                     db.setPageSize(Number(e.target.value));
                                                     db.setPage(1);
                                                 }}
-                                                className="h-6 text-[10px] bg-transparent border border-border rounded px-1"
+                                                className="h-6 typo-caption bg-transparent border border-border rounded px-1"
                                             >
                                                 <option value={25}>25</option>
                                                 <option value={50}>50</option>
@@ -659,7 +659,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                 {showSqlEditor && (
                     <div className="border-t border-border shrink-0">
                         <div className="flex items-center justify-between px-3 py-1 border-b border-border">
-                            <span className="text-[10px] font-medium text-muted-foreground">
+                            <span className="typo-label !text-xs opacity-70">
                                 SQL Editor
                             </span>
                             <Button
@@ -707,7 +707,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                         {db.queryResult.error}
                                     </div>
                                 ) : db.queryResult.rows.length === 0 ? (
-                                    <div className="p-3 text-xs text-muted-foreground">
+                                    <div className="p-3 typo-caption opacity-80">
                                         Query ejecutada ({db.queryResult.rowCount} filas afectadas)
                                     </div>
                                 ) : (
@@ -717,7 +717,7 @@ export function DatabasePanel({ isWindow }: { isWindow?: boolean }) {
                                                 {db.queryResult.columns.map((col) => (
                                                     <th
                                                         key={col}
-                                                        className="px-2 py-1 border-b border-r border-border text-left font-medium"
+                                                        className="px-2 py-1 border-b border-r border-border text-left typo-label !text-xs"
                                                     >
                                                         {col}
                                                     </th>

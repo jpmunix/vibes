@@ -18,7 +18,7 @@ import {
   SendHorizontalIcon,
   Lock,
   Undo,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -860,11 +860,6 @@ function ChatInputActions({
               />
             </div>
           </button>
-          {proposal.securityRisks.length > 0 && (
-            <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0">
-              Riesgos de seguridad detectados
-            </span>
-          )}
         </div>
 
         {/* Row 2: Buttons and Toggle */}
@@ -908,32 +903,6 @@ function ChatInputActions({
       <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
         {isDetailsVisible && (
           <div className="p-3 border-t border-border bg-muted/50 text-sm">
-            {!!proposal.securityRisks.length && (
-              <div className="mb-3">
-                <h4 className="font-semibold mb-1">Riesgos de seguridad</h4>
-                <ul className="space-y-1">
-                  {proposal.securityRisks.map((risk, index) => (
-                    <li key={index} className="flex items-start space-x-2">
-                      {risk.type === "warning" ? (
-                        <AlertTriangle
-                          size={16}
-                          className="text-yellow-500 mt-0.5 flex-shrink-0"
-                        />
-                      ) : (
-                        <AlertOctagon
-                          size={16}
-                          className="text-red-500 mt-0.5 flex-shrink-0"
-                        />
-                      )}
-                      <div>
-                        <span className="font-medium">{risk.title}:</span>{" "}
-                        <span>{risk.description}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {proposal.sqlQueries?.length > 0 && (
               <div className="mb-3">

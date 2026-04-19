@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Trash2, ChevronRight } from "lucide-react";
+import { Trash2, ChevronRight } from "@/components/ui/icons";
 import supabaseLogo from "../../assets/logo-supabase-icon.svg";
 import { useSettings } from "@/hooks/useSettings";
 import { useSupabase } from "@/hooks/useSupabase";
@@ -107,11 +107,11 @@ export function SupabaseIntegration() {
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
             <img src={supabaseLogo} alt="Supabase" className="h-4 w-4 brightness-0 dark:invert opacity-70 shrink-0" />
             Supabase
           </h3>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="typo-caption mt-1">
             {organizations.length} organización
             {organizations.length !== 1 ? "es" : ""} conectada
           </p>
@@ -142,7 +142,7 @@ export function SupabaseIntegration() {
           {/* Organizations */}
           {organizations.length > 0 && (
             <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
                 Organizaciones conectadas
               </Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -152,7 +152,7 @@ export function SupabaseIntegration() {
                     className="flex items-center justify-between p-4 rounded-xl bg-card border border-border shadow-sm group"
                   >
                     <div className="flex flex-col min-w-0 pr-4">
-                      <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                      <span className="text-sm font-bold text-foreground truncate">
                         {org.name || org.organizationSlug}
                       </span>
                       {org.ownerEmail && (
@@ -188,10 +188,10 @@ export function SupabaseIntegration() {
               }
             >
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-base font-semibold text-foreground">
                   Escribir archivos de migración SQL
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                <p className="typo-caption mt-1 leading-relaxed">
                   Genera archivos de migración SQL al modificar el esquema de Supabase
                 </p>
               </div>
@@ -210,10 +210,10 @@ export function SupabaseIntegration() {
               }
             >
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-base font-semibold text-foreground">
                   Mantener funciones de borde adicionales
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                <p className="typo-caption mt-1 leading-relaxed">
                   Evita que se eliminen funciones desplegadas no presentes localmente
                 </p>
               </div>

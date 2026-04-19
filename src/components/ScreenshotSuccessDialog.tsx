@@ -1,7 +1,7 @@
 import { DialogTitle } from "@radix-ui/react-dialog";
 import { Dialog, DialogContent, DialogHeader } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { BugIcon } from "lucide-react";
+import { BugIcon } from "@/components/ui/icons";
 
 interface ScreenshotSuccessDialogProps {
   isOpen: boolean;

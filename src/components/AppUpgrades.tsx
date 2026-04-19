@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, ArrowUpCircle } from "lucide-react";
+import { Terminal, ArrowUpCircle } from "@/components/ui/icons";
 import { ipc, type AppUpgrade } from "@/ipc/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -132,10 +132,10 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
                 className="dark:bg-destructive/15"
               >
                 <Terminal className="h-4 w-4" />
-                <AlertTitle className="dark:text-red-200">
+                <AlertTitle className="dark:text-destructive/80">
                   Actualización fallida
                 </AlertTitle>
-                <AlertDescription className="text-xs text-red-400 dark:text-red-300">
+                <AlertDescription className="text-xs text-destructive/80">
                   {(mutationError as Error).message}{" "}
                   <a
                     onClick={(e) => {
@@ -145,7 +145,7 @@ export function AppUpgrades({ appId }: { appId: number | null }) {
                         "https://github.com/jpmunix",
                       );
                     }}
-                    className="underline font-medium hover:dark:text-red-200 cursor-pointer"
+                    className="underline font-medium hover:text-destructive/60 cursor-pointer"
                   >
                     Instrucciones de actualización manual
                   </a>

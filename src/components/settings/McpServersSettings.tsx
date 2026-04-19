@@ -12,14 +12,8 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Trash2, Server, Globe, Terminal, RefreshCw, ChevronDown, ChevronRight, Check, Pencil } from "lucide-react";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import { Plus, Trash2, Server, Globe, Terminal, RefreshCw, ChevronDown, ChevronRight, Check, Pencil } from "@/components/ui/icons";
 import type { McpServer } from "@/ipc/types/mcp";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +22,7 @@ function McpToolsList({ serverId }: { serverId: number }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground p-3">
+      <div className="flex items-center gap-2 typo-caption p-3">
         <RefreshCw className="h-3.5 w-3.5 animate-spin" /> 
         Cargando tools...
       </div>
@@ -37,7 +31,7 @@ function McpToolsList({ serverId }: { serverId: number }) {
 
   if (isError) {
     return (
-      <div className="text-sm text-red-500/80 p-3 flex flex-col gap-2 border border-red-500/20 rounded-lg bg-red-500/5 mt-2">
+      <div className="typo-caption text-red-500/80 p-3 flex flex-col gap-2 border border-red-500/20 rounded-lg bg-red-500/5 mt-2">
         <span>Error al conectar para obtener las tools. Asegúrate de que la configuración sea correcta y el servidor esté corriendo.</span>
         <Button variant={"outline"} size={"sm"} onClick={() => refetch()} className="w-fit">Reintentar</Button>
       </div>
@@ -45,12 +39,12 @@ function McpToolsList({ serverId }: { serverId: number }) {
   }
 
   if (!tools || tools.length === 0) {
-    return <div className="text-sm text-muted-foreground p-3">No tools found for this server.</div>;
+    return <div className="typo-caption p-3">No tools found for this server.</div>;
   }
 
   return (
     <div className="pt-3">
-      <div className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wider flex items-center justify-between">
+      <div className="typo-micro uppercase tracking-wider flex items-center justify-between mb-3">
         <span>{tools.length} TOOLS DISPONIBLES</span>
         <button onClick={(e) => { e.stopPropagation(); refetch(); }} className="hover:text-primary transition-colors hover:bg-primary/10 p-1 rounded">
           <RefreshCw className="h-3 w-3" />
@@ -58,7 +52,7 @@ function McpToolsList({ serverId }: { serverId: number }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {tools.map(tool => (
-            <div key={tool.name} className="px-2.5 py-1 text-xs border border-border/80 bg-background/50 rounded-md font-mono text-foreground/80 hover:bg-background/80 transition-colors" title={tool.description || undefined}>
+            <div key={tool.name} className="px-2.5 py-1 typo-mono-xs border border-border/80 bg-background/50 rounded-md hover:bg-background/80 transition-colors" title={tool.description || undefined}>
                {tool.name}
             </div>
         ))}
@@ -84,11 +78,11 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
       >
         <div className="flex-1 min-w-0">
              <div className="flex items-center gap-2">
-                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                 <h3 className="typo-label">
                    {server.name.charAt(0).toUpperCase() + server.name.slice(1)}
                  </h3>
              </div>
-             <p className="text-sm text-muted-foreground mt-1 truncate max-w-md font-mono">
+             <p className="typo-mono mt-1 truncate max-w-md">
                {server.transport === "stdio" 
                   ? `${server.command} ${(typeof server.args === "string" ? JSON.parse(server.args) : server.args)?.join(" ") || ""}`
                   : server.url}
@@ -278,43 +272,46 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-             <label className="text-sm font-medium">Nombre</label>
+             <label className="typo-label">Nombre</label>
              <Input placeholder="github, notion, postgres..." value={name} onChange={e => setName(e.target.value)} />
-             <p className="text-[11px] text-muted-foreground">Usado en referencias de tools. Usa minúsculas y guiones.</p>
+             <p className="typo-caption">Usado en referencias de tools. Usa minúsculas y guiones.</p>
           </div>
           
           <div className="space-y-2">
-             <label className="text-sm font-medium">Tipo</label>
-             <Select value={transport} onValueChange={(v: "stdio" | "http") => setTransport(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="stdio">Local (Stdio / Comando)</SelectItem>
-                   <SelectItem value="http">Remoto (HTTP / SSE)</SelectItem>
-                </SelectContent>
-             </Select>
+             <label className="typo-label">Tipo</label>
+             <UnifiedSelector
+               value={transport}
+               onChange={(v) => setTransport(v as "stdio" | "http")}
+               options={[
+                 { value: "stdio", label: "Local (Stdio / Comando)" },
+                 { value: "http", label: "Remoto (HTTP / SSE)" },
+               ]}
+               triggerVariant="default"
+               triggerSize="md"
+               popoverWidth="w-[260px]"
+               itemLayout="compact"
+             />
           </div>
           
           {transport === "stdio" ? (
              <>
                <div className="space-y-2">
-                  <label className="text-sm font-medium">Comando</label>
+                  <label className="typo-label">Comando</label>
                   <Input placeholder="npx, python, docker..." value={command} onChange={e => setCommand(e.target.value)} />
                </div>
                <div className="space-y-2">
-                  <label className="text-sm font-medium flex justify-between">Argumentos <span className="text-muted-foreground/60 font-normal">Uno por línea</span></label>
+                  <label className="typo-label flex justify-between">Argumentos <span className="typo-caption">Uno por línea</span></label>
                   <textarea 
-                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                      placeholder="-y\n@modelcontextprotocol/server-github"
                      value={argsStr}
                      onChange={e => setArgsStr(e.target.value)}
                   />
                </div>
                <div className="space-y-2">
-                  <label className="text-sm font-medium flex justify-between">Variables de Entorno <span className="text-muted-foreground/60 font-normal">Opcional, KEY=value por línea</span></label>
+                  <label className="typo-label flex justify-between">Variables de Entorno <span className="typo-caption">Opcional, KEY=value por línea</span></label>
                   <textarea 
-                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                      placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=ghp_..."
                      value={envStr}
                      onChange={e => setEnvStr(e.target.value)}
@@ -324,13 +321,13 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
           ) : (
              <>
                <div className="space-y-2">
-                 <label className="text-sm font-medium">URL</label>
+                 <label className="typo-label">URL</label>
                  <Input placeholder="https://..." value={url} onChange={e => setUrl(e.target.value)} />
                </div>
                <div className="space-y-2">
-                  <label className="text-sm font-medium flex justify-between">Cabeceras HTTP (Headers) <span className="text-muted-foreground/60 font-normal">Opcional, KEY: value por línea</span></label>
+                  <label className="typo-label flex justify-between">Cabeceras HTTP (Headers) <span className="typo-caption">Opcional, KEY: value por línea</span></label>
                   <textarea 
-                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 typo-mono-xs ring-offset-background placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                      placeholder="Authorization: Bearer my-key..."
                      value={headersStr}
                      onChange={e => setHeadersStr(e.target.value)}
@@ -358,8 +355,8 @@ export function McpServersSettings() {
       <div className="space-y-6">
          <div className="flex items-center justify-between mb-2">
             <div>
-               <h3 className="text-lg font-medium">Servidores instalados</h3>
-               <p className="text-sm text-muted-foreground mt-1">
+               <h3 className="typo-subsection-title">Servidores instalados</h3>
+               <p className="typo-caption mt-1">
                  Activa y desactiva servidores de Model Context Protocol (MCP). Los cambios se aplican automáticamente sin reiniciar el agente.
                </p>
             </div>
@@ -371,8 +368,8 @@ export function McpServersSettings() {
                <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                   <Server className="h-6 w-6 text-primary" />
                </div>
-               <h4 className="font-medium text-base mb-1">No hay servidores MCP</h4>
-               <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+               <h4 className="typo-label mb-1">No hay servidores MCP</h4>
+               <p className="typo-caption max-w-sm mx-auto">
                  Añade tu primer servidor para dar nuevas habilidades matemáticas, de conexión o herramientas al agente.
                </p>
             </div>

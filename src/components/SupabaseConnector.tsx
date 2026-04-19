@@ -7,15 +7,7 @@ import { ipc, type SupabaseProject } from "@/ipc/types";
 import { toast } from "sonner";
 import { useSettings } from "@/hooks/useSettings";
 import { useSupabase } from "@/hooks/useSupabase";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector, type SelectorGroup, type SelectorOption } from "@/components/ui/UnifiedSelector";
 import {
   Card,
   CardContent,
@@ -24,31 +16,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
+import { Database, Eye, EyeOff, Loader2, Save, SupabaseIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
 
-// @ts-ignore
-import supabaseLogoLight from "../../assets/supabase/supabase-logo-wordmark--light.svg";
-// @ts-ignore
-import supabaseLogoDark from "../../assets/supabase/supabase-logo-wordmark--dark.svg";
-// @ts-ignore
-import connectSupabaseDark from "../../assets/supabase/connect-supabase-dark.svg";
-// @ts-ignore
-import connectSupabaseLight from "../../assets/supabase/connect-supabase-light.svg";
-// @ts-ignore
-import supabaseLogo from "../../assets/logo-supabase-icon.svg";
-
-import { ExternalLink, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { ExternalLink, Plus, RefreshCw, Trash2 } from "@/components/ui/icons";
 import { isSupabaseConnected } from "@/lib/schemas";
 
 export function SupabaseConnector({ appId }: { appId: number }) {
   const { settings, refreshSettings } = useSettings();
   const { app, refreshApp } = useLoadApp(appId);
   const { lastDeepLink, clearLastDeepLink } = useDeepLink();
-  const { isDarkMode } = useTheme();
 
   // Check if there are any connected organizations
   const isConnected = isSupabaseConnected(settings);
@@ -167,7 +147,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
     return (
       <CollapsibleCard
         title="Supabase"
-        icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+        icon={<SupabaseIcon className="h-5 w-5" />}
         description={
           <>Esta app está conectada al proyecto:{" "}<Badge variant="secondary" className="ml-2 text-base font-bold px-3 py-1">{app.supabaseProjectName}</Badge></>
         }
@@ -193,7 +173,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
     return (
       <CollapsibleCard
         title="Supabase"
-        icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+        icon={<SupabaseIcon className="h-5 w-5" />}
         description="Selecciona un proyecto de Supabase para conectar a esta app"
       >
         <div className="flex items-center justify-end gap-2 mb-4">
@@ -224,7 +204,7 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             <Skeleton className="h-10 w-full" />
           </div>
         ) : projectsError ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             Error al cargar los proyectos: {projectsError.message}
             <Button
               variant="outline"
@@ -274,38 +254,33 @@ export function SupabaseConnector({ appId }: { appId: number }) {
             </div>
 
             {projects.length === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 No se han encontrado proyectos en tus organizaciones de
                 Supabase conectadas.
               </p>
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="project-select">Proyecto</Label>
-                <Select
+                <UnifiedSelector
                   value={currentProjectValue}
-                  onValueChange={handleProjectSelect}
-                >
-                  <SelectTrigger id="project-select">
-                    <SelectValue placeholder="Selecciona un proyecto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(groupedProjects).map(
-                      ([orgKey, { orgLabel, projects: orgProjects }]) => (
-                        <SelectGroup key={orgKey}>
-                          <SelectLabel>{orgLabel}</SelectLabel>
-                          {orgProjects.map((project) => (
-                            <SelectItem
-                              key={`${project.organizationSlug}:${project.id}`}
-                              value={`${project.organizationSlug}:${project.id}`}
-                            >
-                              {project.name || project.id}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ),
-                    )}
-                  </SelectContent>
-                </Select>
+                  onChange={handleProjectSelect}
+                  groups={Object.entries(groupedProjects).map(([orgKey, { orgLabel }]) => ({
+                    id: orgKey,
+                    heading: orgLabel,
+                  }))}
+                  options={Object.entries(groupedProjects).flatMap(
+                    ([orgKey, { projects: orgProjects }]) =>
+                      orgProjects.map((project) => ({
+                        value: `${project.organizationSlug}:${project.id}`,
+                        label: project.name || project.id,
+                        group: orgKey,
+                      })),
+                  )}
+                  triggerVariant="outline"
+                  triggerSize="md"
+                  placeholder="Selecciona un proyecto"
+                  data-testid="project-select"
+                />
               </div>
             )}
           </div>
@@ -318,16 +293,17 @@ export function SupabaseConnector({ appId }: { appId: number }) {
   return (
     <CollapsibleCard
       title="Supabase"
-      icon={<img src={supabaseLogo} alt="Supabase" className="h-5 w-5 brightness-0 dark:invert" />}
+      icon={<SupabaseIcon className="h-5 w-5" />}
       description="Conecta tu cuenta de Supabase para gestionar tu base de datos"
     >
-      <img
+      <Button
         onClick={handleAddAccount}
-        src={isDarkMode ? connectSupabaseDark : connectSupabaseLight}
-        alt="Connect to Supabase"
-        className="w-full h-10 min-h-8 min-w-20 cursor-pointer"
+        variant="outline"
+        className="w-full"
         data-testid="connect-supabase-button"
-      />
+      >
+        Conectar con Supabase
+      </Button>
     </CollapsibleCard>
   );
 }

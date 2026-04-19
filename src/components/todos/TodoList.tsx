@@ -16,7 +16,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "@/components/ui/icons";
 import { useState } from "react";
 import { SortableTodoItem, TodoItem } from "./TodoItem";
 import { TodoEditModal } from "./TodoEditModal";

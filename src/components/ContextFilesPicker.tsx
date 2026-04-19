@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { InfoIcon, Settings2, Trash2 } from "lucide-react";
+import { InfoIcon, Settings2, Trash2 } from "@/components/ui/icons";
 import { useState } from "react";
 import {
   Tooltip,
@@ -122,7 +122,7 @@ export function ContextFilesPicker() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <div
-          className="flex items-center py-2 px-3 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer text-sm"
+          className="flex items-center py-2 px-3 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer typo-dropdown"
           data-testid="codebase-context-trigger"
         >
           <Settings2 className="size-4 mr-2" />
@@ -190,7 +190,7 @@ export function ContextFilesPicker() {
                     <div className="flex flex-1 flex-col overflow-hidden">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="truncate font-mono text-sm">
+                          <span className="truncate typo-mono">
                             {p.globPath}
                           </span>
                         </TooltipTrigger>
@@ -198,7 +198,7 @@ export function ContextFilesPicker() {
                           <p>{p.globPath}</p>
                         </TooltipContent>
                       </Tooltip>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="typo-caption text-muted-foreground">
                         {p.files} archivos, ~{p.tokens} tokens
                       </span>
                     </div>
@@ -217,7 +217,7 @@ export function ContextFilesPicker() {
               </div>
             ) : (
               <div className="rounded-md border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">
+                <p className="typo-caption">
                   {isSmartContextEnabled
                     ? "Vibes usará el Contexto Inteligente para encontrar automáticamente los archivos más relevantes para usar como contexto."
                     : "Vibes usará todo el código como contexto."}
@@ -228,8 +228,8 @@ export function ContextFilesPicker() {
 
           <div className="pt-2">
             <div>
-              <h3 className="font-medium">Rutas excluidas</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="typo-label">Rutas excluidas</h3>
+              <p className="typo-caption">
                 <span className="flex items-center gap-1">
                   Estos archivos se excluirán del contexto.{" "}
                   <TooltipProvider>
@@ -283,7 +283,7 @@ export function ContextFilesPicker() {
                       <div className="flex flex-1 flex-col overflow-hidden">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="truncate font-mono text-sm text-red-600">
+                            <span className="truncate typo-mono text-destructive">
                               {p.globPath}
                             </span>
                           </TooltipTrigger>
@@ -291,7 +291,7 @@ export function ContextFilesPicker() {
                             <p>{p.globPath}</p>
                           </TooltipContent>
                         </Tooltip>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="typo-caption text-muted-foreground">
                           {p.files} archivos, ~{p.tokens} tokens
                         </span>
                       </div>
@@ -315,10 +315,10 @@ export function ContextFilesPicker() {
           {isSmartContextEnabled && (
             <div className="pt-2">
               <div>
-                <h3 className="font-medium">
+                <h3 className="typo-label">
                   Auto-inclusiones de Contexto Inteligente
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="typo-caption">
                   <span className="flex items-center gap-1">
                     Estos archivos siempre se incluirán en el contexto.{" "}
                     <TooltipProvider>
@@ -372,7 +372,7 @@ export function ContextFilesPicker() {
                         <div className="flex flex-1 flex-col overflow-hidden">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="truncate font-mono text-sm">
+                              <span className="truncate typo-mono">
                                 {p.globPath}
                               </span>
                             </TooltipTrigger>
@@ -380,7 +380,7 @@ export function ContextFilesPicker() {
                               <p>{p.globPath}</p>
                             </TooltipContent>
                           </Tooltip>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="typo-caption text-muted-foreground">
                             {p.files} archivos, ~{p.tokens} tokens
                           </span>
                         </div>

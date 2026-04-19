@@ -3,7 +3,7 @@ import {
   useAgentTools,
   type AgentTool,
 } from "@/hooks/useAgentTools";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/ui/icons";
 import { AgentToolConsent } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
@@ -238,11 +238,11 @@ function ToolConsentRow({
   return (
     <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
       <div className="flex-1 min-w-0">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+        <h3 className="typo-section-title text-foreground">
           {label}
         </h3>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          <p className="typo-caption mt-1 leading-relaxed">
             {description}
           </p>
         )}
@@ -254,7 +254,7 @@ function ToolConsentRow({
               key={option.value}
               onClick={() => onConsentChange(option.value)}
               className={cn(
-                "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
                 consent === option.value
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-primary hover:bg-primary/10",

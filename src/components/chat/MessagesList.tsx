@@ -18,7 +18,7 @@ import {
 } from "@/atoms/chatAtoms";
 import { userAtom } from "@/atoms/authAtoms";
 import { useAtomValue } from "jotai";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { showError, showSuccess } from "@/lib/toast";
@@ -88,16 +88,16 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
   return (
     <>
       {/* Show context limit banner when close to token limit */}
-      {!isStreaming && tokenCountResult && (
+      {!isStreaming && tokenCountResult && messages.length > 0 && (
         <ContextLimitBanner
           totalTokens={tokenCountResult.actualMaxTokens}
           contextWindow={tokenCountResult.contextWindow}
         />
       )}
 
-      {!isStreaming && (
+      {!isStreaming && messages.length > 0 && (
         <div className="flex max-w-3xl mx-auto gap-2 pt-6 pb-4">
-          {!!messages.length && todoId && (
+          {todoId && (
             <Button
               variant="outline"
               size="sm"
@@ -116,10 +116,10 @@ const FooterComponent = React.memo(function FooterComponent({ context }: { conte
         </div>
       )}
 
-      {renderSetupBanner()}
+      {messages.length > 0 && renderSetupBanner()}
 
       {/* Spacer to push content above the floating ChatInput */}
-      <div className="h-32 w-full" />
+      {messages.length > 0 && <div className="h-32 w-full" />}
 
       {/* Scroll anchor at the very end to ensure all content above is visible */}
       <div ref={messagesEndRef} />
@@ -350,7 +350,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
       return (
         <div className="flex flex-col items-center justify-center h-full min-h-[50vh] max-w-2xl mx-auto">
-          <div className="flex flex-1 items-center justify-center text-gray-500">
+          <div className="flex flex-1 items-center justify-center typo-body text-muted-foreground">
             Aún no hay mensajes
           </div>
         </div>

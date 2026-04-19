@@ -8,6 +8,7 @@ import { useLoadApp } from "@/hooks/useLoadApp";
 import { useStreamChat } from "@/hooks/useStreamChat";
 import { ipc } from "@/ipc/types";
 import type { BunnyConfig } from "@/ipc/types/bunny";
+import { Check } from "@/components/ui/icons";
 
 interface VibesAddIntegrationProps {
   node: {
@@ -18,31 +19,7 @@ interface VibesAddIntegrationProps {
   children: React.ReactNode;
 }
 
-// Shared SVG check icon for "completed" states
-const CheckIcon = () => (
-  <svg
-    className="w-5 h-5 text-green-600 dark:text-green-400"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <circle
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="2"
-      fill="currentColor"
-      className="opacity-20"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M9 12l2 2 4-4"
-    />
-  </svg>
-);
+// Shared Check icon from factory is now used directly
 
 export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
   node,
@@ -84,7 +61,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
     return (
       <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
         <div className="flex items-center space-x-2">
-          <CheckIcon />
+          <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
           <span className="font-semibold text-green-800 dark:text-green-300">
             Integración con Supabase completada
           </span>
@@ -115,7 +92,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
       return (
         <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
           <div className="flex items-center space-x-2">
-            <CheckIcon />
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
             <span className="font-semibold text-green-800 dark:text-green-300">
               Integración con PocketBase completada
             </span>
@@ -159,7 +136,7 @@ export const VibesAddIntegration: React.FC<VibesAddIntegrationProps> = ({
       return (
         <div className="flex flex-col my-2 p-3 border border-green-300 dark:border-green-800/50 rounded-lg bg-green-50 dark:bg-green-900/20 shadow-sm">
           <div className="flex items-center space-x-2">
-            <CheckIcon />
+            <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
             <span className="font-semibold text-green-800 dark:text-green-300">
               Integración con Bunny.net completada
             </span>

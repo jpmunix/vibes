@@ -11,7 +11,7 @@ import {
   MoveUpRight,
   Clipboard,
   Download,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,

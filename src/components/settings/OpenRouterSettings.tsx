@@ -11,7 +11,7 @@ import {
   Plus,
   ChevronRight,
   RefreshCw,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -227,10 +227,10 @@ export function OpenRouterSettings({
         )}
       >
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="typo-section-title">
             OpenRouter
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="typo-caption mt-1">
             Configura tu acceso a cientos de modelos de IA a través de OpenRouter
           </p>
         </div>
@@ -239,8 +239,8 @@ export function OpenRouterSettings({
           {/* API Keys - Pill Select */}
           <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
             <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Clave API activa</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="typo-label">Clave API activa</h3>
+              <p className="typo-caption mt-1">
                 Gestiona tus claves de acceso a OpenRouter
               </p>
             </div>
@@ -249,7 +249,7 @@ export function OpenRouterSettings({
                 <button
                   type="button"
                   onClick={() => setShowAddForm(true)}
-                  className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
+                  className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200"
                 >
                   Añadir clave
                 </button>
@@ -258,7 +258,7 @@ export function OpenRouterSettings({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto text-sm font-bold hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center"
+                      className="border-0 bg-primary dark:bg-primary text-primary-foreground dark:text-primary-foreground shadow-sm rounded-lg px-4 py-1.5 h-auto typo-select hover:brightness-110 dark:hover:bg-primary transition-all duration-200 w-auto gap-2 cursor-pointer flex items-center"
                     >
                       {keys.find(k => k.id === selectedKeyId)?.alias || "Seleccionar"}
                       <ChevronRight className="h-4 w-4 rotate-90 opacity-70" />
@@ -280,10 +280,10 @@ export function OpenRouterSettings({
                           }}
                         >
                           <div className="flex flex-col min-w-0">
-                            <span className={cn("font-semibold text-sm truncate", isSelected && "text-primary")}>
+                            <span className={cn("!font-semibold truncate", isSelected && "")}>
                               {key.alias || "Sin nombre"}
                             </span>
-                            <span className="text-xs font-mono text-muted-foreground truncate">
+                            <span className="typo-mono-xs truncate">
                               {`${key.key.value.substring(0, 8)}...${key.key.value.substring(key.key.value.length - 4)}`}
                             </span>
                           </div>
@@ -303,7 +303,7 @@ export function OpenRouterSettings({
                       );
                     })}
                     <DropdownMenuItem
-                      className="cursor-pointer text-primary font-bold py-2.5 border-t border-border mt-1"
+                      className="cursor-pointer text-primary py-2.5 border-t border-border mt-1"
                       onSelect={() => setShowAddForm(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -326,24 +326,24 @@ export function OpenRouterSettings({
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="alias" className="text-xs">Alias (Opcional)</Label>
+                  <Label htmlFor="alias" className="typo-label">Alias (Opcional)</Label>
                   <Input
                     id="alias"
                     placeholder="Ej: Clave Personal"
                     value={newKeyAlias}
                     onChange={(e) => setNewKeyAlias(e.target.value)}
-                    className="h-10 bg-background"
+                    className="h-10 bg-background typo-input"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="apiKey" className="text-xs">API Key</Label>
+                  <Label htmlFor="apiKey" className="typo-label">API Key</Label>
                   <Input
                     id="apiKey"
                     type="password"
                     placeholder="sk-or-v1-..."
                     value={newKeyInput}
                     onChange={(e) => setNewKeyInput(e.target.value)}
-                    className="h-10 bg-background"
+                    className="h-10 bg-background typo-input"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -375,8 +375,8 @@ export function OpenRouterSettings({
               onClick={() => setModelsExpanded(e => !e)}
             >
               <div className="flex-1">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Modelos</h3>
-                <p className="text-sm text-muted-foreground mt-1">
+                <h3 className="typo-label">Modelos</h3>
+                <p className="typo-caption mt-1">
                   Modelos habilitados en el selector del chat
                 </p>
               </div>
@@ -385,7 +385,7 @@ export function OpenRouterSettings({
                   type="button"
                   onClick={handleRefreshModels}
                   disabled={isRefreshingModels}
-                  className="px-4 py-1.5 text-sm font-bold rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-all duration-200 flex items-center gap-2"
+                  className="px-4 py-1.5 typo-button rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-all duration-200 flex items-center gap-2"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingModels && "animate-spin")} />
                   {isRefreshingModels ? "Actualizando..." : "Refrescar"}
@@ -393,7 +393,7 @@ export function OpenRouterSettings({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openAddModelsRef.current?.(); }}
-                  className="px-4 py-1.5 text-sm font-bold rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-2"
+                  className="px-4 py-1.5 typo-select rounded-lg bg-primary text-primary-foreground shadow-sm cursor-pointer hover:brightness-110 transition-all duration-200 flex items-center gap-2"
                 >
                   <Plus className="h-3.5 w-3.5" /> Añadir
                 </button>

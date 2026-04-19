@@ -7,7 +7,7 @@ import {
     Loader,
     CircleX,
     Scissors,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 
@@ -135,7 +135,7 @@ export const VibesPatch: React.FC<VibesPatchProps> = ({
                 </div>
             )}
             {description && (
-                <div className="text-sm text-muted-foreground">
+                <div className="typo-caption">
                     <span className="font-medium">Summary: </span>
                     {description}
                 </div>

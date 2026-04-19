@@ -22,7 +22,7 @@ import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } f
 import type { ZoomLevel } from "@/lib/schemas";
 
 // Routes that can be restored on startup
-const RESTORABLE_ROUTES = ["/", "/workspace", "/todos"];
+const RESTORABLE_ROUTES = ["/", "/workspace"];
 const PREF_LAST_VIEW = "app.lastView";
 
 const DEFAULT_ZOOM_LEVEL: ZoomLevel = "100";
@@ -60,8 +60,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
       // Only restore if we're still at the root (hasn't navigated yet)
       if (routerState.location.pathname !== "/") return;
-      if (raw && RESTORABLE_ROUTES.includes(raw) && raw !== "/") {
-        navigate({ to: raw as any, replace: true });
+
+      let targetRoute = raw;
+      if (raw === "/todos" || raw === "/notas") {
+        targetRoute = "/";
+      }
+
+      if (targetRoute && RESTORABLE_ROUTES.includes(targetRoute) && targetRoute !== "/") {
+        navigate({ to: targetRoute as any, replace: true });
       }
     }).catch(() => {
       initializedRef.current = true; // unblock even on error

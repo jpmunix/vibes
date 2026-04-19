@@ -20,7 +20,7 @@ import {
   Database,
   Square,
   Logs,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
 
@@ -30,7 +30,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -54,10 +53,7 @@ export type PreviewMode =
   | "problems"
   | "configure"
   | "publish"
-  | "security"
-  | "versions"
-  | "git"
-  | "database";
+  | "versions";
 
 // Which top-level group a mode belongs to
 type MenuGroup = "preview" | "code" | "versions" | "configure";
@@ -68,9 +64,7 @@ const MODE_TO_GROUP: Record<PreviewMode, MenuGroup> = {
   problems: "code",
   database: "code",
   versions: "versions",
-  git: "versions",
   publish: "versions",
-  security: "versions",
   configure: "configure",
 };
 
@@ -91,6 +85,23 @@ export const ActionHeader = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const { problemReport } = useCheckProblems(selectedAppId);
   const { restartApp, stopApp, refreshAppIframe } = useRunApp();
+
+  // Hover-to-open dropdown logic
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMenuHoverEnter = useCallback((menuId: string) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setOpenMenu((prev) => (prev === menuId ? prev : menuId));
+  }, []);
+
+  const handleMenuHoverLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => setOpenMenu(null), 100);
+  }, []);
 
   const isCompact = windowWidth < 888;
 
@@ -224,7 +235,7 @@ export const ActionHeader = () => {
     };
   }, [activeGroup, displayCount, isPreviewOpen, isCompact, previewMode, versions?.length, versionsLoading]);
 
-  const iconSize = 15;
+  const iconSize = 17;
 
   // Dynamic label/icon for the "Código" group based on active mode
   const getCodeGroupInfo = () => {
@@ -236,8 +247,6 @@ export const ActionHeader = () => {
           icon: <AlertTriangle size={iconSize} />,
           label: "Problemas",
         };
-      case "database":
-        return { icon: <Database size={iconSize} />, label: "Base de datos" };
       default:
         return { icon: <Code size={iconSize} />, label: "Código" };
     }
@@ -253,12 +262,8 @@ export const ActionHeader = () => {
             ? "..."
             : `Versión ${versions.length}`,
         };
-      case "git":
-        return { icon: <GitBranch size={iconSize} />, label: "Git" };
       case "publish":
         return { icon: <Globe size={iconSize} />, label: "Publicar" };
-      case "security":
-        return { icon: <Shield size={iconSize} />, label: "Seguridad" };
       default:
         return {
           icon: <History size={iconSize} />,
@@ -273,15 +278,16 @@ export const ActionHeader = () => {
   const versionGroupInfo = getVersionGroupInfo();
 
   // Button style for the 3 main groups
-  const groupButtonClass =
-    "no-app-region-drag cursor-pointer relative flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium z-10 hover:bg-[var(--background-lightest)] transition-colors";
+  const groupButtonBase = "no-app-region-drag cursor-pointer relative flex items-center gap-1.5 px-4 h-8 rounded-lg typo-tab z-10 transition-all duration-150";
+  const groupButtonClass = (isActive: boolean) =>
+    `${groupButtonBase} ${isActive && isPreviewOpen ? "text-primary" : "hover:bg-sidebar-accent"}`;
 
   return (
     <TooltipProvider>
-      <div className="no-app-region-drag flex items-center justify-between px-1 py-2 border-b border-border h-[45px]">
+      <div className="no-app-region-drag flex items-center justify-between px-3 py-2 border-b border-border bg-sidebar h-[45px]">
         <div className="relative flex rounded-md p-0.5 gap-0.5">
           <motion.div
-            className="absolute top-0.5 bottom-0.5 bg-[var(--background-lightest)] shadow rounded-md"
+            className="absolute top-0.5 bottom-0.5 bg-sidebar-accent rounded-lg"
             animate={{
               left: indicatorStyle.left,
               width: indicatorStyle.width,
@@ -296,19 +302,22 @@ export const ActionHeader = () => {
           />
 
           {/* ─── Vista previa group ─── */}
-          <DropdownMenu>
+          <DropdownMenu modal={false} open={openMenu === "preview"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
             <DropdownMenuTrigger asChild>
               <button
                 ref={previewGroupRef}
                 data-testid="preview-group-button"
-                className={groupButtonClass}
+                className={groupButtonClass(activeGroup === "preview")}
+                onMouseEnter={() => handleMenuHoverEnter("preview")}
+                onMouseLeave={handleMenuHoverLeave}
+                onClick={() => selectPanel("preview")}
               >
                 <Eye size={iconSize} />
                 {!isCompact && <span>Vista previa</span>}
-                <ChevronDown size={10} className="text-muted-foreground" />
+                <ChevronDown size={10} className={activeGroup === "preview" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-80" onMouseEnter={() => handleMenuHoverEnter("preview")} onMouseLeave={handleMenuHoverLeave}>
               <DropdownMenuItem
                 onClick={() => selectPanel("preview")}
                 className={cn(
@@ -318,12 +327,11 @@ export const ActionHeader = () => {
                 <Eye size={14} />
                 <span>Vista previa</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onRestart}>
                 <RefreshCw size={14} />
                 <div className="flex flex-col">
                   <span>Reiniciar</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="typo-caption opacity-80">
                     Reinicia el servidor de desarrollo
                   </span>
                 </div>
@@ -332,7 +340,7 @@ export const ActionHeader = () => {
                 <Square size={14} />
                 <div className="flex flex-col">
                   <span>Detener servidor</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="typo-caption opacity-80">
                     Detiene el servidor de desarrollo
                   </span>
                 </div>
@@ -341,7 +349,7 @@ export const ActionHeader = () => {
                 <Hammer size={14} />
                 <div className="flex flex-col">
                   <span>Reconstruir</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="typo-caption opacity-80">
                     Reinstala node_modules y reinicia
                   </span>
                 </div>
@@ -350,7 +358,7 @@ export const ActionHeader = () => {
                 <Trash2 size={14} />
                 <div className="flex flex-col">
                   <span>Borrar caché</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="typo-caption opacity-80">
                     Borra cookies y almacenamiento local
                   </span>
                 </div>
@@ -359,24 +367,27 @@ export const ActionHeader = () => {
           </DropdownMenu>
 
           {/* ─── Código group ─── */}
-          <DropdownMenu>
+          <DropdownMenu modal={false} open={openMenu === "code"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
             <DropdownMenuTrigger asChild>
               <button
                 ref={codeGroupRef}
                 data-testid="code-group-button"
-                className={groupButtonClass}
+                className={groupButtonClass(activeGroup === "code")}
+                onMouseEnter={() => handleMenuHoverEnter("code")}
+                onMouseLeave={handleMenuHoverLeave}
+                onClick={() => selectPanel("code")}
               >
                 {codeGroupInfo.icon}
                 {!isCompact && <span>{codeGroupInfo.label}</span>}
                 {!isCompact && displayCount && (
-                  <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                  <span className="px-1 py-0.5 typo-micro bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
                     {displayCount}
                   </span>
                 )}
-                <ChevronDown size={10} className="text-muted-foreground" />
+                <ChevronDown size={10} className={activeGroup === "code" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("code")} onMouseLeave={handleMenuHoverLeave}>
               <DropdownMenuItem
                 onClick={() => selectPanel("code")}
                 className={cn(previewMode === "code" && "bg-accent")}
@@ -394,7 +405,7 @@ export const ActionHeader = () => {
                 <div className="flex items-center gap-2">
                   <span>Problemas</span>
                   {displayCount && (
-                    <span className="px-1 py-0.5 text-[10px] font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
+                    <span className="px-1 py-0.5 typo-micro bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full min-w-[16px] text-center">
                       {displayCount}
                     </span>
                   )}
@@ -402,17 +413,21 @@ export const ActionHeader = () => {
               </DropdownMenuItem>
               {hasDatabase && (
                 <>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => selectPanel("database")}
-                    className={cn(previewMode === "database" && "bg-accent")}
+                    onClick={() => {
+                      if (selectedAppId != null) {
+                        ipc.system.openDatabaseWindow({
+                          appId: selectedAppId,
+                        });
+                      }
+                    }}
+                    disabled={selectedAppId == null}
                   >
                     <Database size={14} />
                     <span>Base de datos</span>
                   </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
                   if (selectedAppId != null) {
@@ -426,30 +441,28 @@ export const ActionHeader = () => {
                 disabled={selectedAppId == null}
               >
                 <Logs size={14} />
-                <div className="flex flex-col">
-                  <span>Mensajes del sistema</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Abre en ventana independiente
-                  </span>
-                </div>
+                <span>Consola</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           {/* ─── Versión group ─── */}
-          <DropdownMenu>
+          <DropdownMenu modal={false} open={openMenu === "versions"} onOpenChange={(open) => { if (!open) setOpenMenu(null); }}>
             <DropdownMenuTrigger asChild>
               <button
                 ref={versionsGroupRef}
                 data-testid="versions-group-button"
-                className={groupButtonClass}
+                className={groupButtonClass(activeGroup === "versions")}
+                onMouseEnter={() => handleMenuHoverEnter("versions")}
+                onMouseLeave={handleMenuHoverLeave}
+                onClick={() => selectPanel("versions")}
               >
                 {versionGroupInfo.icon}
                 {!isCompact && <span>{versionGroupInfo.label}</span>}
-                <ChevronDown size={10} className="text-muted-foreground" />
+                <ChevronDown size={10} className={activeGroup === "versions" && isPreviewOpen ? "text-primary/60" : "text-muted-foreground"} />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("versions")} onMouseLeave={handleMenuHoverLeave}>
               <DropdownMenuItem
                 onClick={() => selectPanel("versions")}
                 className={cn(
@@ -463,15 +476,16 @@ export const ActionHeader = () => {
                     : `Versión ${versions.length}`}
                 </span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => selectPanel("git")}
-                className={cn(previewMode === "git" && "bg-accent")}
+                onClick={() => {
+                  if (selectedAppId != null) {
+                    ipc.system.openGitWindow({ appId: selectedAppId, theme, themeIntensity: intensity });
+                  }
+                }}
               >
                 <GitBranch size={14} />
                 <span>Git</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => selectPanel("publish")}
                 className={cn(
@@ -480,15 +494,6 @@ export const ActionHeader = () => {
               >
                 <Globe size={14} />
                 <span>Publicar</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => selectPanel("security")}
-                className={cn(
-                  previewMode === "security" && "bg-accent",
-                )}
-              >
-                <Shield size={14} />
-                <span>Seguridad</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -499,7 +504,7 @@ export const ActionHeader = () => {
               <button
                 ref={configureRef}
                 data-testid="configure-mode-button"
-                className={groupButtonClass}
+                className={groupButtonClass(activeGroup === "configure")}
                 onClick={() => selectPanel("configure")}
               >
                 <Cog size={iconSize} />

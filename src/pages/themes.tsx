@@ -8,7 +8,7 @@ import { CustomThemeDialog } from "@/components/CustomThemeDialog";
 import { EditThemeDialog } from "@/components/EditThemeDialog";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Palette } from "lucide-react";
+import { Plus, Palette } from "@/components/ui/icons";
 import { showError } from "@/lib/toast";
 import type { CustomTheme } from "@/ipc/types";
 
@@ -89,7 +89,7 @@ function ThemeCard({ theme }: { theme: CustomTheme }) {
               <h3 className="text-lg font-semibold truncate">{theme.name}</h3>
             </div>
             {theme.description && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="typo-caption mt-1">
                 {theme.description}
               </p>
             )}

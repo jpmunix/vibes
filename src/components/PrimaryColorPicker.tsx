@@ -1,4 +1,4 @@
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
@@ -12,31 +12,37 @@ import { useState, useRef, useEffect } from "react";
  *  - dark: oklch value for dark mode (slightly lower chroma for comfort)
  */
 export const COLOR_PALETTE = [
-    // Row 1 — Warm reds / oranges / yellows
-    { id: "coral", name: "Coral", preview: "#F87171", light: "oklch(0.65 0.20 25)", dark: "oklch(0.62 0.15 25)" },
-    { id: "tomato", name: "Tomate", preview: "#EF4444", light: "oklch(0.58 0.23 27)", dark: "oklch(0.55 0.18 27)" },
-    { id: "orange", name: "Naranja", preview: "#F97316", light: "oklch(0.65 0.22 50)", dark: "oklch(0.62 0.17 50)" },
-    { id: "amber", name: "Ámbar", preview: "#F59E0B", light: "oklch(0.72 0.19 75)", dark: "oklch(0.68 0.15 75)" },
-    { id: "yellow", name: "Amarillo", preview: "#EAB308", light: "oklch(0.76 0.17 90)", dark: "oklch(0.72 0.14 90)" },
-    { id: "lime", name: "Lima", preview: "#84CC16", light: "oklch(0.72 0.18 130)", dark: "oklch(0.68 0.14 130)" },
-    { id: "green", name: "Verde", preview: "#22C55E", light: "oklch(0.65 0.19 155)", dark: "oklch(0.62 0.15 155)" },
-    { id: "emerald", name: "Esmeralda", preview: "#10B981", light: "oklch(0.62 0.17 165)", dark: "oklch(0.60 0.13 165)" },
+    // Row 1 — Warm
+    { id: "red", name: "Rojo", preview: "#EF4444", light: "oklch(0.50 0.22 25)", dark: "oklch(0.60 0.18 25)" },
+    { id: "tomato", name: "Tomate", preview: "#F06292", light: "oklch(0.52 0.20 15)", dark: "oklch(0.62 0.16 15)" },
+    { id: "coral", name: "Coral", preview: "#F87171", light: "oklch(0.54 0.18 35)", dark: "oklch(0.64 0.15 35)" },
+    { id: "orange", name: "Naranja", preview: "#F97316", light: "oklch(0.52 0.20 50)", dark: "oklch(0.64 0.16 50)" },
+    { id: "amber", name: "Ámbar", preview: "#F59E0B", light: "oklch(0.50 0.18 75)", dark: "oklch(0.68 0.15 75)" },
+    { id: "gold", name: "Oro", preview: "#EAB308", light: "oklch(0.48 0.16 90)", dark: "oklch(0.68 0.14 90)" },
 
-    // Row 2 — Teals / Cyans / Blues
-    { id: "teal", name: "Turquesa", preview: "#14B8A6", light: "oklch(0.62 0.14 180)", dark: "oklch(0.60 0.11 180)" },
-    { id: "cyan", name: "Cian", preview: "#06B6D4", light: "oklch(0.64 0.15 200)", dark: "oklch(0.62 0.12 200)" },
-    { id: "sky", name: "Cielo", preview: "#0EA5E9", light: "oklch(0.60 0.16 230)", dark: "oklch(0.58 0.12 230)" },
-    { id: "blue", name: "Azul", preview: "#3B82F6", light: "oklch(0.55 0.20 260)", dark: "oklch(0.58 0.12 260)" },
-    { id: "indigo", name: "Índigo", preview: "#6366F1", light: "oklch(0.52 0.20 275)", dark: "oklch(0.56 0.14 275)" },
-    { id: "violet", name: "Violeta", preview: "#8B5CF6", light: "oklch(0.54 0.22 285)", dark: "oklch(0.57 0.14 285)" },
-    { id: "purple", name: "Púrpura", preview: "#7C3AED", light: "oklch(0.59 0.16 288)", dark: "oklch(0.58 0.13 288)" },
-    { id: "fuchsia", name: "Fucsia", preview: "#D946EF", light: "oklch(0.60 0.24 310)", dark: "oklch(0.58 0.18 310)" },
+    // Row 2 — Greens & Cyans
+    { id: "lime", name: "Lima", preview: "#84CC16", light: "oklch(0.48 0.16 130)", dark: "oklch(0.65 0.14 130)" },
+    { id: "green", name: "Verde", preview: "#22C55E", light: "oklch(0.48 0.18 155)", dark: "oklch(0.62 0.14 155)" },
+    { id: "emerald", name: "Esmeralda", preview: "#10B981", light: "oklch(0.48 0.16 165)", dark: "oklch(0.60 0.14 165)" },
+    { id: "teal", name: "Turquesa", preview: "#14B8A6", light: "oklch(0.50 0.14 180)", dark: "oklch(0.60 0.12 180)" },
+    { id: "cyan", name: "Cian", preview: "#06B6D4", light: "oklch(0.50 0.14 200)", dark: "oklch(0.62 0.12 200)" },
+    { id: "sky", name: "Cielo", preview: "#0EA5E9", light: "oklch(0.52 0.15 230)", dark: "oklch(0.62 0.13 230)" },
 
-    // Row 3 — Pinks / Roses / Neutrals
-    { id: "pink", name: "Rosa", preview: "#EC4899", light: "oklch(0.58 0.22 340)", dark: "oklch(0.58 0.16 340)" },
-    { id: "rose", name: "Rosado", preview: "#F43F5E", light: "oklch(0.58 0.23 355)", dark: "oklch(0.56 0.17 355)" },
-    { id: "slate", name: "Pizarra", preview: "#64748B", light: "oklch(0.50 0.03 260)", dark: "oklch(0.55 0.03 260)" },
-    { id: "zinc", name: "Zinc", preview: "#71717A", light: "oklch(0.50 0.01 0)", dark: "oklch(0.55 0.01 0)" },
+    // Row 3 — Blues & Purples
+    { id: "blue", name: "Azul", preview: "#3B82F6", light: "oklch(0.50 0.18 260)", dark: "oklch(0.60 0.14 260)" },
+    { id: "indigo", name: "Índigo", preview: "#6366F1", light: "oklch(0.48 0.18 275)", dark: "oklch(0.60 0.15 275)" },
+    { id: "violet", name: "Violeta", preview: "#8B5CF6", light: "oklch(0.48 0.20 285)", dark: "oklch(0.60 0.16 285)" },
+    { id: "purple", name: "Púrpura", preview: "#A855F7", light: "oklch(0.46 0.20 300)", dark: "oklch(0.60 0.16 300)" },
+    { id: "fuchsia", name: "Fucsia", preview: "#D946EF", light: "oklch(0.50 0.24 315)", dark: "oklch(0.62 0.18 315)" },
+    { id: "pink", name: "Rosa", preview: "#EC4899", light: "oklch(0.50 0.22 335)", dark: "oklch(0.62 0.16 335)" },
+
+    // Row 4 — Pinks & Neutrals
+    { id: "rose", name: "Rosado", preview: "#F43F5E", light: "oklch(0.50 0.22 350)", dark: "oklch(0.60 0.16 350)" },
+    { id: "cherry", name: "Cereza", preview: "#E11D48", light: "oklch(0.46 0.20 355)", dark: "oklch(0.58 0.16 355)" },
+    { id: "slate", name: "Pizarra", preview: "#64748B", light: "oklch(0.40 0.03 260)", dark: "oklch(0.60 0.03 260)" },
+    { id: "zinc", name: "Zinc", preview: "#71717A", light: "oklch(0.40 0.01 0)", dark: "oklch(0.60 0.01 0)" },
+    { id: "stone", name: "Piedra", preview: "#78716C", light: "oklch(0.42 0.02 85)", dark: "oklch(0.62 0.02 85)" },
+    { id: "neutral", name: "Gris", preview: "#737373", light: "oklch(0.40 0 0)", dark: "oklch(0.60 0 0)" },
 ] as const;
 
 export type ColorId = typeof COLOR_PALETTE[number]["id"];
@@ -112,7 +118,7 @@ export function PrimaryColorPicker({
                 type="button"
                 onClick={() => setIsOpen(o => !o)}
                 className={cn(
-                    "px-4 py-1.5 text-sm font-bold transition-all duration-200 cursor-pointer select-none",
+                    "px-4 py-1.5 typo-select !font-bold transition-all duration-200 cursor-pointer select-none",
                     pillPosition === "first" && "rounded-l-lg",
                     pillPosition === "last" && "rounded-r-lg",
                     !pillPosition && "rounded-lg",
@@ -122,7 +128,7 @@ export function PrimaryColorPicker({
                 )}
                 style={{
                     backgroundColor: selectedEntry.preview,
-                    color: "white",
+                    color: "#fff",
                     textShadow: "0 1px 2px rgba(0,0,0,0.3)",
                 }}
             >
@@ -142,7 +148,7 @@ export function PrimaryColorPicker({
                 )}
                 style={{ width: "max-content" }}
             >
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-6 gap-3">
                     {COLOR_PALETTE.map((color) => {
                         const isSelected = selectedColor === color.id;
                         return (
@@ -150,8 +156,6 @@ export function PrimaryColorPicker({
                                 key={color.id}
                                 onClick={() => {
                                     onColorSelect(color.id);
-                                    // Keep open briefly so user sees the feedback
-                                    setTimeout(() => setIsOpen(false), 250);
                                 }}
                                 title={color.name}
                                 className={cn(
@@ -182,10 +186,10 @@ export function PrimaryColorPicker({
                 {onChromaChange && (
                     <div className="mt-4 pt-4 border-t border-border">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
                                 Intensidad
                             </span>
-                            <span className="text-[10px] font-mono font-bold text-muted-foreground/40">
+                            <span className="text-xs font-mono font-bold text-muted-foreground/40">
                                 {chroma}%
                             </span>
                         </div>
@@ -199,8 +203,8 @@ export function PrimaryColorPicker({
                             className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                         />
                         <div className="flex justify-between mt-1">
-                            <span className="text-[9px] text-muted-foreground/30">Suave</span>
-                            <span className="text-[9px] text-muted-foreground/30">Vívido</span>
+                            <span className="text-xs text-muted-foreground/30">Suave</span>
+                            <span className="text-xs text-muted-foreground/30">Vívido</span>
                         </div>
                     </div>
                 )}
@@ -212,7 +216,6 @@ export function PrimaryColorPicker({
                             onClick={() => {
                                 onColorSelect(defaultColor);
                                 if (onChromaChange) onChromaChange(100);
-                                setIsOpen(false);
                             }}
                             className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted"
                         >

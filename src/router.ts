@@ -16,6 +16,7 @@ import { workspaceRoute } from "./routes/workspace";
 import { settingsIndexRoute } from "./routes/settings/index";
 import { promptsSettingsRoute } from "./routes/settings/prompts";
 import { aiQueryLogsRoute } from "./routes/settings/ai-query-logs";
+import { selectorsPlaygroundRoute } from "./routes/settings/selectors-playground";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -26,7 +27,7 @@ const routeTree = rootRoute.addChildren([
   todosRoute.addChildren([todosIndexRoute, todoDetailRoute]),
   appDetailsRoute,
   workspaceRoute,
-  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, aiQueryLogsRoute]),
+  settingsRoute.addChildren([settingsIndexRoute, promptsSettingsRoute, aiQueryLogsRoute, selectorsPlaygroundRoute]),
 ]);
 
 import { useNavigate } from "@tanstack/react-router";

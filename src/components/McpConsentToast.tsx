@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "./ui/button";
-import { X, ShieldAlert } from "lucide-react";
+import { X, ShieldAlert } from "@/components/ui/icons";
 import { toast } from "sonner";
 
 interface McpConsentToastProps {

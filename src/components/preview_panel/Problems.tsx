@@ -8,8 +8,8 @@ import {
   FileText,
   Wrench,
   RefreshCw,
-  Check,
-} from "lucide-react";
+  Sparkles,
+} from "@/components/ui/icons";
 import { Problem, ProblemReport } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -141,20 +141,8 @@ const ProblemsSummary = ({
   const totalErrors = problems.length;
 
   // Keep stream hook mounted; actual fix action is provided via onFixSelected
-
   if (problems.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 text-center">
-        <p className="mt-6 text-sm font-medium text-muted-foreground mb-3">
-          No se han encontrado problemas
-        </p>
-        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-3">
-          <Check size={20} className="text-green-600 dark:text-green-400" />
-        </div>
-
-        <RecheckButton appId={appId} />
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -208,7 +196,7 @@ const ProblemsSummary = ({
 
 export function Problems() {
   return (
-    <div data-testid="problems-pane">
+    <div data-testid="problems-pane" className="h-full">
       <_Problems />
     </div>
   );
@@ -238,10 +226,10 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">
+        <h3 className="typo-label !text-lg mb-2">
           Ninguna aplicación seleccionada
         </h3>
-        <p className="text-sm text-muted-foreground max-w-md">
+        <p className="typo-caption max-w-md">
           Selecciona una aplicación para ver los problemas de TypeScript e
           información de diagnóstico.
         </p>
@@ -255,12 +243,32 @@ export function _Problems() {
         <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
           <AlertTriangle size={24} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium mb-2">
+        <h3 className="typo-label !text-lg mb-2">
           No hay informe de problemas
         </h3>
-        <p className="text-sm text-muted-foreground max-w-md mb-4">
+        <p className="typo-caption max-w-md mb-4">
           Ejecuta las comprobaciones para escanear tu aplicación en busca de
           errores de TypeScript y otros problemas.
+        </p>
+        <RecheckButton
+          appId={selectedAppId}
+          onBeforeRecheck={() => setSelectedKeys(new Set())}
+        />
+      </div>
+    );
+  }
+
+  if (problemReport.problems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+        <div className="w-16 h-16 rounded-full bg-[var(--background-darkest)] flex items-center justify-center mb-4">
+          <Sparkles size={24} className="text-muted-foreground" />
+        </div>
+        <h3 className="typo-label !text-lg mb-2">
+          No se han encontrado problemas
+        </h3>
+        <p className="typo-caption max-w-md mb-4">
+          Todo parece correcto. Ejecuta las comprobaciones de nuevo si has hecho cambios recientes.
         </p>
         <RecheckButton
           appId={selectedAppId}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, X } from "lucide-react";
+import { Download, X } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -54,7 +54,7 @@ export function UpdateAvailableDialog({
                     />
                     <Label
                         htmlFor="update-remember"
-                        className="text-sm text-muted-foreground cursor-pointer select-none"
+                        className="typo-caption cursor-pointer select-none"
                     >
                         No recordarme hasta la siguiente actualización
                     </Label>

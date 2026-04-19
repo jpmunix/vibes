@@ -82,7 +82,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             alt="minube vibes"
             className="w-12 h-12 mx-auto mb-4 rounded-lg"
           />
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          <h1 className="typo-section-title tracking-tight">
             minube vibes
           </h1>
         </div>
@@ -91,7 +91,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         <div className="flex bg-muted rounded-xl p-1 mb-6 gap-1">
           <button
             type="button"
-            className={`flex-1 py-2.5 px-4 text-[13px] font-semibold rounded-lg transition-all cursor-pointer ${isLogin
+            className={`flex-1 py-2.5 px-4 typo-tab rounded-lg transition-all cursor-pointer ${isLogin
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
               }`}
@@ -101,7 +101,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           </button>
           <button
             type="button"
-            className={`flex-1 py-2.5 px-4 text-[13px] font-semibold rounded-lg transition-all cursor-pointer ${!isLogin
+            className={`flex-1 py-2.5 px-4 typo-tab rounded-lg transition-all cursor-pointer ${!isLogin
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
               }`}
@@ -115,7 +115,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {!isLogin && (
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="displayName" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <label htmlFor="displayName" className="typo-micro uppercase tracking-wider">
                 Nombre
               </label>
               <input
@@ -132,7 +132,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <label htmlFor="email" className="typo-micro uppercase tracking-wider">
               Email
             </label>
             <input
@@ -149,7 +149,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <label htmlFor="password" className="typo-micro uppercase tracking-wider">
               Contraseña
             </label>
             <input
@@ -166,7 +166,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
 
           {!isLogin && (
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="confirmPassword" className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <label htmlFor="confirmPassword" className="typo-micro uppercase tracking-wider">
                 Confirmar contraseña
               </label>
               <input
@@ -183,7 +183,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           )}
 
           {error && (
-            <div className="px-3.5 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive-foreground text-[13px]">
+            <div className="px-3.5 py-2.5 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive-foreground text-sm">
               {error}
             </div>
           )}
@@ -191,7 +191,7 @@ export function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold cursor-pointer transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg typo-button cursor-pointer transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
           >
             {isLoading
               ? "Cargando..."

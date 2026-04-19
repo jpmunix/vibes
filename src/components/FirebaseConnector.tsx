@@ -5,14 +5,7 @@ import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
 import { useSettings } from "@/hooks/useSettings";
 import { useFirebase } from "@/hooks/useFirebase";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import {
     Card,
     CardContent,
@@ -24,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useDeepLink } from "@/contexts/DeepLinkContext";
-import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft, X, Trash2 } from "lucide-react";
+import { ExternalLink, RefreshCw, Flame, LogOut, Plus, ChevronLeft, X, Trash2, GoogleIcon } from "@/components/ui/icons";
 import { FIREBASE_AUTH_CONFIG } from "@/shared/firebase_auth_config";
 import { Input } from "@/components/ui/input";
 
@@ -273,7 +266,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                     <div className="space-y-3 p-3 border rounded-lg bg-muted/20">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Apps Web del Proyecto</span>
+                                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Apps Web del Proyecto</span>
                                 <span className="text-sm font-medium leading-none">{app.firebaseProjectId}</span>
                             </div>
                             <Button variant="ghost" size="sm" onClick={() => setShowManageWebApps(false)} disabled={isWorking} className="h-7 text-xs">
@@ -326,9 +319,9 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold">{wa.displayName || "App sin nombre"}</span>
-                                                        {isCurrentApp && <Badge variant="outline" className="text-[9px] py-0 px-1.5">Actual</Badge>}
+                                                        {isCurrentApp && <Badge variant="outline" className="text-xs py-0 px-1.5">Actual</Badge>}
                                                     </div>
-                                                    <span className="text-[10px] opacity-60 font-mono">{wa.appId}</span>
+                                                    <span className="text-xs opacity-60 font-mono">{wa.appId}</span>
                                                 </Button>
                                             );
                                         })
@@ -349,9 +342,9 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                 ) : app.firebaseConfig?.appId ? (
                     <div className="flex items-center justify-between p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-muted/10">
                         <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">App Web</span>
+                            <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">App Web</span>
                             <span className="text-sm font-medium truncate">{app.firebaseConfig.webAppDisplayName || app.firebaseConfig.appId}</span>
-                            {app.firebaseConfig.webAppDisplayName && <span className="text-[10px] text-muted-foreground font-mono truncate">{app.firebaseConfig.appId}</span>}
+                            {app.firebaseConfig.webAppDisplayName && <span className="text-xs text-muted-foreground font-mono truncate">{app.firebaseConfig.appId}</span>}
                         </div>
                         <Button
                             variant="ghost"
@@ -417,7 +410,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Proyecto</span>
+                        <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Proyecto</span>
                         <span className="text-sm font-medium leading-none">{selectedProjectId}</span>
                     </div>
                 </div>
@@ -463,7 +456,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                                         disabled={isWorking}
                                     >
                                         <span className="font-bold">{wa.displayName || "App sin nombre"}</span>
-                                        <span className="text-[10px] opacity-60 font-mono">{wa.appId}</span>
+                                        <span className="text-xs opacity-60 font-mono">{wa.appId}</span>
                                     </Button>
                                 ))
                             )}
@@ -550,20 +543,18 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
                         <Label htmlFor="project-select">Proyecto</Label>
                         <div className="flex gap-2">
                             <div className="flex-1">
-                                <Select value="" onValueChange={onSelectProjectFromList}>
-                                    <SelectTrigger id="project-select">
-                                        <SelectValue placeholder="Selecciona un proyecto" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectGroup>
-                                            {projects.map((p) => (
-                                                <SelectItem key={p.projectId} value={p.projectId}>
-                                                    {p.displayName || p.projectId}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
+                                <UnifiedSelector
+                                    value={""}
+                                    onChange={(val) => onSelectProjectFromList(String(val))}
+                                    options={projects.map((p) => ({
+                                        value: p.projectId,
+                                        label: p.displayName || p.projectId,
+                                    }))}
+                                    triggerVariant="outline"
+                                    triggerSize="md"
+                                    placeholder="Selecciona un proyecto"
+                                    data-testid="project-select"
+                                />
                             </div>
                             <Button variant="outline" size="icon" onClick={() => setShowCreateForm(true)} title="Nuevo proyecto">
                                 <Plus className="h-4 w-4" />
@@ -607,9 +598,7 @@ export function FirebaseConnector({ appId, noCard = false }: { appId: number, no
     // VIEW 4: Not connected
     const content = (
         <Button onClick={handleConnectGoogle} className="w-full bg-[#4285F4] hover:bg-[#357ae8] text-white">
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 488 512">
-                <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
-            </svg>
+            <GoogleIcon className="mr-2 h-4 w-4" />
             Conectar con Google
         </Button>
     );

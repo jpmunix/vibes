@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { ChevronDown, ChevronUp, Wrench, type LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench, type LucideIcon } from "@/components/ui/icons";
 import { TOOL_META, resolveToolMeta, type ToolBadgeState } from "./CompactToolBadge";
 import {
     Dialog,
@@ -82,7 +82,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, is
                         >
                             <Icon size={12} className={meta.color} />
                             {b.detail && (
-                                <span className="text-muted-foreground max-w-24 truncate">{b.detail}</span>
+                                <span className="typo-micro max-w-24 truncate">{b.detail}</span>
                             )}
                         </button>
                     );
@@ -115,7 +115,7 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, is
                                     >
                                         <Icon size={13} className={group.color} />
                                         {group.items.length > 1 && (
-                                            <span className="text-xs text-muted-foreground font-medium">
+                                            <span className="typo-micro">
                                                 ×{group.items.length}
                                             </span>
                                         )}
@@ -142,11 +142,11 @@ export const GroupedToolBadges: React.FC<GroupedToolBadgesProps> = ({ badges, is
                                     onClick={() => setModalItem(b)}
                                 >
                                     <Icon size={13} className={`${meta.color} flex-shrink-0`} />
-                                    <span className="text-xs font-medium text-foreground/80">
+                                    <span className="typo-badge text-foreground/80">
                                         {meta.label}
                                     </span>
                                     {b.detail && (
-                                        <span className="text-xs text-muted-foreground truncate">
+                                        <span className="typo-micro truncate">
                                             · {b.detail}
                                         </span>
                                     )}
@@ -176,7 +176,7 @@ function ModalDialog({ item, onClose }: { item: BadgeItem | null; onClose: () =>
                         <Icon size={20} />
                         {meta.label}
                         {item.detail && (
-                            <span className="text-muted-foreground font-normal text-sm ml-1">{item.detail}</span>
+                            <span className="typo-caption ml-1">{item.detail}</span>
                         )}
                     </DialogTitle>
                 </DialogHeader>

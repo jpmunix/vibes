@@ -7,7 +7,7 @@ import {
   Database,
   Loader,
   CircleX,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 
@@ -42,7 +42,7 @@ export const VibesExecuteSql: React.FC<VibesExecuteSqlProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Database size={16} />
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+          <span className="text-foreground font-medium text-sm">
             <span className="font-bold mr-2 outline-2 outline-gray-200 dark:outline-gray-700 bg-gray-100 dark:bg-gray-800 rounded-md px-1">
               SQL
             </span>
@@ -65,12 +65,12 @@ export const VibesExecuteSql: React.FC<VibesExecuteSqlProps> = ({
           {isContentVisible ? (
             <ChevronsDownUp
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>

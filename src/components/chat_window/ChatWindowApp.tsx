@@ -5,7 +5,7 @@ import {
     PanelResizeHandle,
     type ImperativePanelHandle,
 } from "react-resizable-panels";
-import { GripVertical } from "lucide-react";
+import { GripVertical } from "@/components/ui/icons";
 import {
     QueryCache,
     QueryClient,

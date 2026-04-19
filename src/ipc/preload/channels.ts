@@ -36,7 +36,6 @@ import { neonContracts } from "../types/neon";
 
 import { promptContracts } from "../types/prompts";
 import { proposalContracts } from "../types/proposals";
-import { securityContracts } from "../types/security";
 // Import all contracts
 import { settingsContracts } from "../types/settings";
 import { supabaseContracts } from "../types/supabase";
@@ -118,7 +117,6 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(contextContracts),
   ...getInvokeChannels(upgradeContracts),
   ...getInvokeChannels(visualEditingContracts),
-  ...getInvokeChannels(securityContracts),
   ...getInvokeChannels(miscContracts),
 
   ...getInvokeChannels(tokenStatsContracts),

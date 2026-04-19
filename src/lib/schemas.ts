@@ -417,6 +417,10 @@ export const UserSettingsSchema = z
     enableOpenCodeLsp: z.boolean().optional(),
     // Chat render mode: "full" (all badges/modals/tools) or "zen" (minimal DOM, only prose + cost)
     chatRenderMode: ChatRenderModeSchema.optional(),
+    // Selected UI font family (id from shared/fonts.ts)
+    selectedFont: z.string().optional(),
+    // Selected Chat font family
+    selectedChatFont: z.string().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 
@@ -433,6 +437,7 @@ export const UserSettingsSchema = z
         isMaximized: z.boolean().optional(),
       })
       .optional(),
+    iconLibrary: z.enum(["lucide", "iconoir"]).optional(),
   })
   // Allow unknown properties to pass through (e.g. future settings
   // that should be preserved if user downgrades to an older version)
@@ -469,12 +474,7 @@ export function isSupabaseConnected(settings: UserSettings | null): boolean {
 
 
 
-// Define interfaces for the props
-export interface SecurityRisk {
-  type: "warning" | "danger";
-  title: string;
-  description: string;
-}
+
 
 export interface FileChange {
   name: string;
@@ -487,7 +487,6 @@ export interface FileChange {
 export interface CodeProposal {
   type: "code-proposal";
   title: string;
-  securityRisks: SecurityRisk[];
   filesChanged: FileChange[];
   packagesAdded: string[];
   sqlQueries: SqlQuery[];

@@ -34,17 +34,8 @@ import {
 const ConfigurePanel = React.lazy(() =>
   import("./ConfigurePanel").then((m) => ({ default: m.ConfigurePanel }))
 );
-const SecurityPanel = React.lazy(() =>
-  import("./SecurityPanel").then((m) => ({ default: m.SecurityPanel }))
-);
 const PublishPanel = React.lazy(() =>
   import("./PublishPanel").then((m) => ({ default: m.PublishPanel }))
-);
-const GitPanel = React.lazy(() =>
-  import("../GitPanel").then((m) => ({ default: m.GitPanel }))
-);
-const DatabasePanel = React.lazy(() =>
-  import("../database/DatabasePanel").then((m) => ({ default: m.DatabasePanel }))
 );
 const NaturalEditingPanel = React.lazy(() =>
   import("./NaturalEditingPanel").then((m) => ({ default: m.NaturalEditingPanel }))
@@ -157,12 +148,6 @@ export function PreviewPanel() {
                 </Suspense>
               </Panel>
             </PanelGroup>
-          ) : previewMode === "git" ? (
-            <Suspense fallback={<LazyFallback />}>
-              <GitPanel
-                onClose={() => setPreviewMode("preview")}
-              />
-            </Suspense>
           ) : previewMode === "preview" ? (
             <div className="flex h-full">
               <div className="flex-1 min-w-0 h-full">
@@ -191,14 +176,6 @@ export function PreviewPanel() {
           ) : previewMode === "publish" ? (
             <Suspense fallback={<LazyFallback />}>
               <PublishPanel />
-            </Suspense>
-          ) : previewMode === "security" ? (
-            <Suspense fallback={<LazyFallback />}>
-              <SecurityPanel />
-            </Suspense>
-          ) : previewMode === "database" ? (
-            <Suspense fallback={<LazyFallback />}>
-              <DatabasePanel />
             </Suspense>
           ) : (
             <Problems />

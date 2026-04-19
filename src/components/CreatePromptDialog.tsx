@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Save, Edit2 } from "lucide-react";
+import { Plus, Save, Edit2 } from "@/components/ui/icons";
 
 interface CreateOrEditPromptDialogProps {
   mode: "create" | "edit";

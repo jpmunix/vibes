@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom, appsListAtom } from "@/atoms/appAtoms";
@@ -7,7 +6,9 @@ import { selectedChatIdAtom, isStreamingByIdAtom } from "@/atoms/chatAtoms";
 import { ChatPanel } from "@/components/ChatPanel";
 import { ipc } from "@/ipc/types";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { ChevronRight, ChevronDown, MessagesSquare, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2, MessagesSquare } from "@/components/ui/icons";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { ServerControlButton } from "@/components/ServerControlButton";
 import { GitChangesButton } from "@/components/GitChangesButton";
 import { LanguageBadge } from "@/components/LanguageBadge";
@@ -15,6 +16,7 @@ import { AgentBranchSelector } from "@/components/AgentBranchSelector";
 import { useChats } from "@/hooks/useChats";
 import { useSessionCost } from "@/hooks/useSessionCost";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 /**
  * /workspace route — renders ChatPanel inline (no preview, no dev server).
@@ -108,28 +110,54 @@ export default function WorkspacePage() {
         {/* Left: breadcrumb App / Chat dropdowns */}
         <div className="flex items-center gap-1.5 min-w-0">
           {/* App dropdown selector */}
-          <AppBreadcrumbDropdown
-            apps={appsList}
-            selectedAppId={appId}
-            onSelect={(id) => {
-              navigate({ to: "/workspace", search: { appId: id } });
-            }}
-            label={selectedApp?.name || "App"}
+          <UnifiedSelector
+            value={String(appId)}
+            onChange={(id) => navigate({ to: "/workspace", search: { appId: Number(id) } })}
+            options={appsList.filter((a: any) => a.localPathExists !== false).map((app) => ({
+              value: String(app.id),
+              label: app.name,
+              description: app.createdAt
+                ? formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })
+                : undefined,
+            }))}
+            triggerVariant="inline"
+            triggerSize="sm"
+            popoverWidth="w-[260px]"
+            popoverMaxHeight="max-h-[340px]"
+            showCheckmark
+            itemLayout="default"
           />
           {selectedChat?.title && (
             <>
               <ChevronRight size={13} className="shrink-0 text-muted-foreground/50" />
               {/* Chat dropdown selector */}
-              <ChatBreadcrumbDropdown
-                chats={chats}
-                selectedChatId={chatId}
-                appId={appId}
-                onSelect={(cId) => {
-                  navigate({ to: "/workspace", search: { appId: appId!, chatId: cId } });
-                }}
-                label={selectedChat.title}
-                isStreaming={isCurrentChatStreaming}
-                isStreamingById={isStreamingById}
+              <UnifiedSelector
+                value={String(chatId)}
+                onChange={(cId) => navigate({ to: "/workspace", search: { appId: appId!, chatId: Number(cId) } })}
+                options={chats.map((chat) => {
+                  const chatStreaming = isStreamingById.get(chat.id) ?? false;
+                  return {
+                    value: String(chat.id),
+                    label: chat.title || "Sin título",
+                    description: chat.createdAt
+                      ? formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true, locale: es })
+                      : undefined,
+                    leftIcon: chatStreaming ? <Loader2 size={14} className="animate-spin text-primary" /> : undefined,
+                  };
+                })}
+                triggerVariant="inline"
+                triggerSize="sm"
+                triggerClassName="text-[14px] !font-normal"
+                disableBoldSelection
+                popoverWidth="w-[280px]"
+                popoverMaxHeight="max-h-[340px]"
+                showCheckmark
+                itemLayout="default"
+                triggerLeftIcon={
+                  isCurrentChatStreaming
+                    ? <Loader2 size={12} className="animate-spin text-primary" />
+                    : undefined
+                }
               />
             </>
           )}
@@ -152,12 +180,12 @@ export default function WorkspacePage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium
-                        bg-muted text-muted-foreground
+                      className="inline-flex items-center px-2 py-0.5 rounded-md typo-mono-xs
+                        bg-muted
                         border border-border
                         select-none cursor-default transition-all duration-200"
                     >
-                      <span className="tabular-nums tracking-tight">
+                      <span className="tracking-tight">
                         {"$" + totalCostUsd.toFixed(2).replace(".", ",")}
                       </span>
                     </div>
@@ -200,208 +228,3 @@ function formatWorkspaceCost(usd: number): string {
   return "$" + raw.replace(".", ",");
 }
 
-/* ── Breadcrumb dropdown styles (shared) ── */
-const breadcrumbDropdownStyles = `
-  .bc-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 2px 6px;
-    border-radius: 6px;
-    transition: background 0.12s ease;
-    max-width: 220px;
-  }
-  .bc-trigger:hover {
-    background: var(--sidebar-accent);
-  }
-  .bc-trigger-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .bc-dropdown {
-    position: fixed;
-    min-width: 220px;
-    max-width: 320px;
-    max-height: 340px;
-    overflow-y: auto;
-    background: var(--popover);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.18), 0 2px 8px -2px rgba(0,0,0,0.1);
-    padding: 4px;
-    z-index: 200;
-    animation: bc-dropdown-in 0.12s ease-out;
-  }
-  @keyframes bc-dropdown-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .bc-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 7px 10px;
-    border-radius: 7px;
-    border: none;
-    background: transparent;
-    color: var(--popover-foreground);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.12s ease;
-    text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .bc-dropdown-item:hover {
-    background: var(--sidebar-accent);
-  }
-  .bc-dropdown-item--active {
-    color: var(--primary);
-    font-weight: 600;
-  }
-`;
-
-/** Breadcrumb dropdown for selecting apps */
-function AppBreadcrumbDropdown({
-  apps,
-  selectedAppId,
-  onSelect,
-  label,
-}: {
-  apps: { id: number; name: string }[];
-  selectedAppId: number | null;
-  onSelect: (id: number) => void;
-  label: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-
-  const openDropdown = () => {
-    const btn = btnRef.current;
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, left: rect.left });
-    setIsOpen(true);
-  };
-
-  return (
-    <>
-      <style>{breadcrumbDropdownStyles}</style>
-      <button
-        ref={btnRef}
-        type="button"
-        className="bc-trigger"
-        onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
-      >
-        <span className="bc-trigger-label text-sm font-semibold text-foreground">{label}</span>
-        <ChevronDown size={12} className="shrink-0 text-muted-foreground/50" />
-      </button>
-
-      {isOpen && pos && createPortal(
-        <>
-          <div className="fixed inset-0 z-[199]" onClick={() => setIsOpen(false)} />
-          <div className="bc-dropdown" style={{ top: pos.top, left: pos.left }}>
-            {apps.filter(a => (a as any).localPathExists !== false).map((app) => (
-              <button
-                key={app.id}
-                type="button"
-                className={`bc-dropdown-item ${app.id === selectedAppId ? "bc-dropdown-item--active" : ""}`}
-                onClick={() => {
-                  onSelect(app.id);
-                  setIsOpen(false);
-                }}
-              >
-                {app.name}
-              </button>
-            ))}
-          </div>
-        </>,
-        document.body,
-      )}
-    </>
-  );
-}
-
-/** Breadcrumb dropdown for selecting chats within an app */
-function ChatBreadcrumbDropdown({
-  chats,
-  selectedChatId,
-  appId,
-  onSelect,
-  label,
-  isStreaming,
-  isStreamingById,
-}: {
-  chats: { id: number; title: string | null }[];
-  selectedChatId: number | null;
-  appId: number | null;
-  onSelect: (chatId: number) => void;
-  label: string;
-  isStreaming?: boolean;
-  isStreamingById?: Map<number, boolean>;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-
-  const openDropdown = () => {
-    const btn = btnRef.current;
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, left: rect.left });
-    setIsOpen(true);
-  };
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        type="button"
-        className="bc-trigger"
-        onClick={() => (isOpen ? setIsOpen(false) : openDropdown())}
-      >
-        {isStreaming && (
-          <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-        )}
-        <span className="bc-trigger-label text-sm text-muted-foreground">{label}</span>
-        <ChevronDown size={12} className="shrink-0 text-muted-foreground/50" />
-      </button>
-
-      {isOpen && pos && createPortal(
-        <>
-          <div className="fixed inset-0 z-[199]" onClick={() => setIsOpen(false)} />
-          <div className="bc-dropdown" style={{ top: pos.top, left: pos.left }}>
-            {chats.map((chat) => {
-              const chatStreaming = isStreamingById?.get(chat.id) ?? false;
-              return (
-                <button
-                  key={chat.id}
-                  type="button"
-                  className={`bc-dropdown-item ${chat.id === selectedChatId ? "bc-dropdown-item--active" : ""}`}
-                  onClick={() => {
-                    onSelect(chat.id);
-                    setIsOpen(false);
-                  }}
-                >
-                  {chatStreaming && (
-                    <Loader2 size={12} className="animate-spin text-primary shrink-0" />
-                  )}
-                  {chat.title || "Sin título"}
-                </button>
-              );
-            })}
-          </div>
-        </>,
-        document.body,
-      )}
-    </>
-  );
-}

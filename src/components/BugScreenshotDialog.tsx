@@ -2,7 +2,7 @@ import { ipc } from "@/ipc/types";
 import { Dialog, DialogTitle } from "@radix-ui/react-dialog";
 import { DialogContent, DialogHeader } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { BugIcon, Camera } from "lucide-react";
+import { BugIcon, Camera } from "@/components/ui/icons";
 import { useState } from "react";
 import { ScreenshotSuccessDialog } from "./ScreenshotSuccessDialog";
 
@@ -52,7 +52,7 @@ export function BugScreenshotDialog({
               <Camera className="mr-2 h-5 w-5" /> Hacer una captura
               (recomendado)
             </Button>
-            <p className="text-sm text-muted-foreground px-2">
+            <p className="typo-caption px-2">
               ¡Recibirás respuestas mejores y más rápidas si haces esto!
             </p>
           </div>
@@ -69,12 +69,12 @@ export function BugScreenshotDialog({
                 ? "Preparando informe..."
                 : "Enviar informe de error sin captura"}
             </Button>
-            <p className="text-sm text-muted-foreground px-2">
+            <p className="typo-caption px-2">
               Intentaremos responder, pero puede que no podamos ayudar tanto.
             </p>
           </div>
           {screenshotError && (
-            <p className="text-sm text-destructive px-2">
+            <p className="typo-caption text-destructive px-2">
               Error al hacer la captura: {screenshotError}
             </p>
           )}

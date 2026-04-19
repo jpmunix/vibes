@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Flame, LogOut } from "lucide-react";
+import { Flame, LogOut } from "@/components/ui/icons";
 import { useSettings } from "@/hooks/useSettings";
 import { useFirebase } from "@/hooks/useFirebase";
 import { showSuccess, showError } from "@/lib/toast";
@@ -34,10 +34,10 @@ export function FirebaseIntegration() {
                         <Flame className="h-6 w-6" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-bold text-foreground">
                             Firebase
                         </h3>
-                        <p className="text-sm text-muted-foreground mt-0.5">
+                        <p className="typo-caption mt-0.5">
                             Cuenta de Google conectada
                         </p>
                     </div>

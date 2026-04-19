@@ -13,9 +13,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
-import { Database, Eye, EyeOff, Loader2, Save } from "lucide-react";
-// @ts-ignore
-import pocketbaseLogo from "../../assets/logo-pocketbase-icon.svg";
+import { Database, Eye, EyeOff, Loader2, Save, PocketBaseIcon } from "@/components/ui/icons";
 
 const EMPTY_CONFIG: PocketBaseConfig = {
     url: "",
@@ -87,10 +85,10 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
         return (
             <CollapsibleCard
                 title="PocketBase"
-                icon={<img src={pocketbaseLogo} alt="PocketBase" className="h-5 w-5 brightness-0 dark:invert" />}
+                icon={<PocketBaseIcon className="h-5 w-5" />}
                 description="BaaS SQLite en un solo archivo con Auth, DB y Realtime"
             >
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Cargando configuración...
                 </div>
@@ -101,7 +99,7 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
     return (
         <CollapsibleCard
             title="PocketBase"
-            icon={<img src={pocketbaseLogo} alt="PocketBase" className="h-5 w-5 brightness-0 dark:invert" />}
+            icon={<PocketBaseIcon className="h-5 w-5" />}
             description="Backend-as-a-Service (BaaS) con Auth, Database, Realtime y Storage (Files)."
         >
             <div className="space-y-4">
@@ -114,7 +112,7 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
                             placeholder="https://tu-instancia.pockethost.io"
                             className="h-8 text-sm mt-1 font-mono"
                         />
-                        <p className="text-[10px] text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             Asegúrate de no incluir un trailing slash a menos que lo requieras.
                         </p>
                     </div>
@@ -140,7 +138,7 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
                             />
                             <button
                                 type="button"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/50 cursor-pointer"
                                 onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? (
@@ -150,7 +148,7 @@ export function PocketBaseConnector({ appId }: { appId: number }) {
                                 )}
                             </button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                             El agente utilizará estas credenciales para autenticarse como superusuario y poder leer colecciones protegidas u ocultas.
                         </p>
                     </div>

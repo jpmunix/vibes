@@ -4,8 +4,12 @@ import { useGitPanel } from "@/hooks/useGitPanel";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useSettings } from "@/hooks/useSettings";
 import { GitRemoteSetup } from "@/components/git_window/GitRemoteSetup";
+import CommitMessageDialog from "@/components/CommitMessageDialog";
+import { useHighlighter, getLanguageFromPath } from "@/components/chat/CodeHighlight";
+import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
     GitBranch,
     Plus,
@@ -41,7 +45,8 @@ import {
     FolderTree,
     GripHorizontal,
     MoreVertical,
-} from "lucide-react";
+    Undo2,
+} from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -56,8 +61,17 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { GitCommitHistory } from "@/components/GitCommitHistory";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
+import ConfirmationDialog from "@/components/ConfirmationDialog";
 import { ipc } from "@/ipc/types";
 import { toast } from "sonner";
 import { WindowsControls } from "@/components/WindowsControls";
@@ -69,6 +83,8 @@ interface GitPanelProps {
     initialCommitHash?: string;
     isWindow?: boolean;
 }
+
+
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -130,53 +146,178 @@ function buildTree(files: FileEntry[]): TreeNode {
     return root;
 }
 
+// ─── Checkbox Helpers ────────────────────────────────────────────────────────
+function getFilesInDir(node: TreeNode): string[] {
+    const files: string[] = [];
+    if (node.file) files.push(node.file.path);
+    for (const child of Object.values(node.children)) {
+        files.push(...getFilesInDir(child));
+    }
+    return files;
+}
+
+function getDirCheckState(node: TreeNode, checkedFiles: Set<string>): "checked" | "unchecked" | "indeterminate" {
+    const files = getFilesInDir(node);
+    if (files.length === 0) return "unchecked";
+    let checkedCount = 0;
+    for (const f of files) {
+        if (checkedFiles.has(f)) checkedCount++;
+    }
+    if (checkedCount === 0) return "unchecked";
+    if (checkedCount === files.length) return "checked";
+    return "indeterminate";
+}
+
+function TreeCheckbox({ state, onChange }: { state: "checked" | "unchecked" | "indeterminate", onChange: (checked: boolean) => void }) {
+    const ref = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (ref.current) {
+            ref.current.indeterminate = state === "indeterminate";
+        }
+    }, [state]);
+    return (
+        <input
+            ref={ref}
+            type="checkbox"
+            checked={state === "checked"}
+            onChange={(e) => onChange(e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
+            className="accent-primary w-3.5 h-3.5 shrink-0 ml-1 mr-0.5 cursor-pointer"
+        />
+    );
+}
+
 // ─── Flat file row (PHPStorm style) ───────────────────────────────────────────
 
 function FlatFileRow({
     file,
     selectedFile,
+    isChecked,
+    onToggleCheck,
     onSelectFile,
-    actionIcon,
-    onAction,
-    isActionLoading,
+    onDiscard,
 }: {
     file: FileEntry;
     selectedFile: string | null;
+    isChecked: boolean;
+    onToggleCheck: (path: string, checked: boolean) => void;
     onSelectFile: (path: string) => void;
-    actionIcon: React.ReactNode;
-    onAction: (path: string) => void;
-    isActionLoading: boolean;
+    onDiscard: (path: string) => void;
 }) {
     const parts = file.path.split("/");
     const filename = parts.pop()!;
     const dir = parts.join("/");
     const isSelected = selectedFile === file.path;
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const btnRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (menuRef.current?.contains(e.target as Node)) return;
+            if (btnRef.current?.contains(e.target as Node)) return;
+            setMenuOpen(false);
+        };
+        document.addEventListener("pointerdown", handler);
+        return () => document.removeEventListener("pointerdown", handler);
+    }, [menuOpen]);
 
     return (
         <div
             className={cn(
-                "group flex items-center gap-2 py-1 px-2.5 cursor-pointer select-none transition-colors text-sm",
+                "group flex items-center gap-2 py-1 px-2.5 cursor-pointer select-none transition-colors typo-body",
                 isSelected
                     ? "bg-primary/10 border-l-[2px] border-primary"
                     : "hover:bg-muted/40 border-l-[2px] border-transparent",
             )}
             onClick={() => onSelectFile(file.path)}
         >
+            <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={(e) => onToggleCheck(file.path, e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="accent-primary w-3.5 h-3.5 shrink-0 cursor-pointer"
+            />
             {getStatusIcon(file.status)}
             <span className={cn("truncate", isSelected && "font-semibold")}>{filename}</span>
             {dir && (
-                <span className="text-xs text-muted-foreground/50 shrink-0">{dir}</span>
+                <span className="typo-caption text-muted-foreground/50 shrink-0">{dir}</span>
             )}
-            <span className={cn("text-xs font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(file.status))}>
+            <span className={cn("typo-micro font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(file.status))}>
                 {getStatusLetter(file.status)}
             </span>
+            <div className="relative">
+                <button
+                    ref={btnRef}
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+                    className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                    <MoreVertical size={13} />
+                </button>
+                {menuOpen && (
+                    <div
+                        ref={menuRef}
+                        className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg"
+                        style={{ fontFamily: "var(--font-sans, inherit)" }}
+                    >
+                        <button
+                            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap text-destructive hover:bg-destructive/10"
+                            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDiscard(file.path); }}
+                        >
+                            <Undo2 size={13} className="opacity-80" />
+                            Revertir
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Tree file menu (custom, no Radix) ─────────────────────────────────────────
+
+function TreeFileMenu({ filePath, onDiscard }: { filePath: string; onDiscard: (p: string) => void }) {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const btnRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (menuRef.current?.contains(e.target as Node)) return;
+            if (btnRef.current?.contains(e.target as Node)) return;
+            setMenuOpen(false);
+        };
+        document.addEventListener("pointerdown", handler);
+        return () => document.removeEventListener("pointerdown", handler);
+    }, [menuOpen]);
+
+    return (
+        <div className="relative">
             <button
-                onClick={(e) => { e.stopPropagation(); onAction(file.path); }}
-                disabled={isActionLoading}
-                className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer"
+                ref={btnRef}
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer text-muted-foreground hover:text-foreground"
             >
-                {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : actionIcon}
+                <MoreVertical size={13} />
             </button>
+            {menuOpen && (
+                <div
+                    ref={menuRef}
+                    className="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg"
+                    style={{ fontFamily: "var(--font-sans, inherit)" }}
+                >
+                    <button
+                        className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap text-destructive hover:bg-destructive/10"
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDiscard(filePath); }}
+                    >
+                        <Undo2 size={13} className="opacity-80" />
+                        Revertir
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -187,24 +328,24 @@ function TreeNodeRow({
     node,
     depth,
     selectedFile,
+    checkedFiles,
+    onToggleCheck,
+    onToggleDirCheck,
     onSelectFile,
     expandedDirs,
     toggleDir,
-    actionIcon,
-    onAction,
-    isActionLoading,
-    actionTooltip,
+    onDiscard,
 }: {
     node: TreeNode;
     depth: number;
     selectedFile: string | null;
+    checkedFiles: Set<string>;
+    onToggleCheck: (path: string, checked: boolean) => void;
+    onToggleDirCheck: (node: TreeNode, checked: boolean) => void;
     onSelectFile: (path: string) => void;
     expandedDirs: Set<string>;
     toggleDir: (path: string) => void;
-    actionIcon: React.ReactNode;
-    onAction: (path: string) => void;
-    isActionLoading: boolean;
-    actionTooltip: string;
+    onDiscard: (path: string) => void;
 }) {
     const isDir = !node.file;
     const isExpanded = expandedDirs.has(node.fullPath);
@@ -220,12 +361,12 @@ function TreeNodeRow({
         <>
             <div
                 className={cn(
-                    "group flex items-center gap-1.5 py-1 pr-2.5 cursor-pointer select-none transition-colors text-sm",
+                    "group flex items-center gap-1.5 py-1 pr-2.5 cursor-pointer select-none transition-colors typo-body",
                     isDir ? "hover:bg-muted/40" : isSelected
                         ? "bg-primary/10 border-l-[2px] border-primary"
                         : "hover:bg-muted/40 border-l-[2px] border-transparent",
                 )}
-                style={{ paddingLeft: `${10 + depth * 16}px` }}
+                style={{ paddingLeft: `${4 + depth * 16}px` }}
                 onClick={() => {
                     if (isDir) toggleDir(node.fullPath);
                     else onSelectFile(node.file!.path);
@@ -236,24 +377,33 @@ function TreeNodeRow({
                         <ChevronRight
                             size={14}
                             className={cn("text-muted-foreground/60 shrink-0 transition-transform", isExpanded && "rotate-90")}
+                            onClick={(e) => { e.stopPropagation(); toggleDir(node.fullPath); }}
+                        />
+                        <TreeCheckbox 
+                            state={getDirCheckState(node, checkedFiles)} 
+                            onChange={(checked) => onToggleDirCheck(node, checked)} 
                         />
                         <Folder size={14} className="text-muted-foreground/60 shrink-0" />
-                        <span className="truncate text-muted-foreground font-medium">{node.name}</span>
+                        <span className="truncate typo-caption font-medium">{node.name}</span>
                     </>
                 ) : (
                     <>
+                        <input
+                            type="checkbox"
+                            checked={checkedFiles.has(node.file!.path)}
+                            onChange={(e) => onToggleCheck(node.file!.path, e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="accent-primary w-3.5 h-3.5 shrink-0 ml-5 mr-0.5 cursor-pointer"
+                        />
                         {getStatusIcon(node.file!.status)}
                         <span className={cn("truncate flex-1", isSelected && "font-semibold")}>{node.name}</span>
-                        <span className={cn("text-xs font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(node.file!.status))}>
+                        <span className={cn("typo-micro font-bold shrink-0 ml-auto pl-1", getStatusLetterClass(node.file!.status))}>
                             {getStatusLetter(node.file!.status)}
                         </span>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onAction(node.file!.path); }}
-                            disabled={isActionLoading}
-                            className="opacity-0 group-hover:opacity-100 ml-1 p-1 rounded hover:bg-muted transition-opacity shrink-0 cursor-pointer"
-                        >
-                            {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : actionIcon}
-                        </button>
+                        <TreeFileMenu
+                            filePath={node.file!.path}
+                            onDiscard={onDiscard}
+                        />
                     </>
                 )}
             </div>
@@ -263,13 +413,13 @@ function TreeNodeRow({
                     node={child}
                     depth={depth + 1}
                     selectedFile={selectedFile}
+                    checkedFiles={checkedFiles}
+                    onToggleCheck={onToggleCheck}
+                    onToggleDirCheck={onToggleDirCheck}
                     onSelectFile={onSelectFile}
                     expandedDirs={expandedDirs}
                     toggleDir={toggleDir}
-                    actionIcon={actionIcon}
-                    onAction={onAction}
-                    isActionLoading={isActionLoading}
-                    actionTooltip={actionTooltip}
+                    onDiscard={onDiscard}
                 />
             ))}
         </>
@@ -278,28 +428,25 @@ function TreeNodeRow({
 
 // ─── Diff / Full file viewer ───────────────────────────────────────────────────
 
-type ViewMode = "diff" | "full";
-
 function FileContentViewer({
     diff,
     fullContent,
     filepath,
     isLoading,
-    viewMode,
-    onSetViewMode,
 }: {
     diff: string;
     fullContent: string;
     filepath: string | null;
     isLoading: boolean;
-    viewMode: ViewMode;
-    onSetViewMode: (m: ViewMode) => void;
 }) {
+    const { isDarkMode } = useTheme();
+    const lang = filepath ? getLanguageFromPath(filepath) : undefined;
+    const highlighter = useHighlighter(lang);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         scrollRef.current?.scrollTo(0, 0);
-    }, [filepath, viewMode]);
+    }, [filepath]);
 
     if (!filepath) {
         return (
@@ -322,57 +469,128 @@ function FileContentViewer({
     const fileName = parts.pop() || filepath;
     const dirPath = parts.join("/");
 
-    const renderDiff = () => {
-        if (!diff) return (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                <Check size={24} className="text-green-500 opacity-50" />
-                <p className="text-sm italic">Sin diferencias disponibles</p>
-            </div>
-        );
-        const lines = diff.split("\n");
-        return (
-            <pre className="text-xs leading-5 font-mono min-w-max">
-                {lines.map((line, i) => {
-                    let bg = "";
-                    let fg = "text-foreground/80";
-                    let lineNumFg = "text-muted-foreground/30";
-                    if (line.startsWith("+") && !line.startsWith("+++")) {
-                        bg = "bg-[#0d4a1f]"; fg = "text-green-300"; lineNumFg = "text-green-700";
-                    } else if (line.startsWith("-") && !line.startsWith("---")) {
-                        bg = "bg-[#4a0d0d]"; fg = "text-red-300"; lineNumFg = "text-red-700";
-                    } else if (line.startsWith("@@")) {
-                        bg = "bg-blue-900/20"; fg = "text-blue-400"; lineNumFg = "text-blue-700";
-                    } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++")) {
-                        fg = "text-muted-foreground/50"; lineNumFg = "text-muted-foreground/15";
-                    }
-                    return (
-                        <div key={i} className={cn("flex min-h-[20px]", bg)}>
-                            <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none", lineNumFg, "text-[10px] leading-5")}>
-                                {i + 1}
-                            </span>
-                            <span className={cn("px-3 flex-1 whitespace-pre", fg)}>{line || " "}</span>
-                        </div>
-                    );
-                })}
-            </pre>
-        );
-    };
-
     const renderFull = () => {
-        if (!fullContent) return (
+        if (!fullContent && !diff) return (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
         );
+
+        // ── Parse diff to get added lines & deleted lines positions ──
+        const addedLines = new Set<number>();
+        const deletedBefore = new Map<number, string[]>();
+
+        if (diff) {
+            const diffLines = diff.split("\n");
+            let newLineNum = 0;
+            let pendingDeleted: string[] = [];
+
+            for (const dl of diffLines) {
+                const hunkMatch = dl.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+                if (hunkMatch) {
+                    if (pendingDeleted.length > 0 && newLineNum > 0) {
+                        deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+                        pendingDeleted = [];
+                    }
+                    newLineNum = parseInt(hunkMatch[1], 10);
+                    continue;
+                }
+                if (newLineNum === 0) continue;
+
+                if (dl.startsWith("+") && !dl.startsWith("+++")) {
+                    if (pendingDeleted.length > 0) {
+                        deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+                        pendingDeleted = [];
+                    }
+                    addedLines.add(newLineNum);
+                    newLineNum++;
+                } else if (dl.startsWith("-") && !dl.startsWith("---")) {
+                    pendingDeleted.push(dl.substring(1));
+                } else if (!dl.startsWith("\\")) {
+                    if (pendingDeleted.length > 0) {
+                        deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+                        pendingDeleted = [];
+                    }
+                    newLineNum++;
+                }
+            }
+            // Flush remaining deleted at end
+            if (pendingDeleted.length > 0) {
+                deletedBefore.set(newLineNum, [...(deletedBefore.get(newLineNum) || []), ...pendingDeleted]);
+            }
+        }
+
+        // ── Get syntax tokens from shiki ──
+        let tokenLines: { content: string; color?: string }[][] | null = null;
+        if (highlighter && lang) {
+            try {
+                const theme = isDarkMode ? "github-dark-default" : "github-light-default";
+                const result = highlighter.codeToTokens(fullContent, { lang, theme });
+                tokenLines = result.tokens;
+            } catch { /* fallback to plain */ }
+        }
+
         const lines = fullContent.split("\n");
-        return (
-            <pre className="text-xs leading-5 font-mono min-w-max">
-                {lines.map((line, i) => (
-                    <div key={i} className="flex min-h-[20px]">
-                        <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-[10px] leading-5 text-muted-foreground/25">
-                            {i + 1}
+        const elements: React.ReactNode[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const lineNum = i + 1;
+            const isAdded = addedLines.has(lineNum);
+
+            // Insert deleted lines (ghost lines) before this line
+            const deleted = deletedBefore.get(lineNum);
+            if (deleted) {
+                for (let d = 0; d < deleted.length; d++) {
+                    elements.push(
+                        <div key={`del-${lineNum}-${d}`} className="flex min-h-[20px] bg-red-950/40">
+                            <span className="w-11 shrink-0 text-right pr-2.5 border-r border-red-900/30 select-none text-xs leading-5 text-red-800">
+                                −
+                            </span>
+                            <span className="px-3 flex-1 whitespace-pre text-red-400/60 italic">{deleted[d] || " "}</span>
+                        </div>
+                    );
+                }
+            }
+
+            // Render the actual line with syntax highlighting + diff background
+            const bg = isAdded ? "bg-green-950/40" : "";
+            const lineNumColor = isAdded ? "text-green-700" : "text-muted-foreground/25";
+            const borderColor = isAdded ? "border-green-900/30" : "border-white/5";
+
+            elements.push(
+                <div key={i} className={cn("flex min-h-[20px]", bg)}>
+                    <span className={cn("w-11 shrink-0 text-right pr-2.5 border-r select-none text-xs leading-5", lineNumColor, borderColor)}>
+                        {lineNum}
+                    </span>
+                    <span className="px-3 flex-1 whitespace-pre">
+                        {tokenLines && tokenLines[i] ? (
+                            tokenLines[i].map((token, j) => (
+                                <span key={j} style={{ color: token.color }}>{token.content}</span>
+                            ))
+                        ) : (
+                            <span className="text-foreground/75">{lines[i] || " "}</span>
+                        )}
+                    </span>
+                </div>
+            );
+        }
+
+        // Flush deleted lines at end of file
+        const deletedAtEnd = deletedBefore.get(lines.length + 1);
+        if (deletedAtEnd) {
+            for (let d = 0; d < deletedAtEnd.length; d++) {
+                elements.push(
+                    <div key={`del-end-${d}`} className="flex min-h-[20px] bg-red-950/40">
+                        <span className="w-11 shrink-0 text-right pr-2.5 border-r border-red-900/30 select-none text-xs leading-5 text-red-800">
+                            −
                         </span>
-                        <span className="px-3 flex-1 whitespace-pre text-foreground/75">{line || " "}</span>
+                        <span className="px-3 flex-1 whitespace-pre text-red-400/60 italic">{deletedAtEnd[d] || " "}</span>
                     </div>
-                ))}
+                );
+            }
+        }
+
+        return (
+            <pre className="typo-mono-xs leading-5 min-w-max">
+                {elements}
             </pre>
         );
     };
@@ -386,41 +604,21 @@ function FileContentViewer({
                     {dirPath && <span className="text-muted-foreground/60">{dirPath}/</span>}
                     <span className="text-white">{fileName}</span>
                 </span>
-                <div className="ml-auto flex items-center bg-muted rounded overflow-hidden shrink-0">
-                    <button
-                        onClick={() => onSetViewMode("diff")}
-                        className={cn(
-                            "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
-                            viewMode === "diff" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        <Diff size={10} />
-                        Diff
-                    </button>
-                    <button
-                        onClick={() => onSetViewMode("full")}
-                        className={cn(
-                            "flex items-center gap-1 px-2 py-1 text-[10px] font-medium transition-colors",
-                            viewMode === "full" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        <Eye size={10} />
-                        Completo
-                    </button>
-                </div>
             </div>
 
             {/* Content */}
             <div ref={scrollRef} className="flex-1 overflow-auto">
-                {viewMode === "diff" ? renderDiff() : renderFull()}
+                {renderFull()}
             </div>
         </div>
     );
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
+console.log('[DEBUG] GitPanel MODULE LOADED at', new Date().toISOString());
 
 export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
+    const [discardTarget, setDiscardTarget] = useState<string | null>(null);
     const appId = useAtomValue(selectedAppIdAtom);
     const { app, refreshApp } = useLoadApp(appId);
     const { settings } = useSettings();
@@ -464,6 +662,8 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         isResolvingFile,
         switchBranch,
         isSwitchingBranch,
+        discardFileChanges,
+        isDiscarding,
     } = useGitPanel(appId);
 
     const hasRemote = !!(app?.githubOrg && app?.githubRepo) || gitState?.hasRemote === true;
@@ -474,7 +674,58 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const [fileDiff, setFileDiff] = useState<string>("");
     const [fullContent, setFullContent] = useState<string>("");
     const [isLoadingDiff, setIsLoadingDiff] = useState(false);
-    const [viewMode, setViewMode] = useState<ViewMode>("diff");
+
+    // ── checked files state (PHPStorm style) ──
+    const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+    const prevUncommittedRef = useRef<string[]>([]);
+
+    useEffect(() => {
+        const currentPaths = uncommittedFiles.map(f => f.path);
+        const prevPaths = prevUncommittedRef.current;
+        if (currentPaths.join(',') !== prevPaths.join(',')) {
+            const added = currentPaths.filter(p => !prevPaths.includes(p));
+            if (added.length > 0) {
+                setCheckedFiles(prev => {
+                    const next = new Set(prev);
+                    added.forEach(p => next.add(p));
+                    return next;
+                });
+            }
+            setCheckedFiles(prev => {
+                const next = new Set<string>();
+                currentPaths.forEach(p => { if (prev.has(p) || added.includes(p)) next.add(p); });
+                return next;
+            });
+            prevUncommittedRef.current = currentPaths;
+        }
+    }, [uncommittedFiles]);
+
+    const handleToggleCheck = useCallback((path: string, checked: boolean) => {
+        setCheckedFiles(prev => {
+            const next = new Set(prev);
+            if (checked) next.add(path);
+            else next.delete(path);
+            return next;
+        });
+    }, []);
+
+    const handleToggleDirCheck = useCallback((node: TreeNode, checked: boolean) => {
+        const files = getFilesInDir(node);
+        setCheckedFiles(prev => {
+            const next = new Set(prev);
+            files.forEach(f => checked ? next.add(f) : next.delete(f));
+            return next;
+        });
+    }, []);
+
+    const toggleAllChecks = useCallback((checked: boolean) => {
+        setCheckedFiles(checked ? new Set(uncommittedFiles.map(f => f.path)) : new Set());
+    }, [uncommittedFiles]);
+
+    // ── DEBUG: track state changes ──
+    useEffect(() => {
+        console.log('[DEBUG] useEffect: discardTarget changed to:', discardTarget);
+    }, [discardTarget]);
 
     // ── tree state ──
     const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -499,7 +750,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     const [viewType, setViewType] = useState<"flat" | "tree">("flat");
 
     const hasChanges = uncommittedFiles.length > 0;
-    const canCommit = commitMessage.trim().length > 0 && hasChanges;
+    const canCommit = commitMessage.trim().length > 0 && checkedFiles.size > 0;
 
     // ── trees built from file arrays ──
     const unstagedTree = useMemo(() => buildTree(uncommittedFiles), [uncommittedFiles]);
@@ -548,35 +799,40 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     }, [expandedConflictFile, getConflictFileDiff]);
 
     const handleCommit = useCallback(async () => {
-        if (!commitMessage.trim()) return;
-        const filesToStage = uncommittedFiles.map(f => f.path);
+        if (!commitMessage.trim() || checkedFiles.size === 0) return;
+        const filesToStage = Array.from(checkedFiles);
         await commit({ message: commitMessage, filesToStage });
         setSelectedFile(null);
         setFileDiff("");
         setFullContent("");
-    }, [commitMessage, commit, uncommittedFiles]);
+    }, [commitMessage, commit, checkedFiles]);
 
     const handleCommitAndPush = useCallback(async () => {
         await handleCommit();
         await push({});
     }, [handleCommit, push]);
 
+    const handleDiscard = useCallback((filepath: string) => {
+        console.log('[DEBUG] handleDiscard called:', filepath);
+        setDiscardTarget(filepath);
+    }, []);
+
     return (
-        <div className="h-full flex flex-col bg-background" style={{ fontFamily: "var(--font-sans, inherit)", fontSize: "inherit" }}>
+        <div className="h-full flex flex-col bg-background relative" style={{ fontFamily: "var(--font-sans, inherit)", fontSize: "inherit" }}>
 
             {/* ── Window title bar (drag region) ── */}
             {isWindow && (
                 <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
                     <div className="flex items-center gap-2 no-app-region-drag">
                         <GitBranch size={14} className="text-primary" />
-                        <span className="text-sm font-semibold">Commit</span>
+                        <span className="typo-button">Commit</span>
                     </div>
                     <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />
                 </div>
             )}
 
             {/* ── Sub-header: tabs + branch switcher ── */}
-            <div className="flex items-center border-b border-border shrink-0 bg-background">
+            <div className="flex items-center border-b border-border shrink-0 bg-sidebar">
                 {/* Tabs */}
                 <div className="flex">
                     {(["changes", "history"] as const).map((tab) => (
@@ -584,14 +840,14 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={cn(
-                                "relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer",
+                                "relative flex items-center gap-1.5 px-4 py-2.5 typo-tab transition-colors cursor-pointer",
                                 activeTab === tab ? "text-foreground" : "text-muted-foreground hover:text-foreground/80",
                             )}
                         >
                             {tab === "changes" ? <GitCommit size={15} /> : <History size={15} />}
                             {tab === "changes" ? "Cambios" : "Historial"}
                             {tab === "changes" && hasChanges && (
-                                <span className="text-[10px] px-1.5 py-0 rounded-full bg-primary/15 text-primary font-semibold">
+                                <span className="typo-caption px-1.5 py-0 rounded-full bg-primary/15 text-primary font-semibold">
                                     {uncommittedFiles.length}
                                 </span>
                             )}
@@ -605,10 +861,10 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                 {/* Branch + merge/rebase badges + Pull icon + close */}
                 <div className="ml-auto flex items-center gap-1 pr-2">
                     {gitState?.mergeInProgress && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500 font-semibold">MERGE</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500 font-semibold">MERGE</span>
                     )}
                     {gitState?.rebaseInProgress && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-semibold">REBASE</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 font-semibold">REBASE</span>
                     )}
                     {/* Pull icon button - PHPStorm style */}
                     <Tooltip>
@@ -651,7 +907,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56" style={{ fontFamily: "var(--font-sans, inherit)" }}>
-                            <DropdownMenuLabel className="text-xs text-muted-foreground font-medium">Herramientas Git</DropdownMenuLabel>
+                            <DropdownMenuLabel className="typo-micro">Herramientas Git</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                                 className="text-xs flex items-center gap-2 cursor-pointer"
@@ -759,8 +1015,15 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         <>
                                             {/* ── File list toolbar: count + view toggle ── */}
                                             <div className="flex items-center px-2.5 py-1.5 gap-2 border-b border-border/40 shrink-0">
-                                                <span className="text-xs text-muted-foreground/60">
-                                                    {uncommittedFiles.length} archivo{uncommittedFiles.length !== 1 ? "s" : ""}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checkedFiles.size === uncommittedFiles.length && uncommittedFiles.length > 0}
+                                                    ref={(el) => { if (el) el.indeterminate = checkedFiles.size > 0 && checkedFiles.size < uncommittedFiles.length; }}
+                                                    onChange={(e) => toggleAllChecks(e.target.checked)}
+                                                    className="accent-primary w-3.5 h-3.5 shrink-0 cursor-pointer"
+                                                />
+                                                <span className="text-xs text-muted-foreground/60 leading-none mt-[1px]">
+                                                    {checkedFiles.size}/{uncommittedFiles.length} archivo{uncommittedFiles.length !== 1 ? "s" : ""}
                                                 </span>
                                                 <div className="ml-auto flex items-center gap-1">
                                                     {/* Flat / Tree toggle */}
@@ -810,10 +1073,10 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                                                 key={file.path}
                                                                 file={file}
                                                                 selectedFile={selectedFile}
+                                                                isChecked={checkedFiles.has(file.path)}
+                                                                onToggleCheck={handleToggleCheck}
                                                                 onSelectFile={handleSelectFile}
-                                                                actionIcon={null}
-                                                                onAction={() => {}}
-                                                                isActionLoading={false}
+                                                                onDiscard={handleDiscard}
                                                             />
                                                         ))
                                                 ) : (
@@ -825,13 +1088,13 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                                                 node={child}
                                                                 depth={0}
                                                                 selectedFile={selectedFile}
+                                                                checkedFiles={checkedFiles}
+                                                                onToggleCheck={handleToggleCheck}
+                                                                onToggleDirCheck={handleToggleDirCheck}
                                                                 onSelectFile={handleSelectFile}
                                                                 expandedDirs={expandedDirs}
                                                                 toggleDir={toggleDir}
-                                                                actionIcon={null}
-                                                                onAction={() => {}}
-                                                                isActionLoading={false}
-                                                                actionTooltip=""
+                                                                onDiscard={handleDiscard}
                                                             />
                                                         ))
                                                 )}
@@ -862,7 +1125,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         placeholder="Mensaje de commit..."
                                         className={cn(
                                             "w-full flex-1 resize-none rounded border border-border bg-muted/20 px-2.5 py-2",
-                                            "text-sm leading-relaxed min-h-[60px]",
+                                            "typo-body leading-relaxed min-h-[60px]",
                                             "focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40",
                                             "placeholder:text-muted-foreground/40",
                                         )}
@@ -898,8 +1161,8 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-purple-400 hover:text-purple-300 cursor-pointer"
-                                                    onClick={generateCommitMessage}
-                                                    disabled={isGeneratingMessage || !hasChanges}>
+                                                    onClick={() => generateCommitMessage(uncommittedFiles.filter(f => checkedFiles.has(f.path)))}
+                                                    disabled={isGeneratingMessage || checkedFiles.size === 0}>
                                                     {isGeneratingMessage ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
                                                 </Button>
                                             </TooltipTrigger>
@@ -931,13 +1194,28 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                 fullContent={fullContent}
                                 filepath={selectedFile}
                                 isLoading={isLoadingDiff}
-                                viewMode={viewMode}
-                                onSetViewMode={setViewMode}
                             />
                         </Panel>
                     </PanelGroup>
                 </div>
             )}
+
+            {/* Single Commit Dialog */}
+            
+            <ConfirmationDialog
+                isOpen={!!discardTarget}
+                title="Revertir cambios"
+                message={`¿Estás seguro de querer revertir los cambios en ${discardTarget}? Esta acción es irreversible.`}
+                confirmText="Revertir"
+                cancelText="Cancelar"
+                onConfirm={async () => {
+                    if (discardTarget) {
+                        await discardFileChanges(discardTarget);
+                        setDiscardTarget(null);
+                    }
+                }}
+                onCancel={() => setDiscardTarget(null)}
+            />
         </div>
     );
 }
@@ -975,11 +1253,11 @@ function SectionHeader({
                 />
             )}
             {icon}
-            <span className={cn("text-sm font-medium text-muted-foreground/70", labelClass)}>
+            <span className={cn("typo-body font-medium text-muted-foreground/70", labelClass)}>
                 {label}
             </span>
             {count > 0 && (
-                <span className="text-xs px-1.5 rounded-full bg-muted text-muted-foreground/60 font-semibold">
+                <span className="typo-micro px-1.5 rounded-full bg-muted font-semibold text-muted-foreground/60">
                     {count}
                 </span>
             )}
@@ -1046,7 +1324,7 @@ function MergeConflictSection({
             <div className="px-3 py-2 space-y-2">
                 <div className="flex items-center gap-2">
                     <GitMerge size={13} className="text-amber-500" />
-                    <span className="text-[10px] font-semibold text-amber-400">Merge en progreso</span>
+                    <span className="text-xs font-semibold text-amber-400">Merge en progreso</span>
                 </div>
                 {conflictFiles.length > 0 && (
                     <div className="border border-amber-500/15 rounded overflow-hidden">
@@ -1054,7 +1332,7 @@ function MergeConflictSection({
                             onClick={() => setShowConflicts(!showConflicts)}>
                             <ChevronDown size={11} className={cn("text-amber-500/60 transition-transform", !showConflicts && "-rotate-90")} />
                             <AlertTriangle size={10} className="text-amber-500" />
-                            <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+                            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
                                 Conflictos ({conflictFiles.length})
                             </span>
                         </div>
@@ -1066,7 +1344,7 @@ function MergeConflictSection({
                                         onClick={() => handleViewConflictDiff(file)}>
                                         <ChevronRight size={10} className={cn("text-amber-500/50 transition-transform shrink-0", isExpanded && "rotate-90")} />
                                         <AlertTriangle size={10} className="text-amber-500 shrink-0" />
-                                        <span className="text-[10px] text-amber-200/80 truncate flex-1">{file.split("/").pop()}</span>
+                                        <span className="text-xs text-amber-200/80 truncate flex-1">{file.split("/").pop()}</span>
                                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Tooltip><TooltipTrigger asChild>
                                                 <button onClick={e => { e.stopPropagation(); resolveFileOurs(file); }} disabled={isResolvingFile}
@@ -1087,7 +1365,7 @@ function MergeConflictSection({
                                             {isLoadingConflictDiff ? (
                                                 <div className="flex items-center justify-center py-4"><Loader2 size={14} className="animate-spin text-amber-500" /></div>
                                             ) : (
-                                                <pre className="text-[10px] leading-[18px] font-mono">
+                                                <pre className="typo-mono-xs leading-[18px]">
                                                     {conflictDiff.split("\n").map((line, i) => {
                                                         let bg = "", fg = "text-foreground";
                                                         if (line.startsWith("<<<<<<<")) { bg = "bg-blue-500/15"; fg = "text-blue-400 font-semibold"; }
@@ -1107,17 +1385,17 @@ function MergeConflictSection({
                     </div>
                 )}
                 <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] border-blue-500/25 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400"
+                    <Button variant="outline" size="sm" className="flex-1 h-7 typo-caption border-blue-500/25 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400"
                         onClick={() => resolveMergeOurs()} disabled={isResolvingMerge || isAbortingMerge}>
                         {isResolvingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <ShieldCheck size={11} className="mr-1" />}
                         Conservar mío
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px] border-green-500/25 bg-green-500/5 hover:bg-green-500/10 text-green-400"
+                    <Button variant="outline" size="sm" className="flex-1 h-7 typo-caption border-green-500/25 bg-green-500/5 hover:bg-green-500/10 text-green-400"
                         onClick={() => resolveMergeTheirs()} disabled={isResolvingMerge || isAbortingMerge}>
                         {isResolvingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <ArrowDownToLine size={11} className="mr-1" />}
                         Aceptar suyo
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 text-muted-foreground hover:text-red-400"
+                    <Button variant="ghost" size="sm" className="h-7 typo-caption px-2 text-muted-foreground hover:text-red-400"
                         onClick={() => abortMerge()} disabled={isResolvingMerge || isAbortingMerge}>
                         {isAbortingMerge ? <Loader2 size={11} className="animate-spin mr-1" /> : <Ban size={11} className="mr-1" />}
                         Cancelar

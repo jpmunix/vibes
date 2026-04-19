@@ -1,4 +1,4 @@
-import { Copy, Check } from "lucide-react";
+import { Copy, Check } from "@/components/ui/icons";
 import { useState } from "react";
 
 interface CopyErrorMessageProps {
@@ -28,7 +28,7 @@ export const CopyErrorMessage = ({
       onClick={handleCopy}
       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isCopied
         ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 shadow-sm"
-        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
+        : "bg-gray-100 dark:bg-gray-700 text-foreground hover:bg-accent dark:hover:bg-gray-600 shadow-sm hover:shadow-md"
         } ${className}`}
       title={isCopied ? "¡Copiado!" : "Copiar mensaje de error"}
     >

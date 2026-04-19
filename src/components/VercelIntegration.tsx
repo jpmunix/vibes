@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/useSettings";
 import { showSuccess, showError } from "@/lib/toast";
+import { Triangle } from "@/components/ui/icons";
 
 export function VercelIntegration() {
   const { settings, updateSettings } = useSettings();
@@ -35,14 +36,12 @@ export function VercelIntegration() {
     <div className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <svg className="h-4 w-4 text-muted-foreground shrink-0" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M24 22.525H0l12-21.05 12 21.05z" />
-          </svg>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          <Triangle className="h-4 w-4 text-muted-foreground shrink-0 fill-current" />
+          <h3 className="typo-label flex items-center gap-2">
             Vercel
           </h3>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="typo-caption mt-1">
           Tu cuenta está conectada a Vercel
         </p>
       </div>

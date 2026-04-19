@@ -1,6 +1,6 @@
 import type React from "react";
 import type { ReactNode } from "react";
-import { Globe } from "lucide-react";
+import { Globe } from "@/components/ui/icons";
 
 interface VibesWebCrawlProps {
   children?: ReactNode;
@@ -31,7 +31,7 @@ export const VibesWebCrawl: React.FC<VibesWebCrawlProps> = ({
         </div>
       )}
       {!isPending && children && (
-        <div className="text-sm italic text-gray-600 dark:text-gray-300 mt-2 line-clamp-6 overflow-y-auto">
+        <div className="text-sm italic text-muted-foreground dark:text-muted-foreground/50 mt-2 line-clamp-6 overflow-y-auto">
           {children}
         </div>
       )}

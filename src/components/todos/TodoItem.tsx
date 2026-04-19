@@ -5,7 +5,7 @@ import type { Todo } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Bot, Paperclip } from "lucide-react";
+import { Bot, Paperclip } from "@/components/ui/icons";
 import { useState } from "react";
 
 interface SortableTodoItemProps {
@@ -78,7 +78,7 @@ export function SortableTodoItem({
             {todo.content}
           </p>
           {todo.description && (
-            <p className="text-[10px] mt-0.5 italic whitespace-pre-wrap break-words">
+            <p className="text-xs mt-0.5 italic whitespace-pre-wrap break-words">
               {todo.description}
             </p>
           )}
@@ -132,7 +132,7 @@ export function SortableTodoItem({
                 {todo.content}
               </p>
               {todo.description && (
-                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                <p className="text-xs text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
                   {todo.description}
                 </p>
               )}
@@ -150,7 +150,7 @@ export function SortableTodoItem({
                       }}
                     />
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
                     {todo.checklist.filter((s) => s.completed).length}/
                     {todo.checklist.length} (
                     {Math.round(
@@ -170,7 +170,7 @@ export function SortableTodoItem({
       {todo.attachments && todo.attachments.length > 0 && (
         <div className="absolute bottom-3 right-8 opacity-50 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
           <Paperclip size={12} className="text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground font-medium">{todo.attachments.length}</span>
+          <span className="text-xs text-muted-foreground font-medium">{todo.attachments.length}</span>
         </div>
       )}
 
@@ -263,7 +263,7 @@ export function TodoItem({
                 {todo.content}
               </p>
               {todo.description && (
-                <p className="text-[10px] text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
+                <p className="text-xs text-muted-foreground mt-0.5 italic whitespace-pre-wrap break-words">
                   {todo.description}
                 </p>
               )}
@@ -281,7 +281,7 @@ export function TodoItem({
                       }}
                     />
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums bg-accent/30 px-1.5 py-0.5 rounded">
                     {todo.checklist.filter((s) => s.completed).length}/
                     {todo.checklist.length} (
                     {Math.round(
@@ -301,7 +301,7 @@ export function TodoItem({
       {todo.attachments && todo.attachments.length > 0 && (
         <div className="absolute bottom-3 right-8 opacity-50 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
           <Paperclip size={12} className="text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground font-medium">{todo.attachments.length}</span>
+          <span className="text-xs text-muted-foreground font-medium">{todo.attachments.length}</span>
         </div>
       )}
 

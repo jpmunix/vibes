@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Move, Square, Palette, Type } from "lucide-react";
+import { X, Move, Square, Palette, Type, Box } from "@/components/ui/icons";
 import { Label } from "@/components/ui/label";
 import { ComponentSelection } from "@/ipc/types";
 import { useSetAtom, useAtomValue } from "jotai";
@@ -325,28 +325,28 @@ export function VisualEditingToolbar({
           <TooltipTrigger asChild>
             <button
               onClick={handleDeselectComponent}
-              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-[#7f22fe] dark:text-gray-200"
+              className="p-1 rounded hover:bg-accent dark:hover:bg-accent text-primary dark:text-foreground"
               aria-label="Deseleccionar componente"
             >
               <X size={16} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
-            <p>Deselect Component</p>
+            <p>Deseleccionar componente</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
       {isDynamic ? (
         <div className="flex items-center px-2 py-1 text-yellow-800 dark:text-yellow-200 rounded text-xs font-medium">
-          <span>This component is styled dynamically</span>
+          <span>Este componente tiene estilos dinámicos</span>
         </div>
       ) : (
         <>
           <StylePopover
             icon={<Move size={16} />}
             title="Margen"
-            tooltip="Margin"
+            tooltip="Margen"
           >
             <div className="grid grid-cols-1 gap-2">
               <NumberInput
@@ -367,23 +367,9 @@ export function VisualEditingToolbar({
           </StylePopover>
 
           <StylePopover
-            icon={
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <rect x="7" y="7" width="10" height="10" rx="1" />
-              </svg>
-            }
+            icon={<Box size={16} />}
             title="Relleno"
-            tooltip="Padding"
+            tooltip="Relleno"
           >
             <div className="grid grid-cols-1 gap-2">
               <NumberInput
@@ -406,7 +392,7 @@ export function VisualEditingToolbar({
           <StylePopover
             icon={<Square size={16} />}
             title="Borde"
-            tooltip="Border"
+            tooltip="Borde"
           >
             <div className="space-y-2">
               <NumberInput
@@ -440,7 +426,7 @@ export function VisualEditingToolbar({
           <StylePopover
             icon={<Palette size={16} />}
             title="Elegir color de fondo"
-            tooltip="Background"
+            tooltip="Fondo"
           >
             <div>
               <Label htmlFor="bg-color" className="text-xs">
@@ -462,7 +448,7 @@ export function VisualEditingToolbar({
             <StylePopover
               icon={<Type size={16} />}
               title="Estilo de texto"
-              tooltip="Text Style"
+              tooltip="Estilo de texto"
             >
               <div className="space-y-2">
                 <NumberInput
@@ -474,7 +460,7 @@ export function VisualEditingToolbar({
                 />
                 <div>
                   <Label htmlFor="font-weight" className="text-xs">
-                    Font Weight
+                    Grosor de fuente
                   </Label>
                   <select
                     id="font-weight"
@@ -493,7 +479,7 @@ export function VisualEditingToolbar({
                 </div>
                 <div>
                   <Label htmlFor="font-family" className="text-xs">
-                    Font Family
+                    Familia tipográfica
                   </Label>
                   <select
                     id="font-family"
@@ -512,7 +498,7 @@ export function VisualEditingToolbar({
                 </div>
                 <div>
                   <Label htmlFor="text-color" className="text-xs">
-                    Text Color
+                    Color del texto
                   </Label>
                   <ColorPicker
                     id="text-color"

@@ -29,7 +29,7 @@ import {
   Crop,
   Maximize2,
   Minimize2,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { CopyErrorMessage } from "@/components/CopyErrorMessage";
 import { ipc } from "@/ipc/types";
@@ -128,7 +128,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
               <X size={20} className="text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-lg font-semibold text-foreground">
                 Error en la aplicación
               </h3>
               {error.source === "vibes-app" && (
@@ -1585,8 +1585,8 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                 <TooltipContent>
                   <p>
                     {isPicking
-                      ? "Deactivate component selector"
-                      : "Select component"}
+                      ? "Desactivar selector"
+                      : "Seleccionar componente"}
                   </p>
                   <p>{isMac ? "⌘ + ⇧ + C" : "Ctrl + ⇧ + C"}</p>
                 </TooltipContent>
@@ -1610,18 +1610,18 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Take Screenshot</p>
+                    <p>Capturar pantalla</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onSelect={handleAnnotatorClick}>
                   <Monitor size={14} className="mr-2" />
-                  <span>Full Page</span>
+                  <span>Página completa</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleStartSelection}>
                   <Crop size={14} className="mr-2" />
-                  <span>Selection</span>
+                  <span>Selección</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1707,7 +1707,7 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                         {filteredHistory.map((path) => (
                           <div
                             key={`hist-${path}`}
-                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground group"
+                            className="flex items-center justify-between px-2 py-1.5 typo-dropdown cursor-pointer hover:bg-accent hover:text-accent-foreground group"
                           >
                             <span
                               className="truncate flex-1 min-w-0"
@@ -1740,13 +1740,13 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
                         {filteredHistory.length > 0 && (
                           <div className="border-t border-border my-1" />
                         )}
-                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                        <div className="px-2 py-1 typo-micro text-muted-foreground">
                           Rutas detectadas
                         </div>
                         {filteredRoutes.map((route) => (
                           <div
                             key={`route-${route.path}`}
-                            className="flex items-center justify-between px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                            className="flex items-center justify-between px-2 py-1.5 typo-dropdown cursor-pointer hover:bg-accent hover:text-accent-foreground"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               navigateToRoute(route.path);

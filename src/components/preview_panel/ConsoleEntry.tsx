@@ -4,7 +4,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useSetAtom } from "jotai";
 import { chatInputValueAtom } from "@/atoms/chatAtoms";
 
@@ -92,12 +92,12 @@ export const ConsoleEntryComponent = (props: ConsoleEntryProps) => {
         </span>
         <span className="flex-1 whitespace-pre-wrap break-all">
           {sourceName && (
-            <span className="text-muted-foreground shrink-0 text-[10px] px-1 py-0.5 mr-2 bg-muted rounded">
+            <span className="text-muted-foreground shrink-0 text-xs px-1 py-0.5 mr-2 bg-muted rounded">
               {sourceName}
             </span>
           )}
           {typeFilter == "all" && type && (
-            <span className="text-purple-500 shrink-0 text-[10px] px-1 py-0.5 mr-2 bg-muted rounded">
+            <span className="text-purple-500 shrink-0 text-xs px-1 py-0.5 mr-2 bg-muted rounded">
               {type}
             </span>
           )}

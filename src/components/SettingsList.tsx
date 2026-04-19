@@ -140,20 +140,17 @@ export function SettingsList({ show }: { show: boolean }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Ajustes</h2>
-      </div>
       <ScrollArea className="flex-grow">
-        <div className="space-y-1 p-4 pt-0">
+        <div className="space-y-1 p-4">
           {settingsSections.map((section) => (
             <button
               key={section.id}
               onClick={() => handleScrollAndNavigateTo(section.id)}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                "w-full text-left px-3 py-2 rounded-md transition-colors typo-menu-item",
                 activeSection === section.id
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                  : "hover:bg-sidebar-accent",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground opacity-100"
+                  : "hover:bg-sidebar-accent opacity-75 hover:opacity-100",
               )}
             >
               {section.label}

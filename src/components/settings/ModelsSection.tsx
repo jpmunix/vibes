@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { AlertTriangle, PlusIcon, TrashIcon } from "lucide-react";
+import { AlertTriangle, PlusIcon, TrashIcon, Pencil } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -144,7 +144,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               onClick={() => setInfoModel(model)}
             >
               <div className="flex justify-between items-start gap-2">
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate flex-1">
+                <h4 className="typo-label truncate flex-1">
                   {model.displayName}
                 </h4>
                 {model.type === "custom" && (
@@ -158,19 +158,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
                       }}
                       className="text-primary hover:bg-primary/10 h-6 w-6"
                     >
-                      <svg
-                        className="h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
+                      <Pencil className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -191,13 +179,13 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
               <div className="flex items-center justify-between mt-auto pt-2">
                 <div className="flex items-center gap-2">
                   {model.contextWindow || model.maxOutputTokens ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 typo-caption">
                       {model.contextWindow ? <span>Contexto: {formatTokens(model.contextWindow)}</span> : null}
                       {model.contextWindow && model.maxOutputTokens ? <span>•</span> : null}
                       {model.maxOutputTokens ? <span>Salida: {formatTokens(model.maxOutputTokens)}</span> : null}
                     </div>
                   ) : model.type === "custom" ? (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="typo-caption">
                       Personalizado
                     </span>
                   ) : null}

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useStreamChat } from "@/hooks/useStreamChat";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2 } from "@/components/ui/icons";
 import { useState } from "react";
 
 interface FixAllErrorsButtonProps {

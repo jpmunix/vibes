@@ -29,7 +29,7 @@ import {
     Coins,
     Blocks,
     type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import {
     Tooltip,
     TooltipContent,
@@ -89,7 +89,7 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-add-dependency": { icon: Package, label: "Dependencia", pendingLabel: "Instalando", color: "text-purple-500" },
     "vibes-add-integration": { icon: Wrench, label: "Integración", pendingLabel: "Integrando", color: "text-purple-500" },
     "vibes-execute-sql": { icon: Database, label: "SQL", pendingLabel: "Ejecutando SQL", color: "text-orange-500" },
-    "vibes-read-logs": { icon: ScrollText, label: "Logs", pendingLabel: "Leyendo logs", color: "text-gray-500" },
+    "vibes-read-logs": { icon: ScrollText, label: "Logs", pendingLabel: "Leyendo logs", color: "text-muted-foreground" },
     "vibes-codebase-context": { icon: FileText, label: "Contexto", pendingLabel: "Cargando contexto", color: "text-cyan-500" },
     "vibes-database-schema": { icon: Database, label: "Esquema BD", pendingLabel: "Cargando esquema", color: "text-orange-500" },
     "vibes-supabase-table-schema": { icon: SupabaseIcon as any, label: "Tabla", pendingLabel: "Cargando tabla", color: "" },
@@ -126,7 +126,7 @@ const TEXT_TO_BG: Record<string, string> = {
     "text-slate-500": "bg-slate-500",
     "text-purple-500": "bg-purple-500",
     "text-orange-500": "bg-orange-500",
-    "text-gray-500": "bg-gray-500",
+    "text-muted-foreground": "bg-gray-500",
     "text-emerald-500": "bg-emerald-500",
     "text-violet-500": "bg-violet-500",
     "text-teal-500": "bg-teal-500",
@@ -226,7 +226,7 @@ export const CompactToolBadge: React.FC<CompactToolBadgeProps> = React.memo(({
                         <DialogTitle className={`flex items-center gap-2 ${meta.color}`}>
                             <Icon size={20} />
                             {meta.label}
-                            {detail && <span className="text-muted-foreground font-normal text-sm ml-1">{detail}</span>}
+                            {detail && <span className="typo-caption ml-1">{detail}</span>}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="mt-2 overflow-hidden min-w-0">{originalContent}</div>
@@ -257,7 +257,7 @@ export function shouldCompact(tag: string): boolean {
 }
 
 export function resolveToolMeta(tag: string, attributes?: Record<string, string>) {
-    const defaultMeta = TOOL_META[tag] || { icon: Wrench, label: tag, color: "text-gray-500" };
+    const defaultMeta = TOOL_META[tag] || { icon: Wrench, label: tag, color: "text-muted-foreground" };
     if ((tag === "vibes-read" || tag === "vibes-delete" || tag === "vibes-write" || tag === "vibes-edit") && attributes?.path?.includes(".git/")) {
         return TOOL_META["vibes-git"];
     }

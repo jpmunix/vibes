@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "../ui/button";
-import { X, Bot, Info, ShieldCheck, Check, Ban } from "lucide-react";
+import { X, Bot, Info, ShieldCheck, Check, Ban } from "@/components/ui/icons";
 import type { PendingAgentConsent } from "@/atoms/chatAtoms";
 import {
   Tooltip,

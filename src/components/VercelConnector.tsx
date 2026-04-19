@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Globe } from "lucide-react";
+import { Globe, Loader2 } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/badge";
 import { ipc, App } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { useVercelDeployments } from "@/hooks/useVercelDeployments";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,7 +76,7 @@ function ConnectedVercelConnector({
       className="mt-4 w-full rounded-md"
       data-testid="vercel-connected-project"
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="typo-caption">
         Conectado al proyecto de Vercel:
       </p>
       <a
@@ -100,7 +94,7 @@ function ConnectedVercelConnector({
       </a>
       {app.vercelDeploymentUrl && (
         <div className="mt-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="typo-caption">
             URL en vivo:{" "}
             <a
               onClick={(e) => {
@@ -122,27 +116,7 @@ function ConnectedVercelConnector({
         <Button onClick={handleGetDeployments} disabled={isLoadingOrRefreshing} variant="outline">
           {isLoadingOrRefreshing ? (
             <>
-              <svg
-                className="animate-spin h-5 w-5 mr-2 inline"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                style={{ display: "inline" }}
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              <Loader2 className="animate-spin h-5 w-5 mr-2 inline" />
               Refrescando...
             </>
           ) : (
@@ -187,7 +161,7 @@ function ConnectedVercelConnector({
                     >
                       {deployment.readyState}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="typo-caption">
                       {new Date(deployment.createdAt).toLocaleString()}
                     </span>
                   </div>
@@ -438,26 +412,7 @@ function UnconnectedVercelConnector({
               >
                 {isSavingToken ? (
                   <>
-                    <svg
-                      className="animate-spin h-4 w-4 mr-2"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
                     Guardando token...
                   </>
                 ) : (
@@ -577,32 +532,24 @@ function UnconnectedVercelConnector({
                   <Label className="block text-sm font-medium">
                     Seleccionar proyecto
                   </Label>
-                  <Select
+                  <UnifiedSelector
                     value={selectedProject}
-                    onValueChange={setSelectedProject}
+                    onChange={(val) => setSelectedProject(String(val))}
                     disabled={isLoadingProjects}
-                  >
-                    <SelectTrigger
-                      className="w-full mt-1"
-                      data-testid="vercel-project-select"
-                    >
-                      <SelectValue
-                        placeholder={
-                          isLoadingProjects
-                            ? "Cargando proyectos..."
-                            : "Selecciona un proyecto"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}{" "}
-                          {project.framework && `(${project.framework})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={availableProjects.map((project) => ({
+                      value: project.id,
+                      label: `${project.name} ${project.framework ? `(${project.framework})` : ""}`,
+                    }))}
+                    triggerVariant="outline"
+                    triggerSize="md"
+                    triggerClassName="w-full mt-1"
+                    placeholder={
+                      isLoadingProjects
+                        ? "Cargando proyectos..."
+                        : "Selecciona un proyecto"
+                    }
+                    data-testid="vercel-project-select"
+                  />
                 </div>
               </>
             )}

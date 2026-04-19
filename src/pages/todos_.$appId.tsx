@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useTodos } from "@/hooks/useTodos";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/ui/icons";
 import { useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 

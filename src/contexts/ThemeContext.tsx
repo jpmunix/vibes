@@ -5,6 +5,7 @@ import {
   DEFAULT_LIGHT_COLOR,
   DEFAULT_DARK_COLOR,
 } from "@/components/PrimaryColorPicker";
+import { getFontById, getGoogleFontsUrl, DEFAULT_FONT_ID, type FontOption } from "@/shared/fonts";
 
 type Theme = "system" | "light" | "dark";
 
@@ -14,6 +15,10 @@ interface ThemeContextType {
   intensity: number;
   setIntensity: (intensity: number) => void;
   applyPrimaryColors: (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => void;
+  applyFont: (fontId: string) => void;
+  applyChatFont: (fontId: string) => void;
+  currentFontId: string;
+  currentChatFontId: string;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -40,6 +45,40 @@ function applyColorToDOM(lightColorId?: string, darkColorId?: string, lightChrom
   }
 }
 
+/** Track which Google Font link elements have been injected to avoid duplicates */
+const loadedFontLinks = new Set<string>();
+
+/**
+ * Ensure that the CSS for a Google Font is loaded in the document.
+ * For bundled fonts (Geist) this is a no-op.
+ */
+function ensureFontLoaded(font: FontOption) {
+  const url = getGoogleFontsUrl(font);
+  if (!url || loadedFontLinks.has(font.id)) return;
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = url;
+  link.id = `font-${font.id}`;
+  document.head.appendChild(link);
+  loadedFontLinks.add(font.id);
+}
+
+/**
+ * Apply the selected font to the document by updating the CSS custom property.
+ */
+function applyFontToDOM(fontId: string) {
+  const font = getFontById(fontId);
+  ensureFontLoaded(font);
+  document.documentElement.style.setProperty("--default-font-family", font.family);
+}
+
+function applyChatFontToDOM(fontId: string) {
+  const font = getFontById(fontId);
+  ensureFontLoaded(font);
+  document.documentElement.style.setProperty("--default-chat-font-family", font.family);
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     // Try to get the saved theme from localStorage
@@ -52,12 +91,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return savedIntensity ? parseFloat(savedIntensity) : 0.58;
   });
 
+  const [currentFontId, setCurrentFontId] = useState<string>(() => {
+    return window.localStorage?.getItem("selected-font") || DEFAULT_FONT_ID;
+  });
+
+  const [currentChatFontId, setCurrentChatFontId] = useState<string>(() => {
+    return window.localStorage?.getItem("selected-chat-font") || "jetbrains-mono"; // matches DEFAULT_CHAT_FONT_ID
+  });
+
   const applyPrimaryColors = useCallback(
     (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => {
       applyColorToDOM(lightColorId, darkColorId, lightChroma, darkChroma);
     },
     [],
   );
+
+  const applyFont = useCallback((fontId: string) => {
+    setCurrentFontId(fontId);
+    localStorage.setItem("selected-font", fontId);
+    applyFontToDOM(fontId);
+  }, []);
+
+  const applyChatFont = useCallback((fontId: string) => {
+    setCurrentChatFontId(fontId);
+    localStorage.setItem("selected-chat-font", fontId);
+    applyChatFontToDOM(fontId);
+  }, []);
 
   useEffect(() => {
     // Save theme preference to localStorage
@@ -92,9 +151,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     );
   }, [intensity]);
 
+  // Apply font on mount from localStorage (instant, before settings load)
+  useEffect(() => {
+    applyFontToDOM(currentFontId);
+    applyChatFontToDOM(currentChatFontId);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Global hotkey to toggle theme (Ctrl+T or Cmd+T)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        setTheme((prevTheme) => {
+          let nextTheme: Theme = "light";
+          if (prevTheme === "light") nextTheme = "dark";
+          else if (prevTheme === "dark") nextTheme = "light";
+          else {
+            // If system, toggle based on current system preference
+            const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            nextTheme = isDark ? "light" : "dark";
+          }
+          return nextTheme;
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors }}
+      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId }}
     >
       {children}
     </ThemeContext.Provider>
@@ -107,7 +195,7 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors } =
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId } =
     context;
 
   // Determine if dark mode is active when component mounts or theme changes
@@ -133,5 +221,9 @@ export function useTheme() {
     intensity,
     setIntensity,
     applyPrimaryColors,
+    applyFont,
+    applyChatFont,
+    currentFontId,
+    currentChatFontId,
   };
 }

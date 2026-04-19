@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Save, Edit2, Loader2 } from "lucide-react";
+import { Save, Edit2, Loader2 } from "@/components/ui/icons";
 import { showError } from "@/lib/toast";
 import { toast } from "sonner";
 import type { CustomTheme } from "@/ipc/types";

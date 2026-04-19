@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 import { HomeChatInput } from "@/components/chat/HomeChatInput";
 import { usePostHog } from "posthog-js/react";
-import { INSPIRATION_PROMPTS } from "@/prompts/inspiration_prompts";
+
 import { useAppVersion } from "@/hooks/useAppVersion";
 
 import { useTheme } from "@/contexts/ThemeContext";
@@ -103,26 +103,7 @@ export default function HomePage() {
   // Get the appId from search params
   const appId = search.appId ? Number(search.appId) : null;
 
-  // State for random prompts
-  const [randomPrompts, setRandomPrompts] = useState<
-    typeof INSPIRATION_PROMPTS
-  >([]);
 
-  // Function to get random prompts using Fisher-Yates shuffle for true randomness
-  const getRandomPrompts = useCallback(() => {
-    const shuffled = [...INSPIRATION_PROMPTS];
-    // Fisher-Yates shuffle algorithm for true randomness
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled.slice(0, 6);
-  }, []);
-
-  // Initialize random prompts
-  useEffect(() => {
-    setRandomPrompts(getRandomPrompts());
-  }, [getRandomPrompts]);
 
   // Redirect to app details page if appId is present
   useEffect(() => {
@@ -360,10 +341,10 @@ export default function HomePage() {
 
           <div className="relative w-full" style={{ minHeight: '5rem' }}>
             <div className={`phase-fade ${phaseVisible ? 'visible' : 'hidden'} flex flex-col items-center w-full`}>
-              <h2 className="text-2xl font-bold mb-2 text-gray-800 dark:text-gray-200">
+              <h2 className="typo-section-title mb-2">
                 {phase.title}
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-6">
+              <p className="typo-caption text-center max-w-md mb-6">
                 {phase.subtitle}
               </p>
             </div>
@@ -463,81 +444,6 @@ export default function HomePage() {
           50%      { transform: translate(-50%, -50%) scale(1.15); opacity: 0.85; }
         }
 
-        /* ── Staggered fade-in for cards ── */
-        @keyframes home-card-in {
-          from { opacity: 0; transform: translateY(12px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)   scale(1); }
-        }
-        .home-card-enter {
-          opacity: 0;
-          animation: home-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-
-        /* ── Glassmorphism inspiration card ── */
-        .home-inspiration-card {
-          backdrop-filter: blur(16px) saturate(1.4);
-          -webkit-backdrop-filter: blur(16px) saturate(1.4);
-          background: color-mix(in oklch, var(--primary) 6%, var(--background) 70%);
-          border: 1px solid color-mix(in oklch, var(--primary) 15%, transparent);
-          border-radius: 14px;
-          padding: 10px 18px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          cursor: pointer;
-          transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-                      box-shadow 0.22s ease,
-                      border-color 0.22s ease,
-                      background 0.22s ease;
-        }
-        .home-inspiration-card:hover {
-          transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 8px 24px -4px color-mix(in oklch, var(--primary) 20%, transparent);
-          border-color: color-mix(in oklch, var(--primary) 35%, transparent);
-          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
-        }
-        .home-inspiration-card:active {
-          transform: scale(0.98);
-        }
-
-        /* ── "Más ideas" refresh button ── */
-        .home-refresh-btn {
-          backdrop-filter: blur(12px) saturate(1.3);
-          -webkit-backdrop-filter: blur(12px) saturate(1.3);
-          background: color-mix(in oklch, var(--primary) 5%, var(--background) 75%);
-          border: 1px solid color-mix(in oklch, var(--primary) 12%, transparent);
-          border-radius: 14px;
-          padding: 8px 20px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .home-refresh-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 16px -2px color-mix(in oklch, var(--primary) 15%, transparent);
-          border-color: color-mix(in oklch, var(--primary) 30%, transparent);
-          background: color-mix(in oklch, var(--primary) 10%, var(--background) 60%);
-        }
-        .home-refresh-btn:hover svg {
-          transform: rotate(180deg);
-        }
-        .home-refresh-btn svg {
-          transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .home-refresh-btn:active {
-          transform: scale(0.97);
-        }
-
-        /* ── Section label ── */
-        .home-section-label {
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          opacity: 0.4;
-          margin-bottom: 2px;
         }
       `}</style>
 
@@ -554,55 +460,6 @@ export default function HomePage() {
 
         <div className="w-full">
           <HomeChatInput onSubmit={handleSubmit} />
-
-          {/* ═══ Inspiration prompts ═══ */}
-          <div className="flex flex-col gap-5 mt-6">
-            <p className="home-section-label text-center text-foreground">Inspírate</p>
-            <div className="flex flex-wrap gap-3 justify-center max-w-3xl mx-auto">
-              {randomPrompts.map((item, index) => (
-                <button
-                  type="button"
-                  key={index}
-                  onClick={() =>
-                    setInputValue(`Constrúyeme ${item.label.toLowerCase()}`)
-                  }
-                  className="home-inspiration-card home-card-enter"
-                  style={{ animationDelay: `${0.06 + index * 0.07}s` }}
-                >
-                  <span className="text-foreground/60 flex-shrink-0">
-                    {item.icon}
-                  </span>
-                  <span className="text-[13px] font-medium text-foreground/75 whitespace-nowrap">
-                    {item.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setRandomPrompts(getRandomPrompts())}
-              className="home-refresh-btn self-center home-card-enter"
-              style={{ animationDelay: "0.55s" }}
-            >
-              <svg
-                className="w-4 h-4 text-foreground/50"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span className="text-[13px] font-medium text-foreground/50">
-                Más ideas
-              </span>
-            </button>
-          </div>
         </div>
 
         <ReleaseNotesDialog

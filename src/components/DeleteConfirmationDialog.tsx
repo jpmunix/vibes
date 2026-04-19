@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2 } from "@/components/ui/icons";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -24,8 +24,8 @@ import {
     Eye,
     EyeOff,
     Loader2,
-} from "lucide-react";
-import bunnyLogo from "../../assets/logo-bunnynet-icon.svg";
+    BunnyIcon
+} from "@/components/ui/icons";
 
 // =============================================================================
 // Subcomponent: Database Entry Form
@@ -48,7 +48,7 @@ function DatabaseEntryForm({
     return (
         <div className="p-3 rounded-lg border border-black/10 dark:border-white/10 bg-black/3 dark:bg-white/3 space-y-2">
             <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                <span className="text-xs font-medium text-muted-foreground">
                     Base de datos #{index + 1}
                 </span>
                 <Button
@@ -94,7 +94,7 @@ function DatabaseEntryForm({
                     />
                     <button
                         type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/50 cursor-pointer"
                         onClick={() => setShowFullToken(!showFullToken)}
                     >
                         {showFullToken ? (
@@ -119,7 +119,7 @@ function DatabaseEntryForm({
                     />
                     <button
                         type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/50 cursor-pointer"
                         onClick={() => setShowReadToken(!showReadToken)}
                     >
                         {showReadToken ? (
@@ -155,7 +155,7 @@ function StorageZoneEntryForm({
     return (
         <div className="p-3 rounded-lg border border-black/10 dark:border-white/10 bg-black/3 dark:bg-white/3 space-y-2">
             <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                <span className="text-xs font-medium text-muted-foreground">
                     Storage zone #{index + 1}
                 </span>
                 <Button
@@ -212,7 +212,7 @@ function StorageZoneEntryForm({
                     />
                     <button
                         type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/50 cursor-pointer"
                         onClick={() => setShowPassword(!showPassword)}
                     >
                         {showPassword ? (
@@ -237,7 +237,7 @@ function StorageZoneEntryForm({
                     />
                     <button
                         type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground dark:hover:text-muted-foreground/50 cursor-pointer"
                         onClick={() => setShowReadonlyPassword(!showReadonlyPassword)}
                     >
                         {showReadonlyPassword ? (
@@ -380,10 +380,10 @@ export function BunnyConnector({ appId }: { appId: number }) {
         return (
             <CollapsibleCard
                 title="Bunny.net"
-                icon={<img src={bunnyLogo} alt="Bunny.net" className="h-5 w-5 brightness-0 dark:invert" />}
+                icon={<BunnyIcon className="h-5 w-5" />}
                 description="Bases de datos en la nube y almacenamiento de archivos"
             >
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Cargando configuración...
                 </div>
@@ -394,7 +394,7 @@ export function BunnyConnector({ appId }: { appId: number }) {
     return (
         <CollapsibleCard
             title="Bunny.net"
-            icon={<img src={bunnyLogo} alt="Bunny.net" className="h-5 w-5 brightness-0 dark:invert" />}
+            icon={<BunnyIcon className="h-5 w-5" />}
             description="Bases de datos en la nube y almacenamiento de archivos"
         >
             <div className="space-y-3">
@@ -407,11 +407,11 @@ export function BunnyConnector({ appId }: { appId: number }) {
                     >
                         <div className="flex items-center gap-2">
                             {dbSectionOpen ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                             ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                             )}
-                            <Database className="h-4 w-4 text-gray-500" />
+                            <Database className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm font-medium">Bases de datos</span>
                             {databases.length > 0 && (
                                 <span className="text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">
@@ -460,11 +460,11 @@ export function BunnyConnector({ appId }: { appId: number }) {
                     >
                         <div className="flex items-center gap-2">
                             {storageSectionOpen ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                             ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                             )}
-                            <HardDrive className="h-4 w-4 text-gray-500" />
+                            <HardDrive className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm font-medium">Storage Zones</span>
                             {storageZones.length > 0 && (
                                 <span className="text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">

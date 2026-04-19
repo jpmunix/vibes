@@ -296,6 +296,16 @@ export async function gitCheckout({
   path,
   ref,
 }: GitCheckoutParams): Promise<void> {
+  // Clean Vite dependency cache before checkout.
+  // The Vite dev server generates untracked files in node_modules/.vite/deps/
+  // that cause "untracked working tree files would be overwritten by checkout"
+  // errors. Vite regenerates this cache automatically on next start.
+  const viteCachePath = pathModule.join(path, "node_modules", ".vite");
+  if (fs.existsSync(viteCachePath)) {
+    logger.info(`Cleaning Vite cache at ${viteCachePath} before checkout`);
+    await fsPromises.rm(viteCachePath, { recursive: true, force: true });
+  }
+
   const settings = readSettings();
   if (settings.enableNativeGit) {
     await execOrThrow(

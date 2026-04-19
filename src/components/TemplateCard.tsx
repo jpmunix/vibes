@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { useSettings } from "@/hooks/useSettings";
 import { CommunityCodeConsentDialog } from "./CommunityCodeConsentDialog";
@@ -97,7 +97,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             <h2
               className={`text-lg font-semibold ${isSelected
                 ? "text-blue-600 dark:text-blue-400"
-                : "text-gray-900 dark:text-white"
+                : "text-foreground"
                 }`}
             >
               {template.title}
@@ -118,7 +118,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 h-10 overflow-y-auto">
+          <p className="text-sm text-muted-foreground mb-3 h-10 overflow-y-auto">
             {template.description}
           </p>
           {template.tags && template.tags.length > 0 && (
@@ -126,7 +126,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
               {template.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium"
+                  className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-muted-foreground dark:bg-gray-700 dark:text-muted-foreground/50 font-medium"
                 >
                   {tag}
                 </span>

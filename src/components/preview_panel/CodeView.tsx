@@ -2,7 +2,7 @@ import { FileEditor } from "./FileEditor";
 import { FileTree } from "./FileTree";
 import { useEffect, useState } from "react";
 import { useLoadApp } from "@/hooks/useLoadApp";
-import { RefreshCw, Maximize2, Minimize2 } from "lucide-react";
+import { RefreshCw, Maximize2, Minimize2 } from "@/components/ui/icons";
 import { useAtomValue } from "jotai";
 import { selectedFileAtom } from "@/atoms/viewAtoms";
 
@@ -43,12 +43,12 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
   }, [isFullscreen]);
 
   if (loading) {
-    return <div className="text-center py-4">Cargando archivos...</div>;
+    return <div className="text-center py-4 typo-caption">Cargando archivos...</div>;
   }
 
   if (!app) {
     return (
-      <div className="text-center py-4 text-gray-500">
+      <div className="text-center py-4 typo-caption">
         No hay aplicación seleccionada
       </div>
     );
@@ -63,17 +63,19 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
         <div className="flex items-center p-2 border-b space-x-2">
           <button
             onClick={() => refreshApp()}
-            className="p-1 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading || !app.id}
             title="Actualizar archivos"
           >
             <RefreshCw size={16} />
           </button>
-          <div className="text-sm text-gray-500">{app.files.length} files</div>
+          <div className="text-sm text-muted-foreground">
+            {app.files.length} archivo{app.files.length === 1 ? "" : "s"}
+          </div>
           <div className="flex-1" />
           <button
             onClick={() => setIsFullscreen((value) => !value)}
-            className="p-1 rounded hover:bg-gray-200"
+            className="p-1 rounded hover:bg-accent"
             title={
               isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"
             }
@@ -95,7 +97,7 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
                 initialLine={selectedFile.line ?? null}
               />
             ) : (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 typo-caption">
                 Selecciona un archivo para ver
               </div>
             )}
@@ -106,7 +108,7 @@ export const CodeView = ({ loading, app }: CodeViewProps) => {
   }
 
   return (
-    <div className="text-center py-4 text-gray-500">
+    <div className="text-center py-4 typo-caption">
       No se encontraron archivos
     </div>
   );

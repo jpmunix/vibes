@@ -17,20 +17,18 @@ import {
   Save,
   X,
   HelpCircle,
-  ArrowRight,
   Terminal,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { showError, showSuccess } from "@/lib/toast";
 import { selectedAppIdAtom, currentAppAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
-import { useNavigate } from "@tanstack/react-router";
 import { NeonConfigure } from "./NeonConfigure";
 import { queryKeys } from "@/lib/queryKeys";
 
 const EnvironmentVariablesTitle = () => (
   <div className="flex items-center gap-2">
-    <span className="text-lg font-semibold">Variables de entorno</span>
-    <span className="text-sm text-muted-foreground font-normal">Local</span>
+    <span className="typo-subsection-title">Variables de entorno</span>
+    <span className="typo-caption font-normal">Local</span>
     <Tooltip>
       <TooltipTrigger asChild>
         <HelpCircle size={16} className="text-muted-foreground cursor-help" />
@@ -119,7 +117,6 @@ export const ConfigurePanel = () => {
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const navigate = useNavigate();
 
   // Query to get environment variables
   const {
@@ -243,7 +240,7 @@ export const ConfigurePanel = () => {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <div className="text-sm text-muted-foreground">
+              <div className="typo-caption">
                 Cargando variables de entorno...
               </div>
             </div>
@@ -265,7 +262,7 @@ export const ConfigurePanel = () => {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <div className="text-sm text-red-500">
+              <div className="typo-caption text-red-500">
                 Error al cargar las variables de entorno: {error.message}
               </div>
             </div>
@@ -287,7 +284,7 @@ export const ConfigurePanel = () => {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <div className="text-sm text-muted-foreground">
+              <div className="typo-caption">
                 Selecciona una aplicación para gestionar las variables de
                 entorno
               </div>
@@ -306,7 +303,7 @@ export const ConfigurePanel = () => {
           <CardTitle>
             <div className="flex items-center gap-2">
               <Terminal size={18} />
-              <span className="text-lg font-semibold">Comandos de arranque</span>
+              <span className="typo-subsection-title">Comandos de arranque</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <HelpCircle size={16} className="text-muted-foreground cursor-help" />
@@ -342,7 +339,7 @@ export const ConfigurePanel = () => {
               onChange={(e) => handleStartCmdChange(e.target.value)}
               className="font-mono text-xs"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="typo-caption opacity-80">
               Usa <code className="bg-muted px-1 rounded">{"{port}"}</code> como
               marcador para el puerto asignado. Ej:{" "}
               <code className="bg-muted px-1 rounded">
@@ -431,7 +428,7 @@ export const ConfigurePanel = () => {
           {/* List of existing environment variables */}
           <div className="space-y-2">
             {envVars.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
+              <p className="typo-caption text-center py-8">
                 No hay variables de entorno configuradas
               </p>
             ) : (
@@ -479,10 +476,10 @@ export const ConfigurePanel = () => {
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">
+                        <div className="font-medium typo-body truncate">
                           {envVar.key}
                         </div>
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="typo-caption opacity-80 truncate">
                           {envVar.value}
                         </div>
                       </div>
@@ -512,25 +509,6 @@ export const ConfigurePanel = () => {
                 </div>
               ))
             )}
-          </div>
-
-          {/* More app configurations button */}
-          <div className="pt-4 border-t">
-            <Button
-              variant="outline"
-              className="w-full text-sm justify-between"
-              onClick={() => {
-                if (selectedAppId) {
-                  navigate({
-                    to: "/app-details",
-                    search: { appId: selectedAppId },
-                  });
-                }
-              }}
-            >
-              <span>Más ajustes de la aplicación</span>
-              <ArrowRight size={16} />
-            </Button>
           </div>
         </CardContent>
       </Card>

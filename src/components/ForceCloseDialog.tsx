@@ -7,7 +7,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Copy } from "lucide-react";
+import { AlertTriangle, Copy } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -101,7 +101,7 @@ export function ForceCloseDialog({
         </AlertDialogHeader>
         <AlertDialogDescription asChild>
           <div className="space-y-4 pt-2 overflow-y-auto flex-1 pr-2">
-            <div className="text-base">
+            <div className="typo-body">
               The app was not closed properly the last time it was running. This
               could indicate a crash or unexpected termination.
             </div>
@@ -109,10 +109,10 @@ export function ForceCloseDialog({
             {/* System Info */}
             {(appVersion || platform) && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-                <div className="font-semibold text-sm text-foreground">
+                <div className="typo-label text-foreground">
                   System Information
                 </div>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-1 typo-body">
                   {appVersion && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Version:</span>
@@ -131,17 +131,17 @@ export function ForceCloseDialog({
 
             {performanceData && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
-                <div className="font-semibold text-sm text-foreground">
+                <div className="typo-label text-foreground">
                   Last Known State:{" "}
                   <span className="font-normal text-muted-foreground">
                     {formatTimestamp(performanceData.timestamp)}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-3 typo-body">
                   {/* Process Metrics */}
                   <div className="space-y-2">
-                    <div className="font-medium text-foreground">
+                    <div className="typo-label text-foreground">
                       Process Metrics
                     </div>
                     <div className="space-y-1">
@@ -166,7 +166,7 @@ export function ForceCloseDialog({
                   {(performanceData.systemMemoryUsageMB !== undefined ||
                     performanceData.systemCpuPercent !== undefined) && (
                       <div className="space-y-2">
-                        <div className="font-medium text-foreground">
+                        <div className="typo-label text-foreground">
                           System Metrics
                         </div>
                         <div className="space-y-1">
@@ -200,10 +200,10 @@ export function ForceCloseDialog({
             {/* Recent Logs */}
             {recentLogs && (
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-                <div className="font-semibold text-sm text-foreground">
+                <div className="typo-label text-foreground">
                   Recent Logs
                 </div>
-                <pre className="text-xs bg-background p-3 rounded overflow-x-auto overflow-y-auto font-mono whitespace-pre-wrap break-words">
+                <pre className="typo-mono bg-background p-3 rounded overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words">
                   {recentLogs}
                 </pre>
               </div>

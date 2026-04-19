@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ProModeModelSelector } from "./ProModeModelSelector";
-import { ChevronRight, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronRight, RefreshCw, Loader2 } from "@/components/ui/icons";
 import { AgentToolsSettings } from "./AgentToolsSettings";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { ipc } from "@/ipc/types";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { EMBEDDING_MODELS } from "@/ipc/shared/embedding_model_constants";
 import type { ChatLanguage } from "@/lib/schemas";
@@ -64,11 +58,11 @@ function SettingRow({
       )}
     >
       <div className="flex-1 min-w-0">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+        <h3 className="typo-label">
           {label}
         </h3>
         {description && (
-          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+          <p className="typo-caption mt-1 leading-relaxed">
             {description}
           </p>
         )}
@@ -117,30 +111,30 @@ export function AIBehaviorSettings({
       )}
     >
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="typo-section-title">
           Agente
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="typo-caption mt-1">
           Personaliza cómo el agente procesa la información y se comunica contigo
         </p>
       </div>
 
       <div className="space-y-4">
-        {/* Prompts — clickable row */}
-        <div
+        {/* Prompts — clickable row (hidden: feature not actively used, preserved for future) */}
+        {/* <div
           className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
           onClick={() => navigate({ to: "/settings/prompts" })}
         >
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Prompts personalizados</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h3 className="typo-label">Prompts personalizados</h3>
+            <p className="typo-caption mt-1">
               Instrucciones adicionales que el agente seguirá en cada conversación
             </p>
           </div>
           <ChevronRight
             className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0"
           />
-        </div>
+        </div> */}
 
         {/* Idioma — two pills */}
         <SettingRow
@@ -153,10 +147,10 @@ export function AIBehaviorSettings({
                   key={option.value}
                   onClick={() => updateSettings({ chatLanguage: option.value })}
                   className={cn(
-                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
                     currentLang === option.value
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                      : "hover:bg-primary/10",
                   )}
                 >
                   {option.label}
@@ -196,10 +190,10 @@ export function AIBehaviorSettings({
                   key={option.value}
                   onClick={() => updateSettings({ chatRenderMode: option.value })}
                   className={cn(
-                    "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                      "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
                     (settings?.chatRenderMode ?? "full") === option.value
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                      : "hover:bg-primary/10",
                   )}
                 >
                   {option.label}
@@ -221,8 +215,8 @@ export function AIBehaviorSettings({
             onClick={() => setModelsExpanded(e => !e)}
           >
             <div className="flex-1">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Modelos por tarea</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="typo-label">Modelos por tarea</h3>
+              <p className="typo-caption mt-1">
                 Un modelo para cada modo: Estándar y Pro
               </p>
             </div>
@@ -267,7 +261,7 @@ export function AIBehaviorSettings({
                   variant="outline"
                   size="sm"
                   onClick={() => setShowRestartDialog(true)}
-                  className="flex items-center gap-1.5 text-xs"
+                  className="flex items-center gap-1.5 typo-caption"
                 >
                   <RefreshCw size={13} />
                   Reiniciar OpenCode
@@ -279,10 +273,10 @@ export function AIBehaviorSettings({
                     key={String(option.value)}
                     onClick={() => updateSettings({ enableOpenCodeLsp: option.value })}
                     className={cn(
-                      "px-4 py-1.5 text-sm font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                        "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
                       currentLspValue === option.value
                         ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-primary hover:bg-primary/10",
+                        : "hover:bg-primary/10",
                     )}
                   >
                     {option.label}
@@ -301,7 +295,7 @@ export function AIBehaviorSettings({
       <DialogContent className="max-w-sm p-4">
         <DialogHeader className="pb-2">
           <DialogTitle>¿Reiniciar servidor OpenCode?</DialogTitle>
-          <DialogDescription className="text-xs">
+          <DialogDescription>
             Esto detendrá cualquier tarea del agente que esté en ejecución ahora mismo.
             La nueva configuración de LSP se aplicará en el siguiente chat.
           </DialogDescription>

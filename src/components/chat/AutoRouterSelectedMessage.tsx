@@ -4,7 +4,7 @@ import {
   Loader,
   ChevronsDownUp,
   ChevronsUpDown,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import type { AutoRouterModelInfo } from "@/atoms/chatAtoms";
 import { useState } from "react";
 
@@ -87,10 +87,10 @@ export function AutoRouterSelectedMessage({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">
+                  <span className="text-foreground font-medium text-sm">
                     {modelName}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     · {complexityLabel}
                   </span>
                 </div>
@@ -101,12 +101,12 @@ export function AutoRouterSelectedMessage({
                 {isExpanded ? (
                   <ChevronsDownUp
                     size={20}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
                   />
                 ) : (
                   <ChevronsUpDown
                     size={20}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
                   />
                 )}
               </div>
@@ -115,7 +115,7 @@ export function AutoRouterSelectedMessage({
 
           {!isSelecting && modelInfo && (
             <>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 <span className="font-medium">Tipo:</span> {taskTypeLabel}
               </div>
               {isExpanded && modelInfo.reasoning && (
@@ -123,10 +123,10 @@ export function AutoRouterSelectedMessage({
                   className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs cursor-text"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="text-gray-600 dark:text-gray-300 mb-1 font-medium">
+                  <div className="text-muted-foreground dark:text-muted-foreground/50 mb-1 font-medium">
                     Razonamiento:
                   </div>
-                  <div className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                  <div className="text-muted-foreground leading-relaxed">
                     {modelInfo.reasoning}
                   </div>
                 </div>

@@ -17,7 +17,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Database, Code, Cpu, Sparkles, Trash2, History, Download, Bug, Copy, ClipboardList } from "lucide-react";
+import { ArrowLeft, Database, Code, Cpu, Sparkles, Trash2, History, Download, Bug, Copy, ClipboardList } from "@/components/ui/icons";
 import { useNavigate } from "@tanstack/react-router";
 import { AiQueryLogRotationSelector } from "@/components/AiQueryLogRotationSelector";
 import { toast } from "sonner";
@@ -126,18 +126,18 @@ export default function AiQueryLogsPage() {
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div className="min-w-0">
-                            <h1 className="text-2xl font-black flex items-center gap-3 tracking-tight">
+                            <h1 className="typo-page-title flex items-center gap-3">
                                 <Database className="h-6 w-6 text-primary shrink-0" />
                                 <span className="truncate">Logs de Consultas IA</span>
                             </h1>
-                            <p className="text-sm text-muted-foreground font-medium truncate opacity-80">
+                            <p className="typo-caption font-medium truncate opacity-80">
                                 Historial completo de peticiones y respuestas de modelos de IA
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-2xl border border-border/50 shrink-0 shadow-inner">
-                        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/70">
+                        <span className="typo-menu-header text-muted-foreground/70">
                             Límite FIFO
                         </span>
                         <div className="h-4 w-[1px] bg-border/50 mx-1" />
@@ -152,7 +152,7 @@ export default function AiQueryLogsPage() {
                             variant="secondary"
                             size="sm"
                             onClick={loadLogs}
-                            className="rounded-xl font-bold h-10 px-5 text-sm shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
+                            className="rounded-xl h-10 px-5 shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
                             disabled={isLoading}
                         >
                             <History className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -163,7 +163,7 @@ export default function AiQueryLogsPage() {
                             variant="outline"
                             size="sm"
                             onClick={handleExportZip}
-                            className="rounded-xl font-bold h-10 px-5 text-sm border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
+                            className="rounded-xl h-10 px-5 border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
                         >
                             <Download className="mr-2 h-4 w-4" />
                             Exportar ZIP
@@ -173,7 +173,7 @@ export default function AiQueryLogsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={handleClearLogs}
-                            className="rounded-xl font-bold h-10 px-5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                            className="rounded-xl h-10 px-5 text-destructive hover:bg-destructive/10 transition-colors"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Limpiar historial
@@ -198,12 +198,12 @@ export default function AiQueryLogsPage() {
                     <Table className="w-full">
                         <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
                             <TableRow className="hover:bg-transparent border-border">
-                                <TableHead className="w-[80px] pl-8 text-xs font-bold uppercase tracking-wider text-muted-foreground">ID</TableHead>
-                                <TableHead className="w-[180px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha</TableHead>
-                                <TableHead className="w-[150px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Tipo</TableHead>
-                                <TableHead className="w-[200px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Modelo</TableHead>
-                                <TableHead className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[300px]">Snippet del Prompt</TableHead>
-                                <TableHead className="text-right pr-8 w-[150px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Tokens (I/O)</TableHead>
+                                <TableHead className="w-[80px] pl-8 typo-menu-header text-muted-foreground">ID</TableHead>
+                                <TableHead className="w-[180px] typo-menu-header text-muted-foreground">Fecha</TableHead>
+                                <TableHead className="w-[150px] typo-menu-header text-muted-foreground">Tipo</TableHead>
+                                <TableHead className="w-[200px] typo-menu-header text-muted-foreground">Modelo</TableHead>
+                                <TableHead className="min-w-[300px] typo-menu-header text-muted-foreground">Snippet del Prompt</TableHead>
+                                <TableHead className="text-right pr-8 w-[150px] typo-menu-header text-muted-foreground">Tokens (I/O)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -236,26 +236,26 @@ export default function AiQueryLogsPage() {
                                         className="group cursor-pointer hover:bg-primary/5 transition-colors border-border"
                                         onClick={() => log.id && handleLogClick(log.id)}
                                     >
-                                        <TableCell className="font-mono text-xs text-muted-foreground pl-8">
+                                        <TableCell className="typo-mono-xs text-muted-foreground pl-8">
                                             #{log.id}
                                         </TableCell>
-                                        <TableCell className="whitespace-nowrap text-xs font-medium">
+                                        <TableCell className="whitespace-nowrap typo-caption font-medium">
                                             {log.createdAt && format(new Date(log.createdAt), "dd MMM, HH:mm:ss")}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary typo-menu-header border border-primary/20">
                                                 {log.queryType}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="font-medium text-xs truncate max-w-[200px]">
+                                        <TableCell className="typo-caption font-medium truncate max-w-[200px]">
                                             {log.model}
                                         </TableCell>
                                         <TableCell className="max-w-[500px] truncate">
-                                            <div className="truncate italic text-muted-foreground text-xs group-hover:text-foreground transition-colors">
+                                            <div className="truncate italic typo-caption text-muted-foreground group-hover:text-foreground transition-colors">
                                                 "{log.promptSnippet}..."
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-right pr-8 font-mono text-xs">
+                                        <TableCell className="text-right pr-8 typo-mono-xs">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <span className="text-blue-500 font-bold">{log.inputTokens ?? 0}</span>
                                                 <span className="opacity-20 text-foreground">/</span>
@@ -279,7 +279,7 @@ export default function AiQueryLogsPage() {
                     <div className="px-8 py-6 border-b border-border/50 bg-muted/20">
                         <DialogHeader>
                             <DialogTitle className="flex items-center justify-between">
-                                <div className="flex items-center gap-4 text-2xl font-black tracking-tight">
+                                <div className="flex items-center gap-4 typo-page-title">
                                     <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 shadow-inner">
                                         <Code className="h-6 w-6 text-primary" />
                                     </div>
@@ -287,8 +287,8 @@ export default function AiQueryLogsPage() {
                                 </div>
                                 <div className="flex gap-4 pr-10">
                                     <div className="text-right px-5 py-2.5 bg-muted/40 rounded-2xl border border-border/50 shadow-sm">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 mb-1">Tokens Consumidos</p>
-                                        <p className="font-mono text-base font-bold">
+                                        <p className="typo-menu-header text-muted-foreground/70 mb-1">Tokens Consumidos</p>
+                                        <p className="typo-mono text-base font-bold">
                                             <span className="text-blue-500">{selectedLog?.inputTokens || 0}</span>
                                             <span className="mx-2 opacity-20 text-foreground">/</span>
                                             <span className="text-green-500">{selectedLog?.outputTokens || 0}</span>
@@ -302,33 +302,33 @@ export default function AiQueryLogsPage() {
                     <div className="flex-1 overflow-auto px-8 py-8 space-y-8 custom-scrollbar">
                         <div className="grid grid-cols-3 gap-6">
                             <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
-                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
+                                <p className="typo-menu-header text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Cpu className="h-3.5 w-3.5" /> Modelo Utilizado
                                 </p>
-                                <p className="font-bold text-lg text-foreground truncate">{selectedLog?.model}</p>
+                                <p className="typo-subsection-title text-foreground truncate">{selectedLog?.model}</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
-                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
+                                <p className="typo-menu-header text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <Database className="h-3.5 w-3.5" /> Origen de Llamada
                                 </p>
-                                <p className="font-bold text-lg text-foreground capitalize truncate">{selectedLog?.queryType}</p>
+                                <p className="typo-subsection-title text-foreground capitalize truncate">{selectedLog?.queryType}</p>
                             </div>
                             <div className="p-5 rounded-2xl bg-muted/40 border border-border/50 shadow-sm transition-colors hover:bg-muted/50">
-                                <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2.5 flex items-center gap-2">
+                                <p className="typo-menu-header text-muted-foreground/60 mb-2.5 flex items-center gap-2">
                                     <History className="h-3.5 w-3.5" /> Fecha y Hora
                                 </p>
-                                <p className="font-bold text-lg text-foreground whitespace-nowrap">
+                                <p className="typo-subsection-title text-foreground whitespace-nowrap">
                                     {selectedLog?.createdAt && format(new Date(selectedLog.createdAt), "dd/MM/yyyy · HH:mm:ss")}
                                 </p>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 flex items-center gap-2 px-1">
+                            <h3 className="typo-menu-header text-muted-foreground/60 flex items-center gap-2 px-1">
                                 <Code className="h-4 w-4 text-primary" /> Payload de Entrada (JSON)
                             </h3>
                             <div className="group relative">
-                                <pre className="p-6 rounded-2xl bg-zinc-950 text-zinc-300 font-mono text-[13px] overflow-auto border border-zinc-800 leading-relaxed max-h-[350px] scrollbar-thin scrollbar-thumb-zinc-700 shadow-xl">
+                                <pre className="p-6 rounded-2xl bg-zinc-950 text-zinc-300 typo-mono overflow-auto border border-zinc-800 leading-relaxed max-h-[350px] scrollbar-thin scrollbar-thumb-zinc-700 shadow-xl">
                                     {JSON.stringify(selectedLog?.payload, null, 2)}
                                 </pre>
                                 <Button
@@ -351,7 +351,7 @@ export default function AiQueryLogsPage() {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="rounded-xl font-bold h-9 px-5 text-xs border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors"
+                                className="rounded-xl h-9 px-5 border-primary/20 hover:border-primary/40 hover:bg-primary/5 text-primary shadow-sm transition-colors"
                                 onClick={() => {
                                     const payloadJson = JSON.stringify(selectedLog?.payload, null, 2);
                                     const responseJson = JSON.stringify(selectedLog?.response, null, 2);
@@ -366,11 +366,11 @@ export default function AiQueryLogsPage() {
                         </div>
 
                         <div className="space-y-3 pb-6">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 flex items-center gap-2 px-1">
+                            <h3 className="typo-menu-header text-muted-foreground/60 flex items-center gap-2 px-1">
                                 <Sparkles className="h-4 w-4 text-primary" /> Respuesta del Modelo (RAW JSON)
                             </h3>
                             <div className="group relative">
-                                <pre className="p-6 rounded-2xl bg-primary/[0.03] text-foreground font-mono text-[13px] overflow-auto border border-primary/10 leading-relaxed max-h-[500px] scrollbar-thin scrollbar-thumb-primary/20 shadow-lg">
+                                <pre className="p-6 rounded-2xl bg-primary/[0.03] text-foreground typo-mono overflow-auto border border-primary/10 leading-relaxed max-h-[500px] scrollbar-thin scrollbar-thumb-primary/20 shadow-lg">
                                     {JSON.stringify(selectedLog?.response, null, 2)}
                                 </pre>
                                 <Button

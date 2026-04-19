@@ -5,7 +5,7 @@ import {
   Sparkles,
   CheckCircle,
   Info,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useAtomValue } from "jotai";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useStreamChat } from "@/hooks/useStreamChat";

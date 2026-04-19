@@ -7,7 +7,7 @@ import {
   Loader,
   CircleX,
   Rabbit,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { CodeHighlight } from "./CodeHighlight";
 import { CustomTagState } from "./stateTypes";
 
@@ -100,7 +100,7 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
           ) : (
             <ChevronsUpDown
               size={20}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground dark:text-muted-foreground/70 dark:hover:text-foreground"
             />
           )}
         </div>
@@ -111,7 +111,7 @@ export const VibesEdit: React.FC<VibesEditProps> = ({
         </div>
       )}
       {description && (
-        <div className="text-sm text-muted-foreground">
+        <div className="typo-caption">
           <span className="font-medium">Summary: </span>
           {description}
         </div>

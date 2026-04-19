@@ -2,7 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { pendingVisualChangesAtom } from "@/atoms/previewAtoms";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
-import { Check, X } from "lucide-react";
+import { Check, X } from "@/components/ui/icons";
 import { useState, useEffect, useRef } from "react";
 import { showError, showSuccess } from "@/lib/toast";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";

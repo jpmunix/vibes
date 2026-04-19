@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ipc } from "@/ipc/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Database, Loader2 } from "lucide-react";
+import { ExternalLink, Database, Loader2 } from "@/components/ui/icons";
 import { showSuccess, showError } from "@/lib/toast";
 import { useVersions } from "@/hooks/useVersions";
 
@@ -54,7 +54,7 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Genera un nuevo archivo de migración de base de datos para tu
           aplicación Portal.
         </p>
@@ -92,11 +92,11 @@ export const PortalMigrate = ({ appId }: PortalMigrateProps) => {
         {output && (
           <div className="mt-4">
             <div className="bg-gray-50 dark:bg-gray-900 border rounded-lg p-3">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <h4 className="text-sm font-medium text-foreground mb-2">
                 Salida del comando:
               </h4>
               <div className="max-h-64 overflow-auto">
-                <pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
                   {output}
                 </pre>
               </div>

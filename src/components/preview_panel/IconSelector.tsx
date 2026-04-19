@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Search, X } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { Search, X } from "@/components/ui/icons";
+import * as LucideIcons from "@/components/ui/icons";
 import iconDatabase from "@/data/lucide-icons.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
                 {/* Search */}
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70" size={16} />
                         <Input
                             type="text"
                             placeholder="Buscar iconos... (ej: 'casa', 'usuario', 'configuración')"
@@ -85,17 +85,17 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
                 <ScrollArea className="flex-1 p-4">
                     {filteredIcons.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <Search className="mb-3 text-gray-300 dark:text-gray-600" size={48} />
-                            <p className="text-gray-500 dark:text-gray-400">
+                            <Search className="mb-3 text-muted-foreground/50 dark:text-muted-foreground" size={48} />
+                            <p className="text-muted-foreground">
                                 No se encontraron iconos para "{searchQuery}"
                             </p>
-                            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                            <p className="text-sm text-muted-foreground/70 mt-1">
                                 Intenta con otros términos de búsqueda
                             </p>
                         </div>
                     ) : (
                         <>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            <div className="text-xs text-muted-foreground mb-3">
                                 {filteredIcons.length} icono{filteredIcons.length !== 1 ? "s" : ""} encontrado{filteredIcons.length !== 1 ? "s" : ""}
                             </div>
                             <div className="grid grid-cols-6 gap-2">
@@ -121,7 +121,7 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
                                             type="button"
                                         >
                                             <IconComponent size={24} className={isSelected ? "text-blue-600 dark:text-blue-400" : ""} />
-                                            <span className={`text-[10px] text-center leading-tight ${isSelected ? "font-semibold text-blue-700 dark:text-blue-300" : "text-gray-600 dark:text-gray-400"}`}>
+                                            <span className={`text-xs text-center leading-tight ${isSelected ? "font-semibold text-blue-700 dark:text-blue-300" : "text-muted-foreground"}`}>
                                                 {icon.name}
                                             </span>
                                         </button>
@@ -129,7 +129,7 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
                                 })}
                             </div>
                             {filteredIcons.length > 150 && (
-                                <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                                <div className="mt-4 text-center text-sm text-muted-foreground">
                                     Mostrando los primeros 150 resultados. Usa la búsqueda para refinar.
                                 </div>
                             )}
@@ -139,7 +139,7 @@ export function IconSelector({ currentIcon, onSelect, onClose }: IconSelectorPro
 
                 {/* Footer */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                    <p className="text-xs textgray-500 dark:text-gray-400">
+                    <p className="text-xs textgray-500 dark:text-muted-foreground/70">
                         Todos los iconos de <a href="https://lucide.dev" target="_blank" rel="noopener noreferrer" className="underline">Lucide</a>
                     </p>
                 </div>

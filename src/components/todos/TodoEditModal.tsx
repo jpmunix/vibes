@@ -46,7 +46,7 @@ import {
   X,
   Image as ImageIcon,
   File as FileIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 import { VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 
@@ -294,14 +294,14 @@ export function TodoEditModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[95vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
-          <DialogTitle className="text-2xl">Editar Tarea</DialogTitle>
+          <DialogTitle className="typo-page-title">Editar Tarea</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6">
           <div className="flex flex-col gap-6 pb-6">
             <div className="space-y-6">
               <div className="grid gap-2">
-                <Label htmlFor="content" className="text-base font-medium">
+                <Label htmlFor="content" className="typo-label">
                   Título
                 </Label>
                 <Input
@@ -309,11 +309,11 @@ export function TodoEditModal({
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="¿Qué hay que hacer?"
-                  className="text-lg"
+                  className="typo-input"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="description" className="text-base font-medium">
+                <Label htmlFor="description" className="typo-label">
                   Descripción
                 </Label>
                 <Textarea
@@ -570,7 +570,7 @@ export function TodoEditModal({
                   })}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground italic border border-dashed rounded-lg p-4 text-center">
+                <div className="typo-caption italic border border-dashed rounded-lg p-4 text-center">
                   Sin archivos adjuntos
                 </div>
               )}
@@ -600,7 +600,7 @@ export function TodoEditModal({
                   <div className="grid gap-2">
                     <Label
                       htmlFor="develop-prompt"
-                      className="text-sm text-muted-foreground italic"
+                      className="typo-caption italic"
                     >
                       Define el contexto o instrucciones específicas para que la
                       IA desarrolle esta tarea
@@ -623,7 +623,7 @@ export function TodoEditModal({
                       {isRefining ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
-                        <Sparkles className="h-5 w-5 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
+                        <Sparkles className="h-5 w-5 text-primary group-hover:text-primary/80 transition-colors" />
                       )}
                       {isRefining ? "Refinando..." : "Refinar prompt"}
                     </Button>

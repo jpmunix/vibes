@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { LightbulbIcon } from "lucide-react";
+import { LightbulbIcon } from "@/components/ui/icons";
 import { ErrorComponentProps } from "@tanstack/react-router";
 import { usePostHog } from "posthog-js/react";
 import { ipc } from "@/ipc/types";
@@ -58,32 +58,35 @@ ${debugInfo.logs.slice(-500) || "No logs available"}
   return (
     <div className="flex flex-col items-center justify-center min-h-screen w-full p-6 bg-background text-foreground">
       <div className="max-w-md w-full bg-card text-card-foreground p-6 rounded-lg shadow-lg border border-border">
-        <h2 className="text-xl font-bold mb-4 text-foreground">
+        <h2 className="typo-section-title mb-4">
           ¡Lo sentimos, eso no debería haber pasado!
         </h2>
 
-        <p className="text-sm mb-3 text-muted-foreground">Hubo un error al cargar la aplicación...</p>
+        <p className="typo-caption mb-3">Hubo un error al cargar la aplicación...</p>
 
         {error && (
           <div className="bg-muted p-4 rounded-md mb-6">
-            <p className="text-sm mb-1 text-foreground">
+            <p className="typo-body mb-1">
               <strong>Nombre del error:</strong> {error.name}
             </p>
-            <p className="text-sm text-foreground">
+            <p className="typo-body">
               <strong>Mensaje del error:</strong> {error.message}
             </p>
           </div>
         )}
 
         <div className="flex flex-col gap-2">
-          <Button onClick={handleReportBug} disabled={isLoading}>
+          <Button onClick={() => window.location.reload()} variant="default">
+            Recargar aplicación
+          </Button>
+          <Button onClick={handleReportBug} disabled={isLoading} variant="outline">
             {isLoading ? "Preparando informe..." : "Informar de un error"}
           </Button>
         </div>
 
         <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-md flex items-center gap-2">
           <LightbulbIcon className="h-4 w-4 text-primary flex-shrink-0" />
-          <p className="text-sm text-primary">
+          <p className="typo-caption">
             <strong>Consejo:</strong> Intenta cerrar y volver a abrir Vibes como
             solución temporal.
           </p>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Bell, Loader2, CheckCircle2 } from "lucide-react";
+import { Bell, Loader2, CheckCircle2 } from "@/components/ui/icons";
 import {
   Popover,
   PopoverContent,

@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Palette, FileText } from "lucide-react";
+import { Palette, FileText } from "@/components/ui/icons";
 
 type LibrarySection = {
   id: string;
@@ -26,7 +26,7 @@ export function LibraryList({ show }: { show: boolean }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Biblioteca</h2>
+        <h2 className="typo-menu-header mb-2 px-2">Biblioteca</h2>
       </div>
       <ScrollArea className="flex-grow">
         <div className="space-y-1 p-4 pt-0">
@@ -40,9 +40,9 @@ export function LibraryList({ show }: { show: boolean }) {
                 key={section.id}
                 to={section.to}
                 className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                  "w-full flex items-center gap-2 px-3 py-2 rounded-md transition-colors typo-menu-item",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "hover:bg-sidebar-accent",
                 )}
               >
