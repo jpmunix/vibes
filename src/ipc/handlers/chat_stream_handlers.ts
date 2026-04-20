@@ -1530,6 +1530,54 @@ This conversation includes one or more image attachments. When the user uploads 
             // Has partial content — save it with a "cancelled" visual indicator
             fullResponse = openCodeResponse + "\n\n---\n*⏹ Respuesta cancelada por el usuario*\n";
             const openCodeDurationMs = Date.now() - streamStartedAt;
+
+            const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
+            const ocTotalTokens = ocInputTokens + ocBillableOutput;
+
+            if (ocTotalTokens > 0) {
+              let priceIn = "";
+              let priceOut = "";
+              try {
+                const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+                const models = await fetchOpenRouterModels();
+                const modelData = models.find(m => m.name === settings.selectedModel.name);
+                priceIn = modelData?.pricingInput || "";
+                priceOut = modelData?.pricingOutput || "";
+              } catch { /* pricing unavailable */ }
+
+              const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
+              const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+              fullResponse += tokenXml + "\n";
+
+              void logChatInfo(
+                req.chatId,
+                "token-usage",
+                `[Cancelled] Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
+                {
+                  totalTokens: ocTotalTokens,
+                  inputTokens: ocInputTokens,
+                  outputTokens: ocOutputTokens,
+                  reasoningTokens: ocReasoningTokens,
+                  billableOutput: ocBillableOutput,
+                  model: settings.selectedModel.name,
+                  type: "opencode-agent",
+                  cancelled: true,
+                },
+                placeholderAssistantMessage.id,
+              );
+
+              logTokenUsage({
+                chatId: req.chatId,
+                messageId: placeholderAssistantMessage.id,
+                totalTokens: ocTotalTokens,
+                promptTokens: ocInputTokens,
+                completionTokens: ocBillableOutput,
+                model: settings.selectedModel.name,
+                timestamp: Date.now(),
+                appId: updatedChat.app.id,
+              });
+            }
+
             await db
               .update(remoteSchema.messages)
               .set({
@@ -1547,13 +1595,25 @@ This conversation includes one or more image attachments. When the user uploads 
               chatId: req.chatId,
               messages: [
                 ...updatedChat.messages.slice(0, -1),
-                { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs },
+                { ...placeholderAssistantMessage, content: fullResponse, durationMs: openCodeDurationMs, totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined },
               ],
             });
             safeSend(event.sender, "chat:response:end", {
               chatId: req.chatId,
               updatedFiles: false,
+              totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
             } satisfies ChatResponseEnd);
+            
+            // Log telemetry
+            sendTelemetryEvent("chat:stream:end", {
+              chatMode: `opencode-${agentId}`,
+              model: settings.selectedModel.name,
+              responseLength: fullResponse.length,
+              success: false,
+              totalTokens: ocTotalTokens,
+              cancelled: true,
+            });
+
             return;
           }
 

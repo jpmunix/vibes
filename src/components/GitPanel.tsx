@@ -443,6 +443,7 @@ function FileContentViewer({
     const lang = filepath ? getLanguageFromPath(filepath) : undefined;
     const highlighter = useHighlighter(lang);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [viewMode, setViewMode] = useState<"full" | "diff">("diff");
 
     useEffect(() => {
         scrollRef.current?.scrollTo(0, 0);
@@ -595,27 +596,133 @@ function FileContentViewer({
         );
     };
 
+    const renderDiffOnly = () => {
+        if (!diff) return (
+            <div className="flex items-center justify-center py-12 text-muted-foreground text-sm italic">Archivo vacío o binario</div>
+        );
+
+        const lines = diff.split("\n");
+        const elements: React.ReactNode[] = [];
+        let leftLineNum: number | null = null;
+        let rightLineNum: number | null = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            const dl = lines[i];
+
+            const hunkMatch = dl.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+            if (hunkMatch) {
+                leftLineNum = parseInt(hunkMatch[1], 10);
+                rightLineNum = parseInt(hunkMatch[2], 10);
+                elements.push(
+                    <div key={`hunk-${i}`} className="flex min-h-[20px] bg-blue-950/30 text-blue-400">
+                        <span className="w-11 shrink-0 text-right pr-2.5 border-r border-blue-900/40 select-none text-xs leading-5"></span>
+                        <span className="w-11 shrink-0 text-right pr-2.5 border-r border-blue-900/40 select-none text-xs leading-5"></span>
+                        <span className="px-3 flex-1 whitespace-pre">{dl}</span>
+                    </div>
+                );
+                continue;
+            }
+
+            if (dl.startsWith("---") || dl.startsWith("+++")) {
+                elements.push(
+                    <div key={`meta-${i}`} className="flex min-h-[20px] text-muted-foreground/60 font-bold">
+                        <span className="w-[88px] shrink-0 border-r border-white/5 select-none"></span>
+                        <span className="px-3 flex-1 whitespace-pre">{dl}</span>
+                    </div>
+                );
+                continue;
+            }
+
+            let bg = "";
+            let leftDisplay = "";
+            let rightDisplay = "";
+            let textClasses = "text-foreground/80";
+
+            if (dl.startsWith("+")) {
+                bg = "bg-green-950/40";
+                rightDisplay = String(rightLineNum);
+                rightLineNum!++;
+                textClasses = "text-green-400";
+            } else if (dl.startsWith("-")) {
+                bg = "bg-red-950/40";
+                leftDisplay = String(leftLineNum);
+                leftLineNum!++;
+                textClasses = "text-red-400";
+            } else if (dl.startsWith("\\")) {
+                textClasses = "text-muted-foreground italic";
+            } else {
+                leftDisplay = String(leftLineNum);
+                rightDisplay = String(rightLineNum);
+                leftLineNum!++;
+                rightLineNum!++;
+            }
+
+            elements.push(
+                <div key={i} className={cn("flex min-h-[20px]", bg)}>
+                    <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                        {leftDisplay}
+                    </span>
+                    <span className="w-11 shrink-0 text-right pr-2.5 border-r border-white/5 select-none text-xs leading-5 text-muted-foreground/50">
+                        {rightDisplay}
+                    </span>
+                    <span className={cn("px-3 flex-1 whitespace-pre", textClasses)}>
+                        {dl.startsWith("+") || dl.startsWith("-") || dl.startsWith(" ") ? dl.substring(1) : dl}
+                    </span>
+                </div>
+            );
+        }
+
+        return (
+            <pre className="typo-mono-xs leading-5 min-w-max">
+                {elements}
+            </pre>
+        );
+    };
+
     return (
         <div className="h-full flex flex-col min-h-0">
             {/* Toolbar: breadcrumb + view mode toggle */}
             <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 shrink-0">
                 <FolderOpen size={12} className="text-muted-foreground/50 shrink-0" />
-                <span className="text-xs text-muted-foreground truncate min-w-0">
+                <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">
                     {dirPath && <span className="text-muted-foreground/60">{dirPath}/</span>}
                     <span className="text-white">{fileName}</span>
                 </span>
+                
+                <div className="flex items-center gap-0.5 shrink-0 bg-background/80 rounded p-0.5 border border-border/50">
+                    <button
+                        onClick={() => setViewMode("full")}
+                        className={cn(
+                            "px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-sm transition-colors cursor-pointer",
+                            viewMode === "full" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title="Ver archivo completo"
+                    >
+                        Completo
+                    </button>
+                    <button
+                        onClick={() => setViewMode("diff")}
+                        className={cn(
+                            "px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-sm transition-colors cursor-pointer",
+                            viewMode === "diff" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        title="Ver solo diferencias"
+                    >
+                        Diff
+                    </button>
+                </div>
             </div>
 
             {/* Content */}
             <div ref={scrollRef} className="flex-1 overflow-auto">
-                {renderFull()}
+                {viewMode === "full" ? renderFull() : renderDiffOnly()}
             </div>
         </div>
     );
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-console.log('[DEBUG] GitPanel MODULE LOADED at', new Date().toISOString());
+
 
 export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
     const [discardTarget, setDiscardTarget] = useState<string | null>(null);
@@ -722,10 +829,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         setCheckedFiles(checked ? new Set(uncommittedFiles.map(f => f.path)) : new Set());
     }, [uncommittedFiles]);
 
-    // ── DEBUG: track state changes ──
-    useEffect(() => {
-        console.log('[DEBUG] useEffect: discardTarget changed to:', discardTarget);
-    }, [discardTarget]);
+
 
     // ── tree state ──
     const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -813,7 +917,6 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     }, [handleCommit, push]);
 
     const handleDiscard = useCallback((filepath: string) => {
-        console.log('[DEBUG] handleDiscard called:', filepath);
         setDiscardTarget(filepath);
     }, []);
 
@@ -1160,10 +1263,10 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                         <div className="flex-1" />
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-purple-400 hover:text-purple-300 cursor-pointer"
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 flex items-center justify-center text-purple-400 hover:text-purple-300 cursor-pointer"
                                                     onClick={() => generateCommitMessage(uncommittedFiles.filter(f => checkedFiles.has(f.path)))}
                                                     disabled={isGeneratingMessage || checkedFiles.size === 0}>
-                                                    {isGeneratingMessage ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                                                    {isGeneratingMessage ? <Loader2 size={15} className="animate-spin block" style={{ margin: 0 }} /> : <Sparkles size={15} />}
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>Generar con IA</TooltipContent>

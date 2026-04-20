@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 
 import { useNavigate } from "@tanstack/react-router";
 import { StandardModeModelSelector } from "./StandardModeModelSelector";
-import { ProModeModelSelector } from "./ProModeModelSelector";
 import { ChevronRight, RefreshCw, Loader2 } from "@/components/ui/icons";
 import { AgentToolsSettings } from "./AgentToolsSettings";
 import { useState } from "react";
@@ -80,7 +79,6 @@ export function AIBehaviorSettings({
 }) {
   const { settings, updateSettings } = useSettings();
   const navigate = useNavigate();
-  const [modelsExpanded, setModelsExpanded] = useState(false);
   const [showRestartDialog, setShowRestartDialog] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   // Track the LSP value that was active when this component mounted
@@ -208,40 +206,12 @@ export function AIBehaviorSettings({
 
         {/* Búsqueda Semántica — hidden: embeddings retired (KB no longer used in agent mode) */}
 
-        {/* Model Categories Section — collapsible */}
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
-            onClick={() => setModelsExpanded(e => !e)}
-          >
-            <div className="flex-1">
-              <h3 className="typo-label">Modelos por tarea</h3>
-              <p className="typo-caption mt-1">
-                Un modelo para cada modo: Estándar y Pro
-              </p>
-            </div>
-            <ChevronRight
-              className={cn(
-                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
-                modelsExpanded && "rotate-90",
-              )}
-            />
-          </div>
-          {modelsExpanded && (
-            <div className="space-y-4 pl-8">
-              <SettingRow
-                label="Modo Estándar"
-                description="Títulos, resúmenes y análisis"
-                control={<StandardModeModelSelector />}
-              />
-              <SettingRow
-                label="Modo Pro"
-                description="Debates y conocimientos"
-                control={<ProModeModelSelector />}
-              />
-            </div>
-          )}
-        </div>
+        {/* Modelo para tareas internas */}
+        <SettingRow
+          label="Modelo para tareas internas"
+          description="Títulos, resúmenes y mantenimiento"
+          control={<StandardModeModelSelector />}
+        />
 
 
 

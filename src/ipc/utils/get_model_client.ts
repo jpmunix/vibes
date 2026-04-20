@@ -1,5 +1,4 @@
-// TODO: Switch back when reasoning_details encryption issue is fixed
-// import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+
 import type { LanguageModel } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type {

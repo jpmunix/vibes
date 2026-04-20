@@ -15,7 +15,6 @@ export function useGitPanel(appId: number | null) {
     const [commitMessage, setCommitMessage] = useState("");
     const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
     const isMessageUserEdited = useRef(false);
-    const lastAutoGenAhead = useRef<number | null>(null);
 
     // Wrapper to track when the user manually edits the commit message
     const handleSetCommitMessage = useCallback((msg: string) => {
@@ -68,37 +67,6 @@ export function useGitPanel(appId: number | null) {
         enabled: appId !== null,
         refetchInterval: 5000,
     });
-
-    // Auto-generate AI commit message when ≥2 local commits ahead of remote
-    // (squash scenario — pre-fill so user sees a good message before push)
-    useEffect(() => {
-        const ahead = gitState?.ahead;
-        if (
-            !appId ||
-            !ahead ||
-            ahead < 2 ||
-            isMessageUserEdited.current ||
-            lastAutoGenAhead.current === ahead
-        ) {
-            return;
-        }
-        lastAutoGenAhead.current = ahead;
-        let cancelled = false;
-        (async () => {
-            setIsGeneratingMessage(true);
-            try {
-                const result = await ipc.github.generateSquashMessage({ appId, aheadCount: ahead });
-                if (!cancelled && !isMessageUserEdited.current) {
-                    setCommitMessage(result.message);
-                }
-            } catch (err: any) {
-                // Silently fail — user can still type manually
-            } finally {
-                if (!cancelled) setIsGeneratingMessage(false);
-            }
-        })();
-        return () => { cancelled = true; };
-    }, [appId, gitState?.ahead]);
 
     // Stage file mutation
     const stageFileMutation = useMutation({

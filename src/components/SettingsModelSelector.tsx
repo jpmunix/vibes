@@ -22,6 +22,11 @@ interface SettingsModelSelectorProps {
     size?: "sm" | "md";
     /** "default" = outline button, "pill" = primary pill like other selectors */
     variant?: "default" | "pill";
+    /**
+     * When true, bypasses the enabledOpenRouterModels filter so all cached
+     * models appear in the search dropdown (e.g. for the internal-tasks selector).
+     */
+    disableEnabledFilter?: boolean;
 }
 
 export function SettingsModelSelector({
@@ -34,15 +39,18 @@ export function SettingsModelSelector({
     className = "",
     size = "sm",
     variant = "default",
+    disableEnabledFilter = false,
 }: SettingsModelSelectorProps) {
     const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
     const { settings } = useSettings();
 
     // Filter models to only show user-enabled ones (consistent with main ModelPicker)
+    // unless disableEnabledFilter is set (e.g. internal-tasks selector shows all cached models)
     const filteredModels = useMemo(() => {
+        if (disableEnabledFilter) return models;
         const enabledModels = settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
         return models.filter((model) => enabledModels.includes(model.apiName));
-    }, [models, settings?.enabledOpenRouterModels]);
+    }, [models, settings?.enabledOpenRouterModels, disableEnabledFilter]);
 
     // Build a lookup for display names
     const modelLookup = useMemo(() => {

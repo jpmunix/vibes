@@ -238,6 +238,7 @@ export async function* openRouterStreamCompletion(
         sseBuffer = lines.pop() ?? "";
         for (const line of lines) {
           const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(":")) continue; // empty or SSE comment
           if (!trimmed.startsWith("data:")) continue;
           const data = trimmed.slice(5).trim();
           if (data === "[DONE]") { markDone(); return; }
@@ -249,11 +250,11 @@ export async function* openRouterStreamCompletion(
         }
       });
       res.on("end", () => markDone());
-      res.on("error", (err) => markDone(err));
+      res.on("error", (err) => { logger.error(`[OpenRouterStream] Response error: ${err.message}`); markDone(err); });
     },
   );
 
-  req.on("error", (err) => markDone(err));
+  req.on("error", (err) => { logger.error(`[OpenRouterStream] Request error: ${err.message}`); markDone(err); });
   req.write(body);
   req.end();
 

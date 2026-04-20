@@ -8,6 +8,18 @@ import log from "electron-log";
 
 const logger = log.scope("settings_handlers");
 
+/**
+ * Fields that are LOCAL-ONLY and must NEVER be overwritten by remote settings.
+ * - providerSettings: contains API keys encrypted with machine-specific electron safeStorage.
+ *   They cannot be decrypted on other machines and would corrupt the local config.
+ * - Session fields (userId, sessionToken) are stripped separately.
+ */
+const LOCAL_ONLY_FIELDS = [
+  "providerSettings",
+  "githubAccessToken",
+  "vercelAccessToken",
+] as const;
+
 export async function forceSyncRemoteSettingsToLocal(userId: string) {
   const db = getRemoteDb();
   try {
@@ -23,6 +35,14 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
       // If we overwrite these, the user will be logged out on the next launch.
       delete remoteSettings.userId;
       delete remoteSettings.sessionToken;
+
+      // --- LOCAL-ONLY FIELDS EXCLUSION ---
+      // API keys and secrets are encrypted with machine-specific safeStorage.
+      // They MUST NOT be overwritten by remote data (which may contain stale or
+      // differently-encrypted values from another machine/session).
+      for (const field of LOCAL_ONLY_FIELDS) {
+        delete remoteSettings[field];
+      }
 
       // We must explicitly save these to disk so they immediately become the local truth
       // without needing an initial save from the React frontend.
@@ -50,6 +70,17 @@ export function registerSettingsHandlers() {
         if (remoteRecord) {
           try {
             const remoteSettings = JSON.parse(remoteRecord.settingsJson);
+
+            // Strip LOCAL-ONLY fields from remote to prevent stale/encrypted
+            // API keys from overwriting the local machine's current keys.
+            for (const field of LOCAL_ONLY_FIELDS) {
+              delete remoteSettings[field];
+            }
+            // Also strip session data
+            delete remoteSettings.userId;
+            delete remoteSettings.sessionToken;
+
+            // Merge: local wins for secrets, remote wins for preferences
             return { ...localSettings, ...remoteSettings };
           } catch (e) {
             logger.error("Failed to parse remote settings JSON", e);
@@ -78,6 +109,18 @@ export function registerSettingsHandlers() {
         });
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);
+      }
+    }
+
+    // If provider settings (API keys) changed, we must completely shutdown the OpenCode
+    // daemon so it picks up the new process.env variables upon the next spawn.
+    if (settings.providerSettings) {
+      try {
+        const { shutdownOpenCode } = await import("./opencode_adapter");
+        await shutdownOpenCode();
+        logger.info("Shutdown OpenCode daemon to apply new API keys");
+      } catch (e: any) {
+        logger.warn(`Failed to shutdown OpenCode for API key reload: ${e.message}`);
       }
     }
 

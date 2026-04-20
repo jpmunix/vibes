@@ -41,6 +41,7 @@ export function StandardModeModelSelector() {
             )}
             loading={isLoading}
             placeholder="Selecciona un modelo"
+            disableEnabledFilter
             specialOptions={[
                 {
                     value: DEFAULT_MODEL,

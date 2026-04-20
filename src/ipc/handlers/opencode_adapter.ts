@@ -496,6 +496,11 @@ async function getOpenCodeClient(appPath: string) {
     // Build environment with API keys from Electron's secure storage
     const envVars = extractApiKeysForEnv();
 
+    // Clear any stale keys from OpenCode's own auth.json so it doesn't override
+    // the keys we provide via config.json {env:...} substitution.
+    // This protects existing users who upgrade and still have an old/deleted key cached.
+    clearStaleOpenCodeAuth(envVars);
+
     // Set API keys in the process environment before creating the instance
     for (const [key, value] of Object.entries(envVars)) {
         process.env[key] = value;
@@ -548,6 +553,17 @@ async function getOpenCodeClient(appPath: string) {
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
+                            options: {
+                                // Explicitly bind the API key from process.env so OpenCode uses
+                                // the key configured in Vibes instead of any stale auth.json file.
+                                apiKey: "{env:OPENROUTER_API_KEY}",
+                            },
+                        } : providerID === "anthropic" ? {
+                            options: { apiKey: "{env:ANTHROPIC_API_KEY}" },
+                        } : providerID === "google" ? {
+                            options: { apiKey: "{env:GEMINI_API_KEY}" },
+                        } : providerID === "openai" ? {
+                            options: { apiKey: "{env:OPENAI_API_KEY}" },
                         } : {}),
                 },
                 model: `${providerID}/${modelID}`,
@@ -614,10 +630,14 @@ async function getOpenCodeClient(appPath: string) {
                         },
                     } : {}),
                 },
-                // Permissions: always allow everything to prioritize autonomy
+                // Permissions: always allow everything EXCEPT repository mutation (commit/push)
                 permission: {
                     edit: "allow",
-                    bash: "allow",
+                    bash: {
+                        "git commit": "deny",
+                        "git push": "deny",
+                        "*": "allow"
+                    },
                     webfetch: "allow",
                     external_directory: "allow",
                 },
@@ -721,7 +741,10 @@ function extractApiKeysForEnv(): Record<string, string> {
             env.OPENROUTER_API_KEY = key.encryptionType === "plaintext"
                 ? key.value
                 : decrypt(key);
-            logger.info(`[OpenCode] Using OpenRouter key: "${selectedKey.alias || 'unnamed'}"`);
+            
+            const actual = env.OPENROUTER_API_KEY || "";
+            const masked = actual.length > 20 ? `${actual.slice(0, 15)}...${actual.slice(-4)}` : "***";
+            logger.info(`[OpenCode] Using OpenRouter key: "${selectedKey.alias || 'unnamed'}" (${masked})`);
         }
     }
 
@@ -730,6 +753,84 @@ function extractApiKeysForEnv(): Record<string, string> {
 
     return env;
 }
+
+/**
+ * Ensures OpenCode's own auth.json does not contain stale API keys that would
+ * override the keys configured in Vibes.
+ *
+ * Strategy: read auth.json (if it exists), update/overwrite only the providers
+ * we manage (openrouter, openai, anthropic, google, groq) with the current key
+ * from Vibes. If Vibes has no key for a provider, that provider entry is removed
+ * from auth.json so OpenCode can't fall back to a stale credential.
+ *
+ * This is a safety net for users who upgrade from a version that stored API keys
+ * via `opencode auth login`. It is a silent no-op if the file does not exist.
+ */
+function clearStaleOpenCodeAuth(env: Record<string, string>): void {
+    try {
+        const fs = require("fs");
+        const os = require("os");
+        const home = os.homedir();
+
+        // Resolve auth.json path per platform (same logic OpenCode uses internally)
+        let authDir: string;
+        switch (process.platform) {
+            case "win32":
+                authDir = path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "opencode");
+                break;
+            case "darwin":
+                authDir = path.join(home, "Library", "Application Support", "opencode");
+                break;
+            default:
+                authDir = path.join(process.env.XDG_DATA_HOME || path.join(home, ".local", "share"), "opencode");
+        }
+
+        const authFile = path.join(authDir, "auth.json");
+        if (!fs.existsSync(authFile)) return; // New user — nothing to clean
+
+        let auth: Record<string, any> = {};
+        try {
+            auth = JSON.parse(fs.readFileSync(authFile, "utf-8"));
+        } catch {
+            return; // Corrupt file — leave it alone
+        }
+
+        // Map from auth.json provider key → the env var that carries the current key
+        const providerEnvMap: Record<string, string> = {
+            openrouter: "OPENROUTER_API_KEY",
+            openai: "OPENAI_API_KEY",
+            anthropic: "ANTHROPIC_API_KEY",
+            google: "GEMINI_API_KEY",
+            groq: "GROQ_API_KEY",
+        };
+
+        let changed = false;
+        for (const [provider, envVar] of Object.entries(providerEnvMap)) {
+            const currentKey = env[envVar];
+            if (currentKey) {
+                // We have a key for this provider — overwrite with the correct one
+                if (auth[provider]?.key !== currentKey) {
+                    auth[provider] = { type: "api", key: currentKey };
+                    changed = true;
+                }
+            } else if (auth[provider]) {
+                // We have NO key configured in Vibes but auth.json has one — remove it
+                delete auth[provider];
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            fs.writeFileSync(authFile, JSON.stringify(auth, null, 2), "utf-8");
+            logger.info(`[OpenCode] Cleaned stale auth.json (providers: ${Object.keys(auth).join(", ") || "none"})`);
+        }
+    } catch (e: any) {
+        // Non-fatal — worst case OpenCode uses the stale auth.json key, but config.json
+        // {env:...} substitution should still override it for providers we explicitly configure.
+        logger.warn(`[OpenCode] Could not clean auth.json: ${e.message}`);
+    }
+}
+
 
 // ============================================================================
 // Model/provider mapping
@@ -1163,12 +1264,42 @@ export async function handleOpenCodeStream(
         // processEvents returns when session goes idle or the stream ends.
         await eventProcessingDone;
 
+        const getAbortedResponse = () => {
+            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
+            
+            // Estimate tokens since we might not have received the final usage chunk from upstream
+            // <think> blocks
+            const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
+            const thinkChars = thinkMatches.reduce((acc, m) => acc + m.length, 0);
+            
+            // Standard text (excluding think)
+            const standardChars = Math.max(0, partialText.length - thinkChars);
+
+            let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
+            let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
+            
+            // Input tokens
+            let estInput = totalInputTokens;
+            if (estInput === 0) {
+               const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
+               estInput = Math.ceil(inputString.length / 4) + 1500; // 1500 for AGENTS.md/overhead
+            }
+            
+            return {
+                fullResponse: partialText || "Operación cancelada",
+                success: false,
+                inputTokens: estInput,
+                outputTokens: estOutput,
+                reasoningTokens: estReasoning,
+                cachedTokens: totalCachedTokens
+            };
+        };
+
         // If the stream was aborted (stop button), session.abort() was already
         // sent eagerly by the onUserAbort listener — just return partial text.
         if (abortController.signal.aborted) {
-            logger.info(`${LP} Aborted for chat ${req.chatId} — returning partial response`);
-            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-            return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
+            logger.info(`${LP} Aborted for chat ${req.chatId} — returning estimated partial response`);
+            return getAbortedResponse();
         }
 
         const totalText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
@@ -1187,8 +1318,7 @@ export async function handleOpenCodeStream(
         if (abortController.signal.aborted) {
             logger.info(`${LP} Aborted for chat ${req.chatId}`);
             // session.abort() already fired eagerly — no need to call again
-            const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-            return { fullResponse: partialText || "Operación cancelada", success: false, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
+            return getAbortedResponse();
         }
 
         logger.error(`${LP} Stream error:`, error.message);
@@ -1507,9 +1637,26 @@ async function processEvents(
 
                 // Session errors — log full details for debugging custom agents
                 case "session.error": {
-                    const errorMsg = props.error || props.message || JSON.stringify(props);
+                    let errorObj = props.error || props.message || props;
+                    let errorMsg = "Unknown error";
+                    if (typeof errorObj === "string") {
+                        errorMsg = errorObj;
+                    } else if (errorObj instanceof Error) {
+                        errorMsg = errorObj.message;
+                    } else {
+                        try {
+                            // Some OpenRouter errors come nested in .error mapped cleanly
+                            if (errorObj?.error?.message) {
+                                errorMsg = errorObj.error.message;
+                            } else {
+                                errorMsg = JSON.stringify(errorObj);
+                            }
+                        } catch (e) {
+                            errorMsg = String(errorObj);
+                        }
+                    }
                     logger.error(`[OC:Event] ❌ SESSION ERROR: ${errorMsg}`);
-                    break;
+                    throw new Error(`Session Error: ${errorMsg}`);
                 }
 
                 // Known events we can safely ignore
@@ -1549,6 +1696,7 @@ async function processEvents(
     } catch (error: any) {
         if (!abortController.signal.aborted) {
             logger.error("[OC:Event] Event stream error:", error.message);
+            throw error; // Re-throw to fail the stream properly
         }
     }
 

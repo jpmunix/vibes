@@ -940,9 +940,11 @@ export function registerAppHandlers() {
       // If the current path is absolute, preserve the directory and only change the folder name
       // Otherwise, resolve the new path using the default base path
       const currentResolvedPath = getVibesAppPath(app.path);
-      const newAppPath = path.isAbsolute(app.path)
-        ? path.join(path.dirname(app.path), appPath)
-        : getVibesAppPath(appPath);
+      const newAppPath = !pathChanged
+        ? currentResolvedPath
+        : (path.isAbsolute(app.path)
+            ? path.join(path.dirname(app.path), appPath)
+            : getVibesAppPath(appPath));
 
       let hasPathConflict = false;
       if (pathChanged) {
@@ -1062,6 +1064,46 @@ export function registerAppHandlers() {
 
         logger.error(`Error updating app ${appId} in database:`, error);
         throw new Error(`Failed to update app in database: ${error.message}`);
+      }
+    });
+  });
+
+  createTypedHandler(appContracts.updateAppName, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, appName } = params;
+    return withLock(appId, async () => {
+      // Check if app exists
+      const app = await db.query.apps.findFirst({
+        where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+      });
+
+      if (!app) {
+        throw new Error("App not found");
+      }
+
+      // Check for conflicts with existing apps
+      const nameConflict = await db.query.apps.findFirst({
+        where: and(eq(remoteSchema.apps.name, appName), eq(remoteSchema.apps.userId, context.userId)),
+      });
+
+      if (nameConflict && nameConflict.id !== appId) {
+        throw new Error(`An app with the name '${appName}' already exists`);
+      }
+
+      // Update app in database only
+      try {
+        await db
+          .update(remoteSchema.apps)
+          .set({ name: appName })
+          .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)))
+          .returning();
+
+        return;
+      } catch (error: any) {
+        logger.error(`Error updating app name ${appId} in database:`, error);
+        throw new Error(`Failed to update app name in database: ${error.message}`);
       }
     });
   });

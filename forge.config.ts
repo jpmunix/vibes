@@ -31,8 +31,6 @@ const ignore = (file: string): boolean => {
   }
 
   if (
-    file.includes("/node_modules/@img") ||
-    file.includes("/node_modules/sharp") ||
     file.includes("/node_modules/styled-jsx") ||
     file.includes("/node_modules/geist")
   ) {
@@ -92,7 +90,7 @@ const config: ForgeConfig = {
       // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
       // styled-jsx se desempaqueta para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
-        "{**/node_modules/@img/**/*,**/node_modules/sharp/**/*,**/node_modules/color/**/*,**/node_modules/color-string/**/*,**/node_modules/color-name/**/*,**/node_modules/color-convert/**/*,**/node_modules/simple-swizzle/**/*,**/node_modules/better-sqlite3/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
+        "{**/node_modules/better-sqlite3/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,
@@ -113,31 +111,11 @@ const config: ForgeConfig = {
     // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
   rebuildConfig: {
-    extraModules: ["better-sqlite3", "sharp"],
+    extraModules: ["better-sqlite3"],
     force: false,
   },
   makers: [
-    // new MakerSquirrel(
-    //   // @ts-expect-error - incorrect types exported by MakerSquirrel
-    //   isGitHubActions
-    //     ? {
-    //         windowsSign,
-    //         iconUrl:
-    //           "https://raw.githubusercontent.com/dyad-sh/dyad/main/assets/icon/logo.ico",
-    //         setupIcon: "./assets/icon/logo.ico",
-    //       }
-    //     : {
-    //         iconUrl:
-    //           "https://raw.githubusercontent.com/dyad-sh/dyad/main/assets/icon/logo.ico",
-    //         setupIcon: "./assets/icon/logo.ico",
-    //       },
-    // ),
     new MakerZIP({}, ["darwin"]),
-    // new MakerRpm({
-    //   options: {
-    //     icon: "./assets/icon/logo.png",
-    //   },
-    // }),
     new MakerDeb({
       options: {
         mimeType: ["x-scheme-handler/dyad"],

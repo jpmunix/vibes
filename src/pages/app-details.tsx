@@ -87,8 +87,6 @@ export default function AppDetailsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
-  const [isRenameConfirmDialogOpen, setIsRenameConfirmDialogOpen] =
-    useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [isRenameFolderDialogOpen, setIsRenameFolderDialogOpen] =
@@ -96,7 +94,6 @@ export default function AppDetailsPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [isRenamingFolder, setIsRenamingFolder] = useState(false);
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [aiGeneratedTitle, setAiGeneratedTitle] = useState<string | null>(null);
   const [isIntegrationsSectionOpen, setIsIntegrationsSectionOpen] = useState(false);
   const [isInfoSectionOpen, setIsInfoSectionOpen] = useState(false);
   const { toggleFavorite, isLoading: isFavoriteLoading } = useAddAppToFavorite();
@@ -178,61 +175,40 @@ export default function AppDetailsPage() {
   };
 
   const handleGenerateTitle = async () => {
-    if (!appId) return;
+    if (!appId || !selectedApp) return;
     try {
       setIsGeneratingTitle(true);
       const { title } = await ipc.app.generateAppTitleFromHistory({ appId });
 
-      // Store the original AI-generated title for the app name
-      setAiGeneratedTitle(title);
+      setIsRenaming(true);
+      await ipc.app.updateAppName({
+        appId,
+        appName: title,
+      });
+
       setNewAppName(title);
-      setIsRenameConfirmDialogOpen(true);
+      await refreshApps();
     } catch (error) {
       console.error("Failed to generate title:", error);
       showError("Error al generar el título");
     } finally {
       setIsGeneratingTitle(false);
+      setIsRenaming(false);
     }
   };
 
-  const handleRenameApp = async (renameFolder: boolean) => {
+  const handleRenameApp = async () => {
     if (!appId || !selectedApp || !newAppName.trim()) return;
 
     try {
       setIsRenaming(true);
 
-      // Determine the new path based on user's choice
-      let appPath = selectedApp.path;
-
-      if (renameFolder) {
-        // If this is from AI generation, normalize the folder name
-        if (aiGeneratedTitle) {
-          appPath =
-            aiGeneratedTitle
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/ñ/g, "n")
-              .replace(/\s+/g, "_")
-              .replace(/[^a-z0-9_-]/g, "")
-              .replace(/_{2,}/g, "_")
-              .replace(/^_+|_+$/g, "")
-              .trim() || "app";
-        } else {
-          // Regular rename, use the app name as folder name
-          appPath = newAppName;
-        }
-      }
-
-      await ipc.app.renameApp({
+      await ipc.app.updateAppName({
         appId,
         appName: newAppName,
-        appPath,
       });
 
       setIsRenameDialogOpen(false);
-      setIsRenameConfirmDialogOpen(false);
-      setAiGeneratedTitle(null); // Clear AI-generated title
       await refreshApps();
     } catch (error) {
       console.error("Failed to rename app:", error);
@@ -733,14 +709,11 @@ export default function AppDetailsPage() {
                     Cancelar
                   </Button>
                   <Button
-                    onClick={() => {
-                      setIsRenameDialogOpen(false);
-                      setIsRenameConfirmDialogOpen(true);
-                    }}
+                    onClick={handleRenameApp}
                     disabled={isRenaming || !newAppName.trim()}
                     size="sm"
                   >
-                    Continuar
+                    Renombrar
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -793,71 +766,7 @@ export default function AppDetailsPage() {
               </DialogContent>
             </Dialog>
 
-            {/* Rename Confirmation Dialog */}
-            <Dialog
-              open={isRenameConfirmDialogOpen}
-              onOpenChange={setIsRenameConfirmDialogOpen}
-            >
-              <DialogContent className="max-w-sm p-4">
-                <DialogHeader className="pb-2">
-                  <DialogTitle>
-                    ¿Cómo te gustaría renombrar "{selectedApp.name}"?
-                  </DialogTitle>
-                  <DialogDescription>
-                    Elige una opción:
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2 my-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start p-2 h-auto relative text-sm"
-                    onClick={() => handleRenameApp(true)}
-                    disabled={isRenaming}
-                  >
-                    <div className="absolute top-1 right-1">
-                      <span className="bg-blue-100 text-blue-800 typo-caption font-medium px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                        Recomendado
-                      </span>
-                    </div>
-                    <div className="text-left">
-                      <p className="typo-label">
-                        Renombrar aplicación y carpeta
-                      </p>
-                      <p className="typo-caption text-muted-foreground">
-                        Renombra la carpeta para que coincida con el nuevo nombre de
-                        la aplicación.
-                      </p>
-                    </div>
-                  </Button>
 
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start p-2 h-auto text-sm"
-                    onClick={() => handleRenameApp(false)}
-                    disabled={isRenaming}
-                  >
-                    <div className="text-left">
-                      <p className="typo-label">
-                        Solo renombrar la aplicación
-                      </p>
-                      <p className="typo-caption text-muted-foreground">
-                        El nombre de la carpeta seguirá siendo el mismo.
-                      </p>
-                    </div>
-                  </Button>
-                </div>
-                <DialogFooter className="pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsRenameConfirmDialogOpen(false)}
-                    disabled={isRenaming}
-                    size="sm"
-                  >
-                    Cancelar
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
 
             {/* Copy App Dialog */}
             {selectedApp && (

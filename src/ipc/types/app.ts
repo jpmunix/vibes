@@ -108,6 +108,14 @@ export const RenameAppParamsSchema = z.object({
 });
 
 /**
+ * Schema for update app name params.
+ */
+export const UpdateAppNameParamsSchema = z.object({
+  appId: z.number(),
+  appName: z.string(),
+});
+
+/**
  * Schema for run/stop/restart app params.
  */
 export const AppIdParamsSchema = z.object({
@@ -360,6 +368,12 @@ export const appContracts = {
   renameApp: defineContract({
     channel: "rename-app",
     input: RenameAppParamsSchema,
+    output: z.void(),
+  }),
+
+  updateAppName: defineContract({
+    channel: "update-app-name",
+    input: UpdateAppNameParamsSchema,
     output: z.void(),
   }),
 

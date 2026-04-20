@@ -46,7 +46,7 @@ import { getVibesAppPath } from "../../paths/paths";
 import { IS_TEST_BUILD } from "../utils/test_utils";
 import path from "node:path";
 import { withLock } from "../utils/lock_utils";
-import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
+import { openRouterCompletion, hasOpenRouterApiKey, openRouterStreamCompletion } from "../utils/openrouter";
 import { getEffectivePrompt } from "@/prompts";
 import * as fs from "node:fs"; // Re-added fs since I removed it above
 import { streamText } from "ai";
@@ -1932,8 +1932,8 @@ export function registerCommitMessageStreamHandler() {
         return;
       }
 
-      const diffsStart = performance.now();
       const filesToAnalyze = uncommittedFiles.slice(0, 10);
+
       const diffsPromises = filesToAnalyze.map(async (file: { path: string; status: string }) => {
         try {
           const { diff } = await gitDiffFile({ path: appPath, filepath: file.path });
@@ -1945,34 +1945,30 @@ export function registerCommitMessageStreamHandler() {
 
       const diffs = await Promise.all(diffsPromises);
       const diffsContext = diffs.join("\n\n");
-      const diffsEnd = performance.now();
-      logger.info(`[CommitStream] Computed diffs in ${Math.round(diffsEnd - diffsStart)}ms`);
 
       const systemPrompt = getEffectivePrompt("auto_commit_message", settings);
 
-      const { modelClient } = await getModelClient({ name: model, provider: "openrouter" }, settings);
-      logger.info(`[CommitStream] Calling streamText with model ${model}`);
-
-      const result = await streamText({
-        model: modelClient.model,
-        system: systemPrompt,
-        prompt: `Cambios:\n${diffsContext}`,
+      // NOTE: We intentionally bypass getModelClient here.
+      // getModelClient wraps OpenRouter requests with a "web_search" tool via transformRequestBody.
+      // When OpenRouter receives a request with `tools`, it does a routing/planning pass before
+      // generating — adding 40-50s of TTFT even for nano models. For commit messages we want a
+      // plain, tool-free completion, so we use openRouterStreamCompletion directly.
+      const stream = openRouterStreamCompletion({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Cambios:\n${diffsContext}` },
+        ],
         temperature: 0.7,
-        maxTokens: 100,
+        max_tokens: 10000, // reasoning models consume tokens for their thinking chain first; give plenty of room
+        title: "Vibes - Commit Message",
       });
 
-      let chunkCount = 0;
-      const firstChunkStart = performance.now();
-      for await (const chunk of result.textStream) {
-        if (chunkCount === 0) {
-          logger.info(`[CommitStream] First chunk received after ${Math.round(performance.now() - firstChunkStart)}ms. Token: "${chunk}"`);
-        }
-        chunkCount++;
+      for await (const chunk of stream) {
         if (event.sender.isDestroyed()) break;
         safeSend(event.sender, "git:commit-message-token", { token: chunk });
       }
 
-      logger.info(`[CommitStream] Stream complete. Total chunks: ${chunkCount}`);
       safeSend(event.sender, "git:commit-message-done", {});
     } catch (err: any) {
       logger.error("[CommitMessageStream] Error:", err);

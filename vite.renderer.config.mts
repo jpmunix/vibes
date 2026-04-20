@@ -32,7 +32,7 @@ export default defineConfig({
             [["monaco-editor", "@monaco-editor/"], "vendor-editor"],
             [["shiki", "react-shiki"], "vendor-shiki"],
             [["framer-motion"], "vendor-motion"],
-            [["@tiptap/"], "vendor-tiptap"],
+
             [["lexical", "@lexical/", "lexical-beautiful-mentions"], "vendor-lexical"],
             [["konva", "react-konva"], "vendor-konva"],
             [["firebase", "@firebase/"], "vendor-firebase"],

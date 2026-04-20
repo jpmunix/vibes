@@ -367,6 +367,7 @@ interface WorkspaceAppItemProps {
   onDeleteChat: (chatId: number, chatTitle: string) => void;
   onRenameChat: (chatId: number, currentTitle: string) => void;
   onArchiveChat: (chatId: number, chatTitle: string) => void;
+  onRenameApp: (appId: number, appName: string) => void;
   onMarkUnread: (chatId: number) => void;
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
@@ -383,6 +384,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onDeleteChat,
   onRenameChat,
   onArchiveChat,
+  onRenameApp,
   onMarkUnread,
   onNewChat,
   onCloseApp,
@@ -563,6 +565,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           )}
           <button
             type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
+          >
+            <Pencil size={14} className="opacity-60 shrink-0" />
+            Renombrar
+          </button>
+          <button
+            type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
           >
@@ -712,6 +722,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [closeAppName, setCloseAppName] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
+
+  // Rename app dialog state
+  const [isRenameAppDialogOpen, setIsRenameAppDialogOpen] = useState(false);
+  const [renameAppId, setRenameAppId] = useState<number | null>(null);
+  const [renameAppName, setRenameAppName] = useState("");
+  const [renameAppInputValue, setRenameAppInputValue] = useState("");
+  const [isRenamingApp, setIsRenamingApp] = useState(false);
 
   // Delete chat dialog state
   const [isDeleteChatDialogOpen, setIsDeleteChatDialogOpen] = useState(false);
@@ -880,6 +897,13 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     setIsCloseDialogOpen(true);
   }, []);
 
+  const handleRenameAppClick = useCallback((appId: number, appName: string) => {
+    setRenameAppId(appId);
+    setRenameAppName(appName);
+    setRenameAppInputValue(appName);
+    setIsRenameAppDialogOpen(true);
+  }, []);
+
   const handleDeleteChatClick = useCallback((chatId: number, chatTitle: string) => {
     setDeleteChatId(chatId);
     setDeleteChatTitle(chatTitle);
@@ -966,6 +990,30 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       setDeleteFiles(false);
     }
   }, [closeAppId, deleteFiles, refreshApps, selectedAppId, setSelectedAppId]);
+
+  const handleConfirmRenameApp = useCallback(async () => {
+    if (renameAppId === null || !renameAppInputValue.trim() || renameAppInputValue === renameAppName) {
+      if (renameAppInputValue === renameAppName) {
+        setIsRenameAppDialogOpen(false);
+      }
+      return;
+    }
+    
+    setIsRenamingApp(true);
+    try {
+      await ipc.app.updateAppName({
+        appId: renameAppId,
+        appName: renameAppInputValue.trim(),
+      });
+      await refreshApps();
+      showSuccess("Nombre de la aplicación actualizado");
+      setIsRenameAppDialogOpen(false);
+    } catch (e) {
+      showError(`Error al renombrar la app: ${(e as any).toString()}`);
+    } finally {
+      setIsRenamingApp(false);
+    }
+  }, [renameAppId, renameAppInputValue, renameAppName, refreshApps]);
 
   // Filter apps by search
   const filteredApps = useMemo(() => {
@@ -1086,6 +1134,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onDeleteChat={handleDeleteChatClick}
                     onRenameChat={handleRenameChatClick}
                     onArchiveChat={handleArchiveChatClick}
+                    onRenameApp={handleRenameAppClick}
                     onMarkUnread={handleMarkUnread}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
@@ -1194,6 +1243,66 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 onClick={handleConfirmDeleteChat}
               >
                 Eliminar chat
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Rename App Dialog — portal to escape sidebar overflow */}
+      {isRenameAppDialogOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setIsRenameAppDialogOpen(false)}
+        >
+          <div className="fixed inset-0 bg-black/50" />
+          <div
+            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="typo-label mb-1">Renombrar "{renameAppName}"</h3>
+            <input
+              type="text"
+              value={renameAppInputValue}
+              onChange={(e) => setRenameAppInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirmRenameApp();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  setIsRenameAppDialogOpen(false);
+                }
+              }}
+              disabled={isRenamingApp}
+              autoFocus
+              className="w-full mt-2 mb-4 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary"
+              placeholder="Nuevo nombre de la aplicación"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
+                onClick={() => setIsRenameAppDialogOpen(false)}
+                disabled={isRenamingApp}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 typo-button rounded-md text-white bg-primary hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                onClick={handleConfirmRenameApp}
+                disabled={isRenamingApp || !renameAppInputValue.trim() || renameAppInputValue === renameAppName}
+              >
+                {isRenamingApp ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar"
+                )}
               </button>
             </div>
           </div>
