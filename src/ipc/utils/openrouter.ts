@@ -1,4 +1,4 @@
-import { readSettings } from "../../main/settings";
+import { readSettings, decrypt } from "../../main/settings";
 import log from "electron-log";
 import { logAiQuery } from "./ai_query_logger";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
@@ -54,12 +54,23 @@ export async function openRouterRequest(
   const settings = readSettings();
   const openRouterSettings = settings.providerSettings?.openrouter as any;
 
-  let apiKey = openRouterSettings?.apiKey?.value;
+  let apiKeySecret = openRouterSettings?.apiKey;
 
   if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
     const selectedKey = openRouterSettings.keys.find((k: any) => k.id === openRouterSettings.selectedKeyId);
     if (selectedKey) {
-      apiKey = selectedKey.key.value;
+      apiKeySecret = selectedKey.key;
+    }
+  }
+
+  let apiKey: string | undefined;
+  if (apiKeySecret?.value) {
+    try {
+      apiKey = apiKeySecret.encryptionType === "plaintext"
+        ? apiKeySecret.value
+        : decrypt(apiKeySecret);
+    } catch (e) {
+      logger.error("Failed to decrypt OpenRouter API key:", e);
     }
   }
 
@@ -177,12 +188,23 @@ export async function* openRouterStreamCompletion(
   const settings = readSettings();
   const openRouterSettings = settings.providerSettings?.openrouter as any;
 
-  let apiKey: string | undefined = openRouterSettings?.apiKey?.value;
+  let apiKeySecret = openRouterSettings?.apiKey;
   if (openRouterSettings?.selectedKeyId && openRouterSettings?.keys?.length > 0) {
     const selected = openRouterSettings.keys.find(
       (k: any) => k.id === openRouterSettings.selectedKeyId,
     );
-    if (selected) apiKey = selected.key.value;
+    if (selected) apiKeySecret = selected.key;
+  }
+
+  let apiKey: string | undefined;
+  if (apiKeySecret?.value) {
+    try {
+      apiKey = apiKeySecret.encryptionType === "plaintext"
+        ? apiKeySecret.value
+        : decrypt(apiKeySecret);
+    } catch (e) {
+      logger.error("Failed to decrypt OpenRouter API key (stream):", e);
+    }
   }
   apiKey = apiKey?.trim();
   if (!apiKey) throw new Error("OpenRouter API key not found.");
