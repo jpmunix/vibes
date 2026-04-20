@@ -1454,7 +1454,7 @@ This conversation includes one or more image attachments. When the user uploads 
             if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
           }
 
-          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, cachedTokens: ocCachedTokens } = await handleOpenCodeStream(
+          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens } = await handleOpenCodeStream(
             event,
             req,
             abortController,
@@ -1561,7 +1561,10 @@ This conversation includes one or more image attachments. When the user uploads 
           // Persist the response to the database
           fullResponse = openCodeResponse;
           const openCodeDurationMs = Date.now() - streamStartedAt;
-          const ocTotalTokens = ocInputTokens + ocOutputTokens;
+          // Reasoning tokens (thinking) are billed at the same rate as output tokens.
+          // They MUST be included in the billable output count for correct cost calculation.
+          const ocBillableOutput = ocOutputTokens + ocReasoningTokens;
+          const ocTotalTokens = ocInputTokens + ocBillableOutput;
 
           // Append token usage badge to the response (like legacy agent does)
           if (ocTotalTokens > 0) {
@@ -1578,18 +1581,20 @@ This conversation includes one or more image attachments. When the user uploads 
 
             // Count web searches to calculate correct cost (each search via OpenCode webfetch tool)
             const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
-            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocOutputTokens}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
 
             // Log token usage for verbose chat logs and ChatLogsPanel
             void logChatInfo(
               req.chatId,
               "token-usage",
-              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens})`,
+              `Total tokens: ${ocTotalTokens} (input: ${ocInputTokens}, output: ${ocOutputTokens}, reasoning: ${ocReasoningTokens}, billable output: ${ocBillableOutput})`,
               {
                 totalTokens: ocTotalTokens,
                 inputTokens: ocInputTokens,
                 outputTokens: ocOutputTokens,
+                reasoningTokens: ocReasoningTokens,
+                billableOutput: ocBillableOutput,
                 model: settings.selectedModel.name,
                 type: "opencode-agent",
               },
@@ -1602,7 +1607,7 @@ This conversation includes one or more image attachments. When the user uploads 
               messageId: placeholderAssistantMessage.id,
               totalTokens: ocTotalTokens,
               promptTokens: ocInputTokens,
-              completionTokens: ocOutputTokens,
+              completionTokens: ocBillableOutput,
               model: settings.selectedModel.name,
               timestamp: Date.now(),
               appId: updatedChat.app.id,
