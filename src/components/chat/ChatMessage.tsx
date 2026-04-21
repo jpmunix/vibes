@@ -246,7 +246,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
       theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined,
       themeIntensity: intensity ? parseFloat(intensity) : undefined,
     });
-  }, [appId, selectedChatId, message.id]);
+  }, [appId, selectedChatId, message.id, isStreaming, isLastMessage]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
