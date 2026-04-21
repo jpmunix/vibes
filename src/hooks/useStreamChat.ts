@@ -1,4 +1,4 @@
-import { useCallback, startTransition } from "react";
+import { useCallback, startTransition, useRef } from "react";
 import type {
   ComponentSelection,
   FileAttachment,
@@ -12,6 +12,7 @@ import {
   isStreamingByIdAtom,
   recentStreamChatIdsAtom,
   selectedChatIdAtom,
+  pendingMessageQueueByIdAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -79,6 +80,11 @@ export function useStreamChat({
   const { checkProblems } = useCheckProblems(selectedAppId);
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
+  const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
+  const pendingMessageQueueById = useAtomValue(pendingMessageQueueByIdAtom);
+  // Stable ref so onEnd can read the current queue without stale closure
+  const pendingQueueRef = useRef(pendingMessageQueueById);
+  pendingQueueRef.current = pendingMessageQueueById;
 
   const posthog = usePostHog();
   const queryClient = useQueryClient();
@@ -93,6 +99,10 @@ export function useStreamChat({
 
   const { invalidateTokenCount } = useCountTokens(chatId ?? null, "");
 
+  // Stable ref so the queue drain inside onEnd can call streamMessage
+  // without creating a circular dependency in the useCallback dep array.
+  const streamMessageRef = useRef<typeof streamMessage | null>(null);
+
   const streamMessage = useCallback(
     async ({
       prompt,
@@ -103,6 +113,7 @@ export function useStreamChat({
       onSettled,
       isSystemPrompt = false,
       undoRedo,
+      priorMessages,
     }: {
       prompt: string;
       chatId: number;
@@ -112,6 +123,8 @@ export function useStreamChat({
       onSettled?: () => void;
       isSystemPrompt?: boolean;
       undoRedo?: boolean;
+      /** Pre-converted prior messages to inject into OpenCode via noReply:true */
+      priorMessages?: import("@/ipc/types").ChatStreamParams["priorMessages"];
     }) => {
       // Setup listener for undo-redo content restoring
       // This needs to be outside the ipc.chatStream.start call as it's a separate event
@@ -235,6 +248,19 @@ export function useStreamChat({
 
         const newMessages = [...currentMessages];
 
+        // Add prior queued messages as optimistic user bubbles first
+        if (priorMessages && priorMessages.length > 0) {
+          for (let i = 0; i < priorMessages.length; i++) {
+            newMessages.push({
+              id: tempUserId - i - 2, // unique negative IDs
+              chatId,
+              role: "user",
+              content: priorMessages[i].prompt,
+              createdAt: new Date().toISOString(),
+            } as any);
+          }
+        }
+
         // Add user message if not a redo
         if (!redo && prompt.trim()) {
           newMessages.push({
@@ -272,6 +298,7 @@ export function useStreamChat({
             attachments: convertedAttachments,
             selectedComponents: selectedComponents ?? [],
             undoRedo,
+            priorMessages,
           },
           {
             onChunk: ({ messages: updatedMessages }) => {
@@ -390,6 +417,56 @@ export function useStreamChat({
                 invalidateTokenCount();
               });
 
+              // Drain the pending queue using OpenCode's native `noReply: true` mechanism.
+              // Only run if there are actually queued messages — reads via ref to avoid
+              // stale closure and to not add the queue to useCallback deps.
+              const currentQueue = pendingQueueRef.current.get(chatId);
+              if (currentQueue && currentQueue.length > 0) {
+                setPendingMessageQueue((prev) => {
+                  const queue = prev.get(chatId);
+                  if (!queue || queue.length === 0) return prev;
+                  const nextMap = new Map(prev);
+                  nextMap.set(chatId, []); // Clear queue
+
+                  setTimeout(async () => {
+                    const priorMessages = queue.slice(0, -1);
+                    const lastMsg = queue[queue.length - 1];
+
+                    // Convert FileAttachment[] → ChatAttachment[] (base64 data URLs) for IPC
+                    const toAttachment = (a: NonNullable<import("@/atoms/chatAtoms").PendingQueuedMessage["attachments"]>[number]) =>
+                      new Promise<import("@/ipc/types").ChatAttachment>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () =>
+                          resolve({ name: a.file.name, type: a.file.type, data: reader.result as string, attachmentType: a.type });
+                        reader.onerror = () => reject(reader.error);
+                        reader.readAsDataURL(a.file);
+                      });
+
+                    const convertedPrior = await Promise.all(
+                      priorMessages.map(async (m) => ({
+                        prompt: m.prompt,
+                        attachments: m.attachments?.length
+                          ? await Promise.all(m.attachments.map(toAttachment))
+                          : undefined,
+                      })),
+                    );
+
+                    const lastAttachments = lastMsg.attachments?.length
+                      ? await Promise.all(lastMsg.attachments.map(toAttachment))
+                      : undefined;
+
+                    streamMessageRef.current?.({
+                      prompt: lastMsg.prompt,
+                      chatId,
+                      attachments: lastAttachments,
+                      priorMessages: convertedPrior.length > 0 ? convertedPrior : undefined,
+                    });
+                  }, 0);
+
+                  return nextMap;
+                });
+              }
+
               onSettled?.();
             },
             onError: ({ error: errorMessage }) => {
@@ -437,6 +514,14 @@ export function useStreamChat({
 
               // Keep the same as above
               updateMapAtom(setIsStreamingById, chatId, false);
+              // On error, drop the pending queue for this chat (don't keep trying)
+              setPendingMessageQueue((prev) => {
+                const queue = prev.get(chatId);
+                if (!queue || queue.length === 0) return prev;
+                const next = new Map(prev);
+                next.set(chatId, []);
+                return next;
+              });
               invalidateChats();
               refreshApp();
               refreshVersions();
@@ -470,8 +555,12 @@ export function useStreamChat({
       refetchUserBudget,
       settings,
       queryClient,
+      setPendingMessageQueue,
     ],
   );
+
+  // Keep the ref in sync with the latest streamMessage callback
+  streamMessageRef.current = streamMessage;
 
   return {
     streamMessage,

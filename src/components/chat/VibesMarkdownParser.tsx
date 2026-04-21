@@ -1606,14 +1606,20 @@ function renderModalContent(
       const total = inp + out;
       const priceIn = parseFloat(attributes["price-input"] || "0");
       const priceOut = parseFloat(attributes["price-output"] || "0");
-      const hasPricing = priceIn > 0 || priceOut > 0 || webSearches > 0;
 
-      // OpenRouter prices are $/token — cached input is typically 50% of input price
+      // Path 1: direct cost from OpenCode (ground truth)
+      const directCostStr = attributes["cost"];
+      const directCost = directCostStr ? parseFloat(directCostStr) : null;
+      const hasPricing = directCost !== null || priceIn > 0 || priceOut > 0 || webSearches > 0;
+
+      // Path 2: legacy calculation (used only when no direct cost is available)
       const costInput = (inp - cached) * priceIn;
       const costCached = cached * priceIn * 0.5;
       const costOutput = out * priceOut;
       const costWebSearches = webSearches * 0.02; // Exa search cost is $0.02
-      const costTotal = costInput + costCached + costOutput + costWebSearches;
+      const costTotal = directCost !== null
+        ? directCost
+        : costInput + costCached + costOutput + costWebSearches;
 
       const fmtCost = (c: number) => {
         if (c < 0.001) return `$${c.toFixed(6)}`;
@@ -1627,12 +1633,12 @@ function renderModalContent(
             <div className="bg-blue-100 dark:bg-blue-500/10 rounded-lg p-3">
               <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Input</div>
               <div className="text-lg font-bold text-blue-700 dark:text-blue-300">{inp.toLocaleString()}</div>
-              {hasPricing && <div className="text-xs text-blue-500/70 dark:text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
+              {directCost === null && priceIn > 0 && <div className="text-xs text-blue-500/70 dark:text-blue-400/70 mt-1">{fmtCost(costInput)}</div>}
             </div>
             <div className="bg-amber-100 dark:bg-amber-500/10 rounded-lg p-3">
               <div className="text-xs text-amber-600 dark:text-amber-400 mb-1">Output</div>
               <div className="text-lg font-bold text-amber-700 dark:text-amber-300">{out.toLocaleString()}</div>
-              {hasPricing && <div className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
+              {directCost === null && priceOut > 0 && <div className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-1">{fmtCost(costOutput)}</div>}
             </div>
           </div>
           {cached > 0 && (
@@ -1642,14 +1648,14 @@ function renderModalContent(
                 <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{cached.toLocaleString()}</span>
                 <span className="text-xs text-emerald-500/70 dark:text-emerald-400/70">({Math.round(cached / inp * 100)}% del input)</span>
               </div>
-              {hasPricing && <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
+              {directCost === null && priceIn > 0 && <div className="text-xs text-emerald-500/70 dark:text-emerald-400/70 mt-1">{fmtCost(costCached)} (50% descuento)</div>}
             </div>
           )}
           {webSearches > 0 && (
             <div className="bg-fuchsia-100 dark:bg-fuchsia-500/10 rounded-lg p-3">
               <div className="text-xs text-fuchsia-600 dark:text-fuchsia-400 mb-1">Búsquedas Web</div>
               <div className="text-lg font-bold text-fuchsia-700 dark:text-fuchsia-300">{webSearches.toLocaleString()}</div>
-              {hasPricing && <div className="text-xs text-fuchsia-500/70 dark:text-fuchsia-400/70 mt-1">{fmtCost(costWebSearches)} ($0.02 por búsqueda)</div>}
+              {directCost === null && <div className="text-xs text-fuchsia-500/70 dark:text-fuchsia-400/70 mt-1">{fmtCost(costWebSearches)} ($0.02 por búsqueda)</div>}
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
@@ -1658,7 +1664,9 @@ function renderModalContent(
           </div>
           {hasPricing && (
             <div className="text-xs text-muted-foreground/60 text-center mt-3">
-              Coste calculado con las tarifas publicadas por OpenRouter para este modelo.
+              {directCost !== null
+                ? "Coste real reportado directamente por OpenCode."
+                : "Coste calculado con las tarifas publicadas por OpenRouter para este modelo."}
             </div>
           )}
         </div>

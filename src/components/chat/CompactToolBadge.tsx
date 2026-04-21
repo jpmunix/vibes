@@ -322,6 +322,16 @@ export function getToolDetail(tag: string, attributes: Record<string, string>): 
             const cached = parseInt(attributes.cached || "0", 10);
             const webSearches = parseInt(attributes["web-searches"] || "0", 10);
 
+            // Path 1: direct cost from OpenCode (ground truth — matches OpenCode's own UI)
+            const directCostStr = attributes["cost"];
+            if (directCostStr) {
+                const directCost = parseFloat(directCostStr);
+                if (!isNaN(directCost)) {
+                    return formatPriceCost(directCost);
+                }
+            }
+
+            // Path 2: legacy — compute from token counts × OpenRouter price
             const priceIn = parseFloat(attributes["price-input"] || "0");
             const priceOut = parseFloat(attributes["price-output"] || "0");
 

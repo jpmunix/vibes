@@ -18,6 +18,15 @@ export const recentStreamChatIdsAtom = atom<Set<number>>(new Set<number>());
 
 export const attachmentsAtom = atom<FileAttachment[]>([]);
 
+// Queue of messages typed by the user while a stream is in progress.
+// Attachments (File objects) are kept in memory — they are not serialized.
+export interface PendingQueuedMessage {
+  id: string; // unique id for keying
+  prompt: string;
+  attachments?: FileAttachment[]; // photos / files attached at queue time
+}
+export const pendingMessageQueueByIdAtom = atom<Map<number, PendingQueuedMessage[]>>(new Map());
+
 // Quoted messages for the reply/cite feature (supports multiple)
 export interface QuotedMessage {
   id: number;

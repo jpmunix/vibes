@@ -427,13 +427,27 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     if (!normalizedMessageContent || !isAssistant) return null;
     const tokenTagPattern = /<vibes-token-usage\s([^>]*)>[\s\S]*?<\/vibes-token-usage>/g;
     let totalCost = 0;
+    let hasCost = false;
     let match;
     while ((match = tokenTagPattern.exec(normalizedMessageContent)) !== null) {
       const attrsStr = match[1];
       const getAttr = (name: string) => {
         const m = new RegExp(`${name}="([^"]*)"`).exec(attrsStr);
-        return m ? m[1] : "0";
+        return m ? m[1] : "";
       };
+
+      // Path 1: direct cost from OpenCode (ground truth)
+      const directCostStr = getAttr("cost");
+      if (directCostStr) {
+        const directCost = parseFloat(directCostStr);
+        if (!isNaN(directCost)) {
+          hasCost = true;
+          totalCost += directCost;
+          continue;
+        }
+      }
+
+      // Path 2: legacy — compute from token counts × price
       const inp = parseInt(getAttr("input"), 10);
       const out = parseInt(getAttr("output"), 10);
       const cached = parseInt(getAttr("cached"), 10);
@@ -441,11 +455,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
       const priceIn = parseFloat(getAttr("price-input"));
       const priceOut = parseFloat(getAttr("price-output"));
       if (priceIn > 0 || priceOut > 0 || webSearches > 0) {
+        hasCost = true;
         totalCost += (inp - cached) * priceIn + cached * priceIn * 0.5 + out * priceOut + webSearches * 0.02;
       }
     }
-    return totalCost > 0 ? formatPriceCost(totalCost) : null;
+    return hasCost ? formatPriceCost(totalCost) : null;
   }, [normalizedMessageContent, isAssistant]);
+
 
   const isFixError = isUser && message.content?.startsWith("Fix error:");
 

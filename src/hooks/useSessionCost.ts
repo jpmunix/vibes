@@ -31,11 +31,14 @@ export interface SessionCostResult {
  * Parses all <vibes-token-usage> tags from a message's content and
  * returns the summed cost for that message.
  *
- * Formula mirrors getToolDetail in CompactToolBadge.tsx:
- *   costInput  = (inputTokens - cachedTokens) * priceInput   (price per token)
- *   costCached = cachedTokens * priceInput * 0.5
- *   costOutput = outputTokens * priceOutput
- *   costSearches = webSearches * 0.02
+ * Priority:
+ *  1. `cost` attribute — set directly from OpenCode's reported usage.cost (ground truth).
+ *     This matches exactly what OpenCode shows in its own UI.
+ *  2. Fallback calculation when no direct cost is available (e.g. legacy messages):
+ *     costInput  = (inputTokens - cachedTokens) * priceInput   (price per token)
+ *     costCached = cachedTokens * priceInput * 0.5
+ *     costOutput = outputTokens * priceOutput
+ *     costSearches = webSearches * 0.02
  */
 function extractMessageCost(content: string): {
   cost: number;
@@ -50,6 +53,18 @@ function extractMessageCost(content: string): {
   while ((match = regex.exec(content)) !== null) {
     const attrs = match[1];
 
+    // ── Path 1: direct cost from OpenCode (ground truth) ──────────────────
+    const directCostStr = getAttr(attrs, "cost");
+    if (directCostStr) {
+      const directCost = parseFloat(directCostStr);
+      if (!isNaN(directCost)) {
+        hasPricing = true;
+        totalCost += directCost;
+        continue; // no need to compute from tokens
+      }
+    }
+
+    // ── Path 2: legacy — compute from token counts × price per token ───────
     const inp = parseInt(getAttr(attrs, "input") || "0", 10);
     const out = parseInt(getAttr(attrs, "output") || "0", 10);
     const cached = parseInt(getAttr(attrs, "cached") || "0", 10);

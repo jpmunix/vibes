@@ -482,6 +482,46 @@ ${componentSnippet}
         if (json) userAiMessagesJson = JSON.stringify(json);
       }
 
+      // Insert prior queued messages into Vibes DB so they appear as user bubbles in the UI.
+      // OpenCode will also receive them via noReply:true in handleOpenCodeStream.
+      if (req.priorMessages && req.priorMessages.length > 0) {
+        for (const prior of req.priorMessages) {
+          let priorContent = prior.prompt;
+          let priorAiMessagesJson: any = null;
+
+          if (prior.attachments && prior.attachments.length > 0) {
+            const priorAttachmentPaths: string[] = [];
+            let priorAttachmentInfo = "\n\nAttachments:\n";
+            for (const att of prior.attachments) {
+              const hash = crypto.createHash("md5").update(att.name + Date.now()).digest("hex");
+              const ext = path.extname(att.name);
+              const filePath = path.join(TEMP_DIR, `${hash}${ext}`);
+              const base64Data = att.data.split(";base64,").pop() || "";
+              await writeFile(filePath, Buffer.from(base64Data, "base64"));
+              priorAttachmentPaths.push(filePath);
+              priorAttachmentInfo += `- ${att.name} (${att.type})\n`;
+            }
+            priorContent += priorAttachmentInfo;
+            // Build aiMessagesJson for image visibility in the UI
+            const prepared = await prepareMessageWithAttachments({ role: "user", content: priorContent } as any, priorAttachmentPaths);
+            const json = getAiMessagesJsonIfWithinLimit([prepared]);
+            if (json) priorAiMessagesJson = JSON.stringify(json);
+          }
+
+          await db.insert(remoteSchema.messages).values({
+            userId: currentUserId,
+            chatId: req.chatId,
+            role: "user",
+            content: priorContent,
+            aiMessagesJson: priorAiMessagesJson,
+            createdAt: new Date(),
+          });
+          // 1ms gap to guarantee insertion order
+          await new Promise((r) => setTimeout(r, 1));
+        }
+        logger.info(`[Stream] Inserted ${req.priorMessages.length} prior queued message(s) into DB for chat ${req.chatId}`);
+      }
+
       const [insertedUserMessage] = await db
         .insert(remoteSchema.messages)
         .values({
@@ -1476,7 +1516,7 @@ This conversation includes one or more image attachments. When the user uploads 
             if (ocPocketbaseConfig.adminPassword) integrationEnvVars.POCKETBASE_ADMIN_PASSWORD = ocPocketbaseConfig.adminPassword;
           }
 
-          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens } = await handleOpenCodeStream(
+          const { fullResponse: openCodeResponse, success, inputTokens: ocInputTokens, outputTokens: ocOutputTokens, reasoningTokens: ocReasoningTokens, cachedTokens: ocCachedTokens, costUsd: ocCostUsd } = await handleOpenCodeStream(
             event,
             req,
             abortController,
@@ -1489,6 +1529,7 @@ This conversation includes one or more image attachments. When the user uploads 
               attachmentPaths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
               attachments: req.attachments as any,
               integrationEnvVars: Object.keys(integrationEnvVars).length > 0 ? integrationEnvVars : undefined,
+              priorMessages: req.priorMessages as any,
             },
           );
 
@@ -1557,18 +1598,26 @@ This conversation includes one or more image attachments. When the user uploads 
             const ocTotalTokens = ocInputTokens + ocBillableOutput;
 
             if (ocTotalTokens > 0) {
+              const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
+              // Prefer the real cost reported by OpenCode over manual token × price calculation.
+              // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
+              // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
               let priceIn = "";
               let priceOut = "";
-              try {
-                const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
-                const models = await fetchOpenRouterModels();
-                const modelData = models.find(m => m.name === settings.selectedModel.name);
-                priceIn = modelData?.pricingInput || "";
-                priceOut = modelData?.pricingOutput || "";
-              } catch { /* pricing unavailable */ }
-
-              const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
-              const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+              const directCost = ocCostUsd; // USD reported by OpenCode itself
+              if (directCost === null) {
+                // Fallback: derive from OpenRouter model pricing
+                try {
+                  const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+                  const models = await fetchOpenRouterModels();
+                  const modelData = models.find(m => m.name === settings.selectedModel.name);
+                  priceIn = modelData?.pricingInput || "";
+                  priceOut = modelData?.pricingOutput || "";
+                } catch { /* pricing unavailable */ }
+              }
+              const tokenXml = directCost !== null
+                ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+                : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
               fullResponse += tokenXml + "\n";
 
               void logChatInfo(
@@ -1650,22 +1699,28 @@ This conversation includes one or more image attachments. When the user uploads 
 
           // Append token usage badge to the response (like legacy agent does)
           if (ocTotalTokens > 0) {
-            // Look up pricing from OpenRouter model data
-            let priceIn = "";
-            let priceOut = "";
-            try {
-              const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
-              const models = await fetchOpenRouterModels();
-              const modelData = models.find(m => m.name === settings.selectedModel.name);
-              priceIn = modelData?.pricingInput || "";
-              priceOut = modelData?.pricingOutput || "";
-            } catch { /* pricing unavailable */ }
-
             // Count web searches to calculate correct cost (each search via OpenCode webfetch tool)
             const webSearchCount = (openCodeResponse.match(/<vibes-web-crawl\b/g) || []).length;
-            const tokenXml = `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
+            // Prefer the real cost reported by OpenCode over manual token × price calculation.
+            // If OpenCode provided a definitive cost, use it directly. Otherwise fall back to
+            // looking up OpenRouter's price table (less accurate for cached / discounted tokens).
+            let priceIn = "";
+            let priceOut = "";
+            const directCost = ocCostUsd; // USD reported by OpenCode itself
+            if (directCost === null) {
+              // Fallback: derive from OpenRouter model pricing
+              try {
+                const { fetchOpenRouterModels } = await import("../utils/openrouter_models_service");
+                const models = await fetchOpenRouterModels();
+                const modelData = models.find(m => m.name === settings.selectedModel.name);
+                priceIn = modelData?.pricingInput || "";
+                priceOut = modelData?.pricingOutput || "";
+              } catch { /* pricing unavailable */ }
+            }
+            const tokenXml = directCost !== null
+              ? `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" cost="${directCost.toFixed(8)}"></vibes-token-usage>`
+              : `<vibes-token-usage input="${ocInputTokens}" output="${ocBillableOutput}" cached="${ocCachedTokens}" web-searches="${webSearchCount}" price-input="${priceIn}" price-output="${priceOut}"></vibes-token-usage>`;
             fullResponse += tokenXml + "\n";
-
             // Log token usage for verbose chat logs and ChatLogsPanel
             void logChatInfo(
               req.chatId,

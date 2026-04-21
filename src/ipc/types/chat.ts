@@ -94,9 +94,34 @@ export const ChatStreamParamsSchema = z.object({
   undoRedo: z.boolean().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
   selectedComponents: z.array(ComponentSelectionSchema).optional(),
+  /** Messages to inject into the AI session before the main prompt (via noReply:true). */
+  priorMessages: z
+    .array(
+      z.object({
+        prompt: z.string(),
+        attachments: z.array(ChatAttachmentSchema).optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type ChatStreamParams = z.infer<typeof ChatStreamParamsSchema>;
+
+/**
+ * Schema for inserting one or more plain user messages into the DB
+ * without triggering an AI response (used for queued message batching).
+ */
+export const InsertUserMessagesParamsSchema = z.object({
+  chatId: z.number(),
+  messages: z.array(
+    z.object({
+      prompt: z.string(),
+      attachments: z.array(ChatAttachmentSchema).optional(),
+    }),
+  ),
+});
+
+export type InsertUserMessagesParams = z.infer<typeof InsertUserMessagesParamsSchema>;
 
 /**
  * Schema for chat response chunk event.
@@ -339,6 +364,13 @@ export const chatContracts = {
         createdAt: z.date(),
       }),
     ),
+  }),
+
+  /** Insert N user messages into the DB without triggering an AI stream (queue batch). */
+  insertUserMessages: defineContract({
+    channel: "chat:insert-user-messages",
+    input: InsertUserMessagesParamsSchema,
+    output: z.void(),
   }),
 } as const;
 

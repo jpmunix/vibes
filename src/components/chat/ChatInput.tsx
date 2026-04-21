@@ -31,6 +31,8 @@ import {
   selectedChatIdAtom,
   pendingAgentConsentsAtom,
   agentTodosByChatIdAtom,
+  pendingMessageQueueByIdAtom,
+  type PendingQueuedMessage,
 } from "@/atoms/chatAtoms";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useStreamChat } from "@/hooks/useStreamChat";
@@ -100,6 +102,8 @@ export function ChatInput({
   const { versions, revertVersion, refreshVersions } = useVersions(appId);
   const { streamMessage, isStreaming, setIsStreaming, error, setError } =
     useStreamChat();
+  const [pendingMessageQueue, setPendingMessageQueue] = useAtom(pendingMessageQueueByIdAtom);
+  const pendingMessages: PendingQueuedMessage[] = chatId ? (pendingMessageQueue.get(chatId) ?? []) : [];
 
   const [isApproving, setIsApproving] = useState(false); // State for approving
   const navigate = useNavigate();
@@ -241,9 +245,26 @@ export function ChatInput({
   const handleSubmit = async () => {
     if (
       (!inputValue.trim() && attachments.length === 0) ||
-      isStreaming ||
       !chatId
     ) {
+      return;
+    }
+
+    // If currently streaming, enqueue the message instead of dropping it
+    if (isStreaming) {
+      const queued: PendingQueuedMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        prompt: inputValue.trim(),
+        attachments: attachments.length > 0 ? [...attachments] : undefined,
+      };
+      setPendingMessageQueue((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(chatId) ?? [];
+        next.set(chatId, [...existing, queued]);
+        return next;
+      });
+      setInputValue("");
+      clearAttachments(); // free the attachment slots visually
       return;
     }
 
@@ -391,6 +412,75 @@ export function ChatInput({
           Error al cargar la propuesta: {proposalError.message}
         </div>
       )}
+      {/* Pending messages queue — shown while streaming */}
+      {pendingMessages.length > 0 && (
+        <div className="px-4 pb-2 max-w-3xl mx-auto w-full">
+          <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-border/30 flex items-center gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
+                Mensajes pendientes
+              </span>
+              <span className="ml-auto text-[10px] text-muted-foreground/50">
+                {pendingMessages.length}
+              </span>
+            </div>
+            <div className="divide-y divide-border/20">
+              {pendingMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className="flex items-center gap-2.5 px-3 py-2 group animate-in slide-in-from-bottom-1 duration-200"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="shrink-0 text-muted-foreground/40"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span className="text-sm text-muted-foreground/70 flex-1 truncate">
+                    {msg.prompt || <em className="text-muted-foreground/40">Sin texto</em>}
+                  </span>
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground/50 shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                      {msg.attachments.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!chatId) return;
+                      setPendingMessageQueue((prev) => {
+                        const next = new Map(prev);
+                        const queue = next.get(chatId) ?? [];
+                        next.set(chatId, queue.filter((m) => m.id !== msg.id));
+                        return next;
+                      });
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:text-foreground text-muted-foreground/50 cursor-pointer"
+                    title="Eliminar mensaje pendiente"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 pb-4" data-testid="chat-input-container">
         <div className="max-w-3xl mx-auto">
           <div

@@ -496,5 +496,76 @@ export function registerChatHandlers() {
     return archived as any;
   });
 
+  // Insert N user messages into the DB without triggering an AI stream.
+  // Used by the pending-message queue to persist each typed message as its own
+  // bubble so the AI sees them as separate turns in the conversation.
+  createTypedHandler(chatContracts.insertUserMessages, async (_, { chatId, messages }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { writeFile } = await import("fs/promises");
+    const fs = await import("node:fs");
+    const path = await import("path");
+    const os = await import("os");
+    const crypto = await import("crypto");
+
+    const TEMP_DIR = path.join(os.tmpdir(), "vibes-attachments");
+    if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+
+    for (const msg of messages) {
+      let userPrompt = msg.prompt;
+      let userAiMessagesJson: any = null;
+
+      // Process attachments if present
+      if (msg.attachments && msg.attachments.length > 0) {
+        const imageParts: any[] = [];
+        let attachmentInfo = "\n\nAttachments:\n";
+
+        for (const attachment of msg.attachments) {
+          const hash = crypto.createHash("md5").update(attachment.name + Date.now()).digest("hex");
+          const fileExtension = path.extname(attachment.name);
+          const filename = `${hash}${fileExtension}`;
+          const filePath = path.join(TEMP_DIR, filename);
+          const base64Data = attachment.data.split(";base64,").pop() || "";
+          await writeFile(filePath, Buffer.from(base64Data, "base64"));
+
+          attachmentInfo += `- ${attachment.name} (${attachment.type})\n`;
+
+          // Build image part for aiMessagesJson so the AI can see the image
+          imageParts.push({
+            type: "image",
+            image: `data:${attachment.type};base64,${base64Data}`,
+            mediaType: attachment.type,
+          });
+        }
+
+        userPrompt += attachmentInfo;
+
+        if (imageParts.length > 0) {
+          const aiMsg = {
+            role: "user",
+            content: [
+              { type: "text", text: userPrompt },
+              ...imageParts,
+            ],
+          };
+          userAiMessagesJson = JSON.stringify([aiMsg]);
+        }
+      }
+
+      await db.insert(remoteSchema.messages).values({
+        userId: context.userId,
+        chatId,
+        role: "user",
+        content: userPrompt,
+        aiMessagesJson: userAiMessagesJson,
+        createdAt: new Date(),
+      });
+
+      // 1ms gap to guarantee stable insertion order
+      await new Promise((r) => setTimeout(r, 1));
+    }
+  });
+
   logger.debug("Registered chat IPC handlers");
 }

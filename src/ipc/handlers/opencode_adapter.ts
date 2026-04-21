@@ -918,8 +918,15 @@ export async function handleOpenCodeStream(
         attachments?: { name: string; type: string; data: string; attachmentType: string }[];
         /** Integration env vars — set in process.env so bash tool can use them */
         integrationEnvVars?: Record<string, string>;
+        /**
+         * Prior user messages to inject into the OpenCode session BEFORE the main prompt.
+         * Each is sent with `noReply: true` so OpenCode records them in the conversation
+         * history without generating an AI response. This is the native way to "batch"
+         * multiple user messages typed while the previous stream was running.
+         */
+        priorMessages?: { prompt: string; attachments?: { name: string; type: string; data: string; attachmentType: string }[] }[];
     },
-): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number }> {
+): Promise<{ fullResponse: string; success: boolean; inputTokens: number; outputTokens: number; reasoningTokens: number; cachedTokens: number; costUsd: number | null }> {
     const { placeholderMessageId, appPath, chatMessages } = options;
 
     // Resolve the full project directory path — this is CRITICAL for OpenCode
@@ -1132,6 +1139,9 @@ export async function handleOpenCodeStream(
     let totalOutputTokens = 0;
     let totalReasoningTokens = 0;
     let totalCachedTokens = 0;
+    // Real cost reported by OpenCode (from message.updated → info.usage.cost).
+    // When present, this is always more accurate than our manual token × price calculation.
+    let totalCostUsd: number | null = null;
     let eventSubscription: any = null;
     // Dedicated AbortController for the SSE stream — aborting this closes the
     // underlying fetch connection immediately (the SDK SSE client respects `signal`).
@@ -1201,6 +1211,13 @@ export async function handleOpenCodeStream(
                     totalOutputTokens += output;
                     totalReasoningTokens += reasoning;
                     totalCachedTokens += cached;
+                },
+                onMessageCost: (costUsd: number) => {
+                    // OpenCode reports the exact cost after the message completes.
+                    // We always take the LATEST value (subsequent message.updated events
+                    // include cumulative cost, so the last one wins).
+                    totalCostUsd = costUsd;
+                    logger.info(`${LP} 💰 OpenCode reported real cost: $${costUsd.toFixed(6)}`);
                 },
                 onFileEdited: (file: string) => {
                     // Normalize to basename to avoid duplicate entries for absolute vs relative paths
@@ -1293,6 +1310,37 @@ export async function handleOpenCodeStream(
             }
         }
 
+        // Inject prior messages (queued while previous stream ran) as silent user turns
+        // using OpenCode's native `noReply: true` flag. This puts them in the session's
+        // conversation history so the AI sees every queued message as a separate user turn.
+        if (options.priorMessages && options.priorMessages.length > 0) {
+            logger.info(`${LP} Injecting ${options.priorMessages.length} prior message(s) with noReply:true`);
+            for (const prior of options.priorMessages) {
+                const parts: any[] = [{ type: "text", text: prior.prompt }];
+                // Add image attachments if present
+                if (prior.attachments) {
+                    for (const att of prior.attachments) {
+                        if (att.type.startsWith("image/")) {
+                            parts.push({ type: "file", mime: att.type, filename: att.name, url: att.data });
+                        }
+                    }
+                }
+                try {
+                    await client.session.prompt({
+                        path: { id: sessionId },
+                        query: { directory: projectDir },
+                        body: {
+                            noReply: true,
+                            parts,
+                        } as any,
+                    });
+                    logger.info(`${LP}   → noReply injected: "${prior.prompt.substring(0, 60)}..."`);
+                } catch (e: any) {
+                    logger.warn(`${LP}   → noReply injection failed: ${e.message}`);
+                }
+            }
+        }
+
         // Fire the prompt (non-blocking)
         await client.session.promptAsync({
             path: { id: sessionId },
@@ -1340,7 +1388,8 @@ export async function handleOpenCodeStream(
                 inputTokens: estInput,
                 outputTokens: estOutput,
                 reasoningTokens: estReasoning,
-                cachedTokens: totalCachedTokens
+                cachedTokens: totalCachedTokens,
+                costUsd: totalCostUsd,
             };
         };
 
@@ -1360,8 +1409,8 @@ export async function handleOpenCodeStream(
         logger.info(`${LP} 🔍 TRACE buildFinalResponse: ${finalContent.length}ch, first80="${finalContent.slice(0, 80).replace(/\n/g, '\\n')}"`);
         sendChunk(event, req.chatId, chatMessages, finalContent);
 
-        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}`);
-        return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens };
+        logger.info(`${LP} 📊 Token usage: input=${totalInputTokens}, output=${totalOutputTokens}, reasoning=${totalReasoningTokens}, total=${totalInputTokens + totalOutputTokens}, costUsd=${totalCostUsd !== null ? `$${totalCostUsd.toFixed(6)}` : "unknown"}`);
+        return { fullResponse: finalContent, success: true, inputTokens: totalInputTokens, outputTokens: totalOutputTokens, reasoningTokens: totalReasoningTokens, cachedTokens: totalCachedTokens, costUsd: totalCostUsd };
 
     } catch (error: any) {
         if (abortController.signal.aborted) {
@@ -1379,6 +1428,7 @@ export async function handleOpenCodeStream(
             outputTokens: totalOutputTokens,
             reasoningTokens: totalReasoningTokens,
             cachedTokens: totalCachedTokens,
+            costUsd: totalCostUsd,
         };
     } finally {
         // Clean up the abort listener to avoid leaks
@@ -1407,6 +1457,8 @@ async function processEvents(
         onToolUpdate: (toolId: string, tool: string, status: string, detail?: string, output?: string) => void;
         onStepStart: () => void;
         onStepTokens: (input: number, output: number, reasoning: number, cached: number) => void;
+        /** Called when OpenCode reports the real cost of the completed assistant message. */
+        onMessageCost: (costUsd: number) => void;
         onFileEdited: (file: string) => void;
         getTimeline: () => TimelineEntry[];
         getToolsActive: () => Map<string, { tool: string; status: string; detail?: string }>;
@@ -1459,6 +1511,14 @@ async function processEvents(
                     if (info && info.role === "assistant") {
                         assistantMessageId = info.id;
                         logger.info(`[OC:Event] 📬 Assistant message ID: ${assistantMessageId}`);
+                        // Capture the real cost reported by OpenCode.
+                        // The `usage.cost` field (in USD) is the ground truth — it matches
+                        // exactly what OpenCode shows in its own UI, and is more accurate
+                        // than multiplying token counts by OpenRouter price data.
+                        const realCost = info.usage?.cost;
+                        if (typeof realCost === "number" && realCost > 0) {
+                            callbacks.onMessageCost(realCost);
+                        }
                     }
                     break;
                 }
