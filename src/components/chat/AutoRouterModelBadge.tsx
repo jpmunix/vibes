@@ -10,6 +10,7 @@ import {
 interface AutoRouterModelBadgeProps {
   modelInfo: AutoRouterModelInfo;
   showInline?: boolean; // true para mostrar después del análisis, false para mostrar al final
+  onClick?: () => void;
 }
 
 const COMPLEXITY_LABELS: Record<number, string> = {
@@ -42,6 +43,7 @@ const MODEL_DISPLAY_NAMES: Record<string, string> = {
 export function AutoRouterModelBadge({
   modelInfo,
   showInline = false,
+  onClick,
 }: AutoRouterModelBadgeProps) {
   // Get model display name from constants or use provider/name
   const fullModelPath = `${modelInfo.model.provider}/${modelInfo.model.name}`;
@@ -74,7 +76,10 @@ export function AutoRouterModelBadge({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto cursor-help">
+          <div 
+            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto ${onClick ? 'cursor-pointer hover:text-foreground' : 'cursor-help'}`}
+            onClick={onClick}
+          >
             <Bot className="h-4 w-4 flex-shrink-0" />
             <span className="text-xs">auto → {modelName}</span>
           </div>

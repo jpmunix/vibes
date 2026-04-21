@@ -345,6 +345,19 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Message window — dedicated debug window for viewing a specific message in full mode
+  openMessageWindow: defineContract({
+    channel: "window:open-message",
+    input: z.object({
+      appId: z.number(),
+      chatId: z.number(),
+      messageId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Retrieve and clear pending prompt data stored by openChatWindow
   getPendingChatPrompt: defineContract({
     channel: "window:get-pending-chat-prompt",

@@ -57,6 +57,7 @@ interface ChatMessageProps {
   message: Message;
   isLastMessage: boolean;
   user?: VibesUser | null;
+  forceFullMode?: boolean;
 }
 // Hoisted to module level — pure function, no component state needed
 
@@ -131,7 +132,7 @@ const formatDurationMs = (ms: number): string => {
   const seconds = totalSeconds % 60;
   return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 };
-const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
+const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessageProps) => {
   const { isStreaming } = useStreamChat();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const appId = useAtomValue(selectedAppIdAtom);
@@ -147,7 +148,8 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
   const errorById = useAtomValue(chatErrorByIdAtom);
   const chatError = selectedChatId ? (errorById.get(selectedChatId) ?? null) : null;
   const userAtomValue = useAtomValue(userAtom);
-  const isZenMode = useAtomValue(isZenModeAtom);
+  const isZenModeAtomValue = useAtomValue(isZenModeAtom);
+  const isZenMode = forceFullMode ? false : isZenModeAtomValue;
 
   const activeUser = user || userAtomValue;
 
@@ -230,6 +232,20 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
       return [...prev, newQuote];
     });
   }, [message.id, message.role, message.content, isUser, setQuotedMessages]);
+
+  // Open single message debug window
+  const openDebugMessage = useCallback(() => {
+    if (!appId || !selectedChatId || !message.id) return;
+    const theme = localStorage.getItem("theme");
+    const intensity = localStorage.getItem("theme-intensity");
+    ipc.system.openMessageWindow({
+      appId,
+      chatId: selectedChatId,
+      messageId: message.id,
+      theme: (theme === "light" || theme === "dark" || theme === "system") ? theme : undefined,
+      themeIntensity: intensity ? parseFloat(intensity) : undefined,
+    });
+  }, [appId, selectedChatId, message.id]);
 
   // Memoize the normalized content at the TOP to prevent breaking PureComponent/React.memo
   // downstream in VibesMarkdownParser, and to share this single allocation across all hooks
@@ -506,7 +522,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                   className="prose prose-xs dark:prose-invert prose-p:my-1 prose-pre:my-0 max-w-none break-words text-center"
                   suppressHydrationWarning
                 >
-                  <VibesMarkdownParser content={message.content} />
+                  <VibesMarkdownParser content={message.content} forceFullMode={forceFullMode} />
                 </div>
               )}
               {/* === Assistant messages === */}
@@ -524,7 +540,7 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                         className={`prose prose-sm dark:prose-invert prose-headings:mb-2 prose-p:my-1 prose-pre:my-0 max-w-none break-words ${isCollapsed ? "hidden" : ""}`}
                         suppressHydrationWarning
                       >
-                         <VibesMarkdownParser content={message.content} />
+                         <VibesMarkdownParser content={message.content} forceFullMode={forceFullMode} />
                       </div>
                       {/* Streaming loader: visible while streaming, hidden on error */}
                       {isLastMessage && isStreaming && (
@@ -659,9 +675,13 @@ const ChatMessage = ({ message, isLastMessage, user }: ChatMessageProps) => {
                           <AutoRouterModelBadge
                             modelInfo={autoRouterModelInfo.get(selectedChatId)!}
                             showInline={false}
+                            onClick={openDebugMessage}
                           />
                         ) : (
-                          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
+                          <div 
+                            className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto cursor-pointer hover:text-foreground transition-colors"
+                            onClick={openDebugMessage}
+                          >
                             <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             <span className="typo-micro">{message.model}</span>
                           </div>

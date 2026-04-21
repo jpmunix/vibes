@@ -172,6 +172,7 @@ interface VibesMarkdownParserProps {
   content: string;
   isStreaming?: boolean;
   chatId?: number;
+  forceFullMode?: boolean;
 }
 
 /**
@@ -181,12 +182,14 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   content,
   isStreaming: forceStreaming,
   chatId: forceChatId,
+  forceFullMode,
 }: VibesMarkdownParserProps) {
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const chatId = forceChatId ?? selectedChatId;
   const isStreamingMap = useAtomValue(isStreamingByIdAtom);
   const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
-  const isZenMode = useAtomValue(isZenModeAtom);
+  const isZenModeAtomValue = useAtomValue(isZenModeAtom);
+  const isZenMode = forceFullMode ? false : isZenModeAtomValue;
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once

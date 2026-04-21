@@ -692,6 +692,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const windowType = urlParams.get("window");
 const appIdStr = urlParams.get("appId");
 const chatIdStr = urlParams.get("chatId");
+const messageIdStr = urlParams.get("messageId");
 const hasPendingPrompt = urlParams.get("hasPendingPrompt") === "true";
 const chatModeParam = urlParams.get("chatMode");
 const themeParam = urlParams.get("theme");
@@ -819,6 +820,29 @@ if (windowType === "database" && appIdStr) {
       createRoot(document.getElementById("root")!).render(
         <StrictMode>
           <ConsoleWindowApp appId={Number(appIdStr)} />
+        </StrictMode>,
+      );
+    },
+  );
+} else if (windowType === "message" && appIdStr && chatIdStr && messageIdStr) {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  import("./components/message_window/MessageWindowApp").then(
+    ({ MessageWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <MessageWindowApp 
+            appId={Number(appIdStr)} 
+            chatId={Number(chatIdStr)} 
+            messageId={Number(messageIdStr)} 
+          />
         </StrictMode>,
       );
     },

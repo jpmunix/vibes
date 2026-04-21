@@ -23,6 +23,9 @@ const gitWindows = new Map<number, BrowserWindow>();
 // Track chat windows to avoid duplicates (P18 — dedicated chat+preview)
 const chatWindows = new Map<number, BrowserWindow>();
 
+// Track message debug windows to avoid duplicates
+const messageWindows = new Map<number, BrowserWindow>();
+
 // Track console viewer windows to avoid duplicates
 const consoleWindows = new Map<number, BrowserWindow>();
 
@@ -420,6 +423,93 @@ export function registerWindowHandlers() {
     logger.info(`Opened chat window for app ${appId}${chatId ? `, chat ${chatId}` : ""}`);
   });
 
+  // Dedicated debug window for viewing a specific message in full mode
+  createTypedHandler(systemContracts.openMessageWindow, async (event, { appId, chatId, messageId, theme, themeIntensity }) => {
+    // If a window for this message already exists, focus it
+    const existing = messageWindows.get(messageId);
+    if (existing && !existing.isDestroyed()) {
+      existing.focus();
+      return;
+    }
+
+    const messageWindow = new BrowserWindow({
+      show: false,
+      width: 800,
+      height: 600,
+      minWidth: 500,
+      minHeight: 400,
+      skipTaskbar: false,
+      autoHideMenuBar: true,
+      title: "Debug - Mensaje Individual",
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: {
+        x: 10,
+        y: 8,
+      },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Remove native menu bar entirely
+    messageWindow.removeMenu();
+
+    // Maximize and block-show to prevent layout flash
+    messageWindow.maximize();
+    messageWindow.show();
+
+    // Re-enable right-click → Inspect Element (dev tools)
+    messageWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => {
+          messageWindow.webContents.inspectElement(params.x, params.y);
+        },
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts
+    messageWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        messageWindow.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        messageWindow.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        messageWindow.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=message&appId=${appId}&chatId=${chatId}&messageId=${messageId}${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      messageWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      messageWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    messageWindows.set(messageId, messageWindow);
+
+    messageWindow.on("closed", () => {
+      messageWindows.delete(messageId);
+    });
+
+    logger.info(`Opened message window for message ${messageId}`);
+  });
+
   // Retrieve and clear pending prompt data
   createTypedHandler(systemContracts.getPendingChatPrompt, async (_event, chatId) => {
     const pending = pendingChatPrompts.get(chatId);
@@ -506,6 +596,7 @@ export function registerWindowHandlers() {
     for (const w of databaseWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of gitWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of consoleWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of messageWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
