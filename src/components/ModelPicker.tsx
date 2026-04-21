@@ -140,7 +140,9 @@ export function ModelPicker() {
       <UnifiedSelector
         value={`${selectedModel.provider}:${selectedModel.name}`}
         onChange={(val) => {
-          const [prov, apiName] = val.split(":");
+          const sepIdx = val.indexOf(":");
+          const prov = val.slice(0, sepIdx);
+          const apiName = val.slice(sepIdx + 1);
           const found = sortedModels.find(
             (sm) => sm.provider === prov && sm.model.apiName === apiName,
           );
