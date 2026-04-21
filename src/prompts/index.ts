@@ -1,10 +1,7 @@
 import { UserSettings } from "@/lib/schemas";
 import {
   THINKING_PROMPT,
-  PLAN_MODE_SYSTEM_PROMPT,
 } from "./system_prompt";
-import { AGENT_SYSTEM_PROMPT } from "./agent_prompt";
-
 
 export type PromptId =
   | "thinking_prompt"
@@ -13,18 +10,13 @@ export type PromptId =
   | "app_name_pro"
   | "todo_analysis"
   | "todo_refinement"
-  | "agent_mode_system"
   | "debate_chat_system"
   | "debate_summary_system"
   | "quick_edit_system"
-
-  | "auto_commit_message"
-  | "plan_mode_system";
+  | "auto_commit_message";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
-  agent_mode_system: AGENT_SYSTEM_PROMPT,
-  plan_mode_system: PLAN_MODE_SYSTEM_PROMPT,
   turbo_edit_system: [
     "You are a precise code-editing assistant.",
     "Apply the requested edit to the original file content.",
@@ -175,8 +167,6 @@ export function getEffectivePrompt(
 
 export const PROMPT_LABELS: Record<PromptId, string> = {
   thinking_prompt: "Thinking Process (Razonamiento)",
-  agent_mode_system: "Modo Agente (Desarrollo y Análisis)",
-  plan_mode_system: "Modo Planificación (Sistema)",
   turbo_edit_system: "Turbo Edit (Edición Precisa)",
   app_title_short: "Generador de Títulos Cortos",
   app_name_pro: "Generador de Nombres Profesionales",
@@ -192,10 +182,6 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   thinking_prompt:
     "Instrucciones sobre cómo la IA debe 'pensar' antes de responder.",
-  agent_mode_system:
-    "Controla el comportamiento del agente al usar herramientas y realizar cambios en el código.",
-  plan_mode_system:
-    "Instrucciones para el modo Planificación. Genera planes operativos estructurados con etapas y tareas editables.",
   turbo_edit_system:
     "Instrucciones para el modelo rápido de edición de archivos.",
   app_title_short:

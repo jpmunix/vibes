@@ -235,6 +235,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   // Open single message debug window
   const openDebugMessage = useCallback(() => {
+    if (isStreaming && isLastMessage) return; // Prevent opening dead/empty modal during generation
     if (!appId || !selectedChatId || !message.id) return;
     const theme = localStorage.getItem("theme");
     const intensity = localStorage.getItem("theme-intensity");
@@ -622,9 +623,13 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           <AutoRouterModelBadge
                             modelInfo={autoRouterModelInfo.get(selectedChatId)!}
                             showInline={false}
+                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto">
+                          <div 
+                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
+                          >
                             <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             <span className="typo-micro">{message.model}</span>
                           </div>
@@ -675,12 +680,12 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           <AutoRouterModelBadge
                             modelInfo={autoRouterModelInfo.get(selectedChatId)!}
                             showInline={false}
-                            onClick={openDebugMessage}
+                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
                           <div 
-                            className="flex items-center gap-1 text-muted-foreground w-full sm:w-auto cursor-pointer hover:text-foreground transition-colors"
-                            onClick={openDebugMessage}
+                            className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
+                            onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           >
                             <Bot className="h-4 w-4 flex-shrink-0 text-primary" />
                             <span className="typo-micro">{message.model}</span>

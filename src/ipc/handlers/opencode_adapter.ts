@@ -576,7 +576,17 @@ async function getOpenCodeClient(appPath: string) {
             }));
         }
 
+        const languageInstruction = settings.chatLanguage === "en"
+            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
+            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
+
+        const globalInstructions = [
+            languageInstruction,
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+        ];
+
         const config = {
+                instructions: globalInstructions,
                 provider: {
                     [providerID]: (providerID === "openrouter" ? {
                             name: "openrouter",
@@ -663,6 +673,9 @@ async function getOpenCodeClient(appPath: string) {
                     bash: {
                         "git commit": "deny",
                         "git push": "deny",
+                        "grep *": "ask",
+                        "rg *": "ask",
+                        "find *": "ask",
                         "*": "allow"
                     },
                     webfetch: "allow",
@@ -1077,26 +1090,32 @@ export async function handleOpenCodeStream(
         }
     }
 
-    // Inject context instructions via agent.build.prompt (survives compaction)
-    // This replaces the old noReply hack which created a ghost message that got
-    // lost during context compaction. config.update() persists for the session.
+    // Inject context instructions via global instructions (survives compaction)
+    // Avoid overriding agent.build.prompt because it destroys the agent's core identity and tools format.
     if (options.contextInstructions && options.contextInstructions.length > 0) {
-        const contextText = options.contextInstructions.join("\n\n---\n\n");
-        logger.info(`${LP} Setting agent.build.prompt with ${options.contextInstructions.length} context instructions (${contextText.length} chars)`);
+        // Re-build base instructions
+        const settings = readSettings();
+        const baseLang = settings.chatLanguage === "en"
+            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
+            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
+        
+        const baseInstructions = [
+            baseLang,
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+        ];
+
+        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
+        logger.info(`${LP} Setting ${combinedInstructions.length} total instructions via config.update (global)`);
+        
         try {
             await client.config.update({
                 body: {
-                    agent: {
-                        build: {
-                            prompt: contextText,
-                        },
-                    },
+                    instructions: combinedInstructions,
                 } as any,
             });
-            logger.info(`${LP} Context instructions set via config.update`);
+            logger.info(`${LP} Context instructions set safely via config.instructions`);
         } catch (ctxError: any) {
             logger.warn(`${LP} Failed to set context via config.update: ${ctxError.message}`);
-            // Non-fatal — continue without context
         }
     }
 

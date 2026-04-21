@@ -148,7 +148,11 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                     </Dialog>
                 </>
             ) : (
-                cleanContent && <VanillaMarkdownParser content={cleanContent} />
+                cleanContent && (
+                    <div className="whitespace-pre-wrap">
+                        <VanillaMarkdownParser content={cleanContent} />
+                    </div>
+                )
             )}
 
             {/* Render image thumbnails if we have images from aiMessagesJson */}

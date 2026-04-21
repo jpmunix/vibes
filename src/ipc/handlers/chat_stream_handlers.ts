@@ -1402,6 +1402,28 @@ This conversation includes one or more image attachments. When the user uploads 
             `2. NUNCA uses la herramienta "bash" para intentar editar código ejecutando scripts en consola de "python" o comandos "sed" o redirecciones en la terminal. Usa siempre tus JSON tools disponibles en el esquema para cualquier edición.`
           );
 
+          // 4. Efficiency & Task Triage (Prevent over-thinking simple tasks)
+          contextInstructions.push(
+            `CRITERIOS DE EFICIENCIA Y TRIAJE DE TAREAS:\n` +
+            `Antes de empezar cualquier tarea, evalúa su complejidad:\n\n` +
+            `TAREAS SIMPLES (ej: renombrar variables, cambiar textos, actualizar imports, corregir errores tipográficos, cambios de estilo menores):\n` +
+            `- PROHIBIDO usar herramientas de búsqueda extensivas como glob pattern o grep.\n` +
+            `- Lee ÚNICAMENTE el archivo específico mencionado (1-2 archivos máximo).\n` +
+            `- Haz la edición INMEDIATAMENTE sin planificar ni explorar el código base.\n` +
+            `- Mantén tu respuesta final extremadamente corta y directa.\n\n` +
+            `TAREAS COMPLEJAS (ej: refactorizaciones profundas, nuevas features complejas):\n` +
+            `- Para estas tareas SÍ puedes explorar libremente el código base antes de actuar.\n\n` +
+            `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
+          );
+
+          // 5. Tool Restrictions (Prevent UI hangs)
+          contextInstructions.push(
+            `PROHIBICIÓN ESTRICTA DE HERRAMIENTAS INTERACTIVAS:\n` +
+            `NUNCA uses la herramienta "question", "ask" o similares para pedir confirmación o más datos al usuario.\n` +
+            `En este entorno tu UI interactiva no funciona y el proceso crasheará.\n` +
+            `Si necesitas hacerle una pregunta al usuario u obtener confirmación para tu plan, DEBES imprimir la pregunta como texto normal Markdown en tu respuesta final, y detener tu ejecución esperando a que el usuario escriba su siguiente mensaje del chat.`
+          );
+
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
             try {
