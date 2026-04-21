@@ -1,169 +1,149 @@
-# Repository Agent Guide
+# Repository Agent Guide — minube-vibes
 
-Please read `CONTRIBUTING.md` which includes information for human code contributors. Much of the information is applicable to you as well.
+This is an **Electron desktop application** that acts as a developer workspace with AI chat, project management, Git tools, and database inspection.
 
-## Project setup and lints
+---
 
-Make sure you run this once after doing `npm install` because it will make sure whenever you commit something, it will run pre-commit hooks like linting and formatting.
+## Agentes disponibles
 
-```sh
-npm run init-precommit
-```
+Usa el agente apropiado según la tarea:
 
-## Pre-commit checks
+- **`coder`** (Haiku, máx. 6 pasos) — tareas puntuales: añadir un campo, arreglar un bug, actualizar una query. **Usa este por defecto.**
+- **`architect`** (Sonnet, máx. 20 pasos) — refactoring amplio, cambios de arquitectura, análisis de dependencias entre sistemas.
 
-RUN THE FOLLOWING CHECKS before you do a commit.
+---
 
-If you have access to the `/vibes:lint` skill, use it to run all pre-commit checks automatically:
+## Reglas de rendimiento (CRÍTICO)
 
-```
-/vibes:lint
-```
+- **NO leas todos los archivos de un directorio.** Usa `grep`/`search` primero para localizar el objetivo.
+- **NO hagas más de 2 búsquedas** si ya tienes el archivo objetivo.
+- **Lee solo los archivos estrictamente necesarios** para completar la tarea.
+- Para tareas claras y acotadas, **actúa directamente** sin explorar el codebase entero.
 
-Otherwise, run the following commands directly:
+---
 
-**Formatting**
+## Stack tecnológico
 
-```sh
-npm run fmt
-```
+| Capa | Tecnología |
+|---|---|
+| Runtime | Electron |
+| Frontend | React + TanStack Router + TanStack Query |
+| Estado global | Jotai atoms |
+| Base de datos local | SQLite + Drizzle ORM |
+| Estilos | Vanilla CSS con variables de tema |
+| Build | Vite + Electron Forge |
+| Tests E2E | Playwright |
 
-**Linting**
+---
 
-```sh
-npm run lint
-```
+## Arquitectura IPC (Electron)
 
-If you get any lint errors, you can usually fix it by doing:
+Esta es la frontera más importante del proyecto. Respétala siempre.
 
-```sh
-npm run lint:fix
-```
+1. **`src/ipc/ipc_client.ts`** — corre en el renderer. Accede vía `IpcClient.getInstance()`. Expón métodos dedicados por canal IPC.
+2. **`src/preload.ts`** — allowlist del renderer. Toda nueva API IPC debe añadirse aquí.
+3. **`src/ipc/ipc_host.ts`** — registra handlers que viven en `src/ipc/handlers/`.
+4. Los handlers deben lanzar `throw new Error("...")` en fallo. **No** usar `{ success: false }`.
 
-**Type-checks**
+### Archivos de referencia rápida
 
-```sh
-npm run ts
-```
+| Necesito... | Leo... |
+|---|---|
+| Estructura de la DB | `src/db/schema.ts` (local) o `src/db/remote-schema.ts` (Supabase) |
+| Añadir canal IPC | `src/ipc/ipc_client.ts` + `src/preload.ts` + `src/ipc/ipc_host.ts` |
+| Integración con el chat AI | `src/ipc/handlers/opencode_adapter.ts` |
+| Query keys de React Query | `src/lib/queryKeys.ts` |
+| Rutas de la app | `src/router.ts` |
 
-Note: if you do this, then you will need to re-add the changes and commit again.
+---
 
-## Project context
+## Modelo de datos
 
-- This is an Electron application with a secure IPC boundary.
-- Frontend is a React app that uses TanStack Router (not Next.js or React Router).
-- Data fetching/mutations should be handled with TanStack Query when touching IPC-backed endpoints.
-
-## IPC architecture expectations
-
-1. `src/ipc/ipc_client.ts` runs in the renderer. Access it via `IpcClient.getInstance()` and expose dedicated methods per IPC channel.
-2. `src/preload.ts` defines the renderer allowlist. New IPC APIs must be added here.
-3. `src/ipc/ipc_host.ts` registers handlers that live in files under `src/ipc/handlers/` (e.g., `app_handlers.ts`, `chat_stream_handlers.ts`, `settings_handlers.ts`).
-4. IPC handlers should `throw new Error("...")` on failure instead of returning `{ success: false }` style payloads.
-
-## Architecture
-
-### React Query key factory
-
-All React Query keys must be defined in `src/lib/queryKeys.ts` using the centralized factory pattern. This provides:
-
-- Type-safe query keys with full autocomplete
-- Hierarchical structure for easy invalidation (invalidate parent to invalidate children)
-- Consistent naming across the codebase
-- Single source of truth for all query keys
-
-**Usage:**
-
-```ts
-import { queryKeys } from "@/lib/queryKeys";
-
-// In useQuery:
-useQuery({
-  queryKey: queryKeys.apps.detail({ appId }),
-  queryFn: () => IpcClient.getInstance().getApp(appId),
-});
-
-// Invalidating queries:
-queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
-```
-
-**Adding new keys:** Add entries to the appropriate domain in `queryKeys.ts`. Follow the existing pattern with `all` for the base key and factory functions using object parameters for parameterized keys.
-
-## React + IPC integration pattern
-
-When creating hooks/components that call IPC handlers:
-
-- Wrap reads in `useQuery`, using keys from `queryKeys` factory (see above), async `queryFn` that calls the relevant `IpcClient` method, and conditionally use `enabled`/`initialData`/`meta` as needed.
-- Wrap writes in `useMutation`; validate inputs locally, call the IPC client, and invalidate related queries on success. Use shared utilities (e.g., toast helpers) in `onError`.
-- Synchronize TanStack Query data with any global state (like Jotai atoms) via `useEffect` only if required.
-
-## Database
-
-This app uses SQLite and drizzle ORM.
-
-Generate SQL migrations by running this:
+Genera migraciones SQL **siempre** con:
 
 ```sh
 npm run db:generate
 ```
 
-IMPORTANT: Do NOT generate SQL migration files by hand! This is wrong.
+**NUNCA escribas archivos de migración a mano.**
 
-## General guidance
+---
 
-- Favor descriptive module/function names that mirror IPC channel semantics.
-- Keep Electron security practices in mind (no `remote`, validate/lock by `appId` when mutating shared resources).
-- Add tests in the same folder tree when touching renderer components.
+## React + IPC — Patrón estándar
 
-Use these guidelines whenever you work within this repository.
+- **Reads:** `useQuery` con keys del factory `queryKeys` → `queryFn` async que llama al `IpcClient`.
+- **Writes:** `useMutation` → valida localmente → llama IPC → invalida queries en `onSuccess`.
+- **Sincronización con Jotai:** solo mediante `useEffect` si es estrictamente necesario.
 
-## Testing
+### React Query key factory
 
-Our project relies on a combination of unit testing and E2E testing. Unless your change is trivial, you MUST add a test, preferably an e2e test case.
+```ts
+import { queryKeys } from "@/lib/queryKeys";
 
-### Unit testing
+// En useQuery:
+useQuery({
+  queryKey: queryKeys.apps.detail({ appId }),
+  queryFn: () => IpcClient.getInstance().getApp(appId),
+});
 
-Use unit testing for pure business logic and util functions.
+// Invalidar:
+queryClient.invalidateQueries({ queryKey: queryKeys.apps.all });
+```
 
-### E2E testing
+Para añadir nuevas keys, sigue el patrón existente en `src/lib/queryKeys.ts` (`all` + factory functions con parámetros objeto).
 
-Use E2E testing when you need to test a complete user flow for a feature.
+---
 
-If you would need to mock a lot of things to unit test a feature, prefer to write an E2E test instead.
+## Setup inicial
 
-Do NOT write lots of e2e test cases for one feature. Each e2e test case adds a significant amount of overhead, so instead prefer just one or two E2E test cases that each have broad coverage of the feature in question.
+```sh
+npm install
+npm run init-precommit   # configura hooks de pre-commit
+```
 
-**IMPORTANT: You MUST run `npm run build` before running E2E tests.** E2E tests run against the built application binary, not the source code. If you make any changes to application code (anything outside of `e2e-tests/`), you MUST re-run `npm run build` before running E2E tests, otherwise you'll be testing the old version of the application.
+---
+
+## Checks antes de commit
+
+```sh
+npm run fmt        # formateo
+npm run lint       # lint
+npm run lint:fix   # auto-fix de lint
+npm run ts         # type-check
+```
+
+Si tienes acceso al skill `/vibes:lint`, úsalo directamente — ejecuta todos estos pasos.
+
+---
+
+## Tests
+
+- **Unit tests:** para lógica de negocio pura y funciones utilitarias.
+- **E2E tests (Playwright):** para flujos completos de usuario. Preferibles cuando habría muchos mocks.
+- No escribas más de 1-2 casos E2E por feature (alto coste por caso).
+
+**IMPORTANTE:** Los E2E corren contra el binario compilado. Antes de correr E2E, siempre ejecuta:
 
 ```sh
 npm run build
 ```
 
-To run e2e tests without opening the HTML report (which blocks the terminal), use:
+Ejecutar E2E:
 
 ```sh
 PLAYWRIGHT_HTML_OPEN=never npm run e2e
 ```
 
-To get additional debug logs when a test is failing, use:
+Con logs de debug:
 
 ```sh
 DEBUG=pw:browser PLAYWRIGHT_HTML_OPEN=never npm run e2e
 ```
 
-## Git workflow
+---
 
-When pushing changes and creating PRs:
+## Seguridad Electron
 
-1. If the branch already has an associated PR, push to whichever remote the branch is tracking.
-2. If the branch hasn't been pushed before, default to pushing to `origin` (the fork `wwwillchen/dyad`), then create a PR from the fork to the upstream repo (`dyad-sh/dyad`).
-3. If you cannot push to the fork due to permissions, push directly to `upstream` (`dyad-sh/dyad`) as a last resort.
-
-### Skipping automated review
-
-Add `#skip-bugbot` to the PR description for trivial PRs that won't affect end-users, such as:
-
-- Claude settings, commands, or agent configuration
-- Linting or test setup changes
-- Documentation-only changes
-- CI/build configuration updates
+- No uses `remote`. Valida/lockea por `appId` al mutar recursos compartidos.
+- No expongas APIs de Node.js sin validación en el preload.
+- Nombres de módulos y funciones descriptivos que reflejen la semántica del canal IPC.

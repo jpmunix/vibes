@@ -1,10 +1,10 @@
 /**
  * OpenCode AI SDK Adapter
- * 
+ *
  * Integrates the OpenCode AI agent (https://opencode.ai) as a backend for
  * the minube-vibes chat system. Uses the @opencode-ai/sdk to communicate
  * with a local OpenCode server via HTTP + SSE events.
- * 
+ *
  * Architecture:
  *   Electron main process
  *     └─ opencode_adapter.ts
@@ -200,6 +200,33 @@ function buildMcpConfig(servers: McpServer[]) {
                   }
         ])
     );
+}
+
+/**
+ * Sanitize MCP server args to ensure they are always a proper string[].
+ *
+ * The DB can store args in malformed states:
+ *   - null / undefined            → []
+ *   - A single concatenated string → split by whitespace: "-y@pkg" → ["-y", "@pkg"]
+ *   - A mixed array with strings   → each element split and flattened
+ *
+ * A malformed command like `["npx", "-y@modelcontextprotocol/server-foo"]` causes
+ * npx to receive the package name as part of the -y flag, making it hang
+ * indefinitely and blocking the entire OpenCode session startup.
+ */
+function sanitizeMcpArgs(args: string[] | string | null | undefined): string[] {
+    if (!args) return [];
+    // If already a proper array, split any elements that contain spaces
+    if (Array.isArray(args)) {
+        return args.flatMap(arg =>
+            typeof arg === "string" && arg.includes(" ") ? arg.split(/\s+/) : [arg]
+        ).filter(Boolean);
+    }
+    // Scalar string — split by whitespace
+    if (typeof args === "string") {
+        return args.split(/\s+/).filter(Boolean);
+    }
+    return [];
 }
 
 /**
@@ -527,7 +554,7 @@ async function getOpenCodeClient(appPath: string) {
 
         const originalCwd = process.cwd();
         process.chdir(opencodeDataDir);
-        
+
         // Load MCP servers
         const { getRemoteDb } = await import("../../db/remote");
         const db = getRemoteDb();
@@ -642,13 +669,16 @@ async function getOpenCodeClient(appPath: string) {
                     external_directory: "allow",
                 },
                 // Always-on context compaction (documented at opencode.ai/docs/configuration)
-                // SDK 1.2.17 types don't declare this field yet, but the binary accepts it.
-                ...({ compaction: { auto: true, prune: true } } as any),
+                // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
+                // the model stalling when context fills up mid-session (key fix for slow responses).
+                ...({ compaction: { auto: true, prune: true, reserved: 15000 } } as any),
                 // LSP servers (TypeScript, ESLint, etc.): when enabled, diagnostics are sent
                 // after each file write so the agent can auto-fix TS errors inline.
                 // When disabled, the agent should run tsc/eslint manually at the end.
                 // Controlled via Settings → Agente → "Diagnósticos LSP por archivo".
                 ...((settings.enableOpenCodeLsp !== false ? { lsp: {} } : { lsp: false }) as any),
+                // Optimize I/O by disabling OpenCode's snapshot system, which is too slow on large repos
+                ...({ snapshot: false } as any),
                 // Disable features we don't need (reduces overhead)
                 autoupdate: false,
                 formatter: false,
@@ -741,7 +771,7 @@ function extractApiKeysForEnv(): Record<string, string> {
             env.OPENROUTER_API_KEY = key.encryptionType === "plaintext"
                 ? key.value
                 : decrypt(key);
-            
+
             const actual = env.OPENROUTER_API_KEY || "";
             const masked = actual.length > 20 ? `${actual.slice(0, 15)}...${actual.slice(-4)}` : "***";
             logger.info(`[OpenCode] Using OpenRouter key: "${selectedKey.alias || 'unnamed'}" (${masked})`);
@@ -1266,25 +1296,25 @@ export async function handleOpenCodeStream(
 
         const getAbortedResponse = () => {
             const partialText = timeline.filter(e => e.type === "text").map(e => (e as any).text).join("");
-            
+
             // Estimate tokens since we might not have received the final usage chunk from upstream
             // <think> blocks
             const thinkMatches = partialText.match(/<think>[\s\S]*?(<\/think>|$)/gi) || [];
             const thinkChars = thinkMatches.reduce((acc, m) => acc + m.length, 0);
-            
+
             // Standard text (excluding think)
             const standardChars = Math.max(0, partialText.length - thinkChars);
 
             let estOutput = Math.max(totalOutputTokens, Math.ceil(standardChars / 4));
             let estReasoning = Math.max(totalReasoningTokens, Math.ceil(thinkChars / 4));
-            
+
             // Input tokens
             let estInput = totalInputTokens;
             if (estInput === 0) {
                const inputString = chatMessages.map((m: any) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n");
                estInput = Math.ceil(inputString.length / 4) + 1500; // 1500 for AGENTS.md/overhead
             }
-            
+
             return {
                 fullResponse: partialText || "Operación cancelada",
                 success: false,
