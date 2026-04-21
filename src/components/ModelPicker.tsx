@@ -197,6 +197,7 @@ export function ModelPicker() {
         align="start"
         searchable
         searchPlaceholder="Buscar modelos..."
+        onSearchChange={setSearch}
         emptyMessage={
           loading ? "Cargando modelos..." : "No hay modelos disponibles"
         }

@@ -85,6 +85,8 @@ export interface UnifiedSelectorProps {
   /** Show a search/filter input at the top */
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** Callback fired when the search input value changes */
+  onSearchChange?: (search: string) => void;
   emptyMessage?: string;
   align?: "start" | "center" | "end";
   side?: "top" | "bottom" | "left" | "right";
@@ -161,6 +163,7 @@ export function UnifiedSelector({
   triggerRightIcon,
   searchable = false,
   searchPlaceholder = "Buscar…",
+  onSearchChange,
   emptyMessage = "Sin resultados",
   align: alignProp,
   side = "bottom",
@@ -182,6 +185,9 @@ export function UnifiedSelector({
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = (v: boolean) => {
+    if (!v && onSearchChange) {
+      onSearchChange("");
+    }
     if (isControlled) {
       controlledOnOpenChange?.(v);
     } else {
@@ -285,7 +291,7 @@ export function UnifiedSelector({
 
           {/* Optional search bar */}
           {searchable && (
-            <CommandInput placeholder={searchPlaceholder} />
+            <CommandInput placeholder={searchPlaceholder} onValueChange={onSearchChange} />
           )}
 
           <CommandList className={popoverMaxHeight}>
