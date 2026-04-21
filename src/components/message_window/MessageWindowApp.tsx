@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { WindowsControls } from "@/components/WindowsControls";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import {
@@ -73,6 +73,8 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
     queryFn: () => chatClient.getChat(chatId),
   });
 
+  const message = chat?.messages.find((m) => m.id === messageId);
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -93,8 +95,6 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
         </div>
       );
     }
-
-    const message = chat.messages.find((m) => m.id === messageId);
 
     if (!message) {
       return (
@@ -126,14 +126,21 @@ function MessageWindowContent({ appId, chatId, messageId }: MessageWindowAppProp
     );
   };
 
+  // Sync OS window title to match the top bar
+  useEffect(() => {
+    document.title = chat?.title || "Mensaje";
+  }, [chat?.title]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Title Bar - Draggable */}
       <div className="z-50 w-full h-11 bg-sidebar border-b border-border app-region-drag flex items-center shrink-0">
-          <div className="flex-1" />
+          <div className="flex-1 text-sm font-medium text-foreground pl-4 truncate">
+            {chat?.title || "Mensaje"}
+          </div>
           <WindowsControls className="ml-auto pr-1 pointer-events-auto" buttonClassName="h-full" />
       </div>
-      
+
       {/* Main Content - Scrollable */}
       {renderContent()}
     </div>

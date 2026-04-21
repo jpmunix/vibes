@@ -116,6 +116,7 @@ const FILE_EXTENSIONS = new Set([
   "xml", "svg",
   "env", "gitignore", "dockerignore", "dockerfile",
   "prisma", "proto",
+  "makefile", "license", "lock"
 ]);
 
 // Extension → language mapping for syntax highlighting
@@ -130,19 +131,31 @@ const EXT_TO_LANG: Record<string, string> = {
   sh: "shell", bash: "shell", zsh: "shell",
   xml: "html", svg: "html",
   env: "shell", prisma: "markdown",
+  makefile: "makefile", license: "markdown", lock: "json"
 };
 
 function isFilePath(text: string): boolean {
-  // Must have an extension or contain a path separator
   const trimmed = text.trim();
   if (trimmed.includes(" ") || trimmed.length > 120) return false;
+  if (trimmed.startsWith("http")) return false;
+
+  const cleanPath = trimmed.replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, '');
 
   // Check for known file extension
-  const ext = trimmed.split(".").pop()?.toLowerCase();
-  if (ext && FILE_EXTENSIONS.has(ext)) return true;
-
-  // Files like Dockerfile, Makefile, etc. (has path separator)
-  if (trimmed.includes("/") && !trimmed.startsWith("http")) return true;
+  const ext = cleanPath.split(".").pop()?.toLowerCase();
+  
+  if (ext && FILE_EXTENSIONS.has(ext)) {
+    // If it has a dot (like .env or file.ts), it's a file
+    if (cleanPath.includes(".")) return true;
+    
+    // If it has a slash (like /src/gitignore), it's a file
+    if (cleanPath.includes("/")) return true;
+    
+    // Extensionless exact matches just in case
+    if (["dockerfile", "makefile", "license"].includes(ext)) {
+      return true;
+    }
+  }
 
   return false;
 }
@@ -422,7 +435,10 @@ export const CodeHighlight = memo(
         {filePathDetected ? (
           <code
             className={`${className || ''} not-prose bg-primary/30 text-foreground px-1.5 py-0.5 rounded-md typo-mono-xs leading-tight cursor-pointer hover:bg-primary/50 hover:underline transition-colors`}
-            onClick={() => setViewingFile(code)}
+            onClick={() => {
+              const cleanPath = code.trim().replace(/(?:[:#][L]?[0-9]+(?:-[0-9]+)?)$/, '');
+              setViewingFile(cleanPath);
+            }}
             title={`Ver archivo: ${code}`}
             {...props}
           >

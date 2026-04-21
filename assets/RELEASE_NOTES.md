@@ -1,27 +1,25 @@
-## 💸 El Coste Real, Siempre — Incluso Si Paras
+### Notas de la Release
 
-Si alguna vez has detenido al agente a mitad de una tarea larga y te has preguntado "¿pero cuánto ha gastado hasta ahora?", ya tienes tu respuesta:
+#### ⚙️ **Implementaciones Principales**
+- **Sincronización de Títulos:** Ahora el título de las ventanas se sincroniza automáticamente con la barra superior según el título del chat actual. En ausencia de un título, se usará "Mensaje" por defecto.
+- **Uso de `useEffect`:** Integración para actualizar dinámicamente el título del navegador con cada cambio en el título del chat.
+- **Mejoras en el Selector de Mensajes:** El mensaje específico ahora se calcula con mayor eficiencia al cargar la ventana, eliminando código redundante dentro del flujo de renderizado.
 
-- **El contador de coste no desaparece al cancelar.** En cuanto pulses el botón de parada, Vibes captura todo lo que se ha consumido hasta ese instante y lo muestra igual que si la respuesta hubiera terminado sola.
-- **El indicador de tokens aparece aunque pares a mitad.** Ya verás el resumen de uso al final del mensaje, cancelado o no.
+#### 🖋️ **Mejoras en la Detección de Rutas de Archivo**
+- **Compatibilidad Ampliada:** Soporte añadido para detectar y resaltar archivos como `makefile`, `license` y archivos `.lock` en el resaltado de sintaxis.
+- **Lógica Mejorada:** Correcciones en la validación de rutas de archivo para ignorar URLs y textos no válidos, garantizando detecciones precisas.
 
-## 🔑 Cambia de API Key y Funciona al Momento
+#### 🪟 **Ventana de Debug**
+- **Gestión de Ventanas para Mensajes Individuales:**
+    - Títulos personalizados basados en el título del chat asociado, si está disponible en la base de datos.
+    - Lógica de búsqueda mejorada utilizando el `userId` para restricciones de acceso más seguras.
 
-Antes, si ibas a los ajustes y cambiabas tu clave de proveedor de IA, la nueva clave no se aplicaba del todo hasta que cerrabas y volvías a abrir la app. A veces ni eso.
+#### 🛠️ **Refactorización del Código**
+- **Redistribución de Lógica:** Limpieza del cálculo repetitivo de mensajes y sincronización de títulos fuera del flujo principal de renderizado.
+- **Validaciones Ajustadas:** Sistema más robusto para detectar rutas/archivos, asegurando consistencia incluso con caminos ambiguos.
 
-Ahora es mucho más simple: **cambias la clave, guardas, y el siguiente mensaje ya la usa.** Sin reinicios, sin sorpresas.
-
-## 🗂️ Renombrar un Proyecto, en Dos Pasos
-
-Hemos simplificado el flujo para cambiar el nombre de un proyecto. Antes aparecía un menú con varias opciones que no venían a cuento. Ahora escribes el nuevo nombre, confirmas, y listo.
-
-## 📊 Panel de Cambios: Elige Cómo Ver el Código
-
-En el panel de revisión de cambios de tu proyecto, ahora tienes un pequeño selector en la cabecera del visor de archivos:
-
-- **Diff** — muestra solo las líneas que han cambiado (es la vista por defecto y la más útil el día a día).
-- **Completo** — muestra el archivo entero con las modificaciones resaltadas, para cuando necesitas más contexto.
-
-## 🚀 La App, Más Rápida y Ligera
-
-Hemos hecho una gran limpieza interna para que Vibes arranque antes y consuma menos recursos. Nada de esto afecta a lo que ves en pantalla, pero lo notarás en el rendimiento general.
+___
+**Impacto General:**
+- Sincronización más precisa y mejora de experiencia al actualizar títulos dinámicamente.
+- Uso eficiente de recursos con lógica optimizada para detectar rutas y mensajes.
+- Interfaces más limpias y seguras al ajustar la gestión de ventanas individuales y flujos de datos asociados.

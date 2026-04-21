@@ -424,12 +424,24 @@ export function registerWindowHandlers() {
   });
 
   // Dedicated debug window for viewing a specific message in full mode
-  createTypedHandler(systemContracts.openMessageWindow, async (event, { appId, chatId, messageId, theme, themeIntensity }) => {
+  createTypedHandler(systemContracts.openMessageWindow, async (event, { appId, chatId, messageId, theme, themeIntensity }, context) => {
     // If a window for this message already exists, focus it
     const existing = messageWindows.get(messageId);
     if (existing && !existing.isDestroyed()) {
       existing.focus();
       return;
+    }
+
+    let windowTitle = "Mensaje";
+    if (context.userId) {
+      const db = getRemoteDb();
+      const chat = await db.query.chats.findFirst({
+        where: and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)),
+        columns: { title: true },
+      });
+      if (chat?.title) {
+        windowTitle = chat.title;
+      }
     }
 
     const messageWindow = new BrowserWindow({
@@ -440,7 +452,7 @@ export function registerWindowHandlers() {
       minHeight: 400,
       skipTaskbar: false,
       autoHideMenuBar: true,
-      title: "Debug - Mensaje Individual",
+      title: windowTitle,
       titleBarStyle: "hidden",
       titleBarOverlay: false,
       trafficLightPosition: {
