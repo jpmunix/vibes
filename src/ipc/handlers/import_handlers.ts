@@ -112,15 +112,16 @@ export function registerImportHandlers() {
       // Initialize git repo and create first commit
       await gitInit({ path: appPath, ref: "main" });
 
-      // Stage all files
-
-      await gitAdd({ path: appPath, filepath: "." });
-
-      // Create initial commit
-      await gitCommit({
-        path: appPath,
-        message: "Init vibes app",
-      });
+      // Only stage + commit if the folder has trackable files
+      const entries = await fs.readdir(appPath);
+      const hasFiles = entries.some((e) => e !== ".git");
+      if (hasFiles) {
+        await gitAdd({ path: appPath, filepath: "." });
+        await gitCommit({
+          path: appPath,
+          message: "Init vibes app",
+        });
+      }
     }
 
     const userId = readSettings().userId;

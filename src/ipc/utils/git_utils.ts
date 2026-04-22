@@ -2375,17 +2375,27 @@ export async function gitDiffRange({
 export async function gitDiscardAllChanges({
   path,
 }: GitBaseParams): Promise<{ message: string }> {
-  // First reset the index (unstage everything)
-  await execOrThrow(["reset", "HEAD"], path, "Failed to reset index");
+  // Check if HEAD exists (repos with no commits don't have HEAD)
+  const headCheck = await execGit(["rev-parse", "--verify", "HEAD"], path);
+  const hasHead = headCheck.exitCode === 0;
 
-  // Then discard all tracked file changes
-  await execOrThrow(
-    ["checkout", "--", "."],
-    path,
-    "Failed to discard tracked changes",
-  );
+  if (hasHead) {
+    // Normal flow: reset index, discard tracked changes
+    await execOrThrow(["reset", "HEAD"], path, "Failed to reset index");
+    await execOrThrow(
+      ["checkout", "--", "."],
+      path,
+      "Failed to discard tracked changes",
+    );
+  } else {
+    // No commits yet: unstage any staged files
+    const rmResult = await execGit(["rm", "-r", "--cached", "--ignore-unmatch", "."], path);
+    if (rmResult.exitCode !== 0) {
+      logger.warn(`git rm --cached failed (may be empty): ${rmResult.stderr}`);
+    }
+  }
 
-  // Clean untracked files and directories
+  // Clean untracked files and directories (works with or without commits)
   await execOrThrow(
     ["clean", "-fd"],
     path,

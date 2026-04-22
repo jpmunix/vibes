@@ -63,10 +63,15 @@ export function ChatPanel({
   const hasResetModeRef = useRef<number | undefined>(undefined);
   const preservePlanModeRef = useRef(preservePlanMode);
 
-  // Clear the preserve flag once streaming starts (plan mode has been "used")
+  // Clear the preserve flag once streaming starts (plan mode has been "used"),
+  // AND mark the chatId as processed so the mode-reset effect won't fire after
+  // the stream ends and accidentally switch plan → agent.
   useEffect(() => {
     if (chatId && (isStreamingById.get(chatId) ?? false)) {
       preservePlanModeRef.current = false;
+      // Mark as processed — the user actively used this mode in this chat,
+      // so we must NOT reset it when streaming finishes.
+      hasResetModeRef.current = chatId;
     }
   }, [chatId, isStreamingById]);
 
@@ -76,17 +81,17 @@ export function ChatPanel({
     if (hasResetModeRef.current === chatId) return;
     // Don't reset plan mode if explicitly preserved (new app window in plan mode)
     if (preservePlanModeRef.current) return;
+    // Don't reset while actively streaming — wait until stream completes to evaluate.
+    // (But by then hasResetModeRef will be set by the effect above, so it won't reset.)
+    if (isStreamingById.get(chatId) ?? false) return;
 
     const currentMessages = chatId ? (messagesById.get(chatId) ?? []) : [];
     if (settings.selectedChatMode === "plan" && currentMessages.length > 0) {
-      const isStreaming = isStreamingById.get(chatId) ?? false;
-      if (!isStreaming) {
-        // Plan mode was carried over from a previous session into an existing chat — reset it
-        hasResetModeRef.current = chatId;
-        const defaultMode = settings.defaultChatMode || "agent";
-        const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
-        updateSettings({ selectedChatMode: resetTo });
-      }
+      // Plan mode was carried over from a previous session into an existing chat — reset it
+      hasResetModeRef.current = chatId;
+      const defaultMode = settings.defaultChatMode || "agent";
+      const resetTo = defaultMode === "plan" ? "agent" : defaultMode;
+      updateSettings({ selectedChatMode: resetTo });
     } else if (settings.selectedChatMode !== "plan") {
       // User entered the chat in agent/build mode — mark as processed so that if they
       // manually switch to plan later, this effect won't fire and revert it.

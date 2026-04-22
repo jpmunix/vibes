@@ -53,6 +53,7 @@ export interface PendingAskUser {
   question: string;
   options: string[] | null;
   context: string | null;
+  multiple?: boolean;
 }
 
 export const pendingAskUsersAtom = atom<PendingAskUser[]>([]);

@@ -60,6 +60,7 @@ export const AskUserRequestSchema = z.object({
   question: z.string(),
   options: z.array(z.string()).nullable(),
   context: z.string().nullable(),
+  multiple: z.boolean().optional(),
 });
 
 export type AskUserRequestPayload = z.infer<typeof AskUserRequestSchema>;
@@ -69,7 +70,7 @@ export type AskUserRequestPayload = z.infer<typeof AskUserRequestSchema>;
  */
 export const AskUserResponseParamsSchema = z.object({
   requestId: z.string(),
-  response: z.string(),
+  response: z.union([z.string(), z.array(z.string())]),
 });
 
 export type AskUserResponseParams = z.infer<typeof AskUserResponseParamsSchema>;

@@ -980,6 +980,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       await refreshApps();
       if (selectedAppId === closeAppId) {
         setSelectedAppId(null);
+        setSelectedChatId(null);
+        navigate({ to: "/workspace", search: {} });
+        // Clear persisted selection so workspace doesn't restore a stale app/chat
+        ipc.misc.setPreference({ key: PREF_LAST_SELECTION, value: "" }).catch(() => {});
       }
     } catch (error) {
       showError(`Error al cerrar: ${(error as any).toString()}`);
@@ -989,7 +993,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       setCloseAppName("");
       setDeleteFiles(false);
     }
-  }, [closeAppId, deleteFiles, refreshApps, selectedAppId, setSelectedAppId]);
+  }, [closeAppId, deleteFiles, refreshApps, selectedAppId, setSelectedAppId, setSelectedChatId, navigate]);
 
   const handleConfirmRenameApp = useCallback(async () => {
     if (renameAppId === null || !renameAppInputValue.trim() || renameAppInputValue === renameAppName) {

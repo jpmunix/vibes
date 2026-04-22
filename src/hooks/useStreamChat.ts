@@ -265,12 +265,34 @@ export function useStreamChat({
 
         // Add user message if not a redo
         if (!redo && prompt.trim()) {
+          // Build optimistic aiMessagesJson so image thumbnails appear instantly
+          let optimisticAiMessagesJson: any = undefined;
+          if (convertedAttachments && convertedAttachments.length > 0) {
+            const imageParts = convertedAttachments
+              .filter((a) => a.type.startsWith("image/"))
+              .map((a) => {
+                // a.data is a data URL like "data:image/png;base64,..."
+                const base64 = a.data.split(",")[1] || a.data;
+                return {
+                  type: "image" as const,
+                  image: base64,
+                  mediaType: a.type,
+                };
+              });
+            if (imageParts.length > 0) {
+              optimisticAiMessagesJson = {
+                messages: [{ role: "user", content: imageParts }],
+              };
+            }
+          }
+
           newMessages.push({
             id: tempUserId,
             chatId,
             role: "user",
             content: prompt,
             createdAt: new Date().toISOString(),
+            ...(optimisticAiMessagesJson && { aiMessagesJson: optimisticAiMessagesJson }),
           } as any);
         }
 

@@ -52,6 +52,7 @@ import { registerAuthHandlers } from "./handlers/auth_handlers";
 
 import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
+import { registerQuestionHandler } from "./handlers/opencode_adapter";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -113,4 +114,7 @@ export function registerIpcHandlers() {
 
   // OpenCode AI integration — diagnostic & test handlers
   registerOpenCodeDiagnosticHandlers();
+
+  // OpenCode question tool — bridges VibesAskUser UI to SDK question.reply()
+  registerQuestionHandler();
 }

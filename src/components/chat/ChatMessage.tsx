@@ -48,6 +48,7 @@ import {
   chatErrorByIdAtom,
   quotedMessagesAtom,
   isZenModeAtom,
+  pendingAskUsersAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -363,6 +364,15 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
     return defaultInfo;
   }, [message.content, isStreaming, isLastMessage]);
 
+  // Override streaming indicator when agent is waiting for user answer
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const hasPendingQuestion = isStreaming && isLastMessage && selectedChatId != null
+    && pendingAskUsers.some((p) => p.chatId === selectedChatId);
+
+  const effectiveStreamingInfo = hasPendingQuestion
+    ? { label: "Esperando respuesta", dotColorClass: "bg-violet-400", labelColorClass: "text-violet-400", contentExcerpt: undefined }
+    : streamingInfo;
+
   // Plain-text excerpt for collapsed view (~80 chars)
   // Skipped in zen mode — no collapse feature.
   const plainTextExcerpt = useMemo(() => {
@@ -563,10 +573,10 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                       {isLastMessage && isStreaming && (
                          <StreamingLoadingAnimation
                             variant="initial"
-                            label={streamingInfo.label}
-                            dotColorClass={streamingInfo.dotColorClass}
-                            labelColorClass={streamingInfo.labelColorClass}
-                            contentExcerpt={streamingInfo.contentExcerpt}
+                            label={effectiveStreamingInfo.label}
+                            dotColorClass={effectiveStreamingInfo.dotColorClass}
+                            labelColorClass={effectiveStreamingInfo.labelColorClass}
+                            contentExcerpt={effectiveStreamingInfo.contentExcerpt}
                          />
                       )}
                     </>

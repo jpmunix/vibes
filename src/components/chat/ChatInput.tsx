@@ -30,6 +30,7 @@ import {
   chatMessagesByIdAtom,
   selectedChatIdAtom,
   pendingAgentConsentsAtom,
+  pendingAskUsersAtom,
   agentTodosByChatIdAtom,
   pendingMessageQueueByIdAtom,
   type PendingQueuedMessage,
@@ -64,6 +65,7 @@ import { ChatInputControls } from "../ChatInputControls";
 
 import { AgentConsentBanner } from "./AgentConsentBanner";
 import { TodoList } from "./TodoList";
+import { VibesAskUser } from "./VibesAskUser";
 import {
   selectedComponentsPreviewAtom,
   previewIframeRefAtom,
@@ -136,6 +138,9 @@ export function ChatInput({
     (c) => c.chatId === chatId,
   );
   const pendingAgentConsent = consentsForThisChat[0] ?? null;
+
+  const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
+  const askUsersForThisChat = pendingAskUsers.filter((a) => a.chatId === chatId);
 
 
 
@@ -527,6 +532,28 @@ export function ChatInput({
                   }}
                 />
               )}
+              {/* Show FIRST pending ask-user question (queue pattern, like consent banner) */}
+              {askUsersForThisChat.length > 0 && (
+                <div className="px-3 py-1">
+                  {askUsersForThisChat.length > 1 && (
+                    <div className="flex items-center justify-end px-1 pb-1">
+                      <span className="text-[10px] text-muted-foreground/60">
+                        1 de {askUsersForThisChat.length} preguntas
+                      </span>
+                    </div>
+                  )}
+                  <VibesAskUser
+                    node={{
+                      properties: {
+                        question: askUsersForThisChat[0].question,
+                        options: askUsersForThisChat[0].options?.join("|") || "",
+                        context: askUsersForThisChat[0].context || "",
+                        requestId: askUsersForThisChat[0].requestId,
+                      },
+                    }}
+                  />
+                </div>
+              )}
               {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
               {!pendingAgentConsent &&
                 proposal &&
@@ -610,7 +637,7 @@ export function ChatInput({
                   {/* Undo button — circular, icon-only */}
                   {!isStreaming &&
                     !!currentMessages.length &&
-                    currentMessages[currentMessages.length - 1].role === "assistant" && (
+                    currentMessages.some(m => m.role === "assistant") && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -620,8 +647,35 @@ export function ChatInput({
                                 if (!chatId || !appId) return;
                                 setIsUndoLoading(true);
                                 try {
-                                  const currentMessage = currentMessages[currentMessages.length - 1];
-                                  const userMessage = currentMessages[currentMessages.length - 2];
+                                  // Find the LAST assistant message and the user message immediately before it
+                                  let lastAssistantIdx = -1;
+                                  for (let i = currentMessages.length - 1; i >= 0; i--) {
+                                    if (currentMessages[i].role === "assistant") {
+                                      lastAssistantIdx = i;
+                                      break;
+                                    }
+                                  }
+                                  if (lastAssistantIdx < 0) {
+                                    showError("No hay mensaje de asistente para deshacer");
+                                    setIsUndoLoading(false);
+                                    return;
+                                  }
+                                  const currentMessage = currentMessages[lastAssistantIdx];
+
+                                  // Walk backwards from the assistant to find the user message that triggered it
+                                  let userMessage: typeof currentMessage | undefined;
+                                  for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+                                    if (currentMessages[i].role === "user") {
+                                      userMessage = currentMessages[i];
+                                      break;
+                                    }
+                                  }
+                                  if (!userMessage) {
+                                    showError("No se encontró el mensaje de usuario para deshacer");
+                                    setIsUndoLoading(false);
+                                    return;
+                                  }
+
                                   if (userMessage) {
                                     let prompt = userMessage.content;
                                     const idx = prompt.indexOf("\n\nAttachments:\n");
@@ -709,7 +763,6 @@ export function ChatInput({
                         </Tooltip>
                       </TooltipProvider>
                     )}
-
 
 
                   {isStreaming ? (

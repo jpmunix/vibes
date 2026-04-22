@@ -236,6 +236,7 @@ function App() {
           question: payload.question,
           options: payload.options,
           context: payload.context,
+          multiple: payload.multiple,
         },
       ]);
     });

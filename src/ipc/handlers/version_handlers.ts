@@ -91,6 +91,12 @@ export function registerVersionHandlers() {
     const commits = await gitLog({
       path: appPath,
       depth: 100_000, // KEEP UP TO DATE WITH ChatHeader.tsx
+    }).catch((err: Error) => {
+      // Repos with no commits have no HEAD — return empty list
+      if (err.message.includes("unknown revision") || err.message.includes("bad default revision")) {
+        return [] as GitCommit[];
+      }
+      throw err;
     });
 
     // Get all snapshots for this app to match with commits
@@ -175,10 +181,16 @@ export function registerVersionHandlers() {
       const branchRef = (await gitCurrentBranch({ path: appPath })) || app.githubBranch || "main";
 
       // Get the current commit hash before reverting
-      const currentCommitHash = await getCurrentCommitHash({
-        path: appPath,
-        ref: branchRef,
-      });
+      let currentCommitHash: string;
+      try {
+        currentCommitHash = await getCurrentCommitHash({
+          path: appPath,
+          ref: branchRef,
+        });
+      } catch {
+        // Repo has no commits yet — nothing to revert
+        return { successMessage: "No hay versiones para revertir en este repositorio." };
+      }
 
       if (previousVersionId && previousVersionId !== "NONE") {
         await gitCheckout({

@@ -570,7 +570,7 @@ ${componentSnippet}
             model: settings.selectedModel.name,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
-            }),
+            }).catch(() => null),
             createdAt: new Date(),
           })
           .returning();
@@ -621,7 +621,7 @@ ${componentSnippet}
             model: selectedModel.name,
             sourceCommitHash: await getCurrentCommitHash({
               path: getVibesAppPath(chat.app.path),
-            }),
+            }).catch(() => null),
             createdAt: new Date(),
           })
           .returning();
@@ -1456,13 +1456,6 @@ This conversation includes one or more image attachments. When the user uploads 
             `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
           );
 
-          // 5. Tool Restrictions (Prevent UI hangs)
-          contextInstructions.push(
-            `PROHIBICIÓN ESTRICTA DE HERRAMIENTAS INTERACTIVAS:\n` +
-            `NUNCA uses la herramienta "question", "ask" o similares para pedir confirmación o más datos al usuario.\n` +
-            `En este entorno tu UI interactiva no funciona y el proceso crasheará.\n` +
-            `Si necesitas hacerle una pregunta al usuario u obtener confirmación para tu plan, DEBES imprimir la pregunta como texto normal Markdown en tu respuesta final, y detener tu ejecución esperando a que el usuario escriba su siguiente mensaje del chat.`
-          );
 
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {

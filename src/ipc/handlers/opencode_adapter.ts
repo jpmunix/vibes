@@ -42,6 +42,9 @@ let opencodeInstance: Awaited<ReturnType<typeof createOpencode>> | null = null;
 let clientInstance: ReturnType<typeof createOpencodeClient> | null = null;
 let serverUrl: string | null = null;
 
+// Track the last project directory used — needed for question reply routing
+let lastProjectDir: string | null = null;
+
 // Map chatId → opencode sessionId
 const chatSessionMap = new Map<number, string>();
 
@@ -677,6 +680,7 @@ async function getOpenCodeClient(appPath: string) {
                 // Permissions: always allow everything EXCEPT repository mutation (commit/push)
                 permission: {
                     edit: "allow",
+                    question: "allow",
                     bash: {
                         "git commit": "deny",
                         "git push": "deny",
@@ -1250,6 +1254,7 @@ export async function handleOpenCodeStream(
 
         logger.info(`${LP} Sending prompt to session ${sessionId} with model ${providerID}/${model.name}`);
         logger.info(`${LP} Project directory: ${projectDir}`);
+        lastProjectDir = projectDir;
         logger.info(`${LP} Prompt: "${req.prompt.substring(0, 100)}..."`);
 
         // Build prompt parts: text + optional file attachments
@@ -1802,6 +1807,73 @@ async function processEvents(
                     break;
                 }
 
+                case "question.asked": {
+                    // QuestionRequest: { id, sessionID, questions: QuestionInfo[] }
+                    // QuestionInfo: { question, header, options: QuestionOption[], multiple?, custom? }
+                    const questionRequestId = props.id;
+                    const questionSessionId = props.sessionID;
+                    if (!questionRequestId) {
+                        logger.warn(`[OC:Event] question.asked without ID, ignoring`);
+                        break;
+                    }
+                    // Filter by session
+                    if (questionSessionId && questionSessionId !== sessionId) break;
+
+                    const questions: any[] = props.questions || [];
+                    if (questions.length === 0) {
+                        logger.warn(`[OC:Event] question.asked with empty questions array`);
+                        break;
+                    }
+
+                    // Handle the FIRST question (most common case — multi-question support can be added later)
+                    const q = questions[0];
+                    const questionText = q.question || q.header || "";
+                    const questionOptions = Array.isArray(q.options)
+                        ? q.options.map((o: any) => o.label || String(o))
+                        : [];
+
+                    logger.info(`[OC:Event] ❓ Question asked: "${questionText}" (id=${questionRequestId}, options=${questionOptions.length})`);
+
+                    // Close any open think block before the question UI
+                    if (isCurrentlyReasoning) {
+                        callbacks.onTextDelta(`\n</think>\n`);
+                        isCurrentlyReasoning = false;
+                    }
+
+                    // Question UI is rendered only in the ChatInput area (via atom),
+                    // not inline in the agent bubble — so we don't emit a vibes-ask-user tag.
+                    sendUpdate();
+
+                    // 2. Send IPC event to renderer so VibesAskUser pending state is populated
+                    safeSend(event.sender, "agent-tool:ask-user-request", {
+                        requestId: questionRequestId,
+                        chatId,
+                        question: questionText,
+                        options: questionOptions.length > 0 ? questionOptions : null,
+                        context: null,
+                        multiple: !!q.multiple,
+                    });
+
+                    // 3. Native OS notification if the window is not focused
+                    try {
+                        const { Notification, BrowserWindow } = require("electron");
+                        const win = BrowserWindow.fromWebContents(event.sender);
+                        if (win && !win.isFocused()) {
+                            const notif = new Notification({
+                                title: "El agente necesita tu respuesta",
+                                body: questionText.length > 120 ? questionText.slice(0, 117) + "…" : questionText,
+                                silent: false,
+                            });
+                            notif.on("click", () => {
+                                win.show();
+                                win.focus();
+                            });
+                            notif.show();
+                        }
+                    } catch (_) { /* notification not critical */ }
+                    break;
+                }
+
                 default:
                     if (eventCount <= 20) {
                         logger.info(`[OC:Event] Unhandled event type: ${evt.type}`);
@@ -1845,6 +1917,7 @@ function mapToolToVibesTag(tool: string): string {
         webfetch: "vibes-web-crawl",
         websearch: "vibes-web-crawl",
         lsp: "vibes-status",
+        question: "vibes-ask-user",
     };
     return map[tool] || "vibes-mcp-tool-call";
 }
@@ -2043,7 +2116,7 @@ function sendChunk(
         }
     }
     const lastAssistant = currentMessages.filter(m => m.role === "assistant").pop();
-    logger.info(`[OC:sendChunk] chatId=${chatId} msgs=${currentMessages.length} lastAssistant.id=${lastAssistant?.id} content=${lastAssistant?.content?.length ?? 0}ch`);
+    logger.debug(`[OC:sendChunk] chatId=${chatId} msgs=${currentMessages.length} lastAssistant.id=${lastAssistant?.id} content=${lastAssistant?.content?.length ?? 0}ch`);
     safeSend(event.sender, "chat:response:chunk", {
         chatId,
         messages: currentMessages,
@@ -2211,4 +2284,58 @@ export async function shutdownOpenCode() {
         serverUrl = null;
         chatSessionMap.clear();
     }
+}
+
+// =============================================================================
+// Question Tool IPC Handler
+// =============================================================================
+
+import { createTypedHandler } from "./base";
+import { agentContracts } from "../types/agent";
+
+/**
+ * Register the IPC handler for `respondToAskUser`.
+ * Called from ipc_host.ts during app startup.
+ *
+ * When the user responds to a question in the VibesAskUser UI,
+ * the renderer calls ipc.agent.respondToAskUser({ requestId, response }).
+ * This handler forwards the answer to the OpenCode SDK via client.question.reply().
+ */
+export function registerQuestionHandler() {
+    createTypedHandler(agentContracts.respondToAskUser, async (_event, params) => {
+        const { requestId, response } = params;
+
+        if (!serverUrl) {
+            logger.error("[OC:AskUser] No OpenCode server URL — cannot reply to question");
+            return;
+        }
+
+        // response can be a single string or an array of strings (multi-select)
+        const answerLabels = Array.isArray(response) ? response : [response];
+        logger.info(`[OC:AskUser] Replying to question ${requestId}: ${JSON.stringify(answerLabels).substring(0, 120)}`);
+
+        try {
+            // The v1 SDK client doesn't expose `question` — use direct HTTP.
+            // Endpoint: POST /question/{requestID}/reply?directory=...
+            // Body: { answers: Array<Array<string>> }  (one answer array per question)
+            const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+            const url = `${serverUrl}/question/${encodeURIComponent(requestId)}/reply${dirParam}`;
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ answers: [answerLabels] }),
+            });
+
+            const text = await res.text();
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${text}`);
+            }
+
+            logger.info(`[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`);
+        } catch (e: any) {
+            logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
+            throw e;
+        }
+    });
 }
