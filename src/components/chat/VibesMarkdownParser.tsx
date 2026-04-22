@@ -193,7 +193,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once
-  // synchronously so that fast scrolling in Virtuoso doesn't create flashes of unparsed content.
+  // synchronously so that fast scrolling doesn't create flashes of unparsed content.
   const deferredContent = useDeferredValue(content);
   const activeContent = isStreaming ? deferredContent : content;
 
@@ -202,7 +202,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
     return parseCustomTags(activeContent);
   });
 
-  // Keep state in sync with content changes, particularly when remounted by Virtuoso
+  // Keep state in sync with content changes, particularly on remount
   // or when static content updates.
   useEffect(() => {
     let isCancelled = false;
@@ -224,7 +224,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         });
     } else {
       // For static messages, parse synchronously immediately.
-      // This is crucial for Virtuoso fast scrolling so there's zero frames of delay.
+      // This is crucial for fast scrolling so there's zero frames of delay.
       setContentPieces(parseCustomTags(activeContent));
     }
 

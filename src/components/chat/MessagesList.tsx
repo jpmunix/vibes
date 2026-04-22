@@ -1,7 +1,6 @@
 import React from "react";
 import type { Message } from "@/ipc/types";
-import { forwardRef, useState, useCallback, useMemo, Suspense } from "react";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { forwardRef, useState, useCallback, useMemo, Suspense, useRef, useEffect } from "react";
 import ChatMessage from "./ChatMessage";
 const SetupBanner = React.lazy(() =>
   import("../SetupBanner").then((m) => ({ default: m.SetupBanner }))
@@ -35,20 +34,14 @@ import { AutoRouterSelectedMessage } from "./AutoRouterSelectedMessage";
 interface MessagesListProps {
   messages: Message[];
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
-  onScrollerRef?: (ref: HTMLElement | Window | null) => void | (() => void);
-  distanceFromBottomRef?: React.MutableRefObject<number>;
-  isUserScrolling?: boolean;
-  onAtBottomStateChange?: (atBottom: boolean) => void;
   hasMoreMessages?: boolean;
   onLoadMore?: () => void;
-  firstItemIndex?: number;
-  virtuosoRef?: React.RefObject<VirtuosoHandle | null>;
 }
 
 // Memoize ChatMessage at module level to prevent recreation on every render
 const MemoizedChatMessage = React.memo(ChatMessage);
 
-// Context type for Virtuoso
+// Context type for Footer component
 interface FooterContext {
   messages: Message[];
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
@@ -68,9 +61,9 @@ interface FooterContext {
 }
 
 
-// Footer component for Virtuoso - receives context via props (memoized to skip unnecessary renders)
+// Footer component - receives context via props (memoized to skip unnecessary renders)
 // IMPORTANT: This component must NOT use any hooks (useState, useEffect, etc.)
-// because Virtuoso may render it with context=undefined, causing conditional hook calls.
+// to avoid conditional hook calls when context is undefined.
 const FooterComponent = React.memo(function FooterComponent({ context }: { context?: FooterContext }) {
   if (!context) return null;
 
@@ -132,14 +125,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
     {
       messages,
       messagesEndRef,
-      onScrollerRef,
-      distanceFromBottomRef,
-      isUserScrolling,
-      onAtBottomStateChange,
       hasMoreMessages,
       onLoadMore,
-      firstItemIndex = 0,
-      virtuosoRef,
     },
     ref,
   ) {
@@ -191,11 +178,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       }
     }, [todoId, appId]);
 
-    // Virtualization only renders visible DOM elements, which creates issues for E2E tests:
-    // 1. Off-screen logs don't exist in the DOM and can't be queried by test selectors
-    // 2. Tests would need complex scrolling logic to bring elements into view before interaction
-    // 3. Race conditions and timing issues occur when waiting for virtualized elements to render after scrolling
-    const isTestMode = settings?.isTestMode;
+
     // Only fetch token count when not streaming
     const { result: tokenCountResult } = useCountTokens(
       !isStreaming ? selectedChatId : null,
@@ -240,60 +223,25 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       isAnyProviderSetup,
     ]);
 
-    // Memoized item renderer for virtualized list
-    const itemContent = useCallback(
-      (index: number, message: Message) => {
-        // When progressive loading is active, Virtuoso offsets indices by firstItemIndex.
-        // e.g. if firstItemIndex=16 and we show 6 messages, indices are 16–21.
-        // The last message index is firstItemIndex + messages.length - 1.
-        const isLastMessage = index === firstItemIndex + messages.length - 1;
-        const messageKey = message.id;
+    // Sentinel ref for IntersectionObserver (progressive loading trigger)
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
-        // Check if we should show auto-router card after this message
-        // Show it only after the last user message when:
-        // 1. Model is being selected (isSelectingModel = true), OR
-        // 2. Model was selected but assistant hasn't responded yet (no assistant message after this user message)
-        const isLastUserMessage = message.role === "user" && isLastMessage;
-        const hasAssistantResponseAfter =
-          isLastMessage &&
-          messages.length > index + 1 &&
-          messages[index + 1]?.role === "assistant";
-        const shouldShowAutoRouter =
-          isLastUserMessage &&
-          !hasAssistantResponseAfter &&
-          (isSelectingModel || autoRouterModelInfo.get(selectedChatId ?? 0));
-        const currentAutoRouterInfo = selectedChatId
-          ? autoRouterModelInfo.get(selectedChatId)
-          : undefined;
+    useEffect(() => {
+      const sentinel = sentinelRef.current;
+      if (!hasMoreMessages || !sentinel || !onLoadMore) return;
 
-        return (
-          <div key={messageKey}>
-            <div className="px-4">
-              <MemoizedChatMessage
-                message={message}
-                isLastMessage={isLastMessage}
-                user={user}
-              />
-            </div>
-            {shouldShowAutoRouter && (
-              <AutoRouterSelectedMessage
-                modelInfo={currentAutoRouterInfo}
-                isSelecting={isSelectingModel}
-              />
-            )}
-          </div>
-        );
-      },
-      [
-        messages.length,
-        firstItemIndex,
-        isSelectingModel,
-        autoRouterModelInfo,
-        selectedChatId,
-        messages,
-        user,
-      ],
-    );
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            onLoadMore();
+          }
+        },
+        { threshold: 0.1 },
+      );
+
+      observer.observe(sentinel);
+      return () => observer.disconnect();
+    }, [hasMoreMessages, onLoadMore]);
 
     // Stable callback for marking todo as completed
     const handleMarkTodoCompleted = useCallback(async () => {
@@ -342,8 +290,8 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       ],
     );
 
-    // Render empty state or setup banner as Virtuoso component
-    const EmptyPlaceholder = useCallback(() => {
+    // Render empty state or setup banner
+    const renderEmptyState = useCallback(() => {
       const setupBanner = renderSetupBanner ? renderSetupBanner() : null;
       if (setupBanner) {
         return <div className="h-full py-4">{setupBanner}</div>;
@@ -357,15 +305,25 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
       );
     }, [renderSetupBanner]);
 
-    // In test mode, render all messages without virtualization
-    // so E2E tests can query all messages in the DOM
-    if (isTestMode) {
-      return (
-        <div
-          className="absolute inset-0 p-4 overflow-y-auto"
-          ref={ref}
-          data-testid="messages-list"
-        >
+    return (
+      <div
+        className="absolute inset-0 overflow-y-auto flex flex-col-reverse"
+        ref={ref}
+        data-testid="messages-list"
+      >
+        {/* Single wrapper child — column-reverse on parent makes scroll start at bottom naturally */}
+        <div className="px-4 pt-4 pb-8">
+          {/* Sentinel for progressive loading of older messages */}
+          {hasMoreMessages && (
+            <div ref={sentinelRef} className="flex justify-center py-3">
+              <div className="text-xs text-muted-foreground animate-pulse">
+                Cargando mensajes anteriores…
+              </div>
+            </div>
+          )}
+
+          {messages.length === 0 && renderEmptyState()}
+
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
             const isLastUserMessage = message.role === "user" && isLastMessage;
@@ -385,7 +343,7 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
             return (
               <div key={message.id}>
                 <div className="px-4">
-                  <ChatMessage
+                  <MemoizedChatMessage
                     message={message}
                     isLastMessage={isLastMessage}
                     user={user}
@@ -400,60 +358,9 @@ export const MessagesList = forwardRef<HTMLDivElement, MessagesListProps>(
               </div>
             );
           })}
+
           <FooterComponent context={footerContext} />
         </div>
-      );
-    }
-
-    return (
-      <div
-        className="absolute inset-0 overflow-y-auto px-4 pt-4 pb-8"
-        ref={ref}
-        data-testid="messages-list"
-      >
-        <Virtuoso
-          ref={virtuosoRef}
-          data={messages}
-          firstItemIndex={firstItemIndex}
-          increaseViewportBy={{ top: 3000, bottom: 1000 }} // Increased to render more elements off-screen and prevent flashes on fast scroll
-          initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0} // Virtuoso only respecting this on first mount
-          itemContent={itemContent}
-          components={{
-            EmptyPlaceholder,
-            Footer: FooterComponent,
-            ...(hasMoreMessages ? {
-              Header: () => (
-                <div className="flex justify-center py-3">
-                  <div className="text-xs text-muted-foreground animate-pulse">Cargando mensajes anteriores…</div>
-                </div>
-              ),
-            } : {}),
-          }}
-          context={footerContext}
-          scrollerRef={onScrollerRef}
-          atBottomStateChange={onAtBottomStateChange}
-          atBottomThreshold={300}
-          startReached={() => {
-            if (hasMoreMessages && onLoadMore) {
-              onLoadMore();
-            }
-          }}
-          followOutput={(isAtBottom) => {
-            // Always scroll to bottom if we are already there to handle new messages being sent
-            if (isAtBottom) {
-              return "smooth";
-            }
-            // During streaming, auto-scroll smoothly but keep up
-            if (isStreaming) {
-              const distanceFromBottom = distanceFromBottomRef?.current ?? 0;
-              // If we are within 1500px, auto-scroll
-              if (distanceFromBottom <= 1500) {
-                return "smooth";
-              }
-            }
-            return false;
-          }}
-        />
       </div>
     );
   },

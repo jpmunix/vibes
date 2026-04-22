@@ -2,3 +2,4 @@
 - Añadir tooltips contextuales y formato de precios por millón en `ModelItemContent` mediante `Tooltip`.
 - Añadir soporte para variantes de modelos en OpenRouter y ajustes de interfaz asociados en `ModelPicker`.
 - Refactorizar `useStreamChat` para mejorar la estabilidad de referencias en closures (`lookupChatIdRef`), eliminar referencias obsoletas y optimizar el manejo de colas de mensajes pendientes en `onEnd`. Ajustar estilos de imagen y archivos adjuntos en `AttachmentsList` con nuevas opciones de interacción. Mejorar comportamiento controlado en el selector local de modelos, incluyendo reinicio de búsqueda al cerrar o seleccionar. Habilitar revertir selección múltiple en `GitPanel` y ajustar confirmaciones asociadas.
+- Refactorizar `MessagesList` y componentes relacionados: eliminar dependencia en `react-virtuoso`, optimizar carga progresiva con `IntersectionObserver`, simplificar gestión de scroll y mejorar compatibilidad con fast scrolling.

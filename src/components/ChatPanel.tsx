@@ -2,13 +2,11 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   chatMessagesByIdAtom,
-  chatStreamCountByIdAtom,
   isStreamingByIdAtom,
 } from "../atoms/chatAtoms";
 import { ipc } from "@/ipc/types";
 
 import { type ComponentProps } from "react";
-import { VirtuosoHandle } from "react-virtuoso";
 import { ChatHeader } from "./chat/ChatHeader";
 import { MessagesList } from "./chat/MessagesList";
 import { ChatInput } from "./chat/ChatInput";
@@ -44,7 +42,7 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   // Start with loading=true to avoid flashing "Aún no hay mensajes" while chatId resolves
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
-  const streamCountById = useAtomValue(chatStreamCountByIdAtom);
+
   const isStreamingById = useAtomValue(isStreamingByIdAtom);
   
   // Track streaming state in a ref so we can read it inside fetchChatMessages without causing re-renders
@@ -99,19 +97,16 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // For Virtuoso control
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+
 
   // Scroll-related state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
 
 
-  // Refs for scroll tracking (both test and Virtuoso modes)
+  // Refs for scroll tracking
   const distanceFromBottomRef = useRef<number>(0);
   const userScrollTimeoutRef = useRef<number | null>(null);
-  // Ref to store cleanup function for Virtuoso scroller event listener
-  const scrollerCleanupRef = useRef<(() => void) | null>(null);
   // Ref to track previous streaming state
   const prevIsStreamingRef = useRef(false);
   // Ref to track if we're programmatically scrolling (to avoid triggering user scroll detection)
@@ -119,24 +114,9 @@ export function ChatPanel({
   // RAF-based throttle for scroll events
   const scrollRafRef = useRef<number | null>(null);
 
-  // Keep track of test mode to conditionally use manual scroll math
-  const isTestModeRef = useRef(settings?.isTestMode);
-  useEffect(() => {
-    isTestModeRef.current = settings?.isTestMode;
-  }, [settings?.isTestMode]);
-
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     isProgrammaticScrollRef.current = true;
-    if (virtuosoRef.current && !settings?.isTestMode) {
-      // Use Virtuoso's preferred method if we are using it
-      virtuosoRef.current.scrollToIndex({
-        index: "LAST",
-        align: "end",
-        behavior: behavior === "instant" ? "auto" : behavior,
-      });
-    } else {
-      messagesEndRef.current?.scrollIntoView({ behavior });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior });
     // Reset the flag after a short delay
     setTimeout(() => {
       isProgrammaticScrollRef.current = false;
@@ -163,16 +143,13 @@ export function ChatPanel({
     scrollRafRef.current = requestAnimationFrame(() => {
       scrollRafRef.current = null;
 
-      const distanceFromBottom =
-        container.scrollHeight - (container.scrollTop + container.clientHeight);
+      // With column-reverse: scrollTop=0 at bottom, negative when scrolled up
+      const distanceFromBottom = Math.abs(container.scrollTop);
       distanceFromBottomRef.current = distanceFromBottom;
-
-      if (!isTestModeRef.current) return;
 
       const scrollAwayThreshold = 150;
 
       // Prevent showing the button if there isn't actually enough content to scroll.
-      // E.g. when app regains focus or resizes and scrollHeight is very close to clientHeight
       const isScrollable = container.scrollHeight - container.clientHeight > 10;
 
       if (isScrollable && distanceFromBottom > scrollAwayThreshold) {
@@ -193,43 +170,7 @@ export function ChatPanel({
     });
   }, []);
 
-  // Callback to receive scrollerRef from Virtuoso (production mode)
-  // scrollerRef is called with the element on mount and null on unmount
-  const handleScrollerRef = useCallback(
-    (ref: HTMLElement | Window | null) => {
-      // Always cleanup previous listener first
-      if (scrollerCleanupRef.current) {
-        scrollerCleanupRef.current();
-        scrollerCleanupRef.current = null;
-      }
 
-      // If ref is null or window, nothing to attach to
-      if (!ref || ref === window) return;
-
-      const element = ref as HTMLElement;
-      const handleScroll = () => handleScrollTracking(element);
-      element.addEventListener("scroll", handleScroll, { passive: true });
-
-      // Store cleanup function for later invocation
-      scrollerCleanupRef.current = () => {
-        element.removeEventListener("scroll", handleScroll);
-      };
-    },
-    [handleScrollTracking],
-  );
-
-  useEffect(() => {
-    const streamCount = chatId ? (streamCountById.get(chatId) ?? 0) : 0;
-    if (streamCount === 0) return;
-    // Double-RAF: wait for Virtuoso to measure and paint the new message items
-    // before scrolling, otherwise the smooth scroll fires when messagesEndRef
-    // is still at the old position (top of the last long AI message).
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollToBottom("smooth");
-      });
-    });
-  }, [chatId, chatId ? (streamCountById.get(chatId) ?? 0) : 0]);
 
   const fetchChatMessages = useCallback(async () => {
     if (!chatId) {
@@ -286,17 +227,10 @@ export function ChatPanel({
         return next;
       });
 
-      // Scroll to bottom after messages load, then reveal.
-      // Use double-RAF so Virtuoso measures & paints all items first.
-      // The skeleton overlay hides the instant jump from the user.
+      // With column-reverse, content naturally starts at the bottom.
+      // Just reveal once messages are set — no scroll needed.
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom("instant");
-          // Small delay to let layout settle, then reveal
-          setTimeout(() => {
-            setIsLoadingMessages(false);
-          }, 80);
-        });
+        setIsLoadingMessages(false);
       });
     } catch (err) {
       console.error("Error fetching chat messages:", err);
@@ -322,8 +256,8 @@ export function ChatPanel({
 
   // Progressive loading: start with the last INITIAL_VISIBLE messages,
   // load more in chunks when scrolling up. Prevents render storms on long chats.
-  const INITIAL_VISIBLE = 10;
-  const LOAD_MORE_COUNT = 10;
+  const INITIAL_VISIBLE = 8;
+  const LOAD_MORE_COUNT = 20;
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const prevMessageCountRef = useRef(0);
 
@@ -363,28 +297,17 @@ export function ChatPanel({
     const wasStreaming = prevIsStreamingRef.current;
     prevIsStreamingRef.current = isStreaming;
 
-    // When streaming transitions from true to false
-    if (wasStreaming && !isStreaming) {
-      // Double RAF ensures DOM is fully updated with footer content
+    // When streaming transitions from true to false, nudge to bottom
+    // so footer buttons become visible
+    if (wasStreaming && !isStreaming && distanceFromBottomRef.current < 300) {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom("smooth");
-          // Add a timeout to ensure scroll happens after layout might have changed
-          // due to footer appearing (buttons, etc.)
-          setTimeout(() => {
-            scrollToBottom("smooth");
-          }, 150);
-        });
+        scrollToBottom("smooth");
       });
     }
   }, [isStreaming]);
 
-  // Test mode only: Attach scroll listener to messagesContainerRef
-  // In production mode, handleScrollerRef attaches to Virtuoso's scroller
+  // Attach scroll listener to messagesContainerRef
   useEffect(() => {
-    const isTestMode = settings?.isTestMode;
-    if (!isTestMode) return; // Only for test mode
-
     const container = messagesContainerRef.current;
     if (!container) return;
 
@@ -394,27 +317,9 @@ export function ChatPanel({
     return () => {
       container.removeEventListener("scroll", handleScroll);
     };
-  }, [handleScrollTracking, settings?.isTestMode]);
+  }, [handleScrollTracking]);
 
-  // Test mode: Auto-scroll during streaming (280px threshold)
-  // Note: Virtuoso handles this via followOutput in production mode
-  useEffect(() => {
-    const isTestMode = settings?.isTestMode;
-    if (!isTestMode) return; // Only for test mode
-
-    if (
-      !isUserScrolling &&
-      isStreaming &&
-      messagesEndRef.current &&
-      distanceFromBottomRef.current <= 280
-    ) {
-      requestAnimationFrame(() => {
-        scrollToBottom("smooth");
-      });
-    }
-  }, [messages, isUserScrolling, isStreaming, settings?.isTestMode]);
-
-  // Cleanup timeout, RAF, and scroller listener on unmount
+  // Cleanup timeout and RAF on unmount
   useEffect(() => {
     return () => {
       if (userScrollTimeoutRef.current) {
@@ -422,10 +327,6 @@ export function ChatPanel({
       }
       if (scrollRafRef.current) {
         cancelAnimationFrame(scrollRafRef.current);
-      }
-      if (scrollerCleanupRef.current) {
-        scrollerCleanupRef.current();
-        scrollerCleanupRef.current = null;
       }
     };
   }, []);
@@ -435,11 +336,7 @@ export function ChatPanel({
     const handleScrollRequest = () => {
       setIsUserScrolling(false);
       setShowScrollButton(false);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom("instant");
-        });
-      });
+      scrollToBottom("instant");
     };
     window.addEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
     return () => window.removeEventListener("vibes:scroll-to-bottom" as any, handleScrollRequest);
@@ -473,25 +370,14 @@ export function ChatPanel({
             }}
           >
             <>
-              {/* Always mount MessagesList so Virtuoso can measure items
-                  while the skeleton is still visible on top */}
+              {/* Mount MessagesList behind the skeleton; it renders natively (no virtualization) */}
               <div className={isLoadingMessages ? "opacity-0" : "opacity-100 animate-in fade-in duration-150"}>
                 <MessagesList
                   messages={progressiveMessages}
                   messagesEndRef={messagesEndRef}
-                  virtuosoRef={virtuosoRef}
                   ref={messagesContainerRef}
-                  onScrollerRef={handleScrollerRef}
-                  distanceFromBottomRef={distanceFromBottomRef}
-                  isUserScrolling={isUserScrolling}
                   hasMoreMessages={hasMoreMessages}
                   onLoadMore={handleLoadMore}
-                  firstItemIndex={messages.length > visibleCount ? messages.length - visibleCount : 0}
-                  onAtBottomStateChange={(atBottom) => {
-                    if (!settings?.isTestMode) {
-                      setShowScrollButton(!atBottom);
-                    }
-                  }}
                 />
               </div>
               {/* Skeleton overlay — covers MessagesList while it renders */}
