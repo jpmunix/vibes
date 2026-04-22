@@ -54,7 +54,7 @@ function PulsingDots({ size = 6, gap = 5, colorClass }: { size?: number; gap?: n
  * Shows how long the current phase has been processing.
  * Resets when resetKey changes (e.g., label changes from "Pensando" to "Leyendo archivo...").
  */
-function ElapsedTimer({ delayMs = 3000, resetKey, showHints = false }: { delayMs?: number; resetKey?: string; showHints?: boolean }) {
+function ElapsedTimer({ delayMs = 3000, resetKey }: { delayMs?: number; resetKey?: string }) {
   const [elapsed, setElapsed] = useState(0);
   const [visible, setVisible] = useState(false);
   const startRef = useRef(Date.now());
@@ -81,40 +81,15 @@ function ElapsedTimer({ delayMs = 3000, resetKey, showHints = false }: { delayMs
 
   if (!visible) return null;
 
-  // Contextual hint for long waits
-  let hint: string | null = null;
-  if (showHints) {
-    if (elapsed >= 60) {
-      hint = "Respuestas complejas pueden tardar más";
-    } else if (elapsed >= 25) {
-      hint = "El modelo sigue procesando...";
-    } else if (elapsed >= 10) {
-      hint = "Esperando respuesta del modelo...";
-    }
-  }
-
   return (
-    <>
-      <motion.span
-        className="text-xs text-muted-foreground/50 tabular-nums"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-      >
-        {formatElapsed(elapsed)}
-      </motion.span>
-      {hint && (
-        <motion.span
-          key={hint}
-          className="text-xs text-muted-foreground/40 italic"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {hint}
-        </motion.span>
-      )}
-    </>
+    <motion.span
+      className="text-xs text-muted-foreground/50 tabular-nums"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      {formatElapsed(elapsed)}
+    </motion.span>
   );
 }
 
@@ -142,7 +117,7 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
       setDisplayedExcerpt((prev) =>
         prev !== latestExcerptRef.current ? latestExcerptRef.current : prev
       );
-    }, 1500); // 1.5 seconds per update
+    }, 1000); // 1 second per update
 
     return () => clearInterval(interval);
   }, []);
@@ -156,13 +131,13 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
 
   if (variant === "initial") {
     return (
-      <div className="flex items-center gap-2 py-1.5">
+      <div className="flex items-center gap-2 py-1.5 overflow-hidden min-w-0">
         <PulsingDots size={6} gap={4} colorClass={dotColorClass} />
         <AnimatePresence mode="wait">
           {label && (
             <motion.span
               key={label}
-              className={`text-xs font-medium ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
+              className={`text-xs font-medium shrink-0 ${labelColorClass || "text-muted-foreground"} whitespace-nowrap`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -172,7 +147,9 @@ export const StreamingLoadingAnimation = React.memo(function StreamingLoadingAni
             </motion.span>
           )}
         </AnimatePresence>
-        <ElapsedTimer delayMs={3000} resetKey={label} showHints />
+        <span className="shrink-0">
+          <ElapsedTimer delayMs={3000} resetKey={label} />
+        </span>
         <AnimatePresence mode="popLayout">
           {displayedExcerpt && (
             <motion.span

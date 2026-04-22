@@ -1,7 +1,5 @@
 import { type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
-import { Button } from "@/components/ui/button";
-import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 import { useState, useRef } from "react";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 
@@ -12,8 +10,10 @@ import { queryKeys } from "@/lib/queryKeys";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelInfoDialog } from "@/components/ModelInfoDialog";
+import { ModelVariantPicker } from "@/components/ModelVariantPicker";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
+import { getVariantLabel } from "@/ipc/shared/model_variants";
 
 export function ModelPicker() {
   const { settings, updateSettings } = useSettings();
@@ -31,7 +31,6 @@ export function ModelPicker() {
     queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
   };
 
-  const [open, setOpen] = useState(false);
   const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
 
   const infoModelRef = useRef<LanguageModel | null>(null);
@@ -72,7 +71,11 @@ export function ModelPicker() {
     return null;
   }
   const selectedModel = settings?.selectedModel;
+  const selectedVariant = settings?.selectedModelVariant ?? "";
   const modelDisplayName = getModelDisplayName();
+
+  // Variant display label for the trigger
+  const variantLabel = getVariantLabel(selectedVariant);
 
   const allAvailableModels: Array<{ provider: string; model: LanguageModel }> = [];
 
@@ -137,9 +140,11 @@ export function ModelPicker() {
 
   return (
     <>
-      <UnifiedSelector
-        value={`${selectedModel.provider}:${selectedModel.name}`}
-        onChange={(val) => {
+      <ModelVariantPicker
+        models={sortedModels}
+        selectedValue={`${selectedModel.provider}:${selectedModel.name}`}
+        selectedVariant={selectedVariant}
+        onModelSelect={(val) => {
           const sepIdx = val.indexOf(":");
           const prov = val.slice(0, sepIdx);
           const apiName = val.slice(sepIdx + 1);
@@ -156,16 +161,22 @@ export function ModelPicker() {
             });
           }
         }}
-        options={sortedModels.map(({ provider, model }) => ({
-          value: `${provider}:${model.apiName}`,
-          label: model.displayName || model.apiName,
-        }))}
-        renderItem={(opt, isSelected) => {
-          const found = sortedModels.find(
-            (sm) => `${sm.provider}:${sm.model.apiName}` === opt.value
-          );
-          if (!found) return null;
-          const { provider, model } = found;
+        onVariantChange={(variant) => {
+          updateSettings({ selectedModelVariant: variant });
+        }}
+        triggerContent={
+          <div className="flex items-center gap-0.5 min-w-0 flex-1">
+            <span className="truncate typo-select text-left">
+              {modelDisplayName}
+              {variantLabel && (
+                <span className="opacity-60"> · {variantLabel}</span>
+              )}
+            </span>
+            {selectedModel.provider === "auto-router" &&
+              selectedModel.name === "auto" && <AutoRouterBadge />}
+          </div>
+        }
+        renderModelItem={({ provider, model }, isSelected) => {
           const isEnabled = provider === "openrouter" && 
              (settings.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS).includes(model.apiName);
           const isSelectedReal = selectedModel.provider === provider && selectedModel.name === model.apiName;
@@ -181,21 +192,6 @@ export function ModelPicker() {
             />
           );
         }}
-        triggerVariant="pill"
-        triggerSize="sm"
-        triggerClassName="!bg-primary/20 !text-primary !border-primary/20 hover:!bg-primary/30"
-        customTriggerLabel={
-          <div className="flex items-center gap-0.5 min-w-0 flex-1">
-            <span className="truncate typo-select text-left">{modelDisplayName}</span>
-            {selectedModel.provider === "auto-router" &&
-              selectedModel.name === "auto" && <AutoRouterBadge />}
-          </div>
-        }
-        popoverWidth="w-[320px]"
-        popoverMaxHeight="max-h-[320px]"
-        side="top"
-        align="start"
-        searchable
         searchPlaceholder="Buscar modelos..."
         onSearchChange={setSearch}
         emptyMessage={

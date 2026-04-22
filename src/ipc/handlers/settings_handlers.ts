@@ -97,12 +97,14 @@ export function registerSettingsHandlers() {
     writeSettings(settings);
     const updated = readSettings();
 
-    // Hot-update OpenCode server config if model, reasoning effort, or verbosity changed
-    if (settings.selectedModel || settings.standardModeModel || settings.reasoningEffort || settings.textVerbosity) {
+    // Hot-update OpenCode server config if model, variant, reasoning effort, or verbosity changed
+    if (settings.selectedModel || settings.selectedModelVariant !== undefined || settings.standardModeModel || settings.reasoningEffort || settings.textVerbosity) {
       try {
         const { updateOpenCodeConfig } = await import("./opencode_adapter");
         await updateOpenCodeConfig({
-          selectedModel: settings.selectedModel,
+          // If only variant changed (no model change), pass current model so the config gets rebuilt
+          selectedModel: settings.selectedModel ?? (settings.selectedModelVariant !== undefined ? readSettings().selectedModel : undefined),
+          selectedModelVariant: settings.selectedModelVariant,
           standardModeModel: settings.standardModeModel,
           reasoningEffort: settings.reasoningEffort,
           textVerbosity: settings.textVerbosity,

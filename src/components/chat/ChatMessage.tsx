@@ -332,10 +332,10 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
             .trim();
 
           if (cleanText) {
-            // Get roughly the last 5-8 words, or up to ~50 characters
+            // Get roughly the last ~20 words for a more generous peek
             const words = cleanText.split(" ");
-            const excerpt = words.slice(-8).join(" ");
-            contentExcerpt = words.length > 8 ? `...${excerpt}` : excerpt;
+            const excerpt = words.slice(-20).join(" ");
+            contentExcerpt = words.length > 20 ? `...${excerpt}` : excerpt;
           } else {
             contentExcerpt = "...";
           }

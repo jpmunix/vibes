@@ -335,6 +335,9 @@ export const UserSettingsSchema = z
     reasoningEffort: z.enum(["low", "medium", "high"]).optional(),
     textVerbosity: z.enum(["low", "medium", "high"]).optional(),
     enabledOpenRouterModels: z.array(z.string()).optional(),
+    // OpenRouter model variant suffix (e.g. ":nitro", ":exacto", ":extended")
+    // Applied globally; ignored for free models at runtime.
+    selectedModelVariant: z.string().optional(),
     enableProLazyEditsMode: z.boolean().optional(),
     proLazyEditsMode: z.enum(["off", "v1", "v2"]).optional(),
     enableTurboEditsV2: z.boolean().optional(),

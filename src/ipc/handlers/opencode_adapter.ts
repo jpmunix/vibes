@@ -29,6 +29,7 @@ import * as path from "node:path";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
+import { composeModelWithVariant } from "../shared/model_variants";
 import { McpServer } from "../types/mcp";
 
 const logger = log.scope("opencode_adapter");
@@ -132,6 +133,7 @@ export function destroyOpenCodeSession(chatId: number): void {
  */
 export async function updateOpenCodeConfig(changes: {
     selectedModel?: { provider?: string; name: string };
+    selectedModelVariant?: string;
     standardModeModel?: string;
     reasoningEffort?: string;
     textVerbosity?: string;
@@ -143,7 +145,11 @@ export async function updateOpenCodeConfig(changes: {
 
         if (changes.selectedModel) {
             const providerID = mapProviderForOpenCode(changes.selectedModel);
-            body.model = `${providerID}/${changes.selectedModel.name}`;
+            // Apply variant suffix if set (variant is ignored for free models)
+            const settings = readSettings();
+            const variant = changes.selectedModelVariant ?? settings.selectedModelVariant ?? "";
+            const modelID = composeModelWithVariant(changes.selectedModel.name, variant);
+            body.model = `${providerID}/${modelID}`;
         }
         if (changes.standardModeModel) {
             body.small_model = `openrouter/${changes.standardModeModel}`;
@@ -538,7 +544,8 @@ async function getOpenCodeClient(appPath: string) {
 
     // Determine provider/model mapping for opencode
     const providerID = mapProviderForOpenCode(model);
-    const modelID = model.name;
+    // Apply variant suffix (ignored for free models)
+    const modelID = composeModelWithVariant(model.name, settings.selectedModelVariant ?? "");
 
     try {
         // The SDK's createOpencodeServer() doesn't accept `cwd`, so it inherits
