@@ -1,1 +1,2 @@
 - fixes para poder usar los modelos gratis de openrouter
+- Añadir tooltips contextuales y formato de precios por millón en `ModelItemContent` mediante `Tooltip`.
