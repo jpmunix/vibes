@@ -71,6 +71,8 @@ export function ModelVariantPicker({
     emptyMessage = "Sin resultados",
 }: ModelVariantPickerProps) {
     const [open, setOpen] = useState(false);
+    // Controlled search value — must be managed here so we can reset it on close/select
+    const [localSearch, setLocalSearch] = useState("");
     // The model that is currently hovered/focused in the left panel
     const [focusedValue, setFocusedValue] = useState<string | null>(null);
 
@@ -88,9 +90,11 @@ export function ModelVariantPicker({
     const handleModelSelect = useCallback(
         (value: string) => {
             onModelSelect(value);
+            setLocalSearch("");
+            onSearchChange?.("");
             setOpen(false);
         },
-        [onModelSelect],
+        [onModelSelect, onSearchChange],
     );
 
     const handleVariantSelect = useCallback(
@@ -107,6 +111,7 @@ export function ModelVariantPicker({
                 setOpen(v);
                 if (!v) {
                     setFocusedValue(null);
+                    setLocalSearch("");
                     onSearchChange?.("");
                 }
             }}
@@ -144,7 +149,11 @@ export function ModelVariantPicker({
                         >
                             <CommandInput
                                 placeholder={searchPlaceholder}
-                                onValueChange={onSearchChange}
+                                value={localSearch}
+                                onValueChange={(v) => {
+                                    setLocalSearch(v);
+                                    onSearchChange?.(v);
+                                }}
                             />
                             <CommandList className="max-h-none flex-1 overflow-y-auto">
                                 <CommandEmpty className="py-4 text-center typo-caption">

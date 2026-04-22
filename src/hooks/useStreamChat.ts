@@ -81,10 +81,6 @@ export function useStreamChat({
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
-  const pendingMessageQueueById = useAtomValue(pendingMessageQueueByIdAtom);
-  // Stable ref so onEnd can read the current queue without stale closure
-  const pendingQueueRef = useRef(pendingMessageQueueById);
-  pendingQueueRef.current = pendingMessageQueueById;
 
   const posthog = usePostHog();
   const queryClient = useQueryClient();
@@ -96,6 +92,12 @@ export function useStreamChat({
   // with validateSearch, causing Map key mismatches with the atom's numeric keys.
   const selectedChatId = useAtomValue(selectedChatIdAtom);
   const lookupChatId = selectedChatId ?? chatId;
+
+  // Stable ref so onEnd/onError closures always read the *current* selected chat,
+  // not the one captured when the useCallback was created. Without this, navigating
+  // to a different chat while streaming causes isViewingDifferentChat to be stale.
+  const lookupChatIdRef = useRef(lookupChatId);
+  lookupChatIdRef.current = lookupChatId;
 
   const { invalidateTokenCount } = useCountTokens(chatId ?? null, "");
 
@@ -339,8 +341,9 @@ export function useStreamChat({
 
               const notificationsEnabled =
                 settings?.enableChatCompletionNotifications === true;
+              const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
-                lookupChatId !== undefined && lookupChatId !== null && lookupChatId !== chatId;
+                currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
               if (
                 notificationsEnabled &&
                 Notification.permission === "granted" &&
@@ -418,54 +421,51 @@ export function useStreamChat({
               });
 
               // Drain the pending queue using OpenCode's native `noReply: true` mechanism.
-              // Only run if there are actually queued messages — reads via ref to avoid
-              // stale closure and to not add the queue to useCallback deps.
-              const currentQueue = pendingQueueRef.current.get(chatId);
-              if (currentQueue && currentQueue.length > 0) {
-                setPendingMessageQueue((prev) => {
-                  const queue = prev.get(chatId);
-                  if (!queue || queue.length === 0) return prev;
-                  const nextMap = new Map(prev);
-                  nextMap.set(chatId, []); // Clear queue
+              // Always enter the atom updater to check the authoritative current state —
+              // the ref may be stale if React hasn't re-rendered since ChatInput enqueued.
+              setPendingMessageQueue((prev) => {
+                const queue = prev.get(chatId);
+                if (!queue || queue.length === 0) return prev;
+                const nextMap = new Map(prev);
+                nextMap.set(chatId, []); // Clear queue
 
-                  setTimeout(async () => {
-                    const priorMessages = queue.slice(0, -1);
-                    const lastMsg = queue[queue.length - 1];
+                setTimeout(async () => {
+                  const priorMessages = queue.slice(0, -1);
+                  const lastMsg = queue[queue.length - 1];
 
-                    // Convert FileAttachment[] → ChatAttachment[] (base64 data URLs) for IPC
-                    const toAttachment = (a: NonNullable<import("@/atoms/chatAtoms").PendingQueuedMessage["attachments"]>[number]) =>
-                      new Promise<import("@/ipc/types").ChatAttachment>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () =>
-                          resolve({ name: a.file.name, type: a.file.type, data: reader.result as string, attachmentType: a.type });
-                        reader.onerror = () => reject(reader.error);
-                        reader.readAsDataURL(a.file);
-                      });
-
-                    const convertedPrior = await Promise.all(
-                      priorMessages.map(async (m) => ({
-                        prompt: m.prompt,
-                        attachments: m.attachments?.length
-                          ? await Promise.all(m.attachments.map(toAttachment))
-                          : undefined,
-                      })),
-                    );
-
-                    const lastAttachments = lastMsg.attachments?.length
-                      ? await Promise.all(lastMsg.attachments.map(toAttachment))
-                      : undefined;
-
-                    streamMessageRef.current?.({
-                      prompt: lastMsg.prompt,
-                      chatId,
-                      attachments: lastAttachments,
-                      priorMessages: convertedPrior.length > 0 ? convertedPrior : undefined,
+                  // Convert FileAttachment[] → ChatAttachment[] (base64 data URLs) for IPC
+                  const toAttachment = (a: NonNullable<import("@/atoms/chatAtoms").PendingQueuedMessage["attachments"]>[number]) =>
+                    new Promise<import("@/ipc/types").ChatAttachment>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () =>
+                        resolve({ name: a.file.name, type: a.file.type, data: reader.result as string, attachmentType: a.type });
+                      reader.onerror = () => reject(reader.error);
+                      reader.readAsDataURL(a.file);
                     });
-                  }, 0);
 
-                  return nextMap;
-                });
-              }
+                  const convertedPrior = await Promise.all(
+                    priorMessages.map(async (m) => ({
+                      prompt: m.prompt,
+                      attachments: m.attachments?.length
+                        ? await Promise.all(m.attachments.map(toAttachment))
+                        : undefined,
+                    })),
+                  );
+
+                  const lastAttachments = lastMsg.attachments?.length
+                    ? await Promise.all(lastMsg.attachments.map(toAttachment))
+                    : undefined;
+
+                  streamMessageRef.current?.({
+                    prompt: lastMsg.prompt,
+                    chatId,
+                    attachments: lastAttachments,
+                    priorMessages: convertedPrior.length > 0 ? convertedPrior : undefined,
+                  });
+                }, 0);
+
+                return nextMap;
+              });
 
               onSettled?.();
             },
@@ -483,8 +483,9 @@ export function useStreamChat({
               console.error(`[CHAT] Stream error for ${chatId}:`, errorMessage);
               updateMapAtom(setErrorById, chatId, errorMessage);
 
+              const currentLookup = lookupChatIdRef.current;
               const isViewingDifferentChat =
-                lookupChatId !== undefined && lookupChatId !== null && lookupChatId !== chatId;
+                currentLookup !== undefined && currentLookup !== null && currentLookup !== chatId;
               if (!isViewingDifferentChat) {
                 setRecentStreamChatIds((prev) => {
                   if (!prev.has(chatId)) return prev;

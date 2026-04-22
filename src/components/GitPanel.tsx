@@ -725,7 +725,7 @@ function FileContentViewer({
 
 
 export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: GitPanelProps) {
-    const [discardTarget, setDiscardTarget] = useState<string | null>(null);
+    const [discardTarget, setDiscardTarget] = useState<string[] | null>(null);
     const appId = useAtomValue(selectedAppIdAtom);
     const { app, refreshApp } = useLoadApp(appId);
     const { settings } = useSettings();
@@ -917,8 +917,13 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
     }, [handleCommit, push]);
 
     const handleDiscard = useCallback((filepath: string) => {
-        setDiscardTarget(filepath);
+        setDiscardTarget([filepath]);
     }, []);
+
+    const handleDiscardSelection = useCallback(() => {
+        if (checkedFiles.size === 0) return;
+        setDiscardTarget(Array.from(checkedFiles));
+    }, [checkedFiles]);
 
     return (
         <div className="h-full flex flex-col bg-background relative" style={{ fontFamily: "var(--font-sans, inherit)", fontSize: "inherit" }}>
@@ -1129,6 +1134,21 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                                                     {checkedFiles.size}/{uncommittedFiles.length} archivo{uncommittedFiles.length !== 1 ? "s" : ""}
                                                 </span>
                                                 <div className="ml-auto flex items-center gap-1">
+                                                    {/* Revert selection button */}
+                                                    {checkedFiles.size > 0 && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    onClick={handleDiscardSelection}
+                                                                    disabled={isDiscarding}
+                                                                    className="p-1.5 transition-colors cursor-pointer text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded"
+                                                                >
+                                                                    <Undo2 size={14} />
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Revertir selección ({checkedFiles.size})</TooltipContent>
+                                                        </Tooltip>
+                                                    )}
                                                     {/* Flat / Tree toggle */}
                                                     <div className="flex items-center bg-muted rounded overflow-hidden ml-0.5">
                                                         {viewType === "flat" ? (
@@ -1308,12 +1328,18 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
             <ConfirmationDialog
                 isOpen={!!discardTarget}
                 title="Revertir cambios"
-                message={`¿Estás seguro de querer revertir los cambios en ${discardTarget}? Esta acción es irreversible.`}
-                confirmText="Revertir"
+                message={
+                    discardTarget?.length === 1
+                        ? `¿Estás seguro de querer revertir los cambios en ${discardTarget[0]}? Esta acción es irreversible.`
+                        : `¿Estás seguro de querer revertir los cambios en ${discardTarget?.length} archivos? Esta acción es irreversible.`
+                }
+                confirmText={discardTarget?.length === 1 ? "Revertir" : `Revertir ${discardTarget?.length} archivos`}
                 cancelText="Cancelar"
                 onConfirm={async () => {
                     if (discardTarget) {
-                        await discardFileChanges(discardTarget);
+                        for (const filepath of discardTarget) {
+                            await discardFileChanges(filepath);
+                        }
                         setDiscardTarget(null);
                     }
                 }}

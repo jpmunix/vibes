@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { VanillaMarkdownParser } from "./VibesMarkdownParser";
-import { Image as ImageIcon, X, Wrench } from "@/components/ui/icons";
+import { X, Wrench } from "@/components/ui/icons";
 import {
     Dialog,
     DialogContent,
@@ -155,7 +155,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                 )
             )}
 
-            {/* Render image thumbnails if we have images from aiMessagesJson */}
+            {/* Render image thumbnails — styled like quote cards */}
             {images.length > 0 && (
                 <div className="not-prose flex flex-wrap gap-2 mt-2">
                     {images.map((img, index) => {
@@ -164,20 +164,17 @@ export const UserMessageContent = React.memo(function UserMessageContent({
                             <button
                                 key={index}
                                 onClick={() => handleImageClick(dataUrl)}
-                                style={{ width: 96, height: 96, flexShrink: 0 }}
-                                className="relative group rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
-                                title="Click para ampliar"
+                                className="relative group rounded-lg overflow-hidden border border-primary/20 bg-primary/[0.04] hover:border-primary/40 transition-[border-color,box-shadow] duration-200 hover:shadow-md cursor-pointer"
+                                style={{ width: 120, height: 120, flexShrink: 0 }}
                             >
                                 <img
                                     src={dataUrl}
                                     alt={`Captura ${index + 1}`}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                    className="block w-full h-full object-cover rounded-lg"
                                 />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200 flex items-center justify-center">
-                                    <ImageIcon
-                                        size={16}
-                                        className="text-white opacity-0 group-hover:opacity-80 transition-opacity duration-200 drop-shadow-lg"
-                                    />
+                                {/* Title overlay on hover */}
+                                <div className="absolute inset-x-0 bottom-0 flex items-center px-2 py-1 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <span className="text-[9px] font-medium text-white/90 drop-shadow-sm">Captura {index + 1}</span>
                                 </div>
                             </button>
                         );
@@ -189,8 +186,7 @@ export const UserMessageContent = React.memo(function UserMessageContent({
           show a subtle indicator that there were attachments */}
             {hasAttachmentText && images.length === 0 && (
                 <div className="flex items-center gap-1.5 mt-2 typo-micro text-muted-foreground/60">
-                    <ImageIcon size={12} />
-                    <span>Adjuntos enviados</span>
+                    <span>📎 Adjuntos enviados</span>
                 </div>
             )}
 
