@@ -66,6 +66,9 @@ const ignore = (file: string): boolean => {
 };
 
 const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
+// FusesPlugin cannot flip fuses on a foreign-platform Electron binary.
+// Set CROSS_COMPILE=true when building for a different OS (e.g. darwin from linux).
+const isCrossCompile = process.env.CROSS_COMPILE === "true";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -143,16 +146,22 @@ const config: ForgeConfig = {
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
-    new FusesPlugin({
-      version: FuseVersion.V1,
-      [FuseV1Options.RunAsNode]: false,
-      [FuseV1Options.EnableCookieEncryption]: true,
-      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
-      [FuseV1Options.EnableNodeCliInspectArguments]: isEndToEndTestBuild,
-      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    }),
+    // at package time, before code signing the application.
+    // Skipped during cross-compilation because flipFuses cannot read
+    // a foreign-platform Electron binary.
+    ...(isCrossCompile
+      ? []
+      : [
+          new FusesPlugin({
+            version: FuseVersion.V1,
+            [FuseV1Options.RunAsNode]: false,
+            [FuseV1Options.EnableCookieEncryption]: true,
+            [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+            [FuseV1Options.EnableNodeCliInspectArguments]: isEndToEndTestBuild,
+            [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+            [FuseV1Options.OnlyLoadAppFromAsar]: true,
+          }),
+        ]),
   ],
 };
 

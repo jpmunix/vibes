@@ -102,6 +102,7 @@ jobs:
       - name: Build Mac ARM64 app
         run: npx electron-forge make --platform darwin --arch arm64
         env:
+          CROSS_COMPILE: "true"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: "--max-old-space-size=6144"
 

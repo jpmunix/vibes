@@ -82,7 +82,7 @@ fi
 # ─── 4. Build ────────────────────────────────────────────────────────
 echo ""
 echo "🔨 Building macOS ARM64 app..."
-NODE_OPTIONS="--max-old-space-size=6144" npx electron-forge make --platform darwin --arch arm64
+CROSS_COMPILE=true NODE_OPTIONS="--max-old-space-size=6144" npx electron-forge make --platform darwin --arch arm64
 
 # ─── 5. Verify ───────────────────────────────────────────────────────
 echo ""
