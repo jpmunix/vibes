@@ -155,9 +155,59 @@ const customLink = ({
   />
 );
 
+// Custom blockquote that applies purple styling for agent answer quotes
+// Detected by a zero-width space (\u200B) prefix injected by the question reply handler
+const customBlockquote = ({ children, ...props }: any) => {
+  const textContent = extractTextFromChildren(children);
+  const isAnswerQuote = textContent.trimStart().startsWith("\u200B");
+
+  if (isAnswerQuote) {
+    const strippedChildren = stripZwsMarker(children);
+    return (
+      <blockquote
+        {...props}
+        style={{
+          borderLeft: "3px solid oklch(0.6 0.18 280)",
+          padding: "6px 12px",
+          margin: "10px 0",
+          background: "oklch(0.55 0.18 280 / 0.06)",
+          borderRadius: "0 6px 6px 0",
+          color: "oklch(0.75 0.12 280)",
+          fontStyle: "normal",
+          fontSize: "13px",
+        }}
+      >
+        {strippedChildren}
+      </blockquote>
+    );
+  }
+
+  return <blockquote {...props}>{children}</blockquote>;
+};
+
+// Extract text from React children for content detection
+function extractTextFromChildren(children: any): string {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) return children.map(extractTextFromChildren).join("");
+  if (children?.props?.children) return extractTextFromChildren(children.props.children);
+  return "";
+}
+
+// Strip the invisible zero-width space marker from React children tree
+function stripZwsMarker(children: any): any {
+  if (typeof children === "string") return children.replace(/\u200B/g, "");
+  if (Array.isArray(children)) return children.map(stripZwsMarker);
+  if (children?.props?.children) {
+    const { children: innerChildren, ...rest } = children.props;
+    return { ...children, props: { ...rest, children: stripZwsMarker(innerChildren) } };
+  }
+  return children;
+}
+
 export const MARKDOWN_COMPONENTS = {
   a: customLink,
   code: CodeHighlight,
+  blockquote: customBlockquote,
 };
 
 export const VanillaMarkdownParser = React.memo(function VanillaMarkdownParser({ content }: { content: string }) {

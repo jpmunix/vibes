@@ -45,6 +45,10 @@ let serverUrl: string | null = null;
 // Track the last project directory used — needed for question reply routing
 let lastProjectDir: string | null = null;
 
+// Active stream text injector — allows the question reply handler to inject
+// the user's answer directly into the live chat stream content.
+let activeTextInjector: ((text: string) => void) | null = null;
+
 // Map chatId → opencode sessionId
 const chatSessionMap = new Map<number, string>();
 
@@ -1488,6 +1492,12 @@ async function processEvents(
         sendChunk(event, chatId, chatMessages, content);
     };
 
+    // Expose text injection to the question reply handler
+    activeTextInjector = (text: string) => {
+        callbacks.onTextDelta(text);
+        sendUpdate();
+    };
+
     let eventCount = 0;
     let isCurrentlyReasoning = false;
     let thinkNeedsReopen = false; // True when </think> was emitted for a tool but reasoning continues
@@ -1894,6 +1904,9 @@ async function processEvents(
         callbacks.onTextDelta(`\n</think>\n\n`);
         logger.info(`[OC:Event] 🧠 CLOSED </think> — stream ended`);
     }
+
+    // Clear the text injector when the stream ends
+    activeTextInjector = null;
 }
 
 /**
@@ -2333,6 +2346,13 @@ export function registerQuestionHandler() {
             }
 
             logger.info(`[OC:AskUser] ✅ Reply sent successfully for ${requestId}. Server response: ${text}`);
+
+            // Inject the user's answer as a blockquote into the live stream
+            // Uses a zero-width space (\u200B) as invisible marker for purple styling
+            if (activeTextInjector) {
+                const answerDisplay = answerLabels.join(", ");
+                activeTextInjector(`\n\n> \u200B${answerDisplay}\n\n`);
+            }
         } catch (e: any) {
             logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
             throw e;
