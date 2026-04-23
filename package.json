@@ -1,6 +1,6 @@
 {
   "name": "minube-vibes",
-  "version": "7.3.7",
+  "version": "7.3.8",
   "description": "Generador de aplicaciones AI de minube",
   "keywords": [],
   "license": "MIT",
@@ -19,7 +19,8 @@
     "make:linux": "npm run clean && electron-forge make --platform linux --arch x64",
     "make:mac": "npm run clean && electron-forge make --platform darwin --arch x64",
     "make:mac-arm64": "npm run clean && electron-forge make --platform darwin --arch arm64",
-    "install:mac-deps": "echo 'Deprecated: Dependencies are now installed automatically during build'",
+    "build:mac": "bash scripts/build-mac.sh",
+    "release:mac": "bash scripts/build-mac.sh --upload",
     "clean": "rimraf out scaffold/node_modules",
 
     "dev:engine": "cross-env VIBES_ENGINE_URL=http://localhost:8080/v1 npm start",
@@ -27,7 +28,6 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "npm run clean && electron-forge publish",
-    "verify-release": "node scripts/verify-release-assets.js",
     "ts": "npm run ts:main && npm run ts:workers",
     "ts:main": "npx tsgo -p tsconfig.app.json --noEmit --incremental",
     "ts:workers": "npm run ts:worker:tsc && npm run ts:worker:context",
@@ -192,7 +192,6 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "drizzle-kit": "^0.30.6",
     "electron": "40.4.1",
-    "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
     "happy-dom": "^17.4.4",

@@ -1,4 +1,3 @@
-import { windowsSign } from "./windowsSign";
 import type { ForgeConfig } from "@electron-forge/shared-types";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { VitePlugin } from "@electron-forge/plugin-vite";
@@ -37,8 +36,6 @@ const ignore = (file: string): boolean => {
     return false;
   }
 
-
-
   // Ignore date-fns/fp (1500+ unused files, functional programming API)
   // Prevents ENOTEMPTY race condition in electron-packager
   if (file.includes("/node_modules/date-fns/fp")) {
@@ -51,15 +48,13 @@ const ignore = (file: string): boolean => {
     "/node_modules",
     "/.vite",
     "/worker",
-    "/assets", // Asegúrate de incluir tus iconos/recursos aquí
+    "/assets",
     "/package.json",
   ];
 
   if (allowedPaths.some((path) => file.startsWith(path))) {
-    // Aquí puedes añadir excepciones si quieres borrar archivos pesados de node_modules
-    // Por ejemplo: no queremos archivos .cpp o .h que solo sirven para compilar
+    // No queremos archivos .cpp o .h que solo sirven para compilar
     if (file.endsWith(".cpp") || file.endsWith(".h") || file.endsWith(".ts")) {
-      // Pero ojo, no borres archivos .js o .node (los binarios)
       if (!file.includes("node_modules")) return true;
     }
 
@@ -71,11 +66,9 @@ const ignore = (file: string): boolean => {
 };
 
 const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
-const isGitHubActions = process.env.GITHUB_ACTIONS === "true";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    windowsSign: isGitHubActions ? windowsSign : undefined,
     protocols: [
       {
         name: "Vibes",
@@ -83,37 +76,19 @@ const config: ForgeConfig = {
       },
     ],
     icon: "./assets/icon/logo",
-
-    osxSign: undefined,
-    osxNotarize: undefined,
     asar: {
-      // Incluye todos los paquetes @img/* para soporte multiplataforma (Linux y macOS)
-      // styled-jsx se desempaqueta para evitar problemas de Object.defineProperty en macOS ARM64
+      // styled-jsx y geist se desempaquetan para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
-        "{**/node_modules/better-sqlite3/**/*,**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
+        "{**/node_modules/styled-jsx/**/*,**/node_modules/geist/**/*}",
     },
     ignore,
     afterPack: require("./scripts/afterPack").default,
     extraResource: [
-      //   "node_modules/better-sqlite3",
       "node_modules/dugite/git",
       "node_modules/@vscode",
-      //   "node_modules/@huggingface",
-      //   "node_modules/sharp",
-      //   "node_modules/color",
-      //   "node_modules/color-string",
-      //   "node_modules/color-name",
-      //   "node_modules/color-convert",
-      //   "node_modules/simple-swizzle",
-      //   "node_modules/onnxruntime-web",
-      //   "node_modules/onnxruntime-node"
     ],
-    // ignore: [/node_modules\/(?!(better-sqlite3|bindings|file-uri-to-path)\/)/],
   },
-  rebuildConfig: {
-    extraModules: ["better-sqlite3"],
-    force: false,
-  },
+  rebuildConfig: {},
   makers: [
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
@@ -122,9 +97,6 @@ const config: ForgeConfig = {
         icon: "./assets/icon/logo.png",
       },
     }),
-    // new MakerAppImage({
-    //   icon: "./assets/icon/logo.png",
-    // }),
   ],
   publishers: [
     {
@@ -162,8 +134,6 @@ const config: ForgeConfig = {
           config: "vite.worker.config.mts",
           target: "main",
         },
-
-
       ],
       renderer: [
         {
