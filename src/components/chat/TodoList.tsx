@@ -1,41 +1,103 @@
 import React, { useState } from "react";
 import type { AgentTodo } from "@/ipc/types";
-import {
-  CheckCircle2,
-  Circle,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  ListTodo,
-} from "@/components/ui/icons";
+import { ChevronDown, ChevronUp } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface TodoListProps {
   todos: AgentTodo[];
 }
 
-function getStatusIcon(status: AgentTodo["status"], size: "sm" | "md" = "sm") {
-  const sizeClass = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4";
+/* ── Custom SVG icons ─────────────────────────────────────
+ *  Filled circles with solid visual weight instead of thin
+ *  Lucide outlines. They match the app's premium look.
+ * ──────────────────────────────────────────────────────── */
+
+function CompletedIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={cn("w-4 h-4 flex-shrink-0", className)}
+    >
+      <circle cx="8" cy="8" r="8" className="fill-primary" />
+      <path
+        d="M5 8.2L7.2 10.4L11 5.6"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function InProgressIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={cn("w-4 h-4 flex-shrink-0 animate-spin", className)}
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        className="stroke-primary/20"
+        strokeWidth="3"
+      />
+      <path
+        d="M8 1.5A6.5 6.5 0 0 1 14.5 8"
+        className="stroke-primary"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function PendingIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={cn("w-4 h-4 flex-shrink-0", className)}
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6.5"
+        className="stroke-muted-foreground/30"
+        strokeWidth="1.5"
+        strokeDasharray="3 2.5"
+      />
+    </svg>
+  );
+}
+
+function HeaderCompletedIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className="w-[18px] h-[18px] flex-shrink-0">
+      <circle cx="8" cy="8" r="8" className="fill-primary" />
+      <path
+        d="M5 8.2L7.2 10.4L11 5.6"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function getStatusIcon(status: AgentTodo["status"]) {
   switch (status) {
     case "completed":
-      return (
-        <CheckCircle2
-          className={cn(sizeClass, "text-green-500 flex-shrink-0")}
-        />
-      );
+      return <CompletedIcon />;
     case "in_progress":
-      return (
-        <Loader2
-          className={cn(sizeClass, "text-blue-500 animate-spin flex-shrink-0")}
-        />
-      );
+      return <InProgressIcon />;
     case "pending":
     default:
-      return (
-        <Circle
-          className={cn(sizeClass, "text-muted-foreground flex-shrink-0")}
-        />
-      );
+      return <PendingIcon />;
   }
 }
 
@@ -46,44 +108,65 @@ export function TodoList({ todos }: TodoListProps) {
 
   const completed = todos.filter((t) => t.status === "completed").length;
   const total = todos.length;
+  const progress = total > 0 ? (completed / total) * 100 : 0;
   const inProgressTask = todos.find((t) => t.status === "in_progress");
+  const allDone = completed === total;
 
   return (
-    <div className="border-b border-border bg-muted/30">
+    <div className="border-b border-border">
+      {/* Progress bar */}
+      <div className="h-[2px] w-full bg-muted/50">
+        <div
+          className="h-full bg-primary transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="cursor-pointer w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors"
+        className="cursor-pointer w-full flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {isExpanded ? (
             <>
-              <ListTodo className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-sm">
+              {allDone ? (
+                <HeaderCompletedIcon />
+              ) : inProgressTask ? (
+                <InProgressIcon className="w-[18px] h-[18px]" />
+              ) : (
+                <svg viewBox="0 0 16 16" fill="none" className="w-[18px] h-[18px] flex-shrink-0">
+                  <circle cx="8" cy="8" r="6.5" className="stroke-muted-foreground/40" strokeWidth="1.5" />
+                  <text x="8" y="11" textAnchor="middle" className="fill-muted-foreground/60" fontSize="8" fontWeight="600">
+                    {completed}
+                  </text>
+                </svg>
+              )}
+              <span className="typo-caption font-medium">
                 {completed} de {total} tareas completadas
               </span>
             </>
           ) : inProgressTask ? (
             <>
-              {getStatusIcon("in_progress", "md")}
-              <span className="text-sm truncate">{inProgressTask.content}</span>
-              <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
+              <InProgressIcon className="w-[18px] h-[18px]" />
+              <span className="typo-caption truncate">{inProgressTask.content}</span>
+              <span className="typo-micro text-muted-foreground tabular-nums flex-shrink-0">
                 ({completed}/{total})
               </span>
             </>
           ) : (
             <>
-              {completed === total ? (
-                <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+              {allDone ? (
+                <HeaderCompletedIcon />
               ) : (
-                <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <PendingIcon className="w-[18px] h-[18px]" />
               )}
-              <span className="typo-caption">
-                {completed === total
-                  ? "All tasks completed"
-                  : "No task in progress"}
+              <span className="typo-caption font-medium">
+                {allDone
+                  ? "Todas las tareas completadas"
+                  : "Sin tareas en progreso"}
               </span>
-              <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
+              <span className="typo-micro text-muted-foreground tabular-nums flex-shrink-0">
                 ({completed}/{total})
               </span>
             </>
@@ -91,26 +174,30 @@ export function TodoList({ todos }: TodoListProps) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          ) : (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </button>
 
       {isExpanded && (
-        <ul className="px-3 pb-2.5 space-y-1.5">
+        <ul className="px-3 pb-2.5 space-y-0.5">
           {todos.map((todo) => (
             <li
               key={todo.id}
               className={cn(
-                "flex items-center gap-2.5 text-sm py-0.5",
+                "flex items-center gap-2.5 typo-caption py-1 px-1 rounded-md transition-colors",
                 todo.status === "completed" && "text-muted-foreground",
+                todo.status === "in_progress" && "bg-primary/5",
               )}
             >
               {getStatusIcon(todo.status)}
               <span
-                className={cn(todo.status === "completed" && "line-through")}
+                className={cn(
+                  todo.status === "completed" && "line-through decoration-muted-foreground/40",
+                  todo.status === "in_progress" && "text-foreground font-medium",
+                )}
               >
                 {todo.content}
               </span>

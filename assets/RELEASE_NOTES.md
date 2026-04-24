@@ -1,4 +1,7 @@
-¡Nueva actualización con mejoras que se notan desde el primer uso!
+- Mejoras en la lista de tareas en curso
+
+
+---
 
 ## Modelos gratuitos de OpenRouter, ahora sí funcionan
 
