@@ -54,11 +54,21 @@ export default function WorkspacePage() {
 
     restoredRef.current = true;
 
-    ipc.misc.getPreference({ key: "sidebar.lastSelection" }).then((raw) => {
+    ipc.misc.getPreference({ key: "sidebar.lastSelection" }).then(async (raw) => {
       if (raw) {
         try {
           const sel = JSON.parse(raw) as { appId: number; chatId: number };
           if (sel.appId && sel.chatId) {
+            // Validate the stored appId still exists before navigating.
+            // A stale appId (from a deleted app) would trigger cascading
+            // "App not found" errors from all polling hooks.
+            try {
+              await ipc.app.getApp(sel.appId);
+            } catch {
+              // App no longer exists — clear the stale preference
+              ipc.misc.setPreference({ key: "sidebar.lastSelection", value: "" }).catch(() => {});
+              return;
+            }
             navigate({
               to: "/workspace",
               search: { appId: sel.appId, chatId: sel.chatId },

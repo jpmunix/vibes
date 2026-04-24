@@ -258,7 +258,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   // Extract the real current action from the streaming content
   const streamingInfo = useMemo(() => {
-    const defaultInfo = { label: "Pensando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined, contentExcerpt: undefined as string | undefined };
+    const defaultInfo = { label: "Trabajando", dotColorClass: "bg-purple-500" as string | undefined, labelColorClass: "text-purple-500" as string | undefined, contentExcerpt: undefined as string | undefined };
     if (!isStreaming || !isLastMessage) return defaultInfo;
     if (!normalizedMessageContent || !normalizedMessageContent.trim()) return defaultInfo;
 
@@ -354,13 +354,9 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
       }
     }
 
-    // Fallback: check if the last completed tool was git
-    const lastGitTag = normalizedMessageContent.lastIndexOf("<vibes-git ");
-    if (lastGitTag !== -1) {
-      return { label: "Consultando repositorio", dotColorClass: "bg-orange-500", labelColorClass: "text-orange-500", contentExcerpt: undefined };
-    }
-
-    // Generic fallback
+    // No open tag — show generic "Trabajando" in consistent purple.
+    // This covers both the initial state (before any tags) and the prose
+    // streaming state (after a tool tag was closed).
     return defaultInfo;
   }, [message.content, isStreaming, isLastMessage]);
 
@@ -652,7 +648,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div 
+                          <div
                             className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           >
@@ -709,7 +705,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           />
                         ) : (
-                          <div 
+                          <div
                             className={`flex items-center gap-1 text-muted-foreground w-full sm:w-auto transition-colors ${!(isStreaming && isLastMessage) ? 'cursor-pointer hover:text-foreground' : ''}`}
                             onClick={isStreaming && isLastMessage ? undefined : openDebugMessage}
                           >

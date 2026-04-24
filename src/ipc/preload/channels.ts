@@ -51,6 +51,7 @@ import { visualEditingContracts } from "../types/visual-editing";
 import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 import { authContracts } from "../types/auth";
+import { designContracts } from "../types/design";
 
 
 // =============================================================================
@@ -129,6 +130,8 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(aiQueryLogContracts),
 
   ...getInvokeChannels(authContracts),
+
+  ...getInvokeChannels(designContracts),
 
 
   // Test-only channels

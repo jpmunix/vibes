@@ -167,7 +167,7 @@ export function HomeChatInput({
                   hideContextFilesPicker
                 />
                 <div className="flex items-center ml-2.5">
-                  <ChatInputControls showContextFilesPicker={false} showTemplatePicker={true} />
+                  <ChatInputControls showContextFilesPicker={false} showTemplatePicker={true} showDesignPicker={true} />
                 </div>
 
                 <div className="ml-auto flex items-center gap-1.5">

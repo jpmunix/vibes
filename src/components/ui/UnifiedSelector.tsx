@@ -94,6 +94,8 @@ export interface UnifiedSelectorProps {
   popoverMaxHeight?: string;
   /** Extra classes on PopoverContent */
   popoverClassName?: string;
+  /** Inline styles on PopoverContent (bypasses tailwind-merge) */
+  popoverStyle?: React.CSSProperties;
 
   /* ── Items ───────────────────────────────────────────────────────────── */
   /** Show a checkmark on the selected item */
@@ -170,6 +172,7 @@ export function UnifiedSelector({
   popoverWidth = "w-56",
   popoverMaxHeight = "max-h-[300px]",
   popoverClassName,
+  popoverStyle,
   showCheckmark: showCheckmarkProp,
   itemLayout = "default",
   renderItem,
@@ -274,6 +277,7 @@ export function UnifiedSelector({
           "p-0 overflow-hidden",
           popoverClassName,
         )}
+        style={popoverStyle}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <Command

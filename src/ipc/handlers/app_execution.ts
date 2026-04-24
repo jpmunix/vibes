@@ -246,6 +246,12 @@ async function executeAppLocalNode({
     shell: true,
     stdio: "pipe",
     detached: false,
+    env: {
+      ...process.env,
+      // Prevent dev servers (Vite, Next.js, CRA) from opening the system browser.
+      // Vibes has its own preview panel — external browser windows are unwanted.
+      BROWSER: "none",
+    },
   });
 
   if (!spawnedProcess.pid) {

@@ -11,6 +11,7 @@ import {
   Search,
   Plus,
   FolderOpen,
+  FolderPlus,
   X,
   Trash2,
   MoreVertical,
@@ -28,6 +29,8 @@ import { ipc } from "@/ipc/types";
 import { showError, showSuccess } from "@/lib/toast";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useChats } from "@/hooks/useChats";
+import { useCreateApp } from "@/hooks/useCreateApp";
+import { useCheckName } from "@/hooks/useCheckName";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useUncommittedFiles } from "@/hooks/useUncommittedFiles";
@@ -569,7 +572,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
           >
             <Pencil size={14} className="opacity-60 shrink-0" />
-            Renombrar
+            Renombrar proyecto
           </button>
           <button
             type="button"
@@ -707,14 +710,46 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     ipc.system.openGitWindow({ appId, theme, themeIntensity: intensity });
   }, [theme, intensity]);
 
+  // Empty app dialog state
+  const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
+  const [emptyAppName, setEmptyAppName] = useState("");
+  const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
+  const { createApp } = useCreateApp();
+  const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+
   const lastActionRef2 = useRef<number>(0);
   useEffect(() => {
     if (!sidebarAction || sidebarAction.ts === lastActionRef2.current) return;
     lastActionRef2.current = sidebarAction.ts;
     if (sidebarAction.action === "workspace:open-folder") {
       handleOpenFolder();
+    } else if (sidebarAction.action === "workspace:empty-app") {
+      setIsEmptyAppDialogOpen(true);
     }
   }, [sidebarAction]);
+
+  const handleCreateEmptyApp = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emptyAppName.trim() || emptyAppNameCheck?.exists) return;
+
+    try {
+      setIsCreatingEmptyApp(true);
+      const result = await createApp({ name: emptyAppName.trim(), empty: true });
+
+      setSelectedAppId(result.app.id);
+      setEmptyAppName("");
+      setIsEmptyAppDialogOpen(false);
+      await refreshApps();
+
+      // Navigate to workspace using the chat already created by createApp
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      navigate({ to: "/workspace", search: { appId: result.app.id, chatId: result.chatId } });
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsCreatingEmptyApp(false);
+    }
+  }, [emptyAppName, emptyAppNameCheck, createApp, setSelectedAppId, refreshApps, navigate, queryClient]);
 
   // Close app dialog state
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
@@ -1309,6 +1344,67 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 )}
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Empty App Creation Dialog — portal to escape sidebar overflow */}
+      {isEmptyAppDialogOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); }}
+        >
+          <div className="fixed inset-0 bg-black/50" />
+          <div
+            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="typo-label mb-1">Crear aplicación vacía</h3>
+            <p className="typo-micro text-muted-foreground mb-3">
+              Se creará un directorio vacío con git inicializado, listo para usar.
+            </p>
+            <form onSubmit={handleCreateEmptyApp}>
+              <input
+                type="text"
+                value={emptyAppName}
+                onChange={(e) => setEmptyAppName(e.target.value)}
+                placeholder="Nombre de la aplicación..."
+                disabled={isCreatingEmptyApp}
+                autoFocus
+                className={`w-full mb-2 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:border-primary ${
+                  emptyAppNameCheck?.exists ? "border-red-500" : "border-border"
+                }`}
+              />
+              {emptyAppNameCheck?.exists && (
+                <p className="typo-micro text-destructive mb-2">
+                  Ya existe una aplicación con este nombre
+                </p>
+              )}
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
+                  onClick={() => { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); }}
+                  disabled={isCreatingEmptyApp}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 typo-button rounded-md text-white bg-primary hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                  disabled={!emptyAppName.trim() || !!emptyAppNameCheck?.exists || isCreatingEmptyApp}
+                >
+                  {isCreatingEmptyApp ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    "Crear aplicación"
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>,
         document.body

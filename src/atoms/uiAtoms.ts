@@ -21,6 +21,7 @@ export type SidebarAction =
   | "apps:import"
   | "apps:search"
   | "workspace:open-folder"
+  | "workspace:empty-app"
   | null;
 
 export const sidebarActionAtom = atom<{ action: SidebarAction; ts: number } | null>(null);

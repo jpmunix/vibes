@@ -31,7 +31,6 @@ import { ImportAppButton } from "./ImportAppButton";
 import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useSettings } from "@/hooks/useSettings";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -42,7 +41,6 @@ export function AppList({ show }: { show?: boolean }) {
     useAddAppToFavorite();
   const { createApp } = useCreateApp();
   const { theme, intensity } = useTheme();
-  const { settings } = useSettings();
   // search dialog state
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
 
@@ -141,16 +139,8 @@ export function AppList({ show }: { show?: boolean }) {
       setIsCreatingEmptyApp(true);
       const result = await createApp({
         name: emptyAppName.trim(),
-        useDefaultScaffold: true,
+        empty: true,
       });
-
-      // Apply theme if one is selected
-      if (settings?.selectedThemeId) {
-        await ipc.template.setAppTheme({
-          appId: result.app.id,
-          themeId: settings.selectedThemeId,
-        });
-      }
 
       setSelectedAppId(result.app.id);
       setEmptyAppName("");

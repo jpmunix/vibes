@@ -1203,7 +1203,12 @@ async function handleGetGitState(
   if (!context.userId) throw new Error("Unauthorized");
   const db = getRemoteDb();
   const app = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)) });
-  if (!app) throw new Error("App not found");
+  if (!app) {
+    // Graceful fallback: app may have been deleted while polling continues.
+    // Return safe defaults instead of throwing to avoid flooding error logs.
+    logger.warn(`[getGitState] App not found (transient?): appId=${appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+    return { mergeInProgress: false, rebaseInProgress: false };
+  }
   const appPath = getVibesAppPath(app.path);
 
   const mergeInProgress = isGitMergeInProgress({ path: appPath });

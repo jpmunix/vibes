@@ -96,7 +96,7 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const { isStreaming } = useStreamChat();
   if (!error) return null;
-  const isDockerError = error.message.includes("Cannot connect to the Docker");
+
 
   const getTruncatedError = () => {
     const firstLine = error.message.split("\n")[0];
@@ -164,22 +164,20 @@ const ErrorBanner = ({ error, onDismiss, onAIFix }: ErrorBannerProps) => {
             </div>
           </div>
 
-          {/* Mensaje de consejo */}
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 flex gap-3">
-            <Lightbulb size={18} className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
-            <div className="text-sm text-blue-900 dark:text-blue-200">
-              <span className="font-semibold">Consejo: </span>
-              {isDockerError
-                ? "Asegúrate de que Docker Desktop está en ejecución e intenta reiniciar la aplicación."
-                : error.source === "vibes-app"
-                  ? "Intenta reiniciar la aplicación Vibes o reiniciar tu computadora para ver si eso soluciona el error."
-                  : "Verifica si reiniciar la aplicación soluciona el error."}
+          {/* Mensaje de consejo (solo para errores internos) */}
+          {error.source === "vibes-app" && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50 flex gap-3">
+              <Lightbulb size={18} className="flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="text-sm text-blue-900 dark:text-blue-200">
+                <span className="font-semibold">Consejo: </span>
+                Intenta reiniciar la aplicación Vibes o reiniciar tu computadora para ver si eso soluciona el error.
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Botones de acción o mensaje tranquilizador */}
-        {!isDockerError && error.source === "preview-app" && (
+        {error.source === "preview-app" && (
           isStreaming ? (
             <div className="flex items-center gap-3 p-4 border-t border-border bg-amber-50 dark:bg-amber-950/30 rounded-b-lg">
               <Loader2 size={18} className="flex-shrink-0 text-amber-600 dark:text-amber-400 animate-spin" />

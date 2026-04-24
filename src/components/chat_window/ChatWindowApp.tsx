@@ -133,6 +133,23 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     // so starting the dev server immediately always fails and wastes resources.
     const [serverReady, setServerReady] = useState(!hasPendingPrompt);
 
+    // When the app has a pending prompt (brand-new app), start with preview
+    // collapsed so the user doesn't see a broken preview while the agent works.
+    // Once serverReady becomes true (first stream ends), auto-expand the preview.
+    useEffect(() => {
+        if (hasPendingPrompt && !serverReady) {
+            setIsPreviewOpen(false);
+        }
+    }, []); // Only on mount
+
+    useEffect(() => {
+        if (serverReady && hasPendingPrompt) {
+            // First AI message finished — open the preview, which triggers
+            // PreviewPanel's auto-start effect to run npm install + dev server
+            setIsPreviewOpen(true);
+        }
+    }, [serverReady]);
+
     const previewRef = useRef<ImperativePanelHandle>(null);
     const chatRef = useRef<ImperativePanelHandle>(null);
 
@@ -351,9 +368,29 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
 
     useEffect(() => {
         const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
-            // Enable server startup after first stream completes
+            // Enable server startup after a CODE-PRODUCING stream completes.
+            // Plan/ask modes don't generate runnable code, so we defer until
+            // an agent/code stream finishes writing actual files.
             if (!serverReady) {
-                setServerReady(true);
+                const currentMode = settings?.selectedChatMode;
+                const isCodeProducingMode = currentMode !== "plan" && currentMode !== "ask";
+
+                if (isCodeProducingMode || !hasPendingPrompt) {
+                    setServerReady(true);
+                    // Preview open is handled by the [serverReady] effect above
+                }
+                // If still in plan/ask mode with pending prompt, keep serverReady=false
+                // so the preview stays collapsed until code is actually generated.
+            } else if (hasPendingPrompt) {
+                // serverReady was already set (e.g. plan stream finished first),
+                // but preview might still be closed. Re-open it if the user has
+                // now switched to a code-producing mode.
+                if (!isPreviewOpen) {
+                    const currentMode = settings?.selectedChatMode;
+                    if (currentMode !== "plan" && currentMode !== "ask") {
+                        setIsPreviewOpen(true);
+                    }
+                }
             }
             setPendingAgentConsents((prev) =>
                 prev.filter((consent) => consent.chatId !== chatId),
@@ -377,7 +414,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             });
         });
         return () => unsubscribe();
-    }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId, serverReady]);
+    }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
 
     const chatPanelNode = (
         <Panel
@@ -421,7 +458,19 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             <div className="flex flex-col h-full">
                 <ActionHeader />
                 <div className="flex-1 min-h-0">
-                    <PreviewPanel />
+                    {serverReady ? (
+                        <PreviewPanel />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 p-6">
+                            <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                            <p className="text-sm text-center">
+                                Generando proyecto…<br />
+                                <span className="text-xs text-muted-foreground/60">
+                                    La vista previa aparecerá cuando el agente termine
+                                </span>
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </Panel>

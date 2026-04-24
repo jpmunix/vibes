@@ -26,8 +26,6 @@ export function ChatModeSelector() {
         return "Planificar";
       case "ask":
         return "Preguntar";
-      case "mockup":
-        return "Turbo";
       case "agent":
       default:
         return "Agente";
@@ -44,11 +42,6 @@ export function ChatModeSelector() {
           value: "agent",
           label: "Agente",
           description: "Desarrolla, edita y depura con herramientas avanzadas",
-        },
-        {
-          value: "mockup",
-          label: "Turbo",
-          description: "Velocidad máxima para desarrollar y editar código al instante",
         },
         {
           value: "plan",

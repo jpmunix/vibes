@@ -32,14 +32,126 @@ const PORTAL_MINI_STORE_ID = "portal-mini-store";
 export const NEON_TEMPLATE_IDS = new Set<string>([PORTAL_MINI_STORE_ID]);
 
 /**
- * Maps template IDs to their local scaffold directory name.
- * Templates in this map use a local scaffold copy instead of git clone.
+ * Maps template IDs to their technology stack description,
+ * required files checklist, and start/verify commands.
+ * Used by the AI agent to generate scaffolds dynamically via Context7 MCP.
  */
-export const SCAFFOLD_TEMPLATE_IDS: Record<string, string> = {
-  react: "scaffold",
-  vue: "scaffold-vue",
-  astro: "scaffold-astro",
-  svelte: "scaffold-svelte",
+export interface TemplateTechStack {
+  title: string;
+  stack: string;
+  context7Libs: string[];
+  /** Framework-specific files that MUST be created for the app to work */
+  requiredFiles: string[];
+  /** Command to verify the project compiles (run after npm install) */
+  verifyCommand: string;
+  /** Non-interactive CLI command to scaffold the project base.
+   *  Run BEFORE the AI does anything — produces a compilable project. */
+  scaffoldCommand: string;
+}
+
+export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
+  react: {
+    title: "React.js",
+    stack: "React 19, Vite, TypeScript, Tailwind CSS 4, Shadcn/ui, React Router DOM",
+    context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
+    requiredFiles: [
+      "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
+      "vite.config.ts — con plugin React",
+      "tsconfig.json, tsconfig.app.json, tsconfig.node.json",
+      "eslint.config.js",
+      "postcss.config.js",
+      "tailwind.config.ts (o .js)",
+      "index.html — con div#root, script type=module apuntando a src/main.tsx",
+      "src/main.tsx — entry point con ReactDOM.createRoot",
+      "src/App.tsx — componente raíz con contenido mínimo visible",
+      "src/index.css — con @tailwind base/components/utilities",
+      "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
+      "vercel.json — rewrites para SPA: [{\"source\":\"/(.*)\",\"destination\":\"/index.html\"}]",
+    ],
+    verifyCommand: "npx tsc --noEmit",
+  },
+  next: {
+    title: "Next.js",
+    stack: "Next.js (App Router), React, TypeScript, Tailwind CSS 4, Shadcn/ui",
+    context7Libs: ["vercel/next.js", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-next-app@latest . --ts --tailwind --eslint --app --src-dir --no-import-alias --yes",
+    requiredFiles: [
+      "package.json — dependencias + scripts (dev, build, start, lint)",
+      "next.config.ts (o next.config.mjs)",
+      "tsconfig.json",
+      "eslint.config.mjs (o .eslintrc.json)",
+      "postcss.config.mjs",
+      "tailwind.config.ts",
+      "app/layout.tsx — root layout con html, body, metadata export",
+      "app/page.tsx — página principal con contenido mínimo visible",
+      "app/globals.css — con @tailwind base/components/utilities",
+      "public/ — directorio (puede estar vacío)",
+      "next-env.d.ts — con /// <reference types=\"next\" />",
+    ],
+    verifyCommand: "npx next lint",
+  },
+  vue: {
+    title: "Vue.js",
+    stack: "Vue 3, Vite, TypeScript, Tailwind CSS 4, Pinia, Vue Router, VueUse",
+    context7Libs: ["vuejs/vue", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-vite@latest . --template vue-ts",
+    requiredFiles: [
+      "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
+      "vite.config.ts — con plugin Vue (@vitejs/plugin-vue)",
+      "tsconfig.json, tsconfig.app.json, tsconfig.node.json",
+      "env.d.ts — con /// <reference types=\"vite/client\" />",
+      "eslint.config.js",
+      "postcss.config.js",
+      "tailwind.config.ts (o .js)",
+      "index.html — con div#app, script type=module apuntando a src/main.ts",
+      "src/main.ts — createApp + mount con Pinia y Vue Router",
+      "src/App.vue — componente raíz con <script setup lang=\"ts\">, <template>, <style>",
+      "src/router/index.ts — configuración de Vue Router",
+      "src/stores/ — al menos un store Pinia de ejemplo",
+      "src/assets/main.css — con @tailwind base/components/utilities",
+      "vercel.json — rewrites para SPA",
+    ],
+    verifyCommand: "npx vue-tsc --noEmit",
+  },
+  astro: {
+    title: "Astro",
+    stack: "Astro, React integración (@astrojs/react), TypeScript, Tailwind CSS 4",
+    context7Libs: ["withastro/astro", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-astro@latest . --template minimal --yes --typescript strict --no-install --no-git",
+    requiredFiles: [
+      "package.json — dependencias + scripts (dev, build, preview)",
+      "astro.config.mjs — con integración React (@astrojs/react) y Tailwind (@astrojs/tailwind)",
+      "tsconfig.json — con extends: \"astro/tsconfigs/strict\"",
+      "tailwind.config.mjs",
+      "src/layouts/Layout.astro — layout base con <html>, <head>, <body>, <slot />",
+      "src/pages/index.astro — página principal con contenido mínimo visible",
+      "src/styles/global.css — con @tailwind base/components/utilities",
+      "src/components/ — directorio para componentes (puede incluir un ejemplo .tsx)",
+      "public/ — directorio para assets estáticos",
+    ],
+    verifyCommand: "npx astro check",
+  },
+  svelte: {
+    title: "SvelteKit",
+    stack: "SvelteKit 2, Svelte 5, TypeScript, Tailwind CSS 4, Vite",
+    context7Libs: ["sveltejs/svelte", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y sv create . --template minimal --types ts --no-add-ons --no-install",
+    requiredFiles: [
+      "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
+      "vite.config.ts — con plugin SvelteKit (@sveltejs/kit/vite)",
+      "svelte.config.js — con adapter-auto y preprocessor",
+      "tsconfig.json — con extends: \"./.svelte-kit/tsconfig.json\"",
+      "postcss.config.js",
+      "tailwind.config.ts (o .js)",
+      "src/app.html — template HTML con %sveltekit.head% y %sveltekit.body%",
+      "src/app.css — con @tailwind base/components/utilities",
+      "src/routes/+layout.svelte — importa app.css",
+      "src/routes/+page.svelte — página principal con contenido mínimo visible",
+      "static/ — directorio para assets estáticos",
+    ],
+    verifyCommand: "npx svelte-check --tsconfig ./tsconfig.json",
+  },
 };
 
 export const localTemplatesData: Template[] = [

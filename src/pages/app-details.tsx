@@ -422,24 +422,7 @@ export default function AppDetailsPage() {
                 <span className="mb-0.5">Abrir en Chat</span>
               </Button>
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleOpenCopyDialog}
-                  className="flex items-center justify-center gap-2 px-4 py-5 rounded-lg text-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 hover:bg-muted/80 dark:hover:bg-black/60 cursor-pointer shadow-sm transition-colors"
-                >
-                  <Copy className="h-4 w-4" />
-                  Clonar aplicación
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-5 rounded-lg text-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 text-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive dark:hover:bg-destructive/20 cursor-pointer shadow-sm transition-colors"
-                >
-                  <FolderX className="h-4 w-4" />
-                  Cerrar carpeta
-                </Button>
-              </div>
+
               {/* Collapsible Información y opciones section */}
               <div className="border border-border dark:border-white/10 rounded-xl bg-card dark:bg-black/40 backdrop-blur-xl shadow-sm overflow-hidden">
                 <button
@@ -485,39 +468,7 @@ export default function AppDetailsPage() {
                           data-testid="app-details-rename-app-button"
                         >
                           <Pencil className="h-4 w-4" />
-                          Cambiar nombre
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9"
-                          onClick={handleGenerateTitle}
-                          disabled={isGeneratingTitle}
-                        >
-                          {isGeneratingTitle ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                          Generar nombre con IA
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9"
-                          onClick={handleOpenRenameFolderDialog}
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                          Renombrar carpeta
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9"
-                          onClick={() => setIsChangeLocationDialogOpen(true)}
-                        >
-                          <FolderInput className="h-4 w-4" />
-                          Mover carpeta
+                          Renombrar proyecto
                         </Button>
                         <Button
                           variant="ghost"
@@ -527,6 +478,15 @@ export default function AppDetailsPage() {
                         >
                           <Folder className="h-4 w-4" />
                           Abrir carpeta de destino
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2 h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setIsDeleteDialogOpen(true)}
+                        >
+                          <FolderX className="h-4 w-4" />
+                          Cerrar carpeta
                         </Button>
                       </CardContent>
                     </Card>

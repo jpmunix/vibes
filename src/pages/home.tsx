@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAtom, useSetAtom } from "jotai";
-import { homeChatInputValueAtom } from "../atoms/chatAtoms";
+import { homeChatInputValueAtom, selectedDesignAtom } from "../atoms/chatAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { ipc } from "@/ipc/types";
 import { generateCuteAppName } from "@/lib/utils";
@@ -54,6 +54,7 @@ export default function HomePage() {
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
+  const [selectedDesign, setSelectedDesign] = useAtom(selectedDesignAtom);
 
   // Listen for force-close events
   useEffect(() => {
@@ -149,6 +150,7 @@ export default function HomePage() {
       // Create the chat and navigate
       const result = await ipc.app.createApp({
         name: appName,
+        templateId: settings?.selectedTemplateId || "react",
       });
       if (
         settings?.selectedTemplateId &&
@@ -200,6 +202,32 @@ export default function HomePage() {
       await refreshApps(); // Ensure refreshApps is awaited if it's async
       await invalidateAppQuery(queryClient, { appId: result.app.id });
       posthog.capture("home:chat-submit");
+      // Install selected design system (DESIGN.md) into the project before opening the chat
+      console.log(`[Home] 🎨 DESIGN CHECK — selectedDesign:`, selectedDesign);
+      console.log(`[Home] 🎨 DESIGN CHECK — app.path: "${result.app.path}", app.id: ${result.app.id}`);
+      if (selectedDesign) {
+        console.log(`[Home] 🎨 DESIGN: id="${selectedDesign.id}", hasCustomContent=${!!selectedDesign.customContent}, customContentLen=${selectedDesign.customContent?.length ?? 0}`);
+        try {
+          if (selectedDesign.customContent) {
+            // Custom design — write content directly
+            console.log(`[Home] 🎨 DESIGN: Calling writeCustomDesign (content ${selectedDesign.customContent.length} chars, appPath "${result.app.path}")`);
+            const writeResult = await ipc.design.writeCustomDesign({ content: selectedDesign.customContent, appPath: result.app.path });
+            console.log(`[Home] 🎨 DESIGN: writeCustomDesign result:`, writeResult);
+          } else {
+            // Brand design — download via getdesign CLI
+            console.log(`[Home] 🎨 DESIGN: Calling addDesign (brand "${selectedDesign.id}", appPath "${result.app.path}")`);
+            const addResult = await ipc.design.addDesign({ brand: selectedDesign.id, appPath: result.app.path });
+            console.log(`[Home] 🎨 DESIGN: addDesign result: contentLen=${addResult?.content?.length}`);
+          }
+        } catch (designError) {
+          // Non-blocking — log but don't prevent app creation
+          console.error("[Home] 🎨 DESIGN ERROR:", designError);
+        }
+        setSelectedDesign(null);
+      } else {
+        console.log(`[Home] 🎨 DESIGN: No design selected — skipping`);
+      }
+
       // Open chat window with prompt + attachments — the window will start streaming on mount
       ipc.system.openChatWindow({
         appId: result.app.id,
@@ -223,7 +251,7 @@ export default function HomePage() {
   const CREATION_PHASES = [
     { title: "Pensando un nombre genial", subtitle: "La IA está eligiendo el nombre perfecto para tu app…", icon: "💭" },
     { title: "Preparando el proyecto", subtitle: "Creando la estructura de archivos y configuración…", icon: "📁" },
-    { title: "Instalando dependencias", subtitle: "Copiando librerías pre-cacheadas para arrancar al instante…", icon: "📦" },
+    { title: "Instalando dependencias", subtitle: "Descargando las últimas versiones de los paquetes…", icon: "📦" },
     { title: "Inicializando el repositorio", subtitle: "Configurando Git para control de versiones…", icon: "🔧" },
     { title: "Aplicando tu tema", subtitle: "Personalizando los estilos y colores de la app…", icon: "🎨" },
     { title: "¡Casi listo!", subtitle: "Abriendo el entorno de desarrollo…", icon: "🚀" },

@@ -71,6 +71,7 @@ const items: {
     to: "/workspace",
     icon: Bot,
     menuItems: [
+      { label: "Nueva aplicación vacía", icon: FolderPlus, action: "workspace:empty-app" },
       { label: "Abrir carpeta", icon: FolderOpen, action: "workspace:open-folder" },
     ],
   },

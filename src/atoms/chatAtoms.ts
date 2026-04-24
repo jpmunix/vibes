@@ -18,6 +18,15 @@ export const recentStreamChatIdsAtom = atom<Set<number>>(new Set<number>());
 
 export const attachmentsAtom = atom<FileAttachment[]>([]);
 
+// Design system seleccionado para nueva app (solo activo en Home)
+export interface SelectedDesign {
+  id: string;
+  description: string;
+  /** Raw markdown content for user-uploaded or pasted designs */
+  customContent?: string;
+}
+export const selectedDesignAtom = atom<SelectedDesign | null>(null);
+
 // Queue of messages typed by the user while a stream is in progress.
 // Attachments (File objects) are kept in memory — they are not serialized.
 export interface PendingQueuedMessage {

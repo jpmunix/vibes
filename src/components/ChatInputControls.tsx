@@ -3,25 +3,28 @@ import { ModelPicker } from "./ModelPicker";
 import { ChatModeSelector } from "./ChatModeSelector";
 import { ReasoningEffortSelector } from "./ReasoningEffortSelector";
 import { TemplatePicker } from "./TemplatePicker";
-import { useSettings } from "@/hooks/useSettings";
+import { DesignPicker } from "./DesignPicker";
 
 export function ChatInputControls({
   showContextFilesPicker = false,
   showTemplatePicker = false,
+  showDesignPicker = false,
 }: {
   showContextFilesPicker?: boolean;
   showTemplatePicker?: boolean;
+  showDesignPicker?: boolean;
 }) {
-  const { settings } = useSettings();
-  const isTurboMode = settings?.selectedChatMode === "mockup";
 
   return (
     <div className="flex items-center gap-2">
       <ChatModeSelector />
       <ModelPicker />
-      {!isTurboMode && <ReasoningEffortSelector variant="compact" />}
+      <ReasoningEffortSelector variant="compact" />
       {showTemplatePicker && (
         <TemplatePicker variant="compact" />
+      )}
+      {showDesignPicker && (
+        <DesignPicker />
       )}
       {showContextFilesPicker && (
         <>

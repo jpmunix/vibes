@@ -91,10 +91,18 @@ function McpServerCard({ server, onUpdate, onDelete }: { server: McpServer; onUp
 
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-1.5 mr-2" onClick={(e) => e.stopPropagation()}>
-             <Switch 
-               checked={server.enabled}
-               onCheckedChange={(c) => onUpdate(server.id, c)}
-             />
+             {server.name === "context7" ? (
+               <Switch 
+                 checked={true}
+                 disabled={true}
+                 title="Context7 es un servicio integrado obligatorio"
+               />
+             ) : (
+               <Switch 
+                 checked={server.enabled}
+                 onCheckedChange={(c) => onUpdate(server.id, c)}
+               />
+             )}
              {server.name !== "context7" && (
                <>
                  <McpServerDialog existingServer={server} />

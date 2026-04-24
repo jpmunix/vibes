@@ -365,14 +365,14 @@ export const UserSettingsSchema = z
     selectedChatMode: z.preprocess(
     (val) => {
         // Migrate all legacy mode values to "agent"
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart") return "agent";
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart" || val === "mockup") return "agent";
         return val;
       },
       ChatModeSchema.optional(),
     ),
     defaultChatMode: z.preprocess(
       (val) => {
-        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart") return "agent";
+        if (val === "local-agent" || val === "crush-agent" || val === "build" || val === "legacy-agent" || val === "smart" || val === "mockup") return "agent";
         return val;
       },
       ChatModeSchema.optional(),

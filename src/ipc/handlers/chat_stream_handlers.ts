@@ -1423,17 +1423,7 @@ This conversation includes one or more image attachments. When the user uploads 
             `NUNCA expliques al usuario cómo ejecutar la aplicación localmente (ej: npm run dev) ni cómo ver los cambios actualizados. El entorno (Minube Vibes) ya se encarga de recompilar y mostrar la app automáticamente de forma transparente. Omite todas las instrucciones de ejecución.`
           );
 
-          // 2. LSP disabled — instruct the agent to verify TypeScript manually
-          if (settings.enableOpenCodeLsp === false) {
-            contextInstructions.push(
-              `IMPORTANTE: El servidor LSP está desactivado en esta sesión, lo que significa que NO recibirás diagnósticos de TypeScript automáticamente tras cada escritura de archivo.\n` +
-              `DEBES hacer lo siguiente una vez que hayas terminado de escribir todos los archivos de la tarea:\n` +
-              `1. Ejecuta \`npx tsc --noEmit\` (o el equivalente del proyecto) en el directorio raíz del proyecto usando la herramienta bash.\n` +
-              `2. Si hay errores, corrígelos y vuelve a ejecutar hasta que no haya errores.\n` +
-              `3. Solo entonces considera la tarea completada.\n` +
-              `No omitas este paso aunque creas que el código es correcto — es obligatorio cuando LSP está desactivado.`
-            );
-          }
+          // (LSP is always enabled — no fallback instruction needed)
 
           // 3. Tool correction (mainly for Gemini hallucinating shell edits)
           contextInstructions.push(
@@ -1456,6 +1446,35 @@ This conversation includes one or more image attachments. When the user uploads 
             `RECUERDA: La mayoría de peticiones del usuario son SIMPLES. Por defecto, aplica el principio de mínima exploración.`
           );
 
+          // 5. Smart todowrite usage — task management for complex requests
+          contextInstructions.push(
+            `GESTIÓN DE TAREAS: Si la petición del usuario requiere 3 o más cambios diferenciados ` +
+            `(crear varios archivos, modificar múltiples componentes, implementar varias funcionalidades), ` +
+            `usa la herramienta todowrite para crear una lista de tareas ANTES de empezar a trabajar. ` +
+            `Marca cada tarea como completada (status: "done") a medida que avanzas. ` +
+            `NO uses todowrite para cambios simples como corregir un error, ajustar un estilo, ` +
+            `o modificar un solo archivo. En esos casos, actúa directamente.`
+          );
+
+          // 6. Plan mode — interactive question-driven planning
+          if (resolvedChatMode === "plan") {
+            const isEnglish = (settings.chatLanguage || "es") === "en";
+            contextInstructions.push(
+              isEnglish
+                ? `INTERACTIVE PLANNING MODE:\n` +
+                  `When the user asks you to create a plan, do NOT assume details that are not explicit.\n` +
+                  `Use your "question" tool to ask the user about design decisions, architecture,\n` +
+                  `technologies, priorities, and any ambiguity.\n` +
+                  `Rule: maximum 5 questions. Group related ones. Use options when alternatives are clear.\n` +
+                  `Once everything is clarified, generate the definitive plan.`
+                : `MODO PLANIFICACIÓN INTERACTIVA:\n` +
+                  `Cuando el usuario te pide crear un plan, NO asumas los detalles que no están explícitos.\n` +
+                  `Usa tu herramienta "question" para preguntar al usuario sobre decisiones de diseño,\n` +
+                  `arquitectura, tecnologías, prioridades y cualquier ambigüedad.\n` +
+                  `Regla: máximo 5 preguntas. Agrupa las relacionadas. Usa opciones cuando las alternativas sean claras.\n` +
+                  `Una vez aclarado todo, genera el plan definitivo.`
+            );
+          }
 
           // Supabase
           if (updatedChat.app?.supabaseProjectId && isSupabaseConnected(settings)) {
@@ -1483,6 +1502,63 @@ This conversation includes one or more image attachments. When the user uploads 
           if (ocPocketbaseConfig?.url && ocPocketbaseConfig.adminEmail) {
             contextInstructions.push(getPocketBaseAvailableSystemPrompt(ocPocketbaseConfig));
             logger.log("[OPENCODE] PocketBase context injected");
+          }
+
+          // DESIGN.md — inject full content as context instruction on the FIRST
+          // message only. After that, OpenCode's native opencode.json instructions
+          // (which reference docs/DESIGN.md) handle it automatically.
+          {
+            const isFirstMessage = !updatedChat.messages.some(
+              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
+            );
+            const appPathRaw = updatedChat.app.path;
+            const resolvedAppPath = getVibesAppPath(appPathRaw);
+            const designMdPath = path.join(resolvedAppPath, "docs", "DESIGN.md");
+            const designExists = fs.existsSync(designMdPath);
+            logger.info(`🎨 [DESIGN] isFirstMessage=${isFirstMessage}, exists=${designExists}, path="${designMdPath}"`);
+
+            if (isFirstMessage && designExists) {
+              try {
+                const designContent = fs.readFileSync(designMdPath, "utf-8").trim();
+                if (designContent.length > 0) {
+                  contextInstructions.push(
+                    `DESIGN SYSTEM REFERENCE:\n` +
+                    `The following DESIGN.md file defines the visual language, color palette, typography, spacing, and component patterns for this project. ` +
+                    `You MUST follow these design guidelines closely when building UI components. ` +
+                    `Use the exact colors, fonts, spacing values, and design tokens specified.\n\n` +
+                    designContent,
+                  );
+                  logger.info(`🎨 [DESIGN] ✅ Injected into contextInstructions (${designContent.length} chars)`);
+                }
+              } catch (designErr: any) {
+                logger.warn(`🎨 [DESIGN] ❌ Failed to read: ${designErr.message}`);
+              }
+            } else if (!isFirstMessage && designExists) {
+              logger.info(`🎨 [DESIGN] Skipped (not first message) — trusting opencode.json`);
+            }
+          }
+
+          // Dynamic scaffold — lightweight system-level reinforcement.
+          // The MAIN scaffold prompt is injected directly into the user's
+          // promptText in opencode_adapter.ts (models respect that more).
+          // Scaffold context — on first message, add a hint about the project state.
+          // For normal apps the scaffold is pre-built; for empty apps (edge case) add a bootstrap reminder.
+          {
+            const appPathRaw = updatedChat.app.path;
+            const resolvedAppPath = getVibesAppPath(appPathRaw);
+            const hasPackageJson = fs.existsSync(path.join(resolvedAppPath, "package.json"));
+            const isFirstMsg = !updatedChat.messages.some(
+              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
+            );
+
+            if (!hasPackageJson && isFirstMsg) {
+              contextInstructions.push(
+                `PROYECTO VACÍO: Este directorio no tiene package.json. ` +
+                `Crea la infraestructura mínima necesaria y ejecuta npm install --legacy-peer-deps ` +
+                `antes de implementar funcionalidad. NO ejecutes npm run dev.`,
+              );
+              logger.info(`🏗️ [SCAFFOLD] Added fallback scaffold hint (empty project)`);
+            }
           }
 
           // 4. Build integration env vars — accessible via bash in OpenCode

@@ -13,6 +13,7 @@ import { getVibesAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import log from "electron-log";
+import fixPath from "fix-path";
 
 // Extracted modules
 import {
@@ -44,7 +45,7 @@ import {
   getSupabaseProjectName,
 } from "../../supabase_admin/supabase_management_client";
 import { getLanguageModelProviders } from "../shared/language_model_helpers";
-import { createFromTemplate } from "./createFromTemplate";
+
 import {
   gitCommit,
   gitAdd,
@@ -89,32 +90,44 @@ export function registerAppHandlers() {
     if (!context.userId) throw new Error("Unauthorized");
     const db = getRemoteDb();
 
+    // Slugify the name for the directory path:
+    // "la maravillosa app de muñix" → "la-maravillosa-app-de-munix"
+    const slugify = (str: string): string =>
+      str
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")   // strip diacritics (ñ→n, á→a)
+        .replace(/ñ/g, "n").replace(/Ñ/g, "n")  // explicit ñ fallback
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")       // non-alphanum → hyphen
+        .replace(/^-+|-+$/g, "");           // trim leading/trailing hyphens
+
+    const displayName = params.name.trim();
+    const baseSlug = slugify(displayName);
+
     // Auto-resolve name collisions by appending -2, -3, etc.
-    let appPath = params.name;
+    let appPath = baseSlug;
     let fullAppPath = getVibesAppPath(appPath);
     let suffix = 1;
-    const baseName = params.name;
     while (fs.existsSync(fullAppPath) || await db.query.apps.findFirst({
       where: and(eq(remoteSchema.apps.name, appPath), eq(remoteSchema.apps.userId, context.userId)),
     })) {
       suffix++;
-      appPath = `${baseName}-${suffix}`;
+      appPath = `${baseSlug}-${suffix}`;
       fullAppPath = getVibesAppPath(appPath);
     }
-    // Create a new app
+
+    // Create a new app + initial chat in the DB
     const [app] = await db
       .insert(remoteSchema.apps)
       .values({
         userId: context.userId,
         name: appPath,
-        // Use the name as the path for now
         path: appPath,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    // Create an initial chat for this app
     const [chat] = await db
       .insert(remoteSchema.chats)
       .values({
@@ -124,14 +137,84 @@ export function registerAppHandlers() {
       })
       .returning();
 
-    await createFromTemplate({
-      fullAppPath,
-      appName: appPath,
-      forceDefaultScaffold: params.useDefaultScaffold,
-    });
+    // Create the app directory
+    await fsPromises.mkdir(fullAppPath, { recursive: true });
+
+    // ─── Scaffold: run the framework CLI + npm install ─────────────────
+    // Skip when creating explicitly empty apps (from workspace menu, etc.)
+    if (!params.empty) {
+      const { TEMPLATE_TECH_STACKS } = await import("../../shared/templates");
+      const settings = readSettings();
+      const templateId = params.templateId || settings.selectedTemplateId || "react";
+      const techStack = TEMPLATE_TECH_STACKS[templateId];
+
+      if (techStack?.scaffoldCommand) {
+        logger.info(`🏗️ [SCAFFOLD] Running scaffold CLI for "${techStack.title}": ${techStack.scaffoldCommand}`);
+
+        // Ensure npm/npx are in PATH (Electron strips user PATH on macOS/Linux)
+        fixPath();
+
+        // Helper: run a shell command in the app directory and wait for it
+        const runShellCmd = (cmd: string): Promise<{ code: number | null; stdout: string; stderr: string }> =>
+          new Promise((resolve) => {
+            let stdout = "";
+            let stderr = "";
+            const proc = spawn(cmd, [], {
+              cwd: fullAppPath,
+              shell: true,
+              stdio: "pipe",
+              env: { ...process.env, BROWSER: "none" },
+            });
+            proc.stdout?.on("data", (d) => { stdout += d.toString(); });
+            proc.stderr?.on("data", (d) => { stderr += d.toString(); });
+            proc.on("close", (code) => resolve({ code, stdout, stderr }));
+            proc.on("error", (err) => resolve({ code: 1, stdout: "", stderr: err.message }));
+          });
+
+        // 1. Run the scaffold CLI (e.g. npx create-vite . --template react-ts)
+        const scaffoldResult = await runShellCmd(techStack.scaffoldCommand);
+        if (scaffoldResult.code !== 0) {
+          logger.warn(`🏗️ [SCAFFOLD] CLI exited with code ${scaffoldResult.code}:\nSTDOUT: ${scaffoldResult.stdout.slice(0, 300)}\nSTDERR: ${scaffoldResult.stderr.slice(0, 500)}`);
+        } else {
+          logger.info(`🏗️ [SCAFFOLD] CLI completed successfully`);
+        }
+
+        // 2. Run npm install (scaffold CLIs with --no-install skip this step)
+        const packageJsonExists = fs.existsSync(path.join(fullAppPath, "package.json"));
+        if (packageJsonExists) {
+          logger.info(`🏗️ [SCAFFOLD] Running npm install --legacy-peer-deps`);
+          const installResult = await runShellCmd("npm install --legacy-peer-deps");
+          if (installResult.code !== 0) {
+            logger.warn(`🏗️ [SCAFFOLD] npm install exited with code ${installResult.code}:\nSTDERR: ${installResult.stderr.slice(0, 500)}`);
+          } else {
+            logger.info(`🏗️ [SCAFFOLD] npm install completed successfully`);
+          }
+        } else {
+          logger.warn(`🏗️ [SCAFFOLD] No package.json found after scaffold CLI — skipping npm install`);
+        }
+      }
+    }
+
+    // Write .gitignore and .npmrc AFTER scaffold CLI (some CLIs warn about non-empty dirs)
+    const gitignoreContent = [
+      "node_modules",
+      "dist",
+      ".env",
+      ".env.local",
+      ".DS_Store",
+      "",
+    ].join("\n");
+    // Only write if not already created by the scaffold CLI
+    const gitignorePath = path.join(fullAppPath, ".gitignore");
+    if (!fs.existsSync(gitignorePath)) {
+      await fsPromises.writeFile(gitignorePath, gitignoreContent, "utf-8");
+    }
+    const npmrcPath = path.join(fullAppPath, ".npmrc");
+    if (!fs.existsSync(npmrcPath)) {
+      await fsPromises.writeFile(npmrcPath, "legacy-peer-deps=true\n", "utf-8");
+    }
 
     // Initialize git repo and create first commit
-    // Wrap in withLock to prevent race conditions with frontend auto-commit
     const commitHash = await withLock(app.id, async () => {
       await gitInit({ path: fullAppPath, ref: "main" });
       await gitAdd({ path: fullAppPath, filepath: "." });
@@ -785,6 +868,44 @@ export function registerAppHandlers() {
       } catch (error: any) {
         logger.error(`Error deleting app ${appId} from database:`, error);
         throw new Error(`Failed to delete app from database: ${error.message}`);
+      }
+
+      // Clear sidebar.lastSelection if it references the deleted app
+      // to prevent stale appId from triggering "App not found" errors on next startup.
+      try {
+        const lastSelRow = await db
+          .select({ value: remoteSchema.userPreferences.value })
+          .from(remoteSchema.userPreferences)
+          .where(
+            and(
+              eq(remoteSchema.userPreferences.userId, context.userId),
+              eq(remoteSchema.userPreferences.key, "sidebar.lastSelection"),
+              eq(remoteSchema.userPreferences.appId, 0),
+            ),
+          );
+        if (lastSelRow.length > 0 && lastSelRow[0].value) {
+          try {
+            const sel = JSON.parse(lastSelRow[0].value);
+            if (sel.appId === appId) {
+              await db
+                .insert(remoteSchema.userPreferences)
+                .values({
+                  userId: context.userId,
+                  appId: 0,
+                  key: "sidebar.lastSelection",
+                  value: "",
+                  updatedAt: new Date(),
+                })
+                .onConflictDoUpdate({
+                  target: [remoteSchema.userPreferences.userId, remoteSchema.userPreferences.key, remoteSchema.userPreferences.appId],
+                  set: { value: "", updatedAt: new Date() },
+                });
+              logger.log(`Cleared stale sidebar.lastSelection for deleted app ${appId}`);
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      } catch (e) {
+        logger.warn(`Failed to check/clear sidebar.lastSelection on app delete:`, e);
       }
 
       // Only delete files if explicitly requested

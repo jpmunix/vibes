@@ -11,11 +11,6 @@ const chatModeOptions: SelectorOption[] = [
     description: "Desarrolla, edita y depura con acceso a herramientas",
   },
   {
-    value: "mockup",
-    label: "Turbo",
-    description: "Velocidad máxima para desarrollar y editar código al instante",
-  },
-  {
     value: "plan",
     label: "Planificar",
     description: "Diseña un plan de acción antes de implementar",

@@ -118,14 +118,12 @@ export const ActionHeader = () => {
 
   const selectPanel = useCallback(
     (panel: PreviewMode) => {
-      if (previewMode === panel) {
-        setIsPreviewOpen(!isPreviewOpen);
-      } else {
+      if (previewMode !== panel) {
         setPreviewMode(panel);
         setIsPreviewOpen(true);
       }
     },
-    [previewMode, isPreviewOpen, setPreviewMode, setIsPreviewOpen],
+    [previewMode, setPreviewMode, setIsPreviewOpen],
   );
 
   const onRestart = useCallback(() => {

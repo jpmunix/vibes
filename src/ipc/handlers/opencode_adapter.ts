@@ -700,11 +700,8 @@ async function getOpenCodeClient(appPath: string) {
                 // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
                 // the model stalling when context fills up mid-session (key fix for slow responses).
                 ...({ compaction: { auto: true, prune: true, reserved: 15000 } } as any),
-                // LSP servers (TypeScript, ESLint, etc.): when enabled, diagnostics are sent
-                // after each file write so the agent can auto-fix TS errors inline.
-                // When disabled, the agent should run tsc/eslint manually at the end.
-                // Controlled via Settings → Agente → "Diagnósticos LSP por archivo".
-                ...((settings.enableOpenCodeLsp !== false ? { lsp: {} } : { lsp: false }) as any),
+                // LSP servers (TypeScript, ESLint, etc.) are enabled by default in OpenCode
+                // when supported file extensions are detected. No explicit config needed.
                 // Optimize I/O by disabling OpenCode's snapshot system, which is too slow on large repos
                 ...({ snapshot: false } as any),
                 // Disable features we don't need (reduces overhead)
@@ -730,7 +727,18 @@ async function getOpenCodeClient(appPath: string) {
                         "*.log",
                     ],
                 },
-                mcp: buildMcpConfig(enabledServers) || {},
+                // Context7 is a mandatory built-in MCP server — always present
+                // regardless of user configuration. Used for dynamic scaffold
+                // generation and up-to-date documentation lookup.
+                mcp: {
+                    "context7": {
+                        type: "remote" as const,
+                        url: "https://mcp.context7.com/mcp",
+                        enabled: true,
+                        headers: { "CONTEXT7_API_KEY": "ctx7sk-8b4a1d13-1748-4c4e-8861-2ec17c76b42e" },
+                    },
+                    ...(buildMcpConfig(enabledServers) || {}),
+                },
         };
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
@@ -973,6 +981,36 @@ export async function handleOpenCodeStream(
         return { fullResponse: errorMsg, success: false, inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0 };
     }
 
+    // ── Set instructions BEFORE session.create ────────────────────────────
+    // OpenCode snapshots instructions at session creation time, so they
+    // must be configured before the session exists.
+    if (options.contextInstructions && options.contextInstructions.length > 0) {
+        const settings = readSettings();
+        const baseLang = settings.chatLanguage === "en"
+            ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
+            : "ES ABSOLUTAMENTE IMPERATIVO que respondas SIEMPRE en español. Piensa en español, razona en español y redacta TODAS tus respuestas, explicaciones, títulos, listas y mensajes completamente en español. Incluso si el usuario escribe en otro idioma, tú SIEMPRE respondes en español.";
+        
+        const baseInstructions = [
+            baseLang,
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+        ];
+
+        const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
+        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
+        logger.info(`${LP} 🎨 PRE-SESSION config.update: ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
+        
+        try {
+            await client.config.update({
+                body: {
+                    instructions: combinedInstructions,
+                } as any,
+            });
+            logger.info(`${LP} 🎨 Instructions set BEFORE session.create ✅`);
+        } catch (ctxError: any) {
+            logger.warn(`${LP} Failed to set pre-session instructions: ${ctxError.message}`);
+        }
+    }
+
     // Get or create session for this chat
     let sessionId = chatSessionMap.get(req.chatId);
 
@@ -1112,10 +1150,10 @@ export async function handleOpenCodeStream(
         }
     }
 
-    // Inject context instructions via global instructions (survives compaction)
-    // Avoid overriding agent.build.prompt because it destroys the agent's core identity and tools format.
+    // Instructions were already set BEFORE session.create (see above).
+    // Re-apply them here as well to cover existing sessions that were
+    // restored from DB (they already exist, so they missed the pre-create call).
     if (options.contextInstructions && options.contextInstructions.length > 0) {
-        // Re-build base instructions
         const settings = readSettings();
         const baseLang = settings.chatLanguage === "en"
             ? "It is ABSOLUTELY IMPERATIVE that you ALWAYS respond in English. Think in English, reason in English and write ALL your responses, explanations, titles, lists and messages completely in English. Even if the user writes in another language, you ALWAYS respond in English."
@@ -1127,7 +1165,8 @@ export async function handleOpenCodeStream(
         ];
 
         const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
-        logger.info(`${LP} Setting ${combinedInstructions.length} total instructions via config.update (global)`);
+        const hasDesign = combinedInstructions.some(i => i.includes("DESIGN SYSTEM REFERENCE"));
+        logger.info(`${LP} 🎨 POST-SESSION config.update (for restored sessions): ${combinedInstructions.length} instructions — hasDesignMd=${hasDesign}`);
         
         try {
             await client.config.update({
@@ -1135,9 +1174,9 @@ export async function handleOpenCodeStream(
                     instructions: combinedInstructions,
                 } as any,
             });
-            logger.info(`${LP} Context instructions set safely via config.instructions`);
+            logger.info(`${LP} 🎨 Instructions re-applied after session ✅`);
         } catch (ctxError: any) {
-            logger.warn(`${LP} Failed to set context via config.update: ${ctxError.message}`);
+            logger.warn(`${LP} Failed to re-apply instructions: ${ctxError.message}`);
         }
     }
 
@@ -1269,18 +1308,110 @@ export async function handleOpenCodeStream(
         const effectiveAgent = options.agentId || "build";
         const isMockupMode = effectiveAgent === "mockup";
 
+        // Detect first message (no prior assistant responses) — used by build-mode
+        // instruction and DESIGN.md hint below.
+        const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
+
         if (isMockupMode) {
             // Mockup mode uses the custom "mockup" primary agent defined in config
             // (steps: 8, bash: false, write/edit: true)
             logger.info(`${LP} ⚡ Mockup mode — using custom mockup agent (no bash, 8 steps)`);
         } else if (effectiveAgent === "build") {
-            // Ignore the placeholder message ID which is already pushed to chatMessages for this very request
-            const hasAssistantMessages = chatMessages.some((m: any) => m.role === "assistant" && m.id !== placeholderMessageId);
             if (!hasAssistantMessages) {
                 promptText = `[INSTRUCCIÓN DE SISTEMA: No propongas un plan ni pidas confirmación. Ejecuta directamente lo que pide el usuario. Implementa el código, crea los archivos necesarios y haz los cambios sin pedir permiso. NUNCA expliques cómo ejecutar la app, aquí se compila automáticamente. Responde en el mismo idioma.]\n\n${req.prompt}`;
                 logger.info(`${LP} 🚀 First message of app (no prior assistant messages) — injected build-mode instruction`);
             }
+        } else if (effectiveAgent === "plan") {
+            if (!hasAssistantMessages) {
+                const isEnglish = settings.chatLanguage === "en";
+                const planQuestionPrompt = isEnglish
+                    ? `[INTERACTIVE PLANNING INSTRUCTION:\n` +
+                      `You are in planning mode. Your goal is to create a detailed and precise development plan.\n\n` +
+                      `GOLDEN RULE — ASK BEFORE PLANNING:\n` +
+                      `Unless the user has provided an extremely detailed plan with all decisions already made,\n` +
+                      `you MUST use the "question" tool to ask the user about fine details before generating\n` +
+                      `the final plan. Every doubt, ambiguity, or design/architecture decision must be resolved with the user.\n\n` +
+                      `QUESTION LIMIT:\n` +
+                      `- Ask a MAXIMUM of 5 questions to the user (you can ask fewer if the request is clear).\n` +
+                      `- If you need more than 5, you must explicitly justify it to the user.\n` +
+                      `- Group related questions into a single question when possible.\n` +
+                      `- Use predefined options when the alternatives are clear.\n\n` +
+                      `FLOW:\n` +
+                      `1. Analyze the user's request and identify ambiguities and pending decisions.\n` +
+                      `2. Use the "question" tool to ask the user (one question at a time).\n` +
+                      `3. Once you have all the answers, generate the complete plan with the Stages and Tasks structure.\n\n` +
+                      `Do NOT generate a provisional or incomplete plan while waiting for answers.\n` +
+                      `First clarify, then plan.]`
+                    : `[INSTRUCCIÓN DE PLANIFICACIÓN INTERACTIVA:\n` +
+                      `Estás en modo planificación. Tu objetivo es crear un plan de desarrollo detallado y preciso.\n\n` +
+                      `REGLA DE ORO — PREGUNTAR ANTES DE PLANIFICAR:\n` +
+                      `A menos que el usuario te haya dado un plan sumamente detallado con todas las decisiones ya tomadas,\n` +
+                      `DEBES usar la herramienta "question" para preguntarle al usuario por los detalles finos antes de generar\n` +
+                      `el plan definitivo. Cada duda, ambigüedad o decisión de diseño/arquitectura debe resolverse con el usuario.\n\n` +
+                      `LÍMITE DE PREGUNTAS:\n` +
+                      `- Haz como MÁXIMO 5 preguntas al usuario (puedes hacer menos si la petición es clara).\n` +
+                      `- Si necesitas más de 5, debes justificarlo explícitamente al usuario.\n` +
+                      `- Agrupa las preguntas relacionadas en una sola pregunta cuando sea posible.\n` +
+                      `- Usa opciones predefinidas (options) cuando las alternativas sean claras.\n\n` +
+                      `FLUJO:\n` +
+                      `1. Analiza la petición del usuario e identifica las ambigüedades y decisiones pendientes.\n` +
+                      `2. Usa la herramienta "question" para preguntar al usuario (una pregunta a la vez).\n` +
+                      `3. Una vez que tengas todas las respuestas, genera el plan completo con la estructura\n` +
+                      `   de Etapas y Tareas.\n\n` +
+                      `NO generes un plan provisional o incompleto mientras esperas respuestas.\n` +
+                      `Primero aclara, luego planifica.]`;
+                promptText = `${planQuestionPrompt}\n\n${req.prompt}`;
+                logger.info(`${LP} 🗣️ First message in plan mode — injected interactive question instruction (lang=${isEnglish ? "en" : "es"})`);
+            }
         }
+
+        // On the FIRST message, inject a DESIGN.md hint so the model reads and
+        // applies it immediately. On subsequent messages we trust OpenCode's native
+        // opencode.json instructions (which already reference docs/DESIGN.md).
+        if (!hasAssistantMessages) {
+            const fs = require("fs");
+            const designPath = path.join(projectDir, "docs", "DESIGN.md");
+            if (fs.existsSync(designPath)) {
+                const designHint = `[CONTEXTO OBLIGATORIO: Este proyecto tiene un sistema de diseño definido en docs/DESIGN.md. ANTES de escribir cualquier código de UI, lee este archivo con tu herramienta Read y aplica estrictamente sus colores, tipografía, espaciado, componentes y estilo visual. El usuario ya eligió este diseño — no le preguntes ni le pidas confirmación, simplemente aplícalo.]`;
+                promptText = `${designHint}\n\n${promptText}`;
+                logger.info(`${LP} 🎨 Injected DESIGN.md hint into prompt (first message)`);
+            }
+
+            // Stack context hint — the scaffold was already created by the
+            // platform during app creation (npx create-vite, create-next-app, etc.)
+            // so the AI only needs to know what's available and start coding.
+            const packageJsonPath = path.join(projectDir, "package.json");
+            const { TEMPLATE_TECH_STACKS } = await import("../../shared/templates");
+            const settings = readSettings();
+            const templateId = settings.selectedTemplateId || "react";
+            const techStack = TEMPLATE_TECH_STACKS[templateId];
+            const stackName = techStack?.title || "React.js";
+            const stackDesc = techStack?.stack || "React 19, Vite, TypeScript, Tailwind CSS 4, Shadcn/ui";
+
+            if (fs.existsSync(packageJsonPath)) {
+                // Normal case: scaffold was pre-built by the platform
+                const stackHint =
+                    `[CONTEXTO: Este proyecto ya tiene la infraestructura instalada y lista.\n` +
+                    `Stack: ${stackName} (${stackDesc}).\n` +
+                    `Las dependencias ya están instaladas. NO ejecutes npm install ni npm run dev.\n` +
+                    `Usa la herramienta todowrite para planificar las tareas y marca cada una como completada.\n` +
+                    `Implementa directamente lo que pide el usuario:]`;
+                promptText = `${stackHint}\n\n${promptText}`;
+                logger.info(`${LP} 🏗️ Injected stack context hint for "${stackName}" (scaffold pre-built)`);
+            } else {
+                // Edge case: empty app (no scaffold) — give minimal bootstrap hint
+                const fallbackPrompt =
+                    `[INSTRUCCIÓN: Este proyecto está vacío (sin package.json).\n` +
+                    `Stack preferido: ${stackName} (${stackDesc}).\n` +
+                    `Crea la infraestructura mínima necesaria, ejecuta npm install --legacy-peer-deps,\n` +
+                    `y luego implementa lo que pide el usuario. NO ejecutes npm run dev.\n` +
+                    `Usa todowrite para gestionar las tareas.\n` +
+                    `Petición del usuario:]`;
+                promptText = `${fallbackPrompt}\n\n${promptText}`;
+                logger.info(`${LP} 🏗️ Injected fallback scaffold prompt for "${stackName}" (empty project)`);
+            }
+        }
+
         const promptParts: any[] = [{ type: "text", text: promptText }];
 
         // Add image attachments as file parts (OpenCode supports multimodal input)

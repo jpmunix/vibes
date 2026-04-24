@@ -51,6 +51,7 @@ export { contextContracts } from "./context";
 export { upgradeContracts } from "./upgrade";
 export { visualEditingContracts } from "./visual-editing";
 export { miscContracts, miscEvents } from "./misc";
+export { designContracts } from "./design";
 
 
 export { todoContracts, todoAttachmentContracts } from "./todo";
@@ -102,6 +103,7 @@ export { knowledgeClient } from "./knowledge";
 export { aiQueryLogClient } from "./ai_query_logs";
 
 export { authClient } from "./auth";
+export { designClient } from "./design";
 
 // =============================================================================
 // Type Exports
@@ -317,6 +319,9 @@ export type {
   ElementType,
 } from "./visual-editing";
 
+// Design types
+export type { DesignItem } from "./design";
+
 
 // Misc types
 export type { ChatLogsData, DeepLinkData, AppOutput, EnvVar } from "./misc";
@@ -428,6 +433,7 @@ import { pocketbaseClient } from "./pocketbase";
 import { aiQueryLogClient } from "./ai_query_logs";
 
 import { authClient } from "./auth";
+import { designClient } from "./design";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -499,6 +505,9 @@ export const ipc = {
 
   // Auth
   auth: authClient,
+
+  // Design system picker
+  design: designClient,
 
   // Event clients for main->renderer pub/sub
   events: {

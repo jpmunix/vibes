@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useAtom, useAtomValue } from "jotai";
-import { selectedChatIdAtom } from "@/atoms/chatAtoms";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectedChatIdAtom, isStreamingByIdAtom, pendingMessageQueueByIdAtom } from "@/atoms/chatAtoms";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import {
   AlertTriangle,
@@ -210,6 +210,9 @@ export function _Problems() {
     `${p.file}:${p.line}:${p.column}:${p.code}`;
   const { streamMessage } = useStreamChat();
   const [selectedChatId] = useAtom(selectedChatIdAtom);
+  const isStreamingById = useAtomValue(isStreamingByIdAtom);
+  const isStreaming = selectedChatId ? (isStreamingById.get(selectedChatId) ?? false) : false;
+  const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
 
   // Whenever the problems pane is shown or the report updates, select all problems
   useEffect(() => {
@@ -300,10 +303,25 @@ export function _Problems() {
             selectedKeys.has(problemKey(p)),
           );
           const subsetReport: ProblemReport = { problems: selectedProblems };
-          streamMessage({
-            prompt: createProblemFixPrompt(subsetReport),
-            chatId: selectedChatId,
-          });
+          const fixPrompt = createProblemFixPrompt(subsetReport);
+
+          if (isStreaming) {
+            // Agent is busy — enqueue the fix prompt so it runs after the current stream
+            setPendingMessageQueue((prev) => {
+              const next = new Map(prev);
+              const existing = next.get(selectedChatId) ?? [];
+              next.set(selectedChatId, [...existing, {
+                id: `lint-fix-${Date.now()}`,
+                prompt: fixPrompt,
+              }]);
+              return next;
+            });
+          } else {
+            streamMessage({
+              prompt: fixPrompt,
+              chatId: selectedChatId,
+            });
+          }
         }}
       />
       <div className="flex-1 overflow-y-auto">

@@ -58,6 +58,9 @@ export type App = z.infer<typeof AppSchema>;
 export const CreateAppParamsSchema = z.object({
   name: z.string().min(1),
   useDefaultScaffold: z.boolean().optional(),
+  empty: z.boolean().optional(),
+  /** Template ID (e.g. "react", "next", "vue") — used to run the scaffold CLI command */
+  templateId: z.string().optional(),
 });
 
 /**

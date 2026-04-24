@@ -101,9 +101,9 @@ export const TOOL_META: Record<string, ToolMetaEntry> = {
     "vibes-status": { icon: BarChart3, label: "Estado", pendingLabel: "Comprobando", color: "text-blue-500" },
     "vibes-mcp-tool-call": { icon: Blocks, label: "MCP", pendingLabel: "Ejecutando herramienta", color: "text-purple-500" },
 
-    "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
-    "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
-    "vibes-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Pensando", color: "text-purple-500" },
+    "think": { icon: Brain, label: "Pensamiento", pendingLabel: "Trabajando", color: "text-purple-500" },
+    "thought": { icon: Brain, label: "Pensamiento", pendingLabel: "Trabajando", color: "text-purple-500" },
+    "vibes-think": { icon: Brain, label: "Pensamiento", pendingLabel: "Trabajando", color: "text-purple-500" },
     "vibes-git": { icon: GitBranch, label: "Git", pendingLabel: "Ejecutando Git", color: "text-orange-500" },
     "vibes-ask-user": { icon: MessageCircleQuestion, label: "Pregunta", pendingLabel: "Esperando respuesta del usuario", color: "text-violet-500" },
     "vibes-run-command": { icon: Terminal, label: "Comando", pendingLabel: "Ejecutando", color: "text-emerald-600 dark:text-lime-500" },

@@ -23,7 +23,10 @@ export function registerProblemsHandlers() {
       });
 
       if (!app) {
-        throw new Error(`App not found: ${params.appId}`);
+        // Graceful fallback: app may have been deleted while UI still references it.
+        // Return empty problems instead of throwing to avoid flooding error logs.
+        logger.warn(`[checkProblems] App not found (transient?): appId=${params.appId}, userId=${context.userId ?? 'UNDEFINED'}`);
+        return { problems: [] };
       }
 
       // Skip TSC for non-Node projects (e.g. PHP, Python, etc.)
