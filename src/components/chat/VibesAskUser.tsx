@@ -116,8 +116,14 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
             // Remove from pending — the answer blockquote is injected
             // directly into the chat stream by the main process handler,
             // so we don't need to show any confirmation here.
+            // Remove ALL entries matching this question+chatId (not just requestId)
+            // to handle duplicate question.asked events from OpenCode.
             setPendingAskUsers((prev) =>
-                prev.filter((p) => p.requestId !== pendingEntry.requestId),
+                prev.filter(
+                    (p) =>
+                        p.requestId !== pendingEntry.requestId &&
+                        !(p.chatId === chatId && p.question === question),
+                ),
             );
         } catch (err) {
             console.error("Failed to send ask_user response:", err);
@@ -141,25 +147,25 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
             data-testid="vibes-ask-user"
             className="my-2 rounded-xl overflow-hidden"
             style={{
-                background: "linear-gradient(135deg, oklch(0.25 0.04 280 / 0.6), oklch(0.22 0.02 260 / 0.4))",
-                border: "1px solid oklch(0.6 0.15 280 / 0.35)",
-                boxShadow: "0 4px 24px oklch(0.4 0.15 280 / 0.12), inset 0 1px 0 oklch(1 0 0 / 0.03)",
+                background: "linear-gradient(135deg, var(--accent-teal-gradient-start), var(--accent-teal-gradient-end))",
+                border: "1px solid var(--accent-teal-border)",
+                boxShadow: "0 4px 24px var(--accent-teal-shadow), inset 0 1px 0 oklch(1 0 0 / 0.03)",
             }}
         >
             {/* Header bar */}
             <div
                 className="flex items-center gap-2.5 px-4 py-2.5"
-                style={{ borderBottom: "1px solid oklch(0.5 0.1 280 / 0.15)" }}
+                style={{ borderBottom: "1px solid var(--accent-teal-header-divider)" }}
             >
                 <div
                     className="flex items-center justify-center w-6 h-6 rounded-md"
-                    style={{ background: "oklch(0.55 0.18 280 / 0.2)" }}
+                    style={{ background: "var(--accent-teal-icon-bg)" }}
                 >
-                    <MessageCircleQuestion size={14} style={{ color: "oklch(0.75 0.15 280)" }} />
+                    <MessageCircleQuestion size={14} style={{ color: "var(--accent-teal-icon)" }} />
                 </div>
                 <span
                     className="text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: "oklch(0.75 0.15 280)" }}
+                    style={{ color: "var(--accent-teal-label)" }}
                 >
                     Pregunta del agente
                 </span>
@@ -168,9 +174,9 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                 <div className="ml-auto flex items-center gap-1.5">
                     <span
                         className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
-                        style={{ background: "oklch(0.75 0.18 280)" }}
+                        style={{ background: "var(--accent-teal-pulse)" }}
                     />
-                    <span className="text-[10px]" style={{ color: "oklch(0.65 0.1 280)" }}>
+                    <span className="text-[10px]" style={{ color: "var(--accent-teal-status-text)" }}>
                         {isMultiple ? "Selección múltiple" : "Esperando"}
                     </span>
                 </div>
@@ -183,7 +189,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
 
                 {/* Context */}
                 {context && (
-                    <p className="text-[11px] leading-relaxed mb-3" style={{ color: "oklch(0.6 0.03 260)" }}>
+                    <p className="text-[11px] leading-relaxed mb-3" style={{ color: "var(--accent-teal-context-text)" }}>
                         {context}
                     </p>
                 )}
@@ -204,23 +210,23 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150 cursor-pointer group"
                                         style={{
                                             background: isSelected
-                                                ? "oklch(0.55 0.18 280 / 0.15)"
-                                                : "oklch(0.5 0.02 260 / 0.08)",
+                                                ? "var(--accent-teal-selected-bg)"
+                                                : "var(--accent-teal-option-bg)",
                                             border: isSelected
-                                                ? "1px solid oklch(0.6 0.18 280 / 0.4)"
-                                                : "1px solid oklch(0.5 0.03 260 / 0.12)",
-                                            ...(isSelected ? { boxShadow: "0 0 12px oklch(0.5 0.18 280 / 0.08)" } : {}),
+                                                ? "1px solid var(--accent-teal-selected-border)"
+                                                : "1px solid var(--accent-teal-option-border)",
+                                            ...(isSelected ? { boxShadow: "0 0 12px var(--accent-teal-glow)" } : {}),
                                         }}
                                         onMouseEnter={(e) => {
                                             if (!isSelected) {
-                                                e.currentTarget.style.background = "oklch(0.5 0.02 260 / 0.15)";
-                                                e.currentTarget.style.borderColor = "oklch(0.5 0.08 280 / 0.25)";
+                                                e.currentTarget.style.background = "var(--accent-teal-option-hover-bg)";
+                                                e.currentTarget.style.borderColor = "var(--accent-teal-option-hover-border)";
                                             }
                                         }}
                                         onMouseLeave={(e) => {
                                             if (!isSelected) {
-                                                e.currentTarget.style.background = "oklch(0.5 0.02 260 / 0.08)";
-                                                e.currentTarget.style.borderColor = "oklch(0.5 0.03 260 / 0.12)";
+                                                e.currentTarget.style.background = "var(--accent-teal-option-bg)";
+                                                e.currentTarget.style.borderColor = "var(--accent-teal-option-border)";
                                             }
                                         }}
                                     >
@@ -228,30 +234,28 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                                         <div className="flex-shrink-0">
                                             {isMultiple ? (
                                                 isSelected ? (
-                                                    <CheckSquare size={16} style={{ color: "oklch(0.7 0.18 280)" }} />
+                                                    <CheckSquare size={16} style={{ color: "var(--accent-teal-selected-icon)" }} />
                                                 ) : (
                                                     <Square
                                                         size={16}
-                                                        style={{ color: "oklch(0.5 0.03 260 / 0.5)" }}
-                                                        className="group-hover:!text-[oklch(0.6_0.08_280)]"
+                                                        style={{ color: "var(--accent-teal-checkbox-inactive)" }}
                                                     />
                                                 )
                                             ) : (
                                                 isSelected ? (
                                                     <div
                                                         className="w-4 h-4 rounded-full flex items-center justify-center"
-                                                        style={{ border: "2px solid oklch(0.7 0.18 280)" }}
+                                                        style={{ border: "2px solid var(--accent-teal-selected-icon)" }}
                                                     >
                                                         <div
                                                             className="w-2 h-2 rounded-full"
-                                                            style={{ background: "oklch(0.7 0.18 280)" }}
+                                                            style={{ background: "var(--accent-teal-selected-icon)" }}
                                                         />
                                                     </div>
                                                 ) : (
                                                     <Circle
                                                         size={16}
-                                                        style={{ color: "oklch(0.5 0.03 260 / 0.5)" }}
-                                                        className="group-hover:!text-[oklch(0.6_0.08_280)]"
+                                                        style={{ color: "var(--accent-teal-checkbox-inactive)" }}
                                                     />
                                                 )
                                             )}
@@ -260,8 +264,8 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                                             className="text-[13px]"
                                             style={{
                                                 color: isSelected
-                                                    ? "oklch(0.85 0.08 280)"
-                                                    : "oklch(0.75 0.02 260)",
+                                                    ? "var(--accent-teal-selected-text)"
+                                                    : "var(--accent-teal-option-text)",
                                             }}
                                         >
                                             {option}
@@ -276,40 +280,40 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-150 cursor-pointer"
                                 style={{
                                     background: useCustom
-                                        ? "oklch(0.55 0.18 280 / 0.15)"
-                                        : "oklch(0.5 0.02 260 / 0.08)",
+                                        ? "var(--accent-teal-selected-bg)"
+                                        : "var(--accent-teal-option-bg)",
                                     border: useCustom
-                                        ? "1px solid oklch(0.6 0.18 280 / 0.4)"
-                                        : "1px solid oklch(0.5 0.03 260 / 0.08)",
+                                        ? "1px solid var(--accent-teal-selected-border)"
+                                        : "1px solid var(--accent-teal-custom-border-dashed)",
                                     borderStyle: useCustom ? "solid" : "dashed",
                                 }}
                             >
                                 <div className="flex-shrink-0">
                                     {useCustom ? (
                                         isMultiple ? (
-                                            <CheckSquare size={16} style={{ color: "oklch(0.7 0.18 280)" }} />
+                                            <CheckSquare size={16} style={{ color: "var(--accent-teal-selected-icon)" }} />
                                         ) : (
                                             <div
                                                 className="w-4 h-4 rounded-full flex items-center justify-center"
-                                                style={{ border: "2px solid oklch(0.7 0.18 280)" }}
+                                                style={{ border: "2px solid var(--accent-teal-selected-icon)" }}
                                             >
                                                 <div
                                                     className="w-2 h-2 rounded-full"
-                                                    style={{ background: "oklch(0.7 0.18 280)" }}
+                                                    style={{ background: "var(--accent-teal-selected-icon)" }}
                                                 />
                                             </div>
                                         )
                                     ) : (
                                         isMultiple ? (
-                                            <Square size={16} style={{ color: "oklch(0.5 0.03 260 / 0.4)" }} />
+                                            <Square size={16} style={{ color: "var(--accent-teal-checkbox-inactive)" }} />
                                         ) : (
-                                            <Circle size={16} style={{ color: "oklch(0.5 0.03 260 / 0.4)" }} />
+                                            <Circle size={16} style={{ color: "var(--accent-teal-checkbox-inactive)" }} />
                                         )
                                     )}
                                 </div>
                                 <span
                                     className="text-[13px]"
-                                    style={{ color: useCustom ? "oklch(0.85 0.08 280)" : "oklch(0.55 0.02 260)" }}
+                                    style={{ color: useCustom ? "var(--accent-teal-selected-text)" : "var(--accent-teal-custom-text)" }}
                                 >
                                     Otra respuesta...
                                 </span>
@@ -329,16 +333,16 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                                 placeholder="Escribe tu respuesta..."
                                 className="w-full px-3 py-2 text-[13px] rounded-lg outline-none transition-all"
                                 style={{
-                                    background: "oklch(0.2 0.01 260 / 0.6)",
-                                    border: "1px solid oklch(0.5 0.08 280 / 0.25)",
-                                    color: "oklch(0.88 0.02 260)",
+                                    background: "var(--accent-teal-input-bg)",
+                                    border: "1px solid var(--accent-teal-input-border)",
+                                    color: "var(--accent-teal-input-text)",
                                 }}
                                 onFocus={(e) => {
-                                    e.currentTarget.style.borderColor = "oklch(0.6 0.15 280 / 0.5)";
-                                    e.currentTarget.style.boxShadow = "0 0 0 3px oklch(0.5 0.15 280 / 0.1)";
+                                    e.currentTarget.style.borderColor = "var(--accent-teal-input-focus-border)";
+                                    e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-teal-input-focus-ring)";
                                 }}
                                 onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = "oklch(0.5 0.08 280 / 0.25)";
+                                    e.currentTarget.style.borderColor = "var(--accent-teal-input-border)";
                                     e.currentTarget.style.boxShadow = "none";
                                 }}
                                 autoFocus={options.length === 0}
@@ -349,7 +353,7 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                     {/* Submit button */}
                     <div className="flex items-center justify-between pt-1">
                         {isMultiple && selectedOptions.size > 0 && !useCustom && (
-                            <span className="text-[11px]" style={{ color: "oklch(0.65 0.1 280)" }}>
+                            <span className="text-[11px]" style={{ color: "var(--accent-teal-count-text)" }}>
                                 {selectedOptions.size} seleccionada{selectedOptions.size !== 1 ? "s" : ""}
                             </span>
                         )}
@@ -360,21 +364,21 @@ export const VibesAskUser: React.FC<VibesAskUserProps> = ({ children, node }) =>
                             className="flex items-center gap-2 px-4 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
                             style={{
                                 background: canSend
-                                    ? "linear-gradient(135deg, oklch(0.55 0.2 280), oklch(0.48 0.18 270))"
-                                    : "oklch(0.35 0.05 280 / 0.3)",
-                                color: canSend ? "oklch(0.95 0.02 280)" : "oklch(0.6 0.03 260)",
+                                    ? "linear-gradient(135deg, var(--accent-teal-btn-gradient-from), var(--accent-teal-btn-gradient-to))"
+                                    : "var(--accent-teal-btn-disabled-bg)",
+                                color: canSend ? "var(--accent-teal-btn-text)" : "var(--accent-teal-btn-disabled-text)",
                                 boxShadow: canSend
-                                    ? "0 2px 8px oklch(0.4 0.18 280 / 0.25), inset 0 1px 0 oklch(1 0 0 / 0.1)"
+                                    ? "0 2px 8px var(--accent-teal-btn-shadow), inset 0 1px 0 oklch(1 0 0 / 0.1)"
                                     : "none",
                             }}
                             onMouseEnter={(e) => {
                                 if (canSend) {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, oklch(0.6 0.2 280), oklch(0.52 0.18 270))";
+                                    e.currentTarget.style.background = "linear-gradient(135deg, var(--accent-teal-btn-hover-from), var(--accent-teal-btn-hover-to))";
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (canSend) {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, oklch(0.55 0.2 280), oklch(0.48 0.18 270))";
+                                    e.currentTarget.style.background = "linear-gradient(135deg, var(--accent-teal-btn-gradient-from), var(--accent-teal-btn-gradient-to))";
                                 }
                             }}
                         >

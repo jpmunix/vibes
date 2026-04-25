@@ -1,6 +1,6 @@
 {
   "name": "minube-vibes",
-  "version": "8.0",
+  "version": "8.1",
   "description": "Generador de aplicaciones AI de minube",
   "keywords": [],
   "license": "MIT",
@@ -15,8 +15,11 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
+    "start:vibes": "VIBES_PROFILE=vibes electron-forge start",
     "distribute": "npm run clean && electron-forge make && mkdir -p /media/munix/NAS/MinubeVibes/linux && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux/ \\;",
+    "distribute:vibes": "VIBES_PROFILE=vibes npm run clean && VIBES_PROFILE=vibes electron-forge make && mkdir -p /media/munix/NAS/MinubeVibes/linux && find out/make -name '*.deb' -exec cp {} /media/munix/NAS/MinubeVibes/linux/ \\;",
     "make:linux": "npm run clean && electron-forge make --platform linux --arch x64",
+    "make:linux:vibes": "VIBES_PROFILE=vibes npm run clean && VIBES_PROFILE=vibes electron-forge make --platform linux --arch x64",
     "make:mac": "npm run clean && electron-forge make --platform darwin --arch x64",
     "make:mac-arm64": "npm run clean && electron-forge make --platform darwin --arch arm64",
     "build:mac": "bash scripts/build-mac.sh",

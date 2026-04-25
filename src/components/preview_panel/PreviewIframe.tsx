@@ -1559,59 +1559,32 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
           {/* Navigation Buttons */}
           <div className="flex space-x-1">
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="inline-flex">
-                    <button
-                      onClick={handleActivateComponentSelector}
-                      className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
-                        ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
-                        : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                        }`}
-                      disabled={
-                        loading ||
-                        !selectedAppId ||
-                        !isComponentSelectorInitialized
-                      }
-                      data-testid="preview-pick-element-button"
-                    >
-                      <MousePointerClick size={16} />
-                    </button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {isPicking
-                      ? "Desactivar selector"
-                      : "Seleccionar componente"}
-                  </p>
-                  <p>{isMac ? "⌘ + ⇧ + C" : "Ctrl + ⇧ + C"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <button
+              onClick={handleActivateComponentSelector}
+              className={`p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${isPicking
+                ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)] hover:opacity-90"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+              disabled={
+                loading ||
+                !selectedAppId ||
+                !isComponentSelectorInitialized
+              }
+              data-testid="preview-pick-element-button"
+            >
+              <MousePointerClick size={16} />
+            </button>
 
             <DropdownMenu>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="inline-flex">
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
-                          disabled={loading || !selectedAppId}
-                          data-testid="preview-screenshot-button"
-                        >
-                          <Camera size={16} />
-                        </button>
-                      </DropdownMenuTrigger>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Capturar pantalla</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-1 rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-foreground hover:bg-accent hover:text-accent-foreground"
+                  disabled={loading || !selectedAppId}
+                  data-testid="preview-screenshot-button"
+                >
+                  <Camera size={16} />
+                </button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onSelect={handleAnnotatorClick}>
                   <Monitor size={14} className="mr-2" />
@@ -1639,27 +1612,18 @@ export const PreviewIframe = ({ loading }: { loading: boolean }) => {
             >
               <ArrowRight size={16} />
             </button>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleReload}
-                    className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
-                    disabled={loading || !selectedAppId}
-                    data-testid="preview-refresh-button"
-                  >
-                    {isIframeLoading ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <RefreshCw size={16} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Actualizar vista (Shift + Click para reiniciar)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <button
+              onClick={handleReload}
+              className="p-1 rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground"
+              disabled={loading || !selectedAppId}
+              data-testid="preview-refresh-button"
+            >
+              {isIframeLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <RefreshCw size={16} />
+              )}
+            </button>
           </div>
 
           {/* Address Bar - editable combobox with history */}

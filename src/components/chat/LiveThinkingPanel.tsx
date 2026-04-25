@@ -35,7 +35,13 @@ export const LiveThinkingPanel: React.FC<{
   }
 
   return (
-    <div className="mt-1.5 mb-2 rounded-md border border-purple-500/15 bg-purple-500/[0.03] overflow-hidden">
+    <div
+      className="mt-1.5 mb-2 rounded-md overflow-hidden"
+      style={{
+        border: "1px solid var(--accent-think-panel-border)",
+        background: "var(--accent-think-panel-bg)",
+      }}
+    >
       <style>{`
         .live-think-scroll::-webkit-scrollbar {
           width: 3px;
@@ -44,17 +50,20 @@ export const LiveThinkingPanel: React.FC<{
           background: transparent;
         }
         .live-think-scroll::-webkit-scrollbar-thumb {
-          background: rgba(168, 85, 247, 0.2);
+          background: var(--accent-think-scrollbar);
           border-radius: 3px;
         }
         .live-think-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(168, 85, 247, 0.35);
+          background: var(--accent-think-scrollbar-hover);
         }
       `}</style>
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-purple-500/10">
-        <Brain size={12} className={`text-purple-500 ${isActive ? "animate-pulse" : ""}`} />
-        <span className="text-xs font-medium text-purple-400/80">
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5"
+        style={{ borderBottom: "1px solid var(--accent-think-header-border)" }}
+      >
+        <Brain size={12} style={{ color: "var(--accent-think-icon)" }} className={isActive ? "animate-pulse" : ""} />
+        <span className="text-xs font-medium" style={{ color: "var(--accent-think-label)" }}>
           {isActive ? "Pensando..." : "Pensamiento"}
         </span>
       </div>

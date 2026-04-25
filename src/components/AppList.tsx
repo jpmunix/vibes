@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "@/components/ui/icons";
+import { Loader2, X, FolderX } from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { AppSearchDialog } from "./AppSearchDialog";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { AppItem } from "./appItem";
@@ -31,6 +31,7 @@ import { ImportAppButton } from "./ImportAppButton";
 import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -57,6 +58,14 @@ export function AppList({ show }: { show?: boolean }) {
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
 
+  // ── Bulk selection mode state ──
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkDeleteFiles, setBulkDeleteFiles] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+
   // Listen for sidebar action triggers from TopNavbar dropdown
   const sidebarAction = useAtomValue(sidebarActionAtom);
   const lastActionRef = useRef<number>(0);
@@ -76,6 +85,9 @@ export function AppList({ show }: { show?: boolean }) {
         break;
       case "apps:search":
         setIsSearchDialogOpen(true);
+        break;
+      case "apps:bulk-close":
+        enterSelectionMode();
         break;
     }
   }, [sidebarAction]);
@@ -107,9 +119,76 @@ export function AppList({ show }: { show?: boolean }) {
     [apps],
   );
 
-  // if (!show) {
-  //  return null;
-  // }
+  // ── Bulk selection helpers ──
+  const enterSelectionMode = useCallback(() => {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+  }, []);
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((appId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(appId)) {
+        next.delete(appId);
+      } else {
+        next.add(appId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    const allIds = apps.map((a) => a.id);
+    setSelectedIds(new Set(allIds));
+  }, [apps]);
+
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkClose = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDialogOpen(true);
+  }, [selectedIds]);
+
+  const handleConfirmBulkClose = async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      setIsBulkDeleting(true);
+      setBulkProgress(0);
+      const ids = Array.from(selectedIds);
+      let completed = 0;
+
+      for (const appId of ids) {
+        await ipc.app.deleteApp({ appId, deleteFiles: bulkDeleteFiles });
+        completed++;
+        setBulkProgress(Math.round((completed / ids.length) * 100));
+      }
+
+      setIsBulkDialogOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      await refreshApps();
+
+      // If current app was among deleted, navigate away
+      if (selectedAppId !== null && ids.includes(selectedAppId)) {
+        setSelectedAppId(null);
+        navigate({ to: "/", search: {} });
+      }
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteFiles(false);
+      setBulkProgress(0);
+    }
+  };
 
   const handleAppClick = (id: number) => {
     setSelectedAppId(id);
@@ -190,6 +269,28 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
+  // Selected app names for the bulk dialog
+  const selectedAppNames = useMemo(
+    () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
+    [apps, selectedIds],
+  );
+
+  const renderAppItem = (app: (typeof apps)[0]) => (
+    <AppItem
+      key={app.id}
+      app={app}
+      handleAppClick={handleAppClick}
+      selectedAppId={selectedAppId}
+      handleToggleFavorite={handleToggleFavorite}
+      isFavoriteLoading={isFavoriteLoading}
+      handleOpenChat={handleOpenChat}
+      onRefresh={refreshApps}
+      selectionMode={selectionMode}
+      isSelected={selectedIds.has(app.id)}
+      onToggleSelect={toggleSelect}
+    />
+  );
+
   return (
     <>
       {show && (
@@ -238,12 +339,91 @@ export function AppList({ show }: { show?: boolean }) {
               opacity: 0.5;
               padding: 10px 12px 4px;
             }
+
+            /* ── Bulk selection toolbar ── */
+            .bulk-toolbar {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              padding: 8px 14px;
+              background: var(--sidebar);
+              border-top: 1px solid var(--border);
+              animation: bulk-toolbar-in 0.2s ease-out;
+              overflow: hidden;
+            }
+            @keyframes bulk-toolbar-in {
+              from { opacity: 0; transform: translateY(8px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .bulk-toolbar-count {
+              font-size: 12px;
+              font-weight: 600;
+              color: var(--primary);
+              margin-right: auto;
+              white-space: nowrap;
+            }
+
+            /* Bulk dialog app list */
+            .bulk-app-list {
+              max-height: 160px;
+              overflow-y: auto;
+              background: var(--muted);
+              border-radius: 8px;
+              padding: 8px 10px;
+              margin: 8px 0;
+            }
+            .bulk-app-list-item {
+              font-size: 13px;
+              padding: 2px 0;
+              color: var(--foreground);
+              opacity: 0.85;
+            }
+
+            /* Bulk progress bar */
+            .bulk-progress {
+              height: 3px;
+              background: var(--muted);
+              border-radius: 2px;
+              overflow: hidden;
+              margin-top: 8px;
+            }
+            .bulk-progress-bar {
+              height: 100%;
+              background: var(--primary);
+              transition: width 0.3s ease;
+              border-radius: 2px;
+            }
           `}</style>
 
           <SidebarGroup
-            className="overflow-y-auto h-[calc(100vh-112px)]"
+            className={`overflow-y-auto overflow-x-hidden ${selectionMode ? "h-[calc(100vh-112px-52px)]" : "h-[calc(100vh-112px)]"}`}
             data-testid="app-list-container"
           >
+
+        {/* ── Selection mode header bar ── */}
+        {selectionMode && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+            <FolderX size={15} className="text-primary shrink-0" />
+            <span className="typo-caption font-semibold text-primary">Seleccionar para cerrar</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                className="typo-micro text-muted-foreground hover:text-primary cursor-pointer transition-colors px-1.5 py-0.5 rounded"
+                onClick={selectedIds.size === apps.length ? deselectAll : selectAll}
+              >
+                {selectedIds.size === apps.length ? "Ninguna" : "Todas"}
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-center w-6 h-6 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
+                onClick={exitSelectionMode}
+                title="Cancelar"
+              >
+                <X size={14} className="text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        )}
         
         <SidebarGroupContent>
           <div className="flex flex-col gap-1.5 px-2">
@@ -264,52 +444,19 @@ export function AppList({ show }: { show?: boolean }) {
                 {favoriteApps.length > 0 && (
                   <>
                     <div className="px-3 py-2 typo-menu-header opacity-50">Aplicaciones favoritas</div>
-                    {favoriteApps.map((app) => (
-                      <AppItem
-                        key={app.id}
-                        app={app}
-                        handleAppClick={handleAppClick}
-                        selectedAppId={selectedAppId}
-                        handleToggleFavorite={handleToggleFavorite}
-                        isFavoriteLoading={isFavoriteLoading}
-                        handleOpenChat={handleOpenChat}
-                        onRefresh={refreshApps}
-                      />
-                    ))}
+                    {favoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {nonFavoriteApps.length > 0 && (
                   <>
                     <div className="px-3 py-2 typo-menu-header opacity-50">Otras aplicaciones</div>
-                    {nonFavoriteApps.map((app) => (
-                      <AppItem
-                        key={app.id}
-                        app={app}
-                        handleAppClick={handleAppClick}
-                        selectedAppId={selectedAppId}
-                        handleToggleFavorite={handleToggleFavorite}
-                        isFavoriteLoading={isFavoriteLoading}
-                        handleOpenChat={handleOpenChat}
-                        onRefresh={refreshApps}
-                      />
-                    ))}
+                    {nonFavoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {noLocalFilesApps.length > 0 && (
                   <>
                     <div className="px-3 py-2 typo-menu-header opacity-50">Sin archivos locales</div>
-                    {noLocalFilesApps.map((app) => (
-                      <AppItem
-                        key={app.id}
-                        app={app}
-                        handleAppClick={handleAppClick}
-                        selectedAppId={selectedAppId}
-                        handleToggleFavorite={handleToggleFavorite}
-                        isFavoriteLoading={isFavoriteLoading}
-                        handleOpenChat={handleOpenChat}
-                        onRefresh={refreshApps}
-                      />
-                    ))}
+                    {noLocalFilesApps.map(renderAppItem)}
                   </>
                 )}
               </SidebarMenu>
@@ -317,6 +464,33 @@ export function AppList({ show }: { show?: boolean }) {
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
+
+          {/* ── Bulk selection bottom toolbar ── */}
+          {selectionMode && (
+            <div className="bulk-toolbar">
+              <span className="bulk-toolbar-count">
+                {selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exitSelectionMode}
+                className="h-7 text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkClose}
+                disabled={selectedIds.size === 0}
+                className="h-7 text-xs flex items-center gap-1"
+              >
+                <FolderX size={13} />
+                Cerrar ({selectedIds.size})
+              </Button>
+            </div>
+          )}
         </>
       )}
       <AppSearchDialog
@@ -376,6 +550,90 @@ export function AppList({ show }: { show?: boolean }) {
                 "Cerrar y eliminar archivos"
               ) : (
                 "Cerrar carpeta"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Close Confirmation Dialog ── */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={(open) => {
+        if (!isBulkDeleting) {
+          setIsBulkDialogOpen(open);
+          if (!open) setBulkDeleteFiles(false);
+        }
+      }}>
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle>
+              ¿Cerrar {selectedIds.size} aplicación{selectedIds.size !== 1 ? "es" : ""}?
+            </DialogTitle>
+            <DialogDescription>
+              {selectedIds.size === 1
+                ? "La aplicación se desvinculará de Vibes."
+                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
+              {" "}Los archivos en disco NO serán eliminados.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* List selected apps */}
+          <div className="bulk-app-list">
+            {selectedAppNames.map((name) => (
+              <div key={name} className="bulk-app-list-item">
+                • {name}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center space-x-2 py-1">
+            <input
+              type="checkbox"
+              id="bulk-delete-files-check"
+              checked={bulkDeleteFiles}
+              onChange={(e) => setBulkDeleteFiles(e.target.checked)}
+              disabled={isBulkDeleting}
+              className="rounded border-border"
+            />
+            <label htmlFor="bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+              También eliminar archivos del disco
+            </label>
+          </div>
+
+          {/* Progress bar during deletion */}
+          {isBulkDeleting && (
+            <div className="bulk-progress">
+              <div
+                className="bulk-progress-bar"
+                style={{ width: `${bulkProgress}%` }}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsBulkDialogOpen(false)}
+              disabled={isBulkDeleting}
+              size="sm"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant={bulkDeleteFiles ? "destructive" : "default"}
+              onClick={handleConfirmBulkClose}
+              disabled={isBulkDeleting}
+              className="flex items-center gap-1"
+              size="sm"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Cerrando... {bulkProgress}%
+                </>
+              ) : bulkDeleteFiles ? (
+                `Cerrar y eliminar (${selectedIds.size})`
+              ) : (
+                `Cerrar ${selectedIds.size} app${selectedIds.size !== 1 ? "s" : ""}`
               )}
             </Button>
           </DialogFooter>
@@ -445,4 +703,3 @@ export function AppList({ show }: { show?: boolean }) {
     </>
   );
 }
-

@@ -228,17 +228,25 @@ function App() {
   // Agent ask_user requests
   useEffect(() => {
     const unsubscribe = ipc.events.agent.onAskUserRequest((payload) => {
-      setPendingAskUsers((prev) => [
-        ...prev,
-        {
-          requestId: payload.requestId,
-          chatId: payload.chatId,
-          question: payload.question,
-          options: payload.options,
-          context: payload.context,
-          multiple: payload.multiple,
-        },
-      ]);
+      setPendingAskUsers((prev) => {
+        // Deduplicate: skip if this requestId or an identical question for the same chat already exists
+        if (prev.some((p) => p.requestId === payload.requestId)) return prev;
+        // Replace any existing entry for the same question+chatId (OpenCode fires duplicates with different IDs)
+        const filtered = prev.filter(
+          (p) => !(p.chatId === payload.chatId && p.question === payload.question),
+        );
+        return [
+          ...filtered,
+          {
+            requestId: payload.requestId,
+            chatId: payload.chatId,
+            question: payload.question,
+            options: payload.options,
+            context: payload.context,
+            multiple: payload.multiple,
+          },
+        ];
+      });
     });
     return () => unsubscribe();
   }, [setPendingAskUsers]);

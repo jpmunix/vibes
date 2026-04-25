@@ -2,7 +2,7 @@ import React from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { UnifiedSelector, type SelectorOption } from "@/components/ui/UnifiedSelector";
 import { localTemplatesData, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
-import { ReactIcon, NextIcon, VueIcon, AstroIcon, SvelteIcon, XSquare } from "@/components/ui/icons";
+import { ReactIcon, NextIcon, VueIcon, AstroIcon, SvelteIcon, XSquare, FlaskConical } from "@/components/ui/icons";
 
 interface TemplatePickerProps {
     variant?: "compact" | "default";
@@ -16,6 +16,8 @@ const FrameworkIcon: React.FC<{ id: string; className?: string }> = ({
     switch (id) {
         case "react":
             return <ReactIcon className={className} />;
+        case "react-beta":
+            return <FlaskConical className={className} style={{ color: "#06b6d4" }} />;
         case "next":
             return <NextIcon className={className} />;
         case "vue":
@@ -40,9 +42,10 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({
 
     const currentValue = settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID;
 
-    // Only show non-experimental official templates in the compact picker
+    // Only show enabled templates in the compact picker
+    const ENABLED_TEMPLATE_IDS = new Set(["react", "react-beta"]);
     const templates = localTemplatesData.filter(
-        (t) => t.isOfficial && !t.isExperimental,
+        (t) => t.isOfficial && !t.isExperimental && ENABLED_TEMPLATE_IDS.has(t.id),
     );
 
     const currentTemplate =

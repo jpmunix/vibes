@@ -152,18 +152,21 @@ export function AIBehaviorSettings({
           control={<TextVerbositySelector variant="settings" />}
         />
 
-        {/* Vista del chat: Completo / Zen */}
+        {/* Vista del chat: Completo / Flow / Zen */}
         <SettingRow
           label="Vista del chat"
           description={
-            (settings?.chatRenderMode ?? "full") === "zen"
+            (settings?.chatRenderMode ?? "zen") === "zen"
               ? "Respuestas limpias mostrando solo lo esencial. Más ligero y rápido."
+              : (settings?.chatRenderMode) === "flow"
+              ? "Como Zen, pero mostrando los pensamientos de la IA en tiempo real."
               : "Muestra todos los pasos intermedios del agente con detalles expandibles."
           }
           control={
             <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
               {([
                 { value: "full" as const, label: "Completo" },
+                { value: "flow" as const, label: "Flow" },
                 { value: "zen" as const, label: "Zen" },
               ]).map((option) => (
                 <button
@@ -171,7 +174,7 @@ export function AIBehaviorSettings({
                   onClick={() => updateSettings({ chatRenderMode: option.value })}
                   className={cn(
                       "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
-                    (settings?.chatRenderMode ?? "full") === option.value
+                    (settings?.chatRenderMode ?? "zen") === option.value
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "hover:bg-primary/10",
                   )}

@@ -70,15 +70,21 @@ const isEndToEndTestBuild = process.env.E2E_TEST_BUILD === "true";
 // Set CROSS_COMPILE=true when building for a different OS (e.g. darwin from linux).
 const isCrossCompile = process.env.CROSS_COMPILE === "true";
 
+// ─── Build Profile ───────────────────────────────────────────────────────
+// VIBES_PROFILE=vibes → standalone "Vibes" app (can run alongside minube-vibes)
+const isVibesProfile = process.env.VIBES_PROFILE === "vibes";
+
 const config: ForgeConfig = {
   packagerConfig: {
+    name: isVibesProfile ? "vibes" : undefined,
+    executableName: isVibesProfile ? "vibes" : undefined,
     protocols: [
       {
         name: "Vibes",
         schemes: ["dyad"],
       },
     ],
-    icon: "./assets/icon/logo",
+    icon: isVibesProfile ? "./assets/icon-vibes/logo" : "./assets/icon/logo",
     asar: {
       // styled-jsx y geist se desempaquetan para evitar problemas de Object.defineProperty en macOS ARM64
       unpack:
@@ -96,8 +102,10 @@ const config: ForgeConfig = {
     new MakerZIP({}, ["darwin"]),
     new MakerDeb({
       options: {
+        name: isVibesProfile ? "vibes" : undefined,
+        productName: isVibesProfile ? "Vibes" : undefined,
         mimeType: ["x-scheme-handler/dyad"],
-        icon: "./assets/icon/logo.png",
+        icon: isVibesProfile ? "./assets/icon-vibes/logo.png" : "./assets/icon/logo.png",
       },
     }),
   ],

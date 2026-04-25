@@ -18,6 +18,7 @@ import {
   FolderPlus,
   FolderOpen,
   Search,
+  FolderX,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -63,6 +64,8 @@ const items: {
       { label: "Nueva aplicación vacía", icon: FolderPlus, action: "apps:empty" },
       { label: "Importar App", icon: FolderOpen, action: "apps:import" },
       { label: "Buscar aplicaciones", icon: Search, action: "apps:search" },
+      { label: "_separator", icon: Plus, action: null },
+      { label: "Cerrar aplicaciones", icon: FolderX, action: "apps:bulk-close" },
     ],
   },
   {
@@ -304,20 +307,25 @@ export function TopNavbar() {
                   {/* Hover dropdown menu */}
                   {hasMenu && hoveredMenu === item.tabKey && (
                     <div className="topnav-dropdown">
-                      {item.menuItems!.map((mi) => (
-                        <button
-                          key={mi.action}
-                          type="button"
-                          className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                          onClick={() => {
-                            dispatchAction({ action: mi.action, ts: Date.now() });
-                            setHoveredMenu(null);
-                          }}
-                        >
-                          <mi.icon size={14} className="opacity-60 shrink-0" />
-                          <span>{mi.label}</span>
-                        </button>
-                      ))}
+                      {item.menuItems!.map((mi, idx) => {
+                        if (mi.label === "_separator") {
+                          return <div key={`sep-${idx}`} className="h-px bg-border/60 my-1 mx-1" />;
+                        }
+                        return (
+                          <button
+                            key={mi.action}
+                            type="button"
+                            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                            onClick={() => {
+                              dispatchAction({ action: mi.action, ts: Date.now() });
+                              setHoveredMenu(null);
+                            }}
+                          >
+                            <mi.icon size={14} className="opacity-60 shrink-0" />
+                            <span>{mi.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

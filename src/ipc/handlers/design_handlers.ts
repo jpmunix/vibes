@@ -187,4 +187,131 @@ export function registerDesignHandlers() {
       throw new Error(`Error al guardar el diseño personalizado: ${error.message}`);
     }
   });
+
+  // ─── Read docs/DESIGN.md from a project ───────────────────────────────────
+  createTypedHandler(designContracts.readDesign, async (_, { appPath }) => {
+    try {
+      const fullAppPath = getVibesAppPath(appPath);
+      const designMdPath = path.join(fullAppPath, "docs", "DESIGN.md");
+      const content = await fsPromises.readFile(designMdPath, "utf-8");
+      return { content };
+    } catch {
+      return { content: null };
+    }
+  });
+
+  // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
+  createTypedHandler(designContracts.generateFromScreenshot, async (_, { imageDataUrl, model }) => {
+    logger.info(`[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`);
+
+    const { openRouterCompletion } = await import("../utils/openrouter");
+
+    const SYSTEM_PROMPT = `Actúa como un Arquitecto de Sistemas de Diseño (Design Systems Lead) y experto en UI/UX.
+
+Tu objetivo: Analizar la captura de pantalla adjunta y aplicar ingeniería inversa para generar un archivo DESIGN.md completo. Este archivo actuará como la fuente única de verdad para generar nuevas pantallas. Debe combinar precisión técnica (tokens legibles por máquina) con un lenguaje semántico, evocativo y descriptivo (legible por humanos).
+
+REGLA ESTRICTA DE SALIDA: No devuelvas NINGUNA introducción, saludo, conclusión, ni texto adicional fuera del bloque de código. Devuelve ÚNICA Y EXCLUSIVAMENTE el contenido del archivo DESIGN.md. Sin bloques de código envolventes (no uses \\\`\\\`\\\`markdown ni \\\`\\\`\\\`). Solo el contenido puro.
+
+REGLA DE NEUTRALIDAD: Bajo ningún concepto incluyas nombres comerciales, marcas registradas, frameworks específicos (ej. Material, Tailwind, Bootstrap) ni conocimientos preadquiridos en tu análisis o documentación. Basa tu resultado EXCLUSIVAMENTE en la evidencia visual de la captura proporcionada, utilizando nombres y descripciones agnósticas.
+
+### 1. Análisis Visual y Semántico (Fase de Inferencia)
+Antes de generar el código, analiza la imagen bajo estos lentes:
+* Atmósfera y Filosofía: ¿Cuál es la "vibra"? ¿Es un diseño aireado, denso, minimalista, utilitario, lúdico o corporativo?
+* Paleta de Colores Semántica: Identifica roles funcionales y ponles nombres descriptivos neutrales (ej. "Azul Profundo Oceánico" en lugar de nombres de marca).
+* Geometría Física: Traduce los valores técnicos a descripciones físicas. Un border-radius: 9999px es "forma de píldora", un 0px son "bordes afilados y cuadrados".
+* Profundidad y Elevación: Observa cómo interactúan las capas. ¿Es un diseño plano (flat)? ¿Usa "sombras suaves y difusas como susurros" o "sombras pesadas de alto contraste"?
+
+### 2. Estructura Exacta de Salida
+Devuelve únicamente el contenido del archivo DESIGN.md, dividido en dos capas:
+
+CAPA 1: YAML Front Matter (Machine-readable tokens)
+Debe estar encerrado entre ---.
+* version: alpha
+* name: [Nombre neutral inferido del proyecto]
+* colors: Define los tokens mapeando la clave al valor HEX exacto (ej. primary: "#1A1C1E").
+* typography: Define familias (solo las inferidas visualmente de forma genérica o sus equivalentes), tamaños, pesos y alturas de línea.
+* rounded: Escala geométrica (ej. sm: 4px, full: 9999px).
+* spacing: Escala de espaciado (ej. md: 16px).
+* components: Tokens base de componentes clave usando referencias (ej. backgroundColor: "{colors.primary}").
+
+CAPA 2: Markdown Body (Semantic & Human-readable)
+Usa un lenguaje rico, evocador y orientado al diseño. Explica el "por qué" detrás de las decisiones. Usa estos encabezados exactos ##:
+
+## 1. Visual Theme & Atmosphere
+Describe el estado de ánimo, la densidad visual y la filosofía estética general sin sesgos ni marcas.
+
+## 2. Color Palette & Roles
+Enumera los colores usando esta fórmula: Nombre Descriptivo Evocador (#HEX) - Rol Funcional. (Ej: Azul Oscuro Mudo (#294056): Usado para acciones principales y dar peso visual).
+
+## 3. Typography Rules
+Describe el carácter de la tipografía, el uso de pesos para separar jerarquías (títulos vs cuerpo) y el espaciado entre letras.
+
+## 4. Component Stylings
+* Botones: Describe su forma física, asignación de color y comportamiento.
+* Tarjetas/Contenedores: Describe la redondez de las esquinas, color de fondo y profundidad (sombras/bordes).
+* Inputs/Formularios: Estilo del trazo (stroke), rellenos y estados.
+
+## 5. Layout Principles & Elevation
+Estrategia de espacios en blanco (whitespace), márgenes, alineación a la grilla y el uso de la elevación (sombras/capas) para crear jerarquía.
+
+### 3. Mejores Prácticas y Límites (Guardrails)
+* CERO RELLENO CONVERSACIONAL: Prohibido escribir "Aquí tienes el código", "Espero que te sirva" o cualquier frase similar.
+* SÉ DESCRIPTIVO: Evita términos genéricos como "rojo" o "redondeado".
+* SÉ FUNCIONAL: Siempre explica para qué se usa cada elemento.
+* SÉ PRECISO: Incluye los valores exactos (HEX, px) entre paréntesis justo después de las descripciones en lenguaje natural.`;
+
+    try {
+      const data = await openRouterCompletion({
+        model,
+        title: "design-screenshot-analysis",
+        temperature: 0.2,
+        max_tokens: 8000,
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM_PROMPT,
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analiza esta captura de pantalla y genera el archivo DESIGN.md completo. Recuerda: SOLO el contenido del archivo, sin texto adicional.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageDataUrl,
+                },
+              },
+            ],
+          },
+        ] as any,
+      });
+
+      let content = data?.choices?.[0]?.message?.content?.trim() || "";
+
+      // Strip any accidental markdown code fences the model might add
+      if (content.startsWith("```")) {
+        // Remove opening fence (```markdown, ```yaml, ```, etc.)
+        content = content.replace(/^```[a-z]*\n?/, "");
+        // Remove closing fence
+        content = content.replace(/\n?```\s*$/, "");
+      }
+
+      if (!content || content.length < 50) {
+        throw new Error("La IA no generó contenido suficiente para el DESIGN.md");
+      }
+
+      logger.info(`[Design] Generated DESIGN.md from screenshot (${content.length} chars)`);
+      return { content };
+    } catch (error: any) {
+      logger.error("[Design] Failed to generate DESIGN.md from screenshot:", error.message);
+      // Detect OpenRouter vision-not-supported error
+      if (error.message?.includes("support image input") || error.message?.includes("image_url")) {
+        throw new Error("El modelo seleccionado no soporta imágenes. Cambia a un modelo con visión (ej. Claude, GPT-4o, Gemini) e inténtalo de nuevo.");
+      }
+      throw new Error(`Error al generar el diseño desde la captura: ${error.message}`);
+    }
+  });
 }
