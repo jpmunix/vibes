@@ -502,7 +502,7 @@ export function ChatInput({
               onDrop={handleDrop}
             >
               {/* Show todo list if there are todos for this chat */}
-              {chatTodos.length > 0 && <TodoList todos={chatTodos} />}
+              {chatTodos.length > 0 && <TodoList todos={chatTodos} isStreaming={isStreaming} />}
               {/* Show agent consent banner if there's a pending consent request */}
               {pendingAgentConsent && (
                 <AgentConsentBanner

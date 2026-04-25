@@ -13,7 +13,7 @@ import { getVibesAppPath, getUserDataPath } from "../../paths/paths";
 import { ChildProcess, spawn } from "node:child_process";
 import { promises as fsPromises } from "node:fs";
 import log from "electron-log";
-import fixPath from "fix-path";
+import { createFromTemplate } from "./createFromTemplate";
 
 // Extracted modules
 import {
@@ -137,81 +137,30 @@ export function registerAppHandlers() {
       })
       .returning();
 
-    // Create the app directory
-    await fsPromises.mkdir(fullAppPath, { recursive: true });
-
-    // ─── Scaffold: run the framework CLI + npm install ─────────────────
+    // Create app from scaffold template (copies local scaffold + cached node_modules)
     // Skip when creating explicitly empty apps (from workspace menu, etc.)
     if (!params.empty) {
-      const { TEMPLATE_TECH_STACKS } = await import("../../shared/templates");
-      const settings = readSettings();
-      const templateId = params.templateId || settings.selectedTemplateId || "react";
-      const techStack = TEMPLATE_TECH_STACKS[templateId];
-
-      if (techStack?.scaffoldCommand) {
-        logger.info(`🏗️ [SCAFFOLD] Running scaffold CLI for "${techStack.title}": ${techStack.scaffoldCommand}`);
-
-        // Ensure npm/npx are in PATH (Electron strips user PATH on macOS/Linux)
-        fixPath();
-
-        // Helper: run a shell command in the app directory and wait for it
-        const runShellCmd = (cmd: string): Promise<{ code: number | null; stdout: string; stderr: string }> =>
-          new Promise((resolve) => {
-            let stdout = "";
-            let stderr = "";
-            const proc = spawn(cmd, [], {
-              cwd: fullAppPath,
-              shell: true,
-              stdio: "pipe",
-              env: { ...process.env, BROWSER: "none" },
-            });
-            proc.stdout?.on("data", (d) => { stdout += d.toString(); });
-            proc.stderr?.on("data", (d) => { stderr += d.toString(); });
-            proc.on("close", (code) => resolve({ code, stdout, stderr }));
-            proc.on("error", (err) => resolve({ code: 1, stdout: "", stderr: err.message }));
-          });
-
-        // 1. Run the scaffold CLI (e.g. npx create-vite . --template react-ts)
-        const scaffoldResult = await runShellCmd(techStack.scaffoldCommand);
-        if (scaffoldResult.code !== 0) {
-          logger.warn(`🏗️ [SCAFFOLD] CLI exited with code ${scaffoldResult.code}:\nSTDOUT: ${scaffoldResult.stdout.slice(0, 300)}\nSTDERR: ${scaffoldResult.stderr.slice(0, 500)}`);
-        } else {
-          logger.info(`🏗️ [SCAFFOLD] CLI completed successfully`);
-        }
-
-        // 2. Run npm install (scaffold CLIs with --no-install skip this step)
-        const packageJsonExists = fs.existsSync(path.join(fullAppPath, "package.json"));
-        if (packageJsonExists) {
-          logger.info(`🏗️ [SCAFFOLD] Running npm install --legacy-peer-deps`);
-          const installResult = await runShellCmd("npm install --legacy-peer-deps");
-          if (installResult.code !== 0) {
-            logger.warn(`🏗️ [SCAFFOLD] npm install exited with code ${installResult.code}:\nSTDERR: ${installResult.stderr.slice(0, 500)}`);
-          } else {
-            logger.info(`🏗️ [SCAFFOLD] npm install completed successfully`);
-          }
-        } else {
-          logger.warn(`🏗️ [SCAFFOLD] No package.json found after scaffold CLI — skipping npm install`);
-        }
-      }
-    }
-
-    // Write .gitignore and .npmrc AFTER scaffold CLI (some CLIs warn about non-empty dirs)
-    const gitignoreContent = [
-      "node_modules",
-      "dist",
-      ".env",
-      ".env.local",
-      ".DS_Store",
-      "",
-    ].join("\n");
-    // Only write if not already created by the scaffold CLI
-    const gitignorePath = path.join(fullAppPath, ".gitignore");
-    if (!fs.existsSync(gitignorePath)) {
-      await fsPromises.writeFile(gitignorePath, gitignoreContent, "utf-8");
-    }
-    const npmrcPath = path.join(fullAppPath, ".npmrc");
-    if (!fs.existsSync(npmrcPath)) {
-      await fsPromises.writeFile(npmrcPath, "legacy-peer-deps=true\n", "utf-8");
+      await createFromTemplate({
+        fullAppPath,
+        appName: appPath,
+        forceDefaultScaffold: params.useDefaultScaffold,
+      });
+    } else {
+      // Empty app — just create the directory with basic files
+      await fsPromises.mkdir(fullAppPath, { recursive: true });
+      const gitignoreContent = [
+        "node_modules",
+        "dist",
+        ".env",
+        ".env.local",
+        ".DS_Store",
+        "",
+      ].join("\n");
+      await fsPromises.writeFile(
+        path.join(fullAppPath, ".gitignore"),
+        gitignoreContent,
+        "utf-8",
+      );
     }
 
     // Initialize git repo and create first commit

@@ -32,6 +32,20 @@ const PORTAL_MINI_STORE_ID = "portal-mini-store";
 export const NEON_TEMPLATE_IDS = new Set<string>([PORTAL_MINI_STORE_ID]);
 
 /**
+ * Maps template IDs to their local scaffold directory name.
+ * Templates in this map use a local scaffold copy instead of git clone.
+ * Currently only React is active — other scaffolds exist on disk but
+ * are not cached or used until explicitly enabled.
+ */
+export const SCAFFOLD_TEMPLATE_IDS: Record<string, string> = {
+  react: "scaffold",
+  "react-beta": "scaffold-react-beta",
+  // vue: "scaffold-vue",       // Available but not active
+  // astro: "scaffold-astro",   // Available but not active
+  // svelte: "scaffold-svelte", // Available but not active
+};
+
+/**
  * Maps template IDs to their technology stack description,
  * required files checklist, and start/verify commands.
  * Used by the AI agent to generate scaffolds dynamically via Context7 MCP.
@@ -45,7 +59,8 @@ export interface TemplateTechStack {
   /** Command to verify the project compiles (run after npm install) */
   verifyCommand: string;
   /** Non-interactive CLI command to scaffold the project base.
-   *  Run BEFORE the AI does anything — produces a compilable project. */
+   *  NOT currently used — scaffold is copied from local directory instead.
+   *  Kept for reference in case CLI-based scaffolding is needed in the future. */
   scaffoldCommand: string;
 }
 
@@ -68,6 +83,24 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
       "src/index.css — con @tailwind base/components/utilities",
       "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
       "vercel.json — rewrites para SPA: [{\"source\":\"/(.*)\",\"destination\":\"/index.html\"}]",
+    ],
+    verifyCommand: "npx tsc --noEmit",
+  },
+  "react-beta": {
+    title: "React.js (beta)",
+    stack: "React 19, Vite 6, TypeScript, Tailwind CSS 4 (plugin Vite), Shadcn/ui, React Router DOM 7",
+    context7Libs: ["vitejs/vite", "tailwindlabs/tailwindcss"],
+    scaffoldCommand: "npx -y create-vite@latest . --template react-ts",
+    requiredFiles: [
+      "package.json — dependencias + devDependencies + scripts (dev, build, preview)",
+      "vite.config.ts — con plugins: react() y tailwindcss() de @tailwindcss/vite",
+      "tsconfig.json, tsconfig.app.json, tsconfig.node.json",
+      "index.html — con div#root, script type=module apuntando a src/main.tsx",
+      "src/main.tsx — entry point con ReactDOM.createRoot + BrowserRouter",
+      "src/App.tsx — componente raíz con Outlet de react-router-dom",
+      "src/globals.css — con @import 'tailwindcss' + @theme block (NO @tailwind directives)",
+      "src/vite-env.d.ts — con /// <reference types=\"vite/client\" />",
+      "components.json — configuración de Shadcn/ui",
     ],
     verifyCommand: "npx tsc --noEmit",
   },
@@ -156,6 +189,13 @@ export const TEMPLATE_TECH_STACKS: Record<string, TemplateTechStack> = {
 
 export const localTemplatesData: Template[] = [
   DEFAULT_TEMPLATE,
+  {
+    id: "react-beta",
+    title: "React.js (beta)",
+    description: "React 19, Vite 6, Tailwind CSS 4, Shadcn/ui. Última tecnología.",
+    isOfficial: true,
+    tags: ["SPA", "Frontend", "Beta"],
+  },
   {
     id: "next",
     title: "Next.js",

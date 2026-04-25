@@ -596,7 +596,8 @@ async function getOpenCodeClient(appPath: string) {
 
         const globalInstructions = [
             languageInstruction,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
+            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
         ];
 
         const config = {
@@ -992,7 +993,8 @@ export async function handleOpenCodeStream(
         
         const baseInstructions = [
             baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
+            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
         ];
 
         const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
@@ -1161,7 +1163,8 @@ export async function handleOpenCodeStream(
         
         const baseInstructions = [
             baseLang,
-            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool."
+            "DIRECT-EDIT-RULE: If the user explicitly asks to replace a variable, fix a typo, or do a targeted edit in a specific file, bypass exploration. Do NOT use search tools, grep, or read other files. Apply the edit immediately using the edit tool.",
+            "CONTEXT7-DOCS-RULE: Before integrating, configuring, or upgrading any library, framework, or external dependency, ALWAYS use the Context7 MCP tools (resolve-library-id → query-docs) to fetch up-to-date documentation. Verify API compatibility with the project's existing versions. Never rely on memorized knowledge for library APIs — docs change frequently and your training data may be outdated."
         ];
 
         const combinedInstructions = [...baseInstructions, ...options.contextInstructions];
@@ -1375,40 +1378,6 @@ export async function handleOpenCodeStream(
                 const designHint = `[CONTEXTO OBLIGATORIO: Este proyecto tiene un sistema de diseño definido en docs/DESIGN.md. ANTES de escribir cualquier código de UI, lee este archivo con tu herramienta Read y aplica estrictamente sus colores, tipografía, espaciado, componentes y estilo visual. El usuario ya eligió este diseño — no le preguntes ni le pidas confirmación, simplemente aplícalo.]`;
                 promptText = `${designHint}\n\n${promptText}`;
                 logger.info(`${LP} 🎨 Injected DESIGN.md hint into prompt (first message)`);
-            }
-
-            // Stack context hint — the scaffold was already created by the
-            // platform during app creation (npx create-vite, create-next-app, etc.)
-            // so the AI only needs to know what's available and start coding.
-            const packageJsonPath = path.join(projectDir, "package.json");
-            const { TEMPLATE_TECH_STACKS } = await import("../../shared/templates");
-            const settings = readSettings();
-            const templateId = settings.selectedTemplateId || "react";
-            const techStack = TEMPLATE_TECH_STACKS[templateId];
-            const stackName = techStack?.title || "React.js";
-            const stackDesc = techStack?.stack || "React 19, Vite, TypeScript, Tailwind CSS 4, Shadcn/ui";
-
-            if (fs.existsSync(packageJsonPath)) {
-                // Normal case: scaffold was pre-built by the platform
-                const stackHint =
-                    `[CONTEXTO: Este proyecto ya tiene la infraestructura instalada y lista.\n` +
-                    `Stack: ${stackName} (${stackDesc}).\n` +
-                    `Las dependencias ya están instaladas. NO ejecutes npm install ni npm run dev.\n` +
-                    `Usa la herramienta todowrite para planificar las tareas y marca cada una como completada.\n` +
-                    `Implementa directamente lo que pide el usuario:]`;
-                promptText = `${stackHint}\n\n${promptText}`;
-                logger.info(`${LP} 🏗️ Injected stack context hint for "${stackName}" (scaffold pre-built)`);
-            } else {
-                // Edge case: empty app (no scaffold) — give minimal bootstrap hint
-                const fallbackPrompt =
-                    `[INSTRUCCIÓN: Este proyecto está vacío (sin package.json).\n` +
-                    `Stack preferido: ${stackName} (${stackDesc}).\n` +
-                    `Crea la infraestructura mínima necesaria, ejecuta npm install --legacy-peer-deps,\n` +
-                    `y luego implementa lo que pide el usuario. NO ejecutes npm run dev.\n` +
-                    `Usa todowrite para gestionar las tareas.\n` +
-                    `Petición del usuario:]`;
-                promptText = `${fallbackPrompt}\n\n${promptText}`;
-                logger.info(`${LP} 🏗️ Injected fallback scaffold prompt for "${stackName}" (empty project)`);
             }
         }
 

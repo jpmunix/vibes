@@ -251,7 +251,7 @@ export default function HomePage() {
   const CREATION_PHASES = [
     { title: "Pensando un nombre genial", subtitle: "La IA está eligiendo el nombre perfecto para tu app…", icon: "💭" },
     { title: "Preparando el proyecto", subtitle: "Creando la estructura de archivos y configuración…", icon: "📁" },
-    { title: "Instalando dependencias", subtitle: "Descargando las últimas versiones de los paquetes…", icon: "📦" },
+    { title: "Instalando dependencias", subtitle: "Preparando todo lo necesario para tu nueva app…", icon: "📦" },
     { title: "Inicializando el repositorio", subtitle: "Configurando Git para control de versiones…", icon: "🔧" },
     { title: "Aplicando tu tema", subtitle: "Personalizando los estilos y colores de la app…", icon: "🎨" },
     { title: "¡Casi listo!", subtitle: "Abriendo el entorno de desarrollo…", icon: "🚀" },

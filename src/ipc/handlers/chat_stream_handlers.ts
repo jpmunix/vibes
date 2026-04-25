@@ -1539,28 +1539,6 @@ This conversation includes one or more image attachments. When the user uploads 
             }
           }
 
-          // Dynamic scaffold — lightweight system-level reinforcement.
-          // The MAIN scaffold prompt is injected directly into the user's
-          // promptText in opencode_adapter.ts (models respect that more).
-          // Scaffold context — on first message, add a hint about the project state.
-          // For normal apps the scaffold is pre-built; for empty apps (edge case) add a bootstrap reminder.
-          {
-            const appPathRaw = updatedChat.app.path;
-            const resolvedAppPath = getVibesAppPath(appPathRaw);
-            const hasPackageJson = fs.existsSync(path.join(resolvedAppPath, "package.json"));
-            const isFirstMsg = !updatedChat.messages.some(
-              (m: any) => m.role === "assistant" && m.id !== placeholderAssistantMessage.id,
-            );
-
-            if (!hasPackageJson && isFirstMsg) {
-              contextInstructions.push(
-                `PROYECTO VACÍO: Este directorio no tiene package.json. ` +
-                `Crea la infraestructura mínima necesaria y ejecuta npm install --legacy-peer-deps ` +
-                `antes de implementar funcionalidad. NO ejecutes npm run dev.`,
-              );
-              logger.info(`🏗️ [SCAFFOLD] Added fallback scaffold hint (empty project)`);
-            }
-          }
 
           // 4. Build integration env vars — accessible via bash in OpenCode
           const integrationEnvVars: Record<string, string> = {};

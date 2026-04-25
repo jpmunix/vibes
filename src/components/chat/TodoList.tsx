@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { AgentTodo } from "@/ipc/types";
 import { ChevronDown, ChevronUp } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 interface TodoListProps {
   todos: AgentTodo[];
+  isStreaming?: boolean;
 }
 
 /* ── Custom SVG icons ─────────────────────────────────────
@@ -101,8 +102,17 @@ function getStatusIcon(status: AgentTodo["status"]) {
   }
 }
 
-export function TodoList({ todos }: TodoListProps) {
+export function TodoList({ todos, isStreaming }: TodoListProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const wasStreamingRef = useRef(isStreaming);
+
+  // Auto-collapse when the agent finishes (streaming transitions true → false)
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming) {
+      setIsExpanded(false);
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   if (!todos.length) return null;
 

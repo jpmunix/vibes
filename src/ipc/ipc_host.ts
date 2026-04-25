@@ -54,6 +54,8 @@ import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnost
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
 import { registerQuestionHandler } from "./handlers/opencode_adapter";
+import { warmUpScaffoldCache } from "./utils/scaffold_cache";
+import log from "electron-log";
 
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
@@ -121,4 +123,9 @@ export function registerIpcHandlers() {
 
   // Design system picker — getdesign CLI integration
   registerDesignHandlers();
+
+  // Pre-cache scaffold node_modules in background (non-blocking)
+  warmUpScaffoldCache().catch(err =>
+    log.error("Scaffold cache warmup failed:", err),
+  );
 }

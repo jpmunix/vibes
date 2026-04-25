@@ -20,6 +20,7 @@ export type SidebarAction =
   | "apps:empty"
   | "apps:import"
   | "apps:search"
+  | "apps:bulk-close"
   | "workspace:open-folder"
   | "workspace:empty-app"
   | null;
