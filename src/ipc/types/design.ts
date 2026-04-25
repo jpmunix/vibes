@@ -45,6 +45,31 @@ export const designContracts = {
       written: z.boolean(),
     }),
   }),
+
+  /** Generate DESIGN.md from a screenshot via AI vision analysis */
+  generateFromScreenshot: defineContract({
+    channel: "design:generate-from-screenshot",
+    input: z.object({
+      /** Base64 data URL of the screenshot (e.g. data:image/png;base64,...) */
+      imageDataUrl: z.string(),
+      /** OpenRouter model apiName to use (user's selected chat model) */
+      model: z.string(),
+    }),
+    output: z.object({
+      content: z.string(),
+    }),
+  }),
+
+  /** Read docs/DESIGN.md from a project (returns null if missing) */
+  readDesign: defineContract({
+    channel: "design:read",
+    input: z.object({
+      appPath: z.string(),
+    }),
+    output: z.object({
+      content: z.string().nullable(),
+    }),
+  }),
 } as const;
 
 // =============================================================================

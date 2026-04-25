@@ -58,7 +58,7 @@ import fs from "node:fs";
 import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
-import { readFile, writeFile, unlink } from "fs/promises";
+import { readFile, writeFile, unlink, rm as fsRm } from "fs/promises";
 import { getMaxTokens, getTemperature, getContextWindow, estimateTokens } from "../utils/token_utils";
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
 import { validateChatContext } from "../utils/context_paths_utils";
@@ -67,6 +67,7 @@ import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
 
 import { safeSend } from "../utils/safe_sender";
+import { runningApps } from "../utils/process_manager";
 import { cleanFullResponse } from "../utils/cleanFullResponse";
 import { generateProblemReport } from "../processors/tsc";
 import { createProblemFixPrompt } from "@/shared/problem_prompt";
@@ -1861,6 +1862,28 @@ This conversation includes one or more image attachments. When the user uploads 
             success,
             totalTokens: ocTotalTokens,
           });
+
+          // ── Post-agent clean install ────────────────────────────────────
+          // The agent may have modified package.json (adding new dependencies)
+          // or run a partial `npm install` via bash that left node_modules in
+          // a dirty state. Delete node_modules so the upcoming `runApp` call
+          // performs a pristine `npm install --legacy-peer-deps`.
+          // ONLY do this when the app is NOT already running — if the dev
+          // server is live, a restart is the user's responsibility (we don't
+          // want to crash a working server mid-session).
+          if (success && updatedChat.app?.id && !runningApps.has(updatedChat.app.id)) {
+            try {
+              const cleanupAppPath = getVibesAppPath(updatedChat.app.path);
+              const nodeModulesPath = path.join(cleanupAppPath, "node_modules");
+              if (fs.existsSync(nodeModulesPath)) {
+                logger.info(`🧹 [POST-AGENT] Removing node_modules for clean install (app ${updatedChat.app.id})`);
+                await fsRm(nodeModulesPath, { recursive: true, force: true });
+                logger.info(`🧹 [POST-AGENT] node_modules removed — runApp will do a fresh npm install`);
+              }
+            } catch (cleanupErr: any) {
+              logger.warn(`🧹 [POST-AGENT] Failed to remove node_modules: ${cleanupErr.message}`);
+            }
+          }
 
           return;
         }

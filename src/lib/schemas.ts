@@ -278,7 +278,7 @@ export type SmartContextMode = z.infer<typeof SmartContextModeSchema>;
 export const AgentToolConsentSchema = z.enum(["ask", "always", "never"]);
 export type AgentToolConsent = z.infer<typeof AgentToolConsentSchema>;
 
-export const ChatRenderModeSchema = z.enum(["full", "zen"]);
+export const ChatRenderModeSchema = z.enum(["full", "flow", "zen"]);
 export type ChatRenderMode = z.infer<typeof ChatRenderModeSchema>;
 
 /**

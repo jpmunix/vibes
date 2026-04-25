@@ -23,7 +23,7 @@ import { VibesCodebaseContext } from "./VibesCodebaseContext";
 import { VibesThink } from "./VibesThink";
 import { CodeHighlight } from "./CodeHighlight";
 import { useAtomValue } from "jotai";
-import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom } from "@/atoms/chatAtoms";
+import { isStreamingByIdAtom, selectedChatIdAtom, isZenModeAtom, isFlowModeAtom } from "@/atoms/chatAtoms";
 import { CustomTagState } from "./stateTypes";
 import { VibesOutput } from "./VibesOutput";
 import { VibesProblemSummary } from "./VibesProblemSummary";
@@ -167,12 +167,12 @@ const customBlockquote = ({ children, ...props }: any) => {
       <blockquote
         {...props}
         style={{
-          borderLeft: "3px solid oklch(0.6 0.18 280)",
+          borderLeft: "3px solid var(--accent-teal-quote-border)",
           padding: "6px 12px",
           margin: "10px 0",
-          background: "oklch(0.55 0.18 280 / 0.06)",
+          background: "var(--accent-teal-quote-bg)",
           borderRadius: "0 6px 6px 0",
-          color: "oklch(0.75 0.12 280)",
+          color: "var(--accent-teal-quote-text)",
           fontStyle: "normal",
           fontSize: "13px",
         }}
@@ -240,6 +240,8 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
   const isStreaming = forceStreaming ?? (isStreamingMap.get(chatId!) ?? false);
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
+  const isFlowModeAtomValue = useAtomValue(isFlowModeAtom);
+  const isFlowMode = forceFullMode ? false : isFlowModeAtomValue;
 
   // Optimize: Do we really need to defer content and use a worker if it's not streaming?
   // When a message is static (not streaming), we want to parse it exactly once
@@ -397,8 +399,9 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         const state = getState({ isStreaming, inProgress });
         const isThinkTag = THINK_TAGS.has(tag);
 
-        // ── Zen Mode: skip almost all custom tags ──
+        // ── Zen / Flow Mode: skip almost all custom tags ──
         // Only keep: vibes-output (errors/warnings), vibes-ask-user (interactive).
+        // Flow mode additionally keeps think tags visible as expanded panels.
         // Token-usage is handled by ChatMessage footer. Everything else is discarded.
         if (isZenMode) {
           const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user"]);
@@ -408,6 +411,24 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
               <React.Fragment key={index}>
                 {renderCustomTag(piece.tagInfo, { isStreaming })}
               </React.Fragment>
+            );
+          } else if (isFlowMode && isThinkTag && piece.tagInfo.content?.trim()) {
+            // Flow mode: render think tags as lightweight blockquotes (no card, no icons, no header)
+            elements.push(
+              <div
+                key={`flow-think-${index}`}
+                style={{
+                  borderLeft: "3px solid var(--accent-think-border)",
+                  padding: "6px 12px",
+                  margin: "0",
+                  color: "var(--accent-think-text)",
+                }}
+                className="text-xs leading-relaxed prose prose-xs dark:prose-invert max-w-none [&_*]:!text-[inherit]"
+              >
+                <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
+                  {piece.tagInfo.content}
+                </ReactMarkdown>
+              </div>
             );
           }
           // All other tags: skip entirely — no DOM, no badges, no modals

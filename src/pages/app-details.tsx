@@ -36,6 +36,8 @@ import {
   BunnyIcon,
   PocketBaseIcon,
   SupabaseIcon,
+  Download,
+  FileText,
 } from "@/components/ui/icons";
 
 import { Input } from "@/components/ui/input";
@@ -53,7 +55,7 @@ import { PocketBaseConnector } from "@/components/PocketBaseConnector";
 // Firebase hidden - not mature yet
 // import { FirebaseConnector } from "@/components/FirebaseConnector";
 import { showError, showSuccess } from "@/lib/toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -345,6 +347,26 @@ export default function AppDetailsPage() {
 
   const currentAppPath = selectedApp.resolvedPath || "";
 
+  // Check if docs/DESIGN.md exists for download option
+  const { data: designData } = useQuery({
+    queryKey: ["design-read", currentAppPath],
+    queryFn: () => ipc.design.readDesign({ appPath: selectedApp.path }),
+    enabled: !!currentAppPath && isInfoSectionOpen,
+    staleTime: 30_000,
+  });
+  const hasDesignMd = !!designData?.content;
+
+  const handleDownloadDesign = () => {
+    if (!designData?.content) return;
+    const blob = new Blob([designData.content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DESIGN.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       className="relative h-full w-full overflow-hidden flex"
@@ -479,6 +501,17 @@ export default function AppDetailsPage() {
                           <Folder className="h-4 w-4" />
                           Abrir carpeta de destino
                         </Button>
+                        {hasDesignMd && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start gap-2 h-9"
+                            onClick={handleDownloadDesign}
+                          >
+                            <Download className="h-4 w-4" />
+                            Descargar DESIGN.md
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

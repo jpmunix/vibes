@@ -5,6 +5,8 @@ import { ipc } from "@/ipc/types";
 import { queryKeys } from "@/lib/queryKeys";
 import { selectedDesignAtom } from "@/atoms/chatAtoms";
 import { cn } from "@/lib/utils";
+import { useSelectedModelSupportsImages } from "@/hooks/useSelectedModelSupportsImages";
+import { useSettings } from "@/hooks/useSettings";
 import {
   Popover,
   PopoverContent,
@@ -29,6 +31,9 @@ import * as Lucide from "lucide-react";
 const Upload = Lucide.Upload;
 const ClipboardPaste = Lucide.ClipboardPaste;
 const FileText = Lucide.FileText;
+const Camera = Lucide.Camera;
+const Loader2 = Lucide.Loader2;
+const AlertTriangle = Lucide.AlertTriangle;
 
 // ─── Brand avatar URL from GitHub ───────────────────────────────────────────
 function brandAvatarUrl(id: string, size = 56): string {
@@ -128,6 +133,173 @@ const PasteModal: React.FC<{
   );
 };
 
+// ─── Screenshot modal ───────────────────────────────────────────────────────
+const ScreenshotModal: React.FC<{
+  open: boolean;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: (dataUrl: string) => void;
+  onClearError: () => void;
+}> = ({ open, loading, error, onClose, onSubmit, onClearError }) => {
+  const [preview, setPreview] = useState<string | null>(null);
+  const imgInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const readFileAsDataUrl = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  // Handle paste on the focused container
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    if (loading) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = item.getAsFile();
+        if (file) readFileAsDataUrl(file);
+        return;
+      }
+    }
+  }, [loading]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) readFileAsDataUrl(file);
+    e.target.value = "";
+  };
+
+  // Reset state on close & auto-focus container on open
+  React.useEffect(() => {
+    if (!open) {
+      setPreview(null);
+    } else {
+      // Small delay to let the DOM render, then steal focus
+      requestAnimationFrame(() => containerRef.current?.focus());
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onPaste={handlePaste}
+      className="absolute inset-0 z-10 flex flex-col bg-popover rounded-md overflow-hidden outline-none"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
+        <div className="flex items-center gap-2">
+          <Camera size={14} className="text-primary" />
+          <span className="typo-select font-medium">Generar desde captura</span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          className="typo-micro text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 p-2 overflow-hidden flex flex-col items-center justify-center">
+        {error ? (
+          <div className="flex flex-col items-center gap-3 text-center px-3">
+            <AlertTriangle size={28} className="text-destructive" />
+            <span className="typo-select font-medium">No se pudo generar</span>
+            <span className="typo-micro text-muted-foreground max-w-[280px] leading-relaxed">
+              {error}
+            </span>
+            <button
+              type="button"
+              onClick={() => { onClearError(); setPreview(null); }}
+              className="mt-1 px-3 py-1 rounded-md typo-select font-medium bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
+            >
+              Intentar de nuevo
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 size={28} className="text-primary animate-spin" />
+            <span className="typo-select font-medium">Analizando captura…</span>
+            <span className="typo-micro text-muted-foreground max-w-[260px]">
+              La IA está extrayendo colores, tipografía, componentes y generando tu DESIGN.md
+            </span>
+          </div>
+        ) : preview ? (
+          <div className="w-full h-full flex flex-col items-center gap-2">
+            <img
+              src={preview}
+              alt="Captura"
+              className="max-h-[220px] max-w-full rounded-md border border-border/40 object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="typo-micro text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Cambiar imagen
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => imgInputRef.current?.click()}
+            className={cn(
+              "w-full h-full rounded-md border-2 border-dashed border-border/60",
+              "flex flex-col items-center justify-center gap-2 cursor-pointer",
+              "hover:border-primary/40 hover:bg-muted/30 transition-all",
+            )}
+          >
+            <Camera size={24} className="text-muted-foreground" />
+            <span className="typo-select text-muted-foreground">Sube o pega una captura</span>
+            <span className="typo-micro text-muted-foreground/60">
+              Haz clic para seleccionar o pega con Ctrl+V
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border/40">
+        <span className="typo-micro text-muted-foreground mr-auto">
+          {loading ? "Generando…" : preview ? "Imagen lista" : "Sin imagen"}
+        </span>
+        <button
+          type="button"
+          onClick={() => preview && onSubmit(preview)}
+          disabled={!preview || loading}
+          className={cn(
+            "px-3 py-1 rounded-md typo-select font-medium transition-all",
+            preview && !loading
+              ? "bg-primary text-primary-foreground hover:brightness-110 cursor-pointer"
+              : "bg-muted text-muted-foreground cursor-not-allowed",
+          )}
+        >
+          {loading ? "Generando…" : "Generar diseño"}
+        </button>
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={imgInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </div>
+  );
+};
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export const DesignPicker: React.FC = () => {
@@ -135,7 +307,14 @@ export const DesignPicker: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [screenshotOpen, setScreenshotOpen] = useState(false);
+  const [screenshotLoading, setScreenshotLoading] = useState(false);
+  const [screenshotError, setScreenshotError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Vision check — disable screenshot option if model doesn't support images
+  const supportsImages = useSelectedModelSupportsImages();
+  const { settings } = useSettings();
 
   const { data: designs, isLoading } = useQuery({
     queryKey: queryKeys.designs.all,
@@ -174,24 +353,16 @@ export const DesignPicker: React.FC = () => {
       const reader = new FileReader();
       reader.onload = () => {
         const content = reader.result as string;
-        console.log(`[DesignPicker] 🎨 FILE UPLOAD onload — file="${file.name}", rawLen=${content.length}, trimmedLen=${content.trim().length}`);
         if (content.trim().length > 0) {
           const trimmed = content.trim();
-          console.log(`[DesignPicker] 🎨 FILE UPLOAD — setting atom with customContent (${trimmed.length} chars), first 100: "${trimmed.substring(0, 100)}"`);
           setSelected({
             id: "__custom__",
             description: "Diseño personalizado",
             customContent: trimmed,
           });
           setOpen(false);
-        } else {
-          console.warn(`[DesignPicker] 🎨 FILE UPLOAD — file was empty after trim!`);
         }
       };
-      reader.onerror = () => {
-        console.error(`[DesignPicker] 🎨 FILE UPLOAD — FileReader error:`, reader.error);
-      };
-      console.log(`[DesignPicker] 🎨 FILE UPLOAD — reading file "${file.name}" (${file.size} bytes)`);
       reader.readAsText(file);
       // Reset the input so the same file can be re-uploaded
       e.target.value = "";
@@ -202,7 +373,6 @@ export const DesignPicker: React.FC = () => {
   // Handle paste submit
   const handlePasteSubmit = useCallback(
     (content: string) => {
-      console.log(`[DesignPicker] 🎨 PASTE — setting atom with customContent (${content.length} chars), first 100: "${content.substring(0, 100)}"`);
       setSelected({
         id: "__custom__",
         description: "Diseño personalizado",
@@ -210,6 +380,36 @@ export const DesignPicker: React.FC = () => {
       });
       setPasteOpen(false);
       setOpen(false);
+    },
+    [setSelected],
+  );
+
+  // Handle screenshot submit — call AI then set as custom design
+  const handleScreenshotSubmit = useCallback(
+    async (dataUrl: string) => {
+      setScreenshotLoading(true);
+      try {
+        const result = await ipc.design.generateFromScreenshot({
+          imageDataUrl: dataUrl,
+          model: settings?.selectedModel?.name ?? "",
+        });
+        if (result.content) {
+          setSelected({
+            id: "__custom__",
+            description: "Diseño personalizado",
+            customContent: result.content,
+          });
+          setScreenshotOpen(false);
+          setOpen(false);
+        }
+      } catch (err: any) {
+        // Extract the meaningful part of the error (strip IPC wrapper chain)
+        const raw = err.message || "Error desconocido";
+        const clean = raw.replace(/^.*Error:\s*/i, "").trim();
+        setScreenshotError(clean);
+      } finally {
+        setScreenshotLoading(false);
+      }
     },
     [setSelected],
   );
@@ -234,6 +434,7 @@ export const DesignPicker: React.FC = () => {
           if (!v) {
             setSearch("");
             setPasteOpen(false);
+            if (!screenshotLoading) setScreenshotOpen(false);
           }
         }}
       >
@@ -277,6 +478,16 @@ export const DesignPicker: React.FC = () => {
               open={pasteOpen}
               onClose={() => setPasteOpen(false)}
               onSubmit={handlePasteSubmit}
+            />
+
+            {/* Screenshot overlay */}
+            <ScreenshotModal
+              open={screenshotOpen}
+              loading={screenshotLoading}
+              error={screenshotError}
+              onClose={() => { if (!screenshotLoading) { setScreenshotOpen(false); setScreenshotError(null); } }}
+              onSubmit={handleScreenshotSubmit}
+              onClearError={() => setScreenshotError(null)}
             />
 
             {/* ── Left panel: Design list ────────────────────────────── */}
@@ -447,6 +658,47 @@ export const DesignPicker: React.FC = () => {
                     </span>
                   </div>
                 </button>
+
+                {/* Screenshot */}
+                {supportsImages ? (
+                  <button
+                    type="button"
+                    onClick={() => setScreenshotOpen(true)}
+                    className={cn(
+                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left transition-all duration-150",
+                      "cursor-pointer hover:bg-muted/60",
+                    )}
+                  >
+                    <Camera
+                      size={14}
+                      className="shrink-0 mt-0.5 text-primary"
+                    />
+                    <div className="flex flex-col gap-0 min-w-0">
+                      <span className="typo-select font-medium">Desde captura</span>
+                      <span className="typo-micro text-muted-foreground leading-tight">
+                        Genera diseño con IA
+                      </span>
+                    </div>
+                  </button>
+                ) : (
+                  <div
+                    className={cn(
+                      "w-full flex items-start gap-2 rounded-lg px-2.5 py-2.5 text-left",
+                      "opacity-50 cursor-not-allowed",
+                    )}
+                  >
+                    <Camera
+                      size={14}
+                      className="shrink-0 mt-0.5 text-muted-foreground"
+                    />
+                    <div className="flex flex-col gap-0 min-w-0">
+                      <span className="typo-select font-medium text-muted-foreground">Desde captura</span>
+                      <span className="typo-micro text-muted-foreground/80 leading-tight">
+                        El modelo actual no soporta imágenes
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Current custom indicator */}

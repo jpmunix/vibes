@@ -136,6 +136,63 @@ body[data-scroll-locked] .app-region-drag {
   --sidebar-accent-foreground: oklch(clamp(0, 0.205 + var(--fg-l-offset), 1) 0 0);
   --sidebar-border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── Teal accent (VibesAskUser, answer blockquotes) ── light theme */
+  --accent-teal-gradient-start: oklch(0.96 0.03 175 / 0.9);
+  --accent-teal-gradient-end: oklch(0.94 0.02 190 / 0.7);
+  --accent-teal-border: oklch(0.5 0.12 175 / 0.4);
+  --accent-teal-border-subtle: oklch(0.6 0.06 175 / 0.2);
+  --accent-teal-header-divider: oklch(0.7 0.06 175 / 0.2);
+  --accent-teal-shadow: oklch(0.4 0.1 175 / 0.08);
+  --accent-teal-icon-bg: oklch(0.5 0.1 175 / 0.12);
+  --accent-teal-icon: oklch(0.4 0.12 175);
+  --accent-teal-label: oklch(0.4 0.1 175);
+  --accent-teal-pulse: oklch(0.45 0.12 175);
+  --accent-teal-status-text: oklch(0.45 0.06 175);
+  --accent-teal-context-text: oklch(0.45 0.03 260);
+  --accent-teal-option-bg: oklch(0.5 0.02 260 / 0.05);
+  --accent-teal-option-border: oklch(0.5 0.03 260 / 0.15);
+  --accent-teal-option-hover-bg: oklch(0.5 0.02 260 / 0.1);
+  --accent-teal-option-hover-border: oklch(0.5 0.06 175 / 0.2);
+  --accent-teal-option-text: oklch(0.25 0.02 260);
+  --accent-teal-selected-bg: oklch(0.92 0.06 175 / 0.6);
+  --accent-teal-selected-border: oklch(0.5 0.12 175 / 0.5);
+  --accent-teal-selected-text: oklch(0.2 0.08 175);
+  --accent-teal-selected-icon: oklch(0.4 0.14 175);
+  --accent-teal-glow: oklch(0.5 0.1 175 / 0.06);
+  --accent-teal-checkbox-inactive: oklch(0.5 0.03 260 / 0.35);
+  --accent-teal-checkbox-hover: oklch(0.45 0.08 175);
+  --accent-teal-custom-border-dashed: oklch(0.5 0.03 260 / 0.15);
+  --accent-teal-custom-text: oklch(0.4 0.02 260);
+  --accent-teal-input-bg: oklch(0.97 0.01 260 / 0.8);
+  --accent-teal-input-border: oklch(0.6 0.06 175 / 0.35);
+  --accent-teal-input-focus-border: oklch(0.5 0.1 175 / 0.6);
+  --accent-teal-input-focus-ring: oklch(0.5 0.1 175 / 0.12);
+  --accent-teal-input-text: oklch(0.15 0.02 260);
+  --accent-teal-count-text: oklch(0.4 0.08 175);
+  --accent-teal-btn-gradient-from: oklch(0.45 0.13 175);
+  --accent-teal-btn-gradient-to: oklch(0.4 0.12 185);
+  --accent-teal-btn-hover-from: oklch(0.5 0.13 175);
+  --accent-teal-btn-hover-to: oklch(0.45 0.12 185);
+  --accent-teal-btn-text: oklch(0.98 0.01 175);
+  --accent-teal-btn-shadow: oklch(0.4 0.1 175 / 0.2);
+  --accent-teal-btn-disabled-bg: oklch(0.85 0.03 175 / 0.3);
+  --accent-teal-btn-disabled-text: oklch(0.5 0.03 260);
+  /* Answer blockquote */
+  --accent-teal-quote-border: oklch(0.45 0.12 175);
+  --accent-teal-quote-bg: oklch(0.5 0.1 175 / 0.06);
+  --accent-teal-quote-text: oklch(0.35 0.08 175);
+
+  /* ── Think accent (Flow mode thinking panels) ── light theme */
+  --accent-think-border: oklch(0.6 0.12 280 / 0.25);
+  --accent-think-text: oklch(0.4 0.06 280);
+  --accent-think-panel-border: oklch(0.7 0.1 280 / 0.15);
+  --accent-think-panel-bg: oklch(0.7 0.08 280 / 0.04);
+  --accent-think-header-border: oklch(0.7 0.08 280 / 0.1);
+  --accent-think-icon: oklch(0.5 0.14 280);
+  --accent-think-label: oklch(0.5 0.1 280 / 0.8);
+  --accent-think-scrollbar: rgba(120, 70, 200, 0.15);
+  --accent-think-scrollbar-hover: rgba(120, 70, 200, 0.3);
 }
 
 .prose {
@@ -183,6 +240,63 @@ body[data-scroll-locked] .app-region-drag {
   --sidebar-accent-foreground: oklch(clamp(0, 0.9 + var(--fg-l-offset), 1) 0 0);
   --sidebar-border: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
   --sidebar-ring: var(--primary-color-dark);
+
+  /* ── Teal accent ── dark theme (original values) */
+  --accent-teal-gradient-start: oklch(0.25 0.04 175 / 0.6);
+  --accent-teal-gradient-end: oklch(0.22 0.02 190 / 0.4);
+  --accent-teal-border: oklch(0.6 0.12 175 / 0.35);
+  --accent-teal-border-subtle: oklch(0.5 0.08 175 / 0.15);
+  --accent-teal-header-divider: oklch(0.5 0.08 175 / 0.15);
+  --accent-teal-shadow: oklch(0.4 0.12 175 / 0.12);
+  --accent-teal-icon-bg: oklch(0.55 0.14 175 / 0.2);
+  --accent-teal-icon: oklch(0.75 0.12 175);
+  --accent-teal-label: oklch(0.75 0.12 175);
+  --accent-teal-pulse: oklch(0.75 0.14 175);
+  --accent-teal-status-text: oklch(0.65 0.08 175);
+  --accent-teal-context-text: oklch(0.6 0.03 260);
+  --accent-teal-option-bg: oklch(0.5 0.02 260 / 0.08);
+  --accent-teal-option-border: oklch(0.5 0.03 260 / 0.12);
+  --accent-teal-option-hover-bg: oklch(0.5 0.02 260 / 0.15);
+  --accent-teal-option-hover-border: oklch(0.5 0.06 175 / 0.25);
+  --accent-teal-option-text: oklch(0.75 0.02 260);
+  --accent-teal-selected-bg: oklch(0.55 0.14 175 / 0.15);
+  --accent-teal-selected-border: oklch(0.6 0.14 175 / 0.4);
+  --accent-teal-selected-text: oklch(0.85 0.06 175);
+  --accent-teal-selected-icon: oklch(0.7 0.14 175);
+  --accent-teal-glow: oklch(0.5 0.14 175 / 0.08);
+  --accent-teal-checkbox-inactive: oklch(0.5 0.03 260 / 0.5);
+  --accent-teal-checkbox-hover: oklch(0.6 0.08 175);
+  --accent-teal-custom-border-dashed: oklch(0.5 0.03 260 / 0.08);
+  --accent-teal-custom-text: oklch(0.55 0.02 260);
+  --accent-teal-input-bg: oklch(0.2 0.01 260 / 0.6);
+  --accent-teal-input-border: oklch(0.5 0.06 175 / 0.25);
+  --accent-teal-input-focus-border: oklch(0.6 0.12 175 / 0.5);
+  --accent-teal-input-focus-ring: oklch(0.5 0.12 175 / 0.1);
+  --accent-teal-input-text: oklch(0.88 0.02 260);
+  --accent-teal-count-text: oklch(0.65 0.08 175);
+  --accent-teal-btn-gradient-from: oklch(0.55 0.15 175);
+  --accent-teal-btn-gradient-to: oklch(0.48 0.14 185);
+  --accent-teal-btn-hover-from: oklch(0.6 0.15 175);
+  --accent-teal-btn-hover-to: oklch(0.52 0.14 185);
+  --accent-teal-btn-text: oklch(0.95 0.02 175);
+  --accent-teal-btn-shadow: oklch(0.4 0.14 175 / 0.25);
+  --accent-teal-btn-disabled-bg: oklch(0.35 0.04 175 / 0.3);
+  --accent-teal-btn-disabled-text: oklch(0.6 0.03 260);
+  /* Answer blockquote */
+  --accent-teal-quote-border: oklch(0.65 0.14 175);
+  --accent-teal-quote-bg: oklch(0.55 0.14 175 / 0.06);
+  --accent-teal-quote-text: oklch(0.75 0.1 175);
+
+  /* ── Think accent ── dark theme */
+  --accent-think-border: oklch(0.6 0.18 280 / 0.4);
+  --accent-think-text: oklch(0.7 0.06 280);
+  --accent-think-panel-border: oklch(0.58 0.15 280 / 0.15);
+  --accent-think-panel-bg: oklch(0.58 0.15 280 / 0.03);
+  --accent-think-header-border: oklch(0.58 0.15 280 / 0.1);
+  --accent-think-icon: oklch(0.65 0.18 280);
+  --accent-think-label: oklch(0.6 0.12 280 / 0.8);
+  --accent-think-scrollbar: rgba(168, 85, 247, 0.2);
+  --accent-think-scrollbar-hover: rgba(168, 85, 247, 0.35);
 }
 
 @theme inline {
