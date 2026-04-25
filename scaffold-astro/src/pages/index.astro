@@ -1,0 +1,25 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="{{APP_NAME}}">
+  <main class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100">
+    <div class="text-center space-y-6 p-8">
+      <h1 class="text-4xl font-bold text-indigo-900">
+        ¡Bienvenido a tu sitio Astro!
+      </h1>
+      <p class="text-lg text-indigo-700 max-w-md mx-auto">
+        Empieza a construir tu sitio web editando esta página.
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a
+          href="https://docs.astro.build"
+          target="_blank"
+          class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+        >
+          Docs de Astro
+        </a>
+      </div>
+    </div>
+  </main>
+</Layout>
