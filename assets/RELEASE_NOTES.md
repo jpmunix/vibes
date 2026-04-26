@@ -1,4 +1,4 @@
-# Novedades de la versión 8.1
+# Novedades de la versión 8.1 — 25 de abril de 2026
 
 ## Genera un sistema de diseño desde una captura de pantalla
 
@@ -33,7 +33,7 @@ Hemos añadido una plantilla experimental con **React 19, Vite 6, Tailwind CSS 4
 
 ---
 
-# Novedades de la versión 8.0
+# Novedades de la versión 8.0 — 24 de abril de 2026
 
 ## Lista de tareas en tiempo real, mejorada
 
@@ -99,7 +99,7 @@ Si la IA necesita aclarar algo antes de continuar, ahora **te lo pregunta direct
 
 ---
 
-# Novedades de la versión 7.0
+# Novedades de la versión 7.0 — 19 de abril de 2026
 
 ## 🎨 Un Nuevo Diseño Más Inteligente
 
@@ -146,7 +146,7 @@ Si la IA necesita aclarar algo antes de continuar, ahora **te lo pregunta direct
 
 ---
 
-# Novedades de la versión 6.5
+# Novedades de la versión 6.5 — 17 de abril de 2026
 
 ## Modo Zen para el chat
 
@@ -186,7 +186,7 @@ Activa o desactiva la verificación de errores TypeScript en tiempo real desde *
 
 ---
 
-# Novedades de la versión 6.4.6
+# Novedades de la versión 6.4.6 — 16 de abril de 2026
 
 ## ✨ Novedades
 
@@ -202,7 +202,7 @@ Activa o desactiva la verificación de errores TypeScript en tiempo real desde *
 
 ---
 
-# Novedades de la versión 6.3.3
+# Novedades de la versión 6.3.3 — 8 de abril de 2026
 
 ## 🛠 Fixes
 
@@ -253,7 +253,7 @@ Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, 
 
 ---
 
-# Novedades de la versión 5.0
+# Novedades de la versión 5.0 — 2 de marzo de 2026
 
 ### 🤖 Agente IA
 
@@ -314,7 +314,7 @@ Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, 
 
 ---
 
-# Novedades de la versión 4.0
+# Novedades de la versión 4.0 — 18 de febrero de 2026
 
 ## 🔥 Novedades Beta 5
 - Esfuerzo de razonamiento configurable para modelos que lo soportan
@@ -365,7 +365,7 @@ Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, 
 
 ---
 
-# Novedades de la versión 3.3.1
+# Novedades de la versión 3.3.1 — 13 de febrero de 2026
 
 ### Performance
 - Corrección del bug que bloqueaba el agente inteligente sin reglas de contexto
@@ -387,7 +387,7 @@ Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, 
 
 ---
 
-# Novedades de la versión 3.0
+# Novedades de la versión 3.0 — 11 de febrero de 2026
 
 - Integración con Firebase
 - Logs de diagnóstico más completos
@@ -426,7 +426,7 @@ Monitoreo continuo y reparación automática de errores de runtime.
 
 ---
 
-# Novedades de la versión 2.5
+# Novedades de la versión 2.5 — 9 de febrero de 2026
 
 ¡Esta versión incluye mejoras increíbles para potenciar tu desarrollo!
 
