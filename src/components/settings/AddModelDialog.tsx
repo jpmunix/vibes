@@ -16,6 +16,21 @@ import type { LanguageModel } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 
 // =============================================================================
+// Price formatting (mirrors ModelItemContent)
+// =============================================================================
+
+function formatPricePerMillion(pricePerToken: string | undefined): string {
+    if (!pricePerToken) return "—";
+    const num = parseFloat(pricePerToken);
+    if (isNaN(num)) return "—";
+    if (num === 0) return "gratis";
+    const perMillion = num * 1_000_000;
+    if (perMillion < 0.01) return `$${perMillion.toFixed(4)}/M`;
+    if (perMillion < 1) return `$${perMillion.toFixed(2)}/M`;
+    return `$${perMillion.toFixed(2)}/M`;
+}
+
+// =============================================================================
 // Extensible filter config
 // To add a new filter: append an entry to MODEL_CAPABILITY_FILTERS.
 // The `parameter` must match a key in model.supportedParameters (from OpenRouter).
@@ -248,6 +263,15 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                                             <div className="typo-caption truncate mt-0.5">
                                                 {model.apiName}
                                             </div>
+                                            {(model.pricingInput || model.pricingOutput) && (
+                                                <div className="typo-caption truncate mt-0.5 flex items-center gap-2">
+                                                    <span className="opacity-50">In</span>
+                                                    <span className="tabular-nums">{formatPricePerMillion(model.pricingInput)}</span>
+                                                    <span className="opacity-30">·</span>
+                                                    <span className="opacity-50">Out</span>
+                                                    <span className="tabular-nums">{formatPricePerMillion(model.pricingOutput)}</span>
+                                                </div>
+                                            )}
                                         </button>
                                         <Switch
                                             checked={isEnabled}

@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { type LanguageModel } from "@/ipc/types";
 import { ModelItemContent } from "@/components/ModelItemContent";
-import { ModelInfoDialog } from "@/components/ModelInfoDialog";
 import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { UnifiedSelector, type SelectorOption, type SelectorGroup } from "@/components/ui/UnifiedSelector";
@@ -41,7 +40,6 @@ export function SettingsModelSelector({
     variant = "default",
     disableEnabledFilter = false,
 }: SettingsModelSelectorProps) {
-    const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
     const { settings } = useSettings();
 
     // Filter models to only show user-enabled ones (consistent with main ModelPicker)
@@ -126,7 +124,6 @@ export function SettingsModelSelector({
                         return (
                             <ModelItemContent
                                 model={model}
-                                onInfoClick={setInfoModel}
                             />
                         );
                     }
@@ -143,15 +140,6 @@ export function SettingsModelSelector({
                     );
                 }}
             />
-
-            {infoModel && (
-                <ModelInfoDialog
-                    open={!!infoModel}
-                    onOpenChange={(o) => !o && setInfoModel(null)}
-                    model={infoModel}
-                    isAutoRouter={false}
-                />
-            )}
         </>
     );
 }

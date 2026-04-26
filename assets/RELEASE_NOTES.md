@@ -8,6 +8,10 @@ Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con 
 
 Cuando detienes una respuesta del agente a mitad de generación, ahora **se muestra un indicador visual discreto** en el punto exacto donde se cortó la respuesta, en lugar de dejar el mensaje colgando sin contexto.
 
+## Selector de modelos rediseñado
+
+Hemos eliminado la ventana modal de "Ver detalles" y la hemos sustituido por un **tooltip enriquecido que aparece al pasar el cursor sobre cualquier modelo**, mostrando precio, ventana de contexto, máximo de salida, modalidades y etiquetas. Además, tanto en el selector principal como en el diálogo de añadir modelos, ahora **se muestran los precios de entrada y salida por millón de tokens directamente en la lista**, con los modelos gratuitos marcados como "gratis". Toda la información relevante sin salir del flujo de selección.
+
 ## Correcciones y ajustes
 
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.

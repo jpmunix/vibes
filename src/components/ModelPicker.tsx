@@ -1,6 +1,6 @@
 import { type LargeLanguageModel } from "@/lib/schemas";
 import { type LanguageModel } from "@/ipc/types";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { AutoRouterBadge } from "@/components/AutoRouterBadge";
 import { ModelItemContent } from "@/components/ModelItemContent";
-import { ModelInfoDialog } from "@/components/ModelInfoDialog";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
@@ -31,10 +30,7 @@ export function ModelPicker() {
     queryClient.invalidateQueries({ queryKey: queryKeys.tokenCount.all });
   };
 
-  const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
 
-  const infoModelRef = useRef<LanguageModel | null>(null);
-  infoModelRef.current = infoModel;
 
   // Cloud models from providers
   const { data: modelsByProviders, isLoading: modelsByProvidersLoading } =
@@ -187,7 +183,6 @@ export function ModelPicker() {
               model={model}
               showAutoRouterBadge={provider === "auto-router"}
               isAutoRouter={provider === "auto-router"}
-              onInfoClick={setInfoModel}
               onRemoveClick={isRemovable ? (m) => removeUsage(`${provider}:${m.apiName}`) : undefined}
             />
           );
@@ -198,15 +193,6 @@ export function ModelPicker() {
           loading ? "Cargando modelos..." : "No hay modelos disponibles"
         }
       />
-
-      {infoModel && (
-        <ModelInfoDialog
-          open={!!infoModel}
-          onOpenChange={(open) => !open && setInfoModel(null)}
-          model={infoModel}
-          isAutoRouter={(infoModel as any).provider === "auto-router"}
-        />
-      )}
     </>
   );
 }
