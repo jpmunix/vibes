@@ -126,7 +126,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
                 <div className="p-6 space-y-4">
                     <DialogHeader className="flex flex-row items-center justify-between">
                         <div className="space-y-1">
-                            <DialogTitle className="typo-section-title">Configuración de cuenta</DialogTitle>
+                            <DialogTitle>Configuración de cuenta</DialogTitle>
                             <DialogDescription className="typo-caption">
                                 Administra tu perfil y configuración de seguridad
                             </DialogDescription>

@@ -48,7 +48,7 @@ export function DocumentationDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="!max-w-[1400px] !w-[95vw] max-h-[90vh] flex flex-col p-8 !gap-0 overflow-hidden">
                 <DialogHeader className="mb-6 flex-shrink-0">
-                    <DialogTitle className="typo-page-title flex items-center gap-3">
+                    <DialogTitle className="flex items-center gap-3">
                         📚 Documentación
                     </DialogTitle>
                 </DialogHeader>

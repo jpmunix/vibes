@@ -20,6 +20,7 @@ import {
   Database,
   Square,
   Logs,
+  FileText,
 } from "@/components/ui/icons";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -373,7 +374,7 @@ export const ActionHeader = () => {
                 className={groupButtonClass(activeGroup === "code")}
                 onMouseEnter={() => handleMenuHoverEnter("code")}
                 onMouseLeave={handleMenuHoverLeave}
-                onClick={() => selectPanel("code")}
+                onClick={() => handleMenuHoverEnter("code")}
               >
                 {codeGroupInfo.icon}
                 {!isCompact && <span>{codeGroupInfo.label}</span>}
@@ -387,11 +388,19 @@ export const ActionHeader = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52" onMouseEnter={() => handleMenuHoverEnter("code")} onMouseLeave={handleMenuHoverLeave}>
               <DropdownMenuItem
-                onClick={() => selectPanel("code")}
-                className={cn(previewMode === "code" && "bg-accent")}
+                onClick={() => {
+                  if (selectedAppId != null) {
+                    ipc.system.openCodeWindow({
+                      appId: selectedAppId,
+                      theme,
+                      themeIntensity: intensity,
+                    });
+                  }
+                }}
+                disabled={selectedAppId == null}
               >
-                <Code size={14} />
-                <span>Código</span>
+                <FileText size={14} />
+                <span>Archivos</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}

@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createPortal } from "react-dom";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -20,6 +23,7 @@ import {
   Archive,
   ArchiveRestore,
   GitBranch,
+  FileText,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -375,6 +379,7 @@ interface WorkspaceAppItemProps {
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
   onOpenGit: (appId: number) => void;
+  onOpenCode: (appId: number) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -392,6 +397,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onNewChat,
   onCloseApp,
   onOpenGit,
+  onOpenCode,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
@@ -569,6 +575,14 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={() => { closeMenu(); onOpenCode(app.id); }}
+          >
+            <FileText size={14} className="opacity-60 shrink-0" />
+            Archivos
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
           >
             <Pencil size={14} className="opacity-60 shrink-0" />
@@ -708,6 +722,10 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
   const handleOpenGit = useCallback((appId: number) => {
     ipc.system.openGitWindow({ appId, theme, themeIntensity: intensity });
+  }, [theme, intensity]);
+
+  const handleOpenCode = useCallback((appId: number) => {
+    ipc.system.openCodeWindow({ appId, theme, themeIntensity: intensity });
   }, [theme, intensity]);
 
   // Empty app dialog state
@@ -1178,6 +1196,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
                     onOpenGit={handleOpenGit}
+                    onOpenCode={handleOpenCode}
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />
@@ -1189,226 +1208,181 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       </SidebarGroup>
 
       {/* Close Folder Confirmation Dialog — portal to escape sidebar overflow */}
-      {isCloseDialogOpen && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => { setIsCloseDialogOpen(false); setDeleteFiles(false); }}
-        >
-          <div className="fixed inset-0 bg-black/50" />
-          <div
-            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-semibold mb-1">¿Cerrar workspace "{closeAppName}"?</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+      {/* Close workspace dialog */}
+      <AlertDialog open={isCloseDialogOpen} onOpenChange={(open) => { if (!open) { setIsCloseDialogOpen(false); setDeleteFiles(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar workspace "{closeAppName}"?</AlertDialogTitle>
+            <AlertDialogDescription>
               El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
-            </p>
-            <div className="flex items-center space-x-2 mb-3">
-              <input
-                type="checkbox"
-                id="ws-delete-files-check"
-                checked={deleteFiles}
-                onChange={(e) => setDeleteFiles(e.target.checked)}
-                disabled={isClosing}
-                className="rounded border-border"
-              />
-              <label htmlFor="ws-delete-files-check" className="text-xs text-muted-foreground cursor-pointer">
-                Eliminar también los archivos del disco
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-sidebar-accent transition-colors"
-                onClick={() => { setIsCloseDialogOpen(false); setDeleteFiles(false); }}
-                disabled={isClosing}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-1.5 text-xs rounded-md text-white transition-colors ${
-                  deleteFiles
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-primary hover:bg-primary/90"
-                }`}
-                onClick={handleConfirmClose}
-                disabled={isClosing}
-              >
-                {isClosing ? (
-                  <span className="flex items-center gap-1">
-                    <Loader2 size={12} className="animate-spin" />
-                    Cerrando...
-                  </span>
-                ) : deleteFiles ? (
-                  "Eliminar workspace y archivos"
-                ) : (
-                  "Cerrar workspace"
-                )}
-              </button>
-            </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="ws-delete-files-check"
+              checked={deleteFiles}
+              onChange={(e) => setDeleteFiles(e.target.checked)}
+              disabled={isClosing}
+              className="rounded border-border"
+            />
+            <label htmlFor="ws-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
+              Eliminar también los archivos del disco
+            </label>
           </div>
-        </div>,
-        document.body
-      )}
-      {/* Delete Chat Confirmation Dialog — portal to escape sidebar overflow */}
-      {isDeleteChatDialogOpen && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setIsDeleteChatDialogOpen(false)}
-        >
-          <div className="fixed inset-0 bg-black/50" />
-          <div
-            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="typo-label mb-1">¿Eliminar chat?</h3>
-            <p className="typo-body text-muted-foreground mb-3">
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => { setIsCloseDialogOpen(false); setDeleteFiles(false); }}
+              disabled={isClosing}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmClose}
+              disabled={isClosing}
+              className={deleteFiles ? "bg-destructive text-white hover:bg-destructive/90" : ""}
+            >
+              {isClosing ? (
+                <span className="flex items-center gap-1">
+                  <Loader2 size={12} className="animate-spin" />
+                  Cerrando...
+                </span>
+              ) : deleteFiles ? (
+                "Eliminar workspace y archivos"
+              ) : (
+                "Cerrar workspace"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete chat dialog */}
+      <AlertDialog open={isDeleteChatDialogOpen} onOpenChange={(open) => { if (!open) setIsDeleteChatDialogOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar chat?</AlertDialogTitle>
+            <AlertDialogDescription>
               Se eliminará "{deleteChatTitle}" de forma permanente. Esta acción no se puede deshacer.
               <br /><br />
               <strong>Nota:</strong> Los cambios de código ya aceptados se mantendrán.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
-                onClick={() => setIsDeleteChatDialogOpen(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 typo-button rounded-md text-white bg-destructive hover:bg-destructive/90 transition-colors"
-                onClick={handleConfirmDeleteChat}
-              >
-                Eliminar chat
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteChatDialogOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteChat}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Eliminar chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Rename App Dialog — portal to escape sidebar overflow */}
-      {isRenameAppDialogOpen && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setIsRenameAppDialogOpen(false)}
-        >
-          <div className="fixed inset-0 bg-black/50" />
-          <div
-            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="typo-label mb-1">Renombrar "{renameAppName}"</h3>
+      {/* Rename workspace dialog */}
+      <Dialog open={isRenameAppDialogOpen} onOpenChange={(open) => { if (!open) setIsRenameAppDialogOpen(false); }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Renombrar "{renameAppName}"</DialogTitle>
+          </DialogHeader>
+          <input
+            type="text"
+            value={renameAppInputValue}
+            onChange={(e) => setRenameAppInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleConfirmRenameApp();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                setIsRenameAppDialogOpen(false);
+              }
+            }}
+            disabled={isRenamingApp}
+            autoFocus
+            className="w-full bg-transparent border border-border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="Nuevo nombre del workspace"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRenameAppDialogOpen(false)}
+              disabled={isRenamingApp}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmRenameApp}
+              disabled={isRenamingApp || !renameAppInputValue.trim() || renameAppInputValue === renameAppName}
+            >
+              {isRenamingApp ? (
+                <>
+                  <Loader2 size={12} className="animate-spin mr-1.5" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create empty workspace dialog */}
+      <Dialog open={isEmptyAppDialogOpen} onOpenChange={(open) => { if (!open) { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); } }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Crear workspace</DialogTitle>
+          </DialogHeader>
+          <p className="typo-caption text-muted-foreground">
+            Se creará un workspace vacío con git inicializado, listo para usar.
+          </p>
+          <form onSubmit={handleCreateEmptyApp}>
             <input
               type="text"
-              value={renameAppInputValue}
-              onChange={(e) => setRenameAppInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleConfirmRenameApp();
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  setIsRenameAppDialogOpen(false);
-                }
-              }}
-              disabled={isRenamingApp}
+              value={emptyAppName}
+              onChange={(e) => setEmptyAppName(e.target.value)}
+              placeholder="Nombre del workspace..."
+              disabled={isCreatingEmptyApp}
               autoFocus
-              className="w-full mt-2 mb-4 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="Nuevo nombre del workspace"
+              className={`w-full mb-2 bg-transparent border rounded-md px-3 py-2 typo-input outline-none focus:ring-2 focus:ring-primary/30 ${
+                emptyAppNameCheck?.exists ? "border-destructive" : "border-border"
+              }`}
             />
-            <div className="flex justify-end gap-2">
-              <button
+            {emptyAppNameCheck?.exists && (
+              <p className="typo-micro text-destructive mb-2">
+                Ya existe un workspace con este nombre
+              </p>
+            )}
+            <DialogFooter className="mt-3">
+              <Button
                 type="button"
-                className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
-                onClick={() => setIsRenameAppDialogOpen(false)}
-                disabled={isRenamingApp}
+                variant="outline"
+                onClick={() => { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); }}
+                disabled={isCreatingEmptyApp}
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1.5 typo-button rounded-md text-white bg-primary hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-                onClick={handleConfirmRenameApp}
-                disabled={isRenamingApp || !renameAppInputValue.trim() || renameAppInputValue === renameAppName}
+              </Button>
+              <Button
+                type="submit"
+                disabled={!emptyAppName.trim() || !!emptyAppNameCheck?.exists || isCreatingEmptyApp}
               >
-                {isRenamingApp ? (
+                {isCreatingEmptyApp ? (
                   <>
-                    <Loader2 size={12} className="animate-spin" />
-                    Guardando...
+                    <Loader2 size={12} className="animate-spin mr-1.5" />
+                    Creando...
                   </>
                 ) : (
-                  "Guardar"
+                  "Crear workspace"
                 )}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {/* Empty App Creation Dialog — portal to escape sidebar overflow */}
-      {isEmptyAppDialogOpen && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); }}
-        >
-          <div className="fixed inset-0 bg-black/50" />
-          <div
-            className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="typo-label mb-1">Crear workspace</h3>
-            <p className="typo-micro text-muted-foreground mb-3">
-              Se creará un workspace vacío con git inicializado, listo para usar.
-            </p>
-            <form onSubmit={handleCreateEmptyApp}>
-              <input
-                type="text"
-                value={emptyAppName}
-                onChange={(e) => setEmptyAppName(e.target.value)}
-                placeholder="Nombre del workspace..."
-                disabled={isCreatingEmptyApp}
-                autoFocus
-                className={`w-full mb-2 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:border-primary ${
-                  emptyAppNameCheck?.exists ? "border-red-500" : "border-border"
-                }`}
-              />
-              {emptyAppNameCheck?.exists && (
-                <p className="typo-micro text-destructive mb-2">
-                  Ya existe un workspace con este nombre
-                </p>
-              )}
-              <div className="flex justify-end gap-2 mt-3">
-                <button
-                  type="button"
-                  className="px-3 py-1.5 typo-button rounded-md border border-border hover:bg-sidebar-accent transition-colors"
-                  onClick={() => { setIsEmptyAppDialogOpen(false); setEmptyAppName(""); }}
-                  disabled={isCreatingEmptyApp}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 typo-button rounded-md text-white bg-primary hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-                  disabled={!emptyAppName.trim() || !!emptyAppNameCheck?.exists || isCreatingEmptyApp}
-                >
-                  {isCreatingEmptyApp ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      Creando...
-                    </>
-                  ) : (
-                    "Crear workspace"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

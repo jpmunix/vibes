@@ -123,7 +123,7 @@ export function InjectedItemPicker({ onSelect }: InjectedItemPickerProps) {
       </DialogTrigger>
       <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-6 gap-4 border-none shadow-2xl bg-background/95 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="typo-page-title bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          <DialogTitle>
             Inyectar contenido en el debate
           </DialogTitle>
         </DialogHeader>

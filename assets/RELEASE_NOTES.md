@@ -1,8 +1,17 @@
-# Novedades de la versión 8.2 — 26 de abril de 2026
+# v8.2
+*26 de abril de 2026*
 
 ## Control total de permisos del agente
 
-Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con un sistema de permisos por herramienta. Desde **Ajustes → Agente** configuras cada capacidad (editar archivos, terminal, acceso web, diagnósticos LSP) como **Siempre**, **Preguntar** o **Nunca**. Cuando una herramienta está en modo "Preguntar", **el agente te muestra un banner en el chat para que apruebes o rechaces la acción antes de ejecutarla**, con opción de recordar tu decisión para futuras sesiones. Para la terminal, además, puedes definir reglas granulares por comando (git commit, git push, rm) y añadir patrones personalizados.
+Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con un sistema de permisos por herramienta. Desde **Ajustes → Agente** configuras cada capacidad (editar archivos, terminal, acceso web, diagnósticos LSP) como **Siempre**, **Preguntar** o **Nunca**. Cuando una herramienta está en modo "Preguntar", **el agente te muestra un banner en el chat para que apruebes o rechaces la acción antes de ejecutarla**, con opción de recordar tu decisión para futuras sesiones. Para la terminal puedes definir reglas por comando (rm, patrones personalizados), y para Git hay una sección dedicada con **reglas granulares por nivel de riesgo**: staging, operaciones locales destructivas (reset, checkout, rebase…) y remotas (push, push --force).
+
+## Ventana de archivos del proyecto
+
+Hemos añadido una ventana independiente para **explorar los archivos de tu proyecto sin salir del chat**. Accesible desde el menú de herramientas de la vista previa, se abre con su propio espacio y título, como ya ocurre con Git, la consola y la base de datos.
+
+## Descartar todos los cambios de Git de golpe
+
+Antes, al descartar varios archivos modificados desde el panel de Git se ejecutaba un comando por cada archivo. Ahora, si seleccionas todos, **se ejecuta un único comando Git que revierte todo de forma instantánea**, con un mensaje de confirmación que resume el resultado.
 
 ## Indicador de respuesta cancelada
 
@@ -10,17 +19,21 @@ Cuando detienes una respuesta del agente a mitad de generación, ahora **se mues
 
 ## Selector de modelos rediseñado
 
-Hemos eliminado la ventana modal de "Ver detalles" y la hemos sustituido por un **tooltip enriquecido que aparece al pasar el cursor sobre cualquier modelo**, mostrando precio, ventana de contexto, máximo de salida, modalidades y etiquetas. Además, tanto en el selector principal como en el diálogo de añadir modelos, ahora **se muestran los precios de entrada y salida por millón de tokens directamente en la lista**, con los modelos gratuitos marcados como "gratis". Toda la información relevante sin salir del flujo de selección.
+El diálogo de añadir modelos ha recibido un **lavado de cara completo**: nueva disposición visual, filtros mejorados para encontrar modelos por capacidad y tipo, y **precios de entrada y salida por millón de tokens visibles directamente en la lista** (los gratuitos aparecen marcados como "gratis"). La sección de modelos habilitados en Ajustes también se ha renovado con el mismo estilo. Además, hemos sustituido la antigua ventana modal de "Ver detalles" por un **tooltip enriquecido al pasar el cursor**, mostrando precio, contexto, máximo de salida, modalidades y etiquetas sin salir del flujo de selección.
+
+## Los colores de la interfaz siguen tu acento
+
+Los componentes interactivos del chat (preguntas del asistente, permisos, citas) antes usaban un color teal fijo. Ahora **todos derivan automáticamente del color de acento que elijas en ajustes**, de modo que toda la interfaz mantiene coherencia visual sin importar qué tono prefieras.
 
 ## Correcciones y ajustes
 
+- Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
+- Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.
-- Mejoras en las descripciones de herramientas del agente en ajustes.
 - Mejoras internas de estabilidad.
 
----
-
-# Novedades de la versión 8.1 — 25 de abril de 2026
+# v8.1
+*25 de abril de 2026*
 
 ## Genera un sistema de diseño desde una captura de pantalla
 
@@ -46,16 +59,15 @@ Si has acumulado proyectos que ya no necesitas, ahora puedes **seleccionar múlt
 
 Hemos añadido una plantilla experimental con **React 19, Vite 6, Tailwind CSS 4 (plugin nativo de Vite), Shadcn/ui y React Router DOM 7**. Ideal si quieres trabajar con lo último de cada librería. Aparece en el selector de plantillas junto al stack estable para que elijas según tu preferencia.
 
-## Correcciones y ajustes visuales
+## Correcciones y ajustes
 
 - La vista del chat ahora arranca en modo Zen por defecto, más limpio y rápido.
 - Las preguntas interactivas del asistente se muestran con un nuevo estilo visual más integrado.
 - Interfaz de la vista previa más limpia, con menos elementos redundantes en la barra de navegación.
 - Mejoras internas de estabilidad y rendimiento.
 
----
-
-# Novedades de la versión 8.0 — 24 de abril de 2026
+# v8.0
+*24 de abril de 2026*
 
 ## Lista de tareas en tiempo real, mejorada
 
@@ -113,351 +125,165 @@ En el panel de Git, ya no necesitas revertir archivo por archivo. **Selecciona v
 
 Si la IA necesita aclarar algo antes de continuar, ahora **te lo pregunta directamente en el chat**, con opciones para responder de forma rápida, incluso con selección múltiple. Nada de quedarse bloqueado esperando: el flujo de trabajo sigue siendo tuyo.
 
-## Correcciones y mejoras generales
+## Correcciones y ajustes
 
 - Imágenes y archivos adjuntos en el chat se muestran con un diseño más compacto y con opción de ampliarlos al hacer clic.
 - El buscador del selector de modelos se reinicia correctamente al cerrar el menú o elegir un modelo.
 - Numerosas mejoras de estabilidad y rendimiento internas.
 
----
+# v7.0
+*19 de abril de 2026*
 
-# Novedades de la versión 7.0 — 19 de abril de 2026
+## Un nuevo diseño más inteligente
 
-## 🎨 Un Nuevo Diseño Más Inteligente
+Nos hemos despedido de las barras estáticas en la parte superior. Ahora puedes **cambiar de app y de chat usando menús desplegables** mucho más rápidos e intuitivos. Tu panel lateral recuerda cómo lo dejaste: si cierras una sección, se mantiene cerrada la próxima vez. Además, puedes **archivar, restaurar, renombrar, marcar como no leído y eliminar chats** directamente desde el sidebar, y hemos reubicado los ajustes junto al avatar para despejar el espacio de trabajo.
 
-- **Navegación Fluida:** Nos hemos despedido de las barras estáticas en la parte superior. Ahora puedes cambiar de App y de Chat usando menús desplegables mucho más rápidos e intuitivos.
-- **Panel Lateral con Memoria:** Tu panel lateral ahora recuerda cómo lo dejaste. Si cierras una sección porque no la usas, se mantendrá cerrada la próxima vez que entres.
-- **Gestión Completa de Chats:** Archiva, restaura, renombra, marca como no leído y elimina chats directamente desde el sidebar. Los chats archivados desaparecen de la lista principal para no molestar, y puedes recuperarlos fácilmente desde "Ver archivados" en el menú principal.
-- **Ajustes donde Deben:** Hemos limpiado el panel principal y reubicado el botón de Ajustes junto a tu avatar para que el espacio de trabajo esté más despejado.
+## El chat que necesitabas
 
-## 💬 El Chat que Necesitabas
+El nuevo **modo Zen** elimina todo el "ruido" visual (badges, paneles intermedios), mostrando únicamente la respuesta final. Cada mensaje del agente muestra el **coste exacto acumulado** durante esa interacción. Puedes **citar mensajes históricos** y apilar varias citas antes de enviar. El texto se ajusta automáticamente y los mensajes técnicos van a una **consola independiente** para no ensuciar el historial.
 
-- **Modo Zen para el Chat:** El nuevo **modo Zen** elimina todo el "ruido" visual (badges, paneles intermedios), mostrando únicamente el texto y la respuesta final. El resultado es muy fluido y ligero. *Puedes activarlo en Ajustes → Agente → Vista del chat.*
-- **Coste por Mensaje Exacto:** Cada respuesta que te da el agente muestra el coste exacto acumulado durante esa interacción, tanto en modo normal como en modo Zen.
-- **Citar Mensajes Históricos:** Ahora puedes citar cualquier mensaje del historial para añadirlo como contexto. Puedes seguir apilando varias citas a la vez antes de enviar.
-- **Adiós a los Textos Rotos:** El texto se ajusta automáticamente y puedes leer sin problemas.
-- **Consola de Sistema Independiente:** Los mensajes técnicos ya no ensucian tu historial de chat. Todo eso va a su propia ventanita independiente.
+## Panel Git completamente renovado
 
-## 🔄 Panel Git Completamente Renovado
+Vista dividida con **paneles redimensionables**, vista plana o en árbol, visor de diferencias con numeración de líneas y colores de alto contraste. Botón de **Push directo** con contador de commits pendientes, herramientas avanzadas agrupadas en un menú discreto y un **indicador naranja en la barra lateral** que te recuerda los cambios pendientes.
 
-- **Vista Dividida con Paneles Redimensionables:** A la izquierda la lista de archivos, a la derecha el visor de diferencias, y en medio un separador que puedes arrastrar a tu gusto.
-- **Vista Plana o en Árbol:** Tú decides si quieres ver los archivos modificados como una simple lista, o con la estructura de carpetas completa.
-- **Visor de Diferencias Mejorado:** Numeración de líneas reales, colores de alto contraste mucho más limpios y scroll independiente.
-- **El Subidón de Push:** Botón directo para hacer **Push** acompañado del número de commits pendientes.
-- **Herramientas Recogidas:** Las cosas avanzadas de Git se han agrupado en un discreto menú `⋮` para no saturar el panel.
-- **Indicador Naranja en Sidebar:** Un indicador naranja suave parpadeando en la barra lateral para recordarte que tienes cambios pendientes.
+## Inteligencia y flujo de trabajo
 
-## ⚙️ Inteligencia y Flujo de Trabajo
+Se han eliminado los límites de pasos del agente: **trabajará hasta completar el código que necesitas**. Los diagnósticos LSP son configurables desde ajustes y la configuración de modelos se ha simplificado a solo dos modos: estándar y pro. Hemos borrado casi 2000 líneas de código viejo para una app más rápida y eficiente.
 
-- **El Agente Ya No se Corta a la Mitad:** Hemos quitado los límites de "pasos". El agente trabajará hasta completar el código que necesitas.
-- **Diagnósticos de Código Configurables:** Puedes activar o desactivar la lectura en tiempo real (LSP) de errores en TypeScript desde **Ajustes → Agente**.
-- **Configuración Básica de Modelos:** Solo configuras tu **Modo Estándar** y el **Modo Pro**. Sencillo y sin mareos.
-- **La Gran Purga:** Hemos borrado casi 2000 líneas de código viejo, dándote una aplicación más rápida y eficiente.
+## Tu entorno, tus reglas
 
-## ⌨️ Tu Entorno, Tus Reglas (y Tus Tipografías)
+Docenas de **tipografías nuevas** (Bricolage Grotesque, Inter, Outfit, JetBrains Mono…) con opción de asignar una tipografía distinta para el chat. El selector de color de acento ya no se cierra al hacer clic y los menús selectores se han reconstruido desde cero. Hemos desactivado los menús viejos (Inspiración, Tareas, Notas) para que el código y el agente sean los protagonistas.
 
-- **Personalización a Otro Nivel:** Docenas de tipografías nuevas (Bricolage Grotesque, Inter, Outfit, JetBrains Mono...). Puedes elegir una tipografía de diseño para toda la interfaz y asignar otra distinta exclusivamente para el chat.
-- **Previsualiza Colores Sin Cortes:** El selector de color de acento ya no se cierra cada vez que pulsas un color.
-- **Desplegables Premium:** Menús selectores reconstruidos desde cero, más bonitos y bien centrados.
-
-## 🚀 Menos Paja, Más Fluidez
-
-- **Reencauzando el Interfaz:** Hemos desactivado los menús viejos de "Inspiración", el antiguo gestor de "Tareas", las "Notas" y las revisiones automáticas de seguridad. Tu código y el Agente son ahora los maestros del espacio central.
-- **Tu Git Fluye en su Propio Espacio:** Todas las gestiones de Git importantes lanzan su propia ventana separada independiente.
-- **Indicadores Sutiles e Inteligentes:** El desplegable de tu historial te deja ver qué chats continúan trabajando mediante un spinner asíncrono giratorio.
-
----
-
-# Novedades de la versión 6.5 — 17 de abril de 2026
+# v6.5
+*17 de abril de 2026*
 
 ## Modo Zen para el chat
 
 El nuevo **modo Zen** elimina todo el ruido intermedio —badges de herramientas, paneles de pensamiento, modales— y muestra únicamente el texto de la respuesta y el coste al final. Puedes activarlo en **Ajustes → Agente → Vista del chat**.
 
-## Panel Git completamente renovado
+## Panel Git renovado
 
-- **Vista dividida con paneles redimensionables**
-- **Vista plana o en árbol**
-- **Visor de diff mejorado**: numeración de líneas, colores de alto contraste y scroll independiente
-- **Botón de Push directo** con número de commits pendientes
-- **Herramientas Git en menú discreto** `⋮`
+Vista dividida con paneles redimensionables, vista plana o en árbol, visor de diff mejorado con numeración de líneas y colores de alto contraste. **Botón de Push directo** con número de commits pendientes y herramientas Git agrupadas en un menú discreto.
 
-## Indicador de commits pendientes en la barra lateral
+## Coste por mensaje y gestión de chats
 
-Si tienes commits sin pushear o archivos sin confirmar, aparece un indicador naranja pulsante en la barra lateral.
+Cada respuesta del agente muestra el **coste exacto acumulado** durante la interacción. Archiva, restaura, renombra, marca como no leído y elimina chats directamente desde el sidebar. Puedes **citar cualquier mensaje** del historial para dárselo como contexto al siguiente envío.
 
-## Coste por mensaje
+## Sin límites y con diagnósticos configurables
 
-Cada respuesta del agente muestra el coste exacto acumulado durante esa interacción.
+Se eliminó el límite de pasos que provocaba interrupciones inesperadas. Activa o desactiva la **verificación de errores TypeScript** en tiempo real desde Ajustes → Agente. Un indicador naranja pulsante en la barra lateral te recuerda los cambios pendientes.
 
-## Gestión completa de chats en el sidebar
+# v6.4.6
+*16 de abril de 2026*
 
-Archiva, restaura, renombra, marca como no leído y elimina chats directamente desde el sidebar.
+## Novedades
 
-## Citar mensajes
+- Nueva opción en **Ajustes → Agente**: activa o desactiva los diagnósticos LSP por archivo.
+- Nuevo botón **"Reiniciar OpenCode"** en ajustes para aplicar cambios de configuración sin salir de la app.
 
-Cita cualquier mensaje del historial para dárselo como contexto al siguiente envío. Puedes apilar varias citas a la vez.
+## Correcciones
 
-## El agente ya no se corta a mitad de una tarea
+- Eliminada la limitación de pasos del agente que provocaba cortes inesperados.
+- Corregidos falsos eventos de edición de archivos al iniciar sesión del agente.
+- Mejorado el comportamiento del scroll al comenzar el streaming.
+- Corregido el modo Plan que revertía a Agente al primer envío.
 
-Se eliminó el límite de pasos que provocaba interrupciones inesperadas.
+# v6.3.3
+*8 de abril de 2026*
 
-## Diagnósticos LSP configurables
+## Correcciones
 
-Activa o desactiva la verificación de errores TypeScript en tiempo real desde **Ajustes → Agente**.
+- Reparado problema con los iconos de servicios conectados que se visualizaban como un cuadrado blanco.
 
----
+# v6.0
+*15 de marzo de 2026*
 
-# Novedades de la versión 6.4.6 — 16 de abril de 2026
+## Integración completa del agente OpenCode
 
-## ✨ Novedades
+El corazón de Vibes ahora es **OpenCode**, un agente de código local de última generación que reemplaza al antiguo sistema Crush/Dyad. Modos de chat renombrados ("Agente", "Planificar", "Preguntar"), **streaming en tiempo real** de respuestas, soporte de adjuntos (imágenes, texto, subida directa), inyección automática de variables de integración y **compactación automática de contexto** para conversaciones largas.
 
-- Nueva opción en **Ajustes → Agente**: activa o desactiva los diagnósticos LSP por archivo
-- Nuevo botón **"Reiniciar OpenCode"** en ajustes para aplicar cambios de configuración sin salir de la app
+## Rebranding completo de Dyad a Vibes
 
-## 🛠 Fixes
+Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, textos, configuración y documentación. Eliminadas todas las restricciones de Dyad Pro, la licencia FSL y los componentes deprecados.
 
-- Eliminada la limitación de pasos del agente que provocaba cortes inesperados
-- Corregidos falsos eventos de edición de archivos al iniciar sesión del agente
-- Mejorado el comportamiento del scroll al comenzar el streaming
-- Corregido el modo Plan que revertía a Agente al primer envío
+## Experiencia de arranque premium
 
----
+**Splash screen** con instalación automática del CLI de OpenCode, skeleton de carga para la ventana principal eliminando el flash de contenido vacío, y micro-animaciones avanzadas en el input del chat y el sidebar.
 
-# Novedades de la versión 6.3.3 — 8 de abril de 2026
+## Correcciones
 
-## 🛠 Fixes
+- Normalización de etiquetas legacy para compatibilidad hacia atrás.
+- Prevención de escrituras obsoletas en settings.
+- Funcionalidad "Abrir chat" directamente desde el listado de apps.
+- Undo/redo y restauración de versiones de mensajes del agente.
 
-- Reparado problema con los iconos de servicios conectados que se visualizaban como un cuadrado blanco
+# v5.0
+*2 de marzo de 2026*
 
----
+## Agente IA renovado
 
-# Novedades de la actualización del 15 de marzo de 2026
+**Base de Conocimientos Inteligente** con filtrado semántico, deduplicación y decaimiento de confianza. Caché de embeddings SQLite con invalidación inteligente. **Esfuerzo de razonamiento configurable** (none, low, medium, high) y selector dinámico de modelos de OpenRouter con buscador integrado. El agente es autosuficiente: todos los flujos convergen en un solo modo.
 
-## 🚀 Integración completa del agente OpenCode
+## Gestión de procesos y herramientas
 
-### Nuevo motor de agente IA
-El corazón de Vibes ahora es **OpenCode**, un agente de código local de última generación que reemplaza al antiguo sistema Crush/Dyad.
+Herramientas para gestionar servidores desde el agente (`start_process`, `stop_process`, `list_processes`), ejecutar comandos seguros con restricciones de seguridad y esperar disponibilidad de servicios con timeouts configurables.
 
-- **Modos de chat renombrados**: "Agente" (OpenCode), "Agente legacy", "Planificar" y "Preguntar"
-- **Streaming en tiempo real**: Procesamiento de eventos SSE para mostrar respuestas del agente en vivo
-- **Soporte de adjuntos**: Imágenes, texto en línea y subida directa al codebase
-- **Inyección de entorno**: Las variables de integración (Bunny DB/Storage, PocketBase) se inyectan automáticamente
-- **Compactación automática de contexto**: Modo auto + prune para conversaciones largas
-- **Badges de uso de tokens**: Separados y siempre visibles
+## Git integrado
 
-### Diagnósticos del agente
-- Canales IPC para health-check y test-run accesibles desde las DevTools
-- Verificación de instalación, versión y claves API desde el frontend
+Interacción íntegra con el repositorio: status, diff, log, commit, checkout, branching, stash y revert. **Ventana de Git dedicada** con navegación por commits, staging/unstaging individual, resolución de conflictos y gestión de merges.
 
-## 🎨 Identidad Vibes
+## Interfaz y experiencia de usuario
 
-### Rebranding completo de Dyad a Vibes
-Se han reemplazado **todas** las referencias a "Dyad" por "Vibes": componentes, textos, configuración y documentación.
+Comprobación automática de actualizaciones, rediseño de ajustes con cabeceras colapsables, permisos por herramienta con selector de tres niveles, ventanas de chat dedicadas y layout "Solid Edge" limpio. Integraciones expandidas: **Bunny.net** y **PocketBase** con visores de bases de datos unificados.
 
-- **Eliminación de Dyad Pro**: Todas las restricciones y funcionalidad legacy eliminadas
-- **Eliminación de licencia FSL**: Se ha retirado la documentación Fair Source License
-- **Limpieza de componentes**: Eliminados todos los componentes deprecados
+## Backups, cuenta y tareas
 
-## ✨ Experiencia de arranque y UI premium
+Gestión completa de backups con rotación, restauración y compresión gzip. Migración total a la nube con gestión multi-API-key. Subtareas en el kanban con Smart Import automático y resúmenes de desarrollo al completar tareas.
 
-- **Splash screen** con instalación/actualización automática del CLI de OpenCode
-- **Skeleton de carga** para la ventana principal, eliminando el flash de contenido vacío
-- **Micro-animaciones avanzadas** en el input del chat y en el sidebar
+# v4.0
+*18 de febrero de 2026*
 
-## 🛠 Mejoras técnicas
+## Razonamiento, modelos y productividad
 
-- Normalización de etiquetas legacy para compatibilidad hacia atrás
-- Prevención de escrituras obsoletas en settings
-- Funcionalidad "Abrir chat" directamente desde el listado de apps
-- Undo/redo y restauración de versiones de mensajes del agente
-- Limpieza general del repositorio
+Esfuerzo de razonamiento configurable para modelos que lo soportan. **Selector de modelos dinámico** con buscador de OpenRouter y modal de información con costes y parámetros. Generación de dossiers avanzada, modo planificación, comandos específicos de arranque por proyecto, creación rápida de apps en blanco y ventanas múltiples.
 
----
+## Agente inteligente y editor visual
 
-# Novedades de la versión 5.0 — 2 de marzo de 2026
+Mejoras significativas en el agente con nuevos modelos orientados a programación. **Edición directa por IA**: modifica textos, iconos, colores y tamaños desde la interfaz del navegador. Corrección del bloqueo del agente sin reglas de contexto y refactor del sistema de conocimiento automático.
 
-### 🤖 Agente IA
+## Interfaz y herramientas
 
-- **Base de Conocimientos Inteligente**: Filtrado semántico, deduplicación y decaimiento de confianza para inyectar solo las reglas más relevantes
-- **Caché de Embeddings SQLite**: Persistencia eficiente de vectores con invalidación inteligente
-- **Esfuerzo de Razonamiento Configurable**: Selector de niveles (none, low, medium, high) para modelos compatibles
-- **Selector Dinámico OpenRouter**: Activar/desactivar modelos y añadir nuevos mediante buscador integrado
-- **Agente Autosuficiente**: La nueva arquitectura hace innecesaria la auto-reparación externa
-- **Un Solo Modo, Cero Confusión**: Todos los flujos convergen en el modo "Agente"
+Temas claros y oscuros consolidados con selector de color primario. Ajustes renovados, vista previa anclable, función undo mejorada. Herramientas Git avanzadas, visor de Supabase, capturas de pantalla con edición avanzada y exportación de notas a DOCX.
 
-### ⚙️ Gestión de Procesos
+# v3.3.1
+*13 de febrero de 2026*
 
-- Herramientas `start_process`, `stop_process` y `list_processes` para gestionar servidores desde el agente
-- `run_command` para ejecutar comandos seguros con restricciones de seguridad
-- `wait_for_http` para esperar disponibilidad de servicios con timeouts configurables
+## Correcciones y mejoras
 
-### 🔀 Git
+- Corrección del bug que bloqueaba el agente sin reglas de contexto.
+- Capacidad de colapsar el bloque de respuesta de la IA y hacer undo para recuperar prompts.
+- Herramientas de captura de pantalla mejoradas y barra de acciones del chat simplificada.
+- Refactor del sistema de conocimiento automático para evitar ruido y falsos positivos.
+- Herramientas para controlar mejor el repositorio Git e integración con Supabase.
 
-- Interacción íntegra con el repositorio: status, diff, log, show_commit, commit, checkout, branching, stash y revert
-- Ventana de Git dedicada con navegación por commits y diffs visuales
-- GitPanel con staging/unstaging individual, resolución de conflictos y gestión de merges
-- Avisos inteligentes ante fallos comunes
+# v3.0
+*11 de febrero de 2026*
 
-### 🎨 Interfaz & UX
+## Kanban, API keys y base de conocimientos
 
-- Comprobación automática de actualizaciones con diálogo de descarga
-- Rediseño completo de Ajustes con cabeceras colapsables
-- Permisos por herramienta con selector de tres niveles
-- Integraciones normalizadas (GitHub, Vercel, Supabase, Neon)
-- Ventanas de chat dedicadas, eliminando latencia en la interfaz principal
-- Layout "Solid Edge" limpio y enrasado
-- Bloques de respuesta colapsables y preview de adjuntos
-- Edición directa por IA desde la interfaz del navegador
+Integración con Firebase, logs de diagnóstico más completos y mejoras en el asistente. **Resumen automático de desarrollo** en el tablero kanban al completar tareas, subtareas con Smart Import, y soporte para **múltiples API keys** de OpenRouter con panel de crédito.
 
-### 🛠 Herramientas & Productividad
+## Chat, agente e interfaz
 
-- Integraciones expandidas: **Bunny.net** y **PocketBase**
-- Visores de bases de datos unificados (Supabase, Bunny, PocketBase)
-- Terminal de consola integrada con exportación de logs
-- Capturas de pantalla nativas con herramientas de anotación mejoradas
-- Exportación e importación de ajustes en JSON
+Edición y reenvío de mensajes, etiquetas para organizar chats y botón para detener respuestas. **Base de Conocimientos IA** que aprende automáticamente las reglas y convenciones del proyecto. Auto-repair de errores en tiempo real, reducción del 95% de la ventana de contexto y capturas de pantalla enviables al chat.
 
-### 💾 Backups & Datos
+## Registro de usuario
 
-- Gestión completa de backups con rotación, restauración y compresión gzip
-- Logging unificado de consultas IA con métricas detalladas por modelo
+Crear cuenta en Vibes, personalizarla y activar copias de seguridad en la nube.
 
-### 👤 Cuenta & Autenticación
+# v2.5
+*9 de febrero de 2026*
 
-- Migración total a la nube: todos los datos locales se migran automáticamente al iniciar sesión
-- Gestión multi-API-key con seguimiento de créditos
+## Primeras notas de versión
 
-### ✅ Tareas & Kanban
-
-- Subtareas (checklists) con Smart Import automático
-- Resúmenes de desarrollo al completar tareas
-- Barras de progreso con drag-and-drop
-
----
-
-# Novedades de la versión 4.0 — 18 de febrero de 2026
-
-## 🔥 Novedades Beta 5
-- Esfuerzo de razonamiento configurable para modelos que lo soportan
-- Poder visualizar las API keys de OpenRouter
-- Selector de modelos dinámico con buscador de OpenRouter
-- Modal de información de modelo con costes y parámetros de entrada/salida
-- Mejoras a la hora de crear apps nuevas
-- Mejoras en "Tareas"
-
-## Novedades acumulativas
-
-### 🚀 Flujo de Trabajo y Productividad
-
-- **Generación de Dossier Avanzada**: Dossiers completos con copia automática en tu cuenta
-- **Modo Planificación**: Organización y estructuración de proyectos
-- **Configuración de Comandos**: Comandos específicos de arranque o reinstalación por proyecto
-- **Creación de Proyectos Rápidos**: Esqueleto para aplicación en blanco o vacía
-- **Barra de Direcciones Interactiva**: Escribe rutas con historial y detección de rutas existentes
-- **Ventanas Múltiples para Apps**: Las aplicaciones se abren en nuevas ventanas
-- **Exportación e Importación de Ajustes**: En formato JSON
-
-### 🧠 Agente Inteligente & IA
-
-- Mejoras significativas en el agente inteligente
-- Nuevos modelos orientados a programación
-- Corrección del bloqueo del agente cuando no existían reglas de contexto
-- Refactor del sistema de conocimiento automático para reducir falsos positivos
-
-### ✏️ Editor Visual de la Página
-
-- Edición directa por IA: modifica textos, iconos, colores y tamaños desde la interfaz
-
-### 🎨 Interfaz
-
-- Temas claros y oscuros consolidados
-- Selector de color primario para cada tema
-- Ajustes renovados y reorganizados
-- Vista previa anclable al lado izquierdo
-- Bloques de respuesta colapsables
-- Función Undo mejorada con recuperación de prompts y assets
-
-### 🛠 Herramientas
-
-- Herramientas Git avanzadas con avisos inteligentes
-- Visor para Supabase con gestión de registros
-- Capturas de pantalla con edición avanzada, flechas y exportación PNG
-- Exportación de notas a formato DOCX
-
----
-
-# Novedades de la versión 3.3.1 — 13 de febrero de 2026
-
-### Performance
-- Corrección del bug que bloqueaba el agente inteligente sin reglas de contexto
-
-### Chat
-- Capacidad de colapsar el bloque de respuesta de la IA
-- Capacidad de hacer undo y recuperar prompts y assets
-
-### UI
-- Mejoradas las herramientas de captura de pantalla
-- Simplificada la barra de acciones del chat
-
-### Core
-- Refactor del sistema de conocimiento automático para evitar ruido y falsos positivos
-
-### Herramientas
-- Herramientas para controlar mejor el repositorio Git
-- Integración con Supabase para examinar la base de datos
-
----
-
-# Novedades de la versión 3.0 — 11 de febrero de 2026
-
-- Integración con Firebase
-- Logs de diagnóstico más completos
-- Mejoras en el asistente inteligente para cometer menos errores manteniendo el ratio de consumo de tokens por debajo del modo Build
-
-### 📝 Resumen automático de desarrollo en el tablero Kanban
-Cuando envíes una tarea del kanban a desarrollo y la marques como completada, se sincroniza el estado, se genera un resumen automático y verás un ícono azul de bot indicando que hay notas generadas.
-
-### ✅ Subtareas en el Kanban
-Añade subtareas a tus tarjetas. **Smart Import** detecta subtareas automáticamente y las añade a tus cards.
-
-### 🔑 Soporte para múltiples API keys de OpenRouter
-Gestiona gastos por separado usando varias keys. Panel de crédito con gasto total, saldo y recargado.
-
-### 💬 Mejoras en Debates
-- Edición y reenvío de mensajes
-- Etiquetas para organizar chats
-- Botón para detener respuestas en generación
-
-### 🤖 Base de Conocimientos IA
-Sistema inteligente que aprende y aplica automáticamente las reglas, convenciones y preferencias de tu proyecto.
-
-### 🔧 Auto-Repair de Errores en Tiempo Real
-Monitoreo continuo y reparación automática de errores de runtime.
-
-### 🛠️ Mejoras en el Agente
-- Reducción del 95% de la ventana de contexto
-
-### 🎨 Mejoras en la interfaz
-- Botón de **Reiniciar** en las acciones del chat
-- Capturas de pantalla total o parcial enviables al chat
-
-### 👤 Registro de usuario
-- Crear cuenta en Vibes y personalizarla
-- Copias de seguridad en la nube
-
----
-
-# Novedades de la versión 2.5 — 9 de febrero de 2026
-
-¡Esta versión incluye mejoras increíbles para potenciar tu desarrollo!
-
-### 1. Notas de desarrollo en el tablero de tareas
-Si envías a desarrollar una tarea de tu tablero kanban y la marcas como completada en el chat, se sincroniza el estado y se genera un resumen de desarrollo en la propia tarea. En la card verás un pequeño icono de bot azul que indica que hay notas.
-
-### 2. Notas de versión
-Esta es la primera versión que tiene notas de versión para aprender de todas las novedades.
-
----
-
-#### ✨ ¡Disfruta las vibraciones! ✨
+Esta es la primera versión con notas de versión. Al enviar una tarea del kanban a desarrollo y marcarla como completada, se sincroniza el estado y **se genera un resumen de desarrollo en la propia tarea**, con un icono de bot azul indicando que hay notas.

@@ -300,10 +300,27 @@ export const OpenCodePermissionsConfigSchema = z.object({
   webfetch: OpenCodePermissionSchema.optional(),
   websearch: OpenCodePermissionSchema.optional(),
   lsp: OpenCodePermissionSchema.optional(),
-  // Bash granular sub-rules
+  // Bash granular sub-rules — filesystem
+  bashRm: OpenCodePermissionSchema.optional(),
+  // Git — repo-local destructive
+  gitAdd: OpenCodePermissionSchema.optional(),
+  gitCommit: OpenCodePermissionSchema.optional(),
+  gitReset: OpenCodePermissionSchema.optional(),
+  gitCheckout: OpenCodePermissionSchema.optional(),
+  gitRestore: OpenCodePermissionSchema.optional(),
+  gitClean: OpenCodePermissionSchema.optional(),
+  gitRebase: OpenCodePermissionSchema.optional(),
+  gitMergeAbort: OpenCodePermissionSchema.optional(),
+  gitStashDrop: OpenCodePermissionSchema.optional(),
+  gitBranchDelete: OpenCodePermissionSchema.optional(),
+  gitCherryPickAbort: OpenCodePermissionSchema.optional(),
+  // Git — remote destructive
+  gitPush: OpenCodePermissionSchema.optional(),
+  gitPushForce: OpenCodePermissionSchema.optional(),
+  gitPushDelete: OpenCodePermissionSchema.optional(),
+  // DEPRECATED — old keys from v1 (bashGitCommit, bashGitPush)
   bashGitCommit: OpenCodePermissionSchema.optional(),
   bashGitPush: OpenCodePermissionSchema.optional(),
-  bashRm: OpenCodePermissionSchema.optional(),
   // Bash custom rules
   bashCustomRules: z.array(BashCustomRuleSchema).optional(),
 });

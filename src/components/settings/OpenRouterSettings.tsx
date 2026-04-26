@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useSettings } from "@/hooks/useSettings";
-import { ipc } from "@/ipc/types";
 import { useLanguageModelProviders } from "@/hooks/useLanguageModelProviders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
@@ -10,7 +9,6 @@ import {
   Trash2,
   Plus,
   ChevronRight,
-  RefreshCw,
 } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import {
@@ -65,23 +63,9 @@ export function OpenRouterSettings({
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
   const [modelsExpanded, setModelsExpanded] = useState(false);
-  const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const openAddModelsRef = useRef<(() => void) | null>(null);
 
-  const handleRefreshModels = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsRefreshingModels(true);
-    try {
-      await ipc.languageModel.refreshOpenRouterModels();
-      queryClient.invalidateQueries({ queryKey: queryKeys.languageModels.forProvider({ providerId }) });
-      showSuccess("Modelos actualizados");
-    } catch (error: any) {
-      console.error("Error en refreshModels:", error);
-      showError("Error al actualizar los modelos");
-    } finally {
-      setIsRefreshingModels(false);
-    }
-  };
+
 
   // Cast to any to access new custom properties if TS doesn't pick them up immediately
   const openRouterSettings = settings?.providerSettings?.[providerId] as any;
@@ -381,15 +365,6 @@ export function OpenRouterSettings({
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleRefreshModels}
-                  disabled={isRefreshingModels}
-                  className="px-4 py-1.5 typo-button rounded-lg border border-border bg-background text-foreground hover:bg-muted shadow-sm cursor-pointer transition-all duration-200 flex items-center gap-2"
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingModels && "animate-spin")} />
-                  {isRefreshingModels ? "Actualizando..." : "Refrescar"}
-                </button>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openAddModelsRef.current?.(); }}

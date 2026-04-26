@@ -112,13 +112,33 @@ function buildPermissionConfig(settings: any) {
         "git log*": "allow",
         "git diff*": "allow",
         "git show*": "allow",
-        "git branch*": "allow",
+        "git branch": "allow",       // list branches (no args = read-only)
+        "git branch -a*": "allow",   // list all branches
+        "git branch -v*": "allow",   // list with verbose
         "git remote*": "allow",
         "git stash list*": "allow",
-        // ── Dangerous / write — user-configurable ──
-        "git commit *": perms?.bashGitCommit ?? "deny",
-        "git push *": perms?.bashGitPush ?? "deny",
+        // ── Filesystem — dangerous ──
         "rm *": perms?.bashRm ?? "ask",
+        // ── Git — staging ──
+        "git add *": perms?.gitAdd ?? "ask",
+        // ── Git — repo-local destructive ──
+        "git commit *": perms?.gitCommit ?? perms?.bashGitCommit ?? "deny",
+        "git reset *": perms?.gitReset ?? "ask",
+        "git checkout *": perms?.gitCheckout ?? "ask",
+        "git restore *": perms?.gitRestore ?? "ask",
+        "git clean *": perms?.gitClean ?? "ask",
+        "git rebase *": perms?.gitRebase ?? "ask",
+        "git merge --abort*": perms?.gitMergeAbort ?? "ask",
+        "git stash drop*": perms?.gitStashDrop ?? "ask",
+        "git branch -D *": perms?.gitBranchDelete ?? "ask",
+        "git branch -d *": perms?.gitBranchDelete ?? "ask",
+        "git branch --delete *": perms?.gitBranchDelete ?? "ask",
+        "git cherry-pick --abort*": perms?.gitCherryPickAbort ?? "ask",
+        // ── Git — remote destructive (deny by default) ──
+        "git push *": perms?.gitPush ?? perms?.bashGitPush ?? "deny",
+        "git push --force*": perms?.gitPushForce ?? "deny",
+        "git push -f *": perms?.gitPushForce ?? "deny",
+        "git push --delete *": perms?.gitPushDelete ?? "deny",
     };
 
     // Append user custom rules (last → highest priority)

@@ -770,6 +770,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
         switchBranch,
         isSwitchingBranch,
         discardFileChanges,
+        discardAllChanges,
         isDiscarding,
     } = useGitPanel(appId);
 
@@ -933,7 +934,7 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                 <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
                     <div className="flex items-center gap-2 no-app-region-drag">
                         <GitBranch size={14} className="text-primary" />
-                        <span className="typo-button">Commit</span>
+                        <span className="typo-button">{app?.name ? `${app.name} – Git` : "Git"}</span>
                     </div>
                     <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />
                 </div>
@@ -1337,8 +1338,27 @@ export function GitPanel({ onClose, initialTab, initialCommitHash, isWindow }: G
                 cancelText="Cancelar"
                 onConfirm={async () => {
                     if (discardTarget) {
-                        for (const filepath of discardTarget) {
-                            await discardFileChanges(filepath);
+                        const isAll = discardTarget.length === uncommittedFiles.length;
+                        if (isAll) {
+                            // Single git command for all files
+                            await discardAllChanges();
+                        } else {
+                            // Loop individual files, single toast at the end
+                            let errors = 0;
+                            for (const filepath of discardTarget) {
+                                try {
+                                    await discardFileChanges(filepath);
+                                } catch {
+                                    errors++;
+                                }
+                            }
+                            if (errors === 0) {
+                                toast.success(discardTarget.length === 1
+                                    ? "Cambios descartados"
+                                    : `${discardTarget.length} archivos revertidos`);
+                            } else {
+                                toast.warning(`${discardTarget.length - errors} revertidos, ${errors} con error`);
+                            }
                         }
                         setDiscardTarget(null);
                     }

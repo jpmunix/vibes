@@ -38,7 +38,7 @@ export function UpdateAvailableDialog({
         >
             <DialogContent className="sm:max-w-md" showCloseButton={false}>
                 <DialogHeader>
-                    <DialogTitle className="text-xl">
+                    <DialogTitle>
                         🚀 Actualización {updateVersion} disponible
                     </DialogTitle>
                     <DialogDescription>

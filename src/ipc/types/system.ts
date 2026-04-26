@@ -391,6 +391,17 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Code viewer window — dedicated file explorer + editor
+  openCodeWindow: defineContract({
+    channel: "window:open-code",
+    input: z.object({
+      appId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Cross-window navigation: tells the main window to navigate to a route
   navigateMainWindow: defineContract({
     channel: "window:navigate-main",

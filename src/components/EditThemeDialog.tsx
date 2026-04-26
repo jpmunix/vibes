@@ -148,7 +148,7 @@ export function EditThemeDialog({
         </DialogHeader>
         <div className="space-y-4 mt-4">
           <div className="space-y-2">
-            <label htmlFor="edit-theme-name" className="text-sm font-medium">
+            <label htmlFor="edit-theme-name" className="typo-label">
               Nombre del tema
             </label>
             <Input
@@ -163,7 +163,7 @@ export function EditThemeDialog({
           <div className="space-y-2">
             <label
               htmlFor="edit-theme-description"
-              className="text-sm font-medium"
+              className="typo-label"
             >
               Descripción (opcional)
             </label>
@@ -177,7 +177,7 @@ export function EditThemeDialog({
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="edit-theme-prompt" className="text-sm font-medium">
+            <label htmlFor="edit-theme-prompt" className="typo-label">
               Prompt del tema
             </label>
             <Textarea

@@ -838,6 +838,26 @@ if (windowType === "database" && appIdStr) {
       </div>,
     );
   });
+} else if (windowType === "code" && appIdStr) {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Lazy import — Code module only loads when this window type is opened
+  import("./components/code_window/CodeWindowApp").then(
+    ({ CodeWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <CodeWindowApp appId={Number(appIdStr)} />
+        </StrictMode>,
+      );
+    },
+  );
 } else if (windowType === "console" && appIdStr) {
   // Sync theme from parent window via URL params
   if (themeParam) {

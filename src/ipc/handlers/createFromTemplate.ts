@@ -11,6 +11,65 @@ import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold
 
 const logger = log.scope("createFromTemplate");
 
+/**
+ * Default .gitignore content for new projects.
+ * Used as a safety net when a scaffold or GitHub template is missing .gitignore.
+ * This prevents catastrophic `git add .` from staging node_modules.
+ */
+const DEFAULT_GITIGNORE = [
+  "# Dependencies",
+  "node_modules",
+  "",
+  "# Build output",
+  "dist",
+  "dist-ssr",
+  "build",
+  ".next",
+  ".nuxt",
+  ".output",
+  "",
+  "# Environment",
+  ".env",
+  ".env.local",
+  ".env.*.local",
+  "*.local",
+  "",
+  "# Logs",
+  "logs",
+  "*.log",
+  "npm-debug.log*",
+  "yarn-debug.log*",
+  "pnpm-debug.log*",
+  "",
+  "# Editor / OS",
+  ".vscode/*",
+  "!.vscode/extensions.json",
+  ".idea",
+  ".DS_Store",
+  "*.sw?",
+  "",
+].join("\n");
+
+/**
+ * Ensure a .gitignore file exists at the project root.
+ * If one already exists, leaves it untouched (user/template may have customized it).
+ * If missing, writes a sensible default that at minimum excludes node_modules.
+ *
+ * This is a SAFETY NET — even if a scaffold or GitHub template forgets .gitignore,
+ * the subsequent `git init && git add .` in app_handlers won't stage node_modules.
+ */
+async function ensureGitignore(appPath: string): Promise<void> {
+  const gitignorePath = path.join(appPath, ".gitignore");
+  try {
+    await fs.access(gitignorePath);
+    // File exists — don't overwrite
+  } catch {
+    // File doesn't exist — create it
+    await fs.writeFile(gitignorePath, DEFAULT_GITIGNORE, "utf-8");
+    logger.warn(`Created missing .gitignore at ${gitignorePath} (safety net)`);
+  }
+}
+
 export async function createFromTemplate({
   fullAppPath,
   appName,
@@ -37,6 +96,8 @@ export async function createFromTemplate({
     await replaceTemplateWildcards(fullAppPath, appName);
     // Copy pre-cached node_modules for instant startup
     await copyScaffoldNodeModules(fullAppPath);
+    // Safety net: guarantee .gitignore exists before git init
+    await ensureGitignore(fullAppPath);
     return;
   }
 
@@ -50,6 +111,8 @@ export async function createFromTemplate({
   await replaceTemplateWildcards(fullAppPath, appName);
   // Copy pre-cached node_modules (only matches scaffold deps, but still speeds things up)
   await copyScaffoldNodeModules(fullAppPath);
+  // Safety net: guarantee .gitignore exists before git init
+  await ensureGitignore(fullAppPath);
 }
 
 async function replaceTemplateWildcards(

@@ -266,7 +266,7 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
   // Set window title
   useEffect(() => {
     ipc.app.getApp(appId).then((app) => {
-      if (app?.name) document.title = `${app.name} — Consola`;
+      if (app?.name) document.title = `${app.name} \u2013 Consola`;
     }).catch(() => {});
   }, [appId]);
 
@@ -276,7 +276,7 @@ function ConsoleWindowContent({ appId }: ConsoleWindowAppProps) {
       <div className="flex items-center px-4 py-0 border-b border-border bg-sidebar shrink-0 app-region-drag h-9 font-sans">
         <Logs size={14} className="mr-2 text-muted-foreground shrink-0" />
         <span className="typo-tab truncate flex-1">
-          {currentApp?.name || "App"} — Consola
+          {currentApp?.name || "App"} – Consola
         </span>
 
         {/* Logs/Console toggle */}

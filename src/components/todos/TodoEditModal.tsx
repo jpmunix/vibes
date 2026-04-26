@@ -294,7 +294,7 @@ export function TodoEditModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[95vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
-          <DialogTitle className="typo-page-title">Editar Tarea</DialogTitle>
+          <DialogTitle>Editar Tarea</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6">

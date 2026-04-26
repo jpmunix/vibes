@@ -21,17 +21,53 @@ const TOOLS: ToolDef[] = [
   { key: "lsp", settingsKey: "lsp", label: "Diagnósticos LSP", description: "Verificación de tipos por archivo", defaultValue: "allow" },
 ];
 
-// ── Bash sub-rules ──
-interface BashSubRule {
-  settingsKey: "bashGitCommit" | "bashGitPush" | "bashRm";
+// ── Bash sub-rules (only filesystem-level commands) ──
+interface SubRule {
+  settingsKey: keyof NonNullable<import("@/lib/schemas").OpenCodePermissionsConfig>;
   label: string;
   defaultValue: OpenCodePermission;
 }
 
-const BASH_SUB_RULES: BashSubRule[] = [
-  { settingsKey: "bashGitCommit", label: "git commit", defaultValue: "deny" },
-  { settingsKey: "bashGitPush", label: "git push", defaultValue: "deny" },
+const BASH_SUB_RULES: SubRule[] = [
   { settingsKey: "bashRm", label: "rm (borrar)", defaultValue: "ask" },
+];
+
+// ── Git repo rules — grouped by risk level ──
+interface GitRuleGroup {
+  title: string;
+  rules: SubRule[];
+}
+
+const GIT_REPO_GROUPS: GitRuleGroup[] = [
+  {
+    title: "Staging",
+    rules: [
+      { settingsKey: "gitAdd", label: "git add", defaultValue: "ask" },
+    ],
+  },
+  {
+    title: "Local — destructivo",
+    rules: [
+      { settingsKey: "gitCommit", label: "git commit", defaultValue: "deny" },
+      { settingsKey: "gitReset", label: "git reset", defaultValue: "ask" },
+      { settingsKey: "gitCheckout", label: "git checkout", defaultValue: "ask" },
+      { settingsKey: "gitRestore", label: "git restore", defaultValue: "ask" },
+      { settingsKey: "gitClean", label: "git clean", defaultValue: "ask" },
+      { settingsKey: "gitRebase", label: "git rebase", defaultValue: "ask" },
+      { settingsKey: "gitMergeAbort", label: "git merge --abort", defaultValue: "ask" },
+      { settingsKey: "gitStashDrop", label: "git stash drop", defaultValue: "ask" },
+      { settingsKey: "gitBranchDelete", label: "git branch -D", defaultValue: "ask" },
+      { settingsKey: "gitCherryPickAbort", label: "git cherry-pick --abort", defaultValue: "ask" },
+    ],
+  },
+  {
+    title: "Remoto — destructivo",
+    rules: [
+      { settingsKey: "gitPush", label: "git push", defaultValue: "deny" },
+      { settingsKey: "gitPushForce", label: "git push --force", defaultValue: "deny" },
+      { settingsKey: "gitPushDelete", label: "git push --delete", defaultValue: "deny" },
+    ],
+  },
 ];
 
 const PERMISSION_OPTIONS: { value: OpenCodePermission; label: string }[] = [
@@ -100,6 +136,7 @@ export function OpenCodePermissionsSettings() {
 
   const [expanded, setExpanded] = useState(false);
   const [bashExpanded, setBashExpanded] = useState(false);
+  const [repoExpanded, setRepoExpanded] = useState(false);
   const [newRulePattern, setNewRulePattern] = useState("");
   const [newRulePermission, setNewRulePermission] = useState<OpenCodePermission>("ask");
 
@@ -117,12 +154,12 @@ export function OpenCodePermissionsSettings() {
     });
   };
 
-  const getBashSubValue = (rule: BashSubRule): OpenCodePermission => {
+  const getSubRuleValue = (rule: SubRule): OpenCodePermission => {
     if (!perms) return rule.defaultValue;
     return (perms[rule.settingsKey] as OpenCodePermission | undefined) ?? rule.defaultValue;
   };
 
-  const setBashSubValue = async (rule: BashSubRule, value: OpenCodePermission) => {
+  const setSubRuleValue = async (rule: SubRule, value: OpenCodePermission) => {
     await updateSettings({
       openCodePermissions2: {
         ...perms,
@@ -233,8 +270,8 @@ export function OpenCodePermissionsSettings() {
                           label={rule.label}
                           control={
                             <PermissionPill
-                              value={getBashSubValue(rule)}
-                              onChange={(v) => setBashSubValue(rule, v)}
+                              value={getSubRuleValue(rule)}
+                              onChange={(v) => setSubRuleValue(rule, v)}
                             />
                           }
                         />
@@ -299,6 +336,48 @@ export function OpenCodePermissionsSettings() {
               )}
             </React.Fragment>
           ))}
+
+          {/* ── Repositorio (Git) — separate collapsible section ── */}
+          <div className="mt-2">
+            <button
+              onClick={() => setRepoExpanded(!repoExpanded)}
+              className="flex items-center gap-1.5 px-4 py-3 typo-label text-muted-foreground hover:text-foreground transition-colors cursor-pointer group w-full"
+            >
+              <ChevronRight
+                className={cn(
+                  "size-3.5 transition-transform duration-200",
+                  repoExpanded && "rotate-90",
+                )}
+              />
+              Repositorio (git)
+            </button>
+
+            {repoExpanded && (
+              <div className="ml-4 space-y-0 border-l-2 border-border/40 pl-4">
+                {GIT_REPO_GROUPS.map((group) => (
+                  <div key={group.title}>
+                    <div className="px-4 pt-4 pb-1">
+                      <span className="typo-caption text-muted-foreground/70 uppercase tracking-wider text-[10px] font-semibold">
+                        {group.title}
+                      </span>
+                    </div>
+                    {group.rules.map((rule) => (
+                      <PermissionRow
+                        key={rule.settingsKey}
+                        label={rule.label}
+                        control={
+                          <PermissionPill
+                            value={getSubRuleValue(rule)}
+                            onChange={(v) => setSubRuleValue(rule, v)}
+                          />
+                        }
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

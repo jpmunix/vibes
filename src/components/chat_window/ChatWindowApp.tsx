@@ -233,7 +233,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     // Set document.title so the native title bar shows app name
     useEffect(() => {
         if (currentApp?.name) {
-            document.title = `${currentApp.name} — Vibes Chat`;
+            document.title = `${currentApp.name} \u2013 Chat`;
         }
     }, [currentApp?.name]);
 

@@ -108,15 +108,25 @@ export function useGitPanel(appId: number | null) {
         onError: (err: Error) => toast.error(`Error al unstage: ${err.message}`),
     });
 
-    // Discard file changes
+    // Discard file changes (single file, no toast — caller handles it)
     const discardFileChangesMutation = useMutation({
         mutationFn: async (filepath: string) => {
             if (!appId) throw new Error("No app selected");
             await ipc.git.discardFileChanges({ appId, filepath });
         },
+        onSuccess: () => refreshFiles(),
+        onError: (err: Error) => toast.error(`Error al descartar: ${err.message}`),
+    });
+
+    // Discard ALL changes (single git command, much faster for bulk)
+    const discardAllChangesMutation = useMutation({
+        mutationFn: async () => {
+            if (!appId) throw new Error("No app selected");
+            await ipc.git.discardAllChanges({ appId });
+        },
         onSuccess: () => {
             refreshFiles();
-            toast.success("Cambios descartados");
+            toast.success("Todos los cambios descartados");
         },
         onError: (err: Error) => toast.error(`Error al descartar: ${err.message}`),
     });
@@ -414,6 +424,7 @@ export function useGitPanel(appId: number | null) {
         getConflictFileDiff,
         switchBranch: switchBranchMutation.mutateAsync,
         discardFileChanges: discardFileChangesMutation.mutateAsync,
+        discardAllChanges: discardAllChangesMutation.mutateAsync,
 
         // Loading states
         isStaging: stageFileMutation.isPending || stageAllMutation.isPending,
@@ -427,7 +438,7 @@ export function useGitPanel(appId: number | null) {
         isAbortingMerge: abortMergeMutation.isPending,
         isResolvingFile: resolveFileOursMutation.isPending || resolveFileTheirsMutation.isPending,
         isSwitchingBranch: switchBranchMutation.isPending,
-        isDiscarding: discardFileChangesMutation.isPending,
+        isDiscarding: discardFileChangesMutation.isPending || discardAllChangesMutation.isPending,
     };
 }
 
