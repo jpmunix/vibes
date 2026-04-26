@@ -250,6 +250,7 @@ const NON_COMPACTABLE_TAGS = new Set([
     "vibes-command",
     "vibes-add-integration",  // Interactive: contains setup buttons (e.g. Supabase)
     "vibes-ask-user",          // Interactive: contains question + response options
+    "vibes-cancelled",         // Styled inline cancel indicator — not a tool badge
 ]);
 
 export function shouldCompact(tag: string): boolean {

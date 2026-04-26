@@ -507,9 +507,9 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle>¿Cerrar "{deleteAppName}"?</DialogTitle>
+            <DialogTitle>¿Cerrar workspace "{deleteAppName}"?</DialogTitle>
             <DialogDescription>
-              La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
+              El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2 py-2">
@@ -522,7 +522,7 @@ export function AppList({ show }: { show?: boolean }) {
               className="rounded border-border"
             />
             <label htmlFor="delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
-              También eliminar archivos del disco
+              Eliminar también los archivos del disco
             </label>
           </div>
           <DialogFooter className="flex justify-end gap-2 pt-2">
@@ -547,9 +547,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando...
                 </>
               ) : deleteFiles ? (
-                "Cerrar y eliminar archivos"
+                "Eliminar workspace y archivos"
               ) : (
-                "Cerrar carpeta"
+                "Cerrar workspace"
               )}
             </Button>
           </DialogFooter>
@@ -566,13 +566,13 @@ export function AppList({ show }: { show?: boolean }) {
         <DialogContent className="max-w-sm p-4">
           <DialogHeader className="pb-2">
             <DialogTitle>
-              ¿Cerrar {selectedIds.size} aplicación{selectedIds.size !== 1 ? "es" : ""}?
+              ¿Cerrar {selectedIds.size} workspace{selectedIds.size !== 1 ? "s" : ""}?
             </DialogTitle>
             <DialogDescription>
               {selectedIds.size === 1
-                ? "La aplicación se desvinculará de Vibes."
-                : `Las ${selectedIds.size} aplicaciones se desvincularán de Vibes.`}
-              {" "}Los archivos en disco NO serán eliminados.
+                ? "El workspace se desvinculará de Vibes."
+                : `Los ${selectedIds.size} workspaces se desvincularán de Vibes.`}
+              {" "}Los archivos en disco se conservarán.
             </DialogDescription>
           </DialogHeader>
 
@@ -595,7 +595,7 @@ export function AppList({ show }: { show?: boolean }) {
               className="rounded border-border"
             />
             <label htmlFor="bulk-delete-files-check" className="typo-caption text-muted-foreground cursor-pointer">
-              También eliminar archivos del disco
+              Eliminar también los archivos del disco
             </label>
           </div>
 
@@ -631,9 +631,9 @@ export function AppList({ show }: { show?: boolean }) {
                   Cerrando... {bulkProgress}%
                 </>
               ) : bulkDeleteFiles ? (
-                `Cerrar y eliminar (${selectedIds.size})`
+                `Eliminar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""} y archivos`
               ) : (
-                `Cerrar ${selectedIds.size} app${selectedIds.size !== 1 ? "s" : ""}`
+                `Cerrar ${selectedIds.size} workspace${selectedIds.size !== 1 ? "s" : ""}`
               )}
             </Button>
           </DialogFooter>
@@ -647,28 +647,28 @@ export function AppList({ show }: { show?: boolean }) {
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Crear aplicación vacía</DialogTitle>
+            <DialogTitle>Crear workspace</DialogTitle>
             <DialogDescription>
-              Se creará una aplicación con el scaffold por defecto, lista para editar.
+              Se creará un workspace con el scaffold por defecto, listo para editar.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateEmptyApp}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="emptyAppName">Nombre de la aplicación</Label>
+                <Label htmlFor="emptyAppName">Nombre del workspace</Label>
                 <Input
                   id="emptyAppName"
                   value={emptyAppName}
                   onChange={(e) => setEmptyAppName(e.target.value)}
-                  placeholder="Introduce el nombre de la aplicación..."
+                  placeholder="Nombre del workspace..."
                   className={emptyAppNameCheck?.exists ? "border-red-500" : ""}
                   disabled={isCreatingEmptyApp}
                   autoFocus
                 />
                 {emptyAppNameCheck?.exists && (
                   <p className="typo-caption text-destructive">
-                    Ya existe una aplicación con este nombre
+                    Ya existe un workspace con este nombre
                   </p>
                 )}
               </div>
@@ -693,7 +693,7 @@ export function AppList({ show }: { show?: boolean }) {
                 {isCreatingEmptyApp && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isCreatingEmptyApp ? "Creando..." : "Crear aplicación"}
+                {isCreatingEmptyApp ? "Creando..." : "Crear workspace"}
               </Button>
             </DialogFooter>
           </form>

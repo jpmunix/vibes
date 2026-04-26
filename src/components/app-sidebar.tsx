@@ -61,11 +61,11 @@ const items: {
     icon: Home,
     menuItems: [
       { label: "Nueva aplicación", icon: Plus, action: "apps:new" },
-      { label: "Nueva aplicación vacía", icon: FolderPlus, action: "apps:empty" },
+      { label: "Nuevo workspace", icon: FolderPlus, action: "apps:empty" },
       { label: "Importar App", icon: FolderOpen, action: "apps:import" },
       { label: "Buscar aplicaciones", icon: Search, action: "apps:search" },
       { label: "_separator", icon: Plus, action: null },
-      { label: "Cerrar aplicaciones", icon: FolderX, action: "apps:bulk-close" },
+      { label: "Cerrar workspaces", icon: FolderX, action: "apps:bulk-close" },
     ],
   },
   {
@@ -74,8 +74,8 @@ const items: {
     to: "/workspace",
     icon: Bot,
     menuItems: [
-      { label: "Nueva aplicación vacía", icon: FolderPlus, action: "workspace:empty-app" },
-      { label: "Abrir carpeta", icon: FolderOpen, action: "workspace:open-folder" },
+      { label: "Nuevo workspace", icon: FolderPlus, action: "workspace:empty-app" },
+      { label: "Añadir workspace", icon: FolderOpen, action: "workspace:open-folder" },
     ],
   },
   {

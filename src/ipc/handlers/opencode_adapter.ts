@@ -20,7 +20,7 @@
 
 import log from "electron-log";
 import { createOpencode, createOpencodeClient } from "@opencode-ai/sdk";
-import type { IpcMainInvokeEvent } from "electron";
+import { type IpcMainInvokeEvent, BrowserWindow } from "electron";
 import { readSettings, writeSettings, decrypt } from "../../main/settings";
 import { getVibesAppPath } from "../../paths/paths";
 import { safeSend } from "../utils/safe_sender";
@@ -48,6 +48,316 @@ let lastProjectDir: string | null = null;
 // Active stream text injector — allows the question reply handler to inject
 // the user's answer directly into the live chat stream content.
 let activeTextInjector: ((text: string) => void) | null = null;
+
+// ── Permission response infrastructure ──
+// Pending permission resolvers: Map<permissionRequestId, resolve function>
+const pendingPermissionResolvers = new Map<string, (response: string) => void>();
+
+/**
+ * Default permission values for each tool.
+ * MUST be kept in sync with TOOLS[].defaultValue in OpenCodePermissionsSettings.tsx.
+ * Single source of truth for the backend — the UI component has its own copy
+ * but they MUST agree to avoid phantom settings (user sees one value, backend uses another).
+ */
+const PERMISSION_DEFAULTS: Record<string, "allow" | "ask" | "deny"> = {
+    edit: "ask",
+    read: "allow",   // Read ops are non-destructive — always allowed
+    bash: "allow",
+    webfetch: "ask",
+    websearch: "ask",
+    lsp: "allow",
+};
+
+/**
+ * Build the OpenCode `permission` config block from user settings.
+ * Falls back to PERMISSION_DEFAULTS if no settings are configured.
+ */
+function buildPermissionConfig(settings: any) {
+    const perms = settings?.openCodePermissions2;
+
+    // Build bash object with granular rules.
+    // OpenCode pattern matching: last matching rule wins → put "*" first, specifics after.
+    //
+    // Safe-command allowlist: these read-only/inspection commands are always allowed
+    // even when the user sets bash to "ask". This prevents frustration from being
+    // asked about harmless commands, which would lead the user to just allow everything.
+    const bashRules: Record<string, string> = {
+        "*": perms?.bash ?? "allow",
+        // ── Read-only / inspection — always safe ──
+        "ls *": "allow",
+        "cat *": "allow",
+        "head *": "allow",
+        "tail *": "allow",
+        "grep *": "allow",
+        "rg *": "allow",
+        "find *": "allow",
+        "wc *": "allow",
+        "pwd": "allow",
+        "echo *": "allow",
+        "which *": "allow",
+        "type *": "allow",
+        "file *": "allow",
+        "stat *": "allow",
+        "du *": "allow",
+        "df *": "allow",
+        "env": "allow",
+        "printenv *": "allow",
+        "node --version*": "allow",
+        "node -e *": "allow",
+        "npm list*": "allow",
+        "npm ls*": "allow",
+        "npm --version*": "allow",
+        "npx --version*": "allow",
+        "git status*": "allow",
+        "git log*": "allow",
+        "git diff*": "allow",
+        "git show*": "allow",
+        "git branch*": "allow",
+        "git remote*": "allow",
+        "git stash list*": "allow",
+        // ── Dangerous / write — user-configurable ──
+        "git commit *": perms?.bashGitCommit ?? "deny",
+        "git push *": perms?.bashGitPush ?? "deny",
+        "rm *": perms?.bashRm ?? "ask",
+    };
+
+    // Append user custom rules (last → highest priority)
+    for (const rule of perms?.bashCustomRules ?? []) {
+        bashRules[rule.pattern] = rule.permission;
+    }
+
+    return {
+        edit: perms?.edit ?? PERMISSION_DEFAULTS.edit,
+        read: "allow",    // Read ops (read, glob, grep) are always allowed — non-destructive
+        glob: "allow",
+        grep: "allow",
+        bash: bashRules,
+        webfetch: perms?.webfetch ?? PERMISSION_DEFAULTS.webfetch,
+        websearch: perms?.websearch ?? PERMISSION_DEFAULTS.websearch,
+        lsp: perms?.lsp ?? PERMISSION_DEFAULTS.lsp,
+        task: "allow",        // Subagent launch
+        question: "allow",
+        external_directory: "ask",
+    };
+}
+
+/**
+ * Resolve the effective permission for a specific tool + input.
+ * For bash, checks granular sub-rules. For other tools, returns the global pill.
+ */
+function resolveToolPermission(
+    toolName: string,
+    toolInput: string,
+    permsConfig?: any,
+): "allow" | "ask" | "deny" {
+    if (!permsConfig) return "allow"; // No config → default allow (backwards compat)
+
+    // Map OpenCode tool names to our settings keys.
+    // glob/grep are separate tools in OpenCode but follow the user's "read" pill.
+    const TOOL_ALIAS: Record<string, string> = {
+        glob: "read",
+        grep: "read",
+    };
+    const settingsKey = TOOL_ALIAS[toolName] ?? toolName;
+
+    const value = permsConfig[settingsKey as keyof typeof permsConfig];
+
+    // For tools with a simple pill (edit, read, webfetch, websearch, lsp)
+    if (value === "allow" || value === "ask" || value === "deny") {
+        return value;
+    }
+
+    // If value is something unexpected (e.g. stale "once"), default to "ask" (safe fallback)
+    return PERMISSION_DEFAULTS[settingsKey] ?? "ask";
+}
+
+/**
+ * Wait for the renderer to send a permission response via IPC.
+ * Returns the user's choice: "once" | "always" | "reject".
+ * Times out after `timeoutMs` and auto-rejects.
+ */
+function waitForPermissionResponse(requestId: string, timeoutMs: number): Promise<string> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            pendingPermissionResolvers.delete(requestId);
+            logger.warn(`[OC:Permission] Timeout for ${requestId} — auto-rejecting`);
+            resolve("reject");
+        }, timeoutMs);
+
+        pendingPermissionResolvers.set(requestId, (response: string) => {
+            clearTimeout(timer);
+            pendingPermissionResolvers.delete(requestId);
+            resolve(response);
+        });
+    });
+}
+
+/**
+ * Persist a permission choice from the chat banner into user settings.
+ *
+ * Performs the **full settings sync pipeline** (same as the UI settings path):
+ *   1. writeSettings() → local disk + in-memory cache.
+ *   2. Broadcast "settings:updated-from-backend" → renderer atom refreshes immediately.
+ *   3. Sync to Bunny DB → survives the remote-merge in getUserSettings.
+ *
+ * ⚠️  We cannot use the renderer's IPC `setUserSettings` handler because this
+ * function runs in the main process during an active agent session. Instead we
+ * replicate the same 3 steps that `setUserSettings` does (settings_handlers.ts).
+ *
+ * For NON-bash tools (edit, read, webfetch, etc.): sets the global pill directly.
+ * For BASH: adds a granular custom rule (e.g. `"ls *": "allow"`) instead of
+ * touching the global bash pill. This prevents a harmless `ls` approval from
+ * accidentally enabling `rm`.
+ *
+ * @param toolName       - OpenCode tool name ("bash", "edit", "read", etc.)
+ * @param value          - "allow" or "deny"
+ * @param alwaysPatterns - OpenCode's suggested patterns from `props.always`
+ * @param commandInput   - The raw command/input that triggered the permission
+ */
+async function persistPermissionToSettings(
+    toolName: string,
+    value: "allow" | "deny",
+    alwaysPatterns: string[],
+    commandInput: string,
+) {
+    try {
+        const current = readSettings();
+        const perms = { ...(current.openCodePermissions2 || {}) };
+
+        if (toolName === "bash") {
+            // ── Bash: add a specific custom rule, never touch the global pill ──
+            // Priority: use OpenCode's suggested `always` patterns if available,
+            // otherwise extract the command prefix (first word) + wildcard.
+            const rules: Array<{ id: string; pattern: string; permission: string }> =
+                Array.isArray(perms.bashCustomRules) ? [...perms.bashCustomRules] : [];
+
+            const patternsToAdd: string[] = [];
+
+            if (alwaysPatterns.length > 0) {
+                // Use OpenCode's own suggestions (e.g. ["ls *", "git status*"])
+                for (const p of alwaysPatterns) {
+                    if (!rules.some((r) => r.pattern === p)) {
+                        patternsToAdd.push(p);
+                    }
+                }
+            } else if (commandInput.trim()) {
+                // Fallback: extract first word → "command *"
+                const firstWord = commandInput.trim().split(/\s+/)[0];
+                const pattern = `${firstWord} *`;
+                if (!rules.some((r) => r.pattern === pattern)) {
+                    patternsToAdd.push(pattern);
+                }
+            }
+
+            for (const pattern of patternsToAdd) {
+                rules.push({
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    pattern,
+                    permission: value,
+                });
+                logger.info(`[OC:Permission] Added bash custom rule: "${pattern}" → ${value}`);
+            }
+
+            perms.bashCustomRules = rules;
+        } else {
+            // ── Non-bash: set the global tool pill ──
+            const TOOL_TO_KEY: Record<string, string> = {
+                edit: "edit", read: "read", glob: "read", grep: "read",
+                webfetch: "webfetch", websearch: "websearch", lsp: "lsp",
+            };
+            const key = TOOL_TO_KEY[toolName];
+            if (!key) {
+                logger.warn(`[OC:Permission] Unknown tool "${toolName}" — cannot persist`);
+                return;
+            }
+            (perms as any)[key] = value;
+            logger.info(`[OC:Permission] Persisted ${toolName} → ${value} (global pill)`);
+        }
+
+        writeSettings({ ...current, openCodePermissions2: perms });
+        const updated = readSettings();
+        logger.info(`[OC:Permission] Saved to settings.json`);
+
+        // ── Notify renderer so the UI atom refreshes immediately ──
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed() && win.webContents) {
+                safeSend(win.webContents, "settings:updated-from-backend", updated);
+            }
+        }
+        logger.info(`[OC:Permission] Broadcasted to renderer`);
+
+        // ── Sync to Bunny DB so getUserSettings merge doesn't overwrite ──
+        try {
+            const userId = updated.userId;
+            if (userId) {
+                const db = getRemoteDb();
+                const { userId: _u, sessionToken: _s, ...syncable } = updated;
+                const settingsJson = JSON.stringify(syncable);
+                const existing = await db.query.userSettings.findFirst({
+                    where: eq(remoteSchema.userSettings.userId, userId),
+                });
+                if (existing) {
+                    await db.update(remoteSchema.userSettings)
+                        .set({ settingsJson, updatedAt: new Date() })
+                        .where(eq(remoteSchema.userSettings.userId, userId));
+                } else {
+                    await db.insert(remoteSchema.userSettings).values({
+                        userId, settingsJson, updatedAt: new Date(),
+                    });
+                }
+                logger.info(`[OC:Permission] Synced to Bunny DB`);
+            }
+        } catch (syncErr: any) {
+            logger.warn(`[OC:Permission] Bunny DB sync failed (non-fatal): ${syncErr.message}`);
+        }
+    } catch (e: any) {
+        logger.error(`[OC:Permission] Failed to persist setting: ${e.message}`);
+    }
+}
+
+/**
+ * Reply to a permission request via direct HTTP to the documented server endpoint:
+ *   POST /session/:id/permissions/:permissionID?directory=...
+ *   body: { response: "once"|"always"|"reject" }
+ *
+ * Uses raw fetch (same pattern as questionReply) to ensure the `directory`
+ * query param is always included — the v1 SDK call was missing it, which
+ * caused the server to silently fail to route the reply to the correct instance.
+ */
+async function replyToPermission(
+    requestId: string,
+    response: "once" | "always" | "reject",
+    sessionId: string,
+): Promise<boolean> {
+    if (!serverUrl) {
+        logger.error(`[OC:Permission] ❌ No serverUrl — cannot reply`);
+        return false;
+    }
+
+    const dirParam = lastProjectDir ? `?directory=${encodeURIComponent(lastProjectDir)}` : "";
+    const url = `${serverUrl}/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(requestId)}${dirParam}`;
+
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ response }),
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+            logger.error(`[OC:Permission] ❌ HTTP ${res.status} for ${response}/${requestId}: ${text}`);
+            return false;
+        }
+
+        logger.info(`[OC:Permission] ✅ ${response} for ${requestId} — server: ${text}`);
+        return true;
+    } catch (e: any) {
+        logger.error(`[OC:Permission] ❌ Fetch error for ${requestId}: ${e.message}`);
+        return false;
+    }
+}
 
 // Map chatId → opencode sessionId
 const chatSessionMap = new Map<number, string>();
@@ -174,6 +484,21 @@ export async function updateOpenCodeConfig(changes: {
         logger.info(`[OpenCode] Config updated in-place: ${JSON.stringify(body)}`);
     } catch (error: any) {
         logger.warn(`[OpenCode] config.update() failed: ${error.message}`);
+    }
+}
+
+/**
+ * Hot update OpenCode permission config without restarting.
+ * Called when the user changes permission pills in Ajustes → Agente.
+ */
+export async function updateOpenCodePermissions(settings: any): Promise<void> {
+    if (!clientInstance) return;
+    try {
+        const permission = buildPermissionConfig(settings);
+        await clientInstance.config.update({ body: { permission } as any });
+        logger.info(`[OpenCode] Permission config updated in-place: ${JSON.stringify(permission)}`);
+    } catch (error: any) {
+        logger.warn(`[OpenCode] config.update(permission) failed: ${error.message}`);
     }
 }
 
@@ -393,11 +718,8 @@ export async function handleVisualQuickEdit(params: {
                             if (!reqId) break;
                             // Auto-approve all permissions
                             try {
-                                await client.postSessionIdPermissionsPermissionId({
-                                    path: { id: sessionId, permissionID: reqId },
-                                    body: { response: "always" }
-                                });
-                                logger.info(`[VisualEdit] Auto-approved permission: ${props.type}`);
+                                await replyToPermission(reqId, "always", sessionId);
+                                logger.info(`[VisualEdit] Auto-approved permission: ${props.permission || props.type}`);
                             } catch (e: any) {
                                 logger.error(`[VisualEdit] Permission error: ${e.message}`);
                             }
@@ -682,21 +1004,8 @@ async function getOpenCodeClient(appPath: string) {
                         },
                     } : {}),
                 },
-                // Permissions: always allow everything EXCEPT repository mutation (commit/push)
-                permission: {
-                    edit: "allow",
-                    question: "allow",
-                    bash: {
-                        "git commit": "deny",
-                        "git push": "deny",
-                        "grep *": "ask",
-                        "rg *": "ask",
-                        "find *": "ask",
-                        "*": "allow"
-                    },
-                    webfetch: "allow",
-                    external_directory: "allow",
-                },
+                // Permissions: built from user settings
+                permission: buildPermissionConfig(settings),
                 // Always-on context compaction (documented at opencode.ai/docs/configuration)
                 // `reserved` guarantees a 15k-token output buffer even at context-full — prevents
                 // the model stalling when context fills up mid-session (key fix for slow responses).
@@ -741,6 +1050,9 @@ async function getOpenCodeClient(appPath: string) {
                     ...(buildMcpConfig(enabledServers) || {}),
                 },
         };
+
+        // Log permission config for debugging
+        logger.info(`[OpenCode] Init permission config: ${JSON.stringify(config.permission)}`);
 
         let opencode: Awaited<ReturnType<typeof createOpencode>>;
         try {
@@ -1900,19 +2212,68 @@ async function processEvents(
                     const reqId = props.id || props.requestID;
                     if (!reqId) break;
 
-                    const permName = props.type || "unknown";
+                    // OpenCode PermissionRequest schema:
+                    // { id, sessionID, permission: string, patterns: string[], metadata, always: string[], tool? }
+                    const permName = props.permission || props.type || "unknown";
+                    const patterns: string[] = Array.isArray(props.patterns) ? props.patterns : [];
+                    const alwaysPatterns: string[] = Array.isArray(props.always) ? props.always : [];
+                    const permInput = patterns.join(" ") || props.input || props.command || "";
 
-                    // Auto-approve all permissions since user trusts the agent
+                    logger.info(`[OC:Event] 🛡️ permission.asked: tool=${permName} patterns=${JSON.stringify(patterns)} always=${JSON.stringify(alwaysPatterns)} id=${reqId}`);
+
+                    // Read user's configured permission for this tool
+                    const currentSettings = readSettings();
+                    const toolPermission = resolveToolPermission(
+                        permName,
+                        typeof permInput === "string" ? permInput : JSON.stringify(permInput),
+                        currentSettings.openCodePermissions2,
+                    );
+
                     try {
-                        if (clientInstance) {
-                            await clientInstance.postSessionIdPermissionsPermissionId({
-                                path: { id: sessionId, permissionID: reqId },
-                                body: { response: "always" }
-                            });
+                        // Use the permission's own sessionID when available (guaranteed correct),
+                        // falling back to the closure's sessionId.
+                        const permSessionId = props.sessionID || sessionId;
+
+                        if (toolPermission === "allow") {
+                            // Auto-approve
+                            await replyToPermission(reqId, "always", permSessionId);
                             logger.info(`[OC:Event] Auto-approved permission: always for ${permName}`);
+                        } else if (toolPermission === "deny") {
+                            // Auto-reject
+                            await replyToPermission(reqId, "reject", permSessionId);
+                            logger.info(`[OC:Event] Auto-rejected permission: deny for ${permName}`);
+                        } else {
+                            // "ask" — emit IPC event and wait for renderer response
+                            const inputStr = typeof permInput === "string" ? permInput : JSON.stringify(permInput);
+                            safeSend(event.sender, "opencode-permission:request", {
+                                requestId: reqId,
+                                sessionId: permSessionId,
+                                chatId,
+                                toolName: permName,
+                                toolInput: inputStr || null,
+                            });
+                            logger.info(`[OC:Event] 🛡️ Permission ask sent to UI: ${permName} [${reqId}]`);
+
+                            const userResponse = await waitForPermissionResponse(reqId, 300_000);
+                            await replyToPermission(reqId, userResponse as "once" | "always" | "reject", permSessionId);
+                            logger.info(`[OC:Event] 🛡️ Permission resolved: ${userResponse} for ${permName}`);
+
+                            // Persist to user settings so the choice is remembered.
+                            // once   → no persist (config already says "ask", hot-update mid-operation would kill the tool)
+                            // always → persist "allow" (never ask again)
+                            // reject → persist "deny"  (block going forward)
+                            // For bash: adds a granular custom rule (not the global pill).
+                            // For other tools: sets the global pill.
+                            if (userResponse === "always" || userResponse === "reject") {
+                                const settingsValue = userResponse === "always" ? "allow" : "deny";
+                                logger.info(`[OC:Permission] 📝 About to persist: permName="${permName}" → settingsValue="${settingsValue}"`);
+                                persistPermissionToSettings(permName, settingsValue, alwaysPatterns, inputStr);
+                            } else {
+                                logger.info(`[OC:Permission] 📝 Skipping persist for "${userResponse}" (ephemeral)`);
+                            }
                         }
                     } catch (e: any) {
-                        logger.error(`[OC:Event] Error al auto-responder permiso: ${e.message}`);
+                        logger.error(`[OC:Event] Error handling permission: ${e.message}`);
                     }
                     break;
                 }
@@ -2188,6 +2549,7 @@ function mapToolName(tool: string): string {
 
 /**
  * Clean the AI response text by removing internal thinking/redacted markers
+ * and raw tool-call XML tags from models that don't support native function calling.
  */
 function cleanResponseText(text: string): string {
     // Remove [REDACTED] markers and surrounding whitespace
@@ -2205,6 +2567,15 @@ function cleanResponseText(text: string): string {
         if (!stripped) return "";
         return `<think>${stripped}</think>`;
     });
+
+    // ── Strip raw tool-call XML from models (MiniMax, etc.) ──
+    // These are protocol artifacts that should never reach the UI.
+    // Matches: <invoke ...>...</invoke>, <minimax:tool_call>...</minimax:tool_call>,
+    // <parameter ...>...</parameter>, and similar namespaced tags.
+    cleaned = cleaned.replace(/<\/?invoke(?:\s[^>]*)?>[\s\S]*?(?:<\/invoke>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?parameter(?:\s[^>]*)?>[\s\S]*?(?:<\/parameter>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?\w+:tool_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:tool_call>)?/gi, "");
+    cleaned = cleaned.replace(/<\/?\w+:function_call(?:\s[^>]*)?>[\s\S]*?(?:<\/\w+:function_call>)?/gi, "");
 
     // Clean up excessive blank lines
     cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
@@ -2456,6 +2827,28 @@ export function registerQuestionHandler() {
         } catch (e: any) {
             logger.error(`[OC:AskUser] ❌ Failed to reply to question ${requestId}: ${e.message}`);
             throw e;
+        }
+    });
+}
+
+/**
+ * Register the IPC handler for `respondToPermission`.
+ * Called from ipc_host.ts during app startup.
+ *
+ * When the user responds to a permission banner in the VibesPermissionBanner UI,
+ * the renderer calls ipc.agent.respondToPermission({ requestId, response }).
+ * This handler resolves the pending Promise so processEvents can continue.
+ */
+export function registerPermissionHandler() {
+    createTypedHandler(agentContracts.respondToPermission, async (_event, params) => {
+        const { requestId, response } = params;
+        logger.info(`[OC:Permission] Received UI response for ${requestId}: ${response}`);
+
+        const resolver = pendingPermissionResolvers.get(requestId);
+        if (resolver) {
+            resolver(response);
+        } else {
+            logger.warn(`[OC:Permission] No pending resolver for ${requestId} — already timed out?`);
         }
     });
 }

@@ -59,6 +59,15 @@ export function registerSettingsHandlers() {
   // Note: Settings handlers intentionally use createTypedHandler without logging
   // to avoid logging sensitive data (API keys, tokens, etc.) from args/return values.
 
+  // ── getUserSettings ──────────────────────────────────────────────────
+  // Merges LOCAL settings (disk) with REMOTE settings (Bunny DB).
+  // Merge order: { ...local, ...remote } — remote wins for all fields
+  // EXCEPT those listed in LOCAL_ONLY_FIELDS (API keys, tokens) and
+  // session data (userId, sessionToken), which always come from local.
+  //
+  // ⚠️  This means any setting written to disk via writeSettings() but NOT
+  //     synced to Bunny will be overwritten by stale remote values on
+  //     the next getUserSettings call. Always sync to Bunny after writing.
   createTypedHandler(settingsContracts.getUserSettings, async (_, __, context) => {
     const localSettings = readSettings();
     if (context.userId) {
@@ -93,6 +102,16 @@ export function registerSettingsHandlers() {
     return localSettings;
   });
 
+  // ── setUserSettings ──────────────────────────────────────────────────
+  // Canonical "full pipeline" for settings changes initiated by the renderer.
+  // Performs ALL sync steps in sequence:
+  //   1. writeSettings()      → local disk + in-memory cache
+  //   2. Hot-update OpenCode  → config/permissions applied to running daemon
+  //   3. Sync to Bunny DB     → remote persistence across devices
+  //   4. Returns `updated`    → renderer sets the Jotai atom
+  //
+  // ⚠️  Main-process code that needs the same pipeline must replicate these
+  //     steps manually — see persistPermissionToSettings() in opencode_adapter.ts.
   createTypedHandler(settingsContracts.setUserSettings, async (_, settings, context) => {
     writeSettings(settings);
     const updated = readSettings();
@@ -111,6 +130,16 @@ export function registerSettingsHandlers() {
         });
       } catch (e: any) {
         logger.warn(`Failed to hot-update OpenCode config: ${e.message}`);
+      }
+    }
+
+    // Hot-update OpenCode permissions when the user changes permission pills
+    if (settings.openCodePermissions2) {
+      try {
+        const { updateOpenCodePermissions } = await import("./opencode_adapter");
+        await updateOpenCodePermissions(updated);
+      } catch (e: any) {
+        logger.warn(`Failed to hot-update OpenCode permissions: ${e.message}`);
       }
     }
 

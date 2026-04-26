@@ -58,6 +58,24 @@ export function useSettings() {
     loadInitialData();
   }, [loadInitialData]);
 
+  // ── Backend-initiated settings push ──────────────────────────────────
+  // When the main process modifies settings directly (e.g. permission
+  // persistence during an agent session), it broadcasts the updated
+  // settings object via the "settings:updated-from-backend" channel.
+  // We listen here to keep the Jotai atom in sync without a full IPC
+  // round-trip through getUserSettings (which merges with Bunny DB).
+  useEffect(() => {
+    const unsubscribe = window.electron?.ipcRenderer?.on(
+      "settings:updated-from-backend" as any,
+      (updatedSettings: any) => {
+        if (updatedSettings && typeof updatedSettings === "object") {
+          setSettingsAtom(updatedSettings);
+        }
+      },
+    );
+    return () => { unsubscribe?.(); };
+  }, [setSettingsAtom]);
+
   const updateSettings = async (newSettings: Partial<UserSettings>, options?: { showToast?: boolean }) => {
     setLoading(true);
     try {

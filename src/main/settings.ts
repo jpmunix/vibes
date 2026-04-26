@@ -515,6 +515,24 @@ export function readSettings(): UserSettings {
   }
 }
 
+/**
+ * Write settings to the LOCAL disk and update the in-memory cache.
+ *
+ * ⚠️  LOCAL-ONLY — this function does NOT:
+ *   1. Sync to Bunny DB (remote persistence across devices).
+ *   2. Notify the renderer (the UI atom stays stale).
+ *
+ * If you need the full settings pipeline (disk + Bunny + renderer atom),
+ * use one of these instead:
+ *   - **From the renderer**: call `updateSettings()` via `useSettings()` hook,
+ *     which invokes the `setUserSettings` IPC handler (settings_handlers.ts).
+ *     That handler writes to disk, syncs to Bunny, and returns the updated
+ *     settings so the atom refreshes.
+ *   - **From the main process**: call `writeSettings()` and then manually:
+ *     (a) broadcast `"settings:updated-from-backend"` to all BrowserWindows,
+ *     (b) sync to Bunny DB via `db.update(remoteSchema.userSettings)`.
+ *     See `persistPermissionToSettings()` in opencode_adapter.ts for an example.
+ */
 export function writeSettings(settings: Partial<UserSettings>): void {
   try {
     const filePath = getSettingsFilePath();

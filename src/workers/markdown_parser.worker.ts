@@ -47,6 +47,7 @@ const VIBES_CUSTOM_TAGS = [
     "vibes-wait-http",
     "vibes-typecheck-summary",
     "vibes-token-usage",
+    "vibes-cancelled",
 ];
 
 /**

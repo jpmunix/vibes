@@ -142,6 +142,9 @@ export const VALID_INVOKE_CHANNELS = [
 
   // Git commit message streaming (direct ipcMain.handle, not via contracts)
   "github:generate-commit-message-stream",
+
+  // OpenCode permission response (renderer -> main)
+  "opencode-permission:respond",
 ] as const;
 
 // =============================================================================
@@ -179,6 +182,9 @@ export const VALID_RECEIVE_CHANNELS = [
   "git:commit-message-token",
   "git:commit-message-done",
   "git:commit-message-error",
+
+  // Backend-initiated settings updates (e.g. permission persistence)
+  "settings:updated-from-backend",
 ] as const;
 
 // =============================================================================

@@ -103,3 +103,14 @@ export const isFlowModeAtom = atom((get) => {
   return settings?.chatRenderMode === "flow";
 });
 
+// OpenCode native permission requests (pending user approval in-chat)
+export interface PendingOpenCodePermission {
+  requestId: string;
+  sessionId: string;
+  chatId: number;
+  toolName: string;
+  toolInput?: string | null;
+}
+
+export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>([]);
+

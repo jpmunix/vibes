@@ -137,51 +137,52 @@ body[data-scroll-locked] .app-region-drag {
   --sidebar-border: oklch(clamp(0, 0.922 + var(--l-offset), 1) 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* ── Teal accent (VibesAskUser, answer blockquotes) ── light theme */
-  --accent-teal-gradient-start: oklch(0.96 0.03 175 / 0.9);
-  --accent-teal-gradient-end: oklch(0.94 0.02 190 / 0.7);
-  --accent-teal-border: oklch(0.5 0.12 175 / 0.4);
-  --accent-teal-border-subtle: oklch(0.6 0.06 175 / 0.2);
-  --accent-teal-header-divider: oklch(0.7 0.06 175 / 0.2);
-  --accent-teal-shadow: oklch(0.4 0.1 175 / 0.08);
-  --accent-teal-icon-bg: oklch(0.5 0.1 175 / 0.12);
-  --accent-teal-icon: oklch(0.4 0.12 175);
-  --accent-teal-label: oklch(0.4 0.1 175);
-  --accent-teal-pulse: oklch(0.45 0.12 175);
-  --accent-teal-status-text: oklch(0.45 0.06 175);
-  --accent-teal-context-text: oklch(0.45 0.03 260);
-  --accent-teal-option-bg: oklch(0.5 0.02 260 / 0.05);
-  --accent-teal-option-border: oklch(0.5 0.03 260 / 0.15);
-  --accent-teal-option-hover-bg: oklch(0.5 0.02 260 / 0.1);
-  --accent-teal-option-hover-border: oklch(0.5 0.06 175 / 0.2);
-  --accent-teal-option-text: oklch(0.25 0.02 260);
-  --accent-teal-selected-bg: oklch(0.92 0.06 175 / 0.6);
-  --accent-teal-selected-border: oklch(0.5 0.12 175 / 0.5);
-  --accent-teal-selected-text: oklch(0.2 0.08 175);
-  --accent-teal-selected-icon: oklch(0.4 0.14 175);
-  --accent-teal-glow: oklch(0.5 0.1 175 / 0.06);
-  --accent-teal-checkbox-inactive: oklch(0.5 0.03 260 / 0.35);
-  --accent-teal-checkbox-hover: oklch(0.45 0.08 175);
-  --accent-teal-custom-border-dashed: oklch(0.5 0.03 260 / 0.15);
-  --accent-teal-custom-text: oklch(0.4 0.02 260);
-  --accent-teal-input-bg: oklch(0.97 0.01 260 / 0.8);
-  --accent-teal-input-border: oklch(0.6 0.06 175 / 0.35);
-  --accent-teal-input-focus-border: oklch(0.5 0.1 175 / 0.6);
-  --accent-teal-input-focus-ring: oklch(0.5 0.1 175 / 0.12);
-  --accent-teal-input-text: oklch(0.15 0.02 260);
-  --accent-teal-count-text: oklch(0.4 0.08 175);
-  --accent-teal-btn-gradient-from: oklch(0.45 0.13 175);
-  --accent-teal-btn-gradient-to: oklch(0.4 0.12 185);
-  --accent-teal-btn-hover-from: oklch(0.5 0.13 175);
-  --accent-teal-btn-hover-to: oklch(0.45 0.12 185);
-  --accent-teal-btn-text: oklch(0.98 0.01 175);
-  --accent-teal-btn-shadow: oklch(0.4 0.1 175 / 0.2);
-  --accent-teal-btn-disabled-bg: oklch(0.85 0.03 175 / 0.3);
-  --accent-teal-btn-disabled-text: oklch(0.5 0.03 260);
+  /* ── Accent (VibesAskUser, VibesPermissionBanner, answer blockquotes) ── light theme
+     All values derive from --primary so they follow the user's chosen accent color. */
+  --accent-teal-gradient-start: oklch(from var(--primary) 0.96 0.03 h / 0.9);
+  --accent-teal-gradient-end: oklch(from var(--primary) 0.94 0.02 h / 0.7);
+  --accent-teal-border: oklch(from var(--primary) 0.5 0.12 h / 0.4);
+  --accent-teal-border-subtle: oklch(from var(--primary) 0.6 0.06 h / 0.2);
+  --accent-teal-header-divider: oklch(from var(--primary) 0.7 0.06 h / 0.2);
+  --accent-teal-shadow: oklch(from var(--primary) 0.4 0.1 h / 0.08);
+  --accent-teal-icon-bg: oklch(from var(--primary) 0.5 0.1 h / 0.12);
+  --accent-teal-icon: oklch(from var(--primary) 0.4 0.12 h);
+  --accent-teal-label: oklch(from var(--primary) 0.4 0.1 h);
+  --accent-teal-pulse: oklch(from var(--primary) 0.45 0.12 h);
+  --accent-teal-status-text: oklch(from var(--primary) 0.45 0.06 h);
+  --accent-teal-context-text: oklch(from var(--primary) 0.45 0.03 h);
+  --accent-teal-option-bg: oklch(from var(--primary) 0.5 0.02 h / 0.05);
+  --accent-teal-option-border: oklch(from var(--primary) 0.5 0.03 h / 0.15);
+  --accent-teal-option-hover-bg: oklch(from var(--primary) 0.5 0.02 h / 0.1);
+  --accent-teal-option-hover-border: oklch(from var(--primary) 0.5 0.06 h / 0.2);
+  --accent-teal-option-text: oklch(0.25 0.02 0);
+  --accent-teal-selected-bg: oklch(from var(--primary) 0.92 0.06 h / 0.6);
+  --accent-teal-selected-border: oklch(from var(--primary) 0.5 0.12 h / 0.5);
+  --accent-teal-selected-text: oklch(from var(--primary) 0.2 0.08 h);
+  --accent-teal-selected-icon: oklch(from var(--primary) 0.4 0.14 h);
+  --accent-teal-glow: oklch(from var(--primary) 0.5 0.1 h / 0.06);
+  --accent-teal-checkbox-inactive: oklch(0.5 0.03 0 / 0.35);
+  --accent-teal-checkbox-hover: oklch(from var(--primary) 0.45 0.08 h);
+  --accent-teal-custom-border-dashed: oklch(0.5 0.03 0 / 0.15);
+  --accent-teal-custom-text: oklch(0.4 0.02 0);
+  --accent-teal-input-bg: oklch(0.97 0.01 0 / 0.8);
+  --accent-teal-input-border: oklch(from var(--primary) 0.6 0.06 h / 0.35);
+  --accent-teal-input-focus-border: oklch(from var(--primary) 0.5 0.1 h / 0.6);
+  --accent-teal-input-focus-ring: oklch(from var(--primary) 0.5 0.1 h / 0.12);
+  --accent-teal-input-text: oklch(0.15 0.02 0);
+  --accent-teal-count-text: oklch(from var(--primary) 0.4 0.08 h);
+  --accent-teal-btn-gradient-from: oklch(from var(--primary) 0.45 0.13 h);
+  --accent-teal-btn-gradient-to: oklch(from var(--primary) 0.4 0.12 h);
+  --accent-teal-btn-hover-from: oklch(from var(--primary) 0.5 0.13 h);
+  --accent-teal-btn-hover-to: oklch(from var(--primary) 0.45 0.12 h);
+  --accent-teal-btn-text: oklch(0.98 0.01 0);
+  --accent-teal-btn-shadow: oklch(from var(--primary) 0.4 0.1 h / 0.2);
+  --accent-teal-btn-disabled-bg: oklch(from var(--primary) 0.85 0.03 h / 0.3);
+  --accent-teal-btn-disabled-text: oklch(0.5 0.03 0);
   /* Answer blockquote */
-  --accent-teal-quote-border: oklch(0.45 0.12 175);
-  --accent-teal-quote-bg: oklch(0.5 0.1 175 / 0.06);
-  --accent-teal-quote-text: oklch(0.35 0.08 175);
+  --accent-teal-quote-border: oklch(from var(--primary) 0.45 0.12 h);
+  --accent-teal-quote-bg: oklch(from var(--primary) 0.5 0.1 h / 0.06);
+  --accent-teal-quote-text: oklch(from var(--primary) 0.35 0.08 h);
 
   /* ── Think accent (Flow mode thinking panels) ── light theme */
   --accent-think-border: oklch(0.6 0.12 280 / 0.25);
@@ -241,51 +242,51 @@ body[data-scroll-locked] .app-region-drag {
   --sidebar-border: oklch(clamp(0, 0.38 + var(--l-offset), 1) 0 0);
   --sidebar-ring: var(--primary-color-dark);
 
-  /* ── Teal accent ── dark theme (original values) */
-  --accent-teal-gradient-start: oklch(0.25 0.04 175 / 0.6);
-  --accent-teal-gradient-end: oklch(0.22 0.02 190 / 0.4);
-  --accent-teal-border: oklch(0.6 0.12 175 / 0.35);
-  --accent-teal-border-subtle: oklch(0.5 0.08 175 / 0.15);
-  --accent-teal-header-divider: oklch(0.5 0.08 175 / 0.15);
-  --accent-teal-shadow: oklch(0.4 0.12 175 / 0.12);
-  --accent-teal-icon-bg: oklch(0.55 0.14 175 / 0.2);
-  --accent-teal-icon: oklch(0.75 0.12 175);
-  --accent-teal-label: oklch(0.75 0.12 175);
-  --accent-teal-pulse: oklch(0.75 0.14 175);
-  --accent-teal-status-text: oklch(0.65 0.08 175);
-  --accent-teal-context-text: oklch(0.6 0.03 260);
-  --accent-teal-option-bg: oklch(0.5 0.02 260 / 0.08);
-  --accent-teal-option-border: oklch(0.5 0.03 260 / 0.12);
-  --accent-teal-option-hover-bg: oklch(0.5 0.02 260 / 0.15);
-  --accent-teal-option-hover-border: oklch(0.5 0.06 175 / 0.25);
-  --accent-teal-option-text: oklch(0.75 0.02 260);
-  --accent-teal-selected-bg: oklch(0.55 0.14 175 / 0.15);
-  --accent-teal-selected-border: oklch(0.6 0.14 175 / 0.4);
-  --accent-teal-selected-text: oklch(0.85 0.06 175);
-  --accent-teal-selected-icon: oklch(0.7 0.14 175);
-  --accent-teal-glow: oklch(0.5 0.14 175 / 0.08);
-  --accent-teal-checkbox-inactive: oklch(0.5 0.03 260 / 0.5);
-  --accent-teal-checkbox-hover: oklch(0.6 0.08 175);
-  --accent-teal-custom-border-dashed: oklch(0.5 0.03 260 / 0.08);
-  --accent-teal-custom-text: oklch(0.55 0.02 260);
-  --accent-teal-input-bg: oklch(0.2 0.01 260 / 0.6);
-  --accent-teal-input-border: oklch(0.5 0.06 175 / 0.25);
-  --accent-teal-input-focus-border: oklch(0.6 0.12 175 / 0.5);
-  --accent-teal-input-focus-ring: oklch(0.5 0.12 175 / 0.1);
-  --accent-teal-input-text: oklch(0.88 0.02 260);
-  --accent-teal-count-text: oklch(0.65 0.08 175);
-  --accent-teal-btn-gradient-from: oklch(0.55 0.15 175);
-  --accent-teal-btn-gradient-to: oklch(0.48 0.14 185);
-  --accent-teal-btn-hover-from: oklch(0.6 0.15 175);
-  --accent-teal-btn-hover-to: oklch(0.52 0.14 185);
-  --accent-teal-btn-text: oklch(0.95 0.02 175);
-  --accent-teal-btn-shadow: oklch(0.4 0.14 175 / 0.25);
-  --accent-teal-btn-disabled-bg: oklch(0.35 0.04 175 / 0.3);
-  --accent-teal-btn-disabled-text: oklch(0.6 0.03 260);
+  /* ── Accent ── dark theme (derived from --primary) */
+  --accent-teal-gradient-start: oklch(from var(--primary) 0.25 0.04 h / 0.6);
+  --accent-teal-gradient-end: oklch(from var(--primary) 0.22 0.02 h / 0.4);
+  --accent-teal-border: oklch(from var(--primary) 0.6 0.12 h / 0.35);
+  --accent-teal-border-subtle: oklch(from var(--primary) 0.5 0.08 h / 0.15);
+  --accent-teal-header-divider: oklch(from var(--primary) 0.5 0.08 h / 0.15);
+  --accent-teal-shadow: oklch(from var(--primary) 0.4 0.12 h / 0.12);
+  --accent-teal-icon-bg: oklch(from var(--primary) 0.55 0.14 h / 0.2);
+  --accent-teal-icon: oklch(from var(--primary) 0.75 0.12 h);
+  --accent-teal-label: oklch(from var(--primary) 0.75 0.12 h);
+  --accent-teal-pulse: oklch(from var(--primary) 0.75 0.14 h);
+  --accent-teal-status-text: oklch(from var(--primary) 0.65 0.08 h);
+  --accent-teal-context-text: oklch(from var(--primary) 0.6 0.03 h);
+  --accent-teal-option-bg: oklch(from var(--primary) 0.5 0.02 h / 0.08);
+  --accent-teal-option-border: oklch(from var(--primary) 0.5 0.03 h / 0.12);
+  --accent-teal-option-hover-bg: oklch(from var(--primary) 0.5 0.02 h / 0.15);
+  --accent-teal-option-hover-border: oklch(from var(--primary) 0.5 0.06 h / 0.25);
+  --accent-teal-option-text: oklch(0.75 0.02 0);
+  --accent-teal-selected-bg: oklch(from var(--primary) 0.55 0.14 h / 0.15);
+  --accent-teal-selected-border: oklch(from var(--primary) 0.6 0.14 h / 0.4);
+  --accent-teal-selected-text: oklch(from var(--primary) 0.85 0.06 h);
+  --accent-teal-selected-icon: oklch(from var(--primary) 0.7 0.14 h);
+  --accent-teal-glow: oklch(from var(--primary) 0.5 0.14 h / 0.08);
+  --accent-teal-checkbox-inactive: oklch(0.5 0.03 0 / 0.5);
+  --accent-teal-checkbox-hover: oklch(from var(--primary) 0.6 0.08 h);
+  --accent-teal-custom-border-dashed: oklch(0.5 0.03 0 / 0.08);
+  --accent-teal-custom-text: oklch(0.55 0.02 0);
+  --accent-teal-input-bg: oklch(0.2 0.01 0 / 0.6);
+  --accent-teal-input-border: oklch(from var(--primary) 0.5 0.06 h / 0.25);
+  --accent-teal-input-focus-border: oklch(from var(--primary) 0.6 0.12 h / 0.5);
+  --accent-teal-input-focus-ring: oklch(from var(--primary) 0.5 0.12 h / 0.1);
+  --accent-teal-input-text: oklch(0.88 0.02 0);
+  --accent-teal-count-text: oklch(from var(--primary) 0.65 0.08 h);
+  --accent-teal-btn-gradient-from: oklch(from var(--primary) 0.55 0.15 h);
+  --accent-teal-btn-gradient-to: oklch(from var(--primary) 0.48 0.14 h);
+  --accent-teal-btn-hover-from: oklch(from var(--primary) 0.6 0.15 h);
+  --accent-teal-btn-hover-to: oklch(from var(--primary) 0.52 0.14 h);
+  --accent-teal-btn-text: oklch(0.95 0.02 0);
+  --accent-teal-btn-shadow: oklch(from var(--primary) 0.4 0.14 h / 0.25);
+  --accent-teal-btn-disabled-bg: oklch(from var(--primary) 0.35 0.04 h / 0.3);
+  --accent-teal-btn-disabled-text: oklch(0.6 0.03 0);
   /* Answer blockquote */
-  --accent-teal-quote-border: oklch(0.65 0.14 175);
-  --accent-teal-quote-bg: oklch(0.55 0.14 175 / 0.06);
-  --accent-teal-quote-text: oklch(0.75 0.1 175);
+  --accent-teal-quote-border: oklch(from var(--primary) 0.65 0.14 h);
+  --accent-teal-quote-bg: oklch(from var(--primary) 0.55 0.14 h / 0.06);
+  --accent-teal-quote-text: oklch(from var(--primary) 0.75 0.1 h);
 
   /* ── Think accent ── dark theme */
   --accent-think-border: oklch(0.6 0.18 280 / 0.4);
@@ -574,4 +575,72 @@ ul[data-type="taskList"] li>div {
   box-shadow: none !important;
   --tw-ring-width: 0px !important;
   --tw-ring-offset-width: 0px !important;
+}
+
+/* ── Permission Banner (accent-colored, same pattern as VibesAskUser) ── */
+
+/* Light theme */
+.vibes-permission-banner {
+  background: linear-gradient(135deg, oklch(from var(--primary) 0.95 0.04 h / 0.85), oklch(from var(--primary) 0.93 0.02 h / 0.6));
+  border: 1px solid oklch(from var(--primary) 0.55 0.12 h / 0.35);
+  box-shadow: 0 4px 20px oklch(from var(--primary) 0.4 0.1 h / 0.08), inset 0 1px 0 oklch(1 0 0 / 0.04);
+}
+
+.vibes-permission-banner__header {
+  border-bottom: 1px solid oklch(from var(--primary) 0.7 0.06 h / 0.2);
+}
+
+.vibes-permission-banner__icon {
+  background: oklch(from var(--primary) 0.5 0.1 h / 0.12);
+  color: oklch(from var(--primary) 0.4 0.12 h);
+}
+
+.vibes-permission-banner__input {
+  background: oklch(from var(--primary) 0.5 0.02 h / 0.06);
+  border: 1px solid oklch(from var(--primary) 0.5 0.04 h / 0.15);
+  color: oklch(0.25 0.01 0);
+}
+
+.vibes-permission-banner__btn {
+  background: oklch(from var(--primary) 0.5 0.02 h / 0.06);
+  border: 1px solid oklch(from var(--primary) 0.5 0.04 h / 0.18);
+  color: oklch(0.25 0.01 0);
+}
+
+.vibes-permission-banner__btn:hover {
+  background: oklch(from var(--primary) 0.88 0.07 h / 0.6);
+  border-color: oklch(from var(--primary) 0.5 0.12 h / 0.45);
+}
+
+/* Dark theme */
+.dark .vibes-permission-banner {
+  background: linear-gradient(135deg, oklch(from var(--primary) 0.22 0.04 h / 0.55), oklch(from var(--primary) 0.18 0.02 h / 0.35));
+  border: 1px solid oklch(from var(--primary) 0.6 0.12 h / 0.3);
+  box-shadow: 0 4px 20px oklch(from var(--primary) 0.3 0.1 h / 0.12), inset 0 1px 0 oklch(1 0 0 / 0.02);
+}
+
+.dark .vibes-permission-banner__header {
+  border-bottom: 1px solid oklch(from var(--primary) 0.5 0.06 h / 0.15);
+}
+
+.dark .vibes-permission-banner__icon {
+  background: oklch(from var(--primary) 0.55 0.14 h / 0.2);
+  color: oklch(from var(--primary) 0.7 0.14 h);
+}
+
+.dark .vibes-permission-banner__input {
+  background: oklch(from var(--primary) 0.3 0.02 h / 0.15);
+  border: 1px solid oklch(from var(--primary) 0.5 0.05 h / 0.15);
+  color: oklch(0.88 0.01 0);
+}
+
+.dark .vibes-permission-banner__btn {
+  background: oklch(from var(--primary) 0.3 0.02 h / 0.15);
+  border: 1px solid oklch(from var(--primary) 0.5 0.05 h / 0.2);
+  color: oklch(0.88 0.01 0);
+}
+
+.dark .vibes-permission-banner__btn:hover {
+  background: oklch(from var(--primary) 0.35 0.08 h / 0.4);
+  border-color: oklch(from var(--primary) 0.6 0.12 h / 0.45);
 }

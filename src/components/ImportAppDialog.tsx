@@ -341,7 +341,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
         <DialogHeader className="sticky top-0 bg-background border-b px-6 py-4">
           <DialogTitle>Importar App</DialogTitle>
           <DialogDescription>
-            Importa una aplicación existente desde una carpeta local o clónala
+            Importa una aplicación existente desde un directorio local o clónala
             desde Github.
           </DialogDescription>
         </DialogHeader>
@@ -353,7 +353,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                 value="local-folder"
                 className="typo-body px-2 py-2"
               >
-                Carpeta local
+                Directorio local
               </TabsTrigger>
               <TabsTrigger
                 value="github-repos"
@@ -383,8 +383,8 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <Folder className="mr-2 h-4 w-4" />
                     )}
                     {selectFolderMutation.isPending
-                      ? "Seleccionando carpeta..."
-                      : "Seleccionar carpeta"}
+                      ? "Seleccionando directorio..."
+                      : "Seleccionar directorio"}
                   </Button>
                 ) : (
                   <div className="space-y-4">
@@ -392,7 +392,7 @@ export function ImportAppDialog({ isOpen, onClose }: ImportAppDialogProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1 overflow-hidden">
                           <p className="typo-label mb-1">
-                            Carpeta seleccionada:
+                            Directorio seleccionado:
                           </p>
                           <p className="typo-body text-muted-foreground break-words">
                             {selectedPath}

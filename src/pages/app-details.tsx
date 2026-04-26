@@ -460,7 +460,7 @@ export default function AppDetailsPage() {
                     )}
                     <div className="flex flex-col items-start">
                       <span className="typo-label">Información y opciones</span>
-                      <span className="typo-caption">Nombre, carpeta y datos de la aplicación</span>
+                      <span className="typo-caption">Nombre, ubicación y datos del workspace</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -499,7 +499,7 @@ export default function AppDetailsPage() {
                           onClick={() => ipc.system.showItemInFolder(currentAppPath)}
                         >
                           <Folder className="h-4 w-4" />
-                          Abrir carpeta de destino
+                          Abrir directorio de destino
                         </Button>
                         {hasDesignMd && (
                           <Button
@@ -519,7 +519,7 @@ export default function AppDetailsPage() {
                           onClick={() => setIsDeleteDialogOpen(true)}
                         >
                           <FolderX className="h-4 w-4" />
-                          Cerrar carpeta
+                          Cerrar workspace
                         </Button>
                       </CardContent>
                     </Card>
@@ -719,16 +719,16 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>Renombrar carpeta de la aplicación</DialogTitle>
+                  <DialogTitle>Renombrar directorio del workspace</DialogTitle>
                   <DialogDescription>
-                    Esto cambiará solo el nombre de la carpeta, no el nombre de la
-                    aplicación.
+                    Esto cambiará solo el nombre del directorio en disco, no el nombre del
+                    workspace.
                   </DialogDescription>
                 </DialogHeader>
                 <Input
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Introduce el nuevo nombre de la carpeta"
+                  placeholder="Introduce el nuevo nombre del directorio"
                   className="my-2"
                   autoFocus
                 />
@@ -752,7 +752,7 @@ export default function AppDetailsPage() {
                         Renombrando...
                       </>
                     ) : (
-                      "Renombrar carpeta"
+                      "Renombrar directorio"
                     )}
                   </Button>
                 </DialogFooter>
@@ -887,10 +887,10 @@ export default function AppDetailsPage() {
             >
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>Cambiar ubicación de la aplicación</DialogTitle>
+                  <DialogTitle>Cambiar ubicación del workspace</DialogTitle>
                   <DialogDescription>
-                    Selecciona una carpeta donde se guardará esta aplicación. El
-                    nombre de la carpeta de la aplicación seguirá siendo el mismo.
+                    Selecciona una ubicación donde se guardará este workspace. El
+                    nombre del directorio seguirá siendo el mismo.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="pt-2">
@@ -913,7 +913,7 @@ export default function AppDetailsPage() {
                         Moviendo...
                       </>
                     ) : (
-                      "Seleccionar carpeta"
+                      "Seleccionar directorio"
                     )}
                   </Button>
                 </DialogFooter>
@@ -927,9 +927,9 @@ export default function AppDetailsPage() {
             }}>
               <DialogContent className="max-w-sm p-4">
                 <DialogHeader className="pb-2">
-                  <DialogTitle>¿Cerrar "{selectedApp.name}"?</DialogTitle>
+                  <DialogTitle>¿Cerrar workspace "{selectedApp.name}"?</DialogTitle>
                   <DialogDescription>
-                    La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
+                    El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex items-center space-x-2 py-2">
@@ -942,7 +942,7 @@ export default function AppDetailsPage() {
                     className="rounded border-border"
                   />
                   <label htmlFor="delete-files-detail-check" className="text-xs text-muted-foreground cursor-pointer">
-                    También eliminar archivos del disco
+                    Eliminar también los archivos del disco
                   </label>
                 </div>
                 <DialogFooter className="flex justify-end gap-2 pt-2">
@@ -967,9 +967,9 @@ export default function AppDetailsPage() {
                         Cerrando...
                       </>
                     ) : deleteFiles ? (
-                      "Cerrar y eliminar archivos"
+                      "Eliminar workspace y archivos"
                     ) : (
-                      "Cerrar carpeta"
+                      "Cerrar workspace"
                     )}
                   </Button>
                 </DialogFooter>

@@ -29,8 +29,8 @@ import {
   chatInputValueAtom,
   chatMessagesByIdAtom,
   selectedChatIdAtom,
-  pendingAgentConsentsAtom,
   pendingAskUsersAtom,
+  pendingOpenCodePermissionsAtom,
   agentTodosByChatIdAtom,
   pendingMessageQueueByIdAtom,
   type PendingQueuedMessage,
@@ -63,7 +63,7 @@ import { DragDropOverlay } from "./DragDropOverlay";
 import { showExtraFilesToast } from "@/lib/toast";
 import { ChatInputControls } from "../ChatInputControls";
 
-import { AgentConsentBanner } from "./AgentConsentBanner";
+import { VibesPermissionBanner } from "./VibesPermissionBanner";
 import { TodoList } from "./TodoList";
 import { VibesAskUser } from "./VibesAskUser";
 import {
@@ -130,17 +130,17 @@ export function ChatInput({
     currentComponentCoordinatesAtom,
   );
   const setPendingVisualChanges = useSetAtom(pendingVisualChangesAtom);
-  const [pendingAgentConsents, setPendingAgentConsents] = useAtom(
-    pendingAgentConsentsAtom,
-  );
-  // Get the first consent in the queue for this chat (if any)
-  const consentsForThisChat = pendingAgentConsents.filter(
-    (c) => c.chatId === chatId,
-  );
-  const pendingAgentConsent = consentsForThisChat[0] ?? null;
 
   const pendingAskUsers = useAtomValue(pendingAskUsersAtom);
   const askUsersForThisChat = pendingAskUsers.filter((a) => a.chatId === chatId);
+
+  // OpenCode permission requests
+  const [pendingOCPermissions, setPendingOCPermissions] = useAtom(
+    pendingOpenCodePermissionsAtom,
+  );
+  const ocPermissionsForChat = pendingOCPermissions.filter(
+    (p) => p.chatId === chatId,
+  );
 
 
 
@@ -503,35 +503,25 @@ export function ChatInput({
             >
               {/* Show todo list if there are todos for this chat */}
               {chatTodos.length > 0 && <TodoList todos={chatTodos} isStreaming={isStreaming} />}
-              {/* Show agent consent banner if there's a pending consent request */}
-              {pendingAgentConsent && (
-                <AgentConsentBanner
-                  consent={pendingAgentConsent}
-                  queueTotal={consentsForThisChat.length}
-                  onDecision={(decision) => {
-                    ipc.agent.respondToConsent({
-                      requestId: pendingAgentConsent.requestId,
-                      decision,
+              {/* OpenCode permission banner (ask mode) */}
+              {ocPermissionsForChat.length > 0 && (
+                <VibesPermissionBanner
+                  permission={ocPermissionsForChat[0]}
+                  queueTotal={ocPermissionsForChat.length}
+                  onResponse={(response) => {
+                    ipc.agent.respondToPermission({
+                      requestId: ocPermissionsForChat[0].requestId,
+                      response,
                     });
-                    setPendingAgentConsents((prev) =>
+                    setPendingOCPermissions((prev) =>
                       prev.filter(
-                        (c) => c.requestId !== pendingAgentConsent.requestId,
-                      ),
-                    );
-                  }}
-                  onClose={() => {
-                    ipc.agent.respondToConsent({
-                      requestId: pendingAgentConsent.requestId,
-                      decision: "decline",
-                    });
-                    setPendingAgentConsents((prev) =>
-                      prev.filter(
-                        (c) => c.requestId !== pendingAgentConsent.requestId,
+                        (p) => p.requestId !== ocPermissionsForChat[0].requestId,
                       ),
                     );
                   }}
                 />
               )}
+
               {/* Show FIRST pending ask-user question (queue pattern, like consent banner) */}
               {askUsersForThisChat.length > 0 && (
                 <div className="px-3 py-1">
@@ -554,8 +544,8 @@ export function ChatInput({
                   />
                 </div>
               )}
-              {/* Only render ChatInputActions if proposal is loaded and no pending consent */}
-              {!pendingAgentConsent &&
+              {/* Only render ChatInputActions if proposal is loaded */}
+              {
                 proposal &&
                 proposalResult?.chatId === chatId &&
                 settings.selectedChatMode !== "ask" &&

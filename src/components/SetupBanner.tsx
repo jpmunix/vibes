@@ -244,7 +244,7 @@ export function SetupBanner() {
                           ) : (
                             <>
                               <Folder className="mr-2 h-4 w-4" />
-                              Buscar carpeta de Node.js
+                              Buscar directorio de Node.js
                             </>
                           )}
                         </Button>

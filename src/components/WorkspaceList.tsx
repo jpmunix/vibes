@@ -580,7 +580,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
           >
             <X size={14} className="shrink-0" />
-            Cerrar carpeta
+            Cerrar workspace
           </button>
         </div>
       </>,
@@ -918,9 +918,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
 
       navigate({ to: "/workspace", search: { appId: importResult.appId, chatId: importResult.chatId } });
 
-      showSuccess(`Carpeta "${folderName}" abierta con éxito.`);
+      showSuccess(`Workspace "${folderName}" abierto con éxito.`);
     } catch (error) {
-      showError(`Error al abrir carpeta: ${(error as any).toString()}`);
+      showError(`Error al abrir workspace: ${(error as any).toString()}`);
     } finally {
       setIsOpeningFolder(false);
     }
@@ -1199,9 +1199,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-semibold mb-1">¿Cerrar "{closeAppName}"?</h3>
+            <h3 className="text-sm font-semibold mb-1">¿Cerrar workspace "{closeAppName}"?</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              La aplicación se desvinculará de Vibes. Los archivos en disco NO serán eliminados.
+              El workspace se desvinculará de Vibes. Los archivos en disco se conservarán.
             </p>
             <div className="flex items-center space-x-2 mb-3">
               <input
@@ -1213,7 +1213,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                 className="rounded border-border"
               />
               <label htmlFor="ws-delete-files-check" className="text-xs text-muted-foreground cursor-pointer">
-                También eliminar archivos del disco
+                Eliminar también los archivos del disco
               </label>
             </div>
             <div className="flex justify-end gap-2">
@@ -1241,9 +1241,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     Cerrando...
                   </span>
                 ) : deleteFiles ? (
-                  "Cerrar y eliminar archivos"
+                  "Eliminar workspace y archivos"
                 ) : (
-                  "Cerrar carpeta"
+                  "Cerrar workspace"
                 )}
               </button>
             </div>
@@ -1317,7 +1317,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               disabled={isRenamingApp}
               autoFocus
               className="w-full mt-2 mb-4 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="Nuevo nombre de la aplicación"
+              placeholder="Nuevo nombre del workspace"
             />
             <div className="flex justify-end gap-2">
               <button
@@ -1359,16 +1359,16 @@ export function WorkspaceList({ show }: { show?: boolean }) {
             className="relative z-50 w-full max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="typo-label mb-1">Crear aplicación vacía</h3>
+            <h3 className="typo-label mb-1">Crear workspace</h3>
             <p className="typo-micro text-muted-foreground mb-3">
-              Se creará un directorio vacío con git inicializado, listo para usar.
+              Se creará un workspace vacío con git inicializado, listo para usar.
             </p>
             <form onSubmit={handleCreateEmptyApp}>
               <input
                 type="text"
                 value={emptyAppName}
                 onChange={(e) => setEmptyAppName(e.target.value)}
-                placeholder="Nombre de la aplicación..."
+                placeholder="Nombre del workspace..."
                 disabled={isCreatingEmptyApp}
                 autoFocus
                 className={`w-full mb-2 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:border-primary ${
@@ -1377,7 +1377,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
               />
               {emptyAppNameCheck?.exists && (
                 <p className="typo-micro text-destructive mb-2">
-                  Ya existe una aplicación con este nombre
+                  Ya existe un workspace con este nombre
                 </p>
               )}
               <div className="flex justify-end gap-2 mt-3">
@@ -1400,7 +1400,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                       Creando...
                     </>
                   ) : (
-                    "Crear aplicación"
+                    "Crear workspace"
                   )}
                 </button>
               </div>

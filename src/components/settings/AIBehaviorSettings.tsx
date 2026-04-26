@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { StandardModeModelSelector } from "./StandardModeModelSelector";
 import { ChevronRight } from "@/components/ui/icons";
 import { AgentToolsSettings } from "./AgentToolsSettings";
+import { OpenCodePermissionsSettings } from "./OpenCodePermissionsSettings";
 
 
 import { MAX_CHAT_TURNS_IN_CONTEXT } from "@/constants/settings_constants";
@@ -197,6 +198,11 @@ export function AIBehaviorSettings({
           description="Títulos, resúmenes y mantenimiento"
           control={<StandardModeModelSelector />}
         />
+
+        {/* Permisos del agente — collapsible inside Agente */}
+        <div id="agent-permissions">
+          <OpenCodePermissionsSettings />
+        </div>
 
 
       </div>

@@ -17,6 +17,7 @@ import { useSetAtom } from "jotai";
 import {
   pendingAgentConsentsAtom,
   pendingAskUsersAtom,
+  pendingOpenCodePermissionsAtom,
   agentTodosByChatIdAtom,
   autoRouterModelInfoByChatIdAtom,
   isSelectingModelByIdAtom,
@@ -126,6 +127,7 @@ function App() {
   // Agent v2 tool consent requests - queue consents instead of overwriting
   const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
   const setPendingAskUsers = useSetAtom(pendingAskUsersAtom);
+  const setPendingOCPermissions = useSetAtom(pendingOpenCodePermissionsAtom);
   const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
   const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
   const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
@@ -251,6 +253,26 @@ function App() {
     return () => unsubscribe();
   }, [setPendingAskUsers]);
 
+  // OpenCode permission requests
+  useEffect(() => {
+    const unsubscribe = ipc.events.agent.onPermissionRequest((payload) => {
+      setPendingOCPermissions((prev) => {
+        if (prev.some((p) => p.requestId === payload.requestId)) return prev;
+        return [
+          ...prev,
+          {
+            requestId: payload.requestId,
+            sessionId: payload.sessionId,
+            chatId: payload.chatId,
+            toolName: payload.toolName,
+            toolInput: payload.toolInput,
+          },
+        ];
+      });
+    });
+    return () => unsubscribe();
+  }, [setPendingOCPermissions]);
+
   // Clear pending agent consents and finalize in-progress todos when a chat stream ends
   useEffect(() => {
     const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
@@ -259,6 +281,9 @@ function App() {
       );
       setPendingAskUsers((prev) =>
         prev.filter((ask) => ask.chatId !== chatId),
+      );
+      setPendingOCPermissions((prev) =>
+        prev.filter((p) => p.chatId !== chatId),
       );
       // Finalize any in_progress todos to completed (safety net for when
       // the model doesn't return the correct schema to close out its todos)
@@ -278,7 +303,7 @@ function App() {
       });
     });
     return () => unsubscribe();
-  }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId]);
+  }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId]);
 
   // Forward telemetry events from main process to PostHog
   useEffect(() => {

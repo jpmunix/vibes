@@ -1,3 +1,21 @@
+# Novedades de la versión 8.2 — 26 de abril de 2026
+
+## Control total de permisos del agente
+
+Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con un sistema de permisos por herramienta. Desde **Ajustes → Agente** configuras cada capacidad (editar archivos, terminal, acceso web, diagnósticos LSP) como **Siempre**, **Preguntar** o **Nunca**. Cuando una herramienta está en modo "Preguntar", **el agente te muestra un banner en el chat para que apruebes o rechaces la acción antes de ejecutarla**, con opción de recordar tu decisión para futuras sesiones. Para la terminal, además, puedes definir reglas granulares por comando (git commit, git push, rm) y añadir patrones personalizados.
+
+## Indicador de respuesta cancelada
+
+Cuando detienes una respuesta del agente a mitad de generación, ahora **se muestra un indicador visual discreto** en el punto exacto donde se cortó la respuesta, en lugar de dejar el mensaje colgando sin contexto.
+
+## Correcciones y ajustes
+
+- Textos de la interfaz de workspaces corregidos para mayor consistencia.
+- Mejoras en las descripciones de herramientas del agente en ajustes.
+- Mejoras internas de estabilidad.
+
+---
+
 # Novedades de la versión 8.1 — 25 de abril de 2026
 
 ## Genera un sistema de diseño desde una captura de pantalla

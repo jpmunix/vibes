@@ -281,6 +281,34 @@ export type AgentToolConsent = z.infer<typeof AgentToolConsentSchema>;
 export const ChatRenderModeSchema = z.enum(["full", "flow", "zen"]);
 export type ChatRenderMode = z.infer<typeof ChatRenderModeSchema>;
 
+// ── OpenCode native permission schemas ──
+export const OpenCodePermissionSchema = z.enum(["allow", "ask", "deny"]);
+export type OpenCodePermission = z.infer<typeof OpenCodePermissionSchema>;
+
+export const BashCustomRuleSchema = z.object({
+  id: z.string(),
+  pattern: z.string(),
+  permission: OpenCodePermissionSchema,
+});
+export type BashCustomRule = z.infer<typeof BashCustomRuleSchema>;
+
+export const OpenCodePermissionsConfigSchema = z.object({
+  // Per-tool global pill
+  edit: OpenCodePermissionSchema.optional(),
+  bash: OpenCodePermissionSchema.optional(),
+  read: OpenCodePermissionSchema.optional(),
+  webfetch: OpenCodePermissionSchema.optional(),
+  websearch: OpenCodePermissionSchema.optional(),
+  lsp: OpenCodePermissionSchema.optional(),
+  // Bash granular sub-rules
+  bashGitCommit: OpenCodePermissionSchema.optional(),
+  bashGitPush: OpenCodePermissionSchema.optional(),
+  bashRm: OpenCodePermissionSchema.optional(),
+  // Bash custom rules
+  bashCustomRules: z.array(BashCustomRuleSchema).optional(),
+});
+export type OpenCodePermissionsConfig = z.infer<typeof OpenCodePermissionsConfigSchema>;
+
 /**
  * Zod schema for user settings
  */
@@ -316,6 +344,9 @@ export const UserSettingsSchema = z
     standardModeModel: z.string().optional(),   // cheap/fast (titles, summaries, todos, debates)
     proModeModel: z.string().optional(),         // thinking/strong (turbo edits, knowledge extraction)
     agentToolConsents: z.record(z.string(), AgentToolConsentSchema).optional(),
+    // DEPRECATED — openCodePermissions (v1 defaults). Superseded by openCodePermissions2.
+    openCodePermissions: OpenCodePermissionsConfigSchema.optional(),
+    openCodePermissions2: OpenCodePermissionsConfigSchema.optional(),
     githubUser: GithubUserSchema.optional(),
     githubAccessToken: SecretSchema.optional(),
     vercelAccessToken: SecretSchema.optional(),

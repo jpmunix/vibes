@@ -1639,7 +1639,7 @@ This conversation includes one or more image attachments. When the user uploads 
             }
 
             // Has partial content — save it with a "cancelled" visual indicator
-            fullResponse = openCodeResponse + "\n\n---\n*⏹ Respuesta cancelada por el usuario*\n";
+            fullResponse = openCodeResponse + "\n\n<vibes-cancelled></vibes-cancelled>\n";
             const openCodeDurationMs = Date.now() - streamStartedAt;
 
             const ocBillableOutput = ocOutputTokens + ocReasoningTokens;

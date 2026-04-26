@@ -1,6 +1,7 @@
 import React, { useMemo, useDeferredValue, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { StopCircle } from "@/components/ui/icons";
 
 import { markdownParser } from "@/workers/markdownParserWorkerClient";
 import { ContentPiece, CustomTagInfo } from "@/workers/markdown_parser_types";
@@ -134,6 +135,7 @@ const VIBES_CUSTOM_TAGS = [
   "vibes-wait-http",
   "vibes-typecheck-summary",
   "vibes-token-usage",
+  "vibes-cancelled",
 ];
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -404,7 +406,7 @@ export const VibesMarkdownParser = React.memo(function VibesMarkdownParser({
         // Flow mode additionally keeps think tags visible as expanded panels.
         // Token-usage is handled by ChatMessage footer. Everything else is discarded.
         if (isZenMode) {
-          const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user"]);
+          const ZEN_ALLOWED_TAGS = new Set(["vibes-output", "vibes-ask-user", "vibes-cancelled"]);
           if (ZEN_ALLOWED_TAGS.has(tag)) {
             // Render output/ask-user normally
             elements.push(
@@ -1127,6 +1129,32 @@ function renderCustomTag(
     case "vibes-pocketbase-storage-info":
       // Rendered primarily as compact badge + modal
       return null;
+
+    case "vibes-cancelled":
+      return (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "6px",
+            background: "var(--muted)",
+            marginTop: "8px",
+          }}
+        >
+          <StopCircle size={13} style={{ color: "var(--muted-foreground)", opacity: 0.7 }} />
+          <span
+            style={{
+              fontSize: "12px",
+              color: "var(--muted-foreground)",
+              fontWeight: 500,
+            }}
+          >
+            Respuesta cancelada
+          </span>
+        </div>
+      );
 
     default:
       return null;

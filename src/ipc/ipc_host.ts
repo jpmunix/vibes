@@ -53,7 +53,7 @@ import { registerAuthHandlers } from "./handlers/auth_handlers";
 import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
-import { registerQuestionHandler } from "./handlers/opencode_adapter";
+import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
 import { warmUpScaffoldCache } from "./utils/scaffold_cache";
 import log from "electron-log";
 
@@ -120,6 +120,9 @@ export function registerIpcHandlers() {
 
   // OpenCode question tool — bridges VibesAskUser UI to SDK question.reply()
   registerQuestionHandler();
+
+  // OpenCode permission tool — bridges VibesPermissionBanner UI to SDK permission response
+  registerPermissionHandler();
 
   // Design system picker — getdesign CLI integration
   registerDesignHandlers();

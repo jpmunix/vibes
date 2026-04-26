@@ -32,6 +32,7 @@ import {
     selectedChatIdAtom,
     pendingAgentConsentsAtom,
     pendingAskUsersAtom,
+    pendingOpenCodePermissionsAtom,
     agentTodosByChatIdAtom,
     autoRouterModelInfoByChatIdAtom,
     isSelectingModelByIdAtom,
@@ -255,6 +256,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
     // === Streaming event listeners ===
     const setPendingAgentConsents = useSetAtom(pendingAgentConsentsAtom);
     const setPendingAskUsers = useSetAtom(pendingAskUsersAtom);
+    const setPendingOCPermissions = useSetAtom(pendingOpenCodePermissionsAtom);
     const setAgentTodosByChatId = useSetAtom(agentTodosByChatIdAtom);
     const setAutoRouterModelInfo = useSetAtom(autoRouterModelInfoByChatIdAtom);
     const setIsSelectingModelById = useSetAtom(isSelectingModelByIdAtom);
@@ -374,6 +376,26 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         return () => unsubscribe();
     }, [setPendingAskUsers]);
 
+    // OpenCode permission requests
+    useEffect(() => {
+        const unsubscribe = ipc.events.agent.onPermissionRequest((payload) => {
+            setPendingOCPermissions((prev) => {
+                if (prev.some((p) => p.requestId === payload.requestId)) return prev;
+                return [
+                    ...prev,
+                    {
+                        requestId: payload.requestId,
+                        sessionId: payload.sessionId,
+                        chatId: payload.chatId,
+                        toolName: payload.toolName,
+                        toolInput: payload.toolInput,
+                    },
+                ];
+            });
+        });
+        return () => unsubscribe();
+    }, [setPendingOCPermissions]);
+
     useEffect(() => {
         const unsubscribe = ipc.events.misc.onChatStreamEnd(({ chatId }) => {
             // Enable server startup after a CODE-PRODUCING stream completes.
@@ -406,6 +428,9 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             setPendingAskUsers((prev) =>
                 prev.filter((ask) => ask.chatId !== chatId),
             );
+            setPendingOCPermissions((prev) =>
+                prev.filter((p) => p.chatId !== chatId),
+            );
             setAgentTodosByChatId((prev) => {
                 const todos = prev.get(chatId);
                 if (!todos) return prev;
@@ -422,7 +447,7 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
             });
         });
         return () => unsubscribe();
-    }, [setPendingAgentConsents, setPendingAskUsers, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
+    }, [setPendingAgentConsents, setPendingAskUsers, setPendingOCPermissions, setAgentTodosByChatId, serverReady, settings?.selectedChatMode, hasPendingPrompt, isPreviewOpen, setIsPreviewOpen]);
 
     const chatPanelNode = (
         <Panel
