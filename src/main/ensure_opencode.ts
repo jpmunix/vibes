@@ -27,6 +27,17 @@ const logger = log.scope("ensure_opencode");
 /** How often we check for updates (36 hours in ms) */
 const UPDATE_CHECK_INTERVAL_MS = 36 * 60 * 60 * 1000;
 
+// ── In-memory version cache ─────────────────────────────────────────────
+// Populated at startup by ensureOpenCodeInstalled().
+// Consumed by the getVersionInfo IPC handler to avoid spawning a subprocess
+// every time the user opens the version popover.
+let cachedOpenCodeVersion: string | null = null;
+
+/** Get the cached OpenCode version (populated at startup). */
+export function getCachedOpenCodeVersion(): string | null {
+    return cachedOpenCodeVersion;
+}
+
 /**
  * Get the local install prefix for opencode.
  * Uses Electron's userData path so it persists across updates.
@@ -205,6 +216,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
         const success = await npmInstallOpenCode();
         if (success) {
             const version = await getInstalledVersion();
+            cachedOpenCodeVersion = version;
             logger.info(`opencode installed successfully (v${version}) ✓`);
             writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
             return { ok: true, version, updated: true };
@@ -214,6 +226,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
 
     // Already installed — check for updates if interval elapsed
     const currentVersion = await getInstalledVersion();
+    cachedOpenCodeVersion = currentVersion;
     logger.info(`opencode binary found in PATH (v${currentVersion}) ✓`);
 
     if (shouldCheckForUpdate()) {
@@ -225,6 +238,7 @@ export async function ensureOpenCodeInstalled(): Promise<{
             const success = await npmInstallOpenCode();
             if (success) {
                 const newVersion = await getInstalledVersion();
+                cachedOpenCodeVersion = newVersion;
                 logger.info(`opencode updated to v${newVersion} ✓`);
                 writeSettings({ lastOpenCodeUpdateCheck: new Date().toISOString() });
                 return { ok: true, version: newVersion, updated: true };

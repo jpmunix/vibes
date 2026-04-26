@@ -613,7 +613,7 @@ export function registerWindowHandlers() {
     }
 
     // Fetch app name for the window title
-    let appName = "Archivos";
+    let appName = "Código";
     try {
       const db = getRemoteDb();
       const settings = readSettings();
@@ -635,7 +635,7 @@ export function registerWindowHandlers() {
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
       skipTaskbar: false,
-      title: `${appName} – Archivos`,
+      title: `${appName} – Código`,
       icon: codeIcon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",

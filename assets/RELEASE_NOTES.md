@@ -25,12 +25,17 @@ El diálogo de añadir modelos ha recibido un **lavado de cara completo**: nueva
 
 Los componentes interactivos del chat (preguntas del asistente, permisos, citas) antes usaban un color teal fijo. Ahora **todos derivan automáticamente del color de acento que elijas en ajustes**, de modo que toda la interfaz mantiene coherencia visual sin importar qué tono prefieras.
 
+## Historial de notas de versión, rediseñado
+
+Las notas de versión ahora muestran el **historial completo de todas las releases**, con cada versión como un bloque colapsable. Las dos más recientes se muestran expandidas por defecto y el resto permanecen cerradas para no saturar la vista. Además, hemos **unificado el formato de todas las notas** antiguas: mismo estilo de prosa, misma jerarquía y títulos limpios tipo changelog de GitHub.
+
 ## Correcciones y ajustes
 
 - Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
 - Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.
 - Mejoras internas de estabilidad.
+- El popover de versión del sistema ahora carga instantáneamente
 
 # v8.1
 *25 de abril de 2026*

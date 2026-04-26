@@ -23,7 +23,6 @@ import {
   Archive,
   ArchiveRestore,
   GitBranch,
-  FileText,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -557,10 +556,10 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={loadAndShowArchived}
+            onClick={() => { closeMenu(); onOpenCode(app.id); }}
           >
-            <Archive size={14} className="opacity-60 shrink-0" />
-            Ver archivados
+            <FolderOpen size={14} className="opacity-60 shrink-0" />
+            Explorar código
           </button>
           {hasUnpushedChanges && (
             <button
@@ -575,18 +574,18 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onOpenCode(app.id); }}
-          >
-            <FileText size={14} className="opacity-60 shrink-0" />
-            Archivos
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
             onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
           >
             <Pencil size={14} className="opacity-60 shrink-0" />
             Renombrar proyecto
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={loadAndShowArchived}
+          >
+            <Archive size={14} className="opacity-60 shrink-0" />
+            Ver archivados
           </button>
           <button
             type="button"

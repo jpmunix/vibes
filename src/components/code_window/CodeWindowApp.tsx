@@ -55,10 +55,10 @@ function CodeWindowContent({ appId }: CodeWindowAppProps) {
     // Set window title from app name
     useEffect(() => {
         if (currentApp?.name) {
-            document.title = `${currentApp.name} – Archivos`;
+            document.title = `${currentApp.name} – Código`;
         } else {
             ipc.app.getApp(appId).then((fetchedApp) => {
-                if (fetchedApp?.name) document.title = `${fetchedApp.name} – Archivos`;
+                if (fetchedApp?.name) document.title = `${fetchedApp.name} – Código`;
             }).catch(() => {});
         }
     }, [appId, currentApp?.name]);
@@ -71,7 +71,7 @@ function CodeWindowContent({ appId }: CodeWindowAppProps) {
                     <div className="flex items-center gap-2 no-app-region-drag">
                         <Code size={14} className="text-primary" />
                         <span className="typo-button">
-                            {currentApp?.name ? `${currentApp.name} – Archivos` : "Archivos"}
+                            {currentApp?.name ? `${currentApp.name} – Código` : "Código"}
                         </span>
                     </div>
                     <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />

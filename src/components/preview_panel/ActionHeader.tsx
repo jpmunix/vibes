@@ -20,7 +20,7 @@ import {
   Database,
   Square,
   Logs,
-  FileText,
+  FolderOpen,
 } from "@/components/ui/icons";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -399,8 +399,8 @@ export const ActionHeader = () => {
                 }}
                 disabled={selectedAppId == null}
               >
-                <FileText size={14} />
-                <span>Archivos</span>
+                <FolderOpen size={14} />
+                <span>Explorar código</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => selectPanel("problems")}

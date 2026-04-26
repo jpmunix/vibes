@@ -501,6 +501,11 @@ export default function SettingsPage() {
     } catch { /* ignore */ }
   }, []);
 
+  // Pre-fetch version info on mount (backend returns cached data instantly)
+  useEffect(() => {
+    fetchVersionInfo();
+  }, [fetchVersionInfo]);
+
   useEffect(() => {
     setActiveSettingsSection("general-settings");
   }, [setActiveSettingsSection]);
@@ -665,7 +670,7 @@ export default function SettingsPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 pr-1">
-              <Popover onOpenChange={(open) => { if (open) fetchVersionInfo(); }}>
+              <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
