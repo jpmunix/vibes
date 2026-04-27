@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
+import { LanguageBadge } from "./LanguageBadge";
 import { useTheme } from "@/contexts/ThemeContext";
 import { createPortal } from "react-dom";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
@@ -366,7 +367,7 @@ const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) 
 
 // --- Collapsible App Item ---
 interface WorkspaceAppItemProps {
-  app: { id: number; name: string; createdAt: string };
+  app: { id: number; name: string; createdAt: string; primaryLanguage?: string | null };
   isExpanded: boolean;
   onToggle: (appId: number) => void;
   onChatClick: (appId: number, chatId: number) => void;
@@ -486,6 +487,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
               <span className="typo-menu-item truncate leading-tight">
                 {app.name}
               </span>
+              <LanguageBadge language={app.primaryLanguage} />
               <SidebarGitDot appId={app.id} />
             </div>
             <span className={`typo-micro mt-0.5 ${isActive ? "opacity-90 text-primary" : "opacity-50 text-foreground"}`}>

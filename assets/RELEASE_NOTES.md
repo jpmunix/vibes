@@ -1,5 +1,5 @@
-# v8.2
-*26 de abril de 2026*
+# v8.2.1
+*27 de abril de 2026*
 
 ## Control total de permisos del agente
 
@@ -9,46 +9,33 @@ Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con 
 
 Hemos añadido una ventana independiente para **explorar y gestionar los archivos de tu proyecto sin salir del chat**. Se abre desde el menú de herramientas de la vista previa con su propio espacio, como ya ocurre con Git, la consola y la base de datos. Puedes **crear archivos y carpetas, renombrar y eliminar** directamente desde el árbol, sin pasar por la terminal ni por el agente. Cada archivo muestra un **icono coloreado según su tipo** (TypeScript en azul, JavaScript en amarillo, CSS en rosa, PHP en índigo…) para que identifiques de un vistazo lo que buscas.
 
-## Descartar todos los cambios de Git de golpe
+## Diseños predefinidos y generación por visión
 
-Antes, al descartar varios archivos modificados desde el panel de Git se ejecutaba un comando por cada archivo. Ahora, si seleccionas todos, **se ejecuta un único comando Git que revierte todo de forma instantánea**, con un mensaje de confirmación que resume el resultado.
-
-## Indicador de respuesta cancelada
-
-Cuando detienes una respuesta del agente a mitad de generación, ahora **se muestra un indicador visual discreto** en el punto exacto donde se cortó la respuesta, en lugar de dejar el mensaje colgando sin contexto.
+Puedes asignar un sistema de diseño a tus proyectos de varias formas: **sube un archivo DESIGN.md, pega el contenido directamente, elige entre diseños predefinidos o sube una captura de pantalla** y la IA analizará los colores, tipografías, espaciado y componentes para generarlo automáticamente. El asistente aplicará esas directrices en todo lo que genere. Desde la vista de detalles puedes **descargar el DESIGN.md activo** en cualquier momento.
 
 ## Selector de modelos rediseñado
 
 El diálogo de añadir modelos ha recibido un **lavado de cara completo**: nueva disposición visual, filtros mejorados para encontrar modelos por capacidad y tipo, y **precios de entrada y salida por millón de tokens visibles directamente en la lista** (los gratuitos aparecen marcados como "gratis"). La sección de modelos habilitados en Ajustes también se ha renovado con el mismo estilo. Además, hemos sustituido la antigua ventana modal de "Ver detalles" por un **tooltip enriquecido al pasar el cursor**, mostrando precio, contexto, máximo de salida, modalidades y etiquetas sin salir del flujo de selección.
 
-## Los colores de la interfaz siguen tu acento
-
-Los componentes interactivos del chat (preguntas del asistente, permisos, citas) antes usaban un color teal fijo. Ahora **todos derivan automáticamente del color de acento que elijas en ajustes**, de modo que toda la interfaz mantiene coherencia visual sin importar qué tono prefieras.
-
-## Historial de notas de versión, rediseñado
-
-Las notas de versión ahora muestran el **historial completo de todas las releases**, con cada versión como un bloque colapsable. Las dos más recientes se muestran expandidas por defecto y el resto permanecen cerradas para no saturar la vista. Además, hemos **unificado el formato de todas las notas** antiguas: mismo estilo de prosa, misma jerarquía y títulos limpios tipo changelog de GitHub.
-
 ## Ponle nombre a tus modelos
 
 Ahora puedes **asignar un alias personalizado a cualquier modelo** desde su ficha de detalles. El alias sustituye al nombre original en todos los selectores y también se usa como keyword de búsqueda, de modo que puedes encontrar tus modelos favoritos escribiendo el nombre que tú les hayas puesto. Puedes editarlo o quitarlo en cualquier momento.
 
-## Correcciones y ajustes
+## Variantes de modelo: elige cómo rutar tus peticiones
 
-- Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
-- Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
-- El stack React con Tailwind CSS 4 y Vite 6 es ahora el predeterminado; nueva plantilla Express (Express 5, TypeScript, Helmet, Zod) disponible para proyectos backend.
-- Textos de la interfaz de workspaces corregidos para mayor consistencia.
-- Corregido un problema que impedía guardar archivos con contenido vacío desde el editor.
-- Mejoras internas de estabilidad.
-- El popover de versión del sistema ahora carga instantáneamente
+Ahora puedes elegir **variantes de enrutamiento** (como `:nitro` o `:exacto`) directamente desde el selector de modelos. Cada variante tiene un comportamiento diferente en velocidad y coste, y lo ves reflejado al instante en la interfaz, junto con los precios por millón de tokens.
 
-# v8.1
-*25 de abril de 2026*
+## Tú decides cuándo commitear
 
-## Genera un sistema de diseño desde una captura de pantalla
+Hasta ahora, el agente commiteaba automáticamente todos los cambios al terminar. Ahora puedes **desactivar "Auto-aprobar y confirmar cambios" en ajustes** para que el agente haga staging de los archivos pero te deje a ti el control del commit. Decides qué archivos incluir, qué mensaje escribir y cuándo confirmar desde el panel de Git.
 
-Ahora puedes subir o pegar una captura de cualquier interfaz y la IA **analizará los colores, tipografías, espaciado y componentes para generar un archivo DESIGN.md completo automáticamente**. Solo necesitas un modelo con soporte de visión y un pantallazo de la referencia que quieras replicar. Además, desde la vista de detalles de la app puedes **descargar el DESIGN.md activo** en cualquier momento.
+## Descartar todos los cambios de Git de golpe
+
+Antes, al descartar varios archivos modificados desde el panel de Git se ejecutaba un comando por cada archivo. Ahora, si seleccionas todos, **se ejecuta un único comando Git que revierte todo de forma instantánea**, con un mensaje de confirmación que resume el resultado.
+
+## El asistente puede hacerte preguntas
+
+Si la IA necesita aclarar algo antes de continuar, ahora **te lo pregunta directamente en el chat**, con opciones para responder de forma rápida, incluso con selección múltiple. En modo plan, el agente te preguntará lo que necesite antes de lanzarse a construir.
 
 ## Nuevo modo de chat: Flow
 
@@ -58,89 +45,41 @@ Hemos añadido un tercer modo de visualización entre Completo y Zen. **Flow te 
 
 Hemos rediseñado la forma en la que se crean nuevas aplicaciones. En lugar de ejecutar comandos de instalación cada vez, **las dependencias se pre-cachean en segundo plano y se copian directamente al crear un proyecto**. El resultado: crear una app nueva tarda segundos en lugar de minutos, y arranca lista para trabajar desde el primer momento.
 
-## Instalación más limpia después de cada sesión del agente
-
-Cuando el agente termina de trabajar y ha modificado dependencias, ahora **se limpia automáticamente la carpeta de módulos para que el siguiente arranque haga una instalación fresca**. Esto evita estados inconsistentes y errores difíciles de depurar provocados por instalaciones parciales durante la sesión.
-
 ## Cierra varias apps de golpe
 
 Si has acumulado proyectos que ya no necesitas, ahora puedes **seleccionar múltiples aplicaciones y cerrarlas todas a la vez** desde la barra lateral. Entra en modo selección, marca las que quieras, y confirma con opción de eliminar también los archivos. Una barra de progreso te muestra el avance en tiempo real.
 
-## Nuevo stack: React.js (beta)
+## Historial de notas de versión, rediseñado
 
-Hemos añadido una plantilla experimental con **React 19, Vite 6, Tailwind CSS 4 (plugin nativo de Vite), Shadcn/ui y React Router DOM 7**. Ideal si quieres trabajar con lo último de cada librería. Aparece en el selector de plantillas junto al stack estable para que elijas según tu preferencia.
+Las notas de versión ahora muestran el **historial completo de todas las releases**, con cada versión como un bloque colapsable. Las dos más recientes se muestran expandidas por defecto y el resto permanecen cerradas para no saturar la vista. Además, hemos **unificado el formato de todas las notas** antiguas: mismo estilo de prosa, misma jerarquía y títulos limpios tipo changelog de GitHub.
+
+## Cambia de tema con un atajo
+
+Pulsa **Ctrl + T** (o **Cmd + T** en macOS) desde cualquier pantalla para **alternar entre el tema claro y el oscuro al instante**. Sin menús, sin ajustes: un solo atajo para cambiar el ambiente de trabajo cuando lo necesites.
 
 ## Correcciones y ajustes
 
-- La vista del chat ahora arranca en modo Zen por defecto, más limpio y rápido.
-- Las preguntas interactivas del asistente se muestran con un nuevo estilo visual más integrado.
-- Interfaz de la vista previa más limpia, con menos elementos redundantes en la barra de navegación.
+- Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
+- Los colores de acento de la interfaz ahora derivan automáticamente del color primario que elijas en ajustes.
+- Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
+- El stack React con Tailwind CSS 4 y Vite 6 es ahora el predeterminado; nueva plantilla Express (Express 5, TypeScript, Helmet, Zod) disponible para proyectos backend.
+- Al importar un proyecto existente, ahora se detecta automáticamente el lenguaje principal y el tipo de proyecto.
+- Lista de tareas del agente más clara, con mejor visualización del progreso y transiciones más fluidas.
+- Posibilidad de crear apps vacías directamente desde el espacio de trabajo del agente.
+- Planificación más inteligente: el asistente desglosa el trabajo en tareas estructuradas antes de empezar.
+- Arranque automático del servidor de desarrollo más fiable, sin falsos positivos.
+- Indicadores de actividad del agente rediseñados con animaciones más precisas.
+- Chat más estable y sin bloqueos; scroll renovado con sistema nativo más ligero.
+- Los modelos gratuitos de OpenRouter ahora se conectan y responden correctamente.
+- Indicador visual discreto cuando se cancela una respuesta del agente a mitad de generación.
+- Cuando el agente modifica dependencias, se limpia automáticamente la carpeta de módulos para garantizar instalaciones frescas.
+- Imágenes y archivos adjuntos en el chat con diseño más compacto y opción de ampliar al hacer clic.
+- La vista del chat arranca en modo Zen por defecto.
+- Interfaz de la vista previa más limpia, con menos elementos redundantes.
+- Corregido un problema que impedía guardar archivos con contenido vacío desde el editor.
+- Textos de la interfaz de workspaces corregidos para mayor consistencia.
+- El popover de versión del sistema ahora carga instantáneamente.
 - Mejoras internas de estabilidad y rendimiento.
-
-# v8.0
-*24 de abril de 2026*
-
-## Lista de tareas en tiempo real, mejorada
-
-La lista de tareas que el asistente genera durante su trabajo ahora se muestra de forma más clara y organizada. **Puedes seguir el progreso de cada paso al instante**, con mejor visualización del estado de cada tarea y transiciones más fluidas.
-
-## Crea apps vacías directamente desde el agente
-
-Ya no necesitas partir de una plantilla para arrancar un proyecto. Ahora puedes **crear una aplicación completamente vacía desde el propio espacio de trabajo del agente**, lista para que empieces desde cero o para que la IA la construya según tus instrucciones.
-
-## Diseños predefinidos con DESIGN.md
-
-Hemos añadido la posibilidad de asignar un sistema de diseño personalizado a tus proyectos. **Sube tu propio archivo DESIGN.md, pega el contenido directamente o elige entre diseños predefinidos**, y el asistente aplicará esas directrices visuales automáticamente en todo lo que genere.
-
-## Creación de apps más limpia y actualizada
-
-Dejamos atrás los esqueletos con dependencias obsoletas. Al crear una nueva aplicación, el agente **trabaja siempre con las últimas versiones de cada librería** e instala solo lo necesario para tu proyecto, sin arrastrar código muerto ni paquetes innecesarios.
-
-## Nuevo estilo del indicador de actividad
-
-El loader y los indicadores de estado durante la fase de trabajo del agente han sido rediseñados. **La animación es ahora más elegante y refleja con precisión la acción que se está realizando**, con colores diferenciados según el tipo de operación.
-
-## Planificación más inteligente con lista de tareas
-
-Cuando describes lo que quieres de forma general, el asistente ahora **desglosa el trabajo en una lista de tareas estructurada antes de empezar**. Esto te da visibilidad sobre lo que va a hacer y permite que proyectos complejos se ejecuten con más orden y mejores resultados.
-
-## Arranque automático del servidor, más fiable
-
-Hemos mejorado la detección del estado del proyecto para que el servidor de desarrollo **se arranque automáticamente en el momento justo**, sin falsos positivos ni reinicios innecesarios. Cuando el agente termina de trabajar, la vista previa se actualiza sin que tengas que hacer nada.
-
-## Preguntas y respuestas en el modo plan
-
-Reforzamos el uso de la herramienta de preguntas interactivas cuando el asistente está en modo plan. **El agente te preguntará lo que necesite aclarar antes de lanzarse a construir**, especialmente eficaz con modelos como Gemini Pro, Claude Haiku y superiores, GPT Codex, Kimi 2.6, Qwen Plus o MiniMax 2.7.
-
-## Modelos gratuitos de OpenRouter, ahora sí funcionan
-
-Antes, al seleccionar un modelo gratuito de OpenRouter podía fallar silenciosamente. Hemos corregido el problema: **los modelos gratuitos se conectan y responden correctamente**, sin errores ocultos.
-
-## Variantes de modelo: elige cómo rutar tus peticiones
-
-Ahora puedes elegir **variantes de enrutamiento** (como `:nitro` o `:exacto`) directamente desde el selector de modelos. Cada variante tiene un comportamiento diferente en velocidad y coste, y lo ves reflejado al instante en la interfaz, junto con los precios por millón de tokens.
-
-## Chat más estable y sin bloqueos
-
-Hemos reescrito partes clave del sistema de chat para que las respuestas fluyan sin interrupciones. **Se acabaron los cortes inesperados** y los momentos en que el chat parecía congelarse. Todo funciona de forma más predecible, incluso cuando envías varios mensajes seguidos.
-
-## Scroll del chat, completamente renovado
-
-Eliminamos la librería externa que controlaba el scroll y la reemplazamos por un sistema nativo, más ligero y rápido. **El desplazamiento es ahora suave y natural**, sin saltos raros al cargar mensajes antiguos ni al recibir respuestas largas.
-
-## Revertir varios archivos a la vez desde Git
-
-En el panel de Git, ya no necesitas revertir archivo por archivo. **Selecciona varios cambios y revuértelos todos de un golpe** con una sola confirmación. Más rápido, menos clics.
-
-## El asistente puede hacerte preguntas
-
-Si la IA necesita aclarar algo antes de continuar, ahora **te lo pregunta directamente en el chat**, con opciones para responder de forma rápida, incluso con selección múltiple. Nada de quedarse bloqueado esperando: el flujo de trabajo sigue siendo tuyo.
-
-## Correcciones y ajustes
-
-- Imágenes y archivos adjuntos en el chat se muestran con un diseño más compacto y con opción de ampliarlos al hacer clic.
-- El buscador del selector de modelos se reinicia correctamente al cerrar el menú o elegir un modelo.
-- Numerosas mejoras de estabilidad y rendimiento internas.
 
 # v7.0
 *19 de abril de 2026*

@@ -70,6 +70,7 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "../utils/openrouter";
 import { getEffectivePrompt } from "../../prompts";
 import { getAppPort, findFreeAppPort } from "../../../shared/ports";
 import { shutdownOpenCode } from "./opencode_adapter";
+import { detectProjectLanguage } from "../utils/detect_language";
 
 const logger = log.scope("app_handlers");
 
@@ -180,6 +181,16 @@ export function registerAppHandlers() {
         initialCommitHash: commitHash,
       })
       .where(and(eq(remoteSchema.chats.id, chat.id), eq(remoteSchema.chats.userId, context.userId)));
+
+    // Detect and persist primary language (fire-and-forget)
+    detectProjectLanguage(fullAppPath).then(async ({ primaryLanguage, projectType }) => {
+      if (primaryLanguage !== "unknown") {
+        await db
+          .update(remoteSchema.apps)
+          .set({ primaryLanguage, projectType })
+          .where(eq(remoteSchema.apps.id, app.id));
+      }
+    }).catch(() => { /* best-effort */ });
 
     return {
       app: { ...app, resolvedPath: fullAppPath },
@@ -357,7 +368,22 @@ export function registerAppHandlers() {
       }),
     );
 
-    // Knowledge Base migration — REMOVED (replaced by OpenCode AGENTS.md)
+    // Lazy backfill: detect language for apps that don't have it yet (fire-and-forget)
+    for (const app of appsWithResolvedPath) {
+      if (!app.primaryLanguage && app.localPathExists) {
+        detectProjectLanguage(app.resolvedPath).then(async ({ primaryLanguage, projectType }) => {
+          if (primaryLanguage !== "unknown") {
+            await db
+              .update(remoteSchema.apps)
+              .set({ primaryLanguage, projectType })
+              .where(eq(remoteSchema.apps.id, app.id));
+            // Mutate in-place so this listing already reflects the detection
+            (app as any).primaryLanguage = primaryLanguage;
+            (app as any).projectType = projectType;
+          }
+        }).catch(() => { /* best-effort */ });
+      }
+    }
 
     return {
       apps: appsWithResolvedPath,

@@ -659,71 +659,80 @@ export async function processFullResponseActions(
         await gitAdd({ path: appPath, filepath: file });
       }
 
-      // Create commit with AI-generated descriptive message
-      const fallbackChanges = [];
-      if (writtenFiles.length > 0)
-        fallbackChanges.push(`wrote ${writtenFiles.length} file(s)`);
-      if (renamedFiles.length > 0)
-        fallbackChanges.push(`renamed ${renamedFiles.length} file(s)`);
-      if (deletedFiles.length > 0)
-        fallbackChanges.push(`deleted ${deletedFiles.length} file(s)`);
-      if (addDependencyPackages.length > 0)
-        fallbackChanges.push(
-          `added ${addDependencyPackages.join(", ")} package(s)`,
-        );
-      if (executeSqlQueries.length > 0)
-        fallbackChanges.push(`executed ${executeSqlQueries.length} SQL queries`);
-
-      const fallbackMessage = chatSummary
-        ? `[vibes] ${chatSummary}`
-        : `[vibes] ${fallbackChanges.join(", ")}`;
-
-      const message = await generateAutoCommitMessage({
-        appPath,
-        writtenFiles,
-        deletedFiles,
-        renamedFiles,
-        fallbackMessage,
-      });
-
-      let commitHash = await gitCommit({
-        path: appPath,
-        message,
-      });
-      logger.log(`Successfully committed changes: ${fallbackChanges.join(", ")}`);
-
-      // Check for any uncommitted changes after the commit
-      uncommittedFiles = await getGitUncommittedFiles({ path: appPath });
-
-      if (uncommittedFiles.length > 0) {
-        // Stage all changes
-        await gitAddAll({ path: appPath });
-        try {
-          commitHash = await gitCommit({
-            path: appPath,
-            message: message + " + extra files edited outside of Vibes",
-            amend: true,
-          });
-          logger.log(
-            `Amend commit with changes outside of vibes: ${uncommittedFiles.join(", ")}`,
+      // Only auto-commit when autoApproveChanges is enabled.
+      // When disabled, the user retains full manual control over commits
+      // (what files to include, what message to use).
+      if (settings.autoApproveChanges) {
+        // Create commit with AI-generated descriptive message
+        const fallbackChanges = [];
+        if (writtenFiles.length > 0)
+          fallbackChanges.push(`wrote ${writtenFiles.length} file(s)`);
+        if (renamedFiles.length > 0)
+          fallbackChanges.push(`renamed ${renamedFiles.length} file(s)`);
+        if (deletedFiles.length > 0)
+          fallbackChanges.push(`deleted ${deletedFiles.length} file(s)`);
+        if (addDependencyPackages.length > 0)
+          fallbackChanges.push(
+            `added ${addDependencyPackages.join(", ")} package(s)`,
           );
-        } catch (error) {
-          // Just log, but don't throw an error because the user can still
-          // commit these changes outside of Vibes if needed.
-          logger.error(
-            `Failed to commit changes outside of vibes: ${uncommittedFiles.join(", ")}`,
-          );
-          extraFilesError = (error as any).toString();
+        if (executeSqlQueries.length > 0)
+          fallbackChanges.push(`executed ${executeSqlQueries.length} SQL queries`);
+
+        const fallbackMessage = chatSummary
+          ? `[vibes] ${chatSummary}`
+          : `[vibes] ${fallbackChanges.join(", ")}`;
+
+        const message = await generateAutoCommitMessage({
+          appPath,
+          writtenFiles,
+          deletedFiles,
+          renamedFiles,
+          fallbackMessage,
+        });
+
+        let commitHash = await gitCommit({
+          path: appPath,
+          message,
+        });
+        logger.log(`Successfully committed changes: ${fallbackChanges.join(", ")}`);
+
+        // Check for any uncommitted changes after the commit
+        uncommittedFiles = await getGitUncommittedFiles({ path: appPath });
+
+        if (uncommittedFiles.length > 0) {
+          // Stage all changes
+          await gitAddAll({ path: appPath });
+          try {
+            commitHash = await gitCommit({
+              path: appPath,
+              message: message + " + extra files edited outside of Vibes",
+              amend: true,
+            });
+            logger.log(
+              `Amend commit with changes outside of vibes: ${uncommittedFiles.join(", ")}`,
+            );
+          } catch (error) {
+            // Just log, but don't throw an error because the user can still
+            // commit these changes outside of Vibes if needed.
+            logger.error(
+              `Failed to commit changes outside of vibes: ${uncommittedFiles.join(", ")}`,
+            );
+            extraFilesError = (error as any).toString();
+          }
         }
-      }
 
-      // Save the commit hash to the message
-      await db
-        .update(messages)
-        .set({
-          commitHash: commitHash,
-        })
-        .where(eq(messages.id, messageId));
+        // Save the commit hash to the message
+        await db
+          .update(messages)
+          .set({
+            commitHash: commitHash,
+          })
+          .where(eq(messages.id, messageId));
+      } else {
+        logger.log(
+          `[autoApproveChanges=off] Staged ${writtenFiles.length} written, ${renamedFiles.length} renamed, ${deletedFiles.length} deleted file(s) — skipping auto-commit, user will commit manually.`,
+        );
+      }
     }
     logger.log("mark as approved: hasChanges", hasChanges);
     // Update the message to approved

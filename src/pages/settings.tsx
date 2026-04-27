@@ -1163,8 +1163,8 @@ export function WorkflowSettings({
           {/* Git nativo — hardcoded to always enabled */}
 
           <SettingItem
-            label="Auto-aprobar cambios"
-            description="Aprobará automáticamente los cambios de código sugeridos por la IA sin pedir confirmación."
+            label="Confirmar cambios en git"
+            description="Confirma automáticamente los cambios de la IA en git. Si se desactiva, los cambios quedan pendientes."
             onClick={() =>
               updateSettings({
                 autoApproveChanges: !settings?.autoApproveChanges,

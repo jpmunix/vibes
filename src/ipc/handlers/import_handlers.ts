@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitCommit, gitAdd, gitInit } from "../utils/git_utils";
 import { readSettings } from "../../main/settings";
+import { detectProjectLanguage } from "../utils/detect_language";
 
 const logger = log.scope("import-handlers");
 
@@ -140,6 +141,19 @@ export function registerImportHandlers() {
         updatedAt: new Date(),
       })
       .returning();
+
+    // Detect primary language and persist it
+    try {
+      const { primaryLanguage, projectType } = await detectProjectLanguage(appPath);
+      if (primaryLanguage !== "unknown") {
+        await getRemoteDb()
+          .update(remoteSchema.apps)
+          .set({ primaryLanguage, projectType })
+          .where(eq(remoteSchema.apps.id, app.id));
+      }
+    } catch (e) {
+      logger.warn(`Failed to detect language for imported app ${app.id}:`, e);
+    }
 
     // Create an initial chat for this app
     const [chat] = await getRemoteDb()
