@@ -5,9 +5,9 @@
 
 Ahora puedes decidir exactamente qué puede y qué no puede hacer el agente con un sistema de permisos por herramienta. Desde **Ajustes → Agente** configuras cada capacidad (editar archivos, terminal, acceso web, diagnósticos LSP) como **Siempre**, **Preguntar** o **Nunca**. Cuando una herramienta está en modo "Preguntar", **el agente te muestra un banner en el chat para que apruebes o rechaces la acción antes de ejecutarla**, con opción de recordar tu decisión para futuras sesiones. Para la terminal puedes definir reglas por comando (rm, patrones personalizados), y para Git hay una sección dedicada con **reglas granulares por nivel de riesgo**: staging, operaciones locales destructivas (reset, checkout, rebase…) y remotas (push, push --force).
 
-## Ventana de archivos del proyecto
+## Explorador de archivos del proyecto
 
-Hemos añadido una ventana independiente para **explorar los archivos de tu proyecto sin salir del chat**. Accesible desde el menú de herramientas de la vista previa, se abre con su propio espacio y título, como ya ocurre con Git, la consola y la base de datos.
+Hemos añadido una ventana independiente para **explorar y gestionar los archivos de tu proyecto sin salir del chat**. Se abre desde el menú de herramientas de la vista previa con su propio espacio, como ya ocurre con Git, la consola y la base de datos. Puedes **crear archivos y carpetas, renombrar y eliminar** directamente desde el árbol, sin pasar por la terminal ni por el agente. Cada archivo muestra un **icono coloreado según su tipo** (TypeScript en azul, JavaScript en amarillo, CSS en rosa, PHP en índigo…) para que identifiques de un vistazo lo que buscas.
 
 ## Descartar todos los cambios de Git de golpe
 
@@ -29,11 +29,16 @@ Los componentes interactivos del chat (preguntas del asistente, permisos, citas)
 
 Las notas de versión ahora muestran el **historial completo de todas las releases**, con cada versión como un bloque colapsable. Las dos más recientes se muestran expandidas por defecto y el resto permanecen cerradas para no saturar la vista. Además, hemos **unificado el formato de todas las notas** antiguas: mismo estilo de prosa, misma jerarquía y títulos limpios tipo changelog de GitHub.
 
+## Ponle nombre a tus modelos
+
+Ahora puedes **asignar un alias personalizado a cualquier modelo** desde su ficha de detalles. El alias sustituye al nombre original en todos los selectores y también se usa como keyword de búsqueda, de modo que puedes encontrar tus modelos favoritos escribiendo el nombre que tú les hayas puesto. Puedes editarlo o quitarlo en cualquier momento.
+
 ## Correcciones y ajustes
 
 - Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
 - Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.
+- Corregido un problema que impedía guardar archivos con contenido vacío desde el editor.
 - Mejoras internas de estabilidad.
 - El popover de versión del sistema ahora carga instantáneamente
 

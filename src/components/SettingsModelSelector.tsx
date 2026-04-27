@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { type LanguageModel } from "@/ipc/types";
 import { ModelItemContent } from "@/components/ModelItemContent";
 import { useSettings } from "@/hooks/useSettings";
+import { useModelAliases } from "@/hooks/useModelAliases";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { UnifiedSelector, type SelectorOption, type SelectorGroup } from "@/components/ui/UnifiedSelector";
 
@@ -41,6 +42,7 @@ export function SettingsModelSelector({
     disableEnabledFilter = false,
 }: SettingsModelSelectorProps) {
     const { settings } = useSettings();
+    const { aliases } = useModelAliases();
 
     // Filter models to only show user-enabled ones (consistent with main ModelPicker)
     // unless disableEnabledFilter is set (e.g. internal-tasks selector shows all cached models)
@@ -68,16 +70,16 @@ export function SettingsModelSelector({
 
         const modelOpts: SelectorOption[] = filteredModels.map((model) => ({
             value: model.apiName,
-            label: model.displayName,
+            label: aliases[model.apiName] || model.displayName,
             description: model.contextWindow
                 ? `${model.contextWindow >= 1000000 ? `${(model.contextWindow / 1000000).toFixed(0)}M` : model.contextWindow >= 1000 ? `${(model.contextWindow / 1000).toFixed(0)}K` : model.contextWindow} context`
                 : undefined,
             group: specialOptions.length > 0 && filteredModels.length > 0 ? "models" : undefined,
-            keywords: [model.apiName],
+            keywords: [model.apiName, model.displayName],
         }));
 
         return [...specialOpts, ...modelOpts];
-    }, [specialOptions, filteredModels]);
+    }, [specialOptions, filteredModels, aliases]);
 
     // Groups (only if both special and models exist)
     const groups: SelectorGroup[] | undefined = useMemo(() => {
@@ -94,6 +96,8 @@ export function SettingsModelSelector({
     const getDisplayName = () => {
         const special = specialOptions.find((opt) => opt.value === selectedModel);
         if (special) return special.label;
+        // Check alias first
+        if (selectedModel && aliases[selectedModel]) return aliases[selectedModel];
         const model = models.find((m) => m.apiName === selectedModel);
         if (model) return model.displayName;
         return selectedModel || placeholder;

@@ -416,11 +416,24 @@ export function registerAppHandlers() {
     if (!fs.existsSync(fullPath)) throw new Error("File not found");
 
     const { shell } = await import("electron");
-    const result = await shell.openPath(fullPath);
-    if (result) {
-      throw new Error(`No se pudo abrir el archivo: ${result}`);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      // For directories, use showItemInFolder which is instant and never blocks.
+      // shell.openPath on directories can block on Linux until the file manager
+      // finishes rendering the entire directory listing.
+      shell.showItemInFolder(fullPath + path.sep);
+      logger.debug("Showed directory in file manager:", fullPath);
+    } else {
+      // For files, fire-and-forget with openPath (default app association)
+      shell.openPath(fullPath).then((result) => {
+        if (result) {
+          logger.warn(`shell.openPath failed for ${fullPath}: ${result}`);
+        } else {
+          logger.debug("Opened file with system default:", fullPath);
+        }
+      });
     }
-    logger.debug("Opened app file with system default:", fullPath);
   });
 
   // Do NOT use typed handler for this, it contains sensitive information.
@@ -775,6 +788,70 @@ export function registerAppHandlers() {
       }
     }
     return {};
+  });
+
+  // ── Delete a file or empty directory within an app ──
+  createTypedHandler(appContracts.deleteAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, filePath } = params;
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!app) throw new Error("App not found");
+
+    const appPath = getVibesAppPath(app.path);
+    const fullPath = path.join(appPath, filePath);
+
+    if (!fullPath.startsWith(appPath)) throw new Error("Invalid file path");
+
+    try {
+      const stat = await fsPromises.stat(fullPath);
+      if (stat.isDirectory()) {
+        await fsPromises.rm(fullPath, { recursive: true, force: true });
+      } else {
+        await fsPromises.unlink(fullPath);
+      }
+      logger.debug(`Deleted ${stat.isDirectory() ? "directory" : "file"} ${filePath} from app ${appId}`);
+    } catch (error: any) {
+      if (error.code === "ENOENT") return; // Already gone, idempotent
+      logger.error(`Error deleting file ${filePath} for app ${appId}:`, error);
+      throw new Error(`Failed to delete: ${error.message}`);
+    }
+  });
+
+  // ── Rename / move a file or directory within an app ──
+  createTypedHandler(appContracts.renameAppFile, async (_, params, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const { appId, oldPath, newPath } = params;
+    const app = await db.query.apps.findFirst({
+      where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)),
+    });
+
+    if (!app) throw new Error("App not found");
+
+    const appDir = getVibesAppPath(app.path);
+    const fullOld = path.join(appDir, oldPath);
+    const fullNew = path.join(appDir, newPath);
+
+    if (!fullOld.startsWith(appDir) || !fullNew.startsWith(appDir)) {
+      throw new Error("Invalid file path");
+    }
+
+    // Ensure parent directory of destination exists
+    await fsPromises.mkdir(path.dirname(fullNew), { recursive: true });
+
+    try {
+      await fsPromises.rename(fullOld, fullNew);
+      logger.debug(`Renamed ${oldPath} → ${newPath} in app ${appId}`);
+    } catch (error: any) {
+      logger.error(`Error renaming ${oldPath} to ${newPath} for app ${appId}:`, error);
+      throw new Error(`Failed to rename: ${error.message}`);
+    }
   });
 
   createTypedHandler(appContracts.deleteApp, async (_, params, context) => {

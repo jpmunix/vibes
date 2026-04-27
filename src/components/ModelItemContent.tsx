@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { LanguageModel } from "@/ipc/types";
 import { AutoRouterBadge } from "./AutoRouterBadge";
-import { Info, X, Type, Image, Music, Video, FileText, ArrowRight } from "@/components/ui/icons";
+import { Info, X, Type, Image, Music, Video, FileText, ArrowRight, Edit2, Check } from "@/components/ui/icons";
 import {
     Tooltip,
     TooltipTrigger,
@@ -13,6 +13,12 @@ interface ModelItemContentProps {
     showAutoRouterBadge?: boolean;
     isAutoRouter?: boolean;
     onRemoveClick?: (model: LanguageModel) => void;
+    /** User-defined alias for this model (if set) */
+    alias?: string;
+    /** Callback to set/update the alias */
+    onSetAlias?: (model: LanguageModel, alias: string) => void;
+    /** Callback to remove the alias */
+    onRemoveAlias?: (model: LanguageModel) => void;
 }
 
 /**
@@ -74,20 +80,91 @@ export function ModelItemContent({
     showAutoRouterBadge = false,
     isAutoRouter = false,
     onRemoveClick,
+    alias,
+    onSetAlias,
+    onRemoveAlias,
 }: ModelItemContentProps) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const hasPricing = model.pricingInput || model.pricingOutput;
     const inputPrice = formatPricePerMillion(model.pricingInput);
     const outputPrice = formatPricePerMillion(model.pricingOutput);
     const isFree = inputPrice === "gratis" && outputPrice === "gratis";
 
+    const displayName = alias || model.displayName;
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
+
+    const startEditing = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setEditValue(alias || model.displayName);
+        setIsEditing(true);
+    };
+
+    const confirmEdit = () => {
+        const trimmed = editValue.trim();
+        if (trimmed && trimmed !== model.displayName) {
+            onSetAlias?.(model, trimmed);
+        } else if (!trimmed || trimmed === model.displayName) {
+            // If the user cleared or reverted to original, remove the alias
+            onRemoveAlias?.(model);
+        }
+        setIsEditing(false);
+    };
+
+    const cancelEdit = () => {
+        setIsEditing(false);
+    };
+
     return (
         <div className="flex items-center justify-between w-full gap-2 py-0.5 group">
             <div className="flex flex-col gap-0 overflow-hidden flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    <span className="!font-medium truncate">
-                        {model.displayName}
-                    </span>
+                    {isEditing ? (
+                        <div
+                            className="flex items-center gap-1 flex-1 min-w-0"
+                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    e.stopPropagation();
+                                    if (e.key === "Enter") confirmEdit();
+                                    if (e.key === "Escape") cancelEdit();
+                                }}
+                                onBlur={confirmEdit}
+                                className="flex-1 min-w-0 bg-background/80 border border-primary/40 rounded px-1.5 py-0.5 text-sm outline-none focus:ring-1 focus:ring-primary/50"
+                                placeholder={model.displayName}
+                            />
+                            <button
+                                type="button"
+                                onPointerDown={(e) => e.preventDefault()}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    confirmEdit();
+                                }}
+                                className="p-0.5 hover:bg-primary/10 rounded text-primary transition-colors cursor-pointer"
+                            >
+                                <Check size={12} />
+                            </button>
+                        </div>
+                    ) : (
+                        <span className="!font-medium truncate">
+                            {displayName}
+                        </span>
+                    )}
                     {showAutoRouterBadge && <AutoRouterBadge />}
                 </div>
                 <span className="typo-caption truncate leading-tight">
@@ -101,7 +178,7 @@ export function ModelItemContent({
                 </span>
             </div>
 
-            {(onRemoveClick || !isAutoRouter) && (
+            {(onRemoveClick || !isAutoRouter || onSetAlias) && !isEditing && (
                 <div
                     className="flex items-center shrink-0 z-10"
                     onPointerDown={(e) => {
@@ -137,6 +214,22 @@ export function ModelItemContent({
                             </TooltipContent>
                         </Tooltip>
                     )}
+                    {onSetAlias && !isAutoRouter && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={startEditing}
+                                    className="p-1 hover:bg-primary/10 rounded text-muted-foreground/50 hover:text-primary transition-colors opacity-0 group-hover:opacity-100 cursor-pointer mr-0.5"
+                                >
+                                    <Edit2 size={14} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={4}>
+                                {alias ? "Editar alias" : "Poner alias"}
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
                     {!isAutoRouter && (
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -154,8 +247,15 @@ export function ModelItemContent({
                             >
                                 <div className="flex flex-col gap-3.5">
                                     {/* Model name */}
-                                    <div className="font-semibold text-base leading-snug">
-                                        {model.displayName}
+                                    <div>
+                                        <div className="font-semibold text-base leading-snug">
+                                            {alias || model.displayName}
+                                        </div>
+                                        {alias && (
+                                            <div className="text-[13px] text-muted-foreground">
+                                                {model.displayName}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Pricing — inline */}

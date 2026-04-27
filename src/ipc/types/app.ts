@@ -159,6 +159,23 @@ export const EditAppFileResultSchema = z.object({
 });
 
 /**
+ * Schema for delete app file params.
+ */
+export const DeleteAppFileParamsSchema = z.object({
+  appId: z.number(),
+  filePath: z.string(),
+});
+
+/**
+ * Schema for rename app file params.
+ */
+export const RenameAppFileParamsSchema = z.object({
+  appId: z.number(),
+  oldPath: z.string(),
+  newPath: z.string(),
+});
+
+/**
  * Schema for download app parameters.
  */
 export const DownloadAppParamsSchema = z.object({
@@ -432,6 +449,18 @@ export const appContracts = {
     channel: "search-app-files",
     input: SearchAppFilesParamsSchema,
     output: z.array(AppFileSearchResultSchema),
+  }),
+
+  deleteAppFile: defineContract({
+    channel: "delete-app-file",
+    input: DeleteAppFileParamsSchema,
+    output: z.void(),
+  }),
+
+  renameAppFile: defineContract({
+    channel: "rename-app-file",
+    input: RenameAppFileParamsSchema,
+    output: z.void(),
   }),
 
   changeAppLocation: defineContract({

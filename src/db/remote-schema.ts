@@ -505,6 +505,19 @@ export const userPreferences = sqliteTable("user_preferences", {
 });
 
 // =============================================================================
+// CUSTOM MODEL NAMES (user-defined aliases for models)
+// =============================================================================
+
+export const customModelNames = sqliteTable("custom_model_names", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    modelId: text("model_id").notNull(),
+    customName: text("custom_name").notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

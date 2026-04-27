@@ -12,6 +12,7 @@ import { ModelItemContent } from "@/components/ModelItemContent";
 import { ModelVariantPicker } from "@/components/ModelVariantPicker";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { useModelUsageStats } from "@/hooks/useModelUsageStats";
+import { useModelAliases } from "@/hooks/useModelAliases";
 import { getVariantLabel } from "@/ipc/shared/model_variants";
 
 export function ModelPicker() {
@@ -20,6 +21,7 @@ export function ModelPicker() {
   const isTrial = false;
   
   const { stats, incrementUsage, removeUsage } = useModelUsageStats();
+  const { aliases, setAlias, removeAlias, resolveDisplayName } = useModelAliases();
   const [search, setSearch] = useState("");
 
   const onModelSelect = (model: LargeLanguageModel) => {
@@ -42,6 +44,10 @@ export function ModelPicker() {
 
   // Get display name for the selected model
   const getModelDisplayName = () => {
+    // Check for user-defined alias first
+    const aliasName = aliases[selectedModel.name];
+    if (aliasName) return aliasName;
+
     // For cloud models, look up in the modelsByProviders data
     if (modelsByProviders && modelsByProviders[selectedModel.provider]) {
       const customFoundModel = modelsByProviders[selectedModel.provider].find(
@@ -79,7 +85,11 @@ export function ModelPicker() {
 
   const doesModelMatchSearch = (m: LanguageModel) => {
      if (!searchLower) return true;
-     return m.displayName.toLowerCase().includes(searchLower) || m.apiName.toLowerCase().includes(searchLower);
+     // Also search by alias
+     const alias = aliases[m.apiName];
+     return m.displayName.toLowerCase().includes(searchLower) 
+       || m.apiName.toLowerCase().includes(searchLower)
+       || (alias && alias.toLowerCase().includes(searchLower));
   };
 
   if (modelsByProviders?.["auto-router"]) {
@@ -140,6 +150,7 @@ export function ModelPicker() {
         models={sortedModels}
         selectedValue={`${selectedModel.provider}:${selectedModel.name}`}
         selectedVariant={selectedVariant}
+        modelAliases={aliases}
         onModelSelect={(val) => {
           const sepIdx = val.indexOf(":");
           const prov = val.slice(0, sepIdx);
@@ -184,6 +195,9 @@ export function ModelPicker() {
               showAutoRouterBadge={provider === "auto-router"}
               isAutoRouter={provider === "auto-router"}
               onRemoveClick={isRemovable ? (m) => removeUsage(`${provider}:${m.apiName}`) : undefined}
+              alias={aliases[model.apiName]}
+              onSetAlias={(m, newAlias) => setAlias({ modelId: m.apiName, alias: newAlias })}
+              onRemoveAlias={(m) => removeAlias(m.apiName)}
             />
           );
         }}

@@ -182,7 +182,7 @@ export const FileEditor = ({
   const saveFile = async () => {
     if (
       !appId ||
-      !currentValueRef.current ||
+      currentValueRef.current === undefined ||
       !needsSaveRef.current ||
       isSavingRef.current
     )
@@ -238,7 +238,7 @@ export const FileEditor = ({
     return <div className="p-4 text-red-500">Error: {error.message}</div>;
   }
 
-  if (!content) {
+  if (content === null) {
     return <div className="p-4 text-muted-foreground">No hay contenido disponible</div>;
   }
 

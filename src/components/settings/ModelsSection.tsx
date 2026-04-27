@@ -11,6 +11,7 @@ import { AddModelDialog } from "@/components/settings/AddModelDialog";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { useDeleteCustomModel } from "@/hooks/useDeleteCustomModel";
 import { useSettings } from "@/hooks/useSettings";
+import { useModelAliases } from "@/hooks/useModelAliases";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { type LanguageModel } from "@/ipc/types";
 import {
@@ -65,6 +66,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
   const [infoModel, setInfoModel] = useState<LanguageModel | null>(null);
   const queryClient = useQueryClient();
   const { settings, updateSettings } = useSettings();
+  const { aliases, setAlias, removeAlias } = useModelAliases();
 
   const enabledModelIds =
     settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
@@ -156,7 +158,7 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             >
               <div className="flex justify-between items-start gap-2">
                 <h4 className="typo-label truncate flex-1">
-                  {model.displayName}
+                  {aliases[model.apiName] || model.displayName}
                 </h4>
                 {model.type === "custom" && (
                   <div className="flex gap-1 flex-shrink-0">
@@ -248,6 +250,9 @@ export function ModelsSection({ providerId, onAddRef }: ModelsSectionProps) {
             open={!!infoModel}
             onOpenChange={(open) => !open && setInfoModel(null)}
             model={infoModel}
+            alias={aliases[infoModel.apiName]}
+            onSetAlias={(newAlias) => setAlias({ modelId: infoModel.apiName, alias: newAlias })}
+            onRemoveAlias={() => removeAlias(infoModel.apiName)}
           />
         )
       }

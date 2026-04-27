@@ -54,6 +54,8 @@ export interface ModelVariantPickerProps {
     searchPlaceholder?: string;
     onSearchChange?: (search: string) => void;
     emptyMessage?: string;
+    /** Optional map of modelApiName → user-defined alias (for search keywords) */
+    modelAliases?: Record<string, string>;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ export function ModelVariantPicker({
     searchPlaceholder = "Buscar modelos...",
     onSearchChange,
     emptyMessage = "Sin resultados",
+    modelAliases = {},
 }: ModelVariantPickerProps) {
     const [open, setOpen] = useState(false);
     // Controlled search value — must be managed here so we can reset it on close/select
@@ -167,7 +170,7 @@ export function ModelVariantPicker({
                                             <CommandItem
                                                 key={value}
                                                 value={value}
-                                                keywords={[model.displayName, model.apiName]}
+                                                keywords={[model.displayName, model.apiName, ...(modelAliases[model.apiName] ? [modelAliases[model.apiName]] : [])]}
                                                 onSelect={() => handleModelSelect(value)}
                                                 className={cn(
                                                     "cursor-pointer typo-dropdown",

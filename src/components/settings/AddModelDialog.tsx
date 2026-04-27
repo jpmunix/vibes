@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Search, RefreshCw } from "@/components/ui/icons";
 import { useLanguageModelsByProviders } from "@/hooks/useLanguageModelsByProviders";
 import { useSettings } from "@/hooks/useSettings";
+import { useModelAliases } from "@/hooks/useModelAliases";
 import { DEFAULT_ENABLED_MODELS } from "@/ipc/shared/language_model_constants";
 import { ModelInfoDialog } from "@/components/ModelInfoDialog";
 import type { LanguageModel } from "@/ipc/types";
@@ -127,6 +128,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
     const [detailModel, setDetailModel] = useState<LanguageModel | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const queryClient = useQueryClient();
+    const { aliases, setAlias, removeAlias } = useModelAliases();
 
     const enabledModels = settings?.enabledOpenRouterModels ?? DEFAULT_ENABLED_MODELS;
 
@@ -335,7 +337,7 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                                         >
                                             {/* Line 1: Model name */}
                                             <div className="typo-label truncate group-hover:text-primary transition-colors">
-                                                {model.displayName}
+                                                {aliases[model.apiName] || model.displayName}
                                             </div>
 
                                             {/* Line 2: Context window + max output tokens */}
@@ -383,6 +385,9 @@ export function AddModelDialog({ open, onOpenChange }: AddModelDialogProps) {
                     onOpenChange={(open) => {
                         if (!open) setDetailModel(null);
                     }}
+                    alias={aliases[detailModel.apiName]}
+                    onSetAlias={(newAlias) => setAlias({ modelId: detailModel.apiName, alias: newAlias })}
+                    onRemoveAlias={() => removeAlias(detailModel.apiName)}
                 />
             )}
         </>
