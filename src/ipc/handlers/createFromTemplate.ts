@@ -5,7 +5,7 @@ import { copyDirectoryRecursive } from "../utils/file_utils";
 import { gitClone, getCurrentCommitHash } from "../utils/git_utils";
 import { readSettings } from "@/main/settings";
 import { getTemplateOrThrow } from "../utils/template_utils";
-import { SCAFFOLD_TEMPLATE_IDS } from "../../shared/templates";
+import { SCAFFOLD_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "../../shared/templates";
 import log from "electron-log";
 import { ensureScaffoldCached, copyScaffoldNodeModules } from "../utils/scaffold_cache";
 
@@ -80,7 +80,7 @@ export async function createFromTemplate({
   forceDefaultScaffold?: boolean;
 }) {
   const settings = readSettings();
-  const templateId = forceDefaultScaffold ? "react" : settings.selectedTemplateId;
+  const templateId = forceDefaultScaffold ? DEFAULT_TEMPLATE_ID : settings.selectedTemplateId;
 
   // Check if this template has a local scaffold directory
   const scaffoldDirName = SCAFFOLD_TEMPLATE_IDS[templateId];
@@ -120,20 +120,24 @@ async function replaceTemplateWildcards(
   appName?: string,
 ): Promise<void> {
   const displayName = appName || "minube vibes";
-  const indexHtmlPath = path.join(appPath, "index.html");
-  try {
-    const content = await fs.readFile(indexHtmlPath, "utf-8");
-    if (content.includes("{{APP_NAME}}")) {
-      await fs.writeFile(
-        indexHtmlPath,
-        content.replace(/\{\{APP_NAME\}\}/g, displayName),
-        "utf-8",
-      );
-      logger.info(`Replaced {{APP_NAME}} with "${displayName}" in index.html`);
+  // Replace {{APP_NAME}} in any files that use it
+  const filesToCheck = ["index.html", "package.json"];
+  for (const fileName of filesToCheck) {
+    const filePath = path.join(appPath, fileName);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      if (content.includes("{{APP_NAME}}")) {
+        await fs.writeFile(
+          filePath,
+          content.replace(/\{\{APP_NAME\}\}/g, displayName),
+          "utf-8",
+        );
+        logger.info(`Replaced {{APP_NAME}} with "${displayName}" in ${fileName}`);
+      }
+    } catch (error) {
+      // File may not exist in some templates (e.g. Express has no index.html)
+      logger.debug(`Could not replace wildcards in ${fileName}: ${error}`);
     }
-  } catch (error) {
-    // index.html puede no existir en templates de GitHub personalizados
-    logger.debug(`Could not replace wildcards in index.html: ${error}`);
   }
 }
 

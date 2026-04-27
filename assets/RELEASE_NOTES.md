@@ -37,6 +37,7 @@ Ahora puedes **asignar un alias personalizado a cualquier modelo** desde su fich
 
 - Todos los diálogos de la aplicación (confirmaciones, alertas, formularios) se han unificado en fuentes, colores y estilos para una experiencia visual coherente en toda la interfaz.
 - Títulos de las ventanas independientes (Git, Chat, Consola, Base de datos) normalizados con un formato uniforme.
+- El stack React con Tailwind CSS 4 y Vite 6 es ahora el predeterminado; nueva plantilla Express (Express 5, TypeScript, Helmet, Zod) disponible para proyectos backend.
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.
 - Corregido un problema que impedía guardar archivos con contenido vacío desde el editor.
 - Mejoras internas de estabilidad.

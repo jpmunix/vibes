@@ -236,6 +236,8 @@ async function resolveScaffoldDirForApp(targetAppPath: string): Promise<string> 
             if (name.includes("vue")) return "scaffold-vue";
             if (name.includes("astro")) return "scaffold-astro";
             if (name.includes("svelte") || name.includes("sveltekit")) return "scaffold-svelte";
+            // Check for Express-style projects (no react/vue deps, has express dep)
+            if (pkgJson.dependencies?.express) return "scaffold-express";
         }
     } catch {
         // Fall through to default

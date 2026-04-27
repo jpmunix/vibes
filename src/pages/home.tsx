@@ -22,7 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ForceCloseDialog } from "@/components/ForceCloseDialog";
 
 import type { FileAttachment } from "@/ipc/types";
-import { NEON_TEMPLATE_IDS } from "@/shared/templates";
+import { NEON_TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "@/shared/templates";
 import { getEffectiveDefaultChatMode } from "@/lib/schemas";
 import { ReleaseNotesDialog } from "@/components/ReleaseNotesDialog";
 
@@ -150,7 +150,7 @@ export default function HomePage() {
       // Create the chat and navigate
       const result = await ipc.app.createApp({
         name: appName,
-        templateId: settings?.selectedTemplateId || "react",
+        templateId: settings?.selectedTemplateId || DEFAULT_TEMPLATE_ID,
       });
       if (
         settings?.selectedTemplateId &&
