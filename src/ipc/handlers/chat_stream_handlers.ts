@@ -65,6 +65,7 @@ import { validateChatContext } from "../utils/context_paths_utils";
 import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
+import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
@@ -1840,6 +1841,17 @@ This conversation includes one or more image attachments. When the user uploads 
             success,
             totalTokens: ocTotalTokens,
           });
+
+          // ── Memory extraction (fire-and-forget, never blocks UI) ─────────
+          if (success && updatedChat.app?.id) {
+            extractMemoriesFromChatCycle({
+              appId: updatedChat.app.id,
+              userId: currentUserId as string,
+              chatId: req.chatId,
+              userPrompt,
+              assistantResponse: fullResponse,
+            }).catch(err => logger.warn("[Memory] Extraction failed:", err));
+          }
 
           // ── Post-agent clean install ────────────────────────────────────
           // The agent may have modified package.json (adding new dependencies)
