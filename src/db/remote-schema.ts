@@ -445,6 +445,29 @@ export const customModelNames = sqliteTable("custom_model_names", {
 });
 
 // =============================================================================
+// MEMORIES (agent memory system — persistent structured knowledge)
+// =============================================================================
+
+export const memories = sqliteTable("memories", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    // app_id = 0 means global (not tied to any app); otherwise references the app
+    appId: integer("app_id").notNull().default(0),
+    type: text("type").notNull(),          // fact, preference, issue, episode, decision
+    key: text("key"),                       // For key-based overwrite (e.g. "backend_framework")
+    content: text("content").notNull(),
+    importance: integer("importance").notNull().default(50), // 0–100 (stored as int, mapped to 0.0–1.0)
+    status: text("status"),                 // Issue lifecycle: active, fix_attempted, suspected_resolved, resolved, deprecated
+    source: text("source").notNull().default("auto"), // auto | manual
+    sourceChatId: integer("source_chat_id"),
+    enabled: integer("enabled").notNull().default(1),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

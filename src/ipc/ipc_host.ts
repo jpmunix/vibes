@@ -42,6 +42,7 @@ import { registerWindowHandlers } from "./handlers/window_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
 // Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
+import { registerMemoryHandlers } from "./handlers/memory_handlers";
 
 import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
@@ -102,6 +103,7 @@ export function registerIpcHandlers() {
 
   registerBackupHandlers();
   registerAiQueryLogHandlers();
+  registerMemoryHandlers();
 
   registerConsoleHandlers();
   registerUpdateCheckerHandlers();

@@ -51,6 +51,7 @@ import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
+import { memoryContracts } from "../types/memory";
 
 
 // =============================================================================
@@ -126,6 +127,7 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(pocketbaseContracts),
   // knowledgeContracts — KB removed
   ...getInvokeChannels(aiQueryLogContracts),
+  ...getInvokeChannels(memoryContracts),
 
   ...getInvokeChannels(authContracts),
 

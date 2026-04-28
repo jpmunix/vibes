@@ -60,6 +60,9 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
+  // Memory system (enabled by default)
+  memoriesEnabled: true,
+  memoriesAutoExtract: true,
   // Web search — enabled by default so the model can search when needed
   enableWebSearch: true,
   // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)

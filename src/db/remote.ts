@@ -392,6 +392,23 @@ export async function initializeRemoteSchema(): Promise<void> {
       updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
       UNIQUE(user_id, key, app_id)
     )`,
+
+    // Memories (agent memory system — persistent structured knowledge)
+    `CREATE TABLE IF NOT EXISTS memories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      app_id INTEGER NOT NULL DEFAULT 0,
+      type TEXT NOT NULL,
+      key TEXT,
+      content TEXT NOT NULL,
+      importance INTEGER NOT NULL DEFAULT 50,
+      status TEXT,
+      source TEXT NOT NULL DEFAULT 'auto',
+      source_chat_id INTEGER,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    )`,
   ];
 
   try {

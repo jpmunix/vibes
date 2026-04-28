@@ -1,0 +1,156 @@
+/**
+ * Memory System — IPC Handlers
+ *
+ * CRUD operations for the agent memory system.
+ * Memories are persistent, structured units of knowledge
+ * that provide context to the AI agent across sessions.
+ */
+
+import { createTypedHandler } from "./base";
+import { memoryContracts } from "../types/memory";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq, and, or } from "drizzle-orm";
+import log from "electron-log";
+
+const logger = log.scope("memory_handlers");
+
+export function registerMemoryHandlers(): void {
+    // ── GET MEMORIES ─────────────────────────────────────────────────────
+    // Returns all memories for an app + global memories (appId=0)
+    createTypedHandler(memoryContracts.getMemories, async (_event, appId, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const rows = await db
+            .select()
+            .from(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.userId, userId),
+                    or(
+                        eq(remoteSchema.memories.appId, appId),
+                        eq(remoteSchema.memories.appId, 0),
+                    ),
+                ),
+            );
+
+        return rows.map(mapRowToEntry);
+    });
+
+    // ── CREATE MEMORY ────────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.createMemory, async (_event, params, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const now = new Date();
+        const [inserted] = await db
+            .insert(remoteSchema.memories)
+            .values({
+                userId,
+                appId: params.appId,
+                type: params.type,
+                key: params.key ?? null,
+                content: params.content,
+                importance: params.importance ?? 0.5,
+                status: params.status ?? null,
+                source: params.source ?? "manual",
+                sourceChatId: params.sourceChatId ?? null,
+                enabled: 1,
+                createdAt: now,
+                updatedAt: now,
+            })
+            .returning({ id: remoteSchema.memories.id });
+
+        logger.info(`[Memory] Created: type=${params.type} key=${params.key ?? "—"} appId=${params.appId} id=${inserted.id}`);
+        return inserted.id;
+    });
+
+    // ── UPDATE MEMORY ────────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.updateMemory, async (_event, params, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const updates: Record<string, unknown> = { updatedAt: new Date() };
+        if (params.type !== undefined) updates.type = params.type;
+        if (params.key !== undefined) updates.key = params.key;
+        if (params.content !== undefined) updates.content = params.content;
+        if (params.importance !== undefined) updates.importance = params.importance;
+        if (params.status !== undefined) updates.status = params.status;
+        if (params.enabled !== undefined) updates.enabled = params.enabled ? 1 : 0;
+
+        await db
+            .update(remoteSchema.memories)
+            .set(updates)
+            .where(
+                and(
+                    eq(remoteSchema.memories.id, params.id),
+                    eq(remoteSchema.memories.userId, userId),
+                ),
+            );
+
+        logger.info(`[Memory] Updated: id=${params.id}`);
+    });
+
+    // ── DELETE MEMORY ────────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.deleteMemory, async (_event, memoryId, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        await db
+            .delete(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.id, memoryId),
+                    eq(remoteSchema.memories.userId, userId),
+                ),
+            );
+
+        logger.info(`[Memory] Deleted: id=${memoryId}`);
+    });
+
+    // ── GET MEMORY CONTEXT ───────────────────────────────────────────────
+    // Placeholder — will be implemented in Fase 3 (read pipeline)
+    createTypedHandler(memoryContracts.getMemoryContext, async (_event, _appId, _ctx) => {
+        return "";
+    });
+
+    // ── EXTRACT MEMORIES ─────────────────────────────────────────────────
+    // Placeholder — will be implemented in Fase 2 (write pipeline)
+    createTypedHandler(memoryContracts.extractMemories, async (_event, _params, _ctx) => {
+        return [];
+    });
+
+    // ── DECAY MEMORIES ───────────────────────────────────────────────────
+    // Placeholder — will be implemented in Fase 4 (lifecycle)
+    createTypedHandler(memoryContracts.decayMemories, async (_event, _appId, _ctx) => {
+        return 0;
+    });
+
+    logger.info("[Memory] Handlers registered");
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function mapRowToEntry(row: typeof remoteSchema.memories.$inferSelect) {
+    return {
+        id: row.id,
+        appId: row.appId,
+        type: row.type as any,
+        key: row.key,
+        content: row.content,
+        importance: row.importance,
+        status: row.status as any,
+        source: row.source as any,
+        sourceChatId: row.sourceChatId,
+        enabled: row.enabled === 1,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+    };
+}
