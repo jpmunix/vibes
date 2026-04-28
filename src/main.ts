@@ -410,7 +410,7 @@ const createWindow = () => {
     menu.popup({ window: mainWindow! });
   });
 
-  if (windowState?.isMaximized) {
+  if (windowState?.isMaximized ?? true) {
     mainWindow.maximize();
   }
 

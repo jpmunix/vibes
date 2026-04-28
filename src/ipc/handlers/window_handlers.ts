@@ -42,6 +42,23 @@ const pendingChatPrompts = new Map<number, {
   attachments?: Array<{ name: string; type: string; data: string; attachmentType: "upload-to-codebase" | "chat-context" }>;
 }>();
 
+/**
+ * Returns the saved main-window bounds (position + size) so secondary windows
+ * open at the same location/size the user last used for the main window.
+ * Falls back to sensible defaults when no state is persisted.
+ */
+function getSavedWindowBounds(defaults?: { width?: number; height?: number }) {
+  const settings = readSettings();
+  const ws = settings.windowState;
+  return {
+    width: ws?.width ?? defaults?.width ?? 1200,
+    height: ws?.height ?? defaults?.height ?? 800,
+    x: ws?.x,
+    y: ws?.y,
+    isMaximized: ws?.isMaximized ?? true,
+  };
+}
+
 export function registerWindowHandlers() {
   logger.debug("Registering window control handlers");
 
@@ -111,9 +128,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for database window title: ${e}`);
     }
 
+    const saved = getSavedWindowBounds({ width: 1000, height: 700 });
+
     const dbWindow = new BrowserWindow({
-      width: 1000,
-      height: 700,
+      width: saved.width,
+      height: saved.height,
+      x: saved.x,
+      y: saved.y,
       minWidth: 600,
       minHeight: 400,
       // No parent — independent window with its own taskbar entry
@@ -132,6 +153,10 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    if (saved.isMaximized) {
+      dbWindow.maximize();
+    }
 
     // Remove native menu bar entirely (File, Edit, View, etc.)
     dbWindow.removeMenu();
@@ -208,9 +233,13 @@ export function registerWindowHandlers() {
     const gitIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const gitIcon = nativeImage.createFromPath(gitIconPath);
 
+    const savedGit = getSavedWindowBounds({ width: 1100, height: 750 });
+
     const gitWindow = new BrowserWindow({
-      width: 1100,
-      height: 750,
+      width: savedGit.width,
+      height: savedGit.height,
+      x: savedGit.x,
+      y: savedGit.y,
       minWidth: 700,
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
@@ -236,6 +265,10 @@ export function registerWindowHandlers() {
       gitWindow.setIcon(gitIcon);
     } else {
       logger.warn(`git icon not found at: ${gitIconPath}`);
+    }
+
+    if (savedGit.isMaximized) {
+      gitWindow.maximize();
     }
 
     // Prevent the renderer (HTML <title>) from overriding our window title
@@ -323,15 +356,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for window title: ${e}`);
     }
 
-    // Load saved window state
-    const settings = readSettings();
-    const windowState = settings.windowState;
+    const savedChat = getSavedWindowBounds({ width: 1200, height: 800 });
 
     const chatWindow = new BrowserWindow({
-      width: windowState?.width ?? 1200,
-      height: windowState?.height ?? 800,
-      x: windowState?.x,
-      y: windowState?.y,
+      width: savedChat.width,
+      height: savedChat.height,
+      x: savedChat.x,
+      y: savedChat.y,
       minWidth: 700,
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
@@ -354,7 +385,7 @@ export function registerWindowHandlers() {
       },
     });
 
-    if (windowState?.isMaximized) {
+    if (savedChat.isMaximized) {
       chatWindow.maximize();
     }
 
@@ -454,10 +485,14 @@ export function registerWindowHandlers() {
       }
     }
 
+    const savedMsg = getSavedWindowBounds({ width: 800, height: 600 });
+
     const messageWindow = new BrowserWindow({
       show: false,
-      width: 800,
-      height: 600,
+      width: savedMsg.width,
+      height: savedMsg.height,
+      x: savedMsg.x,
+      y: savedMsg.y,
       minWidth: 500,
       minHeight: 400,
       skipTaskbar: false,
@@ -566,9 +601,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for console window title: ${e}`);
     }
 
+    const savedConsole = getSavedWindowBounds({ width: 900, height: 550 });
+
     const consoleWindow = new BrowserWindow({
-      width: 900,
-      height: 550,
+      width: savedConsole.width,
+      height: savedConsole.height,
+      x: savedConsole.x,
+      y: savedConsole.y,
       minWidth: 500,
       minHeight: 300,
       // No parent — independent window with its own taskbar entry
@@ -587,6 +626,10 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    if (savedConsole.isMaximized) {
+      consoleWindow.maximize();
+    }
 
     const themeParam = theme ? `&theme=${theme}` : "";
     const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
@@ -635,9 +678,13 @@ export function registerWindowHandlers() {
     const codeIconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const codeIcon = nativeImage.createFromPath(codeIconPath);
 
+    const savedCode = getSavedWindowBounds({ width: 1100, height: 750 });
+
     const codeWindow = new BrowserWindow({
-      width: 1100,
-      height: 750,
+      width: savedCode.width,
+      height: savedCode.height,
+      x: savedCode.x,
+      y: savedCode.y,
       minWidth: 700,
       minHeight: 500,
       // No parent — independent window with its own taskbar entry
@@ -663,6 +710,10 @@ export function registerWindowHandlers() {
       codeWindow.setIcon(codeIcon);
     } else {
       logger.warn(`code icon not found at: ${codeIconPath}`);
+    }
+
+    if (savedCode.isMaximized) {
+      codeWindow.maximize();
     }
 
     // Prevent the renderer (HTML <title>) from overriding our window title
@@ -773,9 +824,13 @@ export function registerWindowHandlers() {
       logger.warn(`Could not fetch app name for memory window title: ${e}`);
     }
 
+    const savedMemory = getSavedWindowBounds({ width: 900, height: 650 });
+
     const memoryWindow = new BrowserWindow({
-      width: 900,
-      height: 650,
+      width: savedMemory.width,
+      height: savedMemory.height,
+      x: savedMemory.x,
+      y: savedMemory.y,
       minWidth: 600,
       minHeight: 400,
       skipTaskbar: false,
@@ -790,6 +845,10 @@ export function registerWindowHandlers() {
         preload: path.join(__dirname, "preload.js"),
       },
     });
+
+    if (savedMemory.isMaximized) {
+      memoryWindow.maximize();
+    }
 
     // Prevent the renderer (HTML <title>) from overriding our window title
     memoryWindow.on("page-title-updated", (e) => {
@@ -861,9 +920,13 @@ export function registerWindowHandlers() {
     const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
     const icon = nativeImage.createFromPath(iconPath);
 
+    const savedAdmin = getSavedWindowBounds({ width: 1000, height: 700 });
+
     adminWindow = new BrowserWindow({
-      width: 1000,
-      height: 700,
+      width: savedAdmin.width,
+      height: savedAdmin.height,
+      x: savedAdmin.x,
+      y: savedAdmin.y,
       minWidth: 700,
       minHeight: 500,
       skipTaskbar: false,
@@ -883,6 +946,10 @@ export function registerWindowHandlers() {
     // Explicitly set icon after creation (required on some Linux WMs)
     if (!icon.isEmpty()) {
       adminWindow.setIcon(icon);
+    }
+
+    if (savedAdmin.isMaximized) {
+      adminWindow.maximize();
     }
 
     // Prevent the renderer from overriding our window title
