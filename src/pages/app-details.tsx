@@ -82,6 +82,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { BunnyConnector } from "@/components/BunnyConnector";
 import { LanguageBadge } from "@/components/LanguageBadge";
+import { MemoryPanel } from "@/components/MemoryPanel";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -513,6 +514,13 @@ export default function AppDetailsPage() {
 
 
               {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
+
+              {/* ── Agent Memory System ── */}
+              {appId && (
+                <div className="mt-6">
+                  <MemoryPanel appId={appId} />
+                </div>
+              )}
             </div>
 
             {/* Rename Dialog */}

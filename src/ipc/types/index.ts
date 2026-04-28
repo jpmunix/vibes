@@ -51,6 +51,7 @@ export { contextContracts } from "./context";
 export { visualEditingContracts } from "./visual-editing";
 export { miscContracts, miscEvents } from "./misc";
 export { designContracts } from "./design";
+export { memoryContracts } from "./memory";
 
 
 export { todoContracts, todoAttachmentContracts } from "./todo";
@@ -62,6 +63,8 @@ export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 export { authContracts } from "./auth";
+
+export { memoryClient } from "./memory";
 
 // =============================================================================
 // Client Exports
@@ -356,6 +359,17 @@ export type {
   KnowledgeHealthResult,
 } from "./knowledge";
 
+// Memory types
+export type {
+  MemoryEntry,
+  MemoryType,
+  MemorySource,
+  IssueStatus,
+  CreateMemoryParams,
+  UpdateMemoryParams,
+  ExtractMemoriesParams,
+} from "./memory";
+
 
 
 // =============================================================================
@@ -428,6 +442,7 @@ import { aiQueryLogClient } from "./ai_query_logs";
 
 import { authClient } from "./auth";
 import { designClient } from "./design";
+import { memoryClient } from "./memory";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -501,6 +516,9 @@ export const ipc = {
 
   // Design system picker
   design: designClient,
+
+  // Memory system
+  memory: memoryClient,
 
   // Event clients for main->renderer pub/sub
   events: {
