@@ -12,6 +12,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
+import { decayMemories } from "../utils/memory_lifecycle";
 import log from "electron-log";
 
 const logger = log.scope("memory_handlers");
@@ -127,10 +128,11 @@ export function registerMemoryHandlers(): void {
         return [];
     });
 
-    // ── DECAY MEMORIES ───────────────────────────────────────────────────
-    // Placeholder — will be implemented in Fase 4 (lifecycle)
-    createTypedHandler(memoryContracts.decayMemories, async (_event, _appId, _ctx) => {
-        return 0;
+    // ── DECAY MEMORIES ─────────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.decayMemories, async (_event, appId, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        return decayMemories(appId, userId);
     });
 
     logger.info("[Memory] Handlers registered");

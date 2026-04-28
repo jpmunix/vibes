@@ -67,6 +67,7 @@ import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
 import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
 import { buildMemoryContext } from "../utils/memory_context_builder";
+import { decayMemories as decayMemoriesAsync } from "../utils/memory_lifecycle";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
@@ -1543,7 +1544,11 @@ This conversation includes one or more image attachments. When the user uploads 
 
 
           // 4. Build integration env vars — accessible via bash in OpenCode
-          // ── Memory context injection ────────────────────────────────────
+          // ── Memory decay + context injection ─────────────────────────────
+          // Decay stale auto-extracted memories (fire-and-forget, non-blocking)
+          decayMemoriesAsync(updatedChat.app.id, currentUserId as string)
+            .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
+
           // Load memories (app-specific + global) and inject as context instruction
           try {
             const memoryBlock = await buildMemoryContext(
