@@ -1,4 +1,6 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { normalizePath } from "../../shared/normalizePath";
 import { useAtom, useSetAtom } from "jotai";
 import { appsListAtom, selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -38,6 +40,7 @@ import {
   SupabaseIcon,
   Download,
   FileText,
+  Plus,
 } from "@/components/ui/icons";
 
 import { Input } from "@/components/ui/input";
@@ -60,7 +63,7 @@ import { Label } from "@/components/ui/label";
 import { invalidateAppQuery } from "@/hooks/useLoadApp";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckName } from "@/hooks/useCheckName";
-import { AppUpgrades } from "@/components/AppUpgrades";
+
 import { CapacitorControls } from "@/components/CapacitorControls";
 import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
@@ -78,6 +81,7 @@ import {
 } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BunnyConnector } from "@/components/BunnyConnector";
+import { LanguageBadge } from "@/components/LanguageBadge";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -96,8 +100,8 @@ export default function AppDetailsPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [isRenamingFolder, setIsRenamingFolder] = useState(false);
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [isIntegrationsSectionOpen, setIsIntegrationsSectionOpen] = useState(false);
-  const [isInfoSectionOpen, setIsInfoSectionOpen] = useState(false);
+  const [isAddIntegrationOpen, setIsAddIntegrationOpen] = useState(false);
+  const [addingIntegration, setAddingIntegration] = useState<'github' | 'bunny' | 'supabase' | 'pocketbase' | null>(null);
   const { toggleFavorite, isLoading: isFavoriteLoading } = useAddAppToFavorite();
 
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
@@ -127,7 +131,7 @@ export default function AppDetailsPage() {
 
   // Fetch initial prompt when the info section opens
   useEffect(() => {
-    if (isInfoSectionOpen && appId && !initialPrompt && !isLoadingInitialPrompt) {
+    if (appId && !initialPrompt && !isLoadingInitialPrompt) {
       setIsLoadingInitialPrompt(true);
       ipc.chat.getInitialPrompt(appId)
         .then((result) => {
@@ -140,7 +144,7 @@ export default function AppDetailsPage() {
           setIsLoadingInitialPrompt(false);
         });
     }
-  }, [isInfoSectionOpen, appId, initialPrompt, isLoadingInitialPrompt]);
+  }, [appId, initialPrompt, isLoadingInitialPrompt]);
 
   const handleDeleteApp = async () => {
     if (!appId) return;
@@ -351,7 +355,7 @@ export default function AppDetailsPage() {
   const { data: designData } = useQuery({
     queryKey: ["design-read", currentAppPath],
     queryFn: () => ipc.design.readDesign({ appPath: selectedApp.path }),
-    enabled: !!currentAppPath && isInfoSectionOpen,
+    enabled: !!currentAppPath,
     staleTime: 30_000,
   });
   const hasDesignMd = !!designData?.content;
@@ -372,306 +376,138 @@ export default function AppDetailsPage() {
       className="relative h-full w-full overflow-hidden flex"
       data-testid="app-details-page"
     >
-      {/* Glow background effect */}
+      {/* Background matching settings page + subtle accent glow at top */}
       <div
         aria-hidden
-        className="glow-static pointer-events-none absolute rounded-full"
-        style={{
-          width: '1400px',
-          height: '1400px',
-          top: '50%',
-          left: '50%',
-        }}
+        className="pointer-events-none absolute inset-0 bg-muted/30"
       />
-
-      <style>{`
-        .glow-static {
-          background: radial-gradient(
-            circle,
-            var(--primary) 0%,
-            color-mix(in oklch, var(--primary) 55%, transparent) 20%,
-            color-mix(in oklch, var(--primary) 30%, transparent) 40%,
-            color-mix(in oklch, var(--primary) 12%, transparent) 60%,
-            color-mix(in oklch, var(--primary) 4%, transparent) 80%,
-            transparent 100%
-          );
-          filter: blur(90px);
-          transform: translate(-50%, -50%) scale(1.1);
-          opacity: 0.5;
-          z-index: 0;
-        }
-      `}</style>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-64"
+        style={{ background: 'radial-gradient(ellipse 60% 100% at 50% -20%, color-mix(in oklch, var(--primary) 8%, transparent), transparent)' }}
+      />
 
       <div className="absolute inset-0 overflow-y-auto overflow-x-hidden z-10">
         <div className="min-h-full flex flex-col w-full max-w-2xl mx-auto p-4 py-8 relative">
           <div className="my-auto w-full flex flex-col">
             {/* Hero */}
-            <div className="flex items-center justify-center gap-3 mb-8 mt-2">
-              <h1 className="typo-page-title text-center tracking-tight">{selectedApp.name}</h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-auto transition-transform hover:scale-110 shrink-0"
-                onClick={() => toggleFavorite(selectedApp.id)}
-                disabled={isFavoriteLoading}
-                title={selectedApp.isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+            <div className="flex flex-col items-center gap-2 mb-8 mt-2">
+              <div className="flex items-center gap-2.5">
+                <h1
+                  className="typo-page-title text-center tracking-tight cursor-pointer hover:underline decoration-primary/40 underline-offset-4 transition-all"
+                  onClick={handleOpenRenameDialog}
+                  title="Clic para renombrar"
+                  data-testid="app-details-rename-app-button"
+                >
+                  {selectedApp.name}
+                </h1>
+                <LanguageBadge language={selectedApp.primaryLanguage} />
+              </div>
+              <span
+                className="typo-mono-xs text-muted-foreground/50 break-all text-center cursor-pointer hover:text-muted-foreground/80 transition-colors"
+                title="Abrir carpeta"
+                onClick={() => ipc.system.showItemInFolder(currentAppPath)}
               >
-                <Star
-                  className={`h-6 w-6 transition-all duration-200 ${selectedApp.isFavorite
-                    ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_6px_rgba(250,204,21,0.5)]"
-                    : "text-muted-foreground/70/60 hover:text-yellow-400"
-                    }`}
-                />
-              </Button>
+                {currentAppPath}
+              </span>
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2">
-              {(!selectedApp.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage?.toLowerCase?.())) && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (!appId) {
-                    console.error("No app id found");
-                    return;
-                  }
-                  ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
-                }}
-                className="cursor-pointer w-full py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-card dark:bg-black/40 backdrop-blur-xl dark:border-white/10 hover:bg-muted/80 dark:hover:bg-black/60 transition-colors"
-                size="lg"
-              >
-                <MessageCircle className="h-5 w-5" />
-                <span className="mb-0.5">Abrir en Chat</span>
-              </Button>
-              )}
-
-              {/* Collapsible Información y opciones section */}
-              <div className="border border-border dark:border-white/10 rounded-xl bg-card dark:bg-black/40 backdrop-blur-xl shadow-sm overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setIsInfoSectionOpen(!isInfoSectionOpen)}
-                  className="w-full px-4 py-4 flex items-center justify-between hover:bg-muted/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              <div className="flex gap-2">
+                {(!selectedApp.primaryLanguage || ['javascript', 'typescript', 'unknown'].includes(selectedApp.primaryLanguage?.toLowerCase?.())) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!appId) return;
+                    ipc.system.openChatWindow({ appId, theme, themeIntensity: intensity });
+                  }}
+                  className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-primary/10 border-primary/20 text-primary hover:bg-primary/15 transition-colors"
+                  size="lg"
                 >
-                  <div className="flex items-center gap-2">
-                    {isInfoSectionOpen ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div className="flex flex-col items-start">
-                      <span className="typo-label">Información y opciones</span>
-                      <span className="typo-caption">Nombre, ubicación y datos del workspace</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground/70" />
-                    <Info className="h-3.5 w-3.5 text-muted-foreground/70" />
-                  </div>
-                </button>
-                <div
-                  className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isInfoSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
-                    }`}
+                  <MessageCircle className="h-5 w-5" />
+                  Abrir en Chat
+                </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  className="cursor-pointer flex-1 py-7 flex justify-center items-center gap-2 text-base font-semibold shadow-sm bg-transparent border-destructive/20 text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  size="lg"
                 >
-                  <div className="p-4 space-y-3 border-t border-border dark:border-white/10 bg-muted/20 dark:bg-black/20">
-                    {/* Opciones Card */}
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 typo-label">
-                          <Settings className="h-5 w-5" />
-                          Opciones
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9"
-                          onClick={handleOpenRenameDialog}
-                          data-testid="app-details-rename-app-button"
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Renombrar proyecto
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9"
-                          onClick={() => ipc.system.showItemInFolder(currentAppPath)}
-                        >
-                          <Folder className="h-4 w-4" />
-                          Abrir directorio de destino
-                        </Button>
-                        {hasDesignMd && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start gap-2 h-9"
-                            onClick={handleDownloadDesign}
-                          >
-                            <Download className="h-4 w-4" />
-                            Descargar DESIGN.md
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setIsDeleteDialogOpen(true)}
-                        >
-                          <FolderX className="h-4 w-4" />
-                          Cerrar workspace
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    {/* Información Card */}
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 typo-label">
-                          <Info className="h-5 w-5" />
-                          Información
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <MapPin className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
-                          <div>
-                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Ruta</span>
-                            <span className="typo-mono-xs break-all !text-[13px]">{currentAppPath}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <Calendar className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
-                          <div>
-                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Fecha de creación</span>
-                            <span className="typo-mono !text-[13px]">{new Date(selectedApp.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <Clock className="h-4 w-4 text-muted-foreground/70 mt-0.5 shrink-0" />
-                          <div>
-                            <span className="block typo-micro uppercase tracking-widest mb-0.5">Última actualización</span>
-                            <span className="typo-mono !text-[13px]">{new Date(selectedApp.updatedAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Prompt Inicial Card */}
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 typo-label">
-                          <MessageSquareText className="h-5 w-5" />
-                          Prompt inicial
-                        </CardTitle>
-                        <CardDescription className="typo-caption">El mensaje que dio origen a esta aplicación</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {isLoadingInitialPrompt ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Cargando...
-                          </div>
-                        ) : initialPrompt?.content ? (
-                          <div className="space-y-2">
-                            <div className="relative group">
-                              <div className="typo-body whitespace-pre-wrap break-words bg-black/5 dark:bg-white/5 rounded-lg p-3 border border-black/5 dark:border-white/5 max-h-48 overflow-y-auto">
-                                {initialPrompt.content}
-                              </div>
-                              <button
-                                type="button"
-                                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/10 dark:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/20 dark:hover:bg-white/20 cursor-pointer"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(initialPrompt.content!);
-                                  setCopiedPrompt(true);
-                                  setTimeout(() => setCopiedPrompt(false), 2000);
-                                }}
-                                title="Copiar prompt"
-                              >
-                                {copiedPrompt ? (
-                                  <Check className="h-3.5 w-3.5 text-green-500" />
-                                ) : (
-                                  <ClipboardCopy className="h-3.5 w-3.5 text-muted-foreground" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground italic">
-                            No se encontró el prompt inicial de esta aplicación.
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
+                  <FolderX className="h-5 w-5" />
+                  Cerrar workspace
+                </Button>
               </div>
 
-              {/* Collapsible Repositorio e integraciones section */}
-              <div className="border border-border dark:border-white/10 rounded-xl bg-card dark:bg-black/40 backdrop-blur-xl shadow-sm overflow-hidden mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsIntegrationsSectionOpen(!isIntegrationsSectionOpen)}
-                  className="w-full px-4 py-4 flex items-center justify-between hover:bg-muted/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              {hasDesignMd && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer self-center"
+                  onClick={handleDownloadDesign}
                 >
-                  <div className="flex items-center gap-2">
-                    {isIntegrationsSectionOpen ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div className="flex flex-col items-start">
-                      <span className="typo-label">Repositorio e integraciones</span>
-                      <span className="typo-caption text-muted-foreground">GitHub, Bunny.net, PocketBase y Supabase</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Github className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.githubOrg && selectedApp.githubRepo ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    <BunnyIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.bunnyConfig ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    <PocketBaseIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.pocketbaseConfig ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    <SupabaseIcon className={`h-3.5 w-3.5 transition-colors duration-200 ${selectedApp.supabaseProjectId ? 'text-primary' : 'text-foreground opacity-40'}`} />
-                    {/* Firebase hidden - not mature yet */}
-                    {/* <Flame className="h-3.5 w-3.5 text-muted-foreground/70" /> */}
-                    {/* <Smartphone className="h-3.5 w-3.5 text-muted-foreground/70" /> */}
-                  </div>
-                </button>
-                <div
-                  className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ${isIntegrationsSectionOpen ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
-                    }`}
-                >
-                  <div className="p-4 space-y-3 border-t border-border dark:border-white/10 bg-muted/20 dark:bg-black/20">
-                    {/* GitHub */}
+                  <Download className="h-3.5 w-3.5" />
+                  Descargar DESIGN.md
+                </Button>
+              )}
+
+
+
+              {/* ── Integraciones ── */}
+              <div className="mt-6">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">Integraciones</span>
+                </div>
+                <div className="space-y-2">
+                  {/* ── Connected integrations ── */}
+                  {selectedApp.githubOrg && selectedApp.githubRepo && (
                     <CollapsibleCard
                       title="GitHub"
                       icon={<Github className="h-5 w-5" />}
-                      description="Conecta y gestiona tu repositorio de GitHub"
+                      description={`${selectedApp.githubOrg}/${selectedApp.githubRepo}`}
                     >
                       <GitHubConnector appId={appId} folderName={selectedApp.path} />
-                      {selectedApp.githubOrg && selectedApp.githubRepo && appId && (
+                      {appId && (
                         <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
                           <GithubCollaboratorManager appId={appId} />
                         </div>
                       )}
                     </CollapsibleCard>
+                  )}
+                  {selectedApp.bunnyConfig && appId && <BunnyConnector appId={appId} />}
+                  {selectedApp.supabaseProjectId && appId && <SupabaseConnector appId={appId} />}
+                  {selectedApp.pocketbaseConfig && appId && <PocketBaseConnector appId={appId} />}
 
-                    {/* Bunny.net */}
-                    {appId && <BunnyConnector appId={appId} />}
+                  {/* ── Unconnected integrations (muted) ── */}
+                  {!(selectedApp.githubOrg && selectedApp.githubRepo) && (
+                    <div className="opacity-50 hover:opacity-80 transition-opacity">
+                      <CollapsibleCard
+                        title="GitHub"
+                        icon={<Github className="h-5 w-5" />}
+                        description="No conectado"
+                      >
+                        <GitHubConnector appId={appId} folderName={selectedApp.path} />
+                      </CollapsibleCard>
+                    </div>
+                  )}
+                  {!selectedApp.bunnyConfig && appId && (
+                    <div className="opacity-50 hover:opacity-80 transition-opacity">
+                      <BunnyConnector appId={appId} />
+                    </div>
+                  )}
+                  {!selectedApp.supabaseProjectId && appId && (
+                    <div className="opacity-50 hover:opacity-80 transition-opacity">
+                      <SupabaseConnector appId={appId} />
+                    </div>
+                  )}
+                  {!selectedApp.pocketbaseConfig && appId && (
+                    <div className="opacity-50 hover:opacity-80 transition-opacity">
+                      <PocketBaseConnector appId={appId} />
+                    </div>
+                  )}
 
-                    {/* Supabase */}
-                    {appId && <SupabaseConnector appId={appId} />}
 
-                    {/* PocketBase */}
-                    {appId && <PocketBaseConnector appId={appId} />}
-
-                    {/* Firebase hidden - not mature yet */}
-                    {/* {appId && <FirebaseConnector appId={appId} />} */}
-
-                    {/* Capacitor hidden */}
-                    {/* {appId && <CapacitorControls appId={appId} />} */}
-
-                    {/* App Upgrades (includes Capacitor install prompt) */}
-                    <AppUpgrades appId={appId} />
-                  </div>
                 </div>
               </div>
 

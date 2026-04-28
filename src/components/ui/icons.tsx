@@ -174,6 +174,8 @@ export const ClipboardCopy = withIconFactory(Lucide.ClipboardCopy, Iconoir.Paste
 export const FolderInput = withIconFactory(Lucide.FolderInput, Iconoir.FolderPlus);
 export const FolderX = withIconFactory(Lucide.FolderX, Iconoir.FolderMinus);
 export const MapPin = withIconFactory(Lucide.MapPin, Iconoir.MapPin);
+export const Pin = withIconFactory(Lucide.Pin, Iconoir.Pin);
+export const PinOff = withIconFactory(Lucide.PinOff, Iconoir.PinSlash);
 export const MessageCircle = withIconFactory(Lucide.MessageCircle, Iconoir.ChatBubble);
 export const MessageSquareText = withIconFactory(Lucide.MessageSquareText, Iconoir.MessageText);
 // Git & Connector icons

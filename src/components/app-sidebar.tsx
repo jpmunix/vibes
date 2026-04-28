@@ -73,10 +73,6 @@ const items: {
     tabKey: "Workspace",
     to: "/workspace",
     icon: Bot,
-    menuItems: [
-      { label: "Nuevo workspace", icon: FolderPlus, action: "workspace:empty-app" },
-      { label: "Añadir workspace", icon: FolderOpen, action: "workspace:open-folder" },
-    ],
   },
   {
     title: "Ajustes",
@@ -292,6 +288,8 @@ export function TopNavbar() {
                       if (hasMenu) {
                         e.preventDefault();
                         setHoveredMenu(hoveredMenu === item.tabKey ? null : item.tabKey);
+                      } else if (isActive) {
+                        e.preventDefault();
                       } else {
                         setActiveTab(item.tabKey);
                       }

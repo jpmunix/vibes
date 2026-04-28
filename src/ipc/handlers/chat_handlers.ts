@@ -567,5 +567,53 @@ export function registerChatHandlers() {
     }
   });
 
+  // Pin / unpin a chat
+  createTypedHandler(chatContracts.pinChat, async (_, { chatId, pinned }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    if (pinned) {
+      // Enforce max 10 pinned chats
+      const currentPinned = await db
+        .select({ id: remoteSchema.chats.id })
+        .from(remoteSchema.chats)
+        .where(and(
+          eq(remoteSchema.chats.userId, context.userId),
+          eq(remoteSchema.chats.isPinned, 1),
+        ));
+      if (currentPinned.length >= 10) {
+        throw new Error("Máximo 10 conversaciones fijadas");
+      }
+    }
+
+    await db.update(remoteSchema.chats)
+      .set({ isPinned: pinned ? 1 : 0 })
+      .where(and(eq(remoteSchema.chats.id, chatId), eq(remoteSchema.chats.userId, context.userId)));
+  });
+
+  // Get all pinned chats (across all apps)
+  createTypedHandler(chatContracts.getPinnedChats, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const pinned = await db
+      .select({
+        id: remoteSchema.chats.id,
+        appId: remoteSchema.chats.appId,
+        appName: remoteSchema.apps.name,
+        title: remoteSchema.chats.title,
+        createdAt: remoteSchema.chats.createdAt,
+      })
+      .from(remoteSchema.chats)
+      .innerJoin(remoteSchema.apps, eq(remoteSchema.chats.appId, remoteSchema.apps.id))
+      .where(and(
+        eq(remoteSchema.chats.userId, context.userId),
+        eq(remoteSchema.chats.isPinned, 1),
+      ))
+      .orderBy(desc(remoteSchema.chats.createdAt));
+
+    return pinned as any;
+  });
+
   logger.debug("Registered chat IPC handlers");
 }

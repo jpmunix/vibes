@@ -43,7 +43,6 @@ import { systemContracts, systemEvents } from "../types/system";
 import { templateContracts } from "../types/templates";
 import { todoContracts } from "../types/todo";
 import { tokenStatsContracts } from "../types/token_stats";
-import { upgradeContracts } from "../types/upgrade";
 import { vercelContracts } from "../types/vercel";
 import { versionContracts } from "../types/version";
 import { visualEditingContracts } from "../types/visual-editing";
@@ -116,7 +115,6 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(helpContracts),
   ...getInvokeChannels(capacitorContracts),
   ...getInvokeChannels(contextContracts),
-  ...getInvokeChannels(upgradeContracts),
   ...getInvokeChannels(visualEditingContracts),
   ...getInvokeChannels(miscContracts),
 

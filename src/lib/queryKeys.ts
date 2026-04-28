@@ -198,11 +198,9 @@ export const queryKeys = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // App Upgrades
+  // App Upgrades (only isCapacitor remains for CapacitorControls)
   // ─────────────────────────────────────────────────────────────────────────────
   appUpgrades: {
-    byApp: ({ appId }: { appId: number | null }) =>
-      ["app-upgrades", appId] as const,
     isCapacitor: ({ appId }: { appId: number | null }) =>
       ["is-capacitor", appId] as const,
   },

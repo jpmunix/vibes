@@ -535,7 +535,6 @@ function ChatPositionToggleInline() {
         updateSettings({ previewPosition: previewPos });
       }}
       className="cursor-pointer p-1 hover:bg-(--background-lightest) rounded-md transition-colors"
-      title={isLeft ? "Chat a la derecha" : "Chat a la izquierda"}
     >
       {isLeft ? <PanelLeft size={16} /> : <PanelRightOpen size={16} />}
     </button>
@@ -579,7 +578,6 @@ function ExpandChatButton({
     <button
       onClick={onTogglePreview}
       className="cursor-pointer p-1 ml-1 hover:bg-(--background-lightest) rounded-md transition-colors"
-      title={isPreviewOpen ? "Maximizar chat" : "Restaurar paneles"}
     >
       {isPreviewOpen ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
     </button>

@@ -48,7 +48,6 @@ export { importContracts } from "./import";
 export { helpContracts, helpStreamContract } from "./help";
 export { capacitorContracts } from "./capacitor";
 export { contextContracts } from "./context";
-export { upgradeContracts } from "./upgrade";
 export { visualEditingContracts } from "./visual-editing";
 export { miscContracts, miscEvents } from "./misc";
 export { designContracts } from "./design";
@@ -91,7 +90,6 @@ export { importClient } from "./import";
 export { helpClient, helpStreamClient } from "./help";
 export { capacitorClient } from "./capacitor";
 export { contextClient } from "./context";
-export { upgradeClient } from "./upgrade";
 export { visualEditingClient } from "./visual-editing";
 export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
@@ -309,8 +307,6 @@ export type { HelpChatStartParams } from "./help";
 // Context types
 export type { ContextPathResults, AppChatContext } from "./context";
 
-// Upgrade types
-export type { AppUpgrade } from "./upgrade";
 
 export type {
   VisualEditingChange,
@@ -421,7 +417,6 @@ import { systemClient, systemEventClient } from "./system";
 import { templateClient } from "./templates";
 import { todoClient, todoAttachmentClient } from "./todo";
 import { tokenStatsClient } from "./token_stats";
-import { upgradeClient } from "./upgrade";
 import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
@@ -492,7 +487,6 @@ export const ipc = {
   help: helpClient,
   capacitor: capacitorClient,
   context: contextClient,
-  upgrade: upgradeClient,
   visualEditing: visualEditingClient,
   misc: miscClient,
 

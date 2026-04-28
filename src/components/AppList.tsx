@@ -331,12 +331,11 @@ export function AppList({ show }: { show?: boolean }) {
             }
 
             .sidebar-section-label {
-              font-size: 12.5px;
-              font-weight: 700;
-              letter-spacing: 0.06em;
-              text-transform: uppercase;
+              font-size: 12px;
+              font-weight: 500;
+              letter-spacing: 0.03em;
               color: var(--muted-foreground);
-              opacity: 0.5;
+              opacity: 0.6;
               padding: 10px 12px 4px;
             }
 
@@ -443,19 +442,19 @@ export function AppList({ show }: { show?: boolean }) {
               <SidebarMenu className="mt-1" data-testid="app-list">
                 {favoriteApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Aplicaciones favoritas</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones fijadas</div>
                     {favoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {nonFavoriteApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Otras aplicaciones</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Aplicaciones</div>
                     {nonFavoriteApps.map(renderAppItem)}
                   </>
                 )}
                 {noLocalFilesApps.length > 0 && (
                   <>
-                    <div className="px-3 py-2 typo-menu-header opacity-50">Sin archivos locales</div>
+                    <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground/60 tracking-wide">Sin archivos locales</div>
                     {noLocalFilesApps.map(renderAppItem)}
                   </>
                 )}

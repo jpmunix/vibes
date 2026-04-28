@@ -9,7 +9,6 @@ import {
     Command,
     CommandInput,
     CommandList,
-    CommandEmpty,
     CommandGroup,
     CommandItem,
 } from "@/components/ui/command";
@@ -145,10 +144,7 @@ export function ModelVariantPicker({
                     {/* ── Left panel: Model list ──────────────────────────── */}
                     <div className="flex-1 min-w-0 flex flex-col border-r border-border/40">
                         <Command
-                            filter={(value, search, keywords) => {
-                                const haystack = [value, ...(keywords || [])].join(" ").toLowerCase();
-                                return haystack.includes(search.toLowerCase()) ? 1 : 0;
-                            }}
+                            shouldFilter={false}
                         >
                             <CommandInput
                                 placeholder={searchPlaceholder}
@@ -159,9 +155,11 @@ export function ModelVariantPicker({
                                 }}
                             />
                             <CommandList className="max-h-none flex-1 overflow-y-auto">
-                                <CommandEmpty className="py-4 text-center typo-caption">
-                                    {emptyMessage}
-                                </CommandEmpty>
+                                {models.length === 0 && (
+                                    <div className="py-4 text-center typo-caption">
+                                        {emptyMessage}
+                                    </div>
+                                )}
                                 <CommandGroup>
                                     {models.map(({ provider, model }) => {
                                         const value = `${provider}:${model.apiName}`;
@@ -170,7 +168,6 @@ export function ModelVariantPicker({
                                             <CommandItem
                                                 key={value}
                                                 value={value}
-                                                keywords={[model.displayName, model.apiName, ...(modelAliases[model.apiName] ? [modelAliases[model.apiName]] : [])]}
                                                 onSelect={() => handleModelSelect(value)}
                                                 className={cn(
                                                     "cursor-pointer typo-dropdown",

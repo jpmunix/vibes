@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Star, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "@/components/ui/icons";
+import { Pin, ExternalLink, AlertTriangle, CloudDownload, Loader2 } from "@/components/ui/icons";
 import { SidebarMenuItem, SidebarMenuAction } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/ipc/types";
@@ -60,7 +60,7 @@ export function AppItem({
 
   return (
     <SidebarMenuItem className="mb-0.5">
-      <div className={`flex items-center relative group/menu-item overflow-hidden ${selectionMode ? "ml-2 mr-4 gap-3" : "ml-2 mr-2"}`}>
+      <div className={`flex items-center relative group/menu-item overflow-hidden ${selectionMode ? "ml-2 mr-4 gap-3" : "ml-4 mr-2"}`}>
         {/* ── Checkbox for bulk selection mode ── */}
         {selectionMode && (
           <div
@@ -164,7 +164,7 @@ export function AppItem({
               className={`transition-colors h-7 w-7 flex items-center justify-center relative top-0 right-0 cursor-pointer ${app.isFavorite ? "opacity-100" : ""}`}
               data-testid="favorite-button"
             >
-              <Star
+              <Pin
                 size={14}
                 className={
                   app.isFavorite

@@ -372,6 +372,26 @@ export const chatContracts = {
     input: InsertUserMessagesParamsSchema,
     output: z.void(),
   }),
+
+  pinChat: defineContract({
+    channel: "pin-chat",
+    input: z.object({ chatId: z.number(), pinned: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getPinnedChats: defineContract({
+    channel: "get-pinned-chats",
+    input: z.void(),
+    output: z.array(
+      z.object({
+        id: z.number(),
+        appId: z.number(),
+        appName: z.string(),
+        title: z.string().nullable(),
+        createdAt: z.date(),
+      }),
+    ),
+  }),
 } as const;
 
 // =============================================================================

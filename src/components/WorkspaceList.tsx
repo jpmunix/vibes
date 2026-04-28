@@ -24,6 +24,8 @@ import {
   Archive,
   ArchiveRestore,
   GitBranch,
+  Pin,
+  PinOff,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -47,6 +49,7 @@ import {
 // --- Preference keys ---
 const PREF_EXPANDED_APPS = "sidebar.expandedApps";
 const PREF_LAST_SELECTION = "sidebar.lastSelection";
+const MAX_PINNED_CHATS = 10;
 
 // --- App chats sub-list (lazy loaded per app) ---
 interface AppChatsProps {
@@ -56,6 +59,9 @@ interface AppChatsProps {
   onRenameChat: (chatId: number, currentTitle: string) => void;
   onArchiveChat: (chatId: number, chatTitle: string) => void;
   onMarkUnread: (chatId: number) => void;
+  onPinChat: (chatId: number, appId: number, chatTitle: string) => void;
+  onUnpinChat: (chatId: number) => void;
+  pinnedChatIds: Set<number>;
   selectedChatId: number | null;
 }
 
@@ -66,6 +72,9 @@ const AppChats = memo(function AppChats({
   onRenameChat,
   onArchiveChat,
   onMarkUnread,
+  onPinChat,
+  onUnpinChat,
+  pinnedChatIds,
   selectedChatId,
 }: AppChatsProps) {
   const { chats, loading } = useChats(appId);
@@ -141,9 +150,10 @@ const AppChats = memo(function AppChats({
   const sortedChats = useMemo(() => {
     if (!chats) return [];
     return [...chats]
+      .filter(c => !pinnedChatIds.has(c.id))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
-  }, [chats]);
+  }, [chats, pinnedChatIds]);
 
   if (loading) {
     return (
@@ -236,7 +246,26 @@ const AppChats = memo(function AppChats({
                 {/* Gradient + quick actions + 3-dot menu */}
                 {!isRenaming && (
                   <>
-                    <div className={`absolute right-0 top-0 bottom-0 w-32 pointer-events-none transition-opacity z-10 rounded-r-md bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`} />
+                    <div
+                      className={`absolute right-0 top-0 bottom-0 w-48 pointer-events-none transition-opacity z-10 rounded-r-md ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      style={{ background: "linear-gradient(to left, var(--sidebar-accent) 55%, transparent)" }}
+                    />
+                    {/* Pin/Unpin quick action */}
+                    <button
+                      type="button"
+                      className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      title={pinnedChatIds.has(chat.id) ? "Desfijar" : "Fijar"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (pinnedChatIds.has(chat.id)) {
+                          onUnpinChat(chat.id);
+                        } else {
+                          onPinChat(chat.id, appId, chat.title || "Nuevo chat");
+                        }
+                      }}
+                    >
+                      {pinnedChatIds.has(chat.id) ? <PinOff size={15} /> : <Pin size={15} />}
+                    </button>
                     {/* Archive quick action */}
                     <button
                       type="button"
@@ -291,6 +320,26 @@ const AppChats = memo(function AppChats({
           style={{ top: menuPos.top, left: menuPos.left }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+            onClick={() => {
+              const chatId = openMenuId;
+              closeMenu();
+              if (pinnedChatIds.has(chatId)) {
+                onUnpinChat(chatId);
+              } else {
+                const chat = sortedChats.find(c => c.id === chatId);
+                if (chat) onPinChat(chat.id, appId, chat.title || "Nuevo chat");
+              }
+            }}
+          >
+            {pinnedChatIds.has(openMenuId) ? (
+              <><PinOff size={14} className="opacity-60 shrink-0" /> Desfijar</>
+            ) : (
+              <><Pin size={14} className="opacity-60 shrink-0" /> Fijar</>
+            )}
+          </button>
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
@@ -376,6 +425,9 @@ interface WorkspaceAppItemProps {
   onArchiveChat: (chatId: number, chatTitle: string) => void;
   onRenameApp: (appId: number, appName: string) => void;
   onMarkUnread: (chatId: number) => void;
+  onPinChat: (chatId: number, appId: number, chatTitle: string) => void;
+  onUnpinChat: (chatId: number) => void;
+  pinnedChatIds: Set<number>;
   onNewChat: (appId: number) => void;
   onCloseApp: (appId: number, appName: string) => void;
   onOpenGit: (appId: number) => void;
@@ -394,6 +446,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onArchiveChat,
   onRenameApp,
   onMarkUnread,
+  onPinChat,
+  onUnpinChat,
+  pinnedChatIds,
   onNewChat,
   onCloseApp,
   onOpenGit,
@@ -401,7 +456,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
-  const isActive = selectedAppId === app.id;
+  const isActive = selectedAppId === app.id && (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const queryClient = useQueryClient();
 
@@ -499,8 +554,15 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           </div>
         </button>
 
-        {/* Gradient fade */}
-        <div className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none transition-opacity z-10 rounded-r-lg bg-gradient-to-l from-[var(--sidebar-accent)] via-[var(--sidebar-accent)] to-transparent ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`} />
+        {/* Gradient fade — theme-aware: uses sidebar-accent for idle, inherits active bg tint */}
+        <div
+          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none transition-opacity z-10 rounded-r-lg ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          style={{
+            background: isActive
+              ? "linear-gradient(to left, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.08) 40%, transparent)"
+              : "linear-gradient(to left, var(--sidebar-accent), var(--sidebar-accent) 40%, transparent)",
+          }}
+        />
 
         {/* 3-dot menu button */}
         <button
@@ -533,6 +595,9 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           onRenameChat={onRenameChat}
           onArchiveChat={onArchiveChat}
           onMarkUnread={onMarkUnread}
+          onPinChat={onPinChat}
+          onUnpinChat={onUnpinChat}
+          pinnedChatIds={pinnedChatIds}
           selectedChatId={selectedChatId}
         />
       )}
@@ -716,9 +781,14 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const lastSavedExpandedRef = useRef<string | null>(null);
   const lastSavedSelectionRef = useRef<string | null>(null);
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+  const [wsMenuOpen, setWsMenuOpen] = useState(false);
+  const [wsMenuBtnPos, setWsMenuBtnPos] = useState<{ top: number; left: number } | null>(null);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const wsMenuBtnRef = useRef<HTMLButtonElement>(null);
 
   // Listen for sidebar action triggers from TopNavbar dropdown
   const sidebarAction = useAtomValue(sidebarActionAtom);
+  const isStreamingById = useAtomValue(isStreamingByIdAtom);
   const { theme, intensity } = useTheme();
 
   const handleOpenGit = useCallback((appId: number) => {
@@ -789,6 +859,17 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const [deleteChatId, setDeleteChatId] = useState<number | null>(null);
   const [deleteChatTitle, setDeleteChatTitle] = useState("");
 
+  // ── Pinned chats state (DB-backed via Bunny) ──
+  type PinnedChatRow = { id: number; appId: number; appName: string; title: string | null; createdAt: Date };
+  const { data: pinnedChatsRaw = [] } = useQuery<PinnedChatRow[]>({
+    queryKey: ["pinned-chats"],
+    queryFn: () => ipc.chat.getPinnedChats(),
+  });
+  const pinnedChats = pinnedChatsRaw;
+  const [pinnedSectionOpen, setPinnedSectionOpen] = useState(true);
+
+  const pinnedChatIds = useMemo(() => new Set(pinnedChats.map(p => p.id)), [pinnedChats]);
+
   // Load expanded apps from DB on mount
   useEffect(() => {
     if (loadedRef.current) return;
@@ -832,16 +913,16 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     };
   }, [expandedApps]);
 
-  // Auto-expand the selected app's group
+  // Auto-expand the selected app's group (skip if selected chat is pinned)
   useEffect(() => {
-    if (selectedAppId != null && !expandedApps.has(selectedAppId)) {
+    if (selectedAppId != null && !expandedApps.has(selectedAppId) && !(selectedChatId && pinnedChatIds.has(selectedChatId))) {
       setExpandedApps((prev) => {
         const next = new Set(prev);
         next.add(selectedAppId);
         return next;
       });
     }
-  }, [selectedAppId]);
+  }, [selectedAppId, selectedChatId, pinnedChatIds]);
 
   // Persist last selection to DB when navigating to a chat (only if changed)
   useEffect(() => {
@@ -989,6 +1070,11 @@ export function WorkspaceList({ show }: { show?: boolean }) {
       await ipc.chat.archiveChat({ chatId, archived: true });
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
       showSuccess(`"${chatTitle}" archivado`);
+      // Also unpin if it was pinned
+      if (pinnedChatIds.has(chatId)) {
+        await ipc.chat.pinChat({ chatId, pinned: false });
+        queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+      }
       if (selectedChatId === chatId) {
         setSelectedChatId(null);
         navigate({ to: "/workspace", search: selectedAppId ? { appId: selectedAppId } : {} });
@@ -996,7 +1082,25 @@ export function WorkspaceList({ show }: { show?: boolean }) {
     } catch (e) {
       showError(e);
     }
-  }, [queryClient, selectedChatId, selectedAppId, navigate]);
+  }, [queryClient, selectedChatId, selectedAppId, navigate, pinnedChatIds]);
+
+  const handlePinChat = useCallback(async (chatId: number, _appId: number, _chatTitle: string) => {
+    try {
+      await ipc.chat.pinChat({ chatId, pinned: true });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
+
+  const handleUnpinChat = useCallback(async (chatId: number) => {
+    try {
+      await ipc.chat.pinChat({ chatId, pinned: false });
+      queryClient.invalidateQueries({ queryKey: ["pinned-chats"] });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
 
   const handleRenameChatClick = useCallback((_chatId: number, _currentTitle: string) => {
     // Inline rename is handled inside AppChats — this is a no-op pass-through
@@ -1152,20 +1256,157 @@ export function WorkspaceList({ show }: { show?: boolean }) {
         <SidebarGroupContent>
           <div className="flex flex-col gap-3 px-2">
 
-            {/* Search */}
-            <div className="relative">
-              <Search
-                size={14}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 typo-input opacity-50"
-              />
-              <input
-                type="text"
-                className="workspace-search-input typo-input"
-                placeholder="Buscar aplicación..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            {/* ── Pinned chats section ── */}
+            {pinnedChats.length > 0 && !searchQuery.trim() && (
+              <div className="mt-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 select-none">
+                  <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
+                    Conversaciones fijadas
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/35 ml-auto">
+                    {pinnedChats.length}/{MAX_PINNED_CHATS}
+                  </span>
+                </div>
+
+                <div className="mt-1 pl-5">
+                    {pinnedChats.map((pinned) => {
+                      const isActive = selectedChatId === pinned.id;
+                      const streaming = isStreamingById.get(pinned.id) ?? false;
+                      return (
+                        <div
+                          key={pinned.id}
+                          className="group/pin-row relative flex items-center rounded-xl transition-colors hover:bg-sidebar-accent/60"
+                        >
+                          <button
+                            type="button"
+                            className={`flex items-center gap-2 px-3 py-2 typo-menu-subitem rounded-xl cursor-pointer text-left w-full min-w-0 ${
+                              isActive ? "text-primary font-medium" : "text-foreground/80"
+                            }`}
+                            onClick={() => {
+                              navigate({ to: "/workspace", search: { appId: pinned.appId, chatId: pinned.id } });
+                            }}
+                          >
+                            <div className="flex items-center min-w-0 flex-1 gap-1.5">
+                              {streaming && (
+                                <Loader2 size={12} className="animate-spin text-primary shrink-0" />
+                              )}
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="truncate">{pinned.title || "Nuevo chat"}</span>
+                                <span className="typo-micro opacity-60 mt-0.5 truncate">
+                                  {pinned.appName}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Gradient + unpin action */}
+                          <div className="absolute right-0 top-0 bottom-0 w-20 pointer-events-none transition-opacity z-10 rounded-r-md opacity-0 group-hover/pin-row:opacity-100" style={{ background: "linear-gradient(to left, var(--sidebar-accent) 40%, transparent)" }} />
+                          <button
+                            type="button"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer opacity-0 group-hover/pin-row:opacity-100"
+                            title="Desfijar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnpinChat(pinned.id);
+                            }}
+                          >
+                            <PinOff size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+              </div>
+            )}
+
+            {/* ── Workspaces section ── */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 group/ws-header">
+              <span className="text-xs font-medium text-muted-foreground/60 tracking-wide">
+                Workspaces
+              </span>
+              <div className="relative ml-auto">
+                <button
+                  ref={wsMenuBtnRef}
+                  type="button"
+                  className="p-1 rounded-md hover:bg-sidebar-accent/80 text-muted-foreground/40 hover:text-foreground/70 transition-all cursor-pointer"
+                  title="Opciones"
+                  onClick={() => {
+                    if (wsMenuOpen) {
+                      setWsMenuOpen(false);
+                      setWsMenuBtnPos(null);
+                    } else {
+                      const rect = wsMenuBtnRef.current?.getBoundingClientRect();
+                      if (rect) setWsMenuBtnPos({ top: rect.bottom + 4, left: rect.right - 192 });
+                      setWsMenuOpen(true);
+                    }
+                  }}
+                >
+                  <MoreVertical size={14} />
+                </button>
+                {wsMenuOpen && wsMenuBtnPos && createPortal(
+                  <>
+                    <div className="fixed inset-0 z-[998]" onClick={() => { setWsMenuOpen(false); setWsMenuBtnPos(null); }} />
+                    <div
+                      className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+                      style={{ top: wsMenuBtnPos.top, left: wsMenuBtnPos.left }}
+                    >
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => { setWsMenuOpen(false); setSearchVisible(v => !v); }}
+                      >
+                        <Search size={14} className="opacity-60 shrink-0" />
+                        <span>Buscar</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => { setWsMenuOpen(false); setIsEmptyAppDialogOpen(true); }}
+                      >
+                        <FolderPlus size={14} className="opacity-60 shrink-0" />
+                        <span>Nuevo workspace</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 rounded-sm typo-dropdown hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => { setWsMenuOpen(false); handleOpenFolder(); }}
+                      >
+                        <FolderOpen size={14} className="opacity-60 shrink-0" />
+                        <span>Abrir workspace</span>
+                      </button>
+                    </div>
+                  </>,
+                  document.body
+                )}
+              </div>
             </div>
+
+            {/* Search (toggled via menu) */}
+            {searchVisible && (
+              <div className="relative px-1">
+                <Search
+                  size={14}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 typo-input opacity-50"
+                />
+                <input
+                  type="text"
+                  className="workspace-search-input typo-input pr-8"
+                  placeholder="Buscar workspace..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchVisible(false); } }}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground/50 hover:text-foreground/70 transition-colors cursor-pointer"
+                  onClick={() => { setSearchQuery(""); setSearchVisible(false); }}
+                  title="Cerrar búsqueda"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
 
             {/* Apps list */}
             {loading ? (
@@ -1194,6 +1435,9 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onArchiveChat={handleArchiveChatClick}
                     onRenameApp={handleRenameAppClick}
                     onMarkUnread={handleMarkUnread}
+                    onPinChat={handlePinChat}
+                    onUnpinChat={handleUnpinChat}
+                    pinnedChatIds={pinnedChatIds}
                     onNewChat={handleNewChat}
                     onCloseApp={handleCloseAppClick}
                     onOpenGit={handleOpenGit}

@@ -53,6 +53,10 @@ Si has acumulado proyectos que ya no necesitas, ahora puedes **seleccionar múlt
 
 Las notas de versión ahora muestran el **historial completo de todas las releases**, con cada versión como un bloque colapsable. Las dos más recientes se muestran expandidas por defecto y el resto permanecen cerradas para no saturar la vista. Además, hemos **unificado el formato de todas las notas** antiguas: mismo estilo de prosa, misma jerarquía y títulos limpios tipo changelog de GitHub.
 
+## Fija tus conversaciones favoritas
+
+Ahora puedes **fijar hasta 10 conversaciones** en la parte superior de la barra lateral, sin importar a qué workspace pertenezcan. Un clic en el menú contextual del chat y listo: siempre a mano, con el nombre del workspace debajo para que no pierdas el contexto. Para desfijar, pasa el cursor y pulsa el icono.
+
 ## Cambia de tema con un atajo
 
 Pulsa **Ctrl + T** (o **Cmd + T** en macOS) desde cualquier pantalla para **alternar entre el tema claro y el oscuro al instante**. Sin menús, sin ajustes: un solo atajo para cambiar el ambiente de trabajo cuando lo necesites.
@@ -79,7 +83,9 @@ Pulsa **Ctrl + T** (o **Cmd + T** en macOS) desde cualquier pantalla para **alte
 - Corregido un problema que impedía guardar archivos con contenido vacío desde el editor.
 - Textos de la interfaz de workspaces corregidos para mayor consistencia.
 - El popover de versión del sistema ahora carga instantáneamente.
+- Retoques visuales en la barra lateral y en las fichas de detalle de aplicaciones.
 - Mejoras internas de estabilidad y rendimiento.
+
 
 # v7.0
 *19 de abril de 2026*

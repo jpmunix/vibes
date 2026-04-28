@@ -2,7 +2,6 @@ import { registerThemesHandlers } from "../pro/main/ipc/handlers/themes_handlers
 import { registerVisualEditingHandlers } from "../pro/main/ipc/handlers/visual_editing_handlers";
 import { registerAppEnvVarsHandlers } from "./handlers/app_env_vars_handlers";
 import { registerAppHandlers } from "./handlers/app_handlers";
-import { registerAppUpgradeHandlers } from "./handlers/app_upgrade_handlers";
 import { registerCapacitorHandlers } from "./handlers/capacitor_handlers";
 import { registerChatHandlers } from "./handlers/chat_handlers";
 import { registerChatLogsHandlers } from "./handlers/chat_logs_handlers";
@@ -93,7 +92,6 @@ export function registerIpcHandlers() {
   registerSessionHandlers();
   //registerProHandlers();
   registerContextPathsHandlers();
-  registerAppUpgradeHandlers();
   registerCapacitorHandlers();
   registerAppEnvVarsHandlers();
   registerTemplateHandlers();
@@ -104,10 +102,7 @@ export function registerIpcHandlers() {
   registerTokenStatsHandlers();
   registerChatLogsHandlers();
 
-  // registerDebateHandlers();     // Feature hidden
-  // registerDebateStreamHandlers(); // Feature hidden
   registerBackupHandlers();
-  // registerKnowledgeHandlers(); // KB removed — replaced by OpenCode AGENTS.md
   registerAiQueryLogHandlers();
 
   registerConsoleHandlers();
