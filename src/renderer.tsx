@@ -901,6 +901,26 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "memory" && appIdStr) {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Lazy import — Memory module only loads when this window type is opened
+  import("./components/memory_window/MemoryWindowApp").then(
+    ({ MemoryWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <MemoryWindowApp appId={Number(appIdStr)} />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   // Show skeleton loader immediately while AuthGate JS bundle loads
   const root = createRoot(document.getElementById("root")!);

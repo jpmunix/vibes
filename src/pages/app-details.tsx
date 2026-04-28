@@ -82,7 +82,6 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { BunnyConnector } from "@/components/BunnyConnector";
 import { LanguageBadge } from "@/components/LanguageBadge";
-import { MemoryPanel } from "@/components/MemoryPanel";
 
 export default function AppDetailsPage() {
   const navigate = useNavigate();
@@ -453,6 +452,17 @@ export default function AppDetailsPage() {
                 </Button>
               )}
 
+              {appId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 h-8 text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer self-center"
+                  onClick={() => ipc.system.openMemoryWindow({ appId, theme, themeIntensity: intensity })}
+                >
+                  <Brain className="h-3.5 w-3.5" />
+                  <span className="text-xs">Memorias</span>
+                </Button>
+              )}
 
 
               {/* ── Integraciones ── */}
@@ -514,13 +524,6 @@ export default function AppDetailsPage() {
 
 
               {/* Knowledge Base — hidden: retired in agent mode, OpenCode uses AGENTS.md natively */}
-
-              {/* ── Agent Memory System ── */}
-              {appId && (
-                <div className="mt-6">
-                  <MemoryPanel appId={appId} />
-                </div>
-              )}
             </div>
 
             {/* Rename Dialog */}

@@ -1755,6 +1755,19 @@ This conversation includes one or more image attachments. When the user uploads 
               cancelled: true,
             });
 
+            // ── Memory extraction from partial response (fire-and-forget) ──
+            // Even if the user stopped the stream, there may be valuable knowledge
+            // in whatever was already generated.
+            if (updatedChat.app?.id && openCodeResponse.length > 100) {
+              extractMemoriesFromChatCycle({
+                appId: updatedChat.app.id,
+                userId: currentUserId as string,
+                chatId: req.chatId,
+                userPrompt,
+                assistantResponse: openCodeResponse,
+              }).catch(err => logger.warn("[Memory] Extraction failed (cancelled):", err));
+            }
+
             return;
           }
 

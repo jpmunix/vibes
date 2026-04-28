@@ -32,6 +32,9 @@ const consoleWindows = new Map<number, BrowserWindow>();
 // Track code viewer windows to avoid duplicates
 const codeWindows = new Map<number, BrowserWindow>();
 
+// Track memory viewer windows to avoid duplicates
+const memoryWindows = new Map<number, BrowserWindow>();
+
 // Temporary store for pending prompts+attachments passed to chat windows via IPC
 // Keyed by chatId — the chat window retrieves and clears this on mount
 const pendingChatPrompts = new Map<number, {
@@ -725,6 +728,7 @@ export function registerWindowHandlers() {
     for (const w of consoleWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of codeWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of messageWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -742,5 +746,95 @@ export function registerWindowHandlers() {
     // Tell renderer to navigate
     mainWindow.webContents.send("navigate-to-route", { route, search });
     logger.info(`navigateMainWindow: sent navigation to ${route}`);
+  });
+
+  // Memory viewer window — dedicated diagnostic panel for agent memories
+  createTypedHandler(systemContracts.openMemoryWindow, async (event, { appId, theme, themeIntensity }) => {
+    const existing = memoryWindows.get(appId);
+    if (existing && !existing.isDestroyed()) {
+      existing.focus();
+      return;
+    }
+
+    let appName = "Memorias";
+    try {
+      const db = getRemoteDb();
+      const settings = readSettings();
+      if (settings.userId) {
+        const appRow = await db.query.apps.findFirst({ where: and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, settings.userId)) });
+        if (appRow?.name) appName = appRow.name;
+      }
+    } catch (e) {
+      logger.warn(`Could not fetch app name for memory window title: ${e}`);
+    }
+
+    const memoryWindow = new BrowserWindow({
+      width: 900,
+      height: 650,
+      minWidth: 600,
+      minHeight: 400,
+      skipTaskbar: false,
+      title: `${appName} – Memorias`,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: { x: 10, y: 8 },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Prevent the renderer (HTML <title>) from overriding our window title
+    memoryWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    memoryWindow.removeMenu();
+
+    memoryWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => memoryWindow.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    memoryWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        memoryWindow.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        memoryWindow.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        memoryWindow.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=memory&appId=${appId}${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      memoryWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      memoryWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    memoryWindows.set(appId, memoryWindow);
+
+    memoryWindow.on("closed", () => {
+      memoryWindows.delete(appId);
+    });
+
+    logger.info(`Opened memory viewer window for app ${appId}`);
   });
 }

@@ -42,6 +42,14 @@ log.scope.labelPadding = false;
 log.transports.file.level = "error";
 log.transports.console.level = "info"; // Keep info logs in console/stdout
 
+// Silence noisy scopes — they flood the console during normal operation
+log.hooks.push((message, transport) => {
+  if (transport !== log.transports.console) return message;
+  const scope = message.scope;
+  if (scope === "opencode_adapter" || scope === "tsc") return false;
+  return message;
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Performance: Chromium command-line flags (must be set before app.ready)
 // Inspired by VS Code's Electron optimizations

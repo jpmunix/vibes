@@ -425,6 +425,17 @@ export const systemContracts = {
       arch: z.string(),
     }),
   }),
+
+  // Memory viewer window — dedicated diagnostic panel for agent memories
+  openMemoryWindow: defineContract({
+    channel: "window:open-memory",
+    input: z.object({
+      appId: z.number(),
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
 } as const;
 
 // =============================================================================

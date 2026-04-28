@@ -63,6 +63,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Memory system (enabled by default)
   memoriesEnabled: true,
   memoriesAutoExtract: true,
+  memoriesExtractionModel: "google/gemini-3.1-flash-lite-preview",
   // Web search — enabled by default so the model can search when needed
   enableWebSearch: true,
   // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)

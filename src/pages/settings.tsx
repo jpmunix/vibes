@@ -47,6 +47,7 @@ import { AutoExpandPreviewSwitch } from "@/components/AutoExpandPreviewSwitch";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { AgentToolsSettings } from "@/components/settings/AgentToolsSettings";
 import { McpServersSettings } from "@/components/settings/McpServersSettings";
+import { MemorySettings } from "@/components/settings/MemorySettings";
 
 import { DefaultChatModeSelector } from "@/components/DefaultChatModeSelector";
 import { useSetAtom } from "jotai";
@@ -870,6 +871,23 @@ export default function SettingsPage() {
             <McpServersSettings />
           </div>
 
+          {/* Memory System Section */}
+          <div
+            id="memory-settings"
+            className={`bg-card rounded-2xl shadow-sm p-8 border border-border transition-[border-color,box-shadow] duration-300 ${highlightedSection === "memory-settings"
+              ? "ring-2 ring-primary ring-offset-4 ring-offset-muted/30"
+              : ""
+              }`}
+          >
+            <h2 className="typo-section-title mb-2">
+              Memoria
+            </h2>
+            <p className="typo-caption mb-8">
+              Configura la memoria persistente del agente: el sistema recuerda hechos,
+              preferencias y decisiones entre sesiones.
+            </p>
+            <MemorySettings />
+          </div>
 
           {/* StatsSettings — retired: logging system removed */}
         </div>
