@@ -295,15 +295,7 @@ export async function initializeRemoteSchema(): Promise<void> {
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     )`,
 
-    // Notes
-    `CREATE TABLE IF NOT EXISTS notes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      title TEXT NOT NULL DEFAULT 'Nueva nota',
-      content TEXT NOT NULL DEFAULT '',
-      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-    )`,
+
 
     // Todo sections
     `CREATE TABLE IF NOT EXISTS todo_sections (
@@ -333,44 +325,7 @@ export async function initializeRemoteSchema(): Promise<void> {
       updated_at INTEGER NOT NULL DEFAULT (unixepoch())
     )`,
 
-    // Debates
-    `CREATE TABLE IF NOT EXISTS debates (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      title TEXT NOT NULL,
-      summary TEXT,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-    )`,
 
-    // Debate messages
-    `CREATE TABLE IF NOT EXISTS debate_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      debate_id INTEGER NOT NULL REFERENCES debates(id) ON DELETE CASCADE,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      is_summary INTEGER DEFAULT 0,
-      injected_items TEXT,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
-    )`,
-
-    // Debate tags
-    `CREATE TABLE IF NOT EXISTS debate_tags (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      name TEXT NOT NULL,
-      color TEXT,
-      UNIQUE(user_id, name)
-    )`,
-
-    // Debate to tags
-    `CREATE TABLE IF NOT EXISTS debate_to_tags (
-      debate_id INTEGER NOT NULL REFERENCES debates(id) ON DELETE CASCADE,
-      tag_id INTEGER NOT NULL REFERENCES debate_tags(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      UNIQUE(debate_id, tag_id)
-    )`,
 
     // Knowledge entries
     `CREATE TABLE IF NOT EXISTS knowledge_entries (

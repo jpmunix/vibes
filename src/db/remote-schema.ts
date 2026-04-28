@@ -288,20 +288,7 @@ export const customThemes = sqliteTable("custom_themes", {
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-// =============================================================================
-// NOTES
-// =============================================================================
 
-export const notes = sqliteTable("notes", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    title: text("title").notNull().default("Nueva nota"),
-    content: text("content").notNull().default(""),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
 
 // =============================================================================
 // TODO SECTIONS
@@ -348,68 +335,7 @@ export const todos = sqliteTable("todos", {
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
-// =============================================================================
-// DEBATES
-// =============================================================================
 
-export const debates = sqliteTable("debates", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    title: text("title").notNull(),
-    summary: text("summary"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// DEBATE MESSAGES
-// =============================================================================
-
-export const debateMessages = sqliteTable("debate_messages", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    debateId: integer("debate_id")
-        .notNull()
-        .references(() => debates.id, { onDelete: "cascade" }),
-    role: text("role").notNull(),
-    content: text("content").notNull(),
-    isSummary: integer("is_summary").default(0),
-    injectedItems: text("injected_items"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
-
-// =============================================================================
-// DEBATE TAGS
-// =============================================================================
-
-export const debateTags = sqliteTable("debate_tags", {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-    name: text("name").notNull(),
-    color: text("color"),
-});
-
-// =============================================================================
-// DEBATE TO TAGS (junction table)
-// =============================================================================
-
-export const debateToTags = sqliteTable("debate_to_tags", {
-    debateId: integer("debate_id")
-        .notNull()
-        .references(() => debates.id, { onDelete: "cascade" }),
-    tagId: integer("tag_id")
-        .notNull()
-        .references(() => debateTags.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id),
-});
 
 // =============================================================================
 // KNOWLEDGE ENTRIES
@@ -558,24 +484,4 @@ export const dossiersRelations = relations(dossiers, ({ one }) => ({
     app: one(apps, { fields: [dossiers.appId], references: [apps.id] }),
 }));
 
-export const debatesRelations = relations(debates, ({ many, one }) => ({
-    user: one(users, { fields: [debates.userId], references: [users.id] }),
-    messages: many(debateMessages),
-    tags: many(debateToTags),
-}));
 
-export const debateMessagesRelations = relations(debateMessages, ({ one }) => ({
-    debate: one(debates, { fields: [debateMessages.debateId], references: [debates.id] }),
-    user: one(users, { fields: [debateMessages.userId], references: [users.id] }),
-}));
-
-export const debateTagsRelations = relations(debateTags, ({ many, one }) => ({
-    user: one(users, { fields: [debateTags.userId], references: [users.id] }),
-    debates: many(debateToTags),
-}));
-
-export const debateToTagsRelations = relations(debateToTags, ({ one }) => ({
-    debate: one(debates, { fields: [debateToTags.debateId], references: [debates.id] }),
-    tag: one(debateTags, { fields: [debateToTags.tagId], references: [debateTags.id] }),
-    user: one(users, { fields: [debateToTags.userId], references: [users.id] }),
-}));

@@ -6,15 +6,12 @@ import {
   Save,
   Search,
   Sparkles,
-  MessageSquare,
   Terminal,
-  Lightbulb,
   ShieldCheck,
   Zap,
   AlertTriangle,
   FileSearch,
   Wand2,
-  FileText,
   ClipboardList,
   GitBranch,
 } from "@/components/ui/icons";
@@ -46,8 +43,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   app_name_pro: <ShieldCheck className="w-4 h-4" />,
   todo_analysis: <FileSearch className="w-4 h-4" />,
   todo_refinement: <Wand2 className="w-4 h-4" />,
-  debate_chat_system: <MessageSquare className="w-4 h-4" />,
-  debate_summary_system: <Lightbulb className="w-4 h-4" />,
+
   quick_edit_system: <Wand2 className="w-4 h-4" />,
 
   auto_commit_message: <GitBranch className="w-4 h-4" />,
@@ -59,8 +55,7 @@ const HIDDEN_PROMPTS = new Set<PromptId>([
   "agent_mode_system",
   "turbo_edit_system",
 
-  "debate_chat_system",
-  "debate_summary_system",
+
 ]);
 
 export function PromptsSettings() {

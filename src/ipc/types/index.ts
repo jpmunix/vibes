@@ -57,7 +57,7 @@ export { todoContracts, todoAttachmentContracts } from "./todo";
 export { tokenStatsContracts } from "./token_stats";
 export { chatLogsContracts } from "./chat_logs";
 
-export { debateContracts, debateStreamContract } from "./debate";
+
 export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
@@ -94,7 +94,7 @@ export { visualEditingClient } from "./visual-editing";
 export { tokenStatsClient } from "./token_stats";
 export { chatLogsClient } from "./chat_logs";
 
-export { debateClient, debateStreamClient } from "./debate";
+
 export { miscClient, miscEventClient } from "./misc";
 
 export { knowledgeClient } from "./knowledge";
@@ -341,8 +341,7 @@ export type {
   RemoveTodoAttachmentParams,
 } from "./todo";
 
-// Debate types
-export type { InjectedItem, DebateMessage, DebateTag, Debate } from "./debate";
+
 
 // Knowledge types
 export type {
@@ -420,7 +419,7 @@ import { tokenStatsClient } from "./token_stats";
 import { vercelClient } from "./vercel";
 import { versionClient } from "./version";
 import { visualEditingClient } from "./visual-editing";
-import { debateClient, debateStreamClient } from "./debate";
+
 import { knowledgeClient } from "./knowledge";
 import { firebaseClient } from "./firebase";
 import { bunnyClient } from "./bunny";
@@ -457,12 +456,12 @@ export const ipc = {
   todo: todoClient,
   todoAttachment: todoAttachmentClient,
   agent: agentClient,
-  debate: debateClient,
+
 
   // Streaming clients
   chatStream: chatStreamClient,
   helpStream: helpStreamClient,
-  debateStream: debateStreamClient,
+
 
 
   // Integrations

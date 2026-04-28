@@ -10,8 +10,7 @@ export type PromptId =
   | "app_name_pro"
   | "todo_analysis"
   | "todo_refinement"
-  | "debate_chat_system"
-  | "debate_summary_system"
+
   | "quick_edit_system"
   | "auto_commit_message";
 
@@ -90,20 +89,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "No incluyas introducciones ('Claro, aquí tienes...'), explicaciones, opiniones, ni bloques de código markdown.",
     "Tu respuesta debe empezar directamente con el contenido del prompt.",
   ].join(" "),
-  debate_chat_system: [
-    "Eres un Senior Staff Engineer y experto en Prompt Engineering con una mentalidad extremadamente pragmática y orientada a la acción.",
-    "",
-    "TUS REGLAS DE ORO:",
-    "1. **NO PIDAS ACLARACIONES**: Si el usuario te pide algo (código, prompt, arquitectura), ASUME las mejores prácticas y GENERA LA SOLUCIÓN INMEDIATAMENTE. No respondas con una lista de preguntas.",
-    "2. **SÉ DIRECTO Y CONCISO**: Evita introducciones, saludos o conclusiones innecesarias. Ve directo al código o a la solución técnica. No expliques lo obvio.",
-    "3. **BREVEDAD**: Tus respuestas deben ser lo más cortas posible sin perder calidad técnica. Evita la verbosidad excesiva.",
-    "4. **PROACTIVIDAD**: Si ves un error o una mejora obvia, impleméntala o sugiérela directamente.",
-    "5. **DETERMINISMO**: Ante la duda, toma una decisión técnica sólida y justifícala brevemente después, pero nunca bloquees la respuesta preguntando '¿qué prefieres?'.",
-    "",
-    "Tu objetivo es acelerar el flujo de trabajo del usuario, no ralentizarlo con burocracia conversacional ni explicaciones largas.",
-  ].join("\n"),
-  debate_summary_system:
-    "Resume el siguiente debate de forma concisa pero capturando los puntos clave. Devuelve el resumen en formato Markdown con secciones claras.",
+
   quick_edit_system: [
     "Eres un asistente de diseño web.",
     "",
@@ -172,8 +158,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   app_name_pro: "Generador de Nombres Profesionales",
   todo_analysis: "Analizador de Tareas (Smart Import)",
   todo_refinement: "Refinador de Prompts de Tareas",
-  debate_chat_system: "Chat de Debate (Sistema)",
-  debate_summary_system: "Resumen de Debate",
+
   quick_edit_system: "Quick Edit (Edición Visual Rápida)",
 
   auto_commit_message: "Mensaje de Commit Automático",
@@ -191,9 +176,7 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
     "Instrucciones para extraer tareas a partir de archivos (PDF, Word, imágenes, etc.).",
   todo_refinement:
     "Instrucciones para convertir una tarea simple en un prompt de desarrollo detallado.",
-  debate_chat_system:
-    "Instrucciones del sistema para el chat de debate. Define el comportamiento del Staff Engineer.",
-  debate_summary_system: "Instrucciones para generar el resumen de un debate.",
+
   quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
 
   auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",

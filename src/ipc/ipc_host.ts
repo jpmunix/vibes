@@ -39,8 +39,6 @@ import { registerUploadHandlers } from "./handlers/upload_handlers";
 import { registerVercelHandlers } from "./handlers/vercel_handlers";
 import { registerVersionHandlers } from "./handlers/version_handlers";
 import { registerWindowHandlers } from "./handlers/window_handlers";
-// import { registerDebateHandlers } from "./handlers/debate_handlers";
-// import { registerDebateStreamHandlers } from "./handlers/debate_stream_handlers";
 import { registerBackupHandlers } from "./handlers/backup_handlers";
 // Knowledge Base — REMOVED (replaced by OpenCode AGENTS.md)
 import { registerAiQueryLogHandlers } from "./handlers/ai_query_log_handlers";
