@@ -389,9 +389,11 @@ export const DesignPicker: React.FC = () => {
     async (dataUrl: string) => {
       setScreenshotLoading(true);
       try {
+        const modelName = settings?.selectedModel?.name ?? "";
+        console.log(`[DesignPicker] Generando diseño desde captura con modelo: ${modelName}`);
         const result = await ipc.design.generateFromScreenshot({
           imageDataUrl: dataUrl,
-          model: settings?.selectedModel?.name ?? "",
+          model: modelName,
         });
         if (result.content) {
           setSelected({
@@ -411,7 +413,7 @@ export const DesignPicker: React.FC = () => {
         setScreenshotLoading(false);
       }
     },
-    [setSelected],
+    [setSelected, settings],
   );
 
   // Build options
