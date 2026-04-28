@@ -148,6 +148,13 @@ export const memoryContracts = {
         input: z.void(),
         output: z.array(MemoryEntrySchema),
     }),
+
+    /** Delete ALL memories for a specific app */
+    deleteAllMemories: defineContract({
+        channel: "delete-all-memories",
+        input: z.number(), // appId
+        output: z.number(), // number of deleted entries
+    }),
 } as const;
 
 // =============================================================================

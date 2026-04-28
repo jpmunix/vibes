@@ -146,6 +146,38 @@ export function registerMemoryHandlers(): void {
         return rows.map(mapRowToEntry);
     });
 
+    // ── DELETE ALL MEMORIES FOR APP ──────────────────────────────────────
+    createTypedHandler(memoryContracts.deleteAllMemories, async (_event, appId, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        // Count first for the return value
+        const existing = await db
+            .select()
+            .from(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.userId, userId),
+                    eq(remoteSchema.memories.appId, appId),
+                ),
+            );
+
+        if (existing.length === 0) return 0;
+
+        await db
+            .delete(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.userId, userId),
+                    eq(remoteSchema.memories.appId, appId),
+                ),
+            );
+
+        logger.info(`[Memory] Deleted all: ${existing.length} memories for appId=${appId}`);
+        return existing.length;
+    });
+
     logger.info("[Memory] Handlers registered");
 }
 

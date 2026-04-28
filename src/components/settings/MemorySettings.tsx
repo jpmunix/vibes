@@ -17,6 +17,7 @@ import { MemoryExtractionModelSelector } from "./MemoryExtractionModelSelector";
 import { useTheme } from "@/contexts/ThemeContext";
 import { DEFAULT_PROMPTS } from "@/prompts";
 import { toast } from "sonner";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 
 // =============================================================================
 // SettingRow — same as AIBehaviorSettings.SettingRow
@@ -358,8 +359,7 @@ export function MemorySettings() {
             stats.map((s) => (
               <div
                 key={s.appId}
-                onClick={() => ipc.system.openMemoryWindow({ appId: s.appId, theme, themeIntensity: intensity })}
-                className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center cursor-pointer"
+                className="flex justify-between gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center"
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="typo-label truncate">{s.appName}</h3>
@@ -368,10 +368,28 @@ export function MemorySettings() {
                     {" · "}{s.autoCount} automáticas · {s.manualCount} manuales
                   </p>
                 </div>
-                <div className="shrink-0">
-                  <span className="typo-select text-muted-foreground">
-                    {s.total} {s.total === 1 ? "memoria" : "memorias"}
-                  </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => ipc.system.openMemoryWindow({ appId: s.appId, theme, themeIntensity: intensity })}
+                  >
+                    Ver memorias
+                  </Button>
+                  <DeleteConfirmationDialog
+                    itemName={`todas las memorias de "${s.appName}"`}
+                    itemType="memorias"
+                    onDelete={async () => {
+                      const deleted = await ipc.memory.deleteAllMemories(s.appId);
+                      toast.success(`${deleted} memorias eliminadas`);
+                      setStats((prev) => prev.filter((x) => x.appId !== s.appId));
+                    }}
+                    trigger={
+                      <Button variant="outline" size="sm" className="text-destructive/70 hover:text-destructive">
+                        Eliminar
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             ))
