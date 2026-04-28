@@ -11,6 +11,7 @@ import { memoryContracts } from "../types/memory";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq, and, or } from "drizzle-orm";
+import { buildMemoryContext } from "../utils/memory_context_builder";
 import log from "electron-log";
 
 const logger = log.scope("memory_handlers");
@@ -114,9 +115,10 @@ export function registerMemoryHandlers(): void {
     });
 
     // ── GET MEMORY CONTEXT ───────────────────────────────────────────────
-    // Placeholder — will be implemented in Fase 3 (read pipeline)
-    createTypedHandler(memoryContracts.getMemoryContext, async (_event, _appId, _ctx) => {
-        return "";
+    createTypedHandler(memoryContracts.getMemoryContext, async (_event, appId, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+        return buildMemoryContext(appId, userId);
     });
 
     // ── EXTRACT MEMORIES ─────────────────────────────────────────────────

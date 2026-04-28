@@ -66,6 +66,7 @@ import { getProviderOptions, getAiHeaders } from "../utils/provider_options";
 
 import { handleOpenCodeStream, revertLastOpenCodeMessage, destroyOpenCodeSession } from "./opencode_adapter";
 import { extractMemoriesFromChatCycle } from "../utils/memory_extractor";
+import { buildMemoryContext } from "../utils/memory_context_builder";
 
 import { safeSend } from "../utils/safe_sender";
 import { runningApps } from "../utils/process_manager";
@@ -1542,6 +1543,21 @@ This conversation includes one or more image attachments. When the user uploads 
 
 
           // 4. Build integration env vars — accessible via bash in OpenCode
+          // ── Memory context injection ────────────────────────────────────
+          // Load memories (app-specific + global) and inject as context instruction
+          try {
+            const memoryBlock = await buildMemoryContext(
+              updatedChat.app.id,
+              currentUserId as string,
+            );
+            if (memoryBlock) {
+              contextInstructions.push(memoryBlock);
+              logger.info(`🧠 [MEMORY] Injected ${memoryBlock.length} chars into contextInstructions`);
+            }
+          } catch (memErr: any) {
+            logger.warn(`🧠 [MEMORY] Context injection failed: ${memErr.message}`);
+          }
+
           const integrationEnvVars: Record<string, string> = {};
 
           // Bunny DB
