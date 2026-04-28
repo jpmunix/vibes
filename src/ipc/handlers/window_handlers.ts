@@ -45,6 +45,10 @@ const pendingChatPrompts = new Map<number, {
 export function registerWindowHandlers() {
   logger.debug("Registering window control handlers");
 
+  // Admin panel — singleton window (not app-scoped)
+  const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
+  let adminWindow: BrowserWindow | null = null;
+
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window) {
@@ -729,6 +733,7 @@ export function registerWindowHandlers() {
     for (const w of codeWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of messageWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
+    if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -836,5 +841,99 @@ export function registerWindowHandlers() {
     });
 
     logger.info(`Opened memory viewer window for app ${appId}`);
+  });
+
+  // Admin panel window handler
+  createTypedHandler(systemContracts.openAdminWindow, async (event, { theme, themeIntensity }) => {
+    // Privilege check: only allow the authorized admin user
+    const settings = readSettings();
+    if (settings.userId !== ADMIN_USER_ID) {
+      logger.warn(`Admin window access denied for user ${settings.userId}`);
+      return;
+    }
+
+    // If window already exists, focus it
+    if (adminWindow && !adminWindow.isDestroyed()) {
+      adminWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const icon = nativeImage.createFromPath(iconPath);
+
+    adminWindow = new BrowserWindow({
+      width: 1000,
+      height: 700,
+      minWidth: 700,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Panel de Administración",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: { x: 10, y: 8 },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!icon.isEmpty()) {
+      adminWindow.setIcon(icon);
+    }
+
+    // Prevent the renderer from overriding our window title
+    adminWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    adminWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element
+    adminWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => adminWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts
+    adminWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        adminWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        adminWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        adminWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=admin${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      adminWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      adminWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    adminWindow.on("closed", () => {
+      adminWindow = null;
+    });
+
+    logger.info("Opened admin panel window");
   });
 }

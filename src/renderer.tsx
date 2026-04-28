@@ -921,6 +921,26 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "admin") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Lazy import — Admin module only loads when this window type is opened
+  import("./components/admin_window/AdminWindowApp").then(
+    ({ AdminWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <AdminWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
 } else {
   // Show skeleton loader immediately while AuthGate JS bundle loads
   const root = createRoot(document.getElementById("root")!);

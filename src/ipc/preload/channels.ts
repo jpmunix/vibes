@@ -52,6 +52,7 @@ import { aiQueryLogContracts } from "../contracts/ai_query_logs";
 import { authContracts } from "../types/auth";
 import { designContracts } from "../types/design";
 import { memoryContracts } from "../types/memory";
+import { adminContracts } from "../types/admin";
 
 
 // =============================================================================
@@ -132,6 +133,8 @@ export const VALID_INVOKE_CHANNELS = [
   ...getInvokeChannels(authContracts),
 
   ...getInvokeChannels(designContracts),
+
+  ...getInvokeChannels(adminContracts),
 
 
   // Test-only channels

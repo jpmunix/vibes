@@ -63,6 +63,7 @@ export { knowledgeContracts } from "./knowledge";
 export { aiQueryLogContracts } from "../contracts/ai_query_logs";
 
 export { authContracts } from "./auth";
+export { adminContracts } from "./admin";
 
 export { memoryClient } from "./memory";
 
@@ -105,6 +106,7 @@ export { aiQueryLogClient } from "./ai_query_logs";
 
 export { authClient } from "./auth";
 export { designClient } from "./design";
+export { adminClient } from "./admin";
 
 // =============================================================================
 // Type Exports
@@ -443,6 +445,7 @@ import { aiQueryLogClient } from "./ai_query_logs";
 import { authClient } from "./auth";
 import { designClient } from "./design";
 import { memoryClient } from "./memory";
+import { adminClient } from "./admin";
 
 /**
  * Unified IPC client with all domains organized by namespace.
@@ -519,6 +522,9 @@ export const ipc = {
 
   // Memory system
   memory: memoryClient,
+
+  // Admin panel
+  admin: adminClient,
 
   // Event clients for main->renderer pub/sub
   events: {

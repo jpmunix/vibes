@@ -19,6 +19,7 @@ import {
   FolderOpen,
   Search,
   FolderX,
+  ShieldCheck,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -35,6 +36,10 @@ import {
 import { userAtom } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
 import { ProfileModal } from "@/components/ProfileModal";
+import { useTheme } from "@/contexts/ThemeContext";
+
+/** The only user ID authorized to see the admin menu option */
+const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
 
 import { useRouter } from "@tanstack/react-router";
 
@@ -105,7 +110,17 @@ export function TopNavbar() {
   const user = useAtomValue(userAtom);
   const { navigate } = useRouter();
   const { settings } = useSettings();
+  const { theme, intensity } = useTheme();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const isAdmin = user?.id === ADMIN_USER_ID;
+
+  const handleOpenAdmin = () => {
+    ipc.system.openAdminWindow({
+      theme: theme as "light" | "dark" | "system",
+      themeIntensity: intensity,
+    });
+  };
 
   const setUser = useSetAtom(userAtom);
   const handleLogout = async () => {
@@ -386,6 +401,15 @@ export function TopNavbar() {
                   <UserIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                   <span className="typo-tab">Editar Perfil</span>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    className="py-2 cursor-pointer focus:bg-accent"
+                    onClick={handleOpenAdmin}
+                  >
+                    <ShieldCheck className="mr-3 h-4 w-4 text-muted-foreground" />
+                    <span className="typo-tab">Admin</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent text-foreground"
                   onClick={handleLogout}

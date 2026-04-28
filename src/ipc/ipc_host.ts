@@ -47,6 +47,7 @@ import { registerMemoryHandlers } from "./handlers/memory_handlers";
 import { registerConsoleHandlers } from "./handlers/console_handlers";
 import { registerUpdateCheckerHandlers } from "./handlers/update_checker_handler";
 import { registerAuthHandlers } from "./handlers/auth_handlers";
+import { registerAdminHandlers } from "./handlers/admin_handlers";
 
 import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
@@ -58,6 +59,7 @@ import log from "electron-log";
 export function registerIpcHandlers() {
   // Register all IPC handlers by category
   registerAuthHandlers();
+  registerAdminHandlers();
 
   registerAppHandlers();
   registerChatHandlers();

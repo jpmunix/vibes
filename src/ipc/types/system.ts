@@ -437,6 +437,16 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Admin panel window — restricted to authorized admin user
+  openAdminWindow: defineContract({
+    channel: "window:open-admin",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Log file path — returns the absolute path to the electron-log file
   getLogFilePath: defineContract({
     channel: "system:get-log-file-path",
