@@ -3,15 +3,20 @@
  *
  * Follows the exact design patterns from AIBehaviorSettings / OpenCodePermissionsSettings:
  * - SettingRow with TogglePill for toggles
+ * - SettingsModelSelector pill for model (same as "Modelo para tareas internas")
  * - Collapsible ChevronRight pattern for stats
- * - typo-input for model field
  */
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
-import { ChevronRight, Loader2 } from "@/components/ui/icons";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, Loader2, RotateCcw, Check } from "@/components/ui/icons";
+import { MemoryExtractionModelSelector } from "./MemoryExtractionModelSelector";
+import { useTheme } from "@/contexts/ThemeContext";
+import { DEFAULT_PROMPTS } from "@/prompts";
+import { toast } from "sonner";
 
 // =============================================================================
 // SettingRow — same as AIBehaviorSettings.SettingRow
@@ -90,7 +95,6 @@ interface AppMemoryStats {
   total: number;
   enabled: number;
   disabled: number;
-  byType: Record<string, number>;
   autoCount: number;
   manualCount: number;
 }
@@ -101,33 +105,86 @@ interface AppMemoryStats {
 
 export function MemorySettings() {
   const { settings, updateSettings } = useSettings();
+  const { theme, intensity } = useTheme();
   const [stats, setStats] = useState<AppMemoryStats[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // Load stats when expanded
+  // Prompt editor state
+  const [promptExpanded, setPromptExpanded] = useState(false);
+  const [localPrompt, setLocalPrompt] = useState("");
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const defaultPrompt = DEFAULT_PROMPTS.memory_extraction;
+  const currentSaved = settings?.customPrompts?.memory_extraction ?? defaultPrompt;
+  const isModified = localPrompt !== defaultPrompt;
+  const hasUnsavedChanges = localPrompt !== currentSaved;
+
+  // Sync local prompt from settings
   useEffect(() => {
-    if (!expanded || stats.length > 0) return;
+    if (settings) {
+      setLocalPrompt(settings.customPrompts?.memory_extraction ?? defaultPrompt);
+    }
+  }, [settings?.customPrompts?.memory_extraction]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    }
+  }, [localPrompt, promptExpanded]);
+
+  const handleSavePrompt = useCallback(async () => {
+    setIsSavingPrompt(true);
+    try {
+      await updateSettings({
+        customPrompts: { ...settings?.customPrompts, memory_extraction: localPrompt },
+      });
+      toast.success("Prompt de extracción guardado");
+    } catch {
+      toast.error("Error al guardar el prompt");
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  }, [localPrompt, settings?.customPrompts, updateSettings]);
+
+  const handleResetPrompt = useCallback(async () => {
+    try {
+      const newCustomPrompts = { ...settings?.customPrompts };
+      delete newCustomPrompts.memory_extraction;
+      await updateSettings({ customPrompts: newCustomPrompts });
+      setLocalPrompt(defaultPrompt);
+      toast.success("Prompt restaurado a valores de fábrica");
+    } catch {
+      toast.error("Error al restaurar el prompt");
+    }
+  }, [settings?.customPrompts, updateSettings, defaultPrompt]);
+
+  // Load stats when expanded — iterates apps using existing endpoints
+  useEffect(() => {
+    if (!expanded) return;
 
     const loadStats = async () => {
       setIsLoadingStats(true);
       try {
-        const apps = await ipc.app.listApps();
+        const { apps } = await ipc.app.listApps();
         const allStats: AppMemoryStats[] = [];
 
         for (const app of apps) {
           try {
             const memories = await ipc.memory.getMemories(app.id);
-            if (memories.length === 0) continue;
+            // Filter out any leftover global memories (appId=0)
+            const appMemories = memories.filter(m => m.appId === app.id);
+            if (appMemories.length === 0) continue;
 
-            const byType: Record<string, number> = {};
             let enabled = 0;
             let disabled = 0;
             let autoCount = 0;
             let manualCount = 0;
 
-            for (const m of memories) {
-              byType[m.type] = (byType[m.type] || 0) + 1;
+            for (const m of appMemories) {
               if (m.enabled) enabled++;
               else disabled++;
               if (m.source === "auto") autoCount++;
@@ -137,10 +194,9 @@ export function MemorySettings() {
             allStats.push({
               appId: app.id,
               appName: app.name,
-              total: memories.length,
+              total: appMemories.length,
               enabled,
               disabled,
-              byType,
               autoCount,
               manualCount,
             });
@@ -149,37 +205,7 @@ export function MemorySettings() {
           }
         }
 
-        // Also get global memories (appId=0)
-        try {
-          const globalMems = await ipc.memory.getMemories(0);
-          if (globalMems.length > 0) {
-            const byType: Record<string, number> = {};
-            let enabled = 0;
-            let disabled = 0;
-            let autoCount = 0;
-            let manualCount = 0;
-
-            for (const m of globalMems) {
-              byType[m.type] = (byType[m.type] || 0) + 1;
-              if (m.enabled) enabled++;
-              else disabled++;
-              if (m.source === "auto") autoCount++;
-              else manualCount++;
-            }
-
-            allStats.unshift({
-              appId: 0,
-              appName: "Globales",
-              total: globalMems.length,
-              enabled,
-              disabled,
-              byType,
-              autoCount,
-              manualCount,
-            });
-          }
-        } catch { /* ignore */ }
-
+        allStats.sort((a, b) => a.appName.localeCompare(b.appName));
         setStats(allStats);
       } catch (err) {
         console.error("Failed to load memory stats:", err);
@@ -189,7 +215,7 @@ export function MemorySettings() {
     };
 
     loadStats();
-  }, [expanded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [expanded]);
 
   const totalMemories = useMemo(() => stats.reduce((sum, s) => sum + s.total, 0), [stats]);
 
@@ -221,20 +247,79 @@ export function MemorySettings() {
         }
       />
 
-      {/* Model selector */}
+      {/* Model selector — same SettingsModelSelector pill as "Modelo para tareas internas" */}
       <SettingRow
         label="Modelo de extracción"
         description="El modelo LLM que analiza las conversaciones para extraer memorias"
-        control={
-          <input
-            type="text"
-            value={settings?.memoriesExtractionModel || "google/gemini-3.1-flash-lite-preview"}
-            onChange={(e) => updateSettings({ memoriesExtractionModel: e.target.value })}
-            placeholder="google/gemini-3.1-flash-lite-preview"
-            className="px-3 py-1.5 typo-input rounded-lg border border-border bg-background focus:border-primary/50 transition-colors w-[320px] font-mono text-xs"
-          />
-        }
+        control={<MemoryExtractionModelSelector />}
       />
+
+      {/* Collapsible: extraction prompt editor */}
+      <div
+        className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+        onClick={() => setPromptExpanded((e) => !e)}
+      >
+        <div className="flex-1">
+          <h3 className="typo-label">Prompt de extracción</h3>
+          <p className="typo-caption mt-1">
+            Instrucciones que la IA usa para decidir qué memorias extraer de cada conversación
+          </p>
+        </div>
+        <ChevronRight
+          className={cn(
+            "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+            promptExpanded && "rotate-90",
+          )}
+        />
+      </div>
+
+      {promptExpanded && (
+        <div className="space-y-3 pl-4">
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+              <span className="typo-mono-xs text-muted-foreground">
+                {defaultPrompt.length} chars por defecto
+              </span>
+              {isModified && (
+                <span className="typo-micro px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                  MODIFICADO
+                </span>
+              )}
+            </div>
+            <textarea
+              ref={textareaRef}
+              className="w-full p-4 typo-mono-xs leading-relaxed resize-none border-0 bg-transparent focus:outline-none overflow-hidden"
+              spellCheck={false}
+              value={localPrompt}
+              onChange={(e) => setLocalPrompt(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleResetPrompt}
+              disabled={!isModified}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Restaurar
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={handleSavePrompt}
+              disabled={isSavingPrompt || !hasUnsavedChanges}
+            >
+              {isSavingPrompt
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Check className="h-3.5 w-3.5" />
+              }
+              Guardar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Collapsible: stats per app — follows OpenCodePermissionsSettings pattern */}
       <div
@@ -246,7 +331,7 @@ export function MemorySettings() {
           <p className="typo-caption mt-1">
             {totalMemories > 0
               ? `${totalMemories} memorias en total`
-              : "Vista global de memorias almacenadas"
+              : "Vista de memorias almacenadas por app"
             }
           </p>
         </div>
@@ -273,13 +358,14 @@ export function MemorySettings() {
             stats.map((s) => (
               <div
                 key={s.appId}
-                className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center"
+                onClick={() => ipc.system.openMemoryWindow({ appId: s.appId, theme, themeIntensity: intensity })}
+                className="flex justify-between gap-8 p-4 rounded-xl hover:bg-muted/50 transition-colors items-center cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="typo-label truncate">{s.appName}</h3>
                   <p className="typo-caption mt-1">
-                    {s.enabled} activas · {s.disabled > 0 ? `${s.disabled} desactivadas · ` : ""}
-                    {s.autoCount} automáticas · {s.manualCount} manuales
+                    {s.enabled} activas{s.disabled > 0 ? ` · ${s.disabled} desactivadas` : ""}
+                    {" · "}{s.autoCount} automáticas · {s.manualCount} manuales
                   </p>
                 </div>
                 <div className="shrink-0">

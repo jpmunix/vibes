@@ -1,3 +1,20 @@
+# v8.3
+*28 de abril de 2026*
+
+## El agente ahora tiene memoria
+
+Vibes incorpora un **sistema de memoria por proyecto** que permite al agente recordar lo que importa entre conversaciones. Mientras trabajas, la IA extrae automáticamente hechos sobre la arquitectura, tus preferencias de código, decisiones de diseño, problemas recurrentes y resúmenes de trabajo completado. Cada memoria se clasifica por tipo, se pondera por importancia y se inyecta como contexto en las conversaciones siguientes, de modo que **el agente no parte de cero cada vez que abres un chat**. Desde el panel de memorias puedes ver, editar, desactivar o crear memorias manualmente. Un sistema de decaimiento reduce automáticamente la relevancia de las menos utilizadas.
+
+## Personaliza cómo el agente aprende
+
+El prompt que la IA usa para extraer memorias ya no está oculto en el código. Ahora aparece en **Ajustes → Prompts** como un prompt más del sistema, editable y restaurable al valor por defecto. Si quieres que el agente preste más atención a cierto tipo de conocimiento o ignore detalles concretos, solo tienes que ajustar las instrucciones.
+
+## Correcciones y ajustes
+
+- Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
+- Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
+- Mejoras internas de estabilidad.
+
 # v8.0
 *27 de abril de 2026*
 

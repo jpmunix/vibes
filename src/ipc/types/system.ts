@@ -436,6 +436,13 @@ export const systemContracts = {
     }),
     output: z.void(),
   }),
+
+  // Log file path — returns the absolute path to the electron-log file
+  getLogFilePath: defineContract({
+    channel: "system:get-log-file-path",
+    input: z.void(),
+    output: z.string(),
+  }),
 } as const;
 
 // =============================================================================

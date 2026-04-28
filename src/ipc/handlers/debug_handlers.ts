@@ -191,6 +191,10 @@ export function registerDebugHandlers() {
 
   logger.info("Registered debug IPC handlers");
 
+  createTypedHandler(systemContracts.getLogFilePath, async () => {
+    return log.transports.file.getFile().path;
+  });
+
   createTypedHandler(systemContracts.takeScreenshot, async (_, params) => {
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
     if (!win) throw new Error("No window to capture");

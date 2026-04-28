@@ -774,7 +774,7 @@ export function registerWindowHandlers() {
       minWidth: 600,
       minHeight: 400,
       skipTaskbar: false,
-      title: `${appName} – Memorias`,
+      title: `${appName} – Memorias del agente`,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
       titleBarOverlay: false,

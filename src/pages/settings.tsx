@@ -32,6 +32,8 @@ import {
   Download,
   Upload,
   Info,
+  FileText,
+  MoreHorizontal,
 } from "@/components/ui/icons";
 import { ChevronRight } from "@/components/ui/icons";
 import { useRouter, useNavigate } from "@tanstack/react-router";
@@ -82,6 +84,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "@/components/ui/icons";
@@ -639,6 +642,16 @@ export default function SettingsPage() {
     input.click();
   };
 
+  const handleOpenLogs = async () => {
+    try {
+      const logPath = await ipc.system.getLogFilePath();
+      await ipc.system.showItemInFolder(logPath);
+    } catch (err) {
+      console.error("Error opening logs:", err);
+      showError("No se pudo abrir el archivo de logs");
+    }
+  };
+
   return (
     <div
       id="settings-scroll-container"
@@ -723,37 +736,40 @@ export default function SettingsPage() {
 
               <div className="w-px h-5 bg-border/60 mx-1" />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
-                onClick={handleImportSettings}
-              >
-                <Download className="h-4 w-4" />
-                Importar
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl flex items-center gap-2"
-                onClick={handleExportSettings}
-              >
-                <Upload className="h-4 w-4" />
-                Exportar
-              </Button>
-
-              <div className="w-px h-5 bg-border/60 mx-1" />
-
-              <Button
-                onClick={() => setIsResetDialogOpen(true)}
-                disabled={isResetting}
-                variant="ghost"
-                size="sm"
-                className="h-10 px-3 cursor-pointer text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors rounded-xl"
-              >
-                {isResetting ? "Reseteando..." : "Restablecer"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 px-3 cursor-pointer text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-xl"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleImportSettings} className="cursor-pointer gap-2">
+                    <Download className="h-4 w-4" />
+                    Importar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportSettings} className="cursor-pointer gap-2">
+                    <Upload className="h-4 w-4" />
+                    Exportar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleOpenLogs} className="cursor-pointer gap-2">
+                    <FileText className="h-4 w-4" />
+                    Ver logs
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setIsResetDialogOpen(true)}
+                    disabled={isResetting}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                  >
+                    {isResetting ? "Reseteando..." : "Restablecer"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

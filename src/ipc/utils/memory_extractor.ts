@@ -6,7 +6,7 @@
  * - LLM-based extraction with anti-hallucination prompt
  * - Anti-noise filtering (regex + length + importance threshold)
  * - Key-based overwrite (upsert by key to avoid duplicates)
- * - Scope detection (global vs project → app_id=0 vs app_id=N)
+ * - All memories are scoped to the specific project (app_id=N)
  */
 
 import log from "electron-log";
@@ -15,8 +15,9 @@ import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
+import { getEffectivePrompt } from "../../prompts";
 
 const logger = log.scope("memory_extractor");
 
@@ -29,7 +30,7 @@ interface ExtractedMemory {
     key: string | null;
     content: string;
     importance: number; // 0.0–1.0
-    scope: "global" | "project";
+    scope?: string; // ignored — all memories go to the project
     status?: string;
 }
 
@@ -38,60 +39,9 @@ interface ExtractionResult {
     raw?: string; // Raw LLM response for debugging
 }
 
-// =============================================================================
-// Extraction Prompt
-// =============================================================================
-
-const EXTRACTION_SYSTEM_PROMPT = `You are a memory extraction system for an AI coding assistant. Your job is to extract important, reusable knowledge from a conversation between a user and an AI.
-
-RULES:
-- Extract AT MOST 3 memories per conversation cycle
-- Each memory must be ATOMIC: one clear piece of knowledge
-- Do NOT extract trivial information (file paths, import statements, CSS values, variable names)
-- Do NOT extract information that is only relevant to the current task
-- DO extract facts about the project architecture, tech stack, and conventions
-- DO extract user preferences about coding style, tools, and processes
-- DO extract decisions with their rationale
-- DO extract recurring issues or bugs
-- DO extract key takeaways from completed work
-
-TYPES:
-- "fact": stable truth about the project (e.g. "Backend uses PHP without frameworks")
-- "preference": user coding style or process preference (e.g. "Prefers camelCase in TypeScript")
-- "issue": bug or problem with lifecycle (e.g. "Redis concurrency under high load")
-- "episode": summary of significant completed work (e.g. "Implemented JWT auth with refresh tokens")
-- "decision": architectural choice with rationale (e.g. "Chose Redis over Memcached for lower latency")
-
-SCOPE:
-- "global": applies to ALL projects (preferences, coding conventions, language choices)
-- "project": specific to THIS project (architecture facts, project-specific decisions, issues)
-
-Hints for scope detection:
-- Words like "siempre", "nunca", "prefiero", "always", "never" → likely global
-- Mentions a specific file, table, service, or project-specific tech → project
-- Generic code style rule → global
-- Architecture fact about this codebase → project
-- "preference" type → usually global
-- "issue" and "episode" types → usually project
-
-KEY:
-- Assign a short, unique key for overwrite (e.g. "backend_framework", "naming_convention_ts")
-- If a memory with the same key already exists, the new one will replace it
-- Use snake_case, be specific but concise
-
-IMPORTANCE (0.0–1.0):
-- 1.0: Critical project fact or strong user preference
-- 0.7-0.9: Important architectural decision or recurring pattern
-- 0.4-0.6: Useful context, moderate relevance
-- 0.1-0.3: Minor detail, may decay over time
-
-Respond ONLY with a JSON array. No explanation, no markdown. Empty array [] if nothing worth extracting.
-
-Example output:
-[
-  {"type":"fact","key":"backend_stack","content":"Backend uses PHP without frameworks, MySQL for persistence, Redis for caching","importance":0.9,"scope":"project"},
-  {"type":"preference","key":"naming_ts","content":"User prefers camelCase for TypeScript variables and functions","importance":0.8,"scope":"global"}
-]`;
+// Extraction prompt is now managed via the PromptId system.
+// Default lives in src/prompts/index.ts as DEFAULT_PROMPTS.memory_extraction.
+// Users can customize it via Settings > Memoria > Prompt de extracción.
 
 // =============================================================================
 // Anti-noise filters
@@ -123,23 +73,7 @@ function isNoisy(content: string): boolean {
     return false;
 }
 
-// =============================================================================
-// Scope inference fallback
-// =============================================================================
-
-function inferScope(memory: ExtractedMemory, appId: number): number {
-    // LLM said global
-    if (memory.scope === "global") return 0;
-
-    // Override: preferences are almost always global
-    if (memory.type === "preference") return 0;
-
-    // Override: issues and episodes are almost always project-specific
-    if (memory.type === "issue" || memory.type === "episode") return appId;
-
-    // Default to what the LLM said
-    return memory.scope === "project" ? appId : 0;
-}
+// Scope is always the project — no global memories
 
 // =============================================================================
 // Main extraction function
@@ -180,10 +114,7 @@ export async function extractMemoriesFromChatCycle(params: {
             .where(
                 and(
                     eq(remoteSchema.memories.userId, userId),
-                    or(
-                        eq(remoteSchema.memories.appId, appId),
-                        eq(remoteSchema.memories.appId, 0),
-                    ),
+                    eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                 ),
             );
@@ -209,10 +140,13 @@ export async function extractMemoriesFromChatCycle(params: {
 
         const userMessage = `USER MESSAGE:\n${truncatedPrompt}\n\nASSISTANT RESPONSE:\n${truncatedResponse}${existingContext}`;
 
+        // Resolve the extraction prompt (supports user customization via settings)
+        const extractionPrompt = getEffectivePrompt("memory_extraction", settings);
+
         const data = await openRouterCompletion({
             model,
             messages: [
-                { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
+                { role: "system", content: extractionPrompt },
                 { role: "user", content: userMessage },
             ],
             temperature: 0.2,
@@ -262,8 +196,8 @@ export async function extractMemoriesFromChatCycle(params: {
                 continue;
             }
 
-            // Resolve scope
-            const resolvedAppId = inferScope(mem, appId);
+            // All memories go to the project
+            const resolvedAppId = appId;
 
             // Key-based overwrite: check if a memory with the same key exists
             const now = new Date();
@@ -271,7 +205,7 @@ export async function extractMemoriesFromChatCycle(params: {
 
             if (mem.key) {
                 const existing = existingRows.find(
-                    e => e.key === mem.key && (e.appId === resolvedAppId || e.appId === 0),
+                    e => e.key === mem.key && e.appId === resolvedAppId,
                 );
 
                 if (existing) {

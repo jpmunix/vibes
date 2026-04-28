@@ -12,7 +12,8 @@ export type PromptId =
   | "todo_refinement"
 
   | "quick_edit_system"
-  | "auto_commit_message";
+  | "auto_commit_message"
+  | "memory_extraction";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
@@ -139,6 +140,46 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "Responde SOLO con UNA LÍNEA (el mensaje de commit), sin comillas, sin explicación, sin markdown ni backticks.",
   ].join("\n"),
+  memory_extraction: [
+    "You are a memory extraction system for an AI coding assistant. Your job is to extract important, reusable knowledge from a conversation between a user and an AI.",
+    "",
+    "RULES:",
+    "- Extract AT MOST 3 memories per conversation cycle",
+    "- Each memory must be ATOMIC: one clear piece of knowledge",
+    "- Do NOT extract trivial information (file paths, import statements, CSS values, variable names)",
+    "- Do NOT extract information that is only relevant to the current task",
+    "- DO extract facts about the project architecture, tech stack, and conventions",
+    "- DO extract user preferences about coding style, tools, and processes",
+    "- DO extract decisions with their rationale",
+    "- DO extract recurring issues or bugs",
+    "- DO extract key takeaways from completed work",
+    "",
+    'TYPES:',
+    '- \"fact\": stable truth about the project (e.g. \"Backend uses PHP without frameworks\")',
+    '- \"preference\": user coding style or process preference (e.g. \"Prefers camelCase in TypeScript\")',
+    '- \"issue\": bug or problem with lifecycle (e.g. \"Redis concurrency under high load\")',
+    '- \"episode\": summary of significant completed work (e.g. \"Implemented JWT auth with refresh tokens\")',
+    '- \"decision\": architectural choice with rationale (e.g. \"Chose Redis over Memcached for lower latency\")',
+    "",
+    "SCOPE:",
+    "- All memories are scoped to the current project. Do not include a \"scope\" field.",
+    "",
+    "KEY:",
+    '- Assign a short, unique key for overwrite (e.g. \"backend_framework\", \"naming_convention_ts\")',
+    "- If a memory with the same key already exists, the new one will replace it",
+    "- Use snake_case, be specific but concise",
+    "",
+    "IMPORTANCE (0.0–1.0):",
+    "- 1.0: Critical project fact or strong user preference",
+    "- 0.7-0.9: Important architectural decision or recurring pattern",
+    "- 0.4-0.6: Useful context, moderate relevance",
+    "- 0.1-0.3: Minor detail, may decay over time",
+    "",
+    "Respond ONLY with a JSON array. No explanation, no markdown. Empty array [] if nothing worth extracting.",
+    "",
+    "Example output:",
+    '[{\"type\":\"fact\",\"key\":\"backend_stack\",\"content\":\"Backend uses PHP without frameworks, MySQL for persistence, Redis for caching\",\"importance\":0.9},{\"type\":\"preference\",\"key\":\"naming_ts\",\"content\":\"User prefers camelCase for TypeScript variables and functions\",\"importance\":0.8}]',
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -162,6 +203,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   quick_edit_system: "Quick Edit (Edición Visual Rápida)",
 
   auto_commit_message: "Mensaje de Commit Automático",
+  memory_extraction: "Extracción de Memorias",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -180,4 +222,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   quick_edit_system: "Interpreta comandos simples del usuario para modificar estilos de componentes visualmente. Detecta automáticamente Tailwind y librerías de iconos.",
 
   auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
+  memory_extraction: "Instrucciones que la IA usa para extraer memorias relevantes de las conversaciones. Define qué tipo de información debe recordar.",
 };

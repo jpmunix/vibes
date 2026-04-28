@@ -10,7 +10,7 @@
 import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, or, lt } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const logger = log.scope("memory_lifecycle");
 
@@ -36,17 +36,14 @@ export async function decayMemories(
     try {
         const db = getRemoteDb();
 
-        // Load auto-extracted, enabled memories for this app + global
+        // Load auto-extracted, enabled memories for this app
         const candidates = await db
             .select()
             .from(remoteSchema.memories)
             .where(
                 and(
                     eq(remoteSchema.memories.userId, userId),
-                    or(
-                        eq(remoteSchema.memories.appId, appId),
-                        eq(remoteSchema.memories.appId, 0),
-                    ),
+                    eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                     eq(remoteSchema.memories.source, "auto"),
                 ),

@@ -55,10 +55,10 @@ function MemoryWindowContent({ appId }: MemoryWindowAppProps) {
     // Set window title from app name
     useEffect(() => {
         if (currentApp?.name) {
-            document.title = `${currentApp.name} – Memorias`;
+            document.title = `${currentApp.name} – Memorias del agente`;
         } else {
             ipc.app.getApp(appId).then((fetchedApp) => {
-                if (fetchedApp?.name) document.title = `${fetchedApp.name} – Memorias`;
+                if (fetchedApp?.name) document.title = `${fetchedApp.name} – Memorias del agente`;
             }).catch(() => {});
         }
     }, [appId, currentApp?.name]);
@@ -71,7 +71,7 @@ function MemoryWindowContent({ appId }: MemoryWindowAppProps) {
                     <div className="flex items-center gap-2 no-app-region-drag">
                         <Brain size={14} className="text-primary" />
                         <span className="typo-button">
-                            {currentApp?.name ? `${currentApp.name} – Memorias` : "Memorias"}
+                            {currentApp?.name ? `${currentApp.name} – Memorias del agente` : "Memorias del agente"}
                         </span>
                     </div>
                     <WindowsControls className="no-app-region-drag pr-0 pointer-events-auto" buttonClassName="h-9" />

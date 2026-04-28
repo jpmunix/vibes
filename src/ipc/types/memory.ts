@@ -34,7 +34,7 @@ export type IssueStatus = z.infer<typeof IssueStatusSchema>;
  */
 export const MemoryEntrySchema = z.object({
     id: z.number(),
-    appId: z.number(),          // 0 = global
+    appId: z.number(),
     type: MemoryTypeSchema,
     key: z.string().nullable(),
     content: z.string(),
@@ -140,6 +140,13 @@ export const memoryContracts = {
         channel: "decay-memories",
         input: z.number(), // appId
         output: z.number(), // number of decayed entries
+    }),
+
+    /** Get ALL memories for the current user (for global stats) */
+    getAllMemories: defineContract({
+        channel: "get-all-memories",
+        input: z.void(),
+        output: z.array(MemoryEntrySchema),
     }),
 } as const;
 

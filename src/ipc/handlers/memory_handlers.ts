@@ -19,7 +19,7 @@ const logger = log.scope("memory_handlers");
 
 export function registerMemoryHandlers(): void {
     // ── GET MEMORIES ─────────────────────────────────────────────────────
-    // Returns all memories for an app + global memories (appId=0)
+    // Returns all memories for the specified app only
     createTypedHandler(memoryContracts.getMemories, async (_event, appId, ctx) => {
         const db = getRemoteDb();
         const userId = ctx.userId;
@@ -31,10 +31,7 @@ export function registerMemoryHandlers(): void {
             .where(
                 and(
                     eq(remoteSchema.memories.userId, userId),
-                    or(
-                        eq(remoteSchema.memories.appId, appId),
-                        eq(remoteSchema.memories.appId, 0),
-                    ),
+                    eq(remoteSchema.memories.appId, appId),
                 ),
             );
 
@@ -133,6 +130,20 @@ export function registerMemoryHandlers(): void {
         const userId = ctx.userId;
         if (!userId) throw new Error("Unauthorized");
         return decayMemories(appId, userId);
+    });
+
+    // ── GET ALL MEMORIES (global stats) ────────────────────────────────
+    createTypedHandler(memoryContracts.getAllMemories, async (_event, _input, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const rows = await db
+            .select()
+            .from(remoteSchema.memories)
+            .where(eq(remoteSchema.memories.userId, userId));
+
+        return rows.map(mapRowToEntry);
     });
 
     logger.info("[Memory] Handlers registered");

@@ -12,7 +12,7 @@
 import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const logger = log.scope("memory_context");
 
@@ -73,17 +73,14 @@ export async function buildMemoryContext(
     try {
         const db = getRemoteDb();
 
-        // Query: app-specific + global, enabled only
+        // Query: app-specific, enabled only
         const rows = await db
             .select()
             .from(remoteSchema.memories)
             .where(
                 and(
                     eq(remoteSchema.memories.userId, userId),
-                    or(
-                        eq(remoteSchema.memories.appId, appId),
-                        eq(remoteSchema.memories.appId, 0),
-                    ),
+                    eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                 ),
             );
@@ -114,8 +111,7 @@ export async function buildMemoryContext(
             const statusSuffix = row.type === "issue" && row.status
                 ? `:${row.status}`
                 : "";
-            const scopeTag = row.appId === 0 ? " (global)" : "";
-            return `• [${label}${statusSuffix}]${scopeTag} ${row.content}`;
+            return `• [${label}${statusSuffix}] ${row.content}`;
         });
 
         const block = [
