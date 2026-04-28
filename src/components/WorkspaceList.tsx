@@ -26,6 +26,7 @@ import {
   GitBranch,
   Pin,
   PinOff,
+  Square,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -403,6 +404,24 @@ function useAppGitStatus(appId: number) {
   return { hasUnpushedChanges };
 }
 
+// --- App Server Status Hook ---
+function useAppServerStatus(appId: number) {
+  const { data } = useQuery({
+    queryKey: ["server-status", appId],
+    queryFn: async () => {
+      try {
+        return await ipc.app.getAppRunningStatus({ appId });
+      } catch {
+        return { status: "stopped" as const, url: undefined };
+      }
+    },
+    refetchInterval: 3000,
+  });
+
+  const isServerRunning = data?.status === "running";
+  return { isServerRunning };
+}
+
 // --- App Git Dot Indicator ---
 const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) {
   const { hasUnpushedChanges } = useAppGitStatus(appId);
@@ -411,6 +430,21 @@ const SidebarGitDot = memo(function SidebarGitDot({ appId }: { appId: number }) 
 
   return (
     <GitBranch className="w-3.5 h-3.5 text-primary animate-pulse shrink-0 ml-1.5" />
+  );
+});
+
+// --- App Server Running Indicator ---
+const SidebarServerDot = memo(function SidebarServerDot({ appId }: { appId: number }) {
+  const { isServerRunning } = useAppServerStatus(appId);
+
+  if (!isServerRunning) return null;
+
+  return (
+    <span
+      className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 ml-1 animate-pulse"
+      style={{ boxShadow: "0 0 6px 1px rgba(16,185,129,0.45)" }}
+      title="Servidor activo"
+    />
   );
 });
 
@@ -432,6 +466,7 @@ interface WorkspaceAppItemProps {
   onCloseApp: (appId: number, appName: string) => void;
   onOpenGit: (appId: number) => void;
   onOpenCode: (appId: number) => void;
+  onStopServer: (appId: number) => void;
   selectedChatId: number | null;
   selectedAppId: number | null;
 }
@@ -453,11 +488,13 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   onCloseApp,
   onOpenGit,
   onOpenCode,
+  onStopServer,
   selectedChatId,
   selectedAppId,
 }: WorkspaceAppItemProps) {
   const isActive = selectedAppId === app.id && (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
+  const { isServerRunning } = useAppServerStatus(app.id);
   const queryClient = useQueryClient();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -543,6 +580,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                 {app.name}
               </span>
               <LanguageBadge language={app.primaryLanguage} />
+              <SidebarServerDot appId={app.id} />
               <SidebarGitDot appId={app.id} />
             </div>
             <span className={`typo-micro mt-0.5 ${isActive ? "opacity-90 text-primary" : "opacity-50 text-foreground"}`}>
@@ -654,6 +692,18 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
             <Archive size={14} className="opacity-60 shrink-0" />
             Ver archivados
           </button>
+          {/* ── Destructive actions ── */}
+          <div className="my-1 border-t border-border" />
+          {isServerRunning && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
+              onClick={() => { closeMenu(); onStopServer(app.id); }}
+            >
+              <Square size={14} className="shrink-0" />
+              Detener servidor
+            </button>
+          )}
           <button
             type="button"
             className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
@@ -798,6 +848,16 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const handleOpenCode = useCallback((appId: number) => {
     ipc.system.openCodeWindow({ appId, theme, themeIntensity: intensity });
   }, [theme, intensity]);
+
+  const handleStopServer = useCallback(async (appId: number) => {
+    try {
+      await ipc.app.stopApp({ appId });
+      // Force immediate refresh of server status indicator
+      queryClient.invalidateQueries({ queryKey: ["server-status", appId] });
+    } catch (e) {
+      showError(e);
+    }
+  }, [queryClient]);
 
   // Empty app dialog state
   const [isEmptyAppDialogOpen, setIsEmptyAppDialogOpen] = useState(false);
@@ -1442,6 +1502,7 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     onCloseApp={handleCloseAppClick}
                     onOpenGit={handleOpenGit}
                     onOpenCode={handleOpenCode}
+                    onStopServer={handleStopServer}
                     selectedChatId={selectedChatId}
                     selectedAppId={selectedAppId}
                   />

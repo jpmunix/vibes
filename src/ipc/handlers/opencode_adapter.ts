@@ -1429,36 +1429,52 @@ export async function handleOpenCodeStream(
                         sendProgressUpdate(event, req.chatId, chatMessages,
                             `<vibes-status title="Analizando tu proyecto...">Generando contexto del proyecto</vibes-status>`);
 
-                        try {
-                            const settings = readSettings();
-                            const model = settings.selectedModel;
-                            const initProviderID = mapProviderForOpenCode(model);
+                        // Fire-and-forget — init runs in background while the user's prompt proceeds.
+                        // AGENTS.md will appear on disk once the server finishes; the agent works
+                        // fine without it (just less context for the very first message).
+                        const initSettings = readSettings();
+                        const initModel = initSettings.selectedModel;
+                        const initProviderID = mapProviderForOpenCode(initModel);
 
-                            // Build init body — messageID is required by the SDK type but
-                            // some server versions reject empty strings. Use a sentinel value.
-                            const initBody: { providerID: string; modelID: string; messageID: string } = {
-                                providerID: initProviderID,
-                                modelID: model.name,
-                                messageID: "init",
-                            };
+                        // Build init body — messageID must start with "msg" (server validates format)
+                        const initBody: { providerID: string; modelID: string; messageID: string } = {
+                            providerID: initProviderID,
+                            modelID: initModel.name,
+                            messageID: `msg_init_${Date.now()}`,
+                        };
 
-                            logger.info(`${LP} 🔧 Running init with model ${initProviderID}/${model.name} | dir=${projectDir}`);
-                            const initResult = await client.session.init({
-                                path: { id: sessionId },
-                                query: { directory: projectDir },
-                                body: initBody,
-                            });
-                            logger.info(`${LP} ✅ Init completed (result: ${JSON.stringify(initResult.data)})`);
+                        logger.info(`${LP} 🔧 Running init (lazy) with model ${initProviderID}/${initModel.name} | dir=${projectDir}`);
+                        client.session.init({
+                            path: { id: sessionId },
+                            query: { directory: projectDir },
+                            body: initBody,
+                        }).then((initResult: any) => {
+                            const httpStatus = initResult?.response?.status ?? initResult?.status ?? "unknown";
+                            logger.info(`${LP} ✅ Init completed (data: ${JSON.stringify(initResult.data)}, httpStatus: ${httpStatus})`);
+
+                            if (initResult.error) {
+                                logger.error(`${LP} ❌ Init returned error from server: ${JSON.stringify(initResult.error)}`);
+                            }
+
+                            if (initResult.data === undefined || initResult.data === null) {
+                                const debugInfo = {
+                                    hasResponse: !!initResult?.response,
+                                    responseStatus: httpStatus,
+                                    responseStatusText: initResult?.response?.statusText,
+                                    error: initResult.error,
+                                    keys: Object.keys(initResult),
+                                };
+                                logger.warn(`${LP} ⚠️ Init .data is ${initResult.data} — full debug: ${JSON.stringify(debugInfo)}`);
+                            }
 
                             // Verify AGENTS.md was actually created
-                            const createdAgentsMd = agentsMdPaths.find(p => fs.existsSync(p));
-                            if (createdAgentsMd) {
-                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdAgentsMd}`);
+                            const createdPath = agentsMdPaths.find(p => fs.existsSync(p));
+                            if (createdPath) {
+                                logger.info(`${LP} 📄 AGENTS.md created at: ${createdPath}`);
                             } else {
-                                logger.warn(`${LP} ⚠️ Init returned success but AGENTS.md not found on disk (server may write it lazily)`);
+                                logger.warn(`${LP} ⚠️ Init returned httpStatus=${httpStatus} but AGENTS.md not found on disk`);
                             }
-                        } catch (initError: any) {
-                            // Log the FULL error for debugging — not just the message
+                        }).catch((initError: any) => {
                             logger.warn(`${LP} ❌ Init failed (non-fatal): ${initError.message}`);
                             logger.warn(`${LP}    Full error:`, JSON.stringify({
                                 status: initError.status || initError.statusCode,
@@ -1466,10 +1482,9 @@ export async function handleOpenCodeStream(
                                 data: initError.data,
                                 stack: initError.stack?.split('\n').slice(0, 3).join(' → '),
                             }));
-                            // Non-fatal — agent will work without AGENTS.md, just less context
-                        }
+                        });
 
-                        // Clear the analyzing status from the UI
+                        // Clear the analyzing status from the UI immediately (init continues in background)
                         sendChunk(event, req.chatId, chatMessages, "");
                     } else {
                         logger.info(`${LP} AGENTS.md already exists, skipping init`);

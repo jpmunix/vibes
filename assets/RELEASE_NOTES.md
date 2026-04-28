@@ -1,4 +1,4 @@
-# v8.2.1
+# v8.0
 *27 de abril de 2026*
 
 ## Control total de permisos del agente
