@@ -65,10 +65,7 @@ export function AppItem({
         {selectionMode && (
           <div
             className="flex items-center justify-center w-5 shrink-0 cursor-pointer animate-in fade-in slide-in-from-left-2 duration-200"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect?.(app.id);
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             <Checkbox
               checked={isSelected}
