@@ -31,6 +31,7 @@ import {
     ArrowUp,
     ArrowDown,
     FileText,
+    RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -304,6 +305,24 @@ function PlaygroundPanel() {
     }, []);
     const toggleSizeSort = useCallback(() => {
         setSortMode(prev => prev === 'size-asc' ? 'size-desc' : 'size-asc');
+    }, []);
+
+    // Reset everything
+    const handleReset = useCallback(() => {
+        setPrompt("");
+        setSelectedModels([]);
+        setDisabledModels(new Set());
+        setResults([]);
+        setModelTimes(new Map());
+        setExpandedCards(new Set());
+        setRunFinished(false);
+        setSortMode('speed-asc');
+        setModelSearch("");
+        setSearchOpen(false);
+        setCurrentModelIndex(-1);
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
     }, []);
 
     // Run the prompt sequentially against active models only
@@ -876,6 +895,16 @@ function PlaygroundPanel() {
                         </div>
                     )}
                     <div className="flex-1" />
+                    <button
+                        type="button"
+                        className="playground-sort-btn"
+                        onClick={handleReset}
+                        disabled={isRunning}
+                        style={{ opacity: (selectedModels.length === 0 && results.length === 0 && !prompt) ? 0.3 : 1 }}
+                    >
+                        <RotateCcw size={12} />
+                        Reset
+                    </button>
                     <button
                         type="button"
                         className="playground-send-btn"
