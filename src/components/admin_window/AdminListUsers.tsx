@@ -465,24 +465,7 @@ export function AdminListUsers() {
         </div>
     );
 }
-
-// ── Recursive JSON Tree Viewer ──────────────────────────────────────────────
-
-/** Keys whose values should be masked for security */
-const SENSITIVE_KEYS = new Set([
-    "key", "value", "password", "passwordHash", "sessionToken",
-    "githubAccessToken", "vercelAccessToken", "serperApiKey",
-]);
-
-function isSensitiveKey(key: string): boolean {
-    const lower = key.toLowerCase();
-    return SENSITIVE_KEYS.has(key) || lower.includes("token") || lower.includes("secret") || lower.includes("apikey");
-}
-
-function maskValue(val: string): string {
-    if (val.length <= 8) return "••••••••";
-    return val.slice(0, 4) + "••••" + val.slice(-4);
-}
+// ── Settings Table Viewer ───────────────────────────────────────────────────
 
 function UserSettingsViewer({ userId }: { userId: string }) {
     const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
@@ -524,21 +507,122 @@ function UserSettingsViewer({ userId }: { userId: string }) {
     }
 
     return (
-        <div className="p-4 rounded-xl border border-border/50">
-            <p className="typo-label mb-3">Configuración del usuario</p>
-            <JsonNode value={settings} depth={0} parentKey="" />
+        <div className="rounded-xl border border-border/50 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-border/50">
+                <p className="typo-label">Configuración del usuario</p>
+            </div>
+            <SettingsTable entries={Object.entries(settings)} />
         </div>
     );
 }
 
-function JsonNode({ value, depth, parentKey }: { value: unknown; depth: number; parentKey: string }) {
+/** Describes the size of a complex value */
+function describeComplex(val: unknown): string {
+    if (Array.isArray(val)) {
+        const n = val.length;
+        return n === 0 ? "[ ] vacío" : `${n} elemento${n !== 1 ? "s" : ""}`;
+    }
+    if (typeof val === "object" && val !== null) {
+        const n = Object.keys(val).length;
+        return n === 0 ? "{ } vacío" : `${n} propiedad${n !== 1 ? "es" : ""}`;
+    }
+    return "";
+}
+
+function isComplex(val: unknown): boolean {
+    return val !== null && typeof val === "object";
+}
+
+/** A two-column table that renders key–value pairs, with expandable rows for nested data */
+function SettingsTable({ entries }: { entries: [string, unknown][] }) {
+    return (
+        <table className="w-full text-sm">
+            <tbody>
+                {entries.map(([key, val]) => (
+                    <SettingsRow key={key} label={key} value={val} />
+                ))}
+            </tbody>
+        </table>
+    );
+}
+
+function SettingsRow({ label, value }: { label: string; value: unknown }) {
+    const complex = isComplex(value);
+    const [expanded, setExpanded] = useState(false);
+
+    // Nested entries when expanded
+    const nestedEntries: [string, unknown][] = expanded
+        ? Array.isArray(value)
+            ? value.map((item, idx) => [`[${idx}]`, item])
+            : typeof value === "object" && value !== null
+                ? Object.entries(value as Record<string, unknown>)
+                : []
+        : [];
+
+    return (
+        <>
+            <tr
+                className={cn(
+                    "border-t border-border/30 first:border-t-0 transition-colors",
+                    complex ? "hover:bg-muted/50 cursor-pointer" : "hover:bg-muted/20",
+                )}
+                onClick={complex ? () => setExpanded((e) => !e) : undefined}
+            >
+                {/* Key column */}
+                <td className="px-4 py-2.5 align-top text-left">
+                    <div className="flex items-center gap-1.5">
+                        {complex && (
+                            <ChevronRight
+                                className={cn(
+                                    "size-3.5 text-muted-foreground/50 transition-transform duration-150 shrink-0",
+                                    expanded && "rotate-90",
+                                )}
+                            />
+                        )}
+                        <span className="typo-caption text-muted-foreground break-all">{label}</span>
+                    </div>
+                </td>
+
+                {/* Value column */}
+                <td className="px-4 py-2.5 align-top text-right">
+                    {complex ? (
+                        <span className="typo-caption text-muted-foreground/70 italic">
+                            {describeComplex(value)}
+                        </span>
+                    ) : (
+                        <ValueDisplay value={value} />
+                    )}
+                </td>
+            </tr>
+
+            {/* Nested sub-table */}
+            {expanded && nestedEntries.length > 0 && (
+                <tr>
+                    <td colSpan={2} className="p-0">
+                        <div className="ml-6 border-l-2 border-border/30">
+                            <SettingsTable entries={nestedEntries} />
+                        </div>
+                    </td>
+                </tr>
+            )}
+        </>
+    );
+}
+
+/** Renders a primitive value with appropriate styling */
+function ValueDisplay({ value }: { value: unknown }) {
     if (value === null || value === undefined) {
-        return <span className="typo-caption italic">null</span>;
+        return <span className="typo-caption italic text-muted-foreground/50">null</span>;
     }
 
     if (typeof value === "boolean") {
         return (
-            <span className={cn("typo-caption font-mono", value ? "text-primary" : "text-muted-foreground")}>
+            <span className={cn(
+                "typo-caption font-mono px-1.5 py-0.5 rounded",
+                value
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground bg-muted/50",
+            )}>
                 {value ? "true" : "false"}
             </span>
         );
@@ -549,121 +633,16 @@ function JsonNode({ value, depth, parentKey }: { value: unknown; depth: number; 
     }
 
     if (typeof value === "string") {
-        const display = isSensitiveKey(parentKey) ? maskValue(value) : value;
-        const maxLen = 80;
-        const truncated = display.length > maxLen ? display.slice(0, maxLen) + "…" : display;
+        if (value === "") {
+            return <span className="typo-caption italic text-muted-foreground/50">""</span>;
+        }
         return (
-            <span className="typo-caption font-mono text-foreground/80" title={isSensitiveKey(parentKey) ? "Valor enmascarado" : display}>
-                {truncated}
+            <span className="typo-caption font-mono text-foreground/80 break-all select-all">
+                {value}
             </span>
         );
-    }
-
-    if (Array.isArray(value)) {
-        return <JsonArrayNode items={value} depth={depth} parentKey={parentKey} />;
-    }
-
-    if (typeof value === "object") {
-        return <JsonObjectNode obj={value as Record<string, unknown>} depth={depth} />;
     }
 
     return <span className="typo-caption">{String(value)}</span>;
 }
 
-function JsonObjectNode({ obj, depth }: { obj: Record<string, unknown>; depth: number }) {
-    const [collapsed, setCollapsed] = useState(depth >= 2);
-    const entries = Object.entries(obj);
-
-    if (entries.length === 0) {
-        return <span className="typo-caption italic text-muted-foreground">{"{}"}</span>;
-    }
-
-    return (
-        <div className="space-y-0.5">
-            {entries.map(([key, val]) => {
-                const isComplex = val !== null && typeof val === "object";
-
-                if (!isComplex) {
-                    return (
-                        <div key={key} className="flex items-baseline gap-2 py-0.5" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
-                            <span className="typo-caption text-muted-foreground shrink-0">{key}:</span>
-                            <JsonNode value={val} depth={depth + 1} parentKey={key} />
-                        </div>
-                    );
-                }
-
-                return (
-                    <CollapsibleJsonEntry key={key} label={key} depth={depth} defaultCollapsed={depth >= 1}>
-                        <JsonNode value={val} depth={depth + 1} parentKey={key} />
-                    </CollapsibleJsonEntry>
-                );
-            })}
-        </div>
-    );
-}
-
-function JsonArrayNode({ items, depth, parentKey }: { items: unknown[]; depth: number; parentKey: string }) {
-    if (items.length === 0) {
-        return <span className="typo-caption italic text-muted-foreground">{"[]"}</span>;
-    }
-
-    // Simple array of primitives — inline
-    const allPrimitive = items.every((i) => i === null || typeof i !== "object");
-    if (allPrimitive) {
-        return (
-            <span className="typo-caption font-mono text-foreground/80">
-                [{items.map((i, idx) => (
-                    <span key={idx}>
-                        {idx > 0 && ", "}
-                        {typeof i === "string"
-                            ? (isSensitiveKey(parentKey) ? maskValue(i) : (i.length > 40 ? i.slice(0, 40) + "…" : i))
-                            : String(i)}
-                    </span>
-                ))}]
-            </span>
-        );
-    }
-
-    // Complex array — each item collapsible
-    return (
-        <div className="space-y-0.5" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
-            {items.map((item, idx) => (
-                <CollapsibleJsonEntry key={idx} label={`[${idx}]`} depth={depth} defaultCollapsed={depth >= 1}>
-                    <JsonNode value={item} depth={depth + 1} parentKey={parentKey} />
-                </CollapsibleJsonEntry>
-            ))}
-        </div>
-    );
-}
-
-function CollapsibleJsonEntry({
-    label,
-    depth,
-    defaultCollapsed,
-    children,
-}: {
-    label: string;
-    depth: number;
-    defaultCollapsed: boolean;
-    children: React.ReactNode;
-}) {
-    const [collapsed, setCollapsed] = useState(defaultCollapsed);
-
-    return (
-        <div style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
-            <div
-                className="flex items-center gap-1.5 py-0.5 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
-                onClick={() => setCollapsed((c) => !c)}
-            >
-                <ChevronRight
-                    className={cn(
-                        "size-3 text-muted-foreground/50 transition-transform duration-150 shrink-0",
-                        !collapsed && "rotate-90",
-                    )}
-                />
-                <span className="typo-caption text-muted-foreground">{label}</span>
-            </div>
-            {!collapsed && <div className="mt-0.5">{children}</div>}
-        </div>
-    );
-}
