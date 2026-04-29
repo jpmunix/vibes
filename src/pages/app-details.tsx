@@ -360,6 +360,15 @@ export default function AppDetailsPage() {
   });
   const hasDesignMd = !!designData?.content;
 
+  // Check if AGENTS.md exists in the project root for download option
+  const { data: agentsData } = useQuery({
+    queryKey: ["agents-md-read", currentAppPath],
+    queryFn: () => ipc.design.readAgentsMd({ appPath: selectedApp.path }),
+    enabled: !!currentAppPath,
+    staleTime: 30_000,
+  });
+  const hasAgentsMd = !!agentsData?.content;
+
   const handleDownloadDesign = () => {
     if (!designData?.content) return;
     const blob = new Blob([designData.content], { type: "text/markdown" });
@@ -367,6 +376,17 @@ export default function AppDetailsPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download = "DESIGN.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadAgentsMd = () => {
+    if (!agentsData?.content) return;
+    const blob = new Blob([agentsData.content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "AGENTS.md";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -440,16 +460,31 @@ export default function AppDetailsPage() {
                 </Button>
               </div>
 
-              {hasDesignMd && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer self-center"
-                  onClick={handleDownloadDesign}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Descargar DESIGN.md
-                </Button>
+              {(hasDesignMd || hasAgentsMd) && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {hasDesignMd && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                      onClick={handleDownloadDesign}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Descargar DESIGN.md
+                    </Button>
+                  )}
+                  {hasAgentsMd && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 h-9 bg-transparent border-border hover:bg-muted/50 dark:hover:bg-white/5 cursor-pointer"
+                      onClick={handleDownloadAgentsMd}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Descargar AGENTS.md
+                    </Button>
+                  )}
+                </div>
               )}
 
               {appId && (

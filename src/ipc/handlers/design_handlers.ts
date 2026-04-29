@@ -200,6 +200,18 @@ export function registerDesignHandlers() {
     }
   });
 
+  // ─── Read AGENTS.md from the project root ──────────────────────────────────
+  createTypedHandler(designContracts.readAgentsMd, async (_, { appPath }) => {
+    try {
+      const fullAppPath = getVibesAppPath(appPath);
+      const agentsMdPath = path.join(fullAppPath, "AGENTS.md");
+      const content = await fsPromises.readFile(agentsMdPath, "utf-8");
+      return { content };
+    } catch {
+      return { content: null };
+    }
+  });
+
   // ─── Generate DESIGN.md from a screenshot via AI vision ───────────────────
   createTypedHandler(designContracts.generateFromScreenshot, async (_, { imageDataUrl, model }) => {
     logger.info(`[Design] Generating DESIGN.md from screenshot (model: ${model}, dataUrl length: ${imageDataUrl.length})`);
