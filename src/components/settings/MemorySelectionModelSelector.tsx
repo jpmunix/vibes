@@ -2,7 +2,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash-lite-preview";
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 /**
  * Model selector for the memory Router (selection/classification).
@@ -14,13 +14,13 @@ export function MemorySelectionModelSelector() {
         useLanguageModelsForProvider("openrouter");
 
     const currentValue =
-        !settings?.memoriesRouterModel || settings?.memoriesRouterModel === ""
+        !settings?.memoriesRouterModelV2 || settings?.memoriesRouterModelV2 === ""
             ? DEFAULT_MODEL
-            : settings?.memoriesRouterModel;
+            : settings?.memoriesRouterModelV2;
 
     const handleChange = async (value: string) => {
         await updateSettings(
-            { memoriesRouterModel: value },
+            { memoriesRouterModelV2: value },
             { showToast: true },
         );
     };

@@ -2,11 +2,11 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash-preview-05-20";
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 /**
- * Model selector for the memory extraction pipeline.
- * Same pattern as StandardModeModelSelector but writes to `memoriesSynthesisModel`.
+ * Model selector for the memory synthesis (generator) pipeline.
+ * Same pattern as StandardModeModelSelector but writes to `memoriesSynthesisModelV2`.
  */
 export function MemoryExtractionModelSelector() {
     const { settings, updateSettings } = useSettings();
@@ -14,13 +14,13 @@ export function MemoryExtractionModelSelector() {
         useLanguageModelsForProvider("openrouter");
 
     const currentValue =
-        !settings?.memoriesSynthesisModel || settings?.memoriesSynthesisModel === ""
+        !settings?.memoriesSynthesisModelV2 || settings?.memoriesSynthesisModelV2 === ""
             ? DEFAULT_MODEL
-            : settings?.memoriesSynthesisModel;
+            : settings?.memoriesSynthesisModelV2;
 
     const handleChange = async (value: string) => {
         await updateSettings(
-            { memoriesSynthesisModel: value },
+            { memoriesSynthesisModelV2: value },
             { showToast: true },
         );
     };

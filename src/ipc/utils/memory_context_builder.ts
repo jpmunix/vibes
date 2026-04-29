@@ -34,7 +34,7 @@ const ROUTER_INPUT_LIMIT = 300;
 const ROUTER_OUTPUT_LIMIT = 10;
 
 /** Default model for memory selection (ultralight) */
-const DEFAULT_SELECTION_MODEL = "google/gemini-2.5-flash-lite-preview";
+const DEFAULT_SELECTION_MODEL = "google/gemini-2.5-flash-lite";
 
 /** Type labels for formatted output */
 const TYPE_LABELS: Record<string, string> = {
@@ -202,7 +202,7 @@ async function routerSelect(
     settings: any,
 ): Promise<MemoryRow[] | null> {
     try {
-        const model = settings.memoriesRouterModel
+        const model = settings.memoriesRouterModelV2
             || DEFAULT_SELECTION_MODEL;
 
         // Build structured user message matching the prompt format

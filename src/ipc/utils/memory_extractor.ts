@@ -162,7 +162,7 @@ export async function extractMemoriesFromChatCycle(params: {
         const userMessage = parts.join("\n");
 
         // 4. LLM call using the synthesis prompt
-        const model = settings.memoriesSynthesisModel
+        const model = settings.memoriesSynthesisModelV2
             || settings.standardModeModel
             || DEFAULT_STANDARD_MODEL;
 
