@@ -452,6 +452,33 @@ function MemoryAnalyzer() {
               )}
             </>
           )}
+
+          {/* 🗑️ Purge stats — inside the analyzer section */}
+          <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/30 hover:bg-destructive/5 transition-colors">
+            <div className="flex-1 min-w-0">
+              <h3 className="typo-label">Borrar datos de análisis</h3>
+              <p className="typo-caption mt-1">
+                Elimina la telemetría y los logs raw del pipeline. Las memorias no se borran.
+              </p>
+            </div>
+            <DeleteConfirmationDialog
+              itemName="todos los datos de análisis del pipeline"
+              itemType="datos"
+              onDelete={async () => {
+                const result = await ipc.memory.purgeAllMemoryStats();
+                toast.success(
+                  `Datos eliminados: ${result.telemetryDeleted} telemetría + ${result.pipelineLogsDeleted} logs`
+                );
+                setStats([]);
+                setRecent([]);
+              }}
+              trigger={
+                <Button variant="outline" size="sm" className="text-destructive/70 hover:text-destructive shrink-0">
+                  Borrar datos
+                </Button>
+              }
+            />
+          </div>
         </div>
       )}
     </>
@@ -673,31 +700,6 @@ export function MemorySettings() {
 
       {/* 📈 MemoryAnalyzer — Telemetry */}
       <MemoryAnalyzer />
-
-      {/* 🗑️ Purge all stats — destructive action */}
-      <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/30 hover:bg-destructive/5 transition-colors">
-        <div className="flex-1 min-w-0">
-          <h3 className="typo-label">Borrar todos los datos de análisis</h3>
-          <p className="typo-caption mt-1">
-            Elimina la telemetría y los logs raw del pipeline. Las memorias no se borran.
-          </p>
-        </div>
-        <DeleteConfirmationDialog
-          itemName="todos los datos de análisis del pipeline"
-          itemType="datos"
-          onDelete={async () => {
-            const result = await ipc.memory.purgeAllMemoryStats();
-            toast.success(
-              `Datos eliminados: ${result.telemetryDeleted} telemetría + ${result.pipelineLogsDeleted} logs`
-            );
-          }}
-          trigger={
-            <Button variant="outline" size="sm" className="text-destructive/70 hover:text-destructive shrink-0">
-              Borrar datos
-            </Button>
-          }
-        />
-      </div>
     </div>
   );
 }
