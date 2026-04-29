@@ -97,11 +97,12 @@ export async function validateModelSettings(): Promise<void> {
             writeSettings(settings);
             logger.info(`[ModelValidator] Migrated ${migrated.length} stale model references: ${migrated.join("; ")}`);
 
-            // Broadcast to renderer so the UI refreshes
+            // Broadcast updated settings + migration toast to renderer
             const updated = readSettings();
             for (const win of BrowserWindow.getAllWindows()) {
                 if (!win.isDestroyed() && win.webContents) {
                     safeSend(win.webContents, "settings:updated-from-backend", updated);
+                    safeSend(win.webContents, "models:migrated", { changes: migrated });
                 }
             }
         } else {

@@ -7,6 +7,7 @@ import { TitleBar } from "./TitleBar";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useRunApp, useAppOutputSubscription } from "@/hooks/useRunApp";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { showWarning } from "@/lib/toast";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -157,6 +158,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     setSelectedComponentsPreview([]);
     setConsoleEntries([]);
   }, [selectedAppId]);
+
+  // ── Model migration toast ──────────────────────────────────────────────
+  // When the boot-time validator replaces stale OpenRouter models, notify
+  // the user so they're aware — especially for hidden settings they
+  // wouldn't otherwise check (standardModeModel, memory models, etc.)
+  useEffect(() => {
+    const unsubscribe = window.electron?.ipcRenderer?.on(
+      "models:migrated" as any,
+      (data: { changes: string[] }) => {
+        if (data?.changes?.length) {
+          showWarning(
+            `Algunos modelos de IA ya no están disponibles en OpenRouter y fueron reemplazados automáticamente:\n\n${data.changes.join("\n")}`,
+          );
+        }
+      },
+    );
+    return () => { unsubscribe?.(); };
+  }, []);
 
   return (
     <>
