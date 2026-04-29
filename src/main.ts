@@ -33,6 +33,7 @@ import {
 import fs from "fs";
 import { gitAddSafeDirectory } from "./ipc/utils/git_utils";
 import { getVibesAppsBaseDirectory } from "./paths/paths";
+import { validateModelSettings } from "./ipc/utils/model_validator";
 
 log.errorHandler.startCatching();
 log.eventLogger.startLogging();
@@ -212,6 +213,12 @@ export async function onReady() {
 
     // Start performance monitoring after everything is initialized
     startPerformanceMonitoring();
+
+    // Validate that configured models still exist in OpenRouter
+    // (runs after OpenCode install to ensure network is likely available)
+    validateModelSettings().catch((err) =>
+      logger.warn("Model validation failed (non-fatal):", err),
+    );
 
     logger.info("Background initialization completed");
   });
