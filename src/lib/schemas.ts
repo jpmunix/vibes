@@ -481,6 +481,11 @@ export const UserSettingsSchema = z
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 
+    // Morph Patch Engine — overrides OpenCode's built-in edit/patch tools with
+    // Morph V3 models for ultrafast code merging (~400ms via OpenRouter).
+    enableMorphPatchTool: z.boolean().optional(),
+    morphPatchModel: z.enum(["auto", "morph/morph-v3-fast", "morph/morph-v3-large"]).optional(),
+
     // Auth (Vibes System)
     sessionToken: SecretSchema.optional(),
     userId: z.string().optional(),

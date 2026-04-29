@@ -911,6 +911,28 @@ async function getOpenCodeClient(appPath: string) {
         const originalCwd = process.cwd();
         process.chdir(opencodeDataDir);
 
+        // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
+        // When enabled, overrides OpenCode's built-in `apply_patch` and `edit`
+        // tools with Morph V3 models for ultrafast code merging (~400ms).
+        // Tools are deployed to a Vibes-managed config dir (OPENCODE_CONFIG_DIR).
+        try {
+            const { deployMorphTools, removeMorphTools, getMorphConfigDir } = await import("../utils/morph_patcher");
+            const morphEnabled = (settings as any).enableMorphPatchTool === true; // default: disabled
+
+            if (morphEnabled) {
+                deployMorphTools();
+                process.env.OPENCODE_CONFIG_DIR = getMorphConfigDir();
+                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — config dir: ${getMorphConfigDir()}`);
+            } else {
+                removeMorphTools();
+                // Don't set OPENCODE_CONFIG_DIR — let OpenCode use built-in tools
+                delete process.env.OPENCODE_CONFIG_DIR;
+                logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
+            }
+        } catch (e: any) {
+            logger.warn(`[OpenCode] Morph tools deployment failed (non-fatal): ${e.message}`);
+        }
+
         // Load MCP servers
         const { getRemoteDb } = await import("../../db/remote");
         const db = getRemoteDb();

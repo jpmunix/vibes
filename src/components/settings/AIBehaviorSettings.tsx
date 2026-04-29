@@ -199,6 +199,33 @@ export function AIBehaviorSettings({
           control={<StandardModeModelSelector />}
         />
 
+        {/* Morph Patch Engine */}
+        <SettingRow
+          label="Morph Patch Engine"
+          description="Ediciones de código ultrarrápidas vía Morph V3"
+          control={
+            <div className="relative bg-muted/50 rounded-xl p-1 flex w-fit border border-border">
+              {([
+                { value: false, label: "Desactivado" },
+                { value: true, label: "Activado" },
+              ] as const).map((option) => (
+                <button
+                  key={String(option.value)}
+                  onClick={() => updateSettings({ enableMorphPatchTool: option.value } as any)}
+                  className={cn(
+                    "px-4 py-1.5 typo-select rounded-lg transition-colors duration-200 cursor-pointer",
+                    ((settings as any)?.enableMorphPatchTool === true) === option.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "hover:bg-primary/10",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
+
         {/* Permisos del agente — collapsible inside Agente */}
         <div id="agent-permissions">
           <OpenCodePermissionsSettings />
