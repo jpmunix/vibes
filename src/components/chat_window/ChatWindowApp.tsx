@@ -194,6 +194,17 @@ function ChatWindowContent({ appId, chatId: initialChatId, hasPendingPrompt, ini
         }
     }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
 
+    // Apply font scale CSS variables from settings
+    useEffect(() => {
+        if (settings) {
+            const root = document.documentElement;
+            if (settings.fontScaleUI !== undefined) root.style.setProperty("--scale-ui", settings.fontScaleUI.toString());
+            if (settings.fontScaleSidebar !== undefined) root.style.setProperty("--scale-sidebar", settings.fontScaleSidebar.toString());
+            if (settings.fontScaleChat !== undefined) root.style.setProperty("--scale-chat", settings.fontScaleChat.toString());
+            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--scale-bubble-width", settings.fontScaleBubbleWidth.toString());
+        }
+    }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
+
     // Fetch and stream pending prompt+attachments via IPC when the chat window loads
     useEffect(() => {
         if (

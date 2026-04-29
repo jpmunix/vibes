@@ -83,6 +83,7 @@ export const apps = sqliteTable("apps", {
     themeId: text("theme_id"),
     primaryLanguage: text("primary_language"),
     projectType: text("project_type"),
+    isArchived: integer("is_archived").notNull().default(0),
 });
 
 // =============================================================================

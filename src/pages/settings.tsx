@@ -932,7 +932,8 @@ export function GeneralSettings({
   appVersion: string | null;
   isHighlighted?: boolean;
 }) {
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId } = useTheme();
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales } = useTheme();
+  const [fontScaleExpanded, setFontScaleExpanded] = useState(false);
   const { settings, updateSettings } = useSettings();
 
   useEffect(() => {
@@ -961,6 +962,22 @@ export function GeneralSettings({
       applyChatFont(settings.selectedChatFont);
     }
   }, [settings?.selectedFont, settings?.selectedChatFont]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply font scales from settings on load
+  useEffect(() => {
+    if (settings?.fontScaleUI !== undefined && settings.fontScaleUI !== fontScales.ui) {
+      applyFontScale("ui", settings.fontScaleUI);
+    }
+    if (settings?.fontScaleSidebar !== undefined && settings.fontScaleSidebar !== fontScales.sidebar) {
+      applyFontScale("sidebar", settings.fontScaleSidebar);
+    }
+    if (settings?.fontScaleChat !== undefined && settings.fontScaleChat !== fontScales.chat) {
+      applyFontScale("chat", settings.fontScaleChat);
+    }
+    if (settings?.fontScaleBubbleWidth !== undefined && settings.fontScaleBubbleWidth !== fontScales["bubble-width"]) {
+      applyFontScale("bubble-width", settings.fontScaleBubbleWidth);
+    }
+  }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -1129,6 +1146,148 @@ export function GeneralSettings({
             />
           }
         />
+
+        {/* Font Scale — collapsible */}
+        <div className="space-y-0">
+          <div
+            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+            onClick={() => setFontScaleExpanded((e) => !e)}
+          >
+            <div className="flex-1">
+              <h3 className="typo-label">Tamaño de fuente</h3>
+              <p className="typo-caption mt-1">
+                Ajusta el tamaño del texto por zona
+              </p>
+            </div>
+            <ChevronRight
+              className={cn(
+                "size-5 text-muted-foreground/50 group-hover:text-foreground transition-transform duration-200 shrink-0",
+                fontScaleExpanded && "rotate-90",
+              )}
+            />
+          </div>
+
+          {fontScaleExpanded && (
+            <div className="pl-4 space-y-0">
+              <SettingItem
+                label="Interfaz"
+                description="Títulos, botones, labels, badges y controles"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.ui)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("ui", scale);
+                      await updateSettings({ fontScaleUI: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-ui-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Sidebar"
+                description="Menús, apps y chats de la barra lateral"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.sidebar)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("sidebar", scale);
+                      await updateSettings({ fontScaleSidebar: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-sidebar-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Chat"
+                description="Mensajes y contenido del chat"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales.chat)}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("chat", scale);
+                      await updateSettings({ fontScaleChat: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-chat-selector"
+                  />
+                }
+              />
+              <SettingItem
+                label="Ancho de burbuja"
+                description="Ancho máximo de las burbujas de chat"
+                control={
+                  <UnifiedSelector
+                    value={String(fontScales["bubble-width"])}
+                    onChange={async (value) => {
+                      const scale = parseFloat(value);
+                      applyFontScale("bubble-width", scale);
+                      await updateSettings({ fontScaleBubbleWidth: scale });
+                    }}
+                    options={[
+                      { value: "1", label: "100%" },
+                      { value: "1.05", label: "105%" },
+                      { value: "1.1", label: "110%" },
+                      { value: "1.15", label: "115%" },
+                      { value: "1.2", label: "120%" },
+                      { value: "1.25", label: "125%" },
+                      { value: "1.3", label: "130%" },
+                      { value: "1.35", label: "135%" },
+                      { value: "1.4", label: "140%" },
+                      { value: "1.45", label: "145%" },
+                      { value: "1.5", label: "150%" },
+                    ]}
+                    triggerVariant="pill"
+                    triggerSize="md"
+                    popoverWidth="w-[140px]"
+                    itemLayout="compact"
+                    data-testid="font-scale-bubble-width-selector"
+                  />
+                }
+              />
+            </div>
+          )}
+        </div>
 
         {/* Icon Library Selector (Hidden - Experimental)
         <SettingItem

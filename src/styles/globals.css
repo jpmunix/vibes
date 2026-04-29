@@ -84,6 +84,10 @@ body[data-scroll-locked] .app-region-drag {
 
 :root {
   --theme-intensity: 0;
+  --scale-ui: 1;
+  --scale-sidebar: 1;
+  --scale-chat: 1;
+  --scale-bubble-width: 1;
   --l-offset: calc(var(--theme-intensity) * -0.15);
   --fg-l-offset: calc(var(--theme-intensity) * -0.05);
   --primary-color-light: oklch(0.59 0.16 287.69);

@@ -238,5 +238,99 @@ export function registerAdminHandlers(): void {
         }
     });
 
+    // ─── GET ALL USERS SETTINGS ─────────────────────────────────────────
+    createTypedHandler(adminContracts.getAllUsersSettings, async (_event, _input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+
+        const [userRows, settingsRows] = await Promise.all([
+            db.select().from(remoteSchema.users),
+            db.select().from(remoteSchema.userSettings),
+        ]);
+
+        const settingsMap = new Map<string, string>();
+        for (const row of settingsRows) {
+            settingsMap.set(row.userId, row.settingsJson);
+        }
+
+        const usersSettings = userRows.map((user) => {
+            const raw = settingsMap.get(user.id);
+            let settings: Record<string, unknown> | null = null;
+            if (raw) {
+                try { settings = JSON.parse(raw); } catch { /* skip */ }
+            }
+            return {
+                userId: user.id,
+                displayName: user.displayName,
+                email: user.email,
+                settings,
+            };
+        });
+
+        return { usersSettings };
+    });
+
+    // ─── GET KNOWLEDGE STATS ────────────────────────────────────────────
+    createTypedHandler(adminContracts.getKnowledgeStats, async (_event, _input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+
+        const [userRows, appRows, memoryRows, knowledgeRows, pipelineRows, telemetryRows] = await Promise.all([
+            db.select().from(remoteSchema.users),
+            db.select({ id: remoteSchema.apps.id, userId: remoteSchema.apps.userId, name: remoteSchema.apps.name }).from(remoteSchema.apps),
+            db.select().from(remoteSchema.memories),
+            db.select().from(remoteSchema.knowledgeEntries),
+            db.select().from(remoteSchema.memoryPipelineLogs),
+            db.select().from(remoteSchema.memoryTelemetry),
+        ]);
+
+        // Build lookup maps
+        const appsByUser = new Map<string, typeof appRows>();
+        for (const app of appRows) {
+            if (!appsByUser.has(app.userId)) appsByUser.set(app.userId, []);
+            appsByUser.get(app.userId)!.push(app);
+        }
+
+        // Serialize row helper — convert Date objects to ISO strings
+        function serializeRow(row: Record<string, unknown>): Record<string, unknown> {
+            const out: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(row)) {
+                out[k] = v instanceof Date ? v.toISOString() : v;
+            }
+            return out;
+        }
+
+        const users = userRows.map((user) => {
+            const userApps = appsByUser.get(user.id) || [];
+            const apps = userApps.map((app) => ({
+                appId: app.id,
+                appName: app.name,
+                memories: memoryRows
+                    .filter((r) => r.userId === user.id && r.appId === app.id)
+                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
+                knowledgeEntries: knowledgeRows
+                    .filter((r) => r.userId === user.id && r.appId === app.id)
+                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
+                pipelineLogs: pipelineRows
+                    .filter((r) => r.userId === user.id && r.appId === app.id)
+                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
+                telemetry: telemetryRows
+                    .filter((r) => r.userId === user.id && (r.appId === app.id || r.appId === null))
+                    .map((r) => serializeRow(r as unknown as Record<string, unknown>)),
+            }));
+
+            return {
+                userId: user.id,
+                displayName: user.displayName,
+                email: user.email,
+                apps,
+            };
+        });
+
+        return { users };
+    });
+
     logger.info("Admin handlers registered");
 }

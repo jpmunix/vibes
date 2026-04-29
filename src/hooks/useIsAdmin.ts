@@ -1,4 +1,5 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAtomValue } from "jotai";
+import { userAtom } from "@/atoms/authAtoms";
 import { isAdmin as checkAdmin } from "@/lib/admin";
 
 /**
@@ -6,6 +7,6 @@ import { isAdmin as checkAdmin } from "@/lib/admin";
  * Reusable across any component.
  */
 export function useIsAdmin(): boolean {
-    const { user } = useAuth();
+    const user = useAtomValue(userAtom);
     return checkAdmin(user?.id);
 }

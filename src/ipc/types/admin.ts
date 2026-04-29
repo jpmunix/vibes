@@ -84,6 +84,39 @@ export const adminContracts = {
         input: z.object({ userId: z.string() }),
         output: z.object({ settings: z.record(z.unknown()).nullable() }),
     }),
+
+    getAllUsersSettings: defineContract({
+        channel: "admin:get-all-users-settings",
+        input: z.object({}),
+        output: z.object({
+            usersSettings: z.array(z.object({
+                userId: z.string(),
+                displayName: z.string(),
+                email: z.string(),
+                settings: z.record(z.unknown()).nullable(),
+            })),
+        }),
+    }),
+
+    getKnowledgeStats: defineContract({
+        channel: "admin:get-knowledge-stats",
+        input: z.object({}),
+        output: z.object({
+            users: z.array(z.object({
+                userId: z.string(),
+                displayName: z.string(),
+                email: z.string(),
+                apps: z.array(z.object({
+                    appId: z.number(),
+                    appName: z.string(),
+                    memories: z.array(z.record(z.unknown())),
+                    knowledgeEntries: z.array(z.record(z.unknown())),
+                    pipelineLogs: z.array(z.record(z.unknown())),
+                    telemetry: z.array(z.record(z.unknown())),
+                })),
+            })),
+        }),
+    }),
 } as const;
 
 // =============================================================================

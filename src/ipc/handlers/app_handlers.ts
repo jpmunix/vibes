@@ -342,7 +342,10 @@ export function registerAppHandlers() {
     const db = getRemoteDb();
 
     const allApps = await db.query.apps.findMany({
-      where: eq(remoteSchema.apps.userId, context.userId),
+      where: and(
+        eq(remoteSchema.apps.userId, context.userId),
+        eq(remoteSchema.apps.isArchived, 0),
+      ),
       orderBy: [desc(remoteSchema.apps.createdAt)],
     });
 
@@ -388,6 +391,50 @@ export function registerAppHandlers() {
     return {
       apps: appsWithResolvedPath,
     };
+  });
+
+  // Archive / unarchive an app
+  createTypedHandler(appContracts.archiveApp, async (_, { appId, archived }, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+    await db.update(remoteSchema.apps)
+      .set({ isArchived: archived ? 1 : 0 })
+      .where(and(eq(remoteSchema.apps.id, appId), eq(remoteSchema.apps.userId, context.userId)));
+  });
+
+  // Get archived apps
+  createTypedHandler(appContracts.getArchivedApps, async (_, _input, context) => {
+    if (!context.userId) throw new Error("Unauthorized");
+    const db = getRemoteDb();
+
+    const archivedApps = await db.query.apps.findMany({
+      where: and(
+        eq(remoteSchema.apps.userId, context.userId),
+        eq(remoteSchema.apps.isArchived, 1),
+      ),
+      orderBy: [desc(remoteSchema.apps.createdAt)],
+    });
+
+    const appsWithResolvedPath = await Promise.all(
+      archivedApps.map(async (app) => {
+        const resolvedPath = getVibesAppPath(app.path);
+        let localPathExists = false;
+        try {
+          await fsPromises.access(resolvedPath);
+          localPathExists = true;
+        } catch {
+          // Path does not exist
+        }
+        return {
+          ...app,
+          resolvedPath,
+          localPathExists,
+          canClone: !!(app.githubOrg && app.githubRepo),
+        };
+      }),
+    );
+
+    return appsWithResolvedPath;
   });
 
   createTypedHandler(appContracts.readAppFile, async (_, params, context) => {

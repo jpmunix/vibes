@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, X, FolderX } from "@/components/ui/icons";
+import { Loader2, X, FolderX, Archive, ArchiveRestore } from "@/components/ui/icons";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
 import { sidebarActionAtom } from "@/atoms/uiAtoms";
@@ -14,11 +14,12 @@ import { Label } from "@/components/ui/label";
 import { selectedChatIdAtom } from "@/atoms/chatAtoms";
 import { useLoadApps } from "@/hooks/useLoadApps";
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { AppSearchDialog } from "./AppSearchDialog";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { AppItem } from "./appItem";
 import { ipc } from "@/ipc/types";
-import { showError } from "@/lib/toast";
+import { showError, showSuccess } from "@/lib/toast";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,9 @@ import { useCreateApp } from "@/hooks/useCreateApp";
 import { useCheckName } from "@/hooks/useCheckName";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import type { ListedApp } from "@/ipc/types/app";
 
 export function AppList({ show }: { show?: boolean }) {
   const navigate = useNavigate();
@@ -57,6 +61,12 @@ export function AppList({ show }: { show?: boolean }) {
   const [emptyAppName, setEmptyAppName] = useState("");
   const [isCreatingEmptyApp, setIsCreatingEmptyApp] = useState(false);
   const { data: emptyAppNameCheck } = useCheckName(emptyAppName);
+
+  // ── Archived apps state (same pattern as archived chats) ──
+  const [archivePanelOpen, setArchivePanelOpen] = useState(false);
+  const [archivedApps, setArchivedApps] = useState<ListedApp[]>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
 
   // ── Bulk selection mode state ──
   const [selectionMode, setSelectionMode] = useState(false);
@@ -88,6 +98,9 @@ export function AppList({ show }: { show?: boolean }) {
         break;
       case "apps:bulk-close":
         enterSelectionMode();
+        break;
+      case "apps:archived":
+        loadAndShowArchivedApps();
         break;
     }
   }, [sidebarAction]);
@@ -269,6 +282,47 @@ export function AppList({ show }: { show?: boolean }) {
     }
   };
 
+  const handleArchiveApp = async (appId: number, appName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await ipc.app.archiveApp({ appId, archived: true });
+      await refreshApps();
+      showSuccess(`"${appName}" archivado`);
+      if (selectedAppId === appId) {
+        setSelectedAppId(null);
+        navigate({ to: "/", search: {} });
+      }
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  const loadAndShowArchivedApps = useCallback(async () => {
+    setArchivePanelOpen(true);
+    setLoadingArchived(true);
+    try {
+      const result = await ipc.app.getArchivedApps();
+      setArchivedApps(result as any);
+    } catch (e) {
+      showError(e);
+    } finally {
+      setLoadingArchived(false);
+    }
+  }, []);
+
+  const handleUnarchiveApp = useCallback(async (appId: number) => {
+    setUnarchivingId(appId);
+    try {
+      await ipc.app.archiveApp({ appId, archived: false });
+      setArchivedApps(prev => prev.filter(a => a.id !== appId));
+      await refreshApps();
+    } catch (e) {
+      showError(e);
+    } finally {
+      setUnarchivingId(null);
+    }
+  }, [refreshApps]);
+
   // Selected app names for the bulk dialog
   const selectedAppNames = useMemo(
     () => apps.filter((a) => selectedIds.has(a.id)).map((a) => a.name),
@@ -288,6 +342,7 @@ export function AppList({ show }: { show?: boolean }) {
       selectionMode={selectionMode}
       isSelected={selectedIds.has(app.id)}
       onToggleSelect={toggleSelect}
+      onArchive={handleArchiveApp}
     />
   );
 
@@ -698,6 +753,103 @@ export function AppList({ show }: { show?: boolean }) {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Archived apps panel — centered modal (same pattern as archived chats) */}
+      {archivePanelOpen && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[998] bg-black/40 backdrop-blur-sm"
+            onClick={() => setArchivePanelOpen(false)}
+          />
+          <div
+            className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-w-[90vw] bg-popover border border-border rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-sidebar-accent/30">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Archive size={15} className="text-primary" />
+                </div>
+                <div>
+                  <span className="text-sm font-semibold block">Apps archivadas</span>
+                  <span className="text-xs text-muted-foreground/60">Workspaces archivados</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
+                onClick={() => setArchivePanelOpen(false)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Panel content */}
+            <div className="max-h-[420px] overflow-y-auto">
+              {loadingArchived ? (
+                <div className="flex items-center justify-center gap-2.5 py-12 text-muted-foreground/60">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span className="text-sm">Cargando archivadas...</span>
+                </div>
+              ) : archivedApps.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground/50">
+                  <div className="p-4 rounded-2xl bg-sidebar-accent/40">
+                    <Archive size={28} className="opacity-50" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-muted-foreground/70">Sin apps archivadas</p>
+                    <p className="text-xs mt-0.5 text-muted-foreground/40">Las apps archivadas aparecerán aquí</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-2">
+                  {archivedApps.map((app) => (
+                    <div
+                      key={app.id}
+                      className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
+                    >
+                      <div className="p-1.5 rounded-lg bg-muted/30 shrink-0">
+                        <Archive size={12} className="text-muted-foreground/50" />
+                      </div>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm truncate font-medium">{app.name}</span>
+                        <span className="text-xs text-muted-foreground/55 mt-0.5">
+                          Archivado · {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true, locale: es })}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                        onClick={() => handleUnarchiveApp(app.id)}
+                        disabled={unarchivingId === app.id}
+                      >
+                        {unarchivingId === app.id
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <ArchiveRestore size={12} />
+                        }
+                        Restaurar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {archivedApps.length > 0 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-sidebar-accent/20">
+                <span className="text-xs text-muted-foreground/50">
+                  {archivedApps.length} {archivedApps.length !== 1 ? 'apps archivadas' : 'app archivada'}
+                </span>
+                <span className="text-xs text-muted-foreground/35">Hover para restaurar</span>
+              </div>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
+
       <ImportAppButton />
     </>
   );

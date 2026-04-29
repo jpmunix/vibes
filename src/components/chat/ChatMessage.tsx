@@ -477,7 +477,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
 
   return (
     <div className="flex justify-center">
-      <div className="mt-4 mb-4 w-full max-w-4xl mx-auto group">
+      <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "calc(56rem * var(--scale-bubble-width, 1))" }}>
         <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
           {/* Avatar (hidden for system messages) */}
           {!isSystem && (

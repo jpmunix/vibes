@@ -37,6 +37,7 @@ export const AppBaseSchema = z.object({
   pocketbaseConfig: z.any().nullable().optional(),
   primaryLanguage: z.string().nullable().optional(),
   projectType: z.string().nullable().optional(),
+  isArchived: z.any().optional(),
 });
 
 /**
@@ -539,6 +540,18 @@ export const appContracts = {
       status: z.enum(["running", "stopped", "error"]),
       url: z.string().optional(),
     }),
+  }),
+
+  archiveApp: defineContract({
+    channel: "archive-app",
+    input: z.object({ appId: z.number(), archived: z.boolean() }),
+    output: z.void(),
+  }),
+
+  getArchivedApps: defineContract({
+    channel: "get-archived-apps",
+    input: z.void(),
+    output: z.array(ListedAppSchema),
   }),
 } as const;
 

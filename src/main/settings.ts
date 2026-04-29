@@ -73,6 +73,10 @@ const DEFAULT_SETTINGS: UserSettings = {
   // Default font
   selectedFont: "bricolage-grotesque",
   selectedChatFont: "jetbrains-mono",
+  fontScaleUI: 1,
+  fontScaleSidebar: 1,
+  fontScaleChat: 1,
+  fontScaleBubbleWidth: 1,
   // Icon family selection
   iconLibrary: "lucide",
 };

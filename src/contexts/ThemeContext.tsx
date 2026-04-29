@@ -9,6 +9,9 @@ import { getFontById, getGoogleFontsUrl, DEFAULT_FONT_ID, type FontOption } from
 
 type Theme = "system" | "light" | "dark";
 
+/** Font-scale group identifiers */
+export type FontScaleGroup = "ui" | "sidebar" | "chat" | "bubble-width";
+
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -17,8 +20,10 @@ interface ThemeContextType {
   applyPrimaryColors: (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => void;
   applyFont: (fontId: string) => void;
   applyChatFont: (fontId: string) => void;
+  applyFontScale: (group: FontScaleGroup, scale: number) => void;
   currentFontId: string;
   currentChatFontId: string;
+  fontScales: Record<FontScaleGroup, number>;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -79,6 +84,24 @@ function applyChatFontToDOM(fontId: string) {
   document.documentElement.style.setProperty("--default-chat-font-family", font.family);
 }
 
+/** CSS variable name for each font-scale group */
+const SCALE_CSS_VAR: Record<FontScaleGroup, string> = {
+  ui: "--scale-ui",
+  sidebar: "--scale-sidebar",
+  chat: "--scale-chat",
+  "bubble-width": "--scale-bubble-width",
+};
+
+function applyFontScaleToDOM(group: FontScaleGroup, scale: number) {
+  document.documentElement.style.setProperty(SCALE_CSS_VAR[group], scale.toString());
+}
+
+function applyAllFontScalesToDOM(scales: Record<FontScaleGroup, number>) {
+  for (const group of Object.keys(scales) as FontScaleGroup[]) {
+    applyFontScaleToDOM(group, scales[group]);
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     // Try to get the saved theme from localStorage
@@ -99,6 +122,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return window.localStorage?.getItem("selected-chat-font") || "jetbrains-mono"; // matches DEFAULT_CHAT_FONT_ID
   });
 
+  const [fontScales, setFontScales] = useState<Record<FontScaleGroup, number>>(() => {
+    const parse = (key: string) => {
+      const v = window.localStorage?.getItem(key);
+      return v ? parseFloat(v) : 1;
+    };
+    return {
+      ui: parse("font-scale-ui"),
+      sidebar: parse("font-scale-sidebar"),
+      chat: parse("font-scale-chat"),
+      "bubble-width": parse("font-scale-bubble-width"),
+    };
+  });
+
   const applyPrimaryColors = useCallback(
     (lightColorId?: string, darkColorId?: string, lightChroma?: number, darkChroma?: number) => {
       applyColorToDOM(lightColorId, darkColorId, lightChroma, darkChroma);
@@ -116,6 +152,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setCurrentChatFontId(fontId);
     localStorage.setItem("selected-chat-font", fontId);
     applyChatFontToDOM(fontId);
+  }, []);
+
+  const applyFontScale = useCallback((group: FontScaleGroup, scale: number) => {
+    setFontScales((prev) => ({ ...prev, [group]: scale }));
+    localStorage.setItem(`font-scale-${group}`, scale.toString());
+    applyFontScaleToDOM(group, scale);
   }, []);
 
   useEffect(() => {
@@ -155,6 +197,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     applyFontToDOM(currentFontId);
     applyChatFontToDOM(currentChatFontId);
+    applyAllFontScalesToDOM(fontScales);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Global hotkey to toggle theme (Ctrl+T or Cmd+T)
@@ -182,7 +225,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId }}
+      value={{ theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales }}
     >
       {children}
     </ThemeContext.Provider>
@@ -195,7 +238,7 @@ export function useTheme() {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, currentFontId, currentChatFontId } =
+  const { theme, setTheme, intensity, setIntensity, applyPrimaryColors, applyFont, applyChatFont, applyFontScale, currentFontId, currentChatFontId, fontScales } =
     context;
 
   // Determine if dark mode is active when component mounts or theme changes
@@ -223,7 +266,9 @@ export function useTheme() {
     applyPrimaryColors,
     applyFont,
     applyChatFont,
+    applyFontScale,
     currentFontId,
     currentChatFontId,
+    fontScales,
   };
 }

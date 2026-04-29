@@ -9,6 +9,10 @@ Nuevo **sistema de memoria por proyecto**: mientras trabajas, la IA extrae autom
 
 Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y comparar velocidad, tamaño de respuesta y calidad lado a lado. Selecciona los modelos desde un picker integrado, ordena los resultados por tiempo o longitud, reintenta modelos individuales y cancela peticiones en vuelo. Accesible desde **Ajustes → OpenRouter**.
 
+## Ajusta el tamaño de cada zona
+
+Nuevo panel colapsable en **Ajustes → General** para escalar el tamaño de fuente **por zona**: interfaz (botones, labels), sidebar, chat y **ancho de las burbujas**. Cada control va del 100% al 130% de forma independiente, de modo que puedes agrandar solo el texto del chat sin tocar el resto o ensanchar las burbujas para aprovechar más pantalla.
+
 ## Correcciones y ajustes
 
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.

@@ -478,6 +478,11 @@ export const UserSettingsSchema = z
     selectedFont: z.string().optional(),
     // Selected Chat font family
     selectedChatFont: z.string().optional(),
+    // Font size multiplier (1 = default, 1.3 = 30% larger) — per group
+    fontScaleUI: z.number().optional(),
+    fontScaleSidebar: z.number().optional(),
+    fontScaleChat: z.number().optional(),
+    fontScaleBubbleWidth: z.number().optional(),
     // OpenCode binary auto-update tracking
     lastOpenCodeUpdateCheck: z.string().optional(),
 

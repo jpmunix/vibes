@@ -11,7 +11,7 @@
  *    <p className="typo-caption">Descripción secundaria</p>
  *    <button className="typo-button">Guardar</button>
  *
- *  SCALE (7 levels):
+ *  SCALE (7 levels) — scaled by --scale-ui:
  *    page-title  → 36px bold
  *    section-title → 24px bold
  *    subsection-title → 18px semibold
@@ -20,7 +20,7 @@
  *    caption → 13px normal muted
  *    micro → 11px medium muted
  *
- *  INTERACTIVE (7):
+ *  INTERACTIVE (6) — scaled by --scale-ui:
  *    button → 14px bold
  *    select → 13px bold
  *    input  → 14px normal
@@ -28,7 +28,7 @@
  *    tab    → 14px medium  ← TOP-LEVEL NAV buttons
  *    dropdown → 13px normal ← dropdown/contextual actions
  *
- *  MENU & SIDEBAR (3):
+ *  MENU & SIDEBAR (3) — scaled by --scale-sidebar:
  *    menu-header  → 11px bold upper ← group separators
  *    menu-item    → 13px bold       ← level 1: apps, folders, settings nav
  *    menu-subitem → 13px normal     ← level 2: chats, sub-items
@@ -37,71 +37,79 @@
 /* ── Content typography ────────────────────────── */
 
 .typo-page-title {
-  @apply text-4xl font-bold tracking-tight;
+  font-size: calc(36px * var(--scale-ui, 1));
+  @apply font-bold tracking-tight;
   
 }
 
 .typo-section-title {
-  @apply text-2xl font-bold;
+  font-size: calc(24px * var(--scale-ui, 1));
+  @apply font-bold;
   
 }
 
 .typo-subsection-title {
-  @apply text-lg font-semibold;
+  font-size: calc(18px * var(--scale-ui, 1));
+  @apply font-semibold;
   
 }
 
 .typo-label {
-  font-size: 14px;
+  font-size: calc(14px * var(--scale-ui, 1));
   @apply font-semibold;
   
 }
 
 .typo-body {
-  @apply text-sm font-normal;
+  font-size: calc(14px * var(--scale-ui, 1));
+  @apply font-normal;
   
 }
 
 .typo-caption {
-  font-size: 13px;
+  font-size: calc(13px * var(--scale-ui, 1));
   @apply font-normal;
   
 }
 
 .typo-micro {
-  font-size: 11px;
+  font-size: calc(11px * var(--scale-ui, 1));
   @apply font-medium;
 }
 
 /* ── Interactive elements ──────────────────────── */
 
 .typo-button {
-  @apply text-sm font-bold;
+  font-size: calc(14px * var(--scale-ui, 1));
+  @apply font-bold;
   
 }
 
 .typo-select {
-  font-size: 13px;
+  font-size: calc(13px * var(--scale-ui, 1));
   @apply font-bold;
   
 }
 
 .typo-input {
-  @apply text-sm font-normal;
+  font-size: calc(14px * var(--scale-ui, 1));
+  @apply font-normal;
   
 }
 
 .typo-badge {
-  @apply text-xs font-medium;
+  font-size: calc(12px * var(--scale-ui, 1));
+  @apply font-medium;
   
 }
 
 .typo-tab {
-  @apply text-sm font-medium;
+  font-size: calc(14px * var(--scale-ui, 1));
+  @apply font-medium;
 }
 
 .typo-dropdown {
-  font-size: 13px;
+  font-size: calc(13px * var(--scale-ui, 1));
   @apply font-normal;
   
 }
@@ -109,28 +117,36 @@
 /* ── Menu & Sidebar elements ─────────────────────── */
 
 .typo-menu-header {
-  font-size: 11px;
+  font-size: calc(11px * var(--scale-sidebar, 1));
   @apply font-bold tracking-wider uppercase;
 }
 
 .typo-menu-item {
-  font-size: 13px;
+  font-size: calc(13px * var(--scale-sidebar, 1));
   @apply font-bold;
 }
 
 .typo-menu-subitem {
-  font-size: 13px;
+  font-size: calc(13px * var(--scale-sidebar, 1));
   @apply font-normal;
 }
 
 /* ── Utility: mono variant ─────────────────────── */
 
 .typo-mono {
-  @apply font-mono text-sm;
+  font-size: calc(14px * var(--scale-ui, 1));
+  @apply font-mono;
   
 }
 
 .typo-mono-xs {
-  @apply font-mono text-xs;
+  font-size: calc(12px * var(--scale-ui, 1));
+  @apply font-mono;
   
+}
+
+/* ── Chat content scaling ──────────────────────── */
+
+.font-chat {
+  zoom: var(--scale-chat, 1);
 }

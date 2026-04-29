@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { AdminListUsers } from "@/components/admin_window/AdminListUsers";
 import { AdminListApps } from "@/components/admin_window/AdminListApps";
+import { AdminApiKeys } from "@/components/admin_window/AdminApiKeys";
+import { AdminKnowledgeBase } from "@/components/admin_window/AdminKnowledgeBase";
 
 import "@/styles/globals.css";
 
@@ -41,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
     { id: "aplicaciones", label: "Aplicaciones" },
     { id: "ajustes", label: "Ajustes y preferencias" },
     { id: "conocimientos", label: "Base de conocimientos" },
+    { id: "apikeys", label: "API Keys" },
 ];
 
 // ─── Admin Panel Layout ──────────────────────────────────────────────────────
@@ -126,6 +129,10 @@ function AdminContent({ activeItem }: { activeItem: string }) {
             return <AdminListUsers />;
         case "aplicaciones":
             return <AdminListApps />;
+        case "apikeys":
+            return <AdminApiKeys />;
+        case "conocimientos":
+            return <AdminKnowledgeBase />;
         default: {
             const item = NAV_ITEMS.find((i) => i.id === activeItem);
             return (
