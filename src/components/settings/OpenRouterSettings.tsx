@@ -38,6 +38,8 @@ import { showError, showSuccess } from "@/lib/toast";
 import { ModelsSection } from "./ModelsSection";
 import { AddModelDialog } from "./AddModelDialog";
 import { cn } from "@/lib/utils";
+import { ipc } from "@/ipc/types";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function OpenRouterSettings({
   isHighlighted,
@@ -56,6 +58,7 @@ export function OpenRouterSettings({
   const queryClient = useQueryClient();
   const providerId = "openrouter";
   const providerData = allProviders?.find((p) => p.id === providerId);
+  const { theme, intensity } = useTheme();
 
   const [newKeyInput, setNewKeyInput] = useState("");
   const [newKeyAlias, setNewKeyAlias] = useState("");
@@ -391,6 +394,27 @@ export function OpenRouterSettings({
                 <ModelsSection providerId={providerId} onAddRef={(fn) => { openAddModelsRef.current = fn; }} />
               </div>
             )}
+          </div>
+
+          {/* Playground Row */}
+          <div
+            className="flex items-center justify-between cursor-pointer group p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors gap-4"
+            onClick={() => {
+              ipc.system.openPlaygroundWindow({
+                theme: theme as "light" | "dark" | "system",
+                themeIntensity: intensity,
+              });
+            }}
+          >
+            <div className="flex-1">
+              <h3 className="typo-label">Playground</h3>
+              <p className="typo-caption mt-1">
+                Compara modelos ejecutando el mismo prompt contra varios modelos a la vez
+              </p>
+            </div>
+            <ChevronRight
+              className="size-5 text-muted-foreground/50 group-hover:text-foreground transition-colors duration-200 shrink-0"
+            />
           </div>
         </div>
       </div>

@@ -217,6 +217,13 @@ export const miscContracts = {
       outputTokens: z.number().optional(),
     }),
   }),
+
+  // Playground — cancel in-flight completion request
+  playgroundCancel: defineContract({
+    channel: "playground:cancel",
+    input: z.object({}),
+    output: z.object({ cancelled: z.boolean() }),
+  }),
 } as const;
 
 export const AppLogsBatchSchema = z.object({

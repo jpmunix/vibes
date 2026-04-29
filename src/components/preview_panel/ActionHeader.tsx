@@ -450,6 +450,21 @@ export const ActionHeader = () => {
                 <Logs size={14} />
                 <span>Consola</span>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (selectedAppId != null) {
+                    ipc.system.openMemoryWindow({
+                      appId: selectedAppId,
+                      theme,
+                      themeIntensity: intensity,
+                    });
+                  }
+                }}
+                disabled={selectedAppId == null}
+              >
+                <Database size={14} />
+                <span>Memorias</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 

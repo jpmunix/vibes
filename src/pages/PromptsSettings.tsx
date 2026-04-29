@@ -14,7 +14,7 @@ import {
   Wand2,
   ClipboardList,
   GitBranch,
-  Brain,
+  Database,
 } from "@/components/ui/icons";
 
 import { useRef } from "react";
@@ -48,7 +48,7 @@ const PROMPT_ICONS: Record<PromptId, React.ReactNode> = {
   quick_edit_system: <Wand2 className="w-4 h-4" />,
 
   auto_commit_message: <GitBranch className="w-4 h-4" />,
-  memory_extraction: <Brain className="w-4 h-4" />,
+  memory_extraction: <Database className="w-4 h-4" />,
 };
 
 /** Internal prompts — hidden from UI but kept for backwards compat */

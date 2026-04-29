@@ -27,6 +27,10 @@ import {
   Pin,
   PinOff,
   Square,
+  Database,
+  MessageSquare,
+  Code,
+  Folder,
 } from "@/components/ui/icons";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectedAppIdAtom } from "@/atoms/appAtoms";
@@ -495,11 +499,13 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const isActive = selectedAppId === app.id && (!selectedChatId || !pinnedChatIds.has(selectedChatId));
   const { hasUnpushedChanges } = useAppGitStatus(app.id);
   const { isServerRunning } = useAppServerStatus(app.id);
+  const { theme, intensity } = useTheme();
   const queryClient = useQueryClient();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const [subMenuOpen, setSubMenuOpen] = useState<"chat" | "workspace" | "codigo" | null>(null);
 
   const [archivePanelOpen, setArchivePanelOpen] = useState(false);
   const [archivePanelPos, setArchivePanelPos] = useState<{ top: number; left: number } | null>(null);
@@ -511,7 +517,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
     const btn = menuBtnRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    const menuHeight = 110; // Approx height of 3 items popup
+    const menuHeight = 130; // Approx height of 3 category items
     let top = rect.bottom + 4;
     if (top + menuHeight > window.innerHeight) {
       top = rect.top - menuHeight - 4;
@@ -523,6 +529,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     setMenuPos(null);
+    setSubMenuOpen(null);
   }, []);
 
   const loadAndShowArchived = useCallback(async () => {
@@ -646,72 +653,143 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
       <>
         <div className="fixed inset-0 z-[998]" onClick={closeMenu} />
         <div
-          className="fixed z-[999] min-w-[192px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-hidden"
+          className="fixed z-[999] min-w-[172px] bg-popover border border-border rounded-lg shadow-xl py-1 overflow-visible"
           style={{ top: menuPos.top, left: menuPos.left }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onNewChat(app.id); }}
+          {/* ── Chat category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "chat" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("chat")}
           >
-            <Plus size={14} className="opacity-60 shrink-0" />
-            Nuevo chat
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onOpenCode(app.id); }}
+            <span className="flex items-center gap-2">
+              <MessageSquare size={14} className="opacity-60 shrink-0" />
+              Chat
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Chat */}
+            {subMenuOpen === "chat" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("chat")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onNewChat(app.id); }}
+                >
+                  <Plus size={14} className="opacity-60 shrink-0" />
+                  Nuevo chat
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={loadAndShowArchived}
+                >
+                  <Archive size={14} className="opacity-60 shrink-0" />
+                  Ver archivados
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Workspace category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "workspace" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("workspace")}
           >
-            <FolderOpen size={14} className="opacity-60 shrink-0" />
-            Explorar código
-          </button>
-          {hasUnpushedChanges && (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => { closeMenu(); onOpenGit(app.id); }}
-            >
-              <GitBranch size={14} className="opacity-60 shrink-0" />
-              Revisar cambios
-            </button>
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
+            <span className="flex items-center gap-2">
+              <Folder size={14} className="opacity-60 shrink-0" />
+              Workspace
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Workspace */}
+            {subMenuOpen === "workspace" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[190px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("workspace")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onRenameApp(app.id, app.name); }}
+                >
+                  <Pencil size={14} className="opacity-60 shrink-0" />
+                  Renombrar workspace
+                </button>
+                {isServerRunning && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); onStopServer(app.id); }}
+                  >
+                    <Square size={14} className="shrink-0" />
+                    Detener servidor
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
+                >
+                  <X size={14} className="shrink-0" />
+                  Cerrar workspace
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Código category ── */}
+          <div
+            className={`relative flex w-full items-center justify-between gap-2 px-2 py-1.5 rounded-sm typo-dropdown transition-colors cursor-default whitespace-nowrap ${
+              subMenuOpen === "codigo" ? "bg-sidebar-accent text-accent-foreground" : "hover:bg-sidebar-accent hover:text-accent-foreground"
+            }`}
+            onMouseEnter={() => setSubMenuOpen("codigo")}
           >
-            <Pencil size={14} className="opacity-60 shrink-0" />
-            Renombrar proyecto
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-            onClick={loadAndShowArchived}
-          >
-            <Archive size={14} className="opacity-60 shrink-0" />
-            Ver archivados
-          </button>
-          {/* ── Destructive actions ── */}
-          <div className="my-1 border-t border-border" />
-          {isServerRunning && (
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
-              onClick={() => { closeMenu(); onStopServer(app.id); }}
-            >
-              <Square size={14} className="shrink-0" />
-              Detener servidor
-            </button>
-          )}
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"
-            onClick={() => { closeMenu(); onCloseApp(app.id, app.name); }}
-          >
-            <X size={14} className="shrink-0" />
-            Cerrar workspace
-          </button>
+            <span className="flex items-center gap-2">
+              <Code size={14} className="opacity-60 shrink-0" />
+              Código
+            </span>
+            <ChevronRight size={12} className="opacity-40 shrink-0" />
+            {/* Submenu: Código */}
+            {subMenuOpen === "codigo" && (
+              <div
+                className="absolute left-full top-0 ml-1 min-w-[180px] bg-popover border border-border rounded-lg shadow-xl py-1 z-[1000]"
+                onMouseEnter={() => setSubMenuOpen("codigo")}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onOpenCode(app.id); }}
+                >
+                  <FolderOpen size={14} className="opacity-60 shrink-0" />
+                  Explorar código
+                </button>
+                {hasUnpushedChanges && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                    onClick={() => { closeMenu(); onOpenGit(app.id); }}
+                  >
+                    <GitBranch size={14} className="opacity-60 shrink-0" />
+                    Revisar cambios
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); ipc.system.openMemoryWindow({ appId: app.id, theme, themeIntensity: intensity }); }}
+                >
+                  <Database size={14} className="opacity-60 shrink-0" />
+                  Ver memorias
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </>,
       document.body

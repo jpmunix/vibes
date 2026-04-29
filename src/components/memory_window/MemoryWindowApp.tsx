@@ -12,7 +12,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLoadApp } from "@/hooks/useLoadApp";
 import { MemoryPanel } from "@/components/MemoryPanel";
 import { WindowsControls } from "@/components/WindowsControls";
-import { Brain } from "@/components/ui/icons";
+import { Database } from "@/components/ui/icons";
 import { ipc } from "@/ipc/types";
 import { Toaster } from "sonner";
 
@@ -69,7 +69,7 @@ function MemoryWindowContent({ appId }: MemoryWindowAppProps) {
                 {/* ── Window title bar (drag region) — same pattern as GitPanel/CodeWindowApp ── */}
                 <div className="app-region-drag flex items-center justify-between px-3 h-9 bg-(--sidebar) border-b border-border shrink-0">
                     <div className="flex items-center gap-2 no-app-region-drag">
-                        <Brain size={14} className="text-primary" />
+                        <Database size={14} className="text-primary" />
                         <span className="typo-button">
                             {currentApp?.name ? `${currentApp.name} – Memorias del agente` : "Memorias del agente"}
                         </span>

@@ -20,7 +20,6 @@ import {
   Search,
   FolderX,
   ShieldCheck,
-  FlaskConical,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -118,13 +117,6 @@ export function TopNavbar() {
 
   const handleOpenAdmin = () => {
     ipc.system.openAdminWindow({
-      theme: theme as "light" | "dark" | "system",
-      themeIntensity: intensity,
-    });
-  };
-
-  const handleOpenPlayground = () => {
-    ipc.system.openPlaygroundWindow({
       theme: theme as "light" | "dark" | "system",
       themeIntensity: intensity,
     });
@@ -418,13 +410,6 @@ export function TopNavbar() {
                     <span className="typo-tab">Admin</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem
-                  className="py-2 cursor-pointer focus:bg-accent"
-                  onClick={handleOpenPlayground}
-                >
-                  <FlaskConical className="mr-3 h-4 w-4 text-muted-foreground" />
-                  <span className="typo-tab">Playground</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="py-2 cursor-pointer focus:bg-accent text-foreground"
                   onClick={handleLogout}

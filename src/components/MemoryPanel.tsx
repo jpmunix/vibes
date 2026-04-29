@@ -441,17 +441,35 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <div className="space-y-2">
               <label className="typo-label flex justify-between">
                 Importancia
-                <span className="typo-caption">{createForm.importance}</span>
+                <span className={`typo-caption font-semibold ${
+                  createForm.importance >= 90 ? "text-rose-500" :
+                  createForm.importance >= 70 ? "text-amber-500" :
+                  "text-blue-500"
+                }`}>
+                  {createForm.importance} — {
+                    createForm.importance >= 90 ? "Crítico" :
+                    createForm.importance >= 70 ? "Alto" :
+                    "Medio"
+                  }
+                </span>
               </label>
               <input
                 type="range"
-                min={10}
+                min={50}
                 max={100}
                 step={5}
                 value={createForm.importance}
                 onChange={e => setCreateForm(f => ({ ...f, importance: Number(e.target.value) }))}
                 className="w-full accent-primary"
               />
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                <p className="typo-micro font-semibold text-muted-foreground/80 uppercase tracking-wider">Guía de importancia</p>
+                <div className="grid gap-0.5 typo-micro text-muted-foreground">
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico — Stack principal, convenciones globales del proyecto</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto — Arquitectura de módulos, librerías clave, flujos de auth</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio — Gotchas técnicos, preferencias de formato, rarezas de APIs</span>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -493,7 +511,19 @@ export function MemoryPanel({ appId }: { appId: number }) {
             <div className="space-y-2">
               <label className="typo-label flex justify-between">
                 Importancia
-                <span className="typo-caption">{editForm.importance}</span>
+                <span className={`typo-caption font-semibold ${
+                  editForm.importance >= 90 ? "text-rose-500" :
+                  editForm.importance >= 70 ? "text-amber-500" :
+                  editForm.importance >= 50 ? "text-blue-500" :
+                  "text-muted-foreground"
+                }`}>
+                  {editForm.importance} — {
+                    editForm.importance >= 90 ? "Crítico" :
+                    editForm.importance >= 70 ? "Alto" :
+                    editForm.importance >= 50 ? "Medio" :
+                    "Bajo (puede ser podada)"
+                  }
+                </span>
               </label>
               <input
                 type="range"
@@ -504,6 +534,14 @@ export function MemoryPanel({ appId }: { appId: number }) {
                 onChange={e => setEditForm(f => ({ ...f, importance: Number(e.target.value) }))}
                 className="w-full accent-primary"
               />
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                <p className="typo-micro font-semibold text-muted-foreground/80 uppercase tracking-wider">Guía de importancia</p>
+                <div className="grid gap-0.5 typo-micro text-muted-foreground">
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico — Stack principal, convenciones globales del proyecto</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto — Arquitectura de módulos, librerías clave, flujos de auth</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio — Gotchas técnicos, preferencias de formato, rarezas de APIs</span>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -69,7 +69,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { isSupabaseConnected } from "@/lib/schemas";
 import { GithubCollaboratorManager } from "@/components/GithubCollaboratorManager";
 import { KnowledgeBaseModal } from "@/components/KnowledgeBaseModal";
-import { Brain } from "@/components/ui/icons";
+import { Database } from "@/components/ui/icons";
 import { useAddAppToFavorite } from "@/hooks/useAddAppToFavorite";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
@@ -494,7 +494,7 @@ export default function AppDetailsPage() {
                   className="gap-1.5 h-8 text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer self-center"
                   onClick={() => ipc.system.openMemoryWindow({ appId, theme, themeIntensity: intensity })}
                 >
-                  <Brain className="h-3.5 w-3.5" />
+                  <Database className="h-3.5 w-3.5" />
                   <span className="text-xs">Memorias</span>
                 </Button>
               )}
