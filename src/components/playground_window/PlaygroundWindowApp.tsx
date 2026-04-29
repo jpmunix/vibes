@@ -27,6 +27,10 @@ import {
     Plus,
     ChevronDown,
     Trophy,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+    FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -186,6 +190,7 @@ function PlaygroundPanel() {
     const [modelTimes, setModelTimes] = useState<Map<string, number>>(new Map());
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [runFinished, setRunFinished] = useState(false);
+    const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc'>('speed-asc');
     const { aliases } = useModelAliases();
     const resultsRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -282,8 +287,24 @@ function PlaygroundPanel() {
     // Sorted results for display (sorted after run finishes)
     const displayResults = useMemo(() => {
         if (!runFinished) return results;
-        return [...results].sort((a, b) => a.durationMs - b.durationMs);
-    }, [results, runFinished]);
+        return [...results].sort((a, b) => {
+            switch (sortMode) {
+                case 'speed-asc':  return a.durationMs - b.durationMs;
+                case 'speed-desc': return b.durationMs - a.durationMs;
+                case 'size-asc':   return a.text.length - b.text.length;
+                case 'size-desc':  return b.text.length - a.text.length;
+                default:           return 0;
+            }
+        });
+    }, [results, runFinished, sortMode]);
+
+    // Toggle sort modes
+    const toggleSpeedSort = useCallback(() => {
+        setSortMode(prev => prev === 'speed-asc' ? 'speed-desc' : 'speed-asc');
+    }, []);
+    const toggleSizeSort = useCallback(() => {
+        setSortMode(prev => prev === 'size-asc' ? 'size-desc' : 'size-asc');
+    }, []);
 
     // Run the prompt sequentially against active models only
     const handleSubmit = useCallback(async () => {
@@ -433,9 +454,9 @@ function PlaygroundPanel() {
                 .playground-chip {
                     display: inline-flex;
                     align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    border-radius: 20px;
+                    gap: 6px;
+                    padding: 6px 14px;
+                    border-radius: 8px;
                     background: oklch(from var(--primary) l c h / 0.12);
                     color: var(--primary);
                     font-size: 12px;
@@ -459,10 +480,18 @@ function PlaygroundPanel() {
                     opacity: 0.5;
                 }
                 .playground-chip .chip-time {
-                    font-size: 10px;
-                    font-weight: 600;
-                    opacity: 0.7;
-                    margin-left: 2px;
+                    font-size: 11px;
+                    font-weight: 400;
+                    padding: 2px 8px;
+                    border-radius: 5px;
+                    background: oklch(from var(--primary) l c h / 0.15);
+                    color: var(--primary);
+                    letter-spacing: 0.04em;
+                    font-variant-numeric: tabular-nums;
+                }
+                .playground-chip.disabled .chip-time {
+                    background: var(--muted);
+                    color: var(--muted-foreground);
                 }
                 @keyframes chipIn {
                     from { opacity: 0; transform: scale(0.9); }
@@ -579,6 +608,36 @@ function PlaygroundPanel() {
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                }
+
+                .playground-sort-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .playground-sort-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    border: 1px solid var(--border);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    font-size: 11px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.15s, color 0.15s, border-color 0.15s;
+                    white-space: nowrap;
+                }
+                .playground-sort-btn:hover {
+                    background: var(--accent);
+                    color: var(--foreground);
+                }
+                .playground-sort-btn.active {
+                    background: oklch(from var(--primary) l c h / 0.1);
+                    border-color: oklch(from var(--primary) l c h / 0.3);
+                    color: var(--primary);
                 }
 
                 .playground-send-btn {
@@ -792,6 +851,30 @@ function PlaygroundPanel() {
                             </div>
                         )}
                     </div>
+                    {runFinished && results.length > 1 && (
+                        <div className="playground-sort-group">
+                            <button
+                                type="button"
+                                className={`playground-sort-btn ${sortMode.startsWith('speed') ? 'active' : ''}`}
+                                onClick={toggleSpeedSort}
+                            >
+                                <Clock size={11} />
+                                Velocidad
+                                {sortMode === 'speed-asc' && <ArrowUp size={11} />}
+                                {sortMode === 'speed-desc' && <ArrowDown size={11} />}
+                            </button>
+                            <button
+                                type="button"
+                                className={`playground-sort-btn ${sortMode.startsWith('size') ? 'active' : ''}`}
+                                onClick={toggleSizeSort}
+                            >
+                                <FileText size={11} />
+                                Tamaño
+                                {sortMode === 'size-asc' && <ArrowUp size={11} />}
+                                {sortMode === 'size-desc' && <ArrowDown size={11} />}
+                            </button>
+                        </div>
+                    )}
                     <div className="flex-1" />
                     <button
                         type="button"
