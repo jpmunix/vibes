@@ -460,8 +460,14 @@ export async function initializeRemoteSchema(): Promise<void> {
     try {
       await client.execute(migration);
       logger.info(`Migration applied: ${migration.slice(0, 60)}...`);
-    } catch {
-      // Column likely already exists — this is expected
+    } catch (err: any) {
+      // ALTER TABLE "column already exists" is expected — but log CREATE TABLE failures
+      const snippet = migration.slice(0, 60);
+      if (migration.trimStart().startsWith("CREATE TABLE")) {
+        logger.error(`Migration FAILED (DDL): ${snippet}... → ${err.message}`);
+      } else {
+        logger.info(`Migration skipped (already applied): ${snippet}...`);
+      }
     }
   }
 }

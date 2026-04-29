@@ -52,7 +52,7 @@ interface SynthesisOperation {
 
 const NOISE_PATTERNS = [
     /^(import|require|export)\s/i,          // Import statements
-    /^(\.\/|\.\.\//)/,                       // File paths
+    /^(\.\/|\.\.\/)/,                        // File paths
     /^(#[0-9a-f]{3,8}|rgb|hsl|var\(--)/i,  // CSS values
     /^(npm|npx|yarn|pnpm)\s/i,             // Package manager commands
     /^\d+(\.\d+)*$/,                        // Version numbers alone

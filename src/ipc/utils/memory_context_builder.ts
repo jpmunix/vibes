@@ -30,8 +30,8 @@ const logger = log.scope("memory_context");
 /** Safety belt — max memories to send to the Router LLM */
 const ROUTER_INPUT_LIMIT = 300;
 
-/** Max memories the Router can select */
-const ROUTER_OUTPUT_LIMIT = 10;
+/** Default max memories the Router can select */
+const DEFAULT_MAX_SELECTION = 10;
 
 /** Default model for memory selection (ultralight) */
 const DEFAULT_SELECTION_MODEL = "google/gemini-2.5-flash-lite";
@@ -76,6 +76,7 @@ export async function buildMemoryContext(
     const EMPTY_RESULT: MemoryContextResult = { block: "", memories: [] };
     try {
         const settings = readSettings();
+        const maxSelection = settings.memoriesMaxSelection || DEFAULT_MAX_SELECTION;
 
         // Feature guard
         if (settings.memoriesEnabled === false) return EMPTY_RESULT;
@@ -140,7 +141,7 @@ export async function buildMemoryContext(
             }
         } else {
             // Fallback: no prompt or no API key → take top 10 by score
-            selectedRows = rows.slice(0, ROUTER_OUTPUT_LIMIT);
+            selectedRows = rows.slice(0, maxSelection);
         }
 
         // 4. Format as compact block
@@ -206,13 +207,15 @@ async function routerSelect(
     try {
         const model = settings.memoriesRouterModelV2
             || DEFAULT_SELECTION_MODEL;
+        const maxSelection = settings.memoriesMaxSelection || DEFAULT_MAX_SELECTION;
 
         // Build structured user message matching the prompt format
         const memoryList = memories
             .map(m => `- [#${m.id}] [${m.type}] key:${m.key || "—"} | imp:${m.importance} | ${m.content}`)
             .join("\n");
 
-        const selectionPrompt = getEffectivePrompt("memory_selection", settings);
+        const selectionPrompt = getEffectivePrompt("memory_selection", settings)
+            .replace("__NUM_MEMORIES__", String(maxSelection));
 
         const userMessage = [
             "# CONTEXTO DE EVALUACIÓN",
@@ -288,7 +291,7 @@ async function routerSelect(
         // Validate and cap at ROUTER_OUTPUT_LIMIT
         selectedIds = selectedIds
             .filter(id => typeof id === "number")
-            .slice(0, ROUTER_OUTPUT_LIMIT);
+            .slice(0, maxSelection);
 
         // Log the successful router call (raw)
         logPipelineCall({

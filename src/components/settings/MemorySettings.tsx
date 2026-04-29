@@ -21,6 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { DEFAULT_PROMPTS } from "@/prompts";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
 
 // =============================================================================
 // SettingRow — same as AIBehaviorSettings.SettingRow
@@ -607,6 +608,29 @@ export function MemorySettings() {
         label="Modelo de selección"
         description="Modelo ultraligero que clasifica qué memorias inyectar según el prompt del usuario"
         control={<MemorySelectionModelSelector />}
+      />
+
+      {/* ⚙️ Max memories to inject */}
+      <SettingRow
+        label="Memorias máximas por inyección"
+        description="Cantidad máxima de memorias que el Router puede seleccionar e inyectar en cada prompt"
+        control={
+          <UnifiedSelector
+            value={String(settings?.memoriesMaxSelection || 10)}
+            onChange={(v) => updateSettings({ memoriesMaxSelection: Number(v) })}
+            options={[
+              { value: "5", label: "5" },
+              { value: "10", label: "10" },
+              { value: "15", label: "15" },
+              { value: "20", label: "20" },
+              { value: "30", label: "30" },
+            ]}
+            triggerVariant="pill"
+            triggerSize="sm"
+            popoverWidth="w-[120px]"
+            itemLayout="compact"
+          />
+        }
       />
 
       {/* 📝 Prompt editor — Synthesis (Generador) */}

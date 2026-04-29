@@ -466,6 +466,7 @@ export const UserSettingsSchema = z
     memoriesAutoExtract: z.boolean().optional(),
     memoriesSynthesisModelV2: z.string().optional(),
     memoriesRouterModelV2: z.string().optional(),
+    memoriesMaxSelection: z.number().optional(),
     // OpenRouter web search (server tool) — model decides when to search
     enableWebSearch: z.boolean().optional(),
     // OpenCode LSP: when true, language servers send diagnostics after each file write

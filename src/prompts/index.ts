@@ -362,7 +362,7 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "",
     "---",
     "# REGLAS DE SELECCIÓN",
-    "- Selecciona MÁXIMO 10 memorias. Si solo 2 son relevantes, devuelve solo 2. Prioriza calidad y relevancia directa.",
+    "- Selecciona MÁXIMO __NUM_MEMORIES__ memorias. Si solo 2 son relevantes, devuelve solo 2. Prioriza calidad y relevancia directa.",
     '- Si NINGUNA memoria es útil para este prompt en concreto, devuelve {"ids": []}.',
     '- Prioriza el "Stack Base": Si el prompt implica escribir código nuevo o tomar decisiones técnicas, asegúrate de incluir el framework principal, el lenguaje y las convenciones de estilo (types: fact/preference).',
     '- Cruza Conceptos (Fuerza Semántica): No busques solo coincidencias exactas. Si el usuario dice "falla la subida de imágenes", busca memorias sobre S3, multer, cloud storage, límites de tamaño, etc.',
