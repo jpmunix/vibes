@@ -166,6 +166,18 @@ export const memoryContracts = {
             count: z.number(),
         })),
     }),
+
+    /** Get recent telemetry events (last 50) for the MemoryAnalyzer UI */
+    getMemoryTelemetryRecent: defineContract({
+        channel: "get-memory-telemetry-recent",
+        input: z.number().optional(), // appId (optional, 0 = all apps)
+        output: z.array(z.object({
+            action: z.string(),
+            reason: z.string().nullable(),
+            extractedKeys: z.string().nullable(),
+            createdAt: z.string(),
+        })),
+    }),
 } as const;
 
 // =============================================================================

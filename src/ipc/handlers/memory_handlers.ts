@@ -10,7 +10,7 @@ import { createTypedHandler } from "./base";
 import { memoryContracts } from "../types/memory";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { eq, and, or, sql, desc } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories } from "../utils/memory_lifecycle";
 import log from "electron-log";
@@ -206,6 +206,40 @@ export function registerMemoryHandlers(): void {
             .groupBy(remoteSchema.memoryTelemetry.action);
 
         return rows.map(r => ({ action: r.action, count: Number(r.count) }));
+    });
+
+    // ── MEMORY TELEMETRY RECENT ─────────────────────────────────────────
+    createTypedHandler(memoryContracts.getMemoryTelemetryRecent, async (_event, appId, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const conditions = [
+            eq(remoteSchema.memoryTelemetry.userId, userId),
+        ];
+
+        if (appId && appId > 0) {
+            conditions.push(eq(remoteSchema.memoryTelemetry.appId, appId));
+        }
+
+        const rows = await db
+            .select({
+                action: remoteSchema.memoryTelemetry.action,
+                reason: remoteSchema.memoryTelemetry.reason,
+                extractedKeys: remoteSchema.memoryTelemetry.extractedKeys,
+                createdAt: remoteSchema.memoryTelemetry.createdAt,
+            })
+            .from(remoteSchema.memoryTelemetry)
+            .where(and(...conditions))
+            .orderBy(desc(remoteSchema.memoryTelemetry.createdAt))
+            .limit(50);
+
+        return rows.map(r => ({
+            action: r.action,
+            reason: r.reason,
+            extractedKeys: r.extractedKeys,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
     });
 
     logger.info("[Memory] Handlers registered");
