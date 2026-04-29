@@ -144,6 +144,13 @@ export const ChatResponseEndSchema = z.object({
   chatSummary: z.string().optional(),
   /** When a cancel happens before content is generated, the user's prompt is sent back */
   restoredPrompt: z.string().optional(),
+  /** Memories selected by the Router and injected into agent context */
+  selectedMemories: z.array(z.object({
+    id: z.number(),
+    type: z.string(),
+    key: z.string().nullable(),
+    content: z.string(),
+  })).optional(),
 });
 
 export type ChatResponseEnd = z.infer<typeof ChatResponseEndSchema>;

@@ -2,25 +2,25 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLanguageModelsForProvider } from "@/hooks/useLanguageModelsForProvider";
 import { SettingsModelSelector } from "../SettingsModelSelector";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash-preview-05-20";
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite-preview";
 
 /**
- * Model selector for the memory extraction pipeline.
- * Same pattern as StandardModeModelSelector but writes to `memoriesSynthesisModel`.
+ * Model selector for the memory Router (selection/classification).
+ * Uses an ultralight model by default — the task is pure classification.
  */
-export function MemoryExtractionModelSelector() {
+export function MemorySelectionModelSelector() {
     const { settings, updateSettings } = useSettings();
     const { data: openRouterModels, isLoading } =
         useLanguageModelsForProvider("openrouter");
 
     const currentValue =
-        !settings?.memoriesSynthesisModel || settings?.memoriesSynthesisModel === ""
+        !settings?.memoriesRouterModel || settings?.memoriesRouterModel === ""
             ? DEFAULT_MODEL
-            : settings?.memoriesSynthesisModel;
+            : settings?.memoriesRouterModel;
 
     const handleChange = async (value: string) => {
         await updateSettings(
-            { memoriesSynthesisModel: value },
+            { memoriesRouterModel: value },
             { showToast: true },
         );
     };
@@ -44,8 +44,8 @@ export function MemoryExtractionModelSelector() {
                 {
                     value: DEFAULT_MODEL,
                     label:
-                        defaultModelInList?.displayName || "Gemini 2.5 Flash",
-                    description: defaultModelInList ? undefined : "Modelo predeterminado",
+                        defaultModelInList?.displayName || "Gemini 2.5 Flash Lite",
+                    description: defaultModelInList ? undefined : "Modelo ultraligero para clasificación",
                 },
             ]}
         />

@@ -1550,14 +1550,17 @@ This conversation includes one or more image attachments. When the user uploads 
             .catch(err => logger.warn(`🧠 [MEMORY] Decay failed:`, err));
 
           // Load memories (app-specific + global) and inject as context instruction
+          let selectedMemories: { id: number; type: string; key: string | null; content: string }[] = [];
           try {
-            const memoryBlock = await buildMemoryContext(
+            const memoryResult = await buildMemoryContext(
               updatedChat.app.id,
               currentUserId as string,
+              userPrompt,
             );
-            if (memoryBlock) {
-              contextInstructions.push(memoryBlock);
-              logger.info(`🧠 [MEMORY] Injected ${memoryBlock.length} chars into contextInstructions`);
+            if (memoryResult.block) {
+              contextInstructions.push(memoryResult.block);
+              selectedMemories = memoryResult.memories;
+              logger.info(`🧠 [MEMORY] Injected ${memoryResult.block.length} chars (${selectedMemories.length} memories) into contextInstructions`);
             }
           } catch (memErr: any) {
             logger.warn(`🧠 [MEMORY] Context injection failed: ${memErr.message}`);
@@ -1864,6 +1867,7 @@ This conversation includes one or more image attachments. When the user uploads 
             chatId: req.chatId,
             updatedFiles: !!success,
             totalTokens: ocTotalTokens > 0 ? ocTotalTokens : undefined,
+            selectedMemories: selectedMemories.length > 0 ? selectedMemories : undefined,
           };
           safeSend(event.sender, "chat:response:end", responseEnd);
 

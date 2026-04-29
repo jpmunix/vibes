@@ -18,6 +18,8 @@ import * as remoteSchema from "../../db/remote-schema";
 import { eq, and } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
 import { getEffectivePrompt } from "../../prompts";
+import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
+import { logTelemetry } from "./memory_telemetry";
 
 const logger = log.scope("memory_extractor");
 
@@ -106,7 +108,16 @@ export async function extractMemoriesFromChatCycle(params: {
     }
 
     try {
-        // 1. Load existing memories for context (avoid duplicates at LLM level)
+        // 0. Strip thinking blocks from the assistant response
+        const cleanResponse = stripThinkingBlocks(assistantResponse);
+
+        // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
+        if (!shouldProcessInteraction(userPrompt, cleanResponse)) {
+            logTelemetry({ userId, appId, action: "skipped_trivial", reason: "Guardian rejected interaction" });
+            return [];
+        }
+
+        // 2. Load existing memories for context (avoid duplicates at LLM level)
         const db = getRemoteDb();
         const existingRows = await db
             .select()
@@ -123,18 +134,18 @@ export async function extractMemoriesFromChatCycle(params: {
             ? `\n\nEXISTING MEMORIES (do NOT duplicate these, only add NEW knowledge or UPDATE if contradicted):\n${existingRows.map(m => `- [${m.type}] ${m.key || "—"}: ${m.content}`).join("\n")}`
             : "";
 
-        // 2. Truncate inputs to avoid excessive token usage
+        // 3. Truncate inputs to avoid excessive token usage
         const maxPromptLen = 2000;
         const maxResponseLen = 3000;
         const truncatedPrompt = userPrompt.length > maxPromptLen
             ? userPrompt.slice(0, maxPromptLen) + "... [truncated]"
             : userPrompt;
-        const truncatedResponse = assistantResponse.length > maxResponseLen
-            ? assistantResponse.slice(0, maxResponseLen) + "... [truncated]"
-            : assistantResponse;
+        const truncatedResponse = cleanResponse.length > maxResponseLen
+            ? cleanResponse.slice(0, maxResponseLen) + "... [truncated]"
+            : cleanResponse;
 
-        // 3. LLM extraction call
-        const model = settings.memoriesExtractionModel
+        // 4. LLM extraction call
+        const model = settings.memoriesSynthesisModel
             || settings.standardModeModel
             || DEFAULT_STANDARD_MODEL;
 
@@ -161,7 +172,7 @@ export async function extractMemoriesFromChatCycle(params: {
             return [];
         }
 
-        // 4. Parse JSON response
+        // 5. Parse JSON response
         let extracted: ExtractedMemory[];
         try {
             const parsed = JSON.parse(rawContent);
@@ -176,12 +187,19 @@ export async function extractMemoriesFromChatCycle(params: {
             return [];
         }
 
-        // 5. Filter and persist
+        // 6. Filter and persist
         const persisted: MemoryEntry[] = [];
 
         for (const mem of extracted.slice(0, 3)) { // Hard cap at 3
+            // T2: Validate type against whitelist
+            const VALID_TYPES = new Set(["fact", "preference", "issue", "episode", "decision"]);
+            if (!mem.type || !VALID_TYPES.has(mem.type)) {
+                logger.info(`[Memory] Rejected invalid type: "${mem.type}"`);
+                continue;
+            }
+
             // Validate required fields
-            if (!mem.type || !mem.content) continue;
+            if (!mem.content) continue;
 
             // Anti-noise filter
             if (isNoisy(mem.content)) {
@@ -189,10 +207,16 @@ export async function extractMemoriesFromChatCycle(params: {
                 continue;
             }
 
-            // Importance threshold
+            // T2: Importance threshold (0.5 minimum)
             const importance = Math.max(0, Math.min(1, mem.importance ?? 0.5));
-            if (importance < 0.3) {
+            if (importance < 0.5) {
                 logger.info(`[Memory] Filtered low importance (${importance}): "${mem.content.slice(0, 50)}..."`);
+                continue;
+            }
+
+            // T2: Episode/issue minimum content length
+            if ((mem.type === "episode" || mem.type === "issue") && mem.content.length < 30) {
+                logger.info(`[Memory] Filtered short ${mem.type}: "${mem.content}"`);
                 continue;
             }
 
@@ -235,6 +259,7 @@ export async function extractMemoriesFromChatCycle(params: {
                         enabled: true,
                         createdAt: existing.createdAt,
                         updatedAt: now,
+                        lastUsed: now,
                     });
                     continue;
                 }
@@ -256,6 +281,7 @@ export async function extractMemoriesFromChatCycle(params: {
                     enabled: 1,
                     createdAt: now,
                     updatedAt: now,
+                    lastUsed: now,
                 })
                 .returning({ id: remoteSchema.memories.id });
 
@@ -274,10 +300,22 @@ export async function extractMemoriesFromChatCycle(params: {
                 enabled: true,
                 createdAt: now,
                 updatedAt: now,
+                lastUsed: now,
             });
         }
 
         logger.info(`[Memory] Extraction complete: ${persisted.length} memories persisted from chat ${chatId}`);
+
+        // Log telemetry for successful extraction
+        if (persisted.length > 0) {
+            logTelemetry({
+                userId,
+                appId,
+                action: "synthesized",
+                extractedKeys: persisted.map(p => p.key || "—"),
+            });
+        }
+
         return persisted;
 
     } catch (error: any) {

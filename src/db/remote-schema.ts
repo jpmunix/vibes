@@ -465,6 +465,23 @@ export const memories = sqliteTable("memories", {
     enabled: integer("enabled").notNull().default(1),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+    lastUsed: integer("last_used", { mode: "timestamp" }),  // When the Router last selected this memory
+});
+
+// =============================================================================
+// MEMORY TELEMETRY (temporary — for tuning the extraction pipeline)
+// =============================================================================
+
+export const memoryTelemetry = sqliteTable("memory_telemetry", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id"),
+    action: text("action").notNull(),  // skipped_trivial, skipped_no_tech, synthesized, routed, merged, discarded_quality
+    reason: text("reason"),
+    extractedKeys: text("extracted_keys"),  // JSON array of processed keys
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
 // =============================================================================

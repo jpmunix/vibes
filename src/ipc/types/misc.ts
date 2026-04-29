@@ -203,6 +203,20 @@ export const miscContracts = {
     }),
     output: z.record(z.string(), z.string().nullable()),
   }),
+
+  // Playground — single model completion (returns full response text)
+  playgroundCompletion: defineContract({
+    channel: "playground:completion",
+    input: z.object({
+      model: z.string(),
+      prompt: z.string(),
+    }),
+    output: z.object({
+      text: z.string(),
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional(),
+    }),
+  }),
 } as const;
 
 export const AppLogsBatchSchema = z.object({

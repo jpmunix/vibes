@@ -65,6 +65,7 @@ export function registerWindowHandlers() {
   // Admin panel — singleton window (not app-scoped)
   const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
   let adminWindow: BrowserWindow | null = null;
+  let playgroundWindow: BrowserWindow | null = null;
 
   createTypedHandler(systemContracts.minimizeWindow, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -785,6 +786,7 @@ export function registerWindowHandlers() {
     for (const w of messageWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     for (const w of memoryWindows.values()) if (!w.isDestroyed()) trackedWindows.add(w.id);
     if (adminWindow && !adminWindow.isDestroyed()) trackedWindows.add(adminWindow.id);
+    if (playgroundWindow && !playgroundWindow.isDestroyed()) trackedWindows.add(playgroundWindow.id);
 
     const mainWindow = BrowserWindow.getAllWindows().find(
       (w) => !w.isDestroyed() && !trackedWindows.has(w.id),
@@ -1002,5 +1004,101 @@ export function registerWindowHandlers() {
     });
 
     logger.info("Opened admin panel window");
+  });
+
+  // ── Playground window handler (singleton, like admin) ──
+
+  createTypedHandler(systemContracts.openPlaygroundWindow, async (event, { theme, themeIntensity }) => {
+    // If window already exists, focus it
+    if (playgroundWindow && !playgroundWindow.isDestroyed()) {
+      playgroundWindow.focus();
+      return;
+    }
+
+    const iconPath = path.join(app.getAppPath(), "assets/icon/logo.png");
+    const icon = nativeImage.createFromPath(iconPath);
+
+    const savedPlayground = getSavedWindowBounds({ width: 900, height: 700 });
+
+    playgroundWindow = new BrowserWindow({
+      width: savedPlayground.width,
+      height: savedPlayground.height,
+      x: savedPlayground.x,
+      y: savedPlayground.y,
+      minWidth: 600,
+      minHeight: 500,
+      skipTaskbar: false,
+      title: "Playground",
+      icon,
+      autoHideMenuBar: true,
+      titleBarStyle: "hidden",
+      titleBarOverlay: false,
+      trafficLightPosition: { x: 10, y: 8 },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, "preload.js"),
+      },
+    });
+
+    // Explicitly set icon after creation (required on some Linux WMs)
+    if (!icon.isEmpty()) {
+      playgroundWindow.setIcon(icon);
+    }
+
+    if (savedPlayground.isMaximized) {
+      playgroundWindow.maximize();
+    }
+
+    // Prevent the renderer from overriding our window title
+    playgroundWindow.on("page-title-updated", (e) => {
+      e.preventDefault();
+    });
+
+    playgroundWindow.removeMenu();
+
+    // Re-enable right-click → Inspect Element
+    playgroundWindow.webContents.on("context-menu", (_e, params) => {
+      const menu = new Menu();
+      menu.append(new MenuItem({
+        label: "Inspect Element",
+        click: () => playgroundWindow!.webContents.inspectElement(params.x, params.y),
+      }));
+      menu.popup();
+    });
+
+    // Re-register keyboard shortcuts
+    playgroundWindow.webContents.on("before-input-event", (_e, input) => {
+      if (input.type !== "keyDown") return;
+      const ctrl = input.control || input.meta;
+      if ((ctrl && input.shift && input.key.toLowerCase() === "r") || input.key === "F5") {
+        playgroundWindow!.webContents.reloadIgnoringCache();
+      }
+      if (ctrl && !input.shift && input.key.toLowerCase() === "r") {
+        playgroundWindow!.webContents.reload();
+      }
+      if (input.key === "F12" || (ctrl && input.shift && input.key.toLowerCase() === "i")) {
+        playgroundWindow!.webContents.toggleDevTools();
+      }
+    });
+
+    const themeParam = theme ? `&theme=${theme}` : "";
+    const intensityParam = themeIntensity != null ? `&intensity=${themeIntensity}` : "";
+    const queryParam = `?window=playground${themeParam}${intensityParam}`;
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      playgroundWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${queryParam}`);
+    } else {
+      playgroundWindow.loadFile(
+        path.join(__dirname, "../renderer/main_window/index.html"),
+        { search: queryParam },
+      );
+    }
+
+    playgroundWindow.on("closed", () => {
+      playgroundWindow = null;
+    });
+
+    logger.info("Opened playground window");
   });
 }

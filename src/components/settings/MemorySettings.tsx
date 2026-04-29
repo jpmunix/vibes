@@ -14,6 +14,7 @@ import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Loader2, RotateCcw, Check } from "@/components/ui/icons";
 import { MemoryExtractionModelSelector } from "./MemoryExtractionModelSelector";
+import { MemorySelectionModelSelector } from "./MemorySelectionModelSelector";
 import { useTheme } from "@/contexts/ThemeContext";
 import { DEFAULT_PROMPTS } from "@/prompts";
 import { toast } from "sonner";
@@ -248,11 +249,18 @@ export function MemorySettings() {
         }
       />
 
-      {/* Model selector — same SettingsModelSelector pill as "Modelo para tareas internas" */}
+      {/* Model selector — Synthesizer (writes) */}
       <SettingRow
-        label="Modelo de extracción"
-        description="El modelo LLM que analiza las conversaciones para extraer memorias"
+        label="Modelo de síntesis"
+        description="Modelo capaz que analiza conversaciones y gestiona memorias (add/update/merge)"
         control={<MemoryExtractionModelSelector />}
+      />
+
+      {/* Model selector — Router (reads) */}
+      <SettingRow
+        label="Modelo de selección"
+        description="Modelo ultraligero que clasifica qué memorias inyectar según el prompt del usuario"
+        control={<MemorySelectionModelSelector />}
       />
 
       {/* Collapsible: extraction prompt editor */}

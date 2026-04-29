@@ -10,7 +10,7 @@ import { createTypedHandler } from "./base";
 import { memoryContracts } from "../types/memory";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { buildMemoryContext } from "../utils/memory_context_builder";
 import { decayMemories } from "../utils/memory_lifecycle";
 import log from "electron-log";
@@ -60,6 +60,7 @@ export function registerMemoryHandlers(): void {
                 enabled: 1,
                 createdAt: now,
                 updatedAt: now,
+                lastUsed: now,
             })
             .returning({ id: remoteSchema.memories.id });
 
@@ -178,6 +179,35 @@ export function registerMemoryHandlers(): void {
         return existing.length;
     });
 
+    // ── MEMORY TELEMETRY STATS ───────────────────────────────────────────
+    createTypedHandler(memoryContracts.getMemoryTelemetryStats, async (_event, appId, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+        const conditions = [
+            eq(remoteSchema.memoryTelemetry.userId, userId),
+            sql`${remoteSchema.memoryTelemetry.createdAt} > ${Math.floor(thirtyDaysAgo.getTime() / 1000)}`,
+        ];
+
+        if (appId && appId > 0) {
+            conditions.push(eq(remoteSchema.memoryTelemetry.appId, appId));
+        }
+
+        const rows = await db
+            .select({
+                action: remoteSchema.memoryTelemetry.action,
+                count: sql<number>`COUNT(*)`,
+            })
+            .from(remoteSchema.memoryTelemetry)
+            .where(and(...conditions))
+            .groupBy(remoteSchema.memoryTelemetry.action);
+
+        return rows.map(r => ({ action: r.action, count: Number(r.count) }));
+    });
+
     logger.info("[Memory] Handlers registered");
 }
 
@@ -199,5 +229,6 @@ function mapRowToEntry(row: typeof remoteSchema.memories.$inferSelect) {
         enabled: row.enabled === 1,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        lastUsed: row.lastUsed ?? row.createdAt, // Fallback for pre-migration rows
     };
 }

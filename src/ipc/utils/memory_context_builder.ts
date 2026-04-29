@@ -1,18 +1,25 @@
 /**
- * Memory Context Builder — Read Pipeline
+ * Memory Context Builder — Read Pipeline (LLM Router)
  *
- * Retrieves relevant memories for an app and formats them
- * as a compressed instruction block for injection into
- * the AI agent's context (OpenCode instructions[]).
+ * "Brute Force Semantic" approach:
+ * 1. Pull top 300 active memories from DB (safety belt)
+ * 2. Send them + user prompt to a lightweight LLM (Router)
+ * 3. LLM returns 0-10 most relevant memory IDs
+ * 4. Update lastUsed for selected memories (feedback loop)
+ * 5. Format selected memories for injection into agent context
  *
- * Scoring: importance × 0.5 + recency × 0.3 + typeWeight × 0.2
- * No embeddings — pure score-based retrieval.
+ * No embeddings, no vector DB. Pure LLM classification.
  */
 
 import log from "electron-log";
+import { readSettings } from "../../main/settings";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
+import { shouldInjectMemories } from "./memory_guardian";
+import { getEffectivePrompt } from "../../prompts";
+import { logTelemetry } from "./memory_telemetry";
 
 const logger = log.scope("memory_context");
 
@@ -20,17 +27,14 @@ const logger = log.scope("memory_context");
 // Constants
 // =============================================================================
 
-/** Maximum memories to inject into context */
-const MAX_MEMORIES_IN_CONTEXT = 7;
+/** Safety belt — max memories to send to the Router LLM */
+const ROUTER_INPUT_LIMIT = 300;
 
-/** Weight by memory type — preferences affect code generation most directly */
-const TYPE_WEIGHTS: Record<string, number> = {
-    preference: 1.0,
-    fact: 0.9,
-    decision: 0.8,
-    issue: 0.6,
-    episode: 0.4,
-};
+/** Max memories the Router can select */
+const ROUTER_OUTPUT_LIMIT = 10;
+
+/** Default model for memory selection (ultralight) */
+const DEFAULT_SELECTION_MODEL = "google/gemini-2.5-flash-lite-preview";
 
 /** Type labels for formatted output */
 const TYPE_LABELS: Record<string, string> = {
@@ -41,21 +45,18 @@ const TYPE_LABELS: Record<string, string> = {
     episode: "episode",
 };
 
-// =============================================================================
-// Recency scoring
-// =============================================================================
+/** Metadata for a selected memory (for chat UI display) */
+export interface SelectedMemoryInfo {
+    id: number;
+    type: string;
+    key: string | null;
+    content: string;
+}
 
-function computeRecency(updatedAt: Date | string | number): number {
-    const updated = typeof updatedAt === "number"
-        ? updatedAt * 1000 // Unix timestamp (seconds) from SQLite
-        : new Date(updatedAt).getTime();
-    const now = Date.now();
-    const hoursAgo = (now - updated) / (1000 * 60 * 60);
-
-    if (hoursAgo < 24) return 1.0;
-    if (hoursAgo < 24 * 7) return 0.8;
-    if (hoursAgo < 24 * 30) return 0.5;
-    return 0.2;
+/** Result of buildMemoryContext */
+export interface MemoryContextResult {
+    block: string;
+    memories: SelectedMemoryInfo[];
 }
 
 // =============================================================================
@@ -64,18 +65,40 @@ function computeRecency(updatedAt: Date | string | number): number {
 
 /**
  * Build a formatted memory context block for injection into agent instructions.
- * Returns empty string if no memories are available.
+ * Uses a lightweight LLM to select the most relevant memories.
+ * Returns empty string if no memories are available or relevant.
  */
 export async function buildMemoryContext(
     appId: number,
     userId: string,
-): Promise<string> {
+    userPrompt?: string,
+): Promise<MemoryContextResult> {
+    const EMPTY_RESULT: MemoryContextResult = { block: "", memories: [] };
     try {
+        const settings = readSettings();
+
+        // Feature guard
+        if (settings.memoriesEnabled === false) return EMPTY_RESULT;
+
+        // T1: Guard — skip injection for trivial prompts
+        if (userPrompt && !shouldInjectMemories(userPrompt)) {
+            logger.info("[Memory] Skipped injection: trivial prompt");
+            return EMPTY_RESULT;
+        }
+
         const db = getRemoteDb();
 
-        // Query: app-specific, enabled only
+        // 1. Cinturón de seguridad: top 300 by lastUsed + importance
         const rows = await db
-            .select()
+            .select({
+                id: remoteSchema.memories.id,
+                type: remoteSchema.memories.type,
+                key: remoteSchema.memories.key,
+                content: remoteSchema.memories.content,
+                importance: remoteSchema.memories.importance,
+                status: remoteSchema.memories.status,
+                lastUsed: remoteSchema.memories.lastUsed,
+            })
             .from(remoteSchema.memories)
             .where(
                 and(
@@ -83,30 +106,45 @@ export async function buildMemoryContext(
                     eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                 ),
-            );
+            )
+            .orderBy(
+                desc(remoteSchema.memories.lastUsed),
+                desc(remoteSchema.memories.importance),
+            )
+            .limit(ROUTER_INPUT_LIMIT);
 
-        if (rows.length === 0) return "";
+        if (rows.length === 0) return EMPTY_RESULT;
 
-        // Score each memory
-        const scored = rows.map(row => {
-            const importance = (row.importance ?? 50) / 100; // Convert 0–100 → 0.0–1.0
-            const recency = computeRecency(row.updatedAt);
-            const typeWeight = TYPE_WEIGHTS[row.type] ?? 0.5;
+        // 2. If we have a prompt AND an API key, use the LLM Router
+        let selectedRows = rows;
+        if (userPrompt && hasOpenRouterApiKey() && rows.length > 3) {
+            const routerSelected = await routerSelect(rows, userPrompt, settings);
+            if (routerSelected && routerSelected.length > 0) {
+                selectedRows = routerSelected;
 
-            const score =
-                importance * 0.5 +
-                recency * 0.3 +
-                typeWeight * 0.2;
+                // 3. Update lastUsed for selected memories (feedback loop)
+                const selectedIds = selectedRows.map(r => r.id);
+                try {
+                    await db
+                        .update(remoteSchema.memories)
+                        .set({ lastUsed: new Date() })
+                        .where(
+                            and(
+                                eq(remoteSchema.memories.userId, userId),
+                                inArray(remoteSchema.memories.id, selectedIds),
+                            ),
+                        );
+                } catch (updateErr: any) {
+                    logger.warn(`[Memory] lastUsed update failed: ${updateErr.message}`);
+                }
+            }
+        } else {
+            // Fallback: no prompt or no API key → take top 10 by score
+            selectedRows = rows.slice(0, ROUTER_OUTPUT_LIMIT);
+        }
 
-            return { row, score };
-        });
-
-        // Sort by score descending, take top N
-        scored.sort((a, b) => b.score - a.score);
-        const top = scored.slice(0, MAX_MEMORIES_IN_CONTEXT);
-
-        // Format as compact block
-        const lines = top.map(({ row }) => {
+        // 4. Format as compact block
+        const lines = selectedRows.map(row => {
             const label = TYPE_LABELS[row.type] || row.type;
             const statusSuffix = row.type === "issue" && row.status
                 ? `:${row.status}`
@@ -119,11 +157,117 @@ export async function buildMemoryContext(
             ...lines,
         ].join("\n");
 
-        logger.info(`[Memory] Context built: ${top.length} memories (${block.length} chars) for appId=${appId}`);
-        return block;
+        logger.info(`[Memory] Context built: ${selectedRows.length} memories (Router: ${userPrompt ? "yes" : "fallback"}) for appId=${appId}`);
+
+        // Log telemetry
+        logTelemetry({
+            userId,
+            appId,
+            action: "routed",
+            extractedKeys: selectedRows.map(r => r.key || "—"),
+        });
+
+        const selectedMemories: SelectedMemoryInfo[] = selectedRows.map(r => ({
+            id: r.id,
+            type: r.type,
+            key: r.key,
+            content: r.content,
+        }));
+
+        return { block, memories: selectedMemories };
 
     } catch (error: any) {
         logger.warn(`[Memory] Context build failed: ${error.message}`);
-        return "";
+        return { block: "", memories: [] };
+    }
+}
+
+// =============================================================================
+// LLM Router
+// =============================================================================
+
+type MemoryRow = {
+    id: number;
+    type: string;
+    key: string | null;
+    content: string;
+    importance: number;
+    status: string | null;
+    lastUsed: Date | null;
+};
+
+async function routerSelect(
+    memories: MemoryRow[],
+    userPrompt: string,
+    settings: any,
+): Promise<MemoryRow[] | null> {
+    try {
+        const model = settings.memoriesRouterModel
+            || DEFAULT_SELECTION_MODEL;
+
+        // Build compact memory list for the Router
+        const memoryList = memories
+            .map(m => `${m.id} | ${m.type} | ${m.key || "—"} | ${m.content}`)
+            .join("\n");
+
+        const selectionPrompt = getEffectivePrompt("memory_selection", settings);
+
+        const userMessage = [
+            `PROMPT DEL USUARIO:\n${userPrompt}`,
+            "",
+            `MEMORIAS DISPONIBLES (${memories.length}):\n${memoryList}`,
+        ].join("\n");
+
+        const data = await openRouterCompletion({
+            model,
+            messages: [
+                { role: "system", content: selectionPrompt },
+                { role: "user", content: userMessage },
+            ],
+            temperature: 0,
+            max_tokens: 200,
+            response_format: { type: "json_object" },
+            title: "Vibes - Memory Router",
+        });
+
+        const rawContent = data.choices?.[0]?.message?.content?.trim();
+        if (!rawContent) {
+            logger.info("[Memory] Router returned empty response");
+            return null;
+        }
+
+        // Parse response — expect {"ids": [1, 2, 3]}
+        let selectedIds: number[];
+        try {
+            const parsed = JSON.parse(rawContent);
+            selectedIds = Array.isArray(parsed) ? parsed : (parsed.ids || []);
+        } catch {
+            logger.warn("[Memory] Router returned invalid JSON:", rawContent);
+            return null;
+        }
+
+        // Validate and cap at ROUTER_OUTPUT_LIMIT
+        selectedIds = selectedIds
+            .filter(id => typeof id === "number")
+            .slice(0, ROUTER_OUTPUT_LIMIT);
+
+        if (selectedIds.length === 0) {
+            logger.info("[Memory] Router selected 0 memories");
+            return [];
+        }
+
+        // Map IDs back to rows (preserve Router's order)
+        const idSet = new Set(selectedIds);
+        const memoryMap = new Map(memories.map(m => [m.id, m]));
+        const selected = selectedIds
+            .filter(id => memoryMap.has(id))
+            .map(id => memoryMap.get(id)!);
+
+        logger.info(`[Memory] Router selected ${selected.length}/${memories.length} memories: [${selectedIds.join(", ")}]`);
+        return selected;
+
+    } catch (error: any) {
+        logger.warn(`[Memory] Router call failed: ${error.message} — falling back to top-N`);
+        return null;
     }
 }

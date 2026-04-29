@@ -13,6 +13,7 @@ import {
   recentStreamChatIdsAtom,
   selectedChatIdAtom,
   pendingMessageQueueByIdAtom,
+  selectedMemoriesByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
 import { ipc } from "@/ipc/types";
@@ -81,6 +82,7 @@ export function useStreamChat({
   const { settings } = useSettings();
   const setRecentStreamChatIds = useSetAtom(recentStreamChatIdsAtom);
   const setPendingMessageQueue = useSetAtom(pendingMessageQueueByIdAtom);
+  const setSelectedMemories = useSetAtom(selectedMemoriesByChatIdAtom);
 
   const posthog = usePostHog();
   const queryClient = useQueryClient();
@@ -392,6 +394,15 @@ export function useStreamChat({
 
               // Immediately mark streaming as done (urgent — affects UI controls)
               updateMapAtom(setIsStreamingById, chatId, false);
+
+              // Store selected memories for the chat UI indicator
+              if (response.selectedMemories && response.selectedMemories.length > 0) {
+                setSelectedMemories(prev => {
+                  const next = new Map(prev);
+                  next.set(chatId, response.selectedMemories!);
+                  return next;
+                });
+              }
 
               // Persist unread state to DB when response arrives on a chat the user isn't viewing
               if (isViewingDifferentChat) {

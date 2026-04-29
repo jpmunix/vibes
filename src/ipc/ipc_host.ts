@@ -52,6 +52,7 @@ import { registerAdminHandlers } from "./handlers/admin_handlers";
 import { registerOpenCodeDiagnosticHandlers } from "./handlers/opencode_diagnostic_handlers";
 import { registerPreferencesHandlers } from "./handlers/preferences_handlers";
 import { registerDesignHandlers } from "./handlers/design_handlers";
+import { registerPlaygroundHandlers } from "./handlers/playground_handlers";
 import { registerQuestionHandler, registerPermissionHandler } from "./handlers/opencode_adapter";
 import { warmUpScaffoldCache } from "./utils/scaffold_cache";
 import log from "electron-log";
@@ -123,6 +124,9 @@ export function registerIpcHandlers() {
 
   // Design system picker — getdesign CLI integration
   registerDesignHandlers();
+
+  // Playground — model comparison tool
+  registerPlaygroundHandlers();
 
   // Pre-cache scaffold node_modules in background (non-blocking)
   warmUpScaffoldCache().catch(err =>

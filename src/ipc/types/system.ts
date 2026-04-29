@@ -447,6 +447,16 @@ export const systemContracts = {
     output: z.void(),
   }),
 
+  // Playground window — model comparison tool
+  openPlaygroundWindow: defineContract({
+    channel: "window:open-playground",
+    input: z.object({
+      theme: z.enum(["light", "dark", "system"]).optional(),
+      themeIntensity: z.number().optional(),
+    }),
+    output: z.void(),
+  }),
+
   // Log file path — returns the absolute path to the electron-log file
   getLogFilePath: defineContract({
     channel: "system:get-log-file-path",

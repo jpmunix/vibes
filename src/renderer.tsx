@@ -921,6 +921,26 @@ if (windowType === "database" && appIdStr) {
       );
     },
   );
+} else if (windowType === "playground") {
+  // Sync theme from parent window via URL params
+  if (themeParam) {
+    localStorage.setItem("theme", themeParam);
+  }
+  if (intensityParam) {
+    localStorage.setItem("theme-intensity", intensityParam);
+    document.documentElement.style.setProperty("--theme-intensity", intensityParam);
+  }
+
+  // Lazy import — Playground module only loads when this window type is opened
+  import("./components/playground_window/PlaygroundWindowApp").then(
+    ({ PlaygroundWindowApp }) => {
+      createRoot(document.getElementById("root")!).render(
+        <StrictMode>
+          <PlaygroundWindowApp />
+        </StrictMode>,
+      );
+    },
+  );
 } else if (windowType === "admin") {
   // Sync theme from parent window via URL params
   if (themeParam) {

@@ -13,7 +13,9 @@ export type PromptId =
 
   | "quick_edit_system"
   | "auto_commit_message"
-  | "memory_extraction";
+  | "memory_extraction"
+  | "memory_synthesis"
+  | "memory_selection";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
@@ -262,6 +264,57 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "Si no hay nada relevante:",
     "[]",
   ].join("\n"),
+
+  memory_synthesis: [
+    "Eres un sistema de gestión de memoria a largo plazo para un agente de programación.",
+    "Recibes una conversación reciente y las memorias actuales del proyecto.",
+    "",
+    "Tu trabajo es devolver un JSON con las operaciones necesarias:",
+    "",
+    "OPERACIONES:",
+    '- "add": Nueva memoria que no existe',
+    '- "update": Modificar una existente (por ID) porque la información ha cambiado o evolucionado',
+    '- "merge": Fusionar memorias redundantes en una sola',
+    "",
+    "REGLAS:",
+    "- Máximo 3 operaciones por ciclo",
+    "- Solo memorias reutilizables y duraderas",
+    '- Si la conversación contradice una memoria existente, usa \"update\"',
+    '- Si dos memorias existentes son redundantes, usa \"merge\"',
+    '- Si no hay nada relevante, devuelve {\"operations\": []}',
+    "- Pregúntate: ¿esto seguirá siendo útil en 10 interacciones?",
+    "",
+    "FORMATO:",
+    "{",
+    '  \"operations\": [',
+    '    {\"action\": \"add\", \"type\": \"fact\", \"key\": \"...\", \"content\": \"...\", \"importance\": 0.9},',
+    '    {\"action\": \"update\", \"id\": 42, \"content\": \"...\", \"importance\": 0.85},',
+    '    {\"action\": \"merge\", \"ids\": [12, 35], \"into\": {\"key\": \"...\", \"content\": \"...\", \"importance\": 0.8}}',
+    "  ]",
+    "}",
+    "",
+    "TIPOS (NO traducir): fact, preference, issue, episode, decision",
+    "KEYS: snake_case en inglés, estables en el tiempo",
+    "CONTENT: en español",
+    "IMPORTANCE: 0.0-1.0 (no guardar < 0.5)",
+  ].join("\n"),
+
+  memory_selection: [
+    "Eres un selector de memorias para un agente de programación.",
+    "",
+    "Recibes el prompt del usuario y una lista de memorias del proyecto.",
+    "Tu trabajo es seleccionar las memorias más relevantes para responder.",
+    "",
+    'Devuelve SOLO un JSON: {\"ids\": [id, id, ...]}',
+    'Máximo 10 memorias. Si ninguna es relevante, devuelve {\"ids\": []}.',
+    "",
+    "CRITERIOS:",
+    "- Prioriza memorias que afecten directamente a la respuesta",
+    "- Incluye facts del stack si el prompt es técnico",
+    "- Incluye preferences si implica decisiones de código",
+    "- NO incluyas episodes salvo que sean directamente relevantes",
+    '- Cruza conceptos: \"no funciona el login\" → JWT, auth, API, etc.',
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -286,6 +339,8 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
 
   auto_commit_message: "Mensaje de Commit Automático",
   memory_extraction: "Extracción de Memorias",
+  memory_synthesis: "Síntesis de Memorias",
+  memory_selection: "Selección de Memorias",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -305,4 +360,6 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
 
   auto_commit_message: "Prompt para la IA que genera mensajes de commit automáticos. Describe qué tipo de mensajes quieres y su formato.",
   memory_extraction: "Instrucciones que la IA usa para extraer memorias relevantes de las conversaciones. Define qué tipo de información debe recordar.",
+  memory_synthesis: "Instrucciones del Synthesizer: analiza conversaciones y memorias existentes para producir operaciones (add/update/merge). Resuelve contradicciones y fusiona redundancias.",
+  memory_selection: "Instrucciones del Router: selecciona las memorias más relevantes para inyectar en el contexto del agente según el prompt del usuario.",
 };

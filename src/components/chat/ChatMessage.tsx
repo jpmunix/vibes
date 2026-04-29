@@ -2,6 +2,7 @@ import React from "react";
 import type { Message } from "@/ipc/types";
 import { ipc } from "@/ipc/types";
 import { PERSISTED_ERROR_PREFIX } from "@/shared/texts";
+import { MemoryBadge } from "./MemoryBadge";
 import {
   VibesMarkdownParser,
 } from "./VibesMarkdownParser";
@@ -49,6 +50,7 @@ import {
   quotedMessagesAtom,
   isZenModeAtom,
   pendingAskUsersAtom,
+  selectedMemoriesByChatIdAtom,
 } from "@/atoms/chatAtoms";
 import { AutoRouterModelBadge } from "./AutoRouterModelBadge";
 import { SimpleAvatar } from "@/components/ui/SimpleAvatar";
@@ -151,6 +153,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const userAtomValue = useAtomValue(userAtom);
   const isZenModeAtomValue = useAtomValue(isZenModeAtom);
   const isZenMode = forceFullMode ? false : isZenModeAtomValue;
+  const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
+  const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
 
   const activeUser = user || userAtomValue;
 
@@ -683,6 +687,9 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     </button>
                     {messageCost && (
                       <span className="typo-micro ml-1">{messageCost}</span>
+                    )}
+                    {isLastMessage && selectedMemories && selectedMemories.length > 0 && (
+                      <MemoryBadge memories={selectedMemories} />
                     )}
                     {message.createdAt && (
                       <span className="typo-micro ml-1 flex items-center gap-1">

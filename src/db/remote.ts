@@ -428,6 +428,16 @@ export async function initializeRemoteSchema(): Promise<void> {
     `ALTER TABLE chats ADD COLUMN is_read INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE chats ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE chats ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE memories ADD COLUMN last_used INTEGER`,
+    `CREATE TABLE IF NOT EXISTS memory_telemetry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      app_id INTEGER,
+      action TEXT NOT NULL,
+      reason TEXT,
+      extracted_keys TEXT,
+      created_at INTEGER NOT NULL
+    )`,
   ];
   for (const migration of migrations) {
     try {

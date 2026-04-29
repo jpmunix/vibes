@@ -114,3 +114,11 @@ export interface PendingOpenCodePermission {
 
 export const pendingOpenCodePermissionsAtom = atom<PendingOpenCodePermission[]>([]);
 
+// Memory Router: selected memories injected into agent context per chat
+export interface SelectedMemoryMeta {
+  id: number;
+  type: string;
+  key: string | null;
+  content: string;
+}
+export const selectedMemoriesByChatIdAtom = atom<Map<number, SelectedMemoryMeta[]>>(new Map());

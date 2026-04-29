@@ -10,24 +10,39 @@
 import log from "electron-log";
 import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
 
 const logger = log.scope("memory_lifecycle");
 
 // =============================================================================
-// Decay
+// Verdugo + Hard Limit (replaces arithmetic decay)
 // =============================================================================
 
+/** Days of disuse before a zombie memory is disabled */
+const ZOMBIE_THRESHOLD_DAYS = 90;
+
+/** Importance threshold for zombie detection */
+const ZOMBIE_IMPORTANCE_THRESHOLD = 30;
+
+/** Maximum active memories per app before pruning */
+const HARD_LIMIT = 500;
+
+/** Number of memories to prune when hard limit is exceeded */
+const PRUNE_COUNT = 50;
+
 /**
- * Decay importance of stale auto-extracted memories.
- * Only affects source="auto" memories that haven't been manually confirmed.
+ * Memory maintenance — replaces the old arithmetic decay.
  *
- * Rules:
- * - Decays by 5 importance points per day since last update
- * - Memories below importance 15 (0.15) are auto-disabled
- * - source="manual" memories NEVER decay
+ * With the lastUsed feedback loop from the Router, memories that are
+ * useful naturally stay near the top. Arithmetic decay is no longer needed.
  *
- * @returns number of memories that were decayed or disabled
+ * Two rules:
+ * 1. Verdugo: auto memories with lastUsed > 90 days + importance < 30 → disabled
+ * 2. Hard Limit: if >500 active memories per app, prune the 50 worst
+ *
+ * source="manual" memories NEVER get disabled by the Verdugo.
+ *
+ * @returns number of memories disabled
  */
 export async function decayMemories(
     appId: number,
@@ -35,77 +50,83 @@ export async function decayMemories(
 ): Promise<number> {
     try {
         const db = getRemoteDb();
+        let disabledCount = 0;
 
-        // Load auto-extracted, enabled memories for this app
-        const candidates = await db
-            .select()
-            .from(remoteSchema.memories)
+        // ── Rule 1: Verdugo (zombies by disuse) ────────────────────────────
+        const cutoffDate = new Date(Date.now() - ZOMBIE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
+
+        const zombieResult = await db
+            .update(remoteSchema.memories)
+            .set({ enabled: 0 })
             .where(
                 and(
                     eq(remoteSchema.memories.userId, userId),
                     eq(remoteSchema.memories.appId, appId),
                     eq(remoteSchema.memories.enabled, 1),
                     eq(remoteSchema.memories.source, "auto"),
+                    sql`${remoteSchema.memories.importance} < ${ZOMBIE_IMPORTANCE_THRESHOLD}`,
+                    sql`COALESCE(${remoteSchema.memories.lastUsed}, ${remoteSchema.memories.createdAt}) < ${Math.floor(cutoffDate.getTime() / 1000)}`,
                 ),
             );
 
-        if (candidates.length === 0) return 0;
+        const zombieCount = (zombieResult as any)?.changes ?? 0;
+        if (zombieCount > 0) {
+            logger.info(`[Verdugo] Disabled ${zombieCount} zombie memories (lastUsed > ${ZOMBIE_THRESHOLD_DAYS}d, importance < ${ZOMBIE_IMPORTANCE_THRESHOLD}) for appId=${appId}`);
+            disabledCount += zombieCount;
+        }
 
-        const now = Date.now();
-        let decayedCount = 0;
+        // ── Rule 2: Hard Limit (prune by volume) ───────────────────────────
+        const [countResult] = await db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(remoteSchema.memories)
+            .where(
+                and(
+                    eq(remoteSchema.memories.userId, userId),
+                    eq(remoteSchema.memories.appId, appId),
+                    eq(remoteSchema.memories.enabled, 1),
+                ),
+            );
 
-        for (const mem of candidates) {
-            const updatedMs = mem.updatedAt instanceof Date
-                ? mem.updatedAt.getTime()
-                : (mem.updatedAt as number) * 1000; // Unix timestamp seconds → ms
+        const activeCount = countResult?.count ?? 0;
+        if (activeCount > HARD_LIMIT) {
+            // Find the 50 worst by importance + lastUsed
+            const worst = await db
+                .select({ id: remoteSchema.memories.id })
+                .from(remoteSchema.memories)
+                .where(
+                    and(
+                        eq(remoteSchema.memories.userId, userId),
+                        eq(remoteSchema.memories.appId, appId),
+                        eq(remoteSchema.memories.enabled, 1),
+                    ),
+                )
+                .orderBy(
+                    asc(remoteSchema.memories.importance),
+                    asc(remoteSchema.memories.lastUsed),
+                )
+                .limit(PRUNE_COUNT);
 
-            const daysSinceUpdate = (now - updatedMs) / (1000 * 60 * 60 * 24);
-
-            // Only decay if at least 1 day old
-            if (daysSinceUpdate < 1) continue;
-
-            const decayPoints = Math.floor(daysSinceUpdate) * 5; // 5 points per day
-            const currentImportance = mem.importance ?? 50;
-            const newImportance = Math.max(0, currentImportance - decayPoints);
-
-            if (newImportance === currentImportance) continue;
-
-            if (newImportance < 15) {
-                // Disable the memory — too stale to be useful
+            if (worst.length > 0) {
+                const worstIds = worst.map(r => r.id);
                 await db
                     .update(remoteSchema.memories)
-                    .set({
-                        importance: newImportance,
-                        enabled: 0,
-                        updatedAt: new Date(),
-                    })
-                    .where(eq(remoteSchema.memories.id, mem.id));
+                    .set({ enabled: 0 })
+                    .where(
+                        and(
+                            eq(remoteSchema.memories.userId, userId),
+                            sql`${remoteSchema.memories.id} IN (${worstIds.join(",")})`,
+                        ),
+                    );
 
-                logger.info(`[Decay] Disabled memory id=${mem.id} (importance ${currentImportance} → ${newImportance})`);
-            } else {
-                // Just reduce importance
-                await db
-                    .update(remoteSchema.memories)
-                    .set({
-                        importance: newImportance,
-                        // Note: do NOT update updatedAt here — that would reset the decay clock
-                    })
-                    .where(eq(remoteSchema.memories.id, mem.id));
-
-                logger.info(`[Decay] Decayed memory id=${mem.id} (importance ${currentImportance} → ${newImportance})`);
+                logger.info(`[HardLimit] Pruned ${worst.length} memories (active count was ${activeCount}, limit ${HARD_LIMIT}) for appId=${appId}`);
+                disabledCount += worst.length;
             }
-
-            decayedCount++;
         }
 
-        if (decayedCount > 0) {
-            logger.info(`[Decay] Total: ${decayedCount} memories decayed for appId=${appId}`);
-        }
-
-        return decayedCount;
+        return disabledCount;
 
     } catch (error: any) {
-        logger.warn(`[Decay] Failed: ${error.message}`);
+        logger.warn(`[Lifecycle] Maintenance failed: ${error.message}`);
         return 0;
     }
 }

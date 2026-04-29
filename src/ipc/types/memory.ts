@@ -45,6 +45,7 @@ export const MemoryEntrySchema = z.object({
     enabled: z.boolean(),
     createdAt: z.union([z.date(), z.string()]),
     updatedAt: z.union([z.date(), z.string()]),
+    lastUsed: z.union([z.date(), z.string()]).nullable().optional(),
 });
 
 export type MemoryEntry = z.infer<typeof MemoryEntrySchema>;
@@ -154,6 +155,16 @@ export const memoryContracts = {
         channel: "delete-all-memories",
         input: z.number(), // appId
         output: z.number(), // number of deleted entries
+    }),
+
+    /** Get memory telemetry stats (last 30 days) */
+    getMemoryTelemetryStats: defineContract({
+        channel: "get-memory-telemetry-stats",
+        input: z.number().optional(), // appId (optional, 0 = all apps)
+        output: z.array(z.object({
+            action: z.string(),
+            count: z.number(),
+        })),
     }),
 } as const;
 

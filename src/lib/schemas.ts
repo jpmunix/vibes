@@ -464,7 +464,8 @@ export const UserSettingsSchema = z
     // Memory system — agent persistent knowledge
     memoriesEnabled: z.boolean().optional(),
     memoriesAutoExtract: z.boolean().optional(),
-    memoriesExtractionModel: z.string().optional(),
+    memoriesSynthesisModel: z.string().optional(),
+    memoriesRouterModel: z.string().optional(),
     // OpenRouter web search (server tool) — model decides when to search
     enableWebSearch: z.boolean().optional(),
     // OpenCode LSP: when true, language servers send diagnostics after each file write
