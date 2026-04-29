@@ -14,6 +14,7 @@ Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y c
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
 - Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
 - El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.
+- Protección contra modelos retirados de OpenRouter: se detectan y desactivan automáticamente para evitar errores 404 durante el uso.
 - Mejoras internas de estabilidad.
 
 # v8.0
