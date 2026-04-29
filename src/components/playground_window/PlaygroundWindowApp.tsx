@@ -26,17 +26,36 @@ import {
     Search,
     Plus,
     ChevronDown,
-    Trophy,
+    ChevronRight,
     ArrowUpDown,
-    ArrowUp,
-    ArrowDown,
-    FileText,
     RotateCcw,
+    RefreshCw,
+    StopCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { ipc, type LanguageModel } from "@/ipc/types";
 import { useModelAliases } from "@/hooks/useModelAliases";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandInput,
+    CommandList,
+    CommandGroup,
+    CommandItem,
+} from "@/components/ui/command";
+import { Check } from "@/components/ui/icons";
+import { ModelItemContent } from "@/components/ModelItemContent";
 
 import "@/styles/globals.css";
 
@@ -125,11 +144,13 @@ function ResponseContent({ text }: { text: string }) {
 
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
-function ResultCard({ result, collapsed, rank, onToggle }: {
+function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying }: {
     result: ModelResult;
     collapsed: boolean;
     rank?: number;
     onToggle: () => void;
+    onRetry?: () => void;
+    isRetrying?: boolean;
 }) {
     return (
         <div className="playground-result-card">
@@ -158,6 +179,17 @@ function ResultCard({ result, collapsed, rank, onToggle }: {
                         className="text-muted-foreground transition-transform duration-200"
                         style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0)' }}
                     />
+                    {onRetry && (
+                        <button
+                            type="button"
+                            className="playground-retry-btn"
+                            onClick={(e) => { e.stopPropagation(); onRetry(); }}
+                            disabled={isRetrying}
+                            title="Repetir este modelo"
+                        >
+                            {isRetrying ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                        </button>
+                    )}
                 </div>
             </div>
             {!collapsed && (
@@ -192,11 +224,15 @@ function PlaygroundPanel() {
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [runFinished, setRunFinished] = useState(false);
     const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc'>('speed-asc');
+    const [retryingModel, setRetryingModel] = useState<string | null>(null);
     const { aliases } = useModelAliases();
     const resultsRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const searchRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const cancelledRef = useRef(false);
+    const userScrolledRef = useRef(false);
+    const [inputCollapsed, setInputCollapsed] = useState(false);
 
     // Load models from IPC
     useEffect(() => {
@@ -212,47 +248,49 @@ function PlaygroundPanel() {
         return map;
     }, [allModels, aliases]);
 
-    // Filter models by search keyword
-    const searchResults = useMemo(() => {
-        const q = modelSearch.trim().toLowerCase();
-        if (!q) return [];
-        return allModels.filter(m => {
-            const display = (aliases[m.apiName] || m.displayName).toLowerCase();
-            const api = m.apiName.toLowerCase();
-            return (display.includes(q) || api.includes(q)) && !selectedModels.includes(m.apiName);
+    // Filter and sort models for the picker
+    const pickerModels = useMemo(() => {
+        const q = modelSearch.trim().toLowerCase().replace(/-/g, ' ');
+        const filtered = allModels.filter(m => {
+            if (!q) return true;
+            const display = (aliases[m.apiName] || m.displayName).toLowerCase().replace(/-/g, ' ');
+            const api = m.apiName.toLowerCase().replace(/-/g, ' ');
+            return display.includes(q) || api.includes(q);
+        });
+
+        // Sort: selected first, then alphabetical
+        return filtered.sort((a, b) => {
+            const aSelected = selectedModels.includes(a.apiName);
+            const bSelected = selectedModels.includes(b.apiName);
+            if (aSelected && !bSelected) return -1;
+            if (!aSelected && bSelected) return 1;
+            const nameA = aliases[a.apiName] || a.displayName;
+            const nameB = aliases[b.apiName] || b.displayName;
+            return nameA.localeCompare(nameB);
         });
     }, [modelSearch, allModels, aliases, selectedModels]);
 
-    // Close dropdown on outside click
+    // Smart auto-scroll: pause when user scrolls up, resume when at bottom
     useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (
-                dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-                searchRef.current && !searchRef.current.contains(e.target as Node)
-            ) {
-                setSearchOpen(false);
-            }
+        const el = resultsRef.current;
+        if (!el) return;
+        const handleScroll = () => {
+            const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+            userScrolledRef.current = !atBottom;
         };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
+        el.addEventListener("scroll", handleScroll);
+        return () => el.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // Add a single model
-    const handleAddModel = useCallback((apiName: string) => {
-        if (!selectedModels.includes(apiName)) {
+    // Add or remove a single model (toggle in the picker)
+    const handleTogglePickerModel = useCallback((apiName: string) => {
+        if (selectedModels.includes(apiName)) {
+            setSelectedModels(prev => prev.filter(m => m !== apiName));
+            setDisabledModels(prev => { const s = new Set(prev); s.delete(apiName); return s; });
+        } else {
             setSelectedModels(prev => [...prev, apiName]);
         }
     }, [selectedModels]);
-
-    // Bulk add all search results
-    const handleAddAllResults = useCallback(() => {
-        const toAdd = searchResults.map(m => m.apiName).filter(a => !selectedModels.includes(a));
-        if (toAdd.length > 0) {
-            setSelectedModels(prev => [...prev, ...toAdd]);
-        }
-        setModelSearch("");
-        setSearchOpen(false);
-    }, [searchResults, selectedModels]);
 
     // Remove a model chip
     const handleRemoveModel = useCallback((apiName: string) => {
@@ -299,17 +337,16 @@ function PlaygroundPanel() {
         });
     }, [results, runFinished, sortMode]);
 
-    // Toggle sort modes
-    const toggleSpeedSort = useCallback(() => {
-        setSortMode(prev => prev === 'speed-asc' ? 'speed-desc' : 'speed-asc');
-    }, []);
-    const toggleSizeSort = useCallback(() => {
-        setSortMode(prev => prev === 'size-asc' ? 'size-desc' : 'size-asc');
-    }, []);
+    // Sort labels for dropdown
+    const sortLabels: Record<string, string> = {
+        'speed-asc': 'Más rápido primero',
+        'speed-desc': 'Más lento primero',
+        'size-asc': 'Respuesta más corta',
+        'size-desc': 'Respuesta más larga',
+    };
 
-    // Reset everything
+    // Reset everything (keep prompt)
     const handleReset = useCallback(() => {
-        setPrompt("");
         setSelectedModels([]);
         setDisabledModels(new Set());
         setResults([]);
@@ -320,10 +357,50 @@ function PlaygroundPanel() {
         setModelSearch("");
         setSearchOpen(false);
         setCurrentModelIndex(-1);
+        setRetryingModel(null);
+        setInputCollapsed(false);
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
     }, []);
+
+    // Retry a single model
+    const handleRetryModel = useCallback(async (modelApiName: string) => {
+        if (!prompt.trim() || retryingModel) return;
+        setRetryingModel(modelApiName);
+        const modelDisplayName = modelDisplayNameMap.get(modelApiName) || modelApiName;
+
+        const startTime = performance.now();
+        try {
+            const response = await ipc.misc.playgroundCompletion({
+                model: modelApiName,
+                prompt: prompt.trim(),
+            });
+            const durationMs = performance.now() - startTime;
+            const newResult: ModelResult = {
+                modelApiName,
+                modelDisplayName,
+                text: response.text,
+                inputTokens: response.inputTokens,
+                outputTokens: response.outputTokens,
+                durationMs,
+            };
+            setResults(prev => prev.map(r => r.modelApiName === modelApiName ? newResult : r));
+            setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
+        } catch (error: any) {
+            const durationMs = performance.now() - startTime;
+            const newResult: ModelResult = {
+                modelApiName,
+                modelDisplayName,
+                text: error?.message || String(error),
+                durationMs,
+                error: true,
+            };
+            setResults(prev => prev.map(r => r.modelApiName === modelApiName ? newResult : r));
+            setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
+        }
+        setRetryingModel(null);
+    }, [prompt, retryingModel, modelDisplayNameMap]);
 
     // Run the prompt sequentially against active models only
     const handleSubmit = useCallback(async () => {
@@ -335,8 +412,13 @@ function PlaygroundPanel() {
         setModelTimes(new Map());
         setExpandedCards(new Set());
         setCurrentModelIndex(0);
+        cancelledRef.current = false;
+        userScrolledRef.current = false;
+        setInputCollapsed(true);
 
         for (let i = 0; i < activeModels.length; i++) {
+            if (cancelledRef.current) break;
+
             setCurrentModelIndex(i);
             const modelApiName = activeModels[i];
             const modelDisplayName = modelDisplayNameMap.get(modelApiName) || modelApiName;
@@ -349,6 +431,8 @@ function PlaygroundPanel() {
                     prompt: prompt.trim(),
                 });
 
+                if (cancelledRef.current) break;
+
                 durationMs = performance.now() - startTime;
 
                 setResults(prev => [...prev, {
@@ -360,6 +444,8 @@ function PlaygroundPanel() {
                     durationMs,
                 }]);
             } catch (error: any) {
+                if (cancelledRef.current) break;
+
                 durationMs = performance.now() - startTime;
                 setResults(prev => [...prev, {
                     modelApiName,
@@ -373,13 +459,15 @@ function PlaygroundPanel() {
             // Update chip times after each model completes
             setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
 
-            // Auto-scroll to bottom
-            setTimeout(() => {
-                resultsRef.current?.scrollTo({
-                    top: resultsRef.current.scrollHeight,
-                    behavior: "smooth",
-                });
-            }, 50);
+            // Auto-scroll to bottom (only if user hasn't scrolled)
+            if (!userScrolledRef.current) {
+                setTimeout(() => {
+                    resultsRef.current?.scrollTo({
+                        top: resultsRef.current.scrollHeight,
+                        behavior: "smooth",
+                    });
+                }, 50);
+            }
         }
 
         // Run finished: collapse all, sort, scroll to top
@@ -387,9 +475,19 @@ function PlaygroundPanel() {
         setIsRunning(false);
         setCurrentModelIndex(-1);
         setTimeout(() => {
-            resultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            if (!userScrolledRef.current) {
+                resultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            }
         }, 100);
     }, [prompt, activeModels, isRunning, modelDisplayNameMap]);
+
+    // Cancel in-flight request and stop the loop
+    const handleCancel = useCallback(async () => {
+        cancelledRef.current = true;
+        try {
+            await ipc.misc.playgroundCancel({});
+        } catch { /* ignore */ }
+    }, []);
 
     // Toggle expand/collapse for a single result card
     const toggleCard = useCallback((key: string) => {
@@ -413,7 +511,7 @@ function PlaygroundPanel() {
         setPrompt(e.target.value);
         const ta = e.target;
         ta.style.height = 'auto';
-        ta.style.height = `${Math.min(ta.scrollHeight, 240)}px`;
+        ta.style.height = `${Math.min(ta.scrollHeight, 720)}px`;
     }, []);
 
     return (
@@ -425,31 +523,44 @@ function PlaygroundPanel() {
                     overflow-y: auto;
                     display: flex;
                     flex-direction: column;
-                    gap: 0;
+                    gap: var(--spacing-4, 16px);
+                    padding: var(--spacing-5, 20px) var(--spacing-5, 20px);
                 }
 
                 .playground-input-area {
-                    padding: 16px 20px;
-                    background: var(--sidebar);
                     display: flex;
                     flex-direction: column;
-                    gap: 12px;
+                    gap: var(--spacing-3, 12px);
                     flex-shrink: 0;
+                }
+
+                .playground-collapse-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    cursor: pointer;
+                    padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--card, var(--background));
+                    user-select: none;
+                    transition: background 0.15s;
+                }
+                .playground-collapse-header:hover {
+                    background: var(--muted);
                 }
 
                 .playground-textarea {
                     width: 100%;
-                    min-height: 80px;
-                    max-height: 240px;
+                    min-height: 240px;
+                    max-height: 720px;
                     resize: none;
-                    overflow: hidden;
+                    overflow-y: auto;
                     border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 12px 14px;
+                    border-radius: 12px;
+                    padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
                     background: var(--background);
                     color: var(--foreground);
-                    font-size: 13px;
-                    line-height: 1.5;
                     font-family: inherit;
                     outline: none;
                     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -536,127 +647,29 @@ function PlaygroundPanel() {
                     background: oklch(from var(--primary) l c h / 0.2);
                 }
 
-                .playground-search-wrap {
-                    position: relative;
-                    flex: 1;
-                    max-width: 320px;
-                }
-                .playground-search-input {
-                    width: 100%;
-                    height: 32px;
-                    padding: 0 10px 0 30px;
-                    border: 1px solid var(--border);
-                    border-radius: 8px;
-                    background: var(--background);
-                    color: var(--foreground);
-                    font-size: 12px;
-                    outline: none;
-                    transition: border-color 0.15s;
-                }
-                .playground-search-input:focus {
-                    border-color: var(--primary);
-                }
-                .playground-search-icon {
-                    position: absolute;
-                    left: 9px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: var(--muted-foreground);
-                    pointer-events: none;
-                }
-                .playground-search-dropdown {
-                    position: absolute;
-                    top: calc(100% + 4px);
-                    left: 0;
-                    right: 0;
-                    max-height: 240px;
-                    overflow-y: auto;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    background: var(--popover, var(--background));
-                    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
-                    z-index: 50;
-                    padding: 4px;
-                }
-                .playground-search-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 6px 10px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    color: var(--foreground);
-                    cursor: pointer;
-                    transition: background 0.1s;
-                }
-                .playground-search-item:hover {
-                    background: var(--accent);
-                }
-                .playground-search-item .api-name {
-                    color: var(--muted-foreground);
-                    font-size: 10px;
-                    margin-left: auto;
-                    max-width: 40%;
-                    text-align: right;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-                .playground-search-bulk {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 6px;
-                    padding: 7px 10px;
-                    margin: 2px 0;
-                    border-radius: 6px;
-                    border: none;
-                    background: oklch(from var(--primary) l c h / 0.1);
-                    color: var(--primary);
-                    font-size: 12px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    width: 100%;
-                    transition: background 0.15s;
-                }
-                .playground-search-bulk:hover {
-                    background: oklch(from var(--primary) l c h / 0.18);
-                }
-
                 .playground-toolbar {
                     display: flex;
                     align-items: center;
                     gap: 8px;
                 }
 
-                .playground-sort-group {
+                .playground-sort-trigger {
+                    border: 0;
+                    background: var(--primary);
+                    color: var(--primary-foreground);
+                    border-radius: 8px;
+                    padding: 6px 14px;
+                    height: auto;
+                    width: fit-content;
+                    cursor: pointer;
                     display: flex;
                     align-items: center;
-                    gap: 4px;
-                }
-                .playground-sort-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    border: 1px solid var(--border);
-                    background: transparent;
-                    color: var(--muted-foreground);
-                    font-size: 11px;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: background 0.15s, color 0.15s, border-color 0.15s;
+                    gap: 6px;
                     white-space: nowrap;
+                    transition: all 0.2s;
                 }
-                .playground-sort-btn:hover {
-                    background: var(--accent);
-                    color: var(--foreground);
-                }
-                .playground-sort-btn.active {
-                    background: oklch(from var(--primary) l c h / 0.1);
-                    border-color: oklch(from var(--primary) l c h / 0.3);
-                    color: var(--primary);
+                .playground-sort-trigger:hover {
+                    filter: brightness(1.1);
                 }
 
                 .playground-send-btn {
@@ -687,10 +700,9 @@ function PlaygroundPanel() {
                 }
 
                 .playground-results {
-                    padding: 16px 20px;
                     display: flex;
                     flex-direction: column;
-                    gap: 12px;
+                    gap: var(--spacing-3, 12px);
                     flex-shrink: 0;
                 }
 
@@ -709,8 +721,8 @@ function PlaygroundPanel() {
                 .playground-result-header {
                     display: flex;
                     align-items: center;
-                    gap: 8px;
-                    padding: 12px 16px;
+                    gap: var(--spacing-2, 8px);
+                    padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
                     border-bottom: 1px solid var(--border);
                     background: oklch(from var(--sidebar) l c h / 0.6);
                     user-select: none;
@@ -718,6 +730,30 @@ function PlaygroundPanel() {
                 }
                 .playground-result-header:hover {
                     background: oklch(from var(--sidebar) l c h / 0.8);
+                }
+
+                .playground-retry-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 6px;
+                    border: 1px solid var(--border);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    cursor: pointer;
+                    transition: background 0.15s, color 0.15s, border-color 0.15s;
+                    padding: 0;
+                    flex-shrink: 0;
+                }
+                .playground-retry-btn:hover:not(:disabled) {
+                    background: var(--accent);
+                    color: var(--foreground);
+                }
+                .playground-retry-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
                 }
 
                 .playground-rank {
@@ -734,9 +770,7 @@ function PlaygroundPanel() {
                 .playground-rank.bronze { color: #d97706; }
 
                 .playground-result-body {
-                    padding: 16px;
-                    font-size: 13px;
-                    line-height: 1.65;
+                    padding: var(--spacing-4, 16px);
                     color: var(--foreground);
                 }
 
@@ -786,145 +820,198 @@ function PlaygroundPanel() {
                 }
             `}</style>
 
-            {/* ── Input area ── */}
+            {/* ── Collapsible input area ── */}
             <div className="playground-input-area">
-                <textarea
-                    ref={textareaRef}
-                    className="playground-textarea"
-                    placeholder="Escribe tu prompt aquí…"
-                    value={prompt}
-                    onChange={handlePromptChange}
-                    onKeyDown={handleKeyDown}
-                    disabled={isRunning}
-                />
-
-                {/* Model chips */}
-                {selectedModels.length > 0 && (
-                    <div className="playground-chips">
-                        {orderedChips.map(apiName => {
-                            const time = modelTimes.get(apiName);
-                            return (
-                                <span
-                                    key={apiName}
-                                    className={`playground-chip${disabledModels.has(apiName) ? ' disabled' : ''}`}
-                                    onClick={() => handleToggleModel(apiName)}
-                                >
-                                    {modelDisplayNameMap.get(apiName) || apiName}
-                                    {time != null && (
-                                        <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); handleRemoveModel(apiName); }}
-                                        disabled={isRunning}
-                                    >
-                                        <X size={10} />
-                                    </button>
-                                </span>
-                            );
-                        })}
+                <div
+                    className="playground-collapse-header"
+                    onClick={() => setInputCollapsed(c => !c)}
+                >
+                    <div className="flex-1 min-w-0">
+                        <h3 className="typo-label">Prompt</h3>
+                        <p className="typo-caption mt-0.5 truncate text-muted-foreground">
+                            {prompt.trim()
+                                ? `${prompt.trim().slice(0, 80)}${prompt.trim().length > 80 ? '…' : ''}`
+                                : 'Sin prompt definido'}
+                            {selectedModels.length > 0 && ` · ${activeModels.length} modelo${activeModels.length !== 1 ? 's' : ''}`}
+                        </p>
                     </div>
-                )}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isRunning && <Loader2 size={14} className="animate-spin text-primary" />}
+                        <ChevronRight
+                            size={16}
+                            className={cn(
+                                "text-muted-foreground/50 transition-transform duration-200",
+                                !inputCollapsed && "rotate-90"
+                            )}
+                        />
+                    </div>
+                </div>
 
-                {/* Toolbar: search + send */}
-                <div className="playground-toolbar">
-                    <div className="playground-search-wrap">
-                        <Search size={13} className="playground-search-icon" />
-                        <input
-                            ref={searchRef}
-                            type="text"
-                            className="playground-search-input"
-                            placeholder="Buscar modelos…"
-                            value={modelSearch}
-                            onChange={(e) => { setModelSearch(e.target.value); setSearchOpen(true); }}
-                            onFocus={() => setSearchOpen(true)}
+                {!inputCollapsed && (
+                    <div className="space-y-3">
+                        <textarea
+                            ref={textareaRef}
+                            className="playground-textarea typo-body"
+                            placeholder="Escribe tu prompt aquí…"
+                            value={prompt}
+                            onChange={handlePromptChange}
+                            onKeyDown={handleKeyDown}
                             disabled={isRunning}
                         />
-                        {searchOpen && modelSearch.trim() && searchResults.length > 0 && (
-                            <div ref={dropdownRef} className="playground-search-dropdown">
-                                <button
-                                    type="button"
-                                    className="playground-search-bulk"
-                                    onClick={handleAddAllResults}
-                                >
-                                    <Plus size={12} />
-                                    Añadir todos ({searchResults.length})
-                                </button>
-                                {searchResults.map(m => (
-                                    <div
-                                        key={m.apiName}
-                                        className="playground-search-item"
-                                        onClick={() => { handleAddModel(m.apiName); setModelSearch(""); setSearchOpen(false); }}
+
+                        {/* Model chips */}
+                        {selectedModels.length > 0 && (
+                            <div className="playground-chips">
+                                {orderedChips.map(apiName => {
+                                    const time = modelTimes.get(apiName);
+                                    return (
+                                        <span
+                                            key={apiName}
+                                            className={`playground-chip${disabledModels.has(apiName) ? ' disabled' : ''}`}
+                                            onClick={() => handleToggleModel(apiName)}
+                                        >
+                                            {modelDisplayNameMap.get(apiName) || apiName}
+                                            {time != null && (
+                                                <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleRemoveModel(apiName); }}
+                                                disabled={isRunning}
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Toolbar: search + send */}
+                        <div className="playground-toolbar">
+                            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                                <PopoverTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground w-[220px] justify-between disabled:opacity-50"
+                                        disabled={isRunning}
                                     >
-                                        <span className="truncate">{aliases[m.apiName] || m.displayName}</span>
-                                        <span className="api-name">{m.apiName.split('/').pop()}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {searchOpen && modelSearch.trim() && searchResults.length === 0 && (
-                            <div ref={dropdownRef} className="playground-search-dropdown">
-                                <div className="playground-search-item" style={{ opacity: 0.5, cursor: 'default' }}>
-                                    Sin resultados
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    {runFinished && results.length > 1 && (
-                        <div className="playground-sort-group">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Search size={14} className="shrink-0" />
+                                            <span className="truncate">Buscar modelos...</span>
+                                        </div>
+                                        <ChevronDown size={14} className="shrink-0 opacity-50" />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="start" className="w-[380px] p-0" sideOffset={8}>
+                                    <Command shouldFilter={false}>
+                                        <CommandInput 
+                                            placeholder="Buscar modelos..." 
+                                            value={modelSearch}
+                                            onValueChange={setModelSearch}
+                                        />
+                                        <CommandList className="max-h-[300px]">
+                                            {pickerModels.length === 0 ? (
+                                                <div className="py-4 text-center typo-caption">Sin resultados</div>
+                                            ) : (
+                                                <CommandGroup>
+                                                    {pickerModels.map(m => {
+                                                        const isSelected = selectedModels.includes(m.apiName);
+                                                        return (
+                                                            <CommandItem
+                                                                key={m.apiName}
+                                                                value={m.apiName}
+                                                                onSelect={() => handleTogglePickerModel(m.apiName)}
+                                                                className={cn(
+                                                                    "cursor-pointer",
+                                                                    isSelected && "bg-primary/8"
+                                                                )}
+                                                            >
+                                                                <span className="w-5 shrink-0 flex items-center justify-start">
+                                                                    {isSelected && <Check size={14} className="text-primary" />}
+                                                                </span>
+                                                                <ModelItemContent 
+                                                                    model={m}
+                                                                    alias={aliases[m.apiName]}
+                                                                />
+                                                            </CommandItem>
+                                                        );
+                                                    })}
+                                                </CommandGroup>
+                                            )}
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <div className="flex-1" />
                             <button
                                 type="button"
-                                className={`playground-sort-btn ${sortMode.startsWith('speed') ? 'active' : ''}`}
-                                onClick={toggleSpeedSort}
+                                className="playground-send-btn"
+                                onClick={handleReset}
+                                disabled={isRunning}
+                                style={{
+                                    background: 'transparent',
+                                    color: 'var(--muted-foreground)',
+                                    border: '1px solid var(--border)',
+                                    opacity: (selectedModels.length === 0 && results.length === 0 && !prompt) ? 0.3 : 1,
+                                }}
                             >
-                                <Clock size={11} />
-                                Velocidad
-                                {sortMode === 'speed-asc' && <ArrowUp size={11} />}
-                                {sortMode === 'speed-desc' && <ArrowDown size={11} />}
+                                <RotateCcw size={14} />
+                                Reset
                             </button>
                             <button
                                 type="button"
-                                className={`playground-sort-btn ${sortMode.startsWith('size') ? 'active' : ''}`}
-                                onClick={toggleSizeSort}
+                                className="playground-send-btn"
+                                onClick={isRunning ? handleCancel : handleSubmit}
+                                disabled={!isRunning && (!prompt.trim() || activeModels.length === 0)}
+                                style={isRunning ? { background: 'var(--destructive)', color: 'var(--destructive-foreground)' } : undefined}
                             >
-                                <FileText size={11} />
-                                Tamaño
-                                {sortMode === 'size-asc' && <ArrowUp size={11} />}
-                                {sortMode === 'size-desc' && <ArrowDown size={11} />}
+                                {isRunning ? (
+                                    <>
+                                        <StopCircle size={14} />
+                                        Cancelar
+                                    </>
+                                ) : (
+                                    <>
+                                        <SendHorizontal size={14} />
+                                        Enviar ({activeModels.length})
+                                    </>
+                                )}
                             </button>
                         </div>
-                    )}
-                    <div className="flex-1" />
-                    <button
-                        type="button"
-                        className="playground-sort-btn"
-                        onClick={handleReset}
-                        disabled={isRunning}
-                        style={{ opacity: (selectedModels.length === 0 && results.length === 0 && !prompt) ? 0.3 : 1 }}
-                    >
-                        <RotateCcw size={12} />
-                        Reset
-                    </button>
-                    <button
-                        type="button"
-                        className="playground-send-btn"
-                        onClick={handleSubmit}
-                        disabled={isRunning || !prompt.trim() || activeModels.length === 0}
-                    >
-                        {isRunning ? (
-                            <>
-                                <Loader2 size={14} className="animate-spin" />
-                                Ejecutando…
-                            </>
-                        ) : (
-                            <>
-                                <SendHorizontal size={14} />
-                                Enviar ({activeModels.length})
-                            </>
-                        )}
-                    </button>
-                </div>
+                    </div>
+                )}
             </div>
+
+            {/* Sort controls (always visible when applicable) */}
+            {runFinished && results.length > 1 && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button
+                            type="button"
+                            className="playground-sort-trigger typo-select"
+                        >
+                            <ArrowUpDown size={13} />
+                            {sortLabels[sortMode]}
+                            <ChevronDown size={13} className="opacity-60" />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[220px]">
+                        {(Object.entries(sortLabels) as [typeof sortMode, string][]).map(([key, label]) => (
+                            <DropdownMenuItem
+                                key={key}
+                                className={cn(
+                                    "cursor-pointer py-2.5",
+                                    sortMode === key && "bg-primary/10 font-semibold"
+                                )}
+                                onSelect={() => setSortMode(key as any)}
+                            >
+                                {label}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
 
             {/* ── Results ── */}
             <div className="playground-results">
@@ -938,6 +1025,8 @@ function PlaygroundPanel() {
                             collapsed={isCollapsed}
                             rank={runFinished ? i + 1 : undefined}
                             onToggle={() => toggleCard(cardKey)}
+                            onRetry={runFinished && !isRunning ? () => handleRetryModel(result.modelApiName) : undefined}
+                            isRetrying={retryingModel === result.modelApiName}
                         />
                     );
                 })}
@@ -983,12 +1072,12 @@ function PlaygroundWindowContent() {
         }
     }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
 
-    useEffect(() => { document.title = "Playground"; }, []);
+    useEffect(() => { document.title = "Playground de modelos"; }, []);
 
     return (
         <TooltipProvider>
             <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col">
-                <TitleBar label="Playground" icon={FlaskConical} iconClass="text-primary" />
+                <TitleBar label="Playground de modelos" icon={FlaskConical} iconClass="text-primary" />
                 <PlaygroundPanel />
             </div>
         </TooltipProvider>
