@@ -9,13 +9,20 @@
  * This prevents the cascade of "model not found" 400/404 errors that occur
  * when a user's settings.json references a model that no longer exists.
  *
- * Called from main.ts in the non-blocking background init phase.
+ * ⚠️  IMPORTANT: Changes must be synced to Bunny DB (remote settings), not
+ * just written to disk. Otherwise getUserSettings() will merge stale remote
+ * values back on top: `{ ...local, ...remote }` → dead models return.
+ *
+ * Called from main.ts during the splash screen phase.
  */
 
 import log from "electron-log";
 import { BrowserWindow } from "electron";
 import { readSettings, writeSettings } from "../../main/settings";
 import { fetchOpenRouterModels } from "./openrouter_models_service";
+import { getRemoteDb } from "../../db/remote";
+import * as remoteSchema from "../../db/remote-schema";
+import { eq } from "drizzle-orm";
 import { safeSend } from "./safe_sender";
 import {
     FALLBACK_SELECTED_MODEL,
@@ -94,10 +101,40 @@ export async function validateModelSettings(): Promise<void> {
 
         // ── Persist if anything changed ──
         if (migrated.length > 0) {
+            // Step 1: Write to disk + in-memory cache
             writeSettings(settings);
             logger.info(`[ModelValidator] Migrated ${migrated.length} stale model references: ${migrated.join("; ")}`);
 
-            // Broadcast updated settings + migration toast to renderer
+            // Step 2: Sync to Bunny DB so getUserSettings merge doesn't
+            // overwrite the pruned values with stale remote data.
+            // This is critical — without it, `{ ...local, ...remote }` in
+            // getUserSettings brings the dead models back on every boot.
+            try {
+                const updated = readSettings();
+                const userId = updated.userId;
+                if (userId) {
+                    const db = getRemoteDb();
+                    const { userId: _u, sessionToken: _s, ...syncable } = updated;
+                    const settingsJson = JSON.stringify(syncable);
+                    const existing = await db.query.userSettings.findFirst({
+                        where: eq(remoteSchema.userSettings.userId, userId),
+                    });
+                    if (existing) {
+                        await db.update(remoteSchema.userSettings)
+                            .set({ settingsJson, updatedAt: new Date() })
+                            .where(eq(remoteSchema.userSettings.userId, userId));
+                    } else {
+                        await db.insert(remoteSchema.userSettings).values({
+                            userId, settingsJson, updatedAt: new Date(),
+                        });
+                    }
+                    logger.info("[ModelValidator] Synced pruned settings to Bunny DB");
+                }
+            } catch (syncErr: any) {
+                logger.warn(`[ModelValidator] Bunny DB sync failed (non-fatal): ${syncErr.message}`);
+            }
+
+            // Step 3: Broadcast to renderer
             const updated = readSettings();
             for (const win of BrowserWindow.getAllWindows()) {
                 if (!win.isDestroyed() && win.webContents) {

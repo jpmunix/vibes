@@ -8,7 +8,7 @@
  *
  * Logout anywhere in the app → clears session → AuthGate shows LoginScreen again.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAtom } from "jotai";
 import { userAtom, authLoadingAtom } from "@/atoms/authAtoms";
 import type { VibesUser } from "@/atoms/authAtoms";
@@ -32,6 +32,8 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
     const [user, setUser] = useAtom(userAtom);
     const [isLoading, setIsLoading] = useAtom(authLoadingAtom);
+    // Gate: prevents the logout-watcher from firing during initial hydration
+    const hasInitialized = useRef(false);
 
 
     // Apply dark/light theme immediately (before ThemeProvider loads)
@@ -51,6 +53,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
             if (!userId || !sessionToken) {
                 setIsLoading(false);
+                hasInitialized.current = true;
                 return;
             }
 
@@ -72,6 +75,7 @@ export function AuthGate({ children }: AuthGateProps) {
                 console.error("Session verification failed:", error);
             } finally {
                 setIsLoading(false);
+                hasInitialized.current = true;
             }
         };
 
@@ -79,8 +83,11 @@ export function AuthGate({ children }: AuthGateProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [setUser, setIsLoading]);
 
-    // Watch for logout - only wipe if user explicitly sets it to null
+    // Watch for logout — only wipe if user explicitly sets it to null
+    // IMPORTANT: skip during the initial hydration phase to avoid the race
+    // condition where atomWithStorage defaults to null before reading localStorage.
     useEffect(() => {
+        if (!hasInitialized.current) return;
         if (!isLoading && user === null) {
             localStorage.removeItem("vibes_user_id");
             localStorage.removeItem("vibes_session_token");

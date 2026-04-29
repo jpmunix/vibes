@@ -37,9 +37,7 @@ import { userAtom } from "@/atoms/authAtoms";
 import { ipc } from "@/ipc/types";
 import { ProfileModal } from "@/components/ProfileModal";
 import { useTheme } from "@/contexts/ThemeContext";
-
-/** The only user ID authorized to see the admin menu option */
-const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
+import { isAdmin as checkIsAdmin } from "@/lib/admin";
 
 import { useRouter } from "@tanstack/react-router";
 
@@ -113,7 +111,7 @@ export function TopNavbar() {
   const { theme, intensity } = useTheme();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  const isAdmin = user?.id === ADMIN_USER_ID;
+  const isAdmin = checkIsAdmin(user?.id);
 
   const handleOpenAdmin = () => {
     ipc.system.openAdminWindow({

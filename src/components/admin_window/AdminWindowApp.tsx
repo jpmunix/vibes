@@ -20,8 +20,7 @@ import { AdminListApps } from "@/components/admin_window/AdminListApps";
 
 import "@/styles/globals.css";
 
-/** The only user ID authorized to access the admin panel */
-const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
+import { isAdmin } from "@/lib/admin";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -163,7 +162,7 @@ function AdminWindowContent() {
             const raw = localStorage.getItem("vibes_user");
             if (!raw) { setAuthState("denied"); return; }
             const user = JSON.parse(raw);
-            setAuthState(user?.id === ADMIN_USER_ID ? "authorized" : "denied");
+            setAuthState(isAdmin(user?.id) ? "authorized" : "denied");
         } catch {
             setAuthState("denied");
         }

@@ -44,16 +44,7 @@ log.transports.file.level = "error";
 log.transports.console.level = "info"; // Keep info logs in console/stdout
 
 // Silence noisy scopes — they flood the console during normal operation
-const SILENCED_SCOPES = new Set([
-  "opencode_adapter",
-  "tsc",
-  "start_proxy_server",
-  "proposal_handlers",
-  "openrouter-models",
-  "remote-db",
-  "scaffold-cache",
-  "splash",
-]);
+const SILENCED_SCOPES = new Set<string>([]);
 log.hooks.push((message, transport) => {
   if (transport !== log.transports.console) return message;
   if (SILENCED_SCOPES.has(message.scope)) return false;

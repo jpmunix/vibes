@@ -912,21 +912,17 @@ async function getOpenCodeClient(appPath: string) {
         process.chdir(opencodeDataDir);
 
         // ── Morph Patch Engine: deploy/undeploy custom tool overrides ─────
-        // When enabled, overrides OpenCode's built-in `apply_patch` and `edit`
-        // tools with Morph V3 models for ultrafast code merging (~400ms).
-        // Tools are deployed to a Vibes-managed config dir (OPENCODE_CONFIG_DIR).
+        // Admin-only feature. Non-admins always get built-in tools.
         try {
-            const { deployMorphTools, removeMorphTools, getMorphConfigDir } = await import("../utils/morph_patcher");
-            const morphEnabled = (settings as any).enableMorphPatchTool === true; // default: disabled
+            const { deployMorphTools, removeMorphTools } = await import("../utils/morph_patcher");
+            const { isAdmin } = await import("../../lib/admin");
+            const morphEnabled = isAdmin((settings as any).userId) && (settings as any).enableMorphPatchTool === true;
 
             if (morphEnabled) {
                 deployMorphTools();
-                process.env.OPENCODE_CONFIG_DIR = getMorphConfigDir();
-                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — config dir: ${getMorphConfigDir()}`);
+                logger.info(`[OpenCode] 🧬 Morph Patch Engine ENABLED — tools in ~/.config/opencode/tools/`);
             } else {
                 removeMorphTools();
-                // Don't set OPENCODE_CONFIG_DIR — let OpenCode use built-in tools
-                delete process.env.OPENCODE_CONFIG_DIR;
                 logger.info("[OpenCode] 🧬 Morph Patch Engine DISABLED — using built-in tools");
             }
         } catch (e: any) {

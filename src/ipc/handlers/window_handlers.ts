@@ -8,6 +8,7 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { and, eq } from "drizzle-orm";
 import { readSettings, writeSettings } from "../../main/settings";
+import { isAdmin } from "../../lib/admin";
 
 // eslint-disable-next-line no-var
 declare let MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -62,8 +63,6 @@ function getSavedWindowBounds(defaults?: { width?: number; height?: number }) {
 export function registerWindowHandlers() {
   logger.debug("Registering window control handlers");
 
-  // Admin panel — singleton window (not app-scoped)
-  const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
   let adminWindow: BrowserWindow | null = null;
   let playgroundWindow: BrowserWindow | null = null;
 
@@ -908,7 +907,7 @@ export function registerWindowHandlers() {
   createTypedHandler(systemContracts.openAdminWindow, async (event, { theme, themeIntensity }) => {
     // Privilege check: only allow the authorized admin user
     const settings = readSettings();
-    if (settings.userId !== ADMIN_USER_ID) {
+    if (!isAdmin(settings.userId)) {
       logger.warn(`Admin window access denied for user ${settings.userId}`);
       return;
     }

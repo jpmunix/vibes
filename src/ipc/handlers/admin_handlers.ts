@@ -10,16 +10,16 @@ import { adminContracts } from "../types/admin";
 import type { AdminUser } from "../types/admin";
 import { getRemoteDb, initializeRemoteSchema } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
+import { isAdmin } from "../../lib/admin";
 
 const logger = log.scope("admin-handlers");
-const ADMIN_USER_ID = "295703a0-093e-4b1a-9d27-9b8c4e2a2b71";
 const SALT_ROUNDS = 10;
 
 /**
  * Throw if the current session user is not the admin.
  */
 function assertAdmin(context: { userId?: string }): void {
-    if (context.userId !== ADMIN_USER_ID) {
+    if (!isAdmin(context.userId)) {
         throw new Error("Acceso denegado: privilegios de administrador requeridos");
     }
 }

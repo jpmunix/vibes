@@ -466,7 +466,7 @@ export async function initializeRemoteSchema(): Promise<void> {
       if (migration.trimStart().startsWith("CREATE TABLE")) {
         logger.error(`Migration FAILED (DDL): ${snippet}... → ${err.message}`);
       } else {
-        logger.info(`Migration skipped (already applied): ${snippet}...`);
+
       }
     }
   }
