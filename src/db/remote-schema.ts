@@ -485,6 +485,40 @@ export const memoryTelemetry = sqliteTable("memory_telemetry", {
 });
 
 // =============================================================================
+// MEMORY PIPELINE LOGS (raw — full payloads for deep analysis)
+// =============================================================================
+
+export const memoryPipelineLogs = sqliteTable("memory_pipeline_logs", {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id),
+    appId: integer("app_id").notNull(),
+    chatId: integer("chat_id"),
+    /** Pipeline stage: "synthesis" | "router" | "guardian" */
+    stage: text("stage").notNull(),
+    /** Model used for this LLM call */
+    model: text("model"),
+    /** Full system prompt sent to the LLM */
+    systemPrompt: text("system_prompt"),
+    /** Full user message sent to the LLM */
+    userMessage: text("user_message"),
+    /** Raw LLM response (unparsed) */
+    rawResponse: text("raw_response"),
+    /** Parsed operations/IDs as JSON */
+    parsedResult: text("parsed_result"),
+    /** Number of operations/IDs produced */
+    resultCount: integer("result_count").notNull().default(0),
+    /** Duration in ms */
+    durationMs: integer("duration_ms"),
+    /** Whether the call succeeded */
+    success: integer("success").notNull().default(1),
+    /** Error message if failed */
+    error: text("error"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// =============================================================================
 // RELATIONS
 // =============================================================================
 

@@ -178,6 +178,42 @@ export const memoryContracts = {
             createdAt: z.string(),
         })),
     }),
+
+    /** Get raw pipeline logs with full payloads */
+    getPipelineLogs: defineContract({
+        channel: "get-pipeline-logs",
+        input: z.object({
+            appId: z.number().optional(),
+            stage: z.string().optional(),
+            limit: z.number().optional(),
+        }),
+        output: z.array(z.object({
+            id: z.number(),
+            appId: z.number(),
+            chatId: z.number().nullable(),
+            stage: z.string(),
+            model: z.string().nullable(),
+            systemPrompt: z.string().nullable(),
+            userMessage: z.string().nullable(),
+            rawResponse: z.string().nullable(),
+            parsedResult: z.string().nullable(),
+            resultCount: z.number(),
+            durationMs: z.number().nullable(),
+            success: z.number(),
+            error: z.string().nullable(),
+            createdAt: z.string(),
+        })),
+    }),
+
+    /** Purge ALL memory stats: telemetry + pipeline logs */
+    purgeAllMemoryStats: defineContract({
+        channel: "purge-all-memory-stats",
+        input: z.void(),
+        output: z.object({
+            telemetryDeleted: z.number(),
+            pipelineLogsDeleted: z.number(),
+        }),
+    }),
 } as const;
 
 // =============================================================================

@@ -287,17 +287,17 @@ export function MemoryPanel({ appId }: { appId: number }) {
       </div>
 
       {/* Context preview */}
-      <div className="border border-border rounded-xl overflow-hidden">
+      <div className="border border-border rounded-xl">
         <button
           onClick={() => setIsContextOpen(!isContextOpen)}
-          className="w-full flex items-center gap-2 px-4 py-2.5 typo-caption text-muted-foreground hover:bg-muted/30 transition-colors"
+          className="w-full flex items-center gap-2 px-4 py-2.5 typo-caption text-muted-foreground hover:bg-muted/30 transition-colors rounded-xl"
         >
           {isContextOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           <Sparkles className="h-3.5 w-3.5" />
-          Contexto inyectado ({contextPreview.length} chars)
+          Contexto inyectado
         </button>
         {isContextOpen && (
-          <div className="px-4 py-3 border-t border-border bg-muted/20">
+          <div className="px-4 py-3 border-t border-border bg-muted/20 max-h-[300px] overflow-y-auto rounded-b-xl">
             {contextPreview ? (
               <pre className="typo-mono-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
                 {contextPreview}

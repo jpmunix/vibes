@@ -19,7 +19,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import type { MemoryEntry } from "../types/memory";
 import { getEffectivePrompt } from "../../prompts";
 import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
-import { logTelemetry } from "./memory_telemetry";
+import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 
 const logger = log.scope("memory_extractor");
 
@@ -113,6 +113,13 @@ export async function extractMemoriesFromChatCycle(params: {
         // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
         if (!shouldProcessInteraction(userPrompt, cleanResponse)) {
             logTelemetry({ userId, appId, action: "skipped_trivial", reason: "Guardian rejected interaction" });
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "guardian",
+                resultCount: 0,
+                success: true,
+                rawResponse: "SKIPPED: Guardian rejected interaction",
+            });
             return [];
         }
 
@@ -169,6 +176,7 @@ export async function extractMemoriesFromChatCycle(params: {
         // Use memory_synthesis prompt (the Synthesizer V3)
         const synthesisPrompt = getEffectivePrompt("memory_synthesis", settings);
 
+        const t0 = Date.now();
         const data = await openRouterCompletion({
             model,
             messages: [
@@ -180,10 +188,19 @@ export async function extractMemoriesFromChatCycle(params: {
             response_format: { type: "json_object" },
             title: "Vibes - Memory Synthesis",
         });
+        const durationMs = Date.now() - t0;
 
         const rawContent = data.choices?.[0]?.message?.content?.trim();
         if (!rawContent) {
             logger.info("[Memory] LLM returned empty response — nothing to extract");
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: "",
+                resultCount: 0, durationMs, success: true,
+            });
             return [];
         }
 
@@ -195,12 +212,41 @@ export async function extractMemoriesFromChatCycle(params: {
                 operations = parsed.operations;
             } else {
                 logger.warn("[Memory] Unexpected JSON structure:", rawContent.slice(0, 200));
+                logPipelineCall({
+                    userId, appId, chatId,
+                    stage: "synthesis", model,
+                    systemPrompt: synthesisPrompt,
+                    userMessage,
+                    rawResponse: rawContent,
+                    resultCount: 0, durationMs, success: false,
+                    error: "Unexpected JSON structure",
+                });
                 return [];
             }
         } catch (parseErr) {
             logger.warn("[Memory] Failed to parse LLM JSON response:", rawContent.slice(0, 200));
+            logPipelineCall({
+                userId, appId, chatId,
+                stage: "synthesis", model,
+                systemPrompt: synthesisPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                resultCount: 0, durationMs, success: false,
+                error: "JSON parse error",
+            });
             return [];
         }
+
+        // Log the successful synthesis call (raw)
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "synthesis", model,
+            systemPrompt: synthesisPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: operations,
+            resultCount: operations.length, durationMs, success: true,
+        });
 
         if (operations.length === 0) {
             logger.info("[Memory] LLM found nothing worth extracting");

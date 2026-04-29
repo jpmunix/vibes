@@ -242,6 +242,72 @@ export function registerMemoryHandlers(): void {
         }));
     });
 
+    // ── PIPELINE LOGS (RAW) ─────────────────────────────────────────────
+    createTypedHandler(memoryContracts.getPipelineLogs, async (_event, params, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const conditions = [
+            eq(remoteSchema.memoryPipelineLogs.userId, userId),
+        ];
+
+        if (params.appId && params.appId > 0) {
+            conditions.push(eq(remoteSchema.memoryPipelineLogs.appId, params.appId));
+        }
+
+        if (params.stage) {
+            conditions.push(eq(remoteSchema.memoryPipelineLogs.stage, params.stage));
+        }
+
+        const limit = params.limit || 100;
+
+        const rows = await db
+            .select()
+            .from(remoteSchema.memoryPipelineLogs)
+            .where(and(...conditions))
+            .orderBy(desc(remoteSchema.memoryPipelineLogs.createdAt))
+            .limit(limit);
+
+        return rows.map(r => ({
+            id: r.id,
+            appId: r.appId,
+            chatId: r.chatId,
+            stage: r.stage,
+            model: r.model,
+            systemPrompt: r.systemPrompt,
+            userMessage: r.userMessage,
+            rawResponse: r.rawResponse,
+            parsedResult: r.parsedResult,
+            resultCount: r.resultCount,
+            durationMs: r.durationMs,
+            success: r.success,
+            error: r.error,
+            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        }));
+    });
+
+    // ── PURGE ALL STATS ──────────────────────────────────────────────────
+    createTypedHandler(memoryContracts.purgeAllMemoryStats, async (_event, _input, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const telemetryResult = await db
+            .delete(remoteSchema.memoryTelemetry)
+            .where(eq(remoteSchema.memoryTelemetry.userId, userId));
+
+        const pipelineResult = await db
+            .delete(remoteSchema.memoryPipelineLogs)
+            .where(eq(remoteSchema.memoryPipelineLogs.userId, userId));
+
+        const telemetryDeleted = (telemetryResult as any).rowsAffected ?? 0;
+        const pipelineLogsDeleted = (pipelineResult as any).rowsAffected ?? 0;
+
+        logger.info(`[Memory] Purged all stats: ${telemetryDeleted} telemetry + ${pipelineLogsDeleted} pipeline logs`);
+        return { telemetryDeleted, pipelineLogsDeleted };
+    });
+
     logger.info("[Memory] Handlers registered");
 }
 

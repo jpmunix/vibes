@@ -19,7 +19,7 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { openRouterCompletion, hasOpenRouterApiKey } from "./openrouter";
 import { shouldInjectMemories } from "./memory_guardian";
 import { getEffectivePrompt } from "../../prompts";
-import { logTelemetry } from "./memory_telemetry";
+import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 
 const logger = log.scope("memory_context");
 
@@ -118,7 +118,7 @@ export async function buildMemoryContext(
         // 2. If we have a prompt AND an API key, use the LLM Router
         let selectedRows = rows;
         if (userPrompt && hasOpenRouterApiKey() && rows.length > 3) {
-            const routerSelected = await routerSelect(rows, userPrompt, settings);
+            const routerSelected = await routerSelect(rows, userPrompt, settings, userId, appId);
             if (routerSelected && routerSelected.length > 0) {
                 selectedRows = routerSelected;
 
@@ -200,6 +200,8 @@ async function routerSelect(
     memories: MemoryRow[],
     userPrompt: string,
     settings: any,
+    userId: string,
+    appId: number,
 ): Promise<MemoryRow[] | null> {
     try {
         const model = settings.memoriesRouterModelV2
@@ -222,6 +224,7 @@ async function routerSelect(
             userPrompt,
         ].join("\n");
 
+        const t0 = Date.now();
         const data = await openRouterCompletion({
             model,
             messages: [
@@ -233,10 +236,19 @@ async function routerSelect(
             response_format: { type: "json_object" },
             title: "Vibes - Memory Router",
         });
+        const durationMs = Date.now() - t0;
 
         const rawContent = data.choices?.[0]?.message?.content?.trim();
         if (!rawContent) {
             logger.info("[Memory] Router returned empty response");
+            logPipelineCall({
+                userId, appId,
+                stage: "router", model,
+                systemPrompt: selectionPrompt,
+                userMessage,
+                rawResponse: "",
+                resultCount: 0, durationMs, success: true,
+            });
             return null;
         }
 
@@ -248,10 +260,28 @@ async function routerSelect(
                 selectedIds = parsed.ids;
             } else {
                 logger.warn("[Memory] Router returned unexpected structure:", rawContent.slice(0, 200));
+                logPipelineCall({
+                    userId, appId,
+                    stage: "router", model,
+                    systemPrompt: selectionPrompt,
+                    userMessage,
+                    rawResponse: rawContent,
+                    resultCount: 0, durationMs, success: false,
+                    error: "Unexpected JSON structure",
+                });
                 return null;
             }
         } catch {
             logger.warn("[Memory] Router returned invalid JSON:", rawContent);
+            logPipelineCall({
+                userId, appId,
+                stage: "router", model,
+                systemPrompt: selectionPrompt,
+                userMessage,
+                rawResponse: rawContent,
+                resultCount: 0, durationMs, success: false,
+                error: "JSON parse error",
+            });
             return null;
         }
 
@@ -259,6 +289,17 @@ async function routerSelect(
         selectedIds = selectedIds
             .filter(id => typeof id === "number")
             .slice(0, ROUTER_OUTPUT_LIMIT);
+
+        // Log the successful router call (raw)
+        logPipelineCall({
+            userId, appId,
+            stage: "router", model,
+            systemPrompt: selectionPrompt,
+            userMessage,
+            rawResponse: rawContent,
+            parsedResult: { ids: selectedIds },
+            resultCount: selectedIds.length, durationMs, success: true,
+        });
 
         if (selectedIds.length === 0) {
             logger.info("[Memory] Router selected 0 memories");
@@ -277,6 +318,13 @@ async function routerSelect(
 
     } catch (error: any) {
         logger.warn(`[Memory] Router call failed: ${error.message} — falling back to top-N`);
+        logPipelineCall({
+            userId, appId,
+            stage: "router",
+            resultCount: 0,
+            success: false,
+            error: error.message,
+        });
         return null;
     }
 }

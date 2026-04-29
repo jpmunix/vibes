@@ -438,6 +438,23 @@ export async function initializeRemoteSchema(): Promise<void> {
       extracted_keys TEXT,
       created_at INTEGER NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS memory_pipeline_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      app_id INTEGER NOT NULL,
+      chat_id INTEGER,
+      stage TEXT NOT NULL,
+      model TEXT,
+      system_prompt TEXT,
+      user_message TEXT,
+      raw_response TEXT,
+      parsed_result TEXT,
+      result_count INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER,
+      success INTEGER NOT NULL DEFAULT 1,
+      error TEXT,
+      created_at INTEGER NOT NULL
+    )`,
   ];
   for (const migration of migrations) {
     try {
