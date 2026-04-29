@@ -126,7 +126,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
       setMemories(scored);
 
       const ctx = await ipc.memory.getMemoryContext(appId);
-      setContextPreview(ctx);
+      setContextPreview(ctx.block || "");
     } catch (err) {
       console.error("Failed to load memories:", err);
     } finally {
