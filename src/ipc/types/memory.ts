@@ -214,6 +214,16 @@ export const memoryContracts = {
             pipelineLogsDeleted: z.number(),
         }),
     }),
+
+    /** Get apps that have telemetry or pipeline log data */
+    getAppsWithAnalyzerData: defineContract({
+        channel: "get-apps-with-analyzer-data",
+        input: z.void(),
+        output: z.array(z.object({
+            id: z.number(),
+            name: z.string(),
+        })),
+    }),
 } as const;
 
 // =============================================================================

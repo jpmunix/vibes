@@ -943,7 +943,20 @@ function PlaygroundPanel() {
                                     </Command>
                                 </PopoverContent>
                             </Popover>
-                            <div className="flex-1" />
+                            <div className="flex-1 flex items-center justify-start px-2">
+                                <button
+                                    type="button"
+                                    className="p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:bg-muted/50 transition-all text-muted-foreground cursor-pointer"
+                                    title="Cargar test de Morph V3"
+                                    onClick={() => {
+                                        setPrompt("<instruction>I will add type hints</instruction>\n<code>def greet(name):\n    return \"Hello \" + name</code>\n<update>def greet(name: str) -> str</update>");
+                                        setSelectedModels(["morph/morph-v3-large", "morph/morph-v3-fast"]);
+                                    }}
+                                    disabled={isRunning}
+                                >
+                                    <FlaskConical size={14} />
+                                </button>
+                            </div>
                             <button
                                 type="button"
                                 className="playground-send-btn"

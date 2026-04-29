@@ -308,6 +308,27 @@ export function registerMemoryHandlers(): void {
         return { telemetryDeleted, pipelineLogsDeleted };
     });
 
+    // ── APPS WITH ANALYZER DATA ─────────────────────────────────────────
+    createTypedHandler(memoryContracts.getAppsWithAnalyzerData, async (_event, _input, ctx) => {
+        const db = getRemoteDb();
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        // Get distinct appIds from both telemetry and pipeline logs, join with apps for name
+        const rows = await db.all<{ id: number; name: string }>(sql`
+            SELECT DISTINCT a.id, a.name
+            FROM apps a
+            WHERE a.user_id = ${userId}
+              AND (
+                EXISTS (SELECT 1 FROM memory_telemetry mt WHERE mt.app_id = a.id AND mt.user_id = ${userId})
+                OR EXISTS (SELECT 1 FROM memory_pipeline_logs mpl WHERE mpl.app_id = a.id AND mpl.user_id = ${userId})
+              )
+            ORDER BY a.name COLLATE NOCASE
+        `);
+
+        return rows;
+    });
+
     logger.info("[Memory] Handlers registered");
 }
 
