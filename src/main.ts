@@ -174,7 +174,7 @@ export async function onReady() {
   // ─── Splash Screen Startup Flow ──────────────────────────────────────
   // Show a splash screen with progress bar while running initialization tasks.
   // This replaces the "white screen" that appeared during startup.
-  const TOTAL_STEPS = 2;
+  const TOTAL_STEPS = 3;
   const splash = createSplashWindow();
   // Give the splash window time to render (minimal delay)
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -184,8 +184,14 @@ export async function onReady() {
   createWindow();
   createApplicationMenu();
 
-  // Step 2: Wait for main window content to fully load, then swap splash → main
-  updateSplash(splash, 2, TOTAL_STEPS, "Cargando...");
+  // Step 2: Validate configured models still exist in OpenRouter
+  updateSplash(splash, 2, TOTAL_STEPS, "Validando modelos...");
+  await validateModelSettings().catch((err) =>
+    logger.warn("Model validation failed (non-fatal):", err),
+  );
+
+  // Step 3: Wait for main window content to fully load, then swap splash → main
+  updateSplash(splash, 3, TOTAL_STEPS, "Cargando...");
   if (mainWindow) {
     await new Promise<void>(resolve => {
       mainWindow!.webContents.once("did-finish-load", resolve);
@@ -213,12 +219,6 @@ export async function onReady() {
 
     // Start performance monitoring after everything is initialized
     startPerformanceMonitoring();
-
-    // Validate that configured models still exist in OpenRouter
-    // (runs after OpenCode install to ensure network is likely available)
-    validateModelSettings().catch((err) =>
-      logger.warn("Model validation failed (non-fatal):", err),
-    );
 
     logger.info("Background initialization completed");
   });
