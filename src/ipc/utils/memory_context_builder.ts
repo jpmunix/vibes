@@ -205,17 +205,21 @@ async function routerSelect(
         const model = settings.memoriesRouterModel
             || DEFAULT_SELECTION_MODEL;
 
-        // Build compact memory list for the Router
+        // Build structured user message matching the prompt format
         const memoryList = memories
-            .map(m => `${m.id} | ${m.type} | ${m.key || "—"} | ${m.content}`)
+            .map(m => `- [#${m.id}] [${m.type}] key:${m.key || "—"} | imp:${m.importance} | ${m.content}`)
             .join("\n");
 
         const selectionPrompt = getEffectivePrompt("memory_selection", settings);
 
         const userMessage = [
-            `PROMPT DEL USUARIO:\n${userPrompt}`,
+            "# CONTEXTO DE EVALUACIÓN",
             "",
-            `MEMORIAS DISPONIBLES (${memories.length}):\n${memoryList}`,
+            `## Memorias Disponibles (${memories.length}):`,
+            memoryList,
+            "",
+            "## Prompt del Usuario:",
+            userPrompt,
         ].join("\n");
 
         const data = await openRouterCompletion({
@@ -240,7 +244,12 @@ async function routerSelect(
         let selectedIds: number[];
         try {
             const parsed = JSON.parse(rawContent);
-            selectedIds = Array.isArray(parsed) ? parsed : (parsed.ids || []);
+            if (parsed.ids && Array.isArray(parsed.ids)) {
+                selectedIds = parsed.ids;
+            } else {
+                logger.warn("[Memory] Router returned unexpected structure:", rawContent.slice(0, 200));
+                return null;
+            }
         } catch {
             logger.warn("[Memory] Router returned invalid JSON:", rawContent);
             return null;

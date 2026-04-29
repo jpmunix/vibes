@@ -582,10 +582,10 @@ export function MemorySettings() {
         control={<MemorySelectionModelSelector />}
       />
 
-      {/* 📝 Prompt editor — Synthesis */}
+      {/* 📝 Prompt editor — Synthesis (Generador) */}
       <PromptEditor
-        label="Prompt de síntesis"
-        description="Instrucciones del Synthesizer: analiza conversaciones y produce operaciones (add/update/merge)"
+        label="Generador de memorias"
+        description="Instrucciones del Synthesizer: decide qué extraer de cada conversación y genera operaciones (add/update/merge)"
         promptId="memory_synthesis"
       />
 
