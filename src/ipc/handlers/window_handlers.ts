@@ -1028,7 +1028,7 @@ export function registerWindowHandlers() {
       minWidth: 600,
       minHeight: 500,
       skipTaskbar: false,
-      title: "Playground",
+      title: "Playground de modelos",
       icon,
       autoHideMenuBar: true,
       titleBarStyle: "hidden",
