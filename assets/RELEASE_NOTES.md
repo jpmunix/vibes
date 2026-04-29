@@ -3,16 +3,17 @@
 
 ## El agente ahora tiene memoria
 
-Vibes incorpora un **sistema de memoria por proyecto** que permite al agente recordar lo que importa entre conversaciones. Mientras trabajas, la IA extrae automáticamente hechos sobre la arquitectura, tus preferencias de código, decisiones de diseño, problemas recurrentes y resúmenes de trabajo completado. Cada memoria se clasifica por tipo, se pondera por importancia y se inyecta como contexto en las conversaciones siguientes, de modo que **el agente no parte de cero cada vez que abres un chat**. Desde el panel de memorias puedes ver, editar, desactivar o crear memorias manualmente. Un sistema de decaimiento reduce automáticamente la relevancia de las menos utilizadas.
+Nuevo **sistema de memoria por proyecto**: mientras trabajas, la IA extrae automáticamente hechos de arquitectura, preferencias, decisiones y problemas recurrentes. Esas memorias se inyectan como contexto en los chats siguientes, de modo que **el agente no parte de cero cada vez**. Puedes ver, editar, desactivar o crear memorias desde su propio panel, y personalizar las instrucciones de extracción desde **Ajustes → Prompts**.
 
-## Personaliza cómo el agente aprende
+## Playground: compara modelos en paralelo
 
-El prompt que la IA usa para extraer memorias ya no está oculto en el código. Ahora aparece en **Ajustes → Prompts** como un prompt más del sistema, editable y restaurable al valor por defecto. Si quieres que el agente preste más atención a cierto tipo de conocimiento o ignore detalles concretos, solo tienes que ajustar las instrucciones.
+Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y comparar velocidad, tamaño de respuesta y calidad lado a lado. Selecciona los modelos desde un picker integrado, ordena los resultados por tiempo o longitud, reintenta modelos individuales y cancela peticiones en vuelo. Accesible desde **Ajustes → OpenRouter**.
 
 ## Correcciones y ajustes
 
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
 - Nuevo acceso directo a **Ver logs** desde el menú de ajustes.
+- El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.
 - Mejoras internas de estabilidad.
 
 # v8.0
