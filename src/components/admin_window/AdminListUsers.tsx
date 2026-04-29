@@ -66,6 +66,13 @@ export function AdminListUsers() {
     const [copied, setCopied] = useState(false);
     const [creating, setCreating] = useState(false);
 
+    // Expand user details
+    const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+    const toggleExpandUser = (userId: string) => {
+        setExpandedUserId((prev) => (prev === userId ? null : userId));
+    };
+
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
@@ -323,159 +330,340 @@ export function AdminListUsers() {
                         </form>
                     )}
 
-                    {/* ── User list (table) ── */}
-                    <div className="rounded-xl border border-border overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-(--sidebar) typo-micro uppercase tracking-wider text-muted-foreground">
-                                    <th className="text-left px-4 py-2.5 font-medium">Nombre</th>
-                                    <th className="text-left px-4 py-2.5 font-medium">Email</th>
-                                    <th className="text-left px-4 py-2.5 font-medium">Creado</th>
-                                    <th className="text-right px-4 py-2.5 font-medium w-32">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map((user) => {
-                                    const isEditing = editingId === user.id;
-                                    const isResettingPw = passwordResetId === user.id;
+                    {/* ── User list (SettingItem rows) ── */}
+                    {users.map((user) => {
+                        const isExpanded = expandedUserId === user.id;
+                        const isEditing = editingId === user.id;
+                        const isResettingPw = passwordResetId === user.id;
 
-                                    return (
-                                        <tr
-                                            key={user.id}
-                                            className="border-t border-border hover:bg-accent/30 transition-colors"
+                        return (
+                            <div key={user.id}>
+                                {/* ── User row ── */}
+                                <div
+                                    className="flex items-center justify-between gap-8 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => toggleExpandUser(user.id)}
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="typo-label truncate">
+                                            {user.displayName}
+                                        </h3>
+                                        <p className="typo-caption mt-0.5">
+                                            {user.email} · {new Date(user.createdAt).toLocaleDateString("es-ES", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        {/* Edit / Password buttons */}
+                                        <button
+                                            type="button"
+                                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); startEdit(user); }}
+                                            title="Editar"
                                         >
-                                            {/* Name */}
-                                            <td className="px-4 py-3">
-                                                {isEditing ? (
-                                                    <input
-                                                        value={editForm.displayName}
-                                                        onChange={(e) =>
-                                                            setEditForm((f) => ({ ...f, displayName: e.target.value }))
-                                                        }
-                                                        className="w-full px-2 py-1 bg-secondary border border-border rounded text-foreground text-sm outline-none focus:border-primary"
-                                                        autoFocus
-                                                    />
-                                                ) : (
-                                                    <span className="text-foreground">{user.displayName}</span>
-                                                )}
-                                            </td>
-                                            {/* Email */}
-                                            <td className="px-4 py-3">
-                                                {isEditing ? (
-                                                    <input
-                                                        value={editForm.email}
-                                                        onChange={(e) =>
-                                                            setEditForm((f) => ({ ...f, email: e.target.value }))
-                                                        }
-                                                        className="w-full px-2 py-1 bg-secondary border border-border rounded text-foreground text-sm outline-none focus:border-primary"
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted-foreground">{user.email}</span>
-                                                )}
-                                            </td>
-                                            {/* Created */}
-                                            <td className="px-4 py-3 typo-caption">
-                                                {new Date(user.createdAt).toLocaleDateString("es-ES", {
-                                                    day: "2-digit",
-                                                    month: "short",
-                                                    year: "numeric",
-                                                })}
-                                            </td>
-                                            {/* Actions */}
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {isEditing ? (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                className="p-1.5 rounded hover:bg-accent text-primary cursor-pointer transition-colors"
-                                                                onClick={saveEdit}
-                                                                disabled={saving}
-                                                            >
-                                                                {saving ? (
-                                                                    <Loader2 size={14} className="animate-spin" />
-                                                                ) : (
-                                                                    <Check size={14} />
-                                                                )}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="p-1.5 rounded hover:bg-accent text-muted-foreground cursor-pointer transition-colors"
-                                                                onClick={cancelEdit}
-                                                            >
-                                                                <X size={14} />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                                                                onClick={() => startEdit(user)}
-                                                            >
-                                                                <Pencil size={14} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                                                                onClick={() => {
-                                                                    setPasswordResetId(
-                                                                        isResettingPw ? null : user.id,
-                                                                    );
-                                                                    setNewPassword("");
-                                                                    setEditingId(null);
-                                                                }}
-                                                            >
-                                                                <Lock size={14} />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPasswordResetId(isResettingPw ? null : user.id);
+                                                setNewPassword("");
+                                                setEditingId(null);
+                                            }}
+                                            title="Cambiar contraseña"
+                                        >
+                                            <Lock size={14} />
+                                        </button>
+                                        <ChevronRight
+                                            className={cn(
+                                                "size-5 text-muted-foreground/50 transition-transform duration-200 ml-1",
+                                                isExpanded && "rotate-90",
+                                            )}
+                                        />
+                                    </div>
+                                </div>
 
-                                                {/* Inline password reset */}
-                                                {isResettingPw && (
-                                                    <div className="flex items-center gap-1.5 mt-2 justify-end">
-                                                        <input
-                                                            type="text"
-                                                            value={newPassword}
-                                                            onChange={(e) => setNewPassword(e.target.value)}
-                                                            placeholder="Nueva contraseña"
-                                                            className="px-2 py-1 bg-secondary border border-border rounded text-foreground text-xs outline-none focus:border-primary w-40"
-                                                            autoFocus
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            className="p-1 rounded hover:bg-accent text-primary cursor-pointer transition-colors"
-                                                            onClick={savePassword}
-                                                            disabled={saving}
-                                                        >
-                                                            {saving ? (
-                                                                <Loader2 size={12} className="animate-spin" />
-                                                            ) : (
-                                                                <Check size={12} />
-                                                            )}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="p-1 rounded hover:bg-accent text-muted-foreground cursor-pointer transition-colors"
-                                                            onClick={() => {
-                                                                setPasswordResetId(null);
-                                                                setNewPassword("");
-                                                            }}
-                                                        >
-                                                            <X size={12} />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                {/* ── Expanded content ── */}
+                                {isExpanded && (
+                                    <div className="pl-8 mt-2 space-y-2 mb-4">
+                                        {/* Inline edit form */}
+                                        {isEditing && (
+                                            <div className="flex items-center gap-2 p-4 rounded-xl border border-border">
+                                                <input
+                                                    value={editForm.displayName}
+                                                    onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+                                                    className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
+                                                    placeholder="Nombre"
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    value={editForm.email}
+                                                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                                                    className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
+                                                    placeholder="Email"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="p-1.5 rounded hover:bg-accent text-primary cursor-pointer transition-colors"
+                                                    onClick={saveEdit}
+                                                    disabled={saving}
+                                                >
+                                                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="p-1.5 rounded hover:bg-accent text-muted-foreground cursor-pointer transition-colors"
+                                                    onClick={cancelEdit}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Inline password reset */}
+                                        {isResettingPw && (
+                                            <div className="flex items-center gap-2 p-4 rounded-xl border border-border">
+                                                <input
+                                                    type="text"
+                                                    value={newPassword}
+                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    placeholder="Nueva contraseña (mín. 6 caracteres)"
+                                                    className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="p-1.5 rounded hover:bg-accent text-primary cursor-pointer transition-colors"
+                                                    onClick={savePassword}
+                                                    disabled={saving}
+                                                >
+                                                    {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="p-1.5 rounded hover:bg-accent text-muted-foreground cursor-pointer transition-colors"
+                                                    onClick={() => { setPasswordResetId(null); setNewPassword(""); }}
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Settings JSON tree */}
+                                        <UserSettingsViewer userId={user.id} />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ── Recursive JSON Tree Viewer ──────────────────────────────────────────────
+
+/** Keys whose values should be masked for security */
+const SENSITIVE_KEYS = new Set([
+    "key", "value", "password", "passwordHash", "sessionToken",
+    "githubAccessToken", "vercelAccessToken", "serperApiKey",
+]);
+
+function isSensitiveKey(key: string): boolean {
+    const lower = key.toLowerCase();
+    return SENSITIVE_KEYS.has(key) || lower.includes("token") || lower.includes("secret") || lower.includes("apikey");
+}
+
+function maskValue(val: string): string {
+    if (val.length <= 8) return "••••••••";
+    return val.slice(0, 4) + "••••" + val.slice(-4);
+}
+
+function UserSettingsViewer({ userId }: { userId: string }) {
+    const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLoading(true);
+        setError(null);
+        ipc.admin.getUserSettings({ userId })
+            .then((result) => setSettings(result.settings))
+            .catch((err: any) => setError(err.message || "Error al cargar"))
+            .finally(() => setLoading(false));
+    }, [userId]);
+
+    if (loading) {
+        return (
+            <div className="p-4 rounded-xl border border-border/50 flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                <span className="typo-caption">Cargando configuración…</span>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-4 rounded-xl border border-border/50">
+                <p className="typo-caption text-destructive">{error}</p>
+            </div>
+        );
+    }
+
+    if (!settings || Object.keys(settings).length === 0) {
+        return (
+            <div className="p-4 rounded-xl border border-border/50">
+                <p className="typo-caption">Sin configuración guardada</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-4 rounded-xl border border-border/50">
+            <p className="typo-label mb-3">Configuración del usuario</p>
+            <JsonNode value={settings} depth={0} parentKey="" />
+        </div>
+    );
+}
+
+function JsonNode({ value, depth, parentKey }: { value: unknown; depth: number; parentKey: string }) {
+    if (value === null || value === undefined) {
+        return <span className="typo-caption italic">null</span>;
+    }
+
+    if (typeof value === "boolean") {
+        return (
+            <span className={cn("typo-caption font-mono", value ? "text-primary" : "text-muted-foreground")}>
+                {value ? "true" : "false"}
+            </span>
+        );
+    }
+
+    if (typeof value === "number") {
+        return <span className="typo-caption font-mono text-primary">{value}</span>;
+    }
+
+    if (typeof value === "string") {
+        const display = isSensitiveKey(parentKey) ? maskValue(value) : value;
+        const maxLen = 80;
+        const truncated = display.length > maxLen ? display.slice(0, maxLen) + "…" : display;
+        return (
+            <span className="typo-caption font-mono text-foreground/80" title={isSensitiveKey(parentKey) ? "Valor enmascarado" : display}>
+                {truncated}
+            </span>
+        );
+    }
+
+    if (Array.isArray(value)) {
+        return <JsonArrayNode items={value} depth={depth} parentKey={parentKey} />;
+    }
+
+    if (typeof value === "object") {
+        return <JsonObjectNode obj={value as Record<string, unknown>} depth={depth} />;
+    }
+
+    return <span className="typo-caption">{String(value)}</span>;
+}
+
+function JsonObjectNode({ obj, depth }: { obj: Record<string, unknown>; depth: number }) {
+    const [collapsed, setCollapsed] = useState(depth >= 2);
+    const entries = Object.entries(obj);
+
+    if (entries.length === 0) {
+        return <span className="typo-caption italic text-muted-foreground">{"{}"}</span>;
+    }
+
+    return (
+        <div className="space-y-0.5">
+            {entries.map(([key, val]) => {
+                const isComplex = val !== null && typeof val === "object";
+
+                if (!isComplex) {
+                    return (
+                        <div key={key} className="flex items-baseline gap-2 py-0.5" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
+                            <span className="typo-caption text-muted-foreground shrink-0">{key}:</span>
+                            <JsonNode value={val} depth={depth + 1} parentKey={key} />
+                        </div>
+                    );
+                }
+
+                return (
+                    <CollapsibleJsonEntry key={key} label={key} depth={depth} defaultCollapsed={depth >= 1}>
+                        <JsonNode value={val} depth={depth + 1} parentKey={key} />
+                    </CollapsibleJsonEntry>
+                );
+            })}
+        </div>
+    );
+}
+
+function JsonArrayNode({ items, depth, parentKey }: { items: unknown[]; depth: number; parentKey: string }) {
+    if (items.length === 0) {
+        return <span className="typo-caption italic text-muted-foreground">{"[]"}</span>;
+    }
+
+    // Simple array of primitives — inline
+    const allPrimitive = items.every((i) => i === null || typeof i !== "object");
+    if (allPrimitive) {
+        return (
+            <span className="typo-caption font-mono text-foreground/80">
+                [{items.map((i, idx) => (
+                    <span key={idx}>
+                        {idx > 0 && ", "}
+                        {typeof i === "string"
+                            ? (isSensitiveKey(parentKey) ? maskValue(i) : (i.length > 40 ? i.slice(0, 40) + "…" : i))
+                            : String(i)}
+                    </span>
+                ))}]
+            </span>
+        );
+    }
+
+    // Complex array — each item collapsible
+    return (
+        <div className="space-y-0.5" style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
+            {items.map((item, idx) => (
+                <CollapsibleJsonEntry key={idx} label={`[${idx}]`} depth={depth} defaultCollapsed={depth >= 1}>
+                    <JsonNode value={item} depth={depth + 1} parentKey={parentKey} />
+                </CollapsibleJsonEntry>
+            ))}
+        </div>
+    );
+}
+
+function CollapsibleJsonEntry({
+    label,
+    depth,
+    defaultCollapsed,
+    children,
+}: {
+    label: string;
+    depth: number;
+    defaultCollapsed: boolean;
+    children: React.ReactNode;
+}) {
+    const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
+    return (
+        <div style={{ paddingLeft: depth > 0 ? 16 : 0 }}>
+            <div
+                className="flex items-center gap-1.5 py-0.5 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
+                onClick={() => setCollapsed((c) => !c)}
+            >
+                <ChevronRight
+                    className={cn(
+                        "size-3 text-muted-foreground/50 transition-transform duration-150 shrink-0",
+                        !collapsed && "rotate-90",
+                    )}
+                />
+                <span className="typo-caption text-muted-foreground">{label}</span>
+            </div>
+            {!collapsed && <div className="mt-0.5">{children}</div>}
         </div>
     );
 }

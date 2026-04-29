@@ -78,6 +78,12 @@ export const adminContracts = {
             users: z.array(AdminUserSchema),
         }),
     }),
+
+    getUserSettings: defineContract({
+        channel: "admin:get-user-settings",
+        input: z.object({ userId: z.string() }),
+        output: z.object({ settings: z.record(z.unknown()).nullable() }),
+    }),
 } as const;
 
 // =============================================================================

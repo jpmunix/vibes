@@ -213,5 +213,30 @@ export function registerAdminHandlers(): void {
         return { apps, users: userRows.map(toAdminUser) };
     });
 
+    // ─── GET USER SETTINGS ──────────────────────────────────────────────
+    createTypedHandler(adminContracts.getUserSettings, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+
+        const rows = await db
+            .select({ settingsJson: remoteSchema.userSettings.settingsJson })
+            .from(remoteSchema.userSettings)
+            .where(eq(remoteSchema.userSettings.userId, input.userId))
+            .limit(1);
+
+        if (rows.length === 0) {
+            return { settings: null };
+        }
+
+        try {
+            const parsed = JSON.parse(rows[0].settingsJson);
+            return { settings: parsed };
+        } catch {
+            logger.warn(`Failed to parse settings JSON for user ${input.userId}`);
+            return { settings: null };
+        }
+    });
+
     logger.info("Admin handlers registered");
 }
