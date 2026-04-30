@@ -48,6 +48,16 @@ import {
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Popover,
     PopoverContent,
     PopoverTrigger,
@@ -307,6 +317,7 @@ function PlaygroundPanel() {
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
     const [saveAsName, setSaveAsName] = useState("");
     const [saveMode, setSaveMode] = useState<'new' | 'update'>('new');
+    const [pendingDeletePreset, setPendingDeletePreset] = useState<string | null>(null);
 
     const modelSets = useMemo(() => settings?.playgroundModelSets || [], [settings?.playgroundModelSets]);
 
@@ -427,8 +438,8 @@ function PlaygroundPanel() {
     const sortLabels: Record<string, string> = {
         'speed-asc': 'Más rápido primero',
         'speed-desc': 'Más lento primero',
-        'size-asc': 'Respuesta más corta',
-        'size-desc': 'Respuesta más larga',
+        'size-asc': viewMode === 'memorias' ? 'Menos memorias' : 'Respuesta más corta',
+        'size-desc': viewMode === 'memorias' ? 'Más memorias' : 'Respuesta más larga',
     };
 
     // Reset everything (keep prompt)
@@ -1090,7 +1101,8 @@ function PlaygroundPanel() {
                                             className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDeletePreset(set.name);
+                                                setPendingDeletePreset(set.name);
+                                                setPresetMenuOpen(false);
                                             }}
                                             title="Eliminar preset"
                                         >
@@ -1101,6 +1113,30 @@ function PlaygroundPanel() {
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Delete preset confirmation dialog */}
+                    <AlertDialog open={!!pendingDeletePreset} onOpenChange={(open) => { if (!open) setPendingDeletePreset(null); }}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Eliminar preset</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    ¿Estás seguro de que quieres eliminar "{pendingDeletePreset}"? Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => {
+                                        if (pendingDeletePreset) handleDeletePreset(pendingDeletePreset);
+                                        setPendingDeletePreset(null);
+                                    }}
+                                >
+                                    Eliminar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
                     {/* Save / Update buttons */}
                     {selectedModels.length > 0 && (
