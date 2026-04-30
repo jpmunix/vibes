@@ -156,6 +156,21 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   const selectedMemoriesMap = useAtomValue(selectedMemoriesByChatIdAtom);
   const selectedMemories = selectedChatId ? selectedMemoriesMap.get(selectedChatId) : undefined;
 
+  // Resolve memories: prefer live atom (streaming) for last message, fall back to persisted DB data
+  const resolvedMemories = useMemo(() => {
+    if (isLastMessage && selectedMemories && selectedMemories.length > 0) {
+      return selectedMemories;
+    }
+    if (message.role === "assistant" && (message as any).injectedMemories) {
+      const raw = (message as any).injectedMemories;
+      if (typeof raw === "string") {
+        try { return JSON.parse(raw); } catch { return undefined; }
+      }
+      if (Array.isArray(raw)) return raw;
+    }
+    return undefined;
+  }, [isLastMessage, selectedMemories, message]);
+
   const activeUser = user || userAtomValue;
 
   const isUser = message.role === "user";
@@ -629,6 +644,11 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                         {messageCost && (
                           <span className="typo-micro ml-1">{messageCost}</span>
                         )}
+                        {resolvedMemories && resolvedMemories.length > 0 && (
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <MemoryBadge memories={resolvedMemories} />
+                          </div>
+                        )}
                         {message.createdAt && (
                           <span className="typo-micro ml-1 flex items-center gap-1">
                             <Clock size={10} />
@@ -688,8 +708,8 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                     {messageCost && (
                       <span className="typo-micro ml-1">{messageCost}</span>
                     )}
-                    {isLastMessage && selectedMemories && selectedMemories.length > 0 && (
-                      <MemoryBadge memories={selectedMemories} />
+                    {resolvedMemories && resolvedMemories.length > 0 && (
+                      <MemoryBadge memories={resolvedMemories} />
                     )}
                     {message.createdAt && (
                       <span className="typo-micro ml-1 flex items-center gap-1">

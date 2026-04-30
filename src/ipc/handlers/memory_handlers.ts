@@ -329,6 +329,34 @@ export function registerMemoryHandlers(): void {
         return rows;
     });
 
+    // ── BOOTSTRAP PROJECT MEMORIES ──────────────────────────────────────
+    // Manually trigger memory bootstrap (cold start) for an app
+    createTypedHandler(memoryContracts.bootstrapProjectMemories, async (_event, params, ctx) => {
+        const userId = ctx.userId;
+        if (!userId) throw new Error("Unauthorized");
+
+        const db = getRemoteDb();
+        const [app] = await db
+            .select({ path: remoteSchema.apps.path })
+            .from(remoteSchema.apps)
+            .where(eq(remoteSchema.apps.id, params.appId))
+            .limit(1);
+
+        if (!app?.path) {
+            throw new Error(`App ${params.appId} not found or has no path`);
+        }
+
+        const { runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+        const result = await runMemoryBootstrap({
+            appId: params.appId,
+            userId,
+            projectDir: app.path,
+            initWasLaunched: false,
+        });
+
+        return result;
+    });
+
     logger.info("[Memory] Handlers registered");
 }
 

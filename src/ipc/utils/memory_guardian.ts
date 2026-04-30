@@ -11,6 +11,29 @@ import log from "electron-log";
 const logger = log.scope("memory_guardian");
 
 // =============================================================================
+// Types
+// =============================================================================
+
+export type GuardianRejectReason =
+    | "trivial_ack"
+    | "short_no_tech"
+    | "response_no_tech";
+
+export type GuardianInjectionRejectReason =
+    | "trivial_ack"
+    | "short_no_tech";
+
+export interface GuardianResult {
+    allowed: boolean;
+    reason: GuardianRejectReason | "approved";
+}
+
+export interface GuardianInjectionResult {
+    allowed: boolean;
+    reason: GuardianInjectionRejectReason | "approved";
+}
+
+// =============================================================================
 // Strip Thinking Blocks
 // =============================================================================
 
@@ -96,51 +119,51 @@ export function hasTechnicalContent(text: string): boolean {
  * Determine if a chat interaction has enough substance to be worth
  * running through the LLM Synthesizer (write) or Router (read).
  *
- * Returns `false` (skip) if the interaction is trivial.
+ * Returns a structured result with the rejection reason for observability.
  */
 export function shouldProcessInteraction(
     userPrompt: string,
     cleanAssistantResponse: string,
-): boolean {
+): GuardianResult {
     const trimmedPrompt = userPrompt.trim();
 
     // 1. Exact trivial ack match — instant reject
     if (isTrivialAck(trimmedPrompt)) {
         logger.info("[Guardian] Skipped: trivial ack");
-        return false;
+        return { allowed: false, reason: "trivial_ack" };
     }
 
     // 2. Very short prompt without technical content
     if (trimmedPrompt.length < 10 && !hasTechnicalContent(trimmedPrompt)) {
         logger.info("[Guardian] Skipped: short prompt, no tech content");
-        return false;
+        return { allowed: false, reason: "short_no_tech" };
     }
 
     // 3. Response has no technical substance
     if (!hasTechnicalContent(cleanAssistantResponse)) {
         logger.info("[Guardian] Skipped: response has no technical content");
-        return false;
+        return { allowed: false, reason: "response_no_tech" };
     }
 
-    return true;
+    return { allowed: true, reason: "approved" };
 }
 
 /**
  * Lighter guard for the read pipeline (memory injection).
  * Only checks the user prompt — we don't have the response yet.
  */
-export function shouldInjectMemories(userPrompt: string): boolean {
+export function shouldInjectMemories(userPrompt: string): GuardianInjectionResult {
     const trimmed = userPrompt.trim();
 
     // Very short + no tech → skip injection
     if (trimmed.length < 15 && !hasTechnicalContent(trimmed)) {
-        return false;
+        return { allowed: false, reason: "short_no_tech" };
     }
 
     // Trivial ack → skip injection
     if (isTrivialAck(trimmed)) {
-        return false;
+        return { allowed: false, reason: "trivial_ack" };
     }
 
-    return true;
+    return { allowed: true, reason: "approved" };
 }

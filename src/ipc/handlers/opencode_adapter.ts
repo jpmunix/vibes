@@ -45,6 +45,11 @@ let serverUrl: string | null = null;
 // Track the last project directory used — needed for question reply routing
 let lastProjectDir: string | null = null;
 
+/** Expose the OpenCode client singleton for use by memory bootstrap (Phase 2 Explore). */
+export function getOpenCodeClientInstance() {
+    return clientInstance;
+}
+
 // Active stream text injector — allows the question reply handler to inject
 // the user's answer directly into the live chat stream content.
 let activeTextInjector: ((text: string) => void) | null = null;
@@ -1507,6 +1512,30 @@ export async function handleOpenCodeStream(
                     } else {
                         logger.info(`${LP} AGENTS.md already exists, skipping init`);
                     }
+                }
+
+                // ── Memory Bootstrap (cold start, fire-and-forget) ──
+                // Only runs once when an app has 0 memories and significant DNA
+                try {
+                    const { needsBootstrap, runMemoryBootstrap } = await import("../utils/memory_bootstrap");
+                    const bootstrapSettings = readSettings();
+                    const bootstrapUserId = bootstrapSettings.userId;
+                    if (bootstrapUserId && updatedChat?.app?.id) {
+                        const needs = await needsBootstrap(updatedChat.app.id, bootstrapUserId);
+                        if (needs) {
+                            logger.info(`${LP} 🧬 Memory bootstrap triggered for appId=${updatedChat.app.id}`);
+                            runMemoryBootstrap({
+                                appId: updatedChat.app.id,
+                                userId: bootstrapUserId,
+                                projectDir,
+                                initWasLaunched: !hasAgentsMd,
+                            }).catch((err: any) => {
+                                logger.warn(`${LP} 🧬 Memory bootstrap failed (non-fatal): ${err.message}`);
+                            });
+                        }
+                    }
+                } catch (bootstrapErr: any) {
+                    logger.warn(`${LP} 🧬 Memory bootstrap import failed (non-fatal): ${bootstrapErr.message}`);
                 }
             }
 

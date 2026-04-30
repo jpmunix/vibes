@@ -59,7 +59,7 @@ const NOISE_PATTERNS = [
     /^[a-zA-Z_$][a-zA-Z0-9_$]*$/,          // Single identifiers
 ];
 
-function isNoisy(content: string): boolean {
+export function isNoisy(content: string): boolean {
     const trimmed = content.trim();
 
     // Too short to be useful
@@ -111,17 +111,41 @@ export async function extractMemoriesFromChatCycle(params: {
         const cleanResponse = stripThinkingBlocks(assistantResponse);
 
         // 1. T1 Guardian: skip trivial interactions BEFORE any DB query
-        if (!shouldProcessInteraction(userPrompt, cleanResponse)) {
-            logTelemetry({ userId, appId, action: "skipped_trivial", reason: "Guardian rejected interaction" });
+        const guardianResult = shouldProcessInteraction(userPrompt, cleanResponse);
+        if (!guardianResult.allowed) {
+            logTelemetry({ userId, appId, action: "skipped_trivial", reason: `Guardian: ${guardianResult.reason}` });
             logPipelineCall({
                 userId, appId, chatId,
                 stage: "guardian",
                 resultCount: 0,
                 success: true,
-                rawResponse: "SKIPPED: Guardian rejected interaction",
+                userMessage: userPrompt.slice(0, 500),
+                rawResponse: `REJECTED: ${guardianResult.reason}`,
+                parsedResult: JSON.stringify({
+                    rejectReason: guardianResult.reason,
+                    promptLength: userPrompt.length,
+                    responseLength: cleanResponse.length,
+                    promptExcerpt: userPrompt.slice(0, 200),
+                    responseExcerpt: cleanResponse.slice(0, 200),
+                }),
             });
             return [];
         }
+
+        // Guardian approved — log for accept/reject ratio analysis
+        logPipelineCall({
+            userId, appId, chatId,
+            stage: "guardian",
+            resultCount: 1,
+            success: true,
+            userMessage: userPrompt.slice(0, 500),
+            rawResponse: "APPROVED",
+            parsedResult: JSON.stringify({
+                rejectReason: "approved",
+                promptLength: userPrompt.length,
+                responseLength: cleanResponse.length,
+            }),
+        });
 
         // 2. Load existing memories for context (avoid duplicates at LLM level)
         const db = getRemoteDb();
@@ -237,14 +261,24 @@ export async function extractMemoriesFromChatCycle(params: {
             return [];
         }
 
-        // Log the successful synthesis call (raw)
+        // Log the successful synthesis call (raw) with enriched metadata
         logPipelineCall({
             userId, appId, chatId,
             stage: "synthesis", model,
             systemPrompt: synthesisPrompt,
             userMessage,
             rawResponse: rawContent,
-            parsedResult: operations,
+            parsedResult: JSON.stringify({
+                operations,
+                meta: {
+                    existingMemoriesCount: existingRows.length,
+                    promptLength: userPrompt.length,
+                    responseLength: cleanResponse.length,
+                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
+                    operationsGenerated: operations.length,
+                    operationsRatio: `${operations.length}/${existingRows.length}`,
+                },
+            }),
             resultCount: operations.length, durationMs, success: true,
         });
 
@@ -301,7 +335,7 @@ export async function extractMemoriesFromChatCycle(params: {
 // Operation handlers
 // =============================================================================
 
-async function handleAdd(
+export async function handleAdd(
     op: SynthesisOperation,
     db: ReturnType<typeof getRemoteDb>,
     existingRows: any[],

@@ -58,7 +58,7 @@ export async function logPipelineCall(params: {
     userId: string;
     appId: number;
     chatId?: number;
-    stage: "synthesis" | "router" | "guardian";
+    stage: "synthesis" | "router" | "guardian" | "bootstrap-dna" | "bootstrap-explore";
     model?: string;
     systemPrompt?: string;
     userMessage?: string;
@@ -80,8 +80,8 @@ export async function logPipelineCall(params: {
             systemPrompt: params.systemPrompt ?? null,
             userMessage: params.userMessage ?? null,
             rawResponse: params.rawResponse ?? null,
-            parsedResult: params.parsedResult
-                ? JSON.stringify(params.parsedResult)
+            parsedResult: params.parsedResult != null
+                ? (typeof params.parsedResult === "string" ? params.parsedResult : JSON.stringify(params.parsedResult))
                 : null,
             resultCount: params.resultCount,
             durationMs: params.durationMs ?? null,

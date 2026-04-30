@@ -20,7 +20,6 @@ import {
   Search,
   FolderX,
   ShieldCheck,
-  Archive,
 } from "@/components/ui/icons";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { OpenRouterCreditsButton } from "./OpenRouterCreditsButton";
@@ -69,7 +68,6 @@ const items: {
       { label: "Importar App", icon: FolderOpen, action: "apps:import" },
       { label: "Buscar aplicaciones", icon: Search, action: "apps:search" },
       { label: "_separator", icon: Plus, action: null },
-      { label: "Ver archivadas", icon: Archive, action: "apps:archived" },
       { label: "Cerrar workspaces", icon: FolderX, action: "apps:bulk-close" },
     ],
   },

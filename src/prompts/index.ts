@@ -15,7 +15,8 @@ export type PromptId =
   | "auto_commit_message"
   | "memory_extraction"
   | "memory_synthesis"
-  | "memory_selection";
+  | "memory_selection"
+  | "memory_onboarding";
 
 export const DEFAULT_PROMPTS: Record<PromptId, string> = {
   thinking_prompt: THINKING_PROMPT,
@@ -380,6 +381,44 @@ export const DEFAULT_PROMPTS: Record<PromptId, string> = {
     "Si ninguna memoria aplica:",
     '{"ids": []}',
   ].join("\n"),
+
+  memory_onboarding: [
+    "Eres un analista de arquitectura de software. Se te proporcionan los archivos de configuración de un proyecto y, opcionalmente, documentación existente (AGENTS.md, DESIGN.md).",
+    "",
+    "Tu objetivo: extraer el stack tecnológico, las herramientas de configuración, convenciones de código y decisiones arquitectónicas evidentes.",
+    "",
+    "---",
+    "",
+    "# REGLAS",
+    "- Genera SOLO operaciones \"add\" (no hay memorias previas).",
+    "- Usa keys genéricas en snake_case inglés (ej: frontend_framework, orm_tool, styling_strategy, auth_provider, deployment_platform, package_manager, bundler_tool, testing_framework).",
+    "- Máximo 15 operaciones. Si hay poco que decir, devuelve menos.",
+    "- Importance: 0.85-0.95 (contexto fundacional).",
+    '- Types: "fact" para stack/tools, "decision" para convenciones/patrones, "preference" para estilos/configuraciones.',
+    '- Si AGENTS.md documenta convenciones, extráelas como "decision".',
+    '- Si DESIGN.md tiene tokens, genera UNA sola memoria tipo "fact" key "design_system" describiendo el estilo general.',
+    "- NO adivines. Si no estás seguro, NO lo incluyas.",
+    "- NO incluyas nombres comerciales ni marketing del producto.",
+    '- Content en español.',
+    "",
+    "---",
+    "",
+    "# FORMATO DE SALIDA ESTRICTO",
+    "Devuelve ÚNICA Y EXCLUSIVAMENTE un objeto JSON válido.",
+    "El primer carácter de tu respuesta DEBE ser `{` y el último `}`.",
+    "",
+    "Ejemplo exacto de salida esperada:",
+    "{",
+    '  "operations": [',
+    '    {"action": "add", "type": "fact", "key": "frontend_framework", "content": "El proyecto usa React 19 con TypeScript.", "importance": 0.95},',
+    '    {"action": "add", "type": "fact", "key": "bundler_tool", "content": "Se usa Vite 6 como bundler.", "importance": 0.9},',
+    '    {"action": "add", "type": "decision", "key": "styling_strategy", "content": "Se usa Tailwind CSS 4 con el plugin de Vite para estilización.", "importance": 0.9}',
+    "  ]",
+    "}",
+    "",
+    "Si no hay nada relevante, devuelve exactamente esto:",
+    '{"operations": []}',
+  ].join("\n"),
 };
 
 export function getEffectivePrompt(
@@ -406,6 +445,7 @@ export const PROMPT_LABELS: Record<PromptId, string> = {
   memory_extraction: "Extracción de Memorias",
   memory_synthesis: "Generador de Memorias",
   memory_selection: "Selección de Memorias",
+  memory_onboarding: "Bootstrap de Memorias (Onboarding)",
 };
 
 export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
@@ -427,4 +467,5 @@ export const PROMPT_DESCRIPTIONS: Record<PromptId, string> = {
   memory_extraction: "Instrucciones que la IA usa para extraer memorias relevantes de las conversaciones. Define qué tipo de información debe recordar.",
   memory_synthesis: "Instrucciones del Synthesizer: analiza conversaciones y memorias existentes para generar operaciones (add/update/merge). Define qué información recordar y cómo.",
   memory_selection: "Instrucciones del Router: selecciona las memorias más relevantes para inyectar en el contexto del agente según el prompt del usuario.",
+  memory_onboarding: "Instrucciones del Bootstrap: analiza archivos de configuración y documentación del proyecto para generar memorias fundacionales sobre el stack y la arquitectura.",
 };

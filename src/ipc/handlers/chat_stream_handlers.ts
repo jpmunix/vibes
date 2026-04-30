@@ -1727,6 +1727,9 @@ This conversation includes one or more image attachments. When the user uploads 
               .set({
                 content: fullResponse,
                 durationMs: openCodeDurationMs,
+                injectedMemories: selectedMemories.length > 0
+                  ? JSON.stringify(selectedMemories) as any
+                  : null,
               })
               .where(
                 and(
@@ -1842,6 +1845,9 @@ This conversation includes one or more image attachments. When the user uploads 
             .set({
               content: fullResponse,
               durationMs: openCodeDurationMs,
+              injectedMemories: selectedMemories.length > 0
+                ? JSON.stringify(selectedMemories) as any
+                : null,
             })
             .where(
               and(

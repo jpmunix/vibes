@@ -82,9 +82,12 @@ export async function buildMemoryContext(
         if (settings.memoriesEnabled === false) return EMPTY_RESULT;
 
         // T1: Guard — skip injection for trivial prompts
-        if (userPrompt && !shouldInjectMemories(userPrompt)) {
-            logger.info("[Memory] Skipped injection: trivial prompt");
-            return EMPTY_RESULT;
+        if (userPrompt) {
+            const injectionGuard = shouldInjectMemories(userPrompt);
+            if (!injectionGuard.allowed) {
+                logger.info(`[Memory] Skipped injection: ${injectionGuard.reason}`);
+                return EMPTY_RESULT;
+            }
         }
 
         const db = getRemoteDb();
@@ -293,14 +296,24 @@ async function routerSelect(
             .filter(id => typeof id === "number")
             .slice(0, maxSelection);
 
-        // Log the successful router call (raw)
+        // Log the successful router call (raw) with enriched metadata
         logPipelineCall({
             userId, appId,
             stage: "router", model,
             systemPrompt: selectionPrompt,
             userMessage,
             rawResponse: rawContent,
-            parsedResult: { ids: selectedIds },
+            parsedResult: JSON.stringify({
+                ids: selectedIds,
+                meta: {
+                    candidatePoolSize: memories.length,
+                    selectedCount: selectedIds.length,
+                    selectionRatio: `${selectedIds.length}/${memories.length}`,
+                    maxAllowed: maxSelection,
+                    promptLength: userPrompt.length,
+                    inputTokensEstimate: Math.ceil(userMessage.length / 4),
+                },
+            }),
             resultCount: selectedIds.length, durationMs, success: true,
         });
 

@@ -224,6 +224,16 @@ export const memoryContracts = {
             name: z.string(),
         })),
     }),
+
+    /** Manually trigger memory bootstrap for a project (cold start) */
+    bootstrapProjectMemories: defineContract({
+        channel: "bootstrap-project-memories",
+        input: z.object({ appId: z.number() }),
+        output: z.object({
+            phase1Count: z.number(),
+            phase2Count: z.number(),
+        }),
+    }),
 } as const;
 
 // =============================================================================

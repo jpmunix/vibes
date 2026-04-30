@@ -316,6 +316,8 @@ const STAGE_LABELS: Record<string, { label: string; color: string }> = {
   synthesis: { label: "Síntesis", color: "text-emerald-500" },
   router: { label: "Router", color: "text-blue-500" },
   guardian: { label: "Guardián", color: "text-yellow-500" },
+  "bootstrap-dna": { label: "🧬 DNA", color: "text-purple-500" },
+  "bootstrap-explore": { label: "🔬 Explore", color: "text-cyan-500" },
 };
 
 interface TelemetryEvent {
@@ -353,6 +355,7 @@ function MemoryAnalyzer() {
   const [fullPayloadLogId, setFullPayloadLogId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"telemetry" | "pipeline">("telemetry");
+  const [bootstrapRunning, setBootstrapRunning] = useState(false);
 
   // Load apps list once
   useEffect(() => {
@@ -602,6 +605,59 @@ function MemoryAnalyzer() {
                   const stageMeta = STAGE_LABELS[log.stage] || { label: log.stage, color: "text-muted-foreground" };
                   const isOpen = expandedLogId === log.id;
 
+                  // Parse metadata from parsedResult for inline chips
+                  let meta: any = null;
+                  try {
+                    if (log.parsedResult) {
+                      const parsed = JSON.parse(log.parsedResult);
+                      meta = parsed?.meta || null;
+                      // Guardian puts rejectReason at root level
+                      if (!meta && parsed?.rejectReason) {
+                        meta = parsed;
+                      }
+                    }
+                  } catch { /* ignore */ }
+
+                  // Build inline chip content based on stage
+                  let inlineChip: React.ReactNode = null;
+                  if (log.stage === "guardian" && meta?.rejectReason) {
+                    const isApproved = meta.rejectReason === "approved";
+                    inlineChip = (
+                      <span className={cn(
+                        "typo-micro px-1.5 py-0.5 rounded-md font-medium shrink-0",
+                        isApproved
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : "bg-amber-500/10 text-amber-500",
+                      )}>
+                        {meta.rejectReason}
+                      </span>
+                    );
+                  } else if (log.stage === "synthesis" && meta?.existingMemoriesCount !== undefined) {
+                    inlineChip = (
+                      <span className="typo-micro px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground shrink-0">
+                        {meta.existingMemoriesCount} exist → {meta.operationsGenerated ?? log.resultCount} ops
+                      </span>
+                    );
+                  } else if (log.stage === "router" && meta?.candidatePoolSize !== undefined) {
+                    inlineChip = (
+                      <span className="typo-micro px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground shrink-0">
+                        {meta.candidatePoolSize} → {meta.selectedCount} sel
+                      </span>
+                    );
+                  } else if (log.stage === "bootstrap-dna" && meta?.configFilesFound) {
+                    inlineChip = (
+                      <span className="typo-micro px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-500 shrink-0">
+                        {Array.isArray(meta.configFilesFound) ? meta.configFilesFound.length : 0} configs
+                      </span>
+                    );
+                  } else if (log.stage === "bootstrap-explore" && meta?.operationsGenerated !== undefined) {
+                    inlineChip = (
+                      <span className="typo-micro px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-500 shrink-0">
+                        {meta.operationsGenerated} found → {meta.operationsPersisted ?? 0} saved
+                      </span>
+                    );
+                  }
+
                   return (
                     <div key={log.id} className="rounded-xl border border-border overflow-hidden">
                       {/* Summary row */}
@@ -613,12 +669,13 @@ function MemoryAnalyzer() {
                           "size-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0",
                           isOpen && "rotate-90",
                         )} />
-                        <span className={cn("typo-caption font-medium shrink-0 w-16", stageMeta.color)}>
+                        <span className={cn("typo-caption font-medium shrink-0 w-20", stageMeta.color)}>
                           {stageMeta.label}
                         </span>
                         <span className="typo-caption text-muted-foreground truncate flex-1">
                           {log.model || "—"}
                         </span>
+                        {inlineChip}
                         <span className="typo-micro text-muted-foreground shrink-0">
                           chat #{log.chatId ?? "—"}
                         </span>
@@ -643,6 +700,98 @@ function MemoryAnalyzer() {
                         const payloadsExpanded = fullPayloadLogId === log.id;
                         return (
                         <div className="border-t border-border p-3 space-y-3 bg-muted/20">
+                          {/* Metadata banner */}
+                          {meta && (
+                            <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1">
+                              {log.stage === "guardian" && meta.rejectReason !== "approved" && (
+                                <>
+                                  <div className="flex items-center gap-2 typo-micro">
+                                    <span className="text-muted-foreground/60">🛡️ Rechazado:</span>
+                                    <span className="text-amber-500 font-medium">{meta.rejectReason}</span>
+                                  </div>
+                                  {meta.promptExcerpt && (
+                                    <div className="typo-micro text-muted-foreground/60">
+                                      📝 Prompt: <span className="text-muted-foreground italic">"{meta.promptExcerpt.slice(0, 100)}{meta.promptExcerpt.length > 100 ? "…" : ""}"</span>
+                                    </div>
+                                  )}
+                                  {meta.responseExcerpt && (
+                                    <div className="typo-micro text-muted-foreground/60">
+                                      📄 Respuesta: <span className="text-muted-foreground italic">"{meta.responseExcerpt.slice(0, 100)}{meta.responseExcerpt.length > 100 ? "…" : ""}"</span>
+                                      {meta.responseLength && <span> ({meta.responseLength.toLocaleString()} chars)</span>}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              {log.stage === "guardian" && meta.rejectReason === "approved" && (
+                                <div className="flex items-center gap-2 typo-micro">
+                                  <span className="text-muted-foreground/60">✅ Aprobado</span>
+                                  {meta.promptLength && <span className="text-muted-foreground/50">· Prompt: {meta.promptLength.toLocaleString()} chars</span>}
+                                  {meta.responseLength && <span className="text-muted-foreground/50">· Response: {meta.responseLength.toLocaleString()} chars</span>}
+                                </div>
+                              )}
+                              {(log.stage === "synthesis" || log.stage === "router") && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
+                                  {meta.promptLength && (
+                                    <span>📊 Prompt: {meta.promptLength.toLocaleString()} chars</span>
+                                  )}
+                                  {meta.responseLength && (
+                                    <span>· Response: {meta.responseLength.toLocaleString()} chars</span>
+                                  )}
+                                  {meta.existingMemoriesCount !== undefined && (
+                                    <span>📦 Existentes: {meta.existingMemoriesCount}</span>
+                                  )}
+                                  {meta.candidatePoolSize !== undefined && (
+                                    <span>📦 Pool: {meta.candidatePoolSize}</span>
+                                  )}
+                                  {meta.operationsRatio && (
+                                    <span>🎯 Ratio: {meta.operationsRatio}</span>
+                                  )}
+                                  {meta.selectionRatio && (
+                                    <span>🎯 Selección: {meta.selectionRatio}</span>
+                                  )}
+                                  {meta.inputTokensEstimate && (
+                                    <span>💰 ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
+                                  )}
+                                </div>
+                              )}
+                              {(log.stage === "bootstrap-dna") && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
+                                  {meta.configFilesFound && (
+                                    <span>📁 Configs: {Array.isArray(meta.configFilesFound) ? meta.configFilesFound.join(", ") : meta.configFilesFound}</span>
+                                  )}
+                                  {meta.hasAgentsMd !== undefined && (
+                                    <span>{meta.hasAgentsMd ? "✅" : "❌"} AGENTS.md</span>
+                                  )}
+                                  {meta.hasDesignMd !== undefined && (
+                                    <span>{meta.hasDesignMd ? "✅" : "❌"} DESIGN.md</span>
+                                  )}
+                                  {meta.dnaPayloadSize && (
+                                    <span>📊 Payload: {meta.dnaPayloadSize.toLocaleString()} chars</span>
+                                  )}
+                                  {meta.inputTokensEstimate && (
+                                    <span>💰 ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
+                                  )}
+                                </div>
+                              )}
+                              {(log.stage === "bootstrap-explore") && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
+                                  {meta.operationsGenerated !== undefined && (
+                                    <span>🔍 Generadas: {meta.operationsGenerated}</span>
+                                  )}
+                                  {meta.operationsPersisted !== undefined && (
+                                    <span>💾 Persistidas: {meta.operationsPersisted}</span>
+                                  )}
+                                  {meta.existingKeysSkipped && Array.isArray(meta.existingKeysSkipped) && meta.existingKeysSkipped.length > 0 && (
+                                    <span>⏭️ Skipped: {meta.existingKeysSkipped.join(", ")}</span>
+                                  )}
+                                  {meta.exploreDurationMs && (
+                                    <span>⏱️ Explore: {(meta.exploreDurationMs / 1000).toFixed(1)}s</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex justify-end">
                             <button
                               onClick={() => setFullPayloadLogId(payloadsExpanded ? null : log.id)}
@@ -679,6 +828,49 @@ function MemoryAnalyzer() {
                 })}
               </div>
             )
+          )}
+
+          {/* 🧬 Manual Bootstrap */}
+          {selectedAppId > 0 && (
+            <div className="flex items-center justify-between p-4 rounded-xl border border-purple-500/30 hover:bg-purple-500/5 transition-colors">
+              <div className="flex-1 min-w-0">
+                <h3 className="typo-label">🧬 Bootstrap de memorias</h3>
+                <p className="typo-caption mt-1">
+                  Genera memorias fundacionales escaneando la configuración y el codebase del proyecto.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 text-purple-500 border-purple-500/30 hover:bg-purple-500/10"
+                disabled={bootstrapRunning}
+                onClick={async () => {
+                  setBootstrapRunning(true);
+                  try {
+                    const result = await ipc.memory.bootstrapProjectMemories({ appId: selectedAppId });
+                    toast.success(
+                      `Bootstrap completado: ${result.phase1Count} (DNA) + ${result.phase2Count} (Explore) memorias`
+                    );
+                    // Refresh pipeline logs to show bootstrap entries
+                    const logs = await ipc.memory.getPipelineLogs({
+                      appId: selectedAppId,
+                      limit: 50,
+                    });
+                    setPipelineLogs(logs);
+                  } catch (err: any) {
+                    toast.error(`Bootstrap falló: ${err.message}`);
+                  } finally {
+                    setBootstrapRunning(false);
+                  }
+                }}
+              >
+                {bootstrapRunning ? (
+                  <><Loader2 className="size-3.5 animate-spin mr-1.5" /> Ejecutando...</>
+                ) : (
+                  "🧬 Bootstrap"
+                )}
+              </Button>
+            </div>
           )}
 
           {/* 🗑️ Purge stats */}
