@@ -516,12 +516,12 @@ export function readSettings(): UserSettings {
 
     // ── Migration: v9 memory model defaults ──
     // Hard migration: force memory models to qwen3-coder (synthesis) and gemini-3-flash (selection).
-    if (!(validatedSettings as any)._migrations?.v9_memory_model_defaults) {
+    if (!(validatedSettings as any)._migrations?.v9_memory_model_defaults_hard) {
       const migratedSettings = {
         ...validatedSettings,
         memoriesSynthesisModelV2: "qwen/qwen3-coder",
         memoriesRouterModelV2: "google/gemini-3-flash-preview",
-        _migrations: { ...(validatedSettings as any)._migrations, v9_memory_model_defaults: true },
+        _migrations: { ...(validatedSettings as any)._migrations, v9_memory_model_defaults_hard: true },
       };
       logger.info("[Migration] Applied v9 memory model defaults (hard)");
       cachedSettings = migratedSettings as UserSettings;
