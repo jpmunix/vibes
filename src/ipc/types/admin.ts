@@ -165,6 +165,38 @@ export const adminContracts = {
             })),
         }),
     }),
+
+    /** List chats for a specific app (admin — no user scope). Newest first. */
+    getAppChats: defineContract({
+        channel: "admin:get-app-chats",
+        input: z.object({ appId: z.number() }),
+        output: z.array(z.object({
+            id: z.number(),
+            title: z.string().nullable(),
+            createdAt: z.string(),
+            messageCount: z.number(),
+        })),
+    }),
+
+    /** Get full chat with messages (admin — no user scope). Messages oldest first. */
+    getAdminChat: defineContract({
+        channel: "admin:get-chat",
+        input: z.object({ chatId: z.number() }),
+        output: z.object({
+            id: z.number(),
+            title: z.string().nullable(),
+            createdAt: z.string(),
+            messages: z.array(z.object({
+                id: z.number(),
+                role: z.enum(["user", "assistant"]),
+                content: z.string(),
+                model: z.string().nullable().optional(),
+                createdAt: z.string().nullable().optional(),
+                durationMs: z.number().nullable().optional(),
+                totalTokens: z.number().nullable().optional(),
+            })),
+        }),
+    }),
 } as const;
 
 // =============================================================================

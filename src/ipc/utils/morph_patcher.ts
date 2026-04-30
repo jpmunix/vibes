@@ -177,17 +177,13 @@ function getScaffoldToolsSourceDir(): string {
 }
 
 /**
- * Deploy the Morph custom tool overrides.
- * Copies real .ts files from scaffold-tools/ to <CWD>/.opencode/tools/.
- * Also cleans up any stale tools from the old global path.
+ * Deploy the Morph custom tool overrides to ~/.config/opencode/tools/.
+ * Copies .ts files from scaffold-tools/ so OpenCode picks them up.
  */
 export function deployMorphTools(): void {
     const toolsDir = getMorphToolsDir();
     const sourceDir = getScaffoldToolsSourceDir();
     const toolFiles = ["apply_patch.ts", "patch.ts", "edit.ts"];
-
-    logger.info(`[Morph] sourceDir = ${sourceDir}`);
-    logger.info(`[Morph] toolsDir = ${toolsDir}`);
 
     // Clean up stale tools from the old CWD-based path
     const cwdToolsDir = path.join(process.cwd(), ".opencode", "tools");
@@ -207,19 +203,14 @@ export function deployMorphTools(): void {
         for (const fileName of toolFiles) {
             const src = path.join(sourceDir, fileName);
             const dst = path.join(toolsDir, fileName);
-
-            if (!fs.existsSync(src)) {
-                logger.warn(`[Morph] ⚠ Source not found: ${src}`);
-                continue;
-            }
-
+            if (!fs.existsSync(src)) continue;
             fs.copyFileSync(src, dst);
             deployed++;
         }
 
-        logger.info(`[Morph] ✅ ${deployed} tools deployed → ${toolsDir}`);
+        logger.info(`[Morph] ✅ ${deployed} tools deployed`);
     } catch (e: any) {
-        logger.error(`[Morph] ❌ Failed to deploy tools: ${e.message}`);
+        logger.error(`[Morph] ❌ Deploy failed: ${e.message}`);
     }
 }
 
