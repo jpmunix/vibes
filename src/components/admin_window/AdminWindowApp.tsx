@@ -4,7 +4,7 @@ import {
     QueryClientProvider,
 } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { getColorById, adjustChroma, DEFAULT_LIGHT_COLOR, DEFAULT_DARK_COLOR } from "@/components/PrimaryColorPicker";
 import { useSettings } from "@/hooks/useSettings";
 import { WindowsControls } from "@/components/WindowsControls";
@@ -161,6 +161,27 @@ function AdminWindowContent() {
             if (darkColor) root.style.setProperty("--primary-color-dark", adjustChroma(darkColor.dark, darkFactor));
         }
     }, [settings?.primaryColorLight, settings?.primaryColorDark, settings?.primaryChromaLight, settings?.primaryChromaDark]);
+
+    // Apply font scale CSS variables from settings (same as ChatWindowApp)
+    useEffect(() => {
+        if (settings) {
+            const root = document.documentElement;
+            if (settings.fontScaleUI !== undefined) root.style.setProperty("--scale-ui", settings.fontScaleUI.toString());
+            if (settings.fontScaleSidebar !== undefined) root.style.setProperty("--scale-sidebar", settings.fontScaleSidebar.toString());
+            if (settings.fontScaleChat !== undefined) root.style.setProperty("--scale-chat", settings.fontScaleChat.toString());
+            if (settings.fontScaleBubbleWidth !== undefined) root.style.setProperty("--scale-bubble-width", settings.fontScaleBubbleWidth.toString());
+        }
+    }, [settings?.fontScaleUI, settings?.fontScaleSidebar, settings?.fontScaleChat, settings?.fontScaleBubbleWidth]);
+
+    const { applyFont, applyChatFont } = useTheme();
+
+    // Apply font families from settings
+    useEffect(() => {
+        if (settings) {
+            if (settings.selectedFont) applyFont(settings.selectedFont);
+            if (settings.selectedChatFont) applyChatFont(settings.selectedChatFont);
+        }
+    }, [settings?.selectedFont, settings?.selectedChatFont, applyFont, applyChatFont]);
 
     // Auth check: verify the current user is the admin
     useEffect(() => {

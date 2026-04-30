@@ -416,5 +416,68 @@ export function registerAdminHandlers(): void {
         return { apps, stats, recent, pipelineLogs };
     });
 
+    // ─── ADMIN: LIST CHATS FOR AN APP ───────────────────────────────────
+    createTypedHandler(adminContracts.getAppChats, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { eq, desc, sql } = await import("drizzle-orm");
+
+        // Get chats with message count
+        const chats = await db
+            .select({
+                id: remoteSchema.chats.id,
+                title: remoteSchema.chats.title,
+                createdAt: remoteSchema.chats.createdAt,
+                messageCount: sql<number>`(SELECT COUNT(*) FROM ${remoteSchema.messages} WHERE ${remoteSchema.messages.chatId} = ${remoteSchema.chats.id})`,
+            })
+            .from(remoteSchema.chats)
+            .where(eq(remoteSchema.chats.appId, input.appId))
+            .orderBy(desc(remoteSchema.chats.createdAt));
+
+        return chats.map((c) => ({
+            id: c.id,
+            title: c.title,
+            createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),
+            messageCount: Number(c.messageCount) || 0,
+        }));
+    });
+
+    // ─── ADMIN: GET FULL CHAT WITH MESSAGES ─────────────────────────────
+    createTypedHandler(adminContracts.getAdminChat, async (_event, input, context) => {
+        assertAdmin(context);
+        await initializeRemoteSchema();
+        const db = getRemoteDb();
+        const { eq, asc } = await import("drizzle-orm");
+
+        const chat = await db.query.chats.findFirst({
+            where: eq(remoteSchema.chats.id, input.chatId),
+            with: {
+                messages: {
+                    orderBy: (messages: any, ops: any) => [ops.asc(messages.createdAt)],
+                },
+            },
+        });
+
+        if (!chat) throw new Error("Chat not found");
+
+        const { normalizeLegacyTags } = await import("../../../shared/normalizeLegacyTags");
+
+        return {
+            id: chat.id,
+            title: chat.title ?? "",
+            createdAt: chat.createdAt instanceof Date ? chat.createdAt.toISOString() : String(chat.createdAt),
+            messages: chat.messages.map((m: any) => ({
+                id: m.id,
+                role: m.role as "user" | "assistant",
+                content: m.content ? normalizeLegacyTags(m.content) : "",
+                model: m.model ?? null,
+                createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : m.createdAt ? String(m.createdAt) : null,
+                durationMs: m.durationMs ?? null,
+                totalTokens: m.totalTokens ?? null,
+            })),
+        };
+    });
+
     logger.info("Admin handlers registered");
 }

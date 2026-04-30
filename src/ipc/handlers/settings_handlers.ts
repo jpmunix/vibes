@@ -5,6 +5,8 @@ import { getRemoteDb } from "../../db/remote";
 import * as remoteSchema from "../../db/remote-schema";
 import { eq } from "drizzle-orm";
 import log from "electron-log";
+import { BrowserWindow } from "electron";
+import { safeSend } from "../utils/safe_sender";
 
 const logger = log.scope("settings_handlers");
 
@@ -112,7 +114,7 @@ export function registerSettingsHandlers() {
   //
   // ⚠️  Main-process code that needs the same pipeline must replicate these
   //     steps manually — see persistPermissionToSettings() in opencode_adapter.ts.
-  createTypedHandler(settingsContracts.setUserSettings, async (_, settings, context) => {
+  createTypedHandler(settingsContracts.setUserSettings, async (event, settings, context) => {
     writeSettings(settings);
     const updated = readSettings();
 
@@ -186,6 +188,17 @@ export function registerSettingsHandlers() {
         logger.error("Error syncing settings to remote DB:", error);
       }
     }
+
+    // ── Broadcast to ALL other windows for real-time sync ──
+    // The calling window already receives `updated` as the return value;
+    // other windows (admin panel, chat sub-windows) need the IPC push.
+    const senderWebContentsId = event?.sender?.id;
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && win.webContents && win.webContents.id !== senderWebContentsId) {
+        safeSend(win.webContents, "settings:updated-from-backend", updated);
+      }
+    }
+
     return updated;
   });
 }
