@@ -14,7 +14,8 @@ import { useSettings } from "@/hooks/useSettings";
 import { cn } from "@/lib/utils";
 import { ipc } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Loader2, RotateCcw, Check, Maximize2, Minimize2 } from "@/components/ui/icons";
+import { ChevronRight, Loader2, RotateCcw, Check, Maximize2, Minimize2, Shield, ShieldCheck, FileText, BarChart3, Package, Target, Coins, Folder, Search, Save, CheckCircle2, XCircle, Clock } from "@/components/ui/icons";
+import * as Lucide from "lucide-react";
 import { MemoryExtractionModelSelector } from "./MemoryExtractionModelSelector";
 import { MemorySelectionModelSelector } from "./MemorySelectionModelSelector";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -328,12 +329,12 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   discarded_quality: { label: "Descartada (calidad)", color: "bg-rose-500" },
 };
 
-const STAGE_LABELS: Record<string, { label: string; color: string }> = {
+const STAGE_LABELS: Record<string, { label: string; color: string; icon?: React.ReactNode }> = {
   synthesis: { label: "Síntesis", color: "text-emerald-500" },
   router: { label: "Router", color: "text-blue-500" },
   guardian: { label: "Guardián", color: "text-yellow-500" },
-  "bootstrap-dna": { label: "🧬 DNA", color: "text-purple-500" },
-  "bootstrap-explore": { label: "🔬 Explore", color: "text-cyan-500" },
+  "bootstrap-dna": { label: "DNA", color: "text-purple-500", icon: <Lucide.Dna className="size-3 inline-block mr-0.5" /> },
+  "bootstrap-explore": { label: "Explore", color: "text-cyan-500", icon: <Lucide.Microscope className="size-3 inline-block mr-0.5" /> },
 };
 
 interface TelemetryEvent {
@@ -684,8 +685,8 @@ function MemoryAnalyzer() {
                           "size-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0",
                           isOpen && "rotate-90",
                         )} />
-                        <span className={cn("typo-caption font-medium shrink-0 w-20", stageMeta.color)}>
-                          {stageMeta.label}
+                        <span className={cn("typo-caption font-medium shrink-0 w-20 inline-flex items-center", stageMeta.color)}>
+                          {stageMeta.icon}{stageMeta.label}
                         </span>
                         <span className="typo-caption text-muted-foreground truncate flex-1">
                           {log.model || "—"}
@@ -721,17 +722,17 @@ function MemoryAnalyzer() {
                               {log.stage === "guardian" && meta.rejectReason !== "approved" && (
                                 <>
                                   <div className="flex items-center gap-2 typo-micro">
-                                    <span className="text-muted-foreground/60">🛡️ Rechazado:</span>
+                                    <span className="text-muted-foreground/60 inline-flex items-center gap-1"><Shield className="size-3" /> Rechazado:</span>
                                     <span className="text-amber-500 font-medium">{meta.rejectReason}</span>
                                   </div>
                                   {meta.promptExcerpt && (
                                     <div className="typo-micro text-muted-foreground/60">
-                                      📝 Prompt: <span className="text-muted-foreground italic">"{meta.promptExcerpt.slice(0, 100)}{meta.promptExcerpt.length > 100 ? "…" : ""}"</span>
+                                      <span className="inline-flex items-center gap-1"><FileText className="size-3" /> Prompt:</span> <span className="text-muted-foreground italic">"{meta.promptExcerpt.slice(0, 100)}{meta.promptExcerpt.length > 100 ? "…" : ""}"</span>
                                     </div>
                                   )}
                                   {meta.responseExcerpt && (
                                     <div className="typo-micro text-muted-foreground/60">
-                                      📄 Respuesta: <span className="text-muted-foreground italic">"{meta.responseExcerpt.slice(0, 100)}{meta.responseExcerpt.length > 100 ? "…" : ""}"</span>
+                                      <span className="inline-flex items-center gap-1"><FileText className="size-3" /> Respuesta:</span> <span className="text-muted-foreground italic">"{meta.responseExcerpt.slice(0, 100)}{meta.responseExcerpt.length > 100 ? "…" : ""}"</span>
                                       {meta.responseLength && <span> ({meta.responseLength.toLocaleString()} chars)</span>}
                                     </div>
                                   )}
@@ -739,7 +740,7 @@ function MemoryAnalyzer() {
                               )}
                               {log.stage === "guardian" && meta.rejectReason === "approved" && (
                                 <div className="flex items-center gap-2 typo-micro">
-                                  <span className="text-muted-foreground/60">✅ Aprobado</span>
+                                  <span className="text-muted-foreground/60 inline-flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-500" /> Aprobado</span>
                                   {meta.promptLength && <span className="text-muted-foreground/50">· Prompt: {meta.promptLength.toLocaleString()} chars</span>}
                                   {meta.responseLength && <span className="text-muted-foreground/50">· Response: {meta.responseLength.toLocaleString()} chars</span>}
                                 </div>
@@ -747,60 +748,60 @@ function MemoryAnalyzer() {
                               {(log.stage === "synthesis" || log.stage === "router") && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
                                   {meta.promptLength && (
-                                    <span>📊 Prompt: {meta.promptLength.toLocaleString()} chars</span>
+                                    <span className="inline-flex items-center gap-1"><BarChart3 className="size-3" /> Prompt: {meta.promptLength.toLocaleString()} chars</span>
                                   )}
                                   {meta.responseLength && (
                                     <span>· Response: {meta.responseLength.toLocaleString()} chars</span>
                                   )}
                                   {meta.existingMemoriesCount !== undefined && (
-                                    <span>📦 Existentes: {meta.existingMemoriesCount}</span>
+                                    <span className="inline-flex items-center gap-1"><Package className="size-3" /> Existentes: {meta.existingMemoriesCount}</span>
                                   )}
                                   {meta.candidatePoolSize !== undefined && (
-                                    <span>📦 Pool: {meta.candidatePoolSize}</span>
+                                    <span className="inline-flex items-center gap-1"><Package className="size-3" /> Pool: {meta.candidatePoolSize}</span>
                                   )}
                                   {meta.operationsRatio && (
-                                    <span>🎯 Ratio: {meta.operationsRatio}</span>
+                                    <span className="inline-flex items-center gap-1"><Target className="size-3" /> Ratio: {meta.operationsRatio}</span>
                                   )}
                                   {meta.selectionRatio && (
-                                    <span>🎯 Selección: {meta.selectionRatio}</span>
+                                    <span className="inline-flex items-center gap-1"><Target className="size-3" /> Selección: {meta.selectionRatio}</span>
                                   )}
                                   {meta.inputTokensEstimate && (
-                                    <span>💰 ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
+                                    <span className="inline-flex items-center gap-1"><Coins className="size-3" /> ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
                                   )}
                                 </div>
                               )}
                               {(log.stage === "bootstrap-dna") && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
                                   {meta.configFilesFound && (
-                                    <span>📁 Configs: {Array.isArray(meta.configFilesFound) ? meta.configFilesFound.join(", ") : meta.configFilesFound}</span>
+                                    <span className="inline-flex items-center gap-1"><Folder className="size-3" /> Configs: {Array.isArray(meta.configFilesFound) ? meta.configFilesFound.join(", ") : meta.configFilesFound}</span>
                                   )}
                                   {meta.hasAgentsMd !== undefined && (
-                                    <span>{meta.hasAgentsMd ? "✅" : "❌"} AGENTS.md</span>
+                                    <span className="inline-flex items-center gap-1">{meta.hasAgentsMd ? <CheckCircle2 className="size-3 text-emerald-500" /> : <XCircle className="size-3 text-rose-500" />} AGENTS.md</span>
                                   )}
                                   {meta.hasDesignMd !== undefined && (
-                                    <span>{meta.hasDesignMd ? "✅" : "❌"} DESIGN.md</span>
+                                    <span className="inline-flex items-center gap-1">{meta.hasDesignMd ? <CheckCircle2 className="size-3 text-emerald-500" /> : <XCircle className="size-3 text-rose-500" />} DESIGN.md</span>
                                   )}
                                   {meta.dnaPayloadSize && (
-                                    <span>📊 Payload: {meta.dnaPayloadSize.toLocaleString()} chars</span>
+                                    <span className="inline-flex items-center gap-1"><BarChart3 className="size-3" /> Payload: {meta.dnaPayloadSize.toLocaleString()} chars</span>
                                   )}
                                   {meta.inputTokensEstimate && (
-                                    <span>💰 ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
+                                    <span className="inline-flex items-center gap-1"><Coins className="size-3" /> ~{meta.inputTokensEstimate.toLocaleString()} tokens</span>
                                   )}
                                 </div>
                               )}
                               {(log.stage === "bootstrap-explore") && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 typo-micro text-muted-foreground/60">
                                   {meta.operationsGenerated !== undefined && (
-                                    <span>🔍 Generadas: {meta.operationsGenerated}</span>
+                                    <span className="inline-flex items-center gap-1"><Search className="size-3" /> Generadas: {meta.operationsGenerated}</span>
                                   )}
                                   {meta.operationsPersisted !== undefined && (
-                                    <span>💾 Persistidas: {meta.operationsPersisted}</span>
+                                    <span className="inline-flex items-center gap-1"><Save className="size-3" /> Persistidas: {meta.operationsPersisted}</span>
                                   )}
                                   {meta.existingKeysSkipped && Array.isArray(meta.existingKeysSkipped) && meta.existingKeysSkipped.length > 0 && (
-                                    <span>⏭️ Skipped: {meta.existingKeysSkipped.join(", ")}</span>
+                                    <span className="inline-flex items-center gap-1"><Lucide.SkipForward className="size-3" /> Skipped: {meta.existingKeysSkipped.join(", ")}</span>
                                   )}
                                   {meta.exploreDurationMs && (
-                                    <span>⏱️ Explore: {(meta.exploreDurationMs / 1000).toFixed(1)}s</span>
+                                    <span className="inline-flex items-center gap-1"><Clock className="size-3" /> Explore: {(meta.exploreDurationMs / 1000).toFixed(1)}s</span>
                                   )}
                                 </div>
                               )}
