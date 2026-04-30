@@ -7,6 +7,8 @@ const DEFAULT_MODEL = "qwen/qwen3-coder";
 /**
  * Model selector for the memory synthesis (generator) pipeline.
  * Same pattern as StandardModeModelSelector but writes to `memoriesSynthesisModelV2`.
+ * Uses the full OpenRouter model list — no hardcoded special options.
+ * Default (`qwen/qwen3-coder`) only applies when the setting has never been set.
  */
 export function MemoryExtractionModelSelector() {
     const { settings, updateSettings } = useSettings();
@@ -25,29 +27,15 @@ export function MemoryExtractionModelSelector() {
         );
     };
 
-    const defaultModelInList = openRouterModels?.find(
-        (m) => m.apiName === DEFAULT_MODEL,
-    );
-
     return (
         <SettingsModelSelector
             variant="pill"
             selectedModel={currentValue}
             onModelSelect={handleChange}
-            models={(openRouterModels || []).filter(
-                (m) => m.apiName !== DEFAULT_MODEL,
-            )}
+            models={openRouterModels || []}
             loading={isLoading}
             placeholder="Selecciona un modelo"
             disableEnabledFilter
-            specialOptions={[
-                {
-                    value: DEFAULT_MODEL,
-                    label:
-                        defaultModelInList?.displayName || "Qwen3 Coder",
-                    description: defaultModelInList ? undefined : "Modelo predeterminado",
-                },
-            ]}
         />
     );
 }

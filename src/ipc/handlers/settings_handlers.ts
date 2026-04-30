@@ -46,6 +46,15 @@ export async function forceSyncRemoteSettingsToLocal(userId: string) {
         delete remoteSettings[field];
       }
 
+      // --- MEMORY MODEL EXCLUSION ---
+      // Memory model fields are managed by local migrations (v9g+).
+      // They MUST NOT be overwritten by remote data.
+      delete remoteSettings.memoriesSynthesisModelV2;
+      delete remoteSettings.memoriesRouterModelV2;
+      // --- MIGRATION FLAGS EXCLUSION ---
+      // Migration state is local-only — remote may have stale flags.
+      delete remoteSettings._migrations;
+
       // We must explicitly save these to disk so they immediately become the local truth
       // without needing an initial save from the React frontend.
       writeSettings(remoteSettings);
@@ -90,6 +99,12 @@ export function registerSettingsHandlers() {
             // Also strip session data
             delete remoteSettings.userId;
             delete remoteSettings.sessionToken;
+            // Strip memory model fields — managed by local migration v9
+            delete remoteSettings.memoriesSynthesisModelV2;
+            delete remoteSettings.memoriesRouterModelV2;
+            // Strip _migrations — always trust local migration state,
+            // otherwise remote overwrites local flags and re-triggers migrations
+            delete remoteSettings._migrations;
 
             // Merge: local wins for secrets, remote wins for preferences
             return { ...localSettings, ...remoteSettings };

@@ -7,6 +7,8 @@ const DEFAULT_MODEL = "google/gemini-3-flash-preview";
 /**
  * Model selector for the memory Router (selection/classification).
  * Uses an ultralight model by default — the task is pure classification.
+ * Uses the full OpenRouter model list — no hardcoded special options.
+ * Default (`google/gemini-3-flash-preview`) only applies when the setting has never been set.
  */
 export function MemorySelectionModelSelector() {
     const { settings, updateSettings } = useSettings();
@@ -25,29 +27,15 @@ export function MemorySelectionModelSelector() {
         );
     };
 
-    const defaultModelInList = openRouterModels?.find(
-        (m) => m.apiName === DEFAULT_MODEL,
-    );
-
     return (
         <SettingsModelSelector
             variant="pill"
             selectedModel={currentValue}
             onModelSelect={handleChange}
-            models={(openRouterModels || []).filter(
-                (m) => m.apiName !== DEFAULT_MODEL,
-            )}
+            models={openRouterModels || []}
             loading={isLoading}
             placeholder="Selecciona un modelo"
             disableEnabledFilter
-            specialOptions={[
-                {
-                    value: DEFAULT_MODEL,
-                    label:
-                        defaultModelInList?.displayName || "Gemini 3 Flash Preview",
-                    description: defaultModelInList ? undefined : "Modelo ultraligero para clasificación",
-                },
-            ]}
         />
     );
 }
