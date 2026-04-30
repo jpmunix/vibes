@@ -162,7 +162,12 @@ function PromptEditor({
         onClick={() => setExpanded((e) => !e)}
       >
         <div className="flex-1">
-          <h3 className="typo-label">{label}</h3>
+          <h3 className="typo-label flex items-center gap-2">
+            {label}
+            {isModified && (
+              <span className="size-2 rounded-full bg-primary shrink-0" title="Prompt modificado" />
+            )}
+          </h3>
           <p className="typo-caption mt-1">{description}</p>
         </div>
         <ChevronRight
@@ -230,6 +235,12 @@ function PromptEditor({
 
 function PromptsSection() {
   const [expanded, setExpanded] = useState(false);
+  const { settings } = useSettings();
+
+  // Check if any child prompt has been customized
+  const hasSynthesisCustom = !!settings?.customPrompts?.memory_synthesis;
+  const hasSelectionCustom = !!settings?.customPrompts?.memory_selection;
+  const anyModified = hasSynthesisCustom || hasSelectionCustom;
 
   return (
     <>
@@ -238,7 +249,12 @@ function PromptsSection() {
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex-1">
-          <h3 className="typo-label">Prompts de memoria</h3>
+          <h3 className="typo-label flex items-center gap-2">
+            Prompts de memoria
+            {anyModified && (
+              <span className="size-2 rounded-full bg-primary shrink-0" title="Al menos un prompt modificado" />
+            )}
+          </h3>
           <p className="typo-caption mt-1">
             Instrucciones personalizables para el generador y el router de memorias
           </p>
