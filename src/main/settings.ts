@@ -34,7 +34,6 @@ const DEFAULT_SETTINGS: UserSettings = {
   telemetryConsent: "unset",
   telemetryUserId: uuidv4(),
   hasRunBefore: false,
-  experiments: {},
   enableProLazyEditsMode: true,
   enableProSmartFilesContextMode: true,
 
@@ -56,7 +55,6 @@ const DEFAULT_SETTINGS: UserSettings = {
   windowState: undefined,
   reasoningEffort: "medium",
   textVerbosity: "low",
-  thinkingBudget: "medium",
   // Embeddings (enabled by default)
   embeddingsEnabled: true,
   embeddingsModel: "openai/text-embedding-3-small",
@@ -65,10 +63,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   memoriesAutoExtract: true,
   memoriesSynthesisModelV2: "qwen/qwen3-coder",
   memoriesRouterModelV2: "google/gemini-3-flash-preview",
-  // Web search — enabled by default so the model can search when needed
   enableWebSearch: true,
-  // OpenCode LSP: enabled by default (per-file TypeScript diagnostics)
-  enableOpenCodeLsp: true,
   // Chat render mode: "full" shows all badges/modals, "zen" shows only prose + cost
   chatRenderMode: "zen",
   // Default font
@@ -531,6 +526,51 @@ export function readSettings(): UserSettings {
         logger.error("[Migration] Failed to persist v9h memory model defaults:", e);
       }
       return migratedSettings as UserSettings;
+    }
+
+    // ── Migration: v10 settings cleanup ──
+    // One-shot removal of dead/abandoned keys from settings JSON.
+    if (!(validatedSettings as any)._migrations?.v10_settings_cleanup) {
+      const DEAD_KEYS = [
+        // Completely dead (0 code references)
+        'memoriesExtractionModel',
+        'hideLocalAgentNewChatToast',
+        'enableLocalSmartContext',
+        'enableMcpSmartContext',
+        'enableBackgroundProblemAutoFix',
+        'enableAutoRepairRuntimeErrors',
+        'autoFixModel',
+        'autoFixMaxDurationMs',
+        'autoFixMaxAttempts',
+        'autoFixMaxIssues',
+        'agentMaxSteps',
+        // Defaults-only (never read by runtime logic)
+        'enableOpenCodeLsp',
+        'thinkingBudget',
+        'experiments',
+        'releaseChannel',
+        'dossierModel',
+        'enableTurboEditsV2',
+        // NOTE: playgroundModelSets is NOT deleted here — it's migrated to user_preferences
+        // DB by the Playground frontend and cleaned up there after migration.
+      ];
+      const cleaned = { ...validatedSettings } as any;
+      let removedCount = 0;
+      for (const key of DEAD_KEYS) {
+        if (key in cleaned) {
+          delete cleaned[key];
+          removedCount++;
+        }
+      }
+      cleaned._migrations = { ...cleaned._migrations, v10_settings_cleanup: true };
+      logger.info(`[Migration] Applied v10 settings cleanup: removed ${removedCount} dead keys`);
+      cachedSettings = cleaned as UserSettings;
+      try {
+        writeSettings(cleaned);
+      } catch (e) {
+        logger.error("[Migration] Failed to persist v10 settings cleanup:", e);
+      }
+      return cleaned as UserSettings;
     }
 
     // Update cache
