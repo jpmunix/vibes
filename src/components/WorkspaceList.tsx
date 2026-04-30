@@ -726,6 +726,15 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                   <Pencil size={14} className="opacity-60 shrink-0" />
                   Renombrar workspace
                 </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={() => { closeMenu(); onArchiveApp(app.id, app.name); }}
+                >
+                  <Archive size={14} className="opacity-60 shrink-0" />
+                  Archivar
+                </button>
+                <div className="my-1 mx-2 border-t border-border/50" />
                 {isServerRunning && (
                   <button
                     type="button"
@@ -736,14 +745,6 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     Detener servidor
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown hover:bg-sidebar-accent hover:text-accent-foreground transition-colors cursor-pointer whitespace-nowrap"
-                  onClick={() => { closeMenu(); onArchiveApp(app.id, app.name); }}
-                >
-                  <Archive size={14} className="opacity-60 shrink-0" />
-                  Archivar
-                </button>
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 px-2 py-1.5 rounded-sm typo-dropdown text-destructive hover:bg-destructive/10 transition-colors cursor-pointer whitespace-nowrap"

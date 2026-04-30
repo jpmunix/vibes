@@ -493,7 +493,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
   return (
     <div className="flex justify-center">
       <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "var(--bubble-width, 65%)" }}>
-        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+        <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`} style={isUser ? { marginLeft: '100px' } : undefined}>
           {/* Avatar (hidden for system messages) */}
           {!isSystem && (
           <div className="flex-shrink-0 mt-1">
@@ -518,7 +518,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
           )}
 
           {/* Message bubble */}
-          <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0 max-w-[92%]"}>
+          <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0"}>
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (
