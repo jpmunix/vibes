@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { VibesMarkdownParser, VanillaMarkdownParser } from "@/components/chat/VibesMarkdownParser";
 import { UserMessageContent } from "@/components/chat/UserMessageContent";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface AdminApp {
@@ -20,6 +20,7 @@ interface AdminApp {
     createdAt: number; updatedAt: number;
     primaryLanguage: string | null; projectType: string | null;
     githubOrg: string | null; githubRepo: string | null;
+    lastMessageAt: number | null;
 }
 
 type ViewMode = "completo" | "zen" | "flow";
@@ -60,7 +61,7 @@ function AppChats({ appId, user }: { appId: number; user?: UserInfo }) {
                         <div className="flex-1 min-w-0">
                             <span className="typo-label truncate block">{chat.title || "Sin título"}</span>
                         </div>
-                        <span className="typo-micro text-muted-foreground shrink-0">{chat.messageCount} msgs</span>
+                        <span className="typo-micro text-muted-foreground shrink-0">{chat.messageCount} {chat.messageCount === 1 ? "mensaje" : "mensajes"}</span>
                         <span className="typo-micro text-muted-foreground shrink-0">
                             {formatDate(chat.createdAt)}
                         </span>
@@ -265,6 +266,12 @@ function formatDate(iso: string | number) {
         return format(d, "d MMM, H:mm", { locale: es });
     } catch { return "—"; }
 }
+function formatRelativeDate(ts: number | null) {
+    if (!ts) return "—";
+    try {
+        return formatDistanceToNow(new Date(ts), { addSuffix: true, locale: es });
+    } catch { return "—"; }
+}
 function formatDuration(ms: number) {
     const s = Math.round(ms / 1000);
     if (s < 60) return `${s}s`;
@@ -313,8 +320,19 @@ export function AdminListApps() {
         list.push(app);
         appsByUser.set(app.userId, list);
     }
+    // Sort apps within each user by lastMessageAt descending (most recent first)
+    for (const [, userApps] of appsByUser) {
+        userApps.sort((a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0));
+    }
+    // Compute per-user latest activity = max lastMessageAt across all their apps
+    const userLatestActivity = new Map<string, number>();
+    for (const [userId, userApps] of appsByUser) {
+        const latest = Math.max(...userApps.map((a) => a.lastMessageAt ?? 0));
+        if (latest > 0) userLatestActivity.set(userId, latest);
+    }
+    // Sort users by most recent activity descending
     const sortedUserIds = [...appsByUser.keys()].sort((a, b) =>
-        (userMap.get(a)?.displayName ?? "").localeCompare(userMap.get(b)?.displayName ?? ""),
+        (userLatestActivity.get(b) ?? 0) - (userLatestActivity.get(a) ?? 0),
     );
     const usersWithoutApps = users.filter((u) => !appsByUser.has(u.id));
 
@@ -339,7 +357,12 @@ export function AdminListApps() {
                                 <div className="flex items-center justify-between gap-8 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => toggleUser(userId)}>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="typo-label truncate">{user?.displayName ?? userId}</h3>
-                                        <p className="typo-caption mt-0.5">{userApps.length} aplicación{userApps.length !== 1 ? "es" : ""}</p>
+                                        <p className="typo-caption mt-0.5">
+                                            {userApps.length} aplicación{userApps.length !== 1 ? "es" : ""}
+                                            {userLatestActivity.has(userId) && (
+                                                <span className="ml-2 text-muted-foreground/70">· última actividad {formatRelativeDate(userLatestActivity.get(userId)!)}</span>
+                                            )}
+                                        </p>
                                     </div>
                                     <ChevronRight className={cn("size-5 text-muted-foreground/50 transition-transform duration-200 shrink-0", isExpanded && "rotate-90")} />
                                 </div>
@@ -354,8 +377,13 @@ export function AdminListApps() {
                                                         onClick={() => setExpandedAppId(isAppOpen ? null : app.id)}
                                                     >
                                                         <div className="flex-1 min-w-0">
-                                                            <h4 className="typo-label truncate">{app.name}</h4>
-                                                            <LanguageBadge language={app.primaryLanguage} />
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="typo-label truncate">{app.name}</h4>
+                                                                <LanguageBadge language={app.primaryLanguage} />
+                                                            </div>
+                                                            {app.lastMessageAt && (
+                                                                <p className="typo-micro text-muted-foreground mt-0.5">{formatRelativeDate(app.lastMessageAt)}</p>
+                                                            )}
                                                         </div>
                                                         <ChevronRight className={cn("size-4 text-muted-foreground/50 transition-transform duration-200 shrink-0", isAppOpen && "rotate-90")} />
                                                     </div>

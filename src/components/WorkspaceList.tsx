@@ -260,7 +260,7 @@ const AppChats = memo(function AppChats({
                     {/* Pin/Unpin quick action */}
                     <button
                       type="button"
-                      className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-[4.25rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title={pinnedChatIds.has(chat.id) ? "Desfijar" : "Fijar"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -276,27 +276,27 @@ const AppChats = memo(function AppChats({
                     {/* Archive quick action */}
                     <button
                       type="button"
-                      className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-9 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Archivar"
                       onClick={(e) => {
                         e.stopPropagation();
                         onArchiveChat(chat.id, chat.title || "Nuevo chat");
                       }}
                     >
-                      <Archive size={16} />
+                      <Archive size={15} />
                     </button>
                     {/* 3-dot menu */}
                     <button
                       ref={(el) => { if (el) menuBtnRefs.current.set(chat.id, el); else menuBtnRefs.current.delete(chat.id); }}
                       type="button"
-                      className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-2 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${isMenuOpen ? "opacity-100 bg-sidebar-accent/80 text-foreground" : "opacity-0 group-hover/chat-row:opacity-100"}`}
                       title="Opciones"
                       onClick={(e) => {
                         e.stopPropagation();
                         isMenuOpen ? closeMenu() : openMenu(chat.id);
                       }}
                     >
-                      <MoreVertical size={16} />
+                      <MoreVertical size={15} />
                     </button>
                   </>
                 )}
@@ -606,7 +606,7 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
 
         {/* Gradient fade — theme-aware: uses sidebar-accent for idle, inherits active bg tint */}
         <div
-          className={`absolute right-0 top-0 bottom-0 w-24 pointer-events-none transition-opacity z-10 rounded-r-lg ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          className={`absolute right-0 top-0 bottom-0 w-32 pointer-events-none transition-opacity z-10 rounded-r-lg ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
           style={{
             background: isActive
               ? "linear-gradient(to left, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.08) 40%, transparent)"
@@ -625,10 +625,20 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
           <MoreVertical size={15} />
         </button>
 
+        {/* Archive button */}
+        <button
+          type="button"
+          className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          title="Archivar"
+          onClick={(e) => { e.stopPropagation(); onArchiveApp(app.id, app.name); }}
+        >
+          <Archive size={15} />
+        </button>
+
         {/* New chat (Plus) button */}
         <button
           type="button"
-          className={`absolute right-8 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-primary transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
+          className={`absolute right-[3.75rem] top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-md hover:bg-sidebar-accent/80 text-foreground/75 hover:text-foreground transition-all cursor-pointer ${menuOpen ? "opacity-100" : "opacity-0 group-hover/app-row:opacity-100"}`}
           title="Nuevo chat"
           onClick={(e) => { e.stopPropagation(); onNewChat(app.id); }}
         >
@@ -864,9 +874,6 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     key={chat.id}
                     className="group/arc flex items-center gap-3 px-5 py-3 hover:bg-sidebar-accent/40 transition-colors"
                   >
-                    <div className="p-1.5 rounded-lg bg-muted/30 shrink-0">
-                      <Archive size={12} className="text-muted-foreground/50" />
-                    </div>
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm truncate font-medium">{chat.title || "Sin título"}</span>
                       <span className="text-xs text-muted-foreground/55 mt-0.5">
@@ -875,15 +882,15 @@ const WorkspaceAppItem = memo(function WorkspaceAppItem({
                     </div>
                     <button
                       type="button"
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                      className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                       onClick={() => handleUnarchive(chat.id)}
                       disabled={unarchivingId === chat.id}
+                      title="Restaurar"
                     >
                       {unarchivingId === chat.id
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : <ArchiveRestore size={12} />
+                        ? <Loader2 size={15} className="animate-spin" />
+                        : <ArchiveRestore size={15} strokeWidth={2} />
                       }
-                      Restaurar
                     </button>
                   </div>
                 ))}
@@ -1673,11 +1680,8 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                     archivedApps.map((app) => (
                       <div
                         key={app.id}
-                        className="group/arc flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
                       >
-                        <div className="p-1 rounded-lg bg-muted/30 shrink-0">
-                          <Archive size={11} className="text-muted-foreground/50" />
-                        </div>
                         <div className="flex flex-col min-w-0 flex-1">
                           <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
                           <span className="text-xs text-muted-foreground/45 mt-0.5">
@@ -1686,15 +1690,15 @@ export function WorkspaceList({ show }: { show?: boolean }) {
                         </div>
                         <button
                           type="button"
-                          className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                           onClick={() => handleUnarchiveApp(app.id)}
                           disabled={unarchivingId === app.id}
+                          title="Restaurar"
                         >
                           {unarchivingId === app.id
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <ArchiveRestore size={11} />
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <ArchiveRestore size={15} strokeWidth={2} />
                           }
-                          Restaurar
                         </button>
                       </div>
                     ))

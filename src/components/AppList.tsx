@@ -536,11 +536,8 @@ export function AppList({ show }: { show?: boolean }) {
                     archivedApps.map((app) => (
                       <div
                         key={app.id}
-                        className="group/arc flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
+                        className="group/arc flex items-center gap-2.5 pl-6 pr-3 py-2 rounded-xl hover:bg-sidebar-accent/40 transition-colors"
                       >
-                        <div className="p-1 rounded-lg bg-muted/30 shrink-0">
-                          <Archive size={11} className="text-muted-foreground/50" />
-                        </div>
                         <div className="flex flex-col min-w-0 flex-1">
                           <span className="text-sm truncate font-medium text-muted-foreground">{app.name}</span>
                           <span className="text-xs text-muted-foreground/45 mt-0.5">
@@ -549,15 +546,15 @@ export function AppList({ show }: { show?: boolean }) {
                         </div>
                         <button
                           type="button"
-                          className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/50 hover:text-foreground hover:bg-sidebar-accent/60 transition-all cursor-pointer opacity-0 group-hover/arc:opacity-100"
                           onClick={() => handleUnarchiveApp(app.id)}
                           disabled={unarchivingId === app.id}
+                          title="Restaurar"
                         >
                           {unarchivingId === app.id
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <ArchiveRestore size={11} />
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <ArchiveRestore size={15} strokeWidth={2} />
                           }
-                          Restaurar
                         </button>
                       </div>
                     ))

@@ -4,7 +4,7 @@
 import log from "electron-log";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql, max } from "drizzle-orm";
 import { createTypedHandler } from "./base";
 import { adminContracts } from "../types/admin";
 import type { AdminUser } from "../types/admin";
@@ -197,6 +197,23 @@ export function registerAdminHandlers(): void {
             db.select().from(remoteSchema.users),
         ]);
 
+        // Compute last message timestamp per app (latest activity)
+        const lastMsgRows = await db.select({
+            appId: remoteSchema.chats.appId,
+            lastMessageAt: max(remoteSchema.messages.createdAt).as("last_message_at"),
+        })
+            .from(remoteSchema.messages)
+            .innerJoin(remoteSchema.chats, eq(remoteSchema.messages.chatId, remoteSchema.chats.id))
+            .groupBy(remoteSchema.chats.appId);
+
+        const lastMsgMap = new Map<number, number>();
+        for (const row of lastMsgRows) {
+            if (row.appId != null && row.lastMessageAt != null) {
+                const ts = row.lastMessageAt instanceof Date ? row.lastMessageAt.getTime() : Number(row.lastMessageAt);
+                if (!isNaN(ts)) lastMsgMap.set(row.appId, ts);
+            }
+        }
+
         const apps = appRows.map((a) => ({
             id: a.id,
             userId: a.userId,
@@ -208,6 +225,7 @@ export function registerAdminHandlers(): void {
             projectType: a.projectType ?? null,
             githubOrg: a.githubOrg ?? null,
             githubRepo: a.githubRepo ?? null,
+            lastMessageAt: lastMsgMap.get(a.id) ?? null,
         }));
 
         return { apps, users: userRows.map(toAdminUser) };
@@ -421,18 +439,20 @@ export function registerAdminHandlers(): void {
         assertAdmin(context);
         await initializeRemoteSchema();
         const db = getRemoteDb();
-        const { eq, desc, sql } = await import("drizzle-orm");
+        const { eq, desc, count } = await import("drizzle-orm");
 
-        // Get chats with message count
+        // Get chats with message count using standard Drizzle aggregation
         const chats = await db
             .select({
                 id: remoteSchema.chats.id,
                 title: remoteSchema.chats.title,
                 createdAt: remoteSchema.chats.createdAt,
-                messageCount: sql<number>`(SELECT COUNT(*) FROM ${remoteSchema.messages} WHERE ${remoteSchema.messages.chatId} = ${remoteSchema.chats.id})`,
+                messageCount: count(remoteSchema.messages.id),
             })
             .from(remoteSchema.chats)
+            .leftJoin(remoteSchema.messages, eq(remoteSchema.chats.id, remoteSchema.messages.chatId))
             .where(eq(remoteSchema.chats.appId, input.appId))
+            .groupBy(remoteSchema.chats.id)
             .orderBy(desc(remoteSchema.chats.createdAt));
 
         return chats.map((c) => ({
