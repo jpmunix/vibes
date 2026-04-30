@@ -109,6 +109,7 @@ const AppChats = memo(function AppChats({
 
   const queryClient = useQueryClient();
 
+  const [showAll, setShowAll] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -152,13 +153,14 @@ const AppChats = memo(function AppChats({
     setMenuPos(null);
   }, []);
 
-  const sortedChats = useMemo(() => {
+  const allSortedChats = useMemo(() => {
     if (!chats) return [];
     return [...chats]
       .filter(c => !pinnedChatIds.has(c.id))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [chats, pinnedChatIds]);
+
+  const sortedChats = showAll ? allSortedChats : allSortedChats.slice(0, 5);
 
   if (loading) {
     return (
@@ -301,15 +303,16 @@ const AppChats = memo(function AppChats({
               </div>
             );
           })}
-          {chats.length > 5 && (
+          {allSortedChats.length > 5 && (
             <button
               type="button"
               className="px-2 py-1 typo-micro opacity-60 hover:text-primary transition-colors cursor-pointer text-left"
               onClick={(e) => {
                 e.stopPropagation();
+                setShowAll(prev => !prev);
               }}
             >
-              Ver todos ({chats.length})
+              {showAll ? "Ver menos" : `Ver todos (${allSortedChats.length})`}
             </button>
           )}
         </>
@@ -953,7 +956,6 @@ export function WorkspaceList({ show }: { show?: boolean }) {
   const { data: archivedApps = [] } = useQuery({
     queryKey: ["archived-apps"],
     queryFn: () => ipc.app.getArchivedApps(),
-    enabled: archivedOpen,
   });
   const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
 

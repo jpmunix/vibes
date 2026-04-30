@@ -65,10 +65,9 @@ export function AppList({ show }: { show?: boolean }) {
 
   // ── Archived apps state ──
   const [archivedOpen, setArchivedOpen] = useState(false);
-  const { data: archivedApps = [], refetch: refetchArchived } = useQuery({
+  const { data: archivedApps = [] } = useQuery({
     queryKey: ["archived-apps"],
     queryFn: () => ipc.app.getArchivedApps(),
-    enabled: archivedOpen,
   });
   const [unarchivingId, setUnarchivingId] = useState<number | null>(null);
 

@@ -24,6 +24,8 @@ Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra la
 - El menú contextual de cada workspace incluye un submenú "Código" con acceso rápido al explorador, los cambios Git y las memorias.
 - Protección contra modelos retirados de OpenRouter: se detectan y desactivan automáticamente para evitar errores 404 durante el uso.
 - Buscador de ajustes reescrito con keywords más precisas y cobertura de todos los controles, incluidos sub-valores de cada selector.
+- Los títulos de los chats ya no se cortan prematuramente; el límite se ha ampliado para que reflejen mejor el contenido de la conversación.
+- Corregido el botón "Ver todos" en la lista de chats del sidebar, que no hacía nada al pulsarlo.
 - Mejoras internas de estabilidad.
 
 # v8.0

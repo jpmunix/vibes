@@ -518,7 +518,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
           )}
 
           {/* Message bubble */}
-          <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0 max-w-[85%]"}>
+          <div className={isSystem ? "flex-1 w-full flex justify-center" : isAssistant ? "flex-1 min-w-0" : "flex-shrink min-w-0 max-w-[92%]"}>
             {/* Wrapper relative only for user, so the copy button can float outside */}
             <div className={isUser ? "relative" : ""}>
             {isUser && !isSelectingModel && message.content && (

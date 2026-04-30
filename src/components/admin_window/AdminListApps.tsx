@@ -143,7 +143,7 @@ function ChatModal({ chatId, title, user, onClose }: { chatId: number; title: st
                     </div>
                 </DialogHeader>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-4 font-chat">
+                <div className="flex-1 overflow-y-auto px-8 font-chat">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -192,8 +192,8 @@ function AdminMessageRow({ message, viewMode, user }: { message: AdminMessage; v
 
     return (
         <div className="flex justify-center">
-            <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "calc(56rem * var(--scale-bubble-width, 1))" }}>
-                <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+            <div className="mt-4 mb-4 w-full mx-auto group" style={{ maxWidth: "var(--bubble-width, 65%)" }}>
+                <div className={`flex items-start gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`} style={isUser ? { marginLeft: '100px' } : undefined}>
                     {/* Avatar */}
                     <div className="flex-shrink-0 mt-1">
                         {isUser ? (
@@ -249,6 +249,8 @@ function AdminMessageRow({ message, viewMode, user }: { message: AdminMessage; v
                             </div>
                         )}
                     </div>
+                    {/* Invisible spacer to balance avatar width — keeps content centered */}
+                    <div className="w-7 flex-shrink-0" />
                 </div>
             </div>
         </div>

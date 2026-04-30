@@ -311,12 +311,12 @@ export function registerChatHandlers() {
           model,
           title: "chat-title",
           temperature: 0.3,
-          max_tokens: 40,
+          max_tokens: 80,
           messages: [
             {
               role: "system",
               content:
-                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 50 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
+                "Eres un asistente que genera títulos cortos y descriptivos en español para chats. Devuelve SOLO el título, sin comillas ni texto adicional. Máximo 100 caracteres. Sé conciso y claro. IMPORTANTE: El título debe ser objetivo y NO usar primera persona (evita 'he generado', 'he creado', etc). Usa formato neutro como 'Sistema de...', 'Implementación de...', 'Análisis de...'.",
             },
             {
               role: "user",
@@ -346,7 +346,7 @@ export function registerChatHandlers() {
         }
 
         // Sanitize title
-        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 50);
+        const sanitizedTitle = title.replace(/^["']|["']$/g, "").slice(0, 100);
 
         logger.info(
           `Generated title for chatId=${chatId}: "${sanitizedTitle}"`,
