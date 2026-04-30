@@ -13,6 +13,10 @@ Nuevo espacio para **lanzar el mismo prompt contra varios modelos a la vez** y c
 
 Nuevo panel colapsable en **Ajustes → General** para escalar el tamaño de fuente **por zona**: interfaz (botones, labels), sidebar, chat y **ancho de las burbujas**. Cada control va del 100% al 130% de forma independiente, de modo que puedes agrandar solo el texto del chat sin tocar el resto o ensanchar las burbujas para aprovechar más pantalla.
 
+## Archiva apps y workspaces
+
+Ahora puedes **archivar aplicaciones y workspaces** para sacarlos de la barra lateral sin borrar nada. Ideal para hacer limpieza visual cuando acumulas proyectos terminados o pausados. Todo queda guardado y accesible desde la sección de archivados, listo para **restaurarse con un clic** cuando lo necesites.
+
 ## Correcciones y ajustes
 
 - Los botones de Importar, Exportar y Restablecer de los ajustes se han agrupado en un menú desplegable más compacto.
