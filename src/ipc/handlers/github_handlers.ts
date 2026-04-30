@@ -155,7 +155,7 @@ export async function prepareLocalBranch({
   }
   const appPath = getVibesAppPath(app.path);
   const targetBranch = branch || "main";
-  const autoCommitEnabled = true; // Always enabled
+  const autoCommitEnabled = readSettings().enableGithubAutoCommit !== false; // default true
 
   try {
     // Set up remote URL if provided (should be set up before calling this)
@@ -897,7 +897,8 @@ async function handlePushToGithub(
   // Auto-commit changes if commitMessage is provided
   if (commitMessage) {
     const isClean = await isGitStatusClean({ path: appPath });
-    const autoCommitEnabled = true; // Always enabled
+    const settings = readSettings();
+    const autoCommitEnabled = settings.enableGithubAutoCommit !== false; // default true
     if (!isClean && autoCommitEnabled) {
       if (isGitMergeInProgress({ path: appPath })) {
         throw new Error(
