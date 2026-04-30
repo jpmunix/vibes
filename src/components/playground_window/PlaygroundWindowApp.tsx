@@ -31,6 +31,7 @@ import {
     RotateCcw,
     RefreshCw,
     StopCircle,
+    ChevronsDownUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
@@ -91,6 +92,14 @@ function isJsonString(str: string): boolean {
     }
 }
 
+const TYPE_LABELS: Record<string, string> = {
+    fact: "Hecho",
+    preference: "Preferencia",
+    issue: "Problema",
+    episode: "Episodio",
+    decision: "Decisión",
+};
+
 function ResponseContent({ text }: { text: string }) {
     if (isJsonString(text)) {
         try {
@@ -142,15 +151,62 @@ function ResponseContent({ text }: { text: string }) {
     return <div className="playground-prose whitespace-pre-wrap">{text}</div>;
 }
 
+// ─── Memory result card (for Memorias view mode) ─────────────────────────────
+
+function MemoryResponseContent({ text }: { text: string }) {
+    try {
+        const parsed = JSON.parse(text.trim());
+        const operations = parsed.operations || parsed.memories || (Array.isArray(parsed) ? parsed : null);
+        if (!operations || !Array.isArray(operations) || operations.length === 0) {
+            return <ResponseContent text={text} />;
+        }
+
+        const normalizeImp = (imp: unknown): number => {
+            if (typeof imp !== "number") return 50;
+            return imp > 1 ? imp : Math.round(imp * 100);
+        };
+
+        return (
+            <div className="space-y-1">
+                {operations.map((op: any, i: number) => (
+                    <div
+                        key={i}
+                        className="border rounded-xl px-4 py-3 transition-all hover:bg-muted/30 border-border"
+                    >
+                        <div className="flex items-start gap-3">
+                            <span className="shrink-0 px-2 py-0.5 typo-micro rounded-md bg-muted text-muted-foreground border border-border">
+                                {TYPE_LABELS[op.type] || op.type || "?"}
+                            </span>
+                            <p className="flex-1 typo-body leading-relaxed min-w-0">
+                                {op.content || "—"}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 typo-micro text-muted-foreground">
+                            {op.key && (
+                                <span className="typo-mono-xs bg-muted/50 px-1.5 py-0.5 rounded">key:{op.key}</span>
+                            )}
+                            <span>imp:{normalizeImp(op.importance)}</span>
+                            {op.action && <span className="text-primary/70">{op.action}</span>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    } catch {
+        return <ResponseContent text={text} />;
+    }
+}
+
 // ─── Result card (collapsible) ────────────────────────────────────────────────
 
-function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying }: {
+function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying, viewMode }: {
     result: ModelResult;
     collapsed: boolean;
     rank?: number;
     onToggle: () => void;
     onRetry?: () => void;
     isRetrying?: boolean;
+    viewMode: 'raw' | 'memorias';
 }) {
     return (
         <div className="playground-result-card">
@@ -199,6 +255,8 @@ function ResultCard({ result, collapsed, rank, onToggle, onRetry, isRetrying }: 
                             <AlertCircle size={14} />
                             <span className="typo-body text-sm">{result.text}</span>
                         </div>
+                    ) : viewMode === 'memorias' ? (
+                        <MemoryResponseContent text={result.text} />
                     ) : (
                         <ResponseContent text={result.text} />
                     )}
@@ -225,6 +283,8 @@ function PlaygroundPanel() {
     const [runFinished, setRunFinished] = useState(false);
     const [sortMode, setSortMode] = useState<'speed-asc' | 'speed-desc' | 'size-asc' | 'size-desc'>('speed-asc');
     const [retryingModel, setRetryingModel] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'memorias' | 'raw'>('memorias');
+    const [morphActive, setMorphActive] = useState(false);
     const { aliases } = useModelAliases();
     const resultsRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -233,6 +293,9 @@ function PlaygroundPanel() {
     const cancelledRef = useRef(false);
     const userScrolledRef = useRef(false);
     const [inputCollapsed, setInputCollapsed] = useState(false);
+    // Snapshot of selectedModels at the moment the popover closes — used for sorting
+    const [pickerSnapshot, setPickerSnapshot] = useState<string[]>([]);
+    const [autoCollapse, setAutoCollapse] = useState(true);
 
     // Load models from IPC
     useEffect(() => {
@@ -249,6 +312,7 @@ function PlaygroundPanel() {
     }, [allModels, aliases]);
 
     // Filter and sort models for the picker
+    // Uses pickerSnapshot (frozen at popover open) so the list doesn't jump while selecting
     const pickerModels = useMemo(() => {
         const q = modelSearch.trim().toLowerCase().replace(/-/g, ' ');
         const filtered = allModels.filter(m => {
@@ -258,17 +322,26 @@ function PlaygroundPanel() {
             return display.includes(q) || api.includes(q);
         });
 
-        // Sort: selected first, then alphabetical
+        // Sort: selected (from snapshot) first, then alphabetical — stable while popover is open
+        const snapshotSet = new Set(pickerSnapshot);
         return filtered.sort((a, b) => {
-            const aSelected = selectedModels.includes(a.apiName);
-            const bSelected = selectedModels.includes(b.apiName);
+            const aSelected = snapshotSet.has(a.apiName);
+            const bSelected = snapshotSet.has(b.apiName);
             if (aSelected && !bSelected) return -1;
             if (!aSelected && bSelected) return 1;
             const nameA = aliases[a.apiName] || a.displayName;
             const nameB = aliases[b.apiName] || b.displayName;
             return nameA.localeCompare(nameB);
         });
-    }, [modelSearch, allModels, aliases, selectedModels]);
+    }, [modelSearch, allModels, aliases, pickerSnapshot]);
+
+    // When the popover opens, snapshot the current selection for stable sorting
+    const handleSearchOpenChange = useCallback((open: boolean) => {
+        if (open) {
+            setPickerSnapshot([...selectedModels]);
+        }
+        setSearchOpen(open);
+    }, [selectedModels]);
 
     // Smart auto-scroll: pause when user scrolls up, resume when at bottom
     useEffect(() => {
@@ -356,9 +429,11 @@ function PlaygroundPanel() {
         setSortMode('speed-asc');
         setModelSearch("");
         setSearchOpen(false);
+        setPickerSnapshot([]);
         setCurrentModelIndex(-1);
         setRetryingModel(null);
         setInputCollapsed(false);
+        setMorphActive(false);
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
         }
@@ -459,6 +534,18 @@ function PlaygroundPanel() {
             // Update chip times after each model completes
             setModelTimes(prev => new Map(prev).set(modelApiName, durationMs));
 
+            // Auto-collapse previous result when a new one arrives
+            if (autoCollapse && i > 0) {
+                const prevApiName = activeModels[i - 1];
+                const prevKey = `${prevApiName}-${i - 1}`;
+                setExpandedCards(prev => { const s = new Set(prev); s.delete(prevKey); return s; });
+            }
+            // Expand the just-completed result
+            {
+                const thisKey = `${modelApiName}-${i}`;
+                setExpandedCards(prev => new Set(prev).add(thisKey));
+            }
+
             // Auto-scroll to bottom (only if user hasn't scrolled)
             if (!userScrolledRef.current) {
                 setTimeout(() => {
@@ -479,7 +566,7 @@ function PlaygroundPanel() {
                 resultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
             }
         }, 100);
-    }, [prompt, activeModels, isRunning, modelDisplayNameMap]);
+    }, [prompt, activeModels, isRunning, modelDisplayNameMap, autoCollapse]);
 
     // Cancel in-flight request and stop the loop
     const handleCancel = useCallback(async () => {
@@ -820,8 +907,237 @@ function PlaygroundPanel() {
                 }
             `}</style>
 
-            {/* ── Collapsible input area ── */}
+            {/* ── Row 1: Model search + chips ── */}
             <div className="playground-input-area">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Popover open={searchOpen} onOpenChange={handleSearchOpenChange}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground w-[220px] justify-between disabled:opacity-50 shrink-0"
+                                disabled={isRunning}
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <Search size={14} className="shrink-0" />
+                                    <span className="truncate">Buscar modelos...</span>
+                                </div>
+                                <ChevronDown size={14} className="shrink-0 opacity-50" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-[380px] p-0" sideOffset={8}>
+                            <Command shouldFilter={false}>
+                                <CommandInput 
+                                    placeholder="Buscar modelos..." 
+                                    value={modelSearch}
+                                    onValueChange={setModelSearch}
+                                />
+                                <CommandList className="max-h-[300px]">
+                                    {pickerModels.length === 0 ? (
+                                        <div className="py-4 text-center typo-caption">Sin resultados</div>
+                                    ) : (
+                                        <CommandGroup>
+                                            {pickerModels.map(m => {
+                                                const isSelected = selectedModels.includes(m.apiName);
+                                                return (
+                                                    <CommandItem
+                                                        key={m.apiName}
+                                                        value={m.apiName}
+                                                        onSelect={() => handleTogglePickerModel(m.apiName)}
+                                                        className={cn(
+                                                            "cursor-pointer",
+                                                            isSelected && "bg-primary/8"
+                                                        )}
+                                                    >
+                                                        <span className="w-5 shrink-0 flex items-center justify-start">
+                                                            {isSelected && <Check size={14} className="text-primary" />}
+                                                        </span>
+                                                        <ModelItemContent 
+                                                            model={m}
+                                                            alias={aliases[m.apiName]}
+                                                        />
+                                                    </CommandItem>
+                                                );
+                                            })}
+                                        </CommandGroup>
+                                    )}
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {/* Model chips inline with search */}
+                    {orderedChips.map(apiName => {
+                        const time = modelTimes.get(apiName);
+                        return (
+                            <span
+                                key={apiName}
+                                className={`playground-chip${disabledModels.has(apiName) ? ' disabled' : ''}`}
+                                onClick={() => handleToggleModel(apiName)}
+                            >
+                                {modelDisplayNameMap.get(apiName) || apiName}
+                                {time != null && (
+                                    <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveModel(apiName); }}
+                                    disabled={isRunning}
+                                >
+                                    <X size={10} />
+                                </button>
+                            </span>
+                        );
+                    })}
+                </div>
+
+                {/* ── Row 2: Options bar ── */}
+                <div className="playground-toolbar">
+                    {/* Sort selector */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground"
+                            >
+                                <ArrowUpDown size={13} />
+                                <span className="truncate">{sortLabels[sortMode]}</span>
+                                <ChevronDown size={13} className="opacity-50" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[220px]">
+                            {(Object.entries(sortLabels) as [typeof sortMode, string][]).map(([key, label]) => (
+                                <DropdownMenuItem
+                                    key={key}
+                                    className={cn(
+                                        "cursor-pointer py-2.5",
+                                        sortMode === key && "bg-primary/10 font-semibold"
+                                    )}
+                                    onSelect={() => setSortMode(key as any)}
+                                >
+                                    {label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Raw / Memorias toggle */}
+                    <div className="flex items-center rounded-lg border border-border/40 overflow-hidden h-[34px]">
+                        <button
+                            type="button"
+                            className={cn(
+                                "px-3 py-1.5 typo-select transition-colors",
+                                viewMode === 'raw'
+                                    ? "bg-primary/10 text-primary font-semibold"
+                                    : "text-muted-foreground hover:bg-muted/50"
+                            )}
+                            onClick={() => setViewMode('raw')}
+                        >
+                            Raw
+                        </button>
+                        <div className="w-px h-5 bg-border/40" />
+                        <button
+                            type="button"
+                            className={cn(
+                                "px-3 py-1.5 typo-select transition-colors",
+                                viewMode === 'memorias'
+                                    ? "bg-primary/10 text-primary font-semibold"
+                                    : "text-muted-foreground hover:bg-muted/50"
+                            )}
+                            onClick={() => setViewMode('memorias')}
+                        >
+                            Memorias
+                        </button>
+                    </div>
+
+                    {/* Morph button (toggle) */}
+                    <button
+                        type="button"
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors disabled:opacity-50",
+                            morphActive
+                                ? "bg-primary/10 text-primary border-primary/30 font-semibold"
+                                : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground"
+                        )}
+                        title="Cargar / quitar test de Morph V3"
+                        onClick={() => {
+                            if (morphActive) {
+                                setPrompt("");
+                                setSelectedModels(prev => prev.filter(m => !m.startsWith("morph/")));
+                                setMorphActive(false);
+                            } else {
+                                setPrompt("<instruction>I will add type hints</instruction>\n<code>def greet(name):\n    return \"Hello \" + name</code>\n<update>def greet(name: str) -> str</update>");
+                                setSelectedModels(prev => {
+                                    const morphModels = ["morph/morph-v3-large", "morph/morph-v3-fast"];
+                                    const without = prev.filter(m => !morphModels.includes(m));
+                                    return [...without, ...morphModels];
+                                });
+                                setMorphActive(true);
+                            }
+                        }}
+                        disabled={isRunning}
+                    >
+                        <Zap size={14} />
+                        Morph
+                    </button>
+
+                    {/* Auto-collapse toggle */}
+                    <button
+                        type="button"
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 h-[34px] typo-select border rounded-lg transition-colors",
+                            autoCollapse
+                                ? "bg-primary/10 text-primary border-primary/30 font-semibold"
+                                : "border-border/40 bg-background hover:bg-muted/50 text-muted-foreground"
+                        )}
+                        title={autoCollapse ? "Desactivar auto-colapso" : "Activar auto-colapso: colapsar resultado anterior al terminar uno nuevo"}
+                        onClick={() => setAutoCollapse(c => !c)}
+                    >
+                        <ChevronsDownUp size={14} />
+                        Auto-colapso
+                    </button>
+
+                    {/* Spacer */}
+                    <div className="flex-1" />
+
+                    {/* Reset */}
+                    <button
+                        type="button"
+                        className="playground-send-btn"
+                        onClick={handleReset}
+                        disabled={isRunning}
+                        style={{
+                            background: 'transparent',
+                            color: 'var(--muted-foreground)',
+                            border: '1px solid var(--border)',
+                            opacity: (selectedModels.length === 0 && results.length === 0 && !prompt) ? 0.3 : 1,
+                        }}
+                    >
+                        <RotateCcw size={14} />
+                        Reset
+                    </button>
+
+                    {/* Send / Cancel */}
+                    <button
+                        type="button"
+                        className="playground-send-btn"
+                        onClick={isRunning ? handleCancel : handleSubmit}
+                        disabled={!isRunning && (!prompt.trim() || activeModels.length === 0)}
+                        style={isRunning ? { background: 'var(--destructive)', color: 'var(--destructive-foreground)' } : undefined}
+                    >
+                        {isRunning ? (
+                            <>
+                                <StopCircle size={14} />
+                                Cancelar
+                            </>
+                        ) : (
+                            <>
+                                <SendHorizontal size={14} />
+                                Enviar ({activeModels.length})
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {/* ── Row 3: Collapsible prompt ── */}
                 <div
                     className="playground-collapse-header"
                     onClick={() => setInputCollapsed(c => !c)}
@@ -832,7 +1148,6 @@ function PlaygroundPanel() {
                             {prompt.trim()
                                 ? `${prompt.trim().slice(0, 80)}${prompt.trim().length > 80 ? '…' : ''}`
                                 : 'Sin prompt definido'}
-                            {selectedModels.length > 0 && ` · ${activeModels.length} modelo${activeModels.length !== 1 ? 's' : ''}`}
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -848,189 +1163,23 @@ function PlaygroundPanel() {
                 </div>
 
                 {!inputCollapsed && (
-                    <div className="space-y-3">
-                        <textarea
-                            ref={textareaRef}
-                            className="playground-textarea typo-body"
-                            placeholder="Escribe tu prompt aquí…"
-                            value={prompt}
-                            onChange={handlePromptChange}
-                            onKeyDown={handleKeyDown}
-                            disabled={isRunning}
-                        />
-
-                        {/* Model chips */}
-                        {selectedModels.length > 0 && (
-                            <div className="playground-chips">
-                                {orderedChips.map(apiName => {
-                                    const time = modelTimes.get(apiName);
-                                    return (
-                                        <span
-                                            key={apiName}
-                                            className={`playground-chip${disabledModels.has(apiName) ? ' disabled' : ''}`}
-                                            onClick={() => handleToggleModel(apiName)}
-                                        >
-                                            {modelDisplayNameMap.get(apiName) || apiName}
-                                            {time != null && (
-                                                <span className="chip-time">{(time / 1000).toFixed(1)}s</span>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleRemoveModel(apiName); }}
-                                                disabled={isRunning}
-                                            >
-                                                <X size={10} />
-                                            </button>
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {/* Toolbar: search + send */}
-                        <div className="playground-toolbar">
-                            <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                                <PopoverTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="flex items-center gap-2 px-3 py-1.5 h-[34px] typo-select border border-border/40 rounded-lg bg-background hover:bg-muted/50 transition-colors text-muted-foreground w-[220px] justify-between disabled:opacity-50"
-                                        disabled={isRunning}
-                                    >
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <Search size={14} className="shrink-0" />
-                                            <span className="truncate">Buscar modelos...</span>
-                                        </div>
-                                        <ChevronDown size={14} className="shrink-0 opacity-50" />
-                                    </button>
-                                </PopoverTrigger>
-                                <PopoverContent align="start" className="w-[380px] p-0" sideOffset={8}>
-                                    <Command shouldFilter={false}>
-                                        <CommandInput 
-                                            placeholder="Buscar modelos..." 
-                                            value={modelSearch}
-                                            onValueChange={setModelSearch}
-                                        />
-                                        <CommandList className="max-h-[300px]">
-                                            {pickerModels.length === 0 ? (
-                                                <div className="py-4 text-center typo-caption">Sin resultados</div>
-                                            ) : (
-                                                <CommandGroup>
-                                                    {pickerModels.map(m => {
-                                                        const isSelected = selectedModels.includes(m.apiName);
-                                                        return (
-                                                            <CommandItem
-                                                                key={m.apiName}
-                                                                value={m.apiName}
-                                                                onSelect={() => handleTogglePickerModel(m.apiName)}
-                                                                className={cn(
-                                                                    "cursor-pointer",
-                                                                    isSelected && "bg-primary/8"
-                                                                )}
-                                                            >
-                                                                <span className="w-5 shrink-0 flex items-center justify-start">
-                                                                    {isSelected && <Check size={14} className="text-primary" />}
-                                                                </span>
-                                                                <ModelItemContent 
-                                                                    model={m}
-                                                                    alias={aliases[m.apiName]}
-                                                                />
-                                                            </CommandItem>
-                                                        );
-                                                    })}
-                                                </CommandGroup>
-                                            )}
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            <div className="flex-1 flex items-center justify-start px-2">
-                                <button
-                                    type="button"
-                                    className="p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:bg-muted/50 transition-all text-muted-foreground cursor-pointer"
-                                    title="Cargar test de Morph V3"
-                                    onClick={() => {
-                                        setPrompt("<instruction>I will add type hints</instruction>\n<code>def greet(name):\n    return \"Hello \" + name</code>\n<update>def greet(name: str) -> str</update>");
-                                        setSelectedModels(["morph/morph-v3-large", "morph/morph-v3-fast"]);
-                                    }}
-                                    disabled={isRunning}
-                                >
-                                    <FlaskConical size={14} />
-                                </button>
-                            </div>
-                            <button
-                                type="button"
-                                className="playground-send-btn"
-                                onClick={handleReset}
-                                disabled={isRunning}
-                                style={{
-                                    background: 'transparent',
-                                    color: 'var(--muted-foreground)',
-                                    border: '1px solid var(--border)',
-                                    opacity: (selectedModels.length === 0 && results.length === 0 && !prompt) ? 0.3 : 1,
-                                }}
-                            >
-                                <RotateCcw size={14} />
-                                Reset
-                            </button>
-                            <button
-                                type="button"
-                                className="playground-send-btn"
-                                onClick={isRunning ? handleCancel : handleSubmit}
-                                disabled={!isRunning && (!prompt.trim() || activeModels.length === 0)}
-                                style={isRunning ? { background: 'var(--destructive)', color: 'var(--destructive-foreground)' } : undefined}
-                            >
-                                {isRunning ? (
-                                    <>
-                                        <StopCircle size={14} />
-                                        Cancelar
-                                    </>
-                                ) : (
-                                    <>
-                                        <SendHorizontal size={14} />
-                                        Enviar ({activeModels.length})
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
+                    <textarea
+                        ref={textareaRef}
+                        className="playground-textarea typo-body"
+                        placeholder="Escribe tu prompt aquí…"
+                        value={prompt}
+                        onChange={handlePromptChange}
+                        onKeyDown={handleKeyDown}
+                        disabled={isRunning}
+                    />
                 )}
             </div>
-
-            {/* Sort controls (always visible when applicable) */}
-            {runFinished && results.length > 1 && (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button
-                            type="button"
-                            className="playground-sort-trigger typo-select"
-                        >
-                            <ArrowUpDown size={13} />
-                            {sortLabels[sortMode]}
-                            <ChevronDown size={13} className="opacity-60" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[220px]">
-                        {(Object.entries(sortLabels) as [typeof sortMode, string][]).map(([key, label]) => (
-                            <DropdownMenuItem
-                                key={key}
-                                className={cn(
-                                    "cursor-pointer py-2.5",
-                                    sortMode === key && "bg-primary/10 font-semibold"
-                                )}
-                                onSelect={() => setSortMode(key as any)}
-                            >
-                                {label}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )}
 
             {/* ── Results ── */}
             <div className="playground-results">
                 {displayResults.map((result, i) => {
                     const cardKey = `${result.modelApiName}-${i}`;
-                    const isCollapsed = runFinished && !expandedCards.has(cardKey);
+                    const isCollapsed = !expandedCards.has(cardKey);
                     return (
                         <ResultCard
                             key={cardKey}
@@ -1040,6 +1189,7 @@ function PlaygroundPanel() {
                             onToggle={() => toggleCard(cardKey)}
                             onRetry={runFinished && !isRunning ? () => handleRetryModel(result.modelApiName) : undefined}
                             isRetrying={retryingModel === result.modelApiName}
+                            viewMode={viewMode}
                         />
                     );
                 })}

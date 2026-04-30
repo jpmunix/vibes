@@ -229,35 +229,57 @@ async function bootstrapFromDNA(params: {
 
     logger.info(`[Bootstrap] Phase 1 (DNA): ${dna.configFiles.length} configs, payload=${userMessage.length} chars`);
 
+    const DNA_TIMEOUT_MS = 15_000;
+    const MAX_RETRIES = 1;
+
     const t0 = Date.now();
     let rawContent: string;
+
+    const callWithTimeout = async (): Promise<string> => {
+        const result = await Promise.race([
+            openRouterCompletion({
+                model,
+                messages: [
+                    { role: "system", content: onboardingPrompt },
+                    { role: "user", content: userMessage },
+                ],
+                temperature: 0.2,
+                max_tokens: 2000,
+                response_format: { type: "json_object" },
+                title: "Vibes - Memory Bootstrap DNA",
+            }),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error(`DNA timeout (${DNA_TIMEOUT_MS / 1000}s)`)), DNA_TIMEOUT_MS),
+            ),
+        ]);
+        return result.choices?.[0]?.message?.content?.trim() || "";
+    };
+
     try {
-        const data = await openRouterCompletion({
-            model,
-            messages: [
-                { role: "system", content: onboardingPrompt },
-                { role: "user", content: userMessage },
-            ],
-            temperature: 0.2,
-            max_tokens: 2000,
-            response_format: { type: "json_object" },
-            title: "Vibes - Memory Bootstrap DNA",
-        });
-        rawContent = data.choices?.[0]?.message?.content?.trim() || "";
-    } catch (err: any) {
-        debugLog("Phase1", `❌ LLM call FAILED`, { error: err.message, durationMs: `${Date.now() - t0}ms` });
-        logger.warn(`[Bootstrap] Phase 1 LLM call failed: ${err.message}`);
-        logPipelineCall({
-            userId, appId,
-            stage: "bootstrap-dna", model,
-            systemPrompt: onboardingPrompt,
-            userMessage,
-            resultCount: 0,
-            durationMs: Date.now() - t0,
-            success: false,
-            error: err.message,
-        });
-        return [];
+        rawContent = await callWithTimeout();
+    } catch (firstErr: any) {
+        debugLog("Phase1", `⚠️ Attempt 1 failed: ${firstErr.message}`, { durationMs: `${Date.now() - t0}ms` });
+        logger.warn(`[Bootstrap] Phase 1 attempt 1 failed: ${firstErr.message} — retrying...`);
+
+        // Single retry
+        try {
+            rawContent = await callWithTimeout();
+            debugLog("Phase1", `✅ Retry succeeded`, { durationMs: `${Date.now() - t0}ms` });
+        } catch (retryErr: any) {
+            debugLog("Phase1", `❌ Retry also failed: ${retryErr.message}`, { durationMs: `${Date.now() - t0}ms` });
+            logger.warn(`[Bootstrap] Phase 1 retry failed: ${retryErr.message}`);
+            logPipelineCall({
+                userId, appId,
+                stage: "bootstrap-dna", model,
+                systemPrompt: onboardingPrompt,
+                userMessage,
+                resultCount: 0,
+                durationMs: Date.now() - t0,
+                success: false,
+                error: `${firstErr.message} → retry: ${retryErr.message}`,
+            });
+            return [];
+        }
     }
 
     const durationMs = Date.now() - t0;
