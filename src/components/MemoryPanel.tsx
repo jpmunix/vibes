@@ -10,6 +10,8 @@ import { ipc } from "@/ipc/types";
 import type { MemoryEntry, MemoryType } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UnifiedSelector } from "@/components/ui/UnifiedSelector";
+import type { SelectorOption } from "@/components/ui/UnifiedSelector";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import {
   Dialog,
@@ -401,24 +403,29 @@ export function MemoryPanel({ appId }: { appId: number }) {
 
       {/* ── Create Dialog ── */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>Nueva memoria</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="typo-label">Tipo</label>
-              <select
+              <UnifiedSelector
                 value={createForm.type}
-                onChange={e => setCreateForm(f => ({ ...f, type: e.target.value as MemoryType }))}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 typo-body ring-offset-background"
-              >
-                <option value="fact">Hecho</option>
-                <option value="preference">Preferencia</option>
-                <option value="issue">Problema</option>
-                <option value="episode">Episodio</option>
-                <option value="decision">Decisión</option>
-              </select>
+                onChange={(v) => setCreateForm(f => ({ ...f, type: v as MemoryType }))}
+                triggerVariant="default"
+                triggerSize="md"
+                triggerClassName="w-full justify-between"
+                showCheckmark
+                popoverWidth="w-[580px]"
+                options={[
+                  { value: "fact", label: "Hecho", description: "Datos técnicos del proyecto: stack, estructura, versiones, dependencias" },
+                  { value: "preference", label: "Preferencia", description: "Convenciones y gustos del usuario: estilo de código, idioma, patrones favoritos" },
+                  { value: "decision", label: "Decisión", description: "Elecciones de arquitectura o diseño tomadas y su justificación" },
+                  { value: "issue", label: "Problema", description: "Bugs conocidos, gotchas, limitaciones técnicas a tener en cuenta" },
+                  { value: "episode", label: "Episodio", description: "Eventos o interacciones relevantes ocurridas en sesiones anteriores" },
+                ]}
+              />
             </div>
             <div className="space-y-2">
               <label className="typo-label">Key (opcional)</label>
@@ -465,9 +472,9 @@ export function MemoryPanel({ appId }: { appId: number }) {
               <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
                 <p className="typo-micro font-semibold text-muted-foreground/80 uppercase tracking-wider">Guía de importancia</p>
                 <div className="grid gap-0.5 typo-micro text-muted-foreground">
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico — Stack principal, convenciones globales del proyecto</span>
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto — Arquitectura de módulos, librerías clave, flujos de auth</span>
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio — Gotchas técnicos, preferencias de formato, rarezas de APIs</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico: stack principal, convenciones globales del proyecto</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto: arquitectura de módulos, librerías clave, flujos de auth</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio: gotchas técnicos, preferencias de formato, rarezas de APIs</span>
                 </div>
               </div>
             </div>
@@ -487,7 +494,7 @@ export function MemoryPanel({ appId }: { appId: number }) {
 
       {/* ── Edit Dialog ── */}
       <Dialog open={!!editMemory} onOpenChange={open => !open && setEditMemory(null)}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>Editar memoria #{editMemory?.id}</DialogTitle>
           </DialogHeader>
@@ -537,9 +544,9 @@ export function MemoryPanel({ appId }: { appId: number }) {
               <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
                 <p className="typo-micro font-semibold text-muted-foreground/80 uppercase tracking-wider">Guía de importancia</p>
                 <div className="grid gap-0.5 typo-micro text-muted-foreground">
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico — Stack principal, convenciones globales del proyecto</span>
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto — Arquitectura de módulos, librerías clave, flujos de auth</span>
-                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio — Gotchas técnicos, preferencias de formato, rarezas de APIs</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1.5" />90–100 · Crítico: stack principal, convenciones globales del proyecto</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5" />70–85 · Alto: arquitectura de módulos, librerías clave, flujos de auth</span>
+                  <span><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1.5" />50–65 · Medio: gotchas técnicos, preferencias de formato, rarezas de APIs</span>
                 </div>
               </div>
             </div>

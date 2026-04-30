@@ -538,7 +538,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                   aria-label="Copiar mensaje"
                 >
                   {userCopied ? (
-                    <Check size={13} className="text-green-500" />
+                    <Check size={13} className="text-primary" />
                   ) : (
                     <Copy size={13} />
                   )}
@@ -639,7 +639,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                           className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                           aria-label="Copiar respuesta"
                         >
-                          {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                          {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                         </button>
                         {messageCost && (
                           <span className="typo-micro ml-1">{messageCost}</span>
@@ -703,7 +703,7 @@ const ChatMessage = ({ message, isLastMessage, user, forceFullMode }: ChatMessag
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                       aria-label="Copiar respuesta"
                     >
-                      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                      {copied ? <Check size={12} className="text-primary" /> : <Copy size={12} />}
                     </button>
                     {messageCost && (
                       <span className="typo-micro ml-1">{messageCost}</span>
