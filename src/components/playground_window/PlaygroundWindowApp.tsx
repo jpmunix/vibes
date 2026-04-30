@@ -318,6 +318,8 @@ function PlaygroundPanel() {
     const [saveAsName, setSaveAsName] = useState("");
     const [saveMode, setSaveMode] = useState<'new' | 'update'>('new');
     const [pendingDeletePreset, setPendingDeletePreset] = useState<string | null>(null);
+    const [pendingRenamePreset, setPendingRenamePreset] = useState<string | null>(null);
+    const [renameValue, setRenameValue] = useState("");
 
     const modelSets = useMemo(() => settings?.playgroundModelSets || [], [settings?.playgroundModelSets]);
 
@@ -648,6 +650,15 @@ function PlaygroundPanel() {
         const updated = modelSets.filter(s => s.name !== name);
         await updateSettings({ playgroundModelSets: updated } as any);
         if (activePresetName === name) setActivePresetName(null);
+    }, [modelSets, updateSettings, activePresetName]);
+
+    const handleRenamePreset = useCallback(async (oldName: string, newName: string) => {
+        if (!newName.trim() || newName.trim() === oldName) return;
+        const updated = modelSets.map(s => s.name === oldName ? { ...s, name: newName.trim() } : s);
+        await updateSettings({ playgroundModelSets: updated } as any);
+        if (activePresetName === oldName) setActivePresetName(newName.trim());
+        setPendingRenamePreset(null);
+        setRenameValue("");
     }, [modelSets, updateSettings, activePresetName]);
 
     // Detect if current selection differs from active preset
@@ -1072,6 +1083,22 @@ function PlaygroundPanel() {
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="min-w-[260px]">
+                            {/* Deselect option */}
+                            {activePresetName && (
+                                <>
+                                    <DropdownMenuItem
+                                        className="cursor-pointer py-2 text-muted-foreground"
+                                        onSelect={() => {
+                                            setActivePresetName(null);
+                                            setPresetMenuOpen(false);
+                                        }}
+                                    >
+                                        <X size={13} className="mr-2 opacity-60" />
+                                        Ninguno
+                                    </DropdownMenuItem>
+                                    <div className="h-px bg-border/50 my-1" />
+                                </>
+                            )}
                             {modelSets.length === 0 ? (
                                 <div className="py-3 px-4 text-center typo-caption text-muted-foreground">
                                     Sin presets guardados
@@ -1096,18 +1123,33 @@ function PlaygroundPanel() {
                                                 {set.models.length} modelo{set.models.length !== 1 ? 's' : ''}
                                             </span>
                                         </div>
-                                        <button
-                                            type="button"
-                                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setPendingDeletePreset(set.name);
-                                                setPresetMenuOpen(false);
-                                            }}
-                                            title="Eliminar preset"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
+                                        <div className="flex items-center gap-0.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPendingRenamePreset(set.name);
+                                                    setRenameValue(set.name);
+                                                    setPresetMenuOpen(false);
+                                                }}
+                                                title="Renombrar preset"
+                                            >
+                                                <Pencil size={11} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPendingDeletePreset(set.name);
+                                                    setPresetMenuOpen(false);
+                                                }}
+                                                title="Eliminar preset"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
                                     </DropdownMenuItem>
                                 ))
                             )}
@@ -1133,6 +1175,43 @@ function PlaygroundPanel() {
                                     }}
                                 >
                                     Eliminar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Rename preset dialog */}
+                    <AlertDialog open={!!pendingRenamePreset} onOpenChange={(open) => { if (!open) { setPendingRenamePreset(null); setRenameValue(""); } }}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Renombrar preset</AlertDialogTitle>
+                                <AlertDialogDescription asChild>
+                                    <div className="space-y-3">
+                                        <p>Escribe el nuevo nombre para "{pendingRenamePreset}":</p>
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-1.5 typo-body text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                                            value={renameValue}
+                                            onChange={e => setRenameValue(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === "Enter" && renameValue.trim() && pendingRenamePreset) {
+                                                    handleRenamePreset(pendingRenamePreset, renameValue);
+                                                }
+                                            }}
+                                            autoFocus
+                                        />
+                                    </div>
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                    disabled={!renameValue.trim() || renameValue.trim() === pendingRenamePreset}
+                                    onClick={() => {
+                                        if (pendingRenamePreset) handleRenamePreset(pendingRenamePreset, renameValue);
+                                    }}
+                                >
+                                    Renombrar
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
