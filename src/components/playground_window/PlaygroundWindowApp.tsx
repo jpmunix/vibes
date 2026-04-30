@@ -169,7 +169,23 @@ function ResponseContent({ text }: { text: string }) {
 
 function MemoryResponseContent({ text }: { text: string }) {
     try {
-        const parsed = JSON.parse(text.trim());
+        let raw = text.trim();
+
+        // Strip thinking/reasoning blocks
+        raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
+
+        // Strip markdown code fences (```json ... ``` or ``` ... ```)
+        const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+        if (fenceMatch) raw = fenceMatch[1].trim();
+
+        // Try to find a JSON object if the raw text has leading/trailing prose
+        if (!raw.startsWith("{") && !raw.startsWith("[")) {
+            const objMatch = raw.match(/(\{[\s\S]*\})/);
+            const arrMatch = raw.match(/(\[[\s\S]*\])/);
+            raw = objMatch?.[1] || arrMatch?.[1] || raw;
+        }
+
+        const parsed = JSON.parse(raw);
         const operations = parsed.operations || parsed.memories || (Array.isArray(parsed) ? parsed : null);
         if (!operations || !Array.isArray(operations) || operations.length === 0) {
             return <ResponseContent text={text} />;
@@ -1136,6 +1152,18 @@ function PlaygroundPanel() {
                                                 title="Renombrar preset"
                                             >
                                                 <Pencil size={11} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSavePreset(set.name);
+                                                    setPresetMenuOpen(false);
+                                                }}
+                                                title={`Sobreescribir "${set.name}" con la selección actual`}
+                                            >
+                                                <Save size={11} />
                                             </button>
                                             <button
                                                 type="button"

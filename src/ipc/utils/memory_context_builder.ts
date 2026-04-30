@@ -21,6 +21,7 @@ import { shouldInjectMemories } from "./memory_guardian";
 import { getEffectivePrompt } from "../../prompts";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
+import { extractJsonFromLLM } from "./memory_json_extractor";
 
 const logger = log.scope("memory_context");
 
@@ -271,8 +272,8 @@ async function routerSelect(
         // Parse response — expect {"ids": [1, 2, 3]}
         let selectedIds: number[];
         try {
-            const parsed = JSON.parse(rawContent);
-            if (parsed.ids && Array.isArray(parsed.ids)) {
+            const parsed = extractJsonFromLLM(rawContent);
+            if (parsed && parsed.ids && Array.isArray(parsed.ids)) {
                 selectedIds = parsed.ids;
             } else {
                 logger.warn("[Memory] Router returned unexpected structure:", rawContent.slice(0, 200));

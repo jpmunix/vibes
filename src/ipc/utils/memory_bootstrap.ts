@@ -23,6 +23,7 @@ import { logPipelineCall } from "./memory_telemetry";
 import { DEFAULT_STANDARD_MODEL } from "../../lib/schemas";
 import type { MemoryEntry } from "../types/memory";
 import { debugLog, debugSection, debugCodeBlock, debugList, debugSessionStart, setDebugContext, debugPlayground } from "./memory_debug_log";
+import { extractJsonFromLLM } from "./memory_json_extractor";
 
 const logger = log.scope("memory_bootstrap");
 
@@ -304,7 +305,8 @@ async function bootstrapFromDNA(params: {
     // Parse operations
     let operations: any[];
     try {
-        const parsed = JSON.parse(rawContent);
+        const parsed = extractJsonFromLLM(rawContent);
+        if (!parsed) throw new Error("extractJsonFromLLM returned null");
         operations = parsed.operations || [];
     } catch {
         debugLog("Phase1", `❌ JSON parse FAILED`, { excerpt: rawContent.slice(0, 200) });
@@ -504,13 +506,12 @@ async function bootstrapFromExplore(params: {
     // Try to extract JSON from the response
     let operations: any[] = [];
     try {
-        const jsonMatch = rawResponse.match(/\{[\s\S]*"operations"[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            operations = parsed.operations || [];
+        const parsed = extractJsonFromLLM(rawResponse);
+        if (parsed && parsed.operations) {
+            operations = parsed.operations;
             debugLog("Phase2", `JSON extracted: ${operations.length} operations`);
         } else {
-            debugLog("Phase2", `⚠️ No JSON block found in response`);
+            debugLog("Phase2", `⚠️ No operations found in response`);
         }
     } catch {
         debugLog("Phase2", `❌ JSON parse failed from explore response`);

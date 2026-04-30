@@ -21,6 +21,7 @@ import { getEffectivePrompt } from "../../prompts";
 import { stripThinkingBlocks, shouldProcessInteraction } from "./memory_guardian";
 import { logTelemetry, logPipelineCall } from "./memory_telemetry";
 import { debugLog, debugPlayground } from "./memory_debug_log";
+import { extractJsonFromLLM } from "./memory_json_extractor";
 
 const logger = log.scope("memory_extractor");
 
@@ -238,8 +239,8 @@ export async function extractMemoriesFromChatCycle(params: {
         // 5. Parse JSON response — expects {operations: [...]}
         let operations: SynthesisOperation[];
         try {
-            const parsed = JSON.parse(rawContent);
-            if (parsed.operations && Array.isArray(parsed.operations)) {
+            const parsed = extractJsonFromLLM(rawContent);
+            if (parsed && parsed.operations && Array.isArray(parsed.operations)) {
                 operations = parsed.operations;
             } else {
                 logger.warn("[Memory] Unexpected JSON structure:", rawContent.slice(0, 200));
