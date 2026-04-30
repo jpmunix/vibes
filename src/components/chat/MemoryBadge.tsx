@@ -16,6 +16,14 @@ const TYPE_LABELS: Record<string, string> = {
   episode: "Episode",
 };
 
+const TYPE_COLORS: Record<string, string> = {
+  fact: "text-blue-400",
+  preference: "text-violet-400",
+  decision: "text-amber-400",
+  issue: "text-rose-400",
+  episode: "text-emerald-400",
+};
+
 interface MemoryBadgeProps {
   memories: SelectedMemoryMeta[];
 }
@@ -46,27 +54,35 @@ export const MemoryBadge = React.memo(({ memories }: MemoryBadgeProps) => {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[70vh] flex flex-col">
+        <DialogContent className="sm:max-w-[820px] max-h-[70vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database size={15} className="text-muted-foreground" />
               Memorias inyectadas ({memories.length})
             </DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-            {memories.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-start gap-2 py-1.5 px-2 rounded-lg hover:bg-muted/30 transition-colors"
-              >
-                <span className="flex-shrink-0 typo-caption font-bold text-muted-foreground mt-px">
-                  {TYPE_LABELS[m.type] || m.type}
-                </span>
-                <span className="typo-caption text-muted-foreground flex-1 min-w-0">
-                  {m.content}
-                </span>
-              </div>
-            ))}
+          <div className="overflow-y-auto flex-1 pr-1">
+            <table className="w-full">
+              <tbody>
+                {memories.map((m) => (
+                  <tr
+                    key={m.id}
+                    className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
+                  >
+                    <td className="py-2.5 px-3 align-top whitespace-nowrap w-[1%]">
+                      <span className={`typo-caption font-bold ${TYPE_COLORS[m.type] || "text-muted-foreground"}`}>
+                        {TYPE_LABELS[m.type] || m.type}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 align-top">
+                      <span className="typo-caption text-muted-foreground">
+                        {m.content}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </DialogContent>
       </Dialog>
