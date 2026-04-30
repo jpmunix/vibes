@@ -1512,6 +1512,7 @@ export async function handleOpenCodeStream(
                     } else {
                         logger.info(`${LP} AGENTS.md already exists, skipping init`);
                     }
+                }
             }
 
         } catch (error: any) {
